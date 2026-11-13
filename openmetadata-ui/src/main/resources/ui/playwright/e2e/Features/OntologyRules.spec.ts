@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { OntologyProfileReport } from '../../../src/generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
@@ -24,7 +25,11 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { clickGraphNode, readNodePositions } from '../../utils/ontologyStudio';
+import {
+  chooseInspectorRelationType,
+  clickGraphNode,
+  readNodePositions,
+} from '../../utils/ontologyStudio';
 
 const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 const XSD = 'http://www.w3.org/2001/XMLSchema#';
@@ -750,10 +755,20 @@ test.describe(
               )
             ).ok()
           ).toBe(true);
-          await openOntology(page, fixture.ontology);
-          await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-            '0 conflicts to resolve'
+          const validated = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${fixture.ontology.id}/working/validation` &&
+              response.request().method() === 'GET'
           );
+          await openOntology(page, fixture.ontology);
+          const report = await okJson<OntologyProfileReport>(
+            await validated,
+            'Validate the fixed draft'
+          );
+          expect(report.violations).toHaveLength(0);
+          // A clean draft has nothing to resolve, so the conflicts card is not drawn.
+          await expect(panel).toHaveCount(0);
         } finally {
           await fixture.cleanup();
         }
@@ -786,7 +801,8 @@ test.describe(
         await test.step('Data property with a data type', async () => {
           const form = await openForm();
           await form.getByTestId('ontology-property-name').fill('email');
-          await form.getByTestId('ontology-property-type-string').click();
+          await form.getByRole('button', { name: /Range/ }).click();
+          await page.getByTestId('ontology-property-type-string').click();
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
@@ -795,6 +811,7 @@ test.describe(
 
         await test.step('Annotation property', async () => {
           const form = await openForm();
+          await form.getByTestId('ontology-property-kind-more').click();
           await form.getByTestId('ontology-property-kind-annotation').click();
           await form.getByTestId('ontology-property-name').fill('internalNote');
           await clickIgnoringToasts(
@@ -924,33 +941,38 @@ test.describe(
           .click();
         const editor = page.getByTestId('ontology-concept-editor');
 
-        await editor.getByRole('button', { name: 'Add Mapping' }).click();
-        await pickByLabel(
-          editor
-            .getByRole('group', { name: 'Mapping 1' })
-            .getByTestId('ontology-mapping-concept'),
-          'Party',
-          party.iri
+        // The panel edits one mapping at a time: Add opens the New mapping card,
+        // Add mapping files it as a row and closes the card.
+        const mappingCard = editor.getByTestId('ontology-concept-mapping');
+        const mappingPicker = mappingCard.getByTestId(
+          'ontology-mapping-concept'
         );
-        await editor.getByRole('button', { name: 'Add Mapping' }).click();
-        const otherPicker = editor
-          .getByRole('group', { name: 'Mapping 2' })
-          .getByTestId('ontology-mapping-concept');
-        const otherInput = otherPicker.getByRole('combobox');
-        await otherInput.fill('Account');
-        await otherInput.press('ArrowDown');
-        const accountOption = page.getByRole('option', { name: /^Account/ });
-        await expect(accountOption).toContainText(
-          `${elsewhere.ontology.name} · ${account.iri}`
+        const addMapping = async (fill: () => Promise<void>) => {
+          await editor.getByTestId('ontology-add-mapping').click();
+          await fill();
+          await mappingCard.getByTestId('ontology-mapping-submit').click();
+          await expect(mappingCard).toHaveCount(0);
+        };
+
+        await addMapping(() => pickByLabel(mappingPicker, 'Party', party.iri));
+        await addMapping(async () => {
+          const otherInput = mappingPicker.getByRole('combobox');
+          await otherInput.fill('Account');
+          await otherInput.press('ArrowDown');
+          const accountOption = page.getByRole('option', {
+            name: /^Account/,
+          });
+          await expect(accountOption).toContainText(
+            `${elsewhere.ontology.name} · ${account.iri}`
+          );
+          await accountOption.click();
+        });
+        await addMapping(() =>
+          pasteIri(mappingPicker, 'https://schema.org/Person')
         );
-        await accountOption.click();
-        await editor.getByRole('button', { name: 'Add Mapping' }).click();
-        await pasteIri(
-          editor
-            .getByRole('group', { name: 'Mapping 3' })
-            .getByTestId('ontology-mapping-concept'),
-          'https://schema.org/Person'
-        );
+        await expect(
+          editor.getByTestId('ontology-concept-mapping-row')
+        ).toHaveCount(3);
         const saved = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname ===
@@ -1068,7 +1090,7 @@ test.describe(
         await clickGraphNode(page, tonic.id);
         const inspector = page.getByTestId('ontology-concept-inspector');
         await inspector.getByTestId('ontology-add-relationship').click();
-        await page.getByTestId(`relation-type-${SUBCLASS_OF}`).click();
+        await chooseInspectorRelationType(page, inspector, SUBCLASS_OF);
         const target = inspector.getByLabel('Target');
         await selectOptionWithRetry(
           target,

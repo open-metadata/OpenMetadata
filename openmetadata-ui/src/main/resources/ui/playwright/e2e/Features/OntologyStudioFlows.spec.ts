@@ -34,8 +34,8 @@ import {
   findEmptyCanvasPoint,
   openOntologyInStudio,
   openPageAs,
+  openReleaseHistory,
   readNodePositions,
-  releaseNameContaining,
   removeFlowOntologies,
   STUDIO_PATH,
 } from '../../utils/ontologyStudio';
@@ -319,6 +319,11 @@ test.describe(
 
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Toolbar');
+          // The new concept opens in the inspector, which narrows the canvas; at 1280px
+          // in AI mode no point is left clear of the nodes until it closes.
+          const inspector = page.getByTestId('ontology-concept-inspector');
+          await inspector.getByRole('button', { name: 'Close' }).click();
+          await expect(inspector).toHaveCount(0);
 
           // The graph re-renders after the first concept lands; a double-click in that window is
           // dropped, so re-measure and retry until the drawer opens.
@@ -587,8 +592,8 @@ test.describe(
           await page.getByTestId('ontology-version-published').click();
           await expect(page).toHaveURL(/version=published/);
           await expect(
-            page.getByTestId('ontology-release-history-trigger')
-          ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
+            page.getByTestId('ontology-version-published')
+          ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId(`ontology-tree-term-${actors.concept.id}`)
@@ -701,10 +706,8 @@ test.describe(
           await author.getByTestId('mode-tab-view').click();
           await author.getByTestId('ontology-version-published').click();
           await expect(
-            author.getByTestId('ontology-release-history-trigger')
-          ).toHaveAccessibleName(
-            releaseNameContaining(`v${release.semanticVersion}`)
-          );
+            author.getByTestId('ontology-version-published')
+          ).toContainText(`v${release.semanticVersion}`);
           await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
         } finally {
           await actors.cleanup();
@@ -977,7 +980,7 @@ test.describe(
 
           await useMode(page, mode);
           await openOntologyInStudio(page, ontology.id);
-          await page.getByTestId('ontology-release-history-trigger').click();
+          await openReleaseHistory(page);
           await expect(page.getByTestId('ontology-release-row')).toHaveCount(2);
 
           // AI mode keeps Compare on its own screen behind the history toolbar.
@@ -1022,8 +1025,8 @@ test.describe(
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('ontology-version-published').click();
           await expect(
-            page.getByTestId('ontology-release-history-trigger')
-          ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
+            page.getByTestId('ontology-version-published')
+          ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId('ontology-tree-term-' + concepts[0].id)

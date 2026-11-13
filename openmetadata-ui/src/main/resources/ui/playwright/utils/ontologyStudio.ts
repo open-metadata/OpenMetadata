@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -93,12 +94,51 @@ export async function findOntologyInScopeMenu(
   return page.getByTestId(`ontology-scope-${ontology.id}`);
 }
 
+/** The concept panel's relationship type is a select; picks one by type id. */
+export async function chooseInspectorRelationType(
+  page: Page,
+  inspector: Locator,
+  typeId: string
+) {
+  await selectOptionWithRetry(
+    inspector.getByTestId('ontology-relationship-type').getByRole('button'),
+    page.getByTestId(`relation-type-${typeId}`)
+  );
+}
+
+/** Opens the full relationship chooser (search, glosses, new type) from the panel's select. */
+export async function openInspectorRelationChooser(
+  page: Page,
+  inspector: Locator
+) {
+  await chooseInspectorRelationType(
+    page,
+    inspector,
+    '__browse-relation-types__'
+  );
+  await expect(page.getByTestId('relationship-type-picker')).toBeVisible();
+}
+
 /**
- * The release history control: a chip with the version for readers, an icon for editors whose
- * accessible name carries the same text. Matches either by name.
+ * Opens release history: readers have the release chip, editors reach it under
+ * Review & publish → Releases.
  */
-export const releaseNameContaining = (text: string) =>
-  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+export async function openReleaseHistory(page: Page) {
+  const readerChip = page.getByTestId('ontology-release-history-trigger');
+  const publish = page.getByTestId('ontology-publication-trigger');
+  // A user has exactly one of the two, so the union never matches twice.
+  await expect(readerChip.or(publish)).toBeVisible();
+  if (await readerChip.isVisible()) {
+    await readerChip.click();
+
+    return;
+  }
+  await publish.click();
+  await page.getByTestId('ontology-publication-tab-releases').click();
+  await expect(
+    page.getByTestId('ontology-publication-tab-releases')
+  ).toHaveAttribute('aria-selected', 'true');
+}
 
 /** The Import / export button opens a menu; this opens the Import or the Export dialog. */
 export async function openOntologyTransfer(
@@ -312,7 +352,8 @@ const CANVAS_OVERLAY_TEST_IDS = [
 
 export async function findEmptyCanvasPoint(
   page: Page,
-  clearance = 160
+  clearance = 160,
+  { besideDrawer = false } = {}
 ): Promise<{ x: number; y: number }> {
   // The graph re-fits when a side panel opens or closes, so measure only once
   // two reads agree.
@@ -356,8 +397,18 @@ export async function findEmptyCanvasPoint(
         y >= rect.y - 40 &&
         y <= rect.y + rect.height + 40
     );
+  // A studio drawer is 40vw with a 420px floor plus its 8px inset
+  // (ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor). A node created
+  // under it is panned into view when it opens, so it no longer sits at the click.
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const right = besideDrawer
+    ? Math.min(
+        box.x + box.width,
+        viewportWidth - Math.max(viewportWidth * 0.4, 420) - 8
+      )
+    : box.x + box.width;
   const candidates = [];
-  for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
+  for (let x = box.x + 120; x < right - 120; x += 40) {
     for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
       if (!isUnderOverlay(x, y)) {
         candidates.push({ x, y });

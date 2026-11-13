@@ -19,7 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
@@ -172,9 +172,9 @@ const renderAt = (hash: string) => {
   window.history.replaceState(null, '', `/${hash}`);
 
   return render(
-    <MemoryRouter initialEntries={[`/${hash}`]}>
+    <BrowserRouter>
       <Host />
-    </MemoryRouter>
+    </BrowserRouter>
   );
 };
 
@@ -233,6 +233,19 @@ describe('PersonasPanel', () => {
       'p1'
     );
     expect(screen.getByTestId('hash-probe')).toHaveTextContent('personas|p1|');
+  });
+
+  it('returns to the landing on browser Back from a persona detail', async () => {
+    renderAt('#personas');
+
+    fireEvent.click(screen.getByTestId('personas-landing'));
+
+    expect(screen.getByTestId('persona-detail')).toBeInTheDocument();
+
+    act(() => window.history.back());
+
+    expect(await screen.findByTestId('personas-landing')).toBeInTheDocument();
+    expect(screen.getByTestId('hash-probe')).toHaveTextContent('personas||');
   });
 
   it('renders the detail view with the default tab and the resolved name', () => {

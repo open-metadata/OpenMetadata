@@ -29,6 +29,7 @@ import { OntologyNode } from './OntologyExplorer.interface';
 import {
   getNativeTreePage,
   isNativeTreeExpanded,
+  NativeTreeCursor,
   nativeTreeCursorForPath,
   NativeTreeIndex,
   NativeTreePlacement,
@@ -47,6 +48,8 @@ interface NativeOntologyTreeViewProps {
   readonly onSelect: (node: OntologyNode) => void;
   /** Names the tree: the ontology on one ontology, else "Concepts". */
   readonly title?: string;
+  /** Shown inside the card above the rows, divided from them. */
+  readonly notice?: ReactNode;
 }
 
 const getTreeHeading = (title: string | undefined, t: TFunction) =>
@@ -120,8 +123,37 @@ const NativeTreeRowContent = ({
   );
 };
 
+/**
+ * Expanding or collapsing a row keeps the current window, so the rows above it
+ * stay in view. Only collapsing the parent of the window's first row hides
+ * that row, and then the window starts at the collapsed row instead.
+ */
+const anchorAfterToggle = (
+  index: NativeTreeIndex,
+  anchor: NativeTreeCursor | undefined,
+  path: readonly string[],
+  isExpanded: boolean
+) => {
+  const hidesAnchor =
+    !isExpanded &&
+    anchor !== undefined &&
+    anchor.frames.length > path.length &&
+    path.every(
+      (conceptId, depth) => anchor.frames[depth]?.conceptId === conceptId
+    );
+
+  return hidesAnchor ? nativeTreeCursorForPath(index, path) : anchor;
+};
+
+/** Content above the rows, inside the card and divided from them. */
+const TreeNotice = ({ children }: { children?: ReactNode }) =>
+  children ? (
+    <div className="tw:border-b tw:border-secondary">{children}</div>
+  ) : null;
+
 const NativeOntologyTreeView = ({
   index,
+  notice,
   emptyMessage,
   selectedNodeId,
   onConnect,
@@ -254,7 +286,7 @@ const NativeOntologyTreeView = ({
 
   return (
     <Box
-      className="tw:mx-auto tw:h-full tw:w-full tw:max-w-250 tw:overflow-auto tw:px-6 tw:pt-5 tw:pb-20"
+      className="tw:h-full tw:w-full tw:overflow-auto tw:px-6 tw:pt-5 tw:pb-20"
       data-testid="ontology-tree-view"
       direction="col"
       gap={3}
@@ -291,7 +323,7 @@ const NativeOntologyTreeView = ({
                 reveal: undefined,
               })
             }>
-            {t('label.expand-all')}
+            {t('label.expand-all-lowercase')}
           </Button>
           <Button
             color="link-gray"
@@ -306,7 +338,7 @@ const NativeOntologyTreeView = ({
                 reveal: undefined,
               })
             }>
-            {t('label.collapse-all')}
+            {t('label.collapse-all-lowercase')}
           </Button>
         </Box>
       </Box>
@@ -362,9 +394,12 @@ const NativeOntologyTreeView = ({
           </Button>
         </Box>
       ) : null}
-      <Card className="tw:overflow-hidden">
+      {/* The card keeps its full height so the list scrolls instead of clipping rows. */}
+      <Card className="tw:shrink-0 tw:overflow-hidden">
+        <TreeNotice>{notice}</TreeNotice>
         <Tree
           aria-label={t('label.concept-plural')}
+          className="tw:gap-0 tw:divide-y tw:divide-secondary"
           expandedKeys={expandedKeys}
           selectedKeys={
             state.selectedKey && byKey.has(state.selectedKey)
@@ -384,10 +419,22 @@ const NativeOntologyTreeView = ({
             if (changed) {
               const overrides = new Map(state.disclosure.overrides);
               overrides.set(changed.key, keys.has(changed.key));
+              // A backward window ends at its anchor; re-anchor on its first row
+              // so the toggled rows grow downward instead of off the top.
+              const [first] = page.placements;
+              const forwardAnchor =
+                state.direction === 'backward' && first
+                  ? nativeTreeCursorForPath(index, first.path)
+                  : state.anchor;
               setState({
                 ...state,
                 disclosure: { ...state.disclosure, overrides },
-                anchor: nativeTreeCursorForPath(index, changed.path),
+                anchor: anchorAfterToggle(
+                  index,
+                  forwardAnchor,
+                  changed.path,
+                  keys.has(changed.key)
+                ),
                 direction: 'forward',
                 reveal: undefined,
               });
