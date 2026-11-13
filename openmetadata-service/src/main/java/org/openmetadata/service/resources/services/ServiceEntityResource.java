@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.services;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.json.JsonPatch;
@@ -28,6 +27,7 @@ import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -55,6 +55,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.JsonPatchUtils;
 
+@Slf4j
 public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
         R extends ServiceEntityRepository<T, S>,
@@ -142,8 +143,26 @@ public abstract class ServiceEntityResource<
 
   protected ResultList<T> decryptOrNullify(
       SecurityContext securityContext, ResultList<T> services) {
-    listOrEmpty(services.getData()).forEach(service -> decryptOrNullify(securityContext, service));
+    if (!nullOrEmpty(services.getData())) {
+      services.setData(
+          services.getData().stream()
+              .map(service -> decryptServiceForList(securityContext, service))
+              .toList());
+    }
     return services;
+  }
+
+  // Keep broken services discoverable: ADR:2026-10-17-service-list-connection-fallback.
+  private T decryptServiceForList(SecurityContext securityContext, T service) {
+    try {
+      return decryptOrNullify(securityContext, service);
+    } catch (InvalidServiceConnectionException failure) {
+      LOG.warn(
+          "Failed to decrypt connection for {} service {}; returning it without a connection",
+          serviceType,
+          service.getId());
+      return nullifyConnection(service);
+    }
   }
 
   @Override
