@@ -847,6 +847,9 @@ export const buildWorkflowForSave = async (
     edges: workflowEdges,
     config: {
       ...workflowDefinition?.config,
+      ...(startNodeConfig.autoAssignOwners !== undefined && {
+        autoAssignOwners: startNodeConfig.autoAssignOwners,
+      }),
       storeStageStatus: triggerType === Type.EventBasedEntity,
     },
   };

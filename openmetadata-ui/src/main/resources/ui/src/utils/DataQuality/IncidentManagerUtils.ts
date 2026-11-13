@@ -83,10 +83,10 @@ const getReopenStatusDetails = (
 };
 
 /**
- * Reopen a resolved test-case incident. Shared by every incident-status surface so they
- * behave identically. `New` starts a fresh incident (a new task); `Ack`/`Assigned`/`Resolved`
- * reopen the existing incident (the backend reuses the stateId and restarts its task).
- * Returns the latest resolution-status record for the caller to pass to its onSubmit.
+ * Start a new incident from a resolved one. Shared by every incident-status surface so they
+ * behave identically. `New` starts a fresh incident (a new task). Any other target goes to the
+ * backend, which rejects it for a resolved incident. Returns the latest resolution-status record
+ * for the caller to pass to its onSubmit.
  */
 export const reopenResolvedIncident = async ({
   testCaseFqn,

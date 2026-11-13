@@ -4,7 +4,8 @@
   "displayName": "Test Case Resolution Task Workflow",
   "description": "Default workflow-driven lifecycle for test case resolution tasks. Stages mirror the incident manager flow: New, Acknowledged, Assigned.",
   "config": {
-    "storeStageStatus": true
+    "storeStageStatus": true,
+    "autoAssignOwners": true
   },
   "trigger": {
     "type": "noOp",
@@ -127,6 +128,12 @@
         "assigneeStrategy": "owners-and-assignees",
         "transitionMetadata": [
           {
+            "id": "new",
+            "label": "New",
+            "targetStageId": "new",
+            "targetTaskStatus": "Open"
+          },
+          {
             "id": "reassign",
             "label": "Reassign",
             "targetStageId": "assigned",
@@ -188,6 +195,11 @@
       "from": "AckStage",
       "to": "ResolvedEnd",
       "condition": "resolve"
+    },
+    {
+      "from": "AssignedStage",
+      "to": "NewStage",
+      "condition": "new"
     },
     {
       "from": "AssignedStage",

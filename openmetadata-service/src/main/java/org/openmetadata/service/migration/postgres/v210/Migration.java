@@ -52,6 +52,7 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
@@ -79,6 +80,7 @@ public class Migration extends MigrationProcessImpl {
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(collectionDAO);
     alignHybridSearchWeightsWithDefaults();
+    IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
     copyConceptBindingsToRows(handle, POSTGRES);

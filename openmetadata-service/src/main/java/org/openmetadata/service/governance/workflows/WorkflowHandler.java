@@ -49,6 +49,7 @@ import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.ProcessEngines;
+import org.flowable.engine.ProcessMigrationService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -2457,5 +2458,9 @@ public class WorkflowHandler {
 
   public RepositoryService getRepositoryService() {
     return processEngine.getRepositoryService();
+  }
+
+  public ProcessMigrationService getProcessMigrationService() {
+    return processEngine.getProcessMigrationService();
   }
 }

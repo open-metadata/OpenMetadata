@@ -156,7 +156,12 @@ export interface FieldChange {
 }
 
 export interface WorkflowConfiguration {
-    lifecycle?: LifecycleConfiguration;
+    /**
+     * If True, tasks created by this workflow are assigned to the owners of the entity they are
+     * about (for incidents, the test case owners). Defaults to True when not set.
+     */
+    autoAssignOwners?: boolean;
+    lifecycle?:        LifecycleConfiguration;
     /**
      * If True, all the stage status will be stored in the database.
      */
