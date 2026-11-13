@@ -1545,6 +1545,26 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  /**
+   * Only an unreachable or unavailable Fuseki counts toward the breaker: callers bring their own
+   * queries and deadlines, and one slow query must not short-circuit every other RDF read.
+   */
+  @Override
+  public void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    throwIfCircuitOpen("readQuery");
+    try (QueryExecution execution =
+        connection.newQuery().query(query).timeout(timeoutMillis, TimeUnit.MILLISECONDS).build()) {
+      reader.accept(execution);
+      recordSuccess();
+    } catch (RuntimeException exception) {
+      if (isUnavailableFailure(exception)) {
+        recordFailure();
+      }
+      throw exception;
+    }
+  }
+
   private String doExecuteSparqlQuery(String sparqlQuery, String format) {
     Query query = QueryFactory.create(sparqlQuery);
 
