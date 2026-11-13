@@ -165,6 +165,13 @@ describe('MembersTeamInfoWidgets', () => {
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.failed'
     );
+    // On its own line, so the webhook name keeps the card's width.
+    expect(screen.getByTestId('subscription-value')).not.toContainElement(
+      screen.getByTestId('alert-status')
+    );
+    expect(
+      screen.getByTestId('subscription-value').parentElement
+    ).not.toContainElement(screen.getByTestId('subscription-status'));
     expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
       `label.failed. message.webhook-does-not-send-until-fixed: ${reason}`
     );

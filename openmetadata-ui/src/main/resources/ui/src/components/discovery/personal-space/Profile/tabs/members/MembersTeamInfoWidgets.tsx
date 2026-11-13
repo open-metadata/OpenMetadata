@@ -310,7 +310,8 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
   );
 };
 
-// The card is narrow, so a webhook that cannot send shows a badge whose tooltip says why.
+// The card is narrow, so a webhook that cannot send shows, under its name, a badge whose tooltip
+// says why.
 const WebhookNotSendingBadge: FC<{ team: Team; slot?: string }> = ({
   team,
   slot,
@@ -322,16 +323,18 @@ const WebhookNotSendingBadge: FC<{ team: Team; slot?: string }> = ({
   );
 
   return reason ? (
-    <StatusReasonBadge
-      color="error"
-      label={t('label.failed')}
-      sections={[
-        {
-          title: t('message.webhook-does-not-send-until-fixed'),
-          reasons: [reason],
-        },
-      ]}
-    />
+    <Box align="start" className="tw:pt-2" data-testid="subscription-status">
+      <StatusReasonBadge
+        color="error"
+        label={t('label.failed')}
+        sections={[
+          {
+            title: t('message.webhook-does-not-send-until-fixed'),
+            reasons: [reason],
+          },
+        ]}
+      />
+    </Box>
   ) : null;
 };
 
@@ -538,8 +541,8 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
           title={subKey || undefined}>
           {subLabel}
         </Typography>
-        <WebhookNotSendingBadge slot={subKey} team={team} />
       </Box>
+      <WebhookNotSendingBadge slot={subKey} team={team} />
     </InfoWidget>
   );
 };
