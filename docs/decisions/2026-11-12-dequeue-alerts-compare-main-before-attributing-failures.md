@@ -1,6 +1,6 @@
 # Dequeue alerts compare main before attributing failures
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-13-dequeue-alerts-compare-runs-without-the-pr
 - **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (required gates and bounded baseline lookup)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** reviewer
