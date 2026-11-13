@@ -25,7 +25,9 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
+import { okJson } from '../../utils/apiResponse';
 import {
+  clickIgnoringToasts,
   createNewPage,
   getApiContext,
   redirectToHomePage,
@@ -40,9 +42,14 @@ import {
   cleanupCurrentArticle,
   createArticleFromButton,
   createArticleViaApi,
+  createMemoryViaApi,
   deleteArticleByFqn,
+  expectMemoryExtractionOff,
+  expectMemoryExtractionOffTooltip,
   getArticleFqnFromUrl,
   getLoggedInUser,
+  getMemoryStatus,
+  MEMORIES_API,
   navigateToArticle,
   navigateToArticles,
   navigateToDashboard,
@@ -78,6 +85,7 @@ import {
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 import {
@@ -1140,6 +1148,167 @@ test.describe('Context Center Articles', () => {
     }
 
     expect(pageErrors).toEqual([]);
+  });
+
+  test('approving extracted memories from an article persists their approved status', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const articleName = `cc_approval_article_${uuid()}`;
+    const memoryName = `cc_article_memory_${uuid()}`;
+    try {
+      const article = await createArticleViaApi(apiContext, {
+        name: articleName,
+        displayName: `Article approval ${uuid()}`,
+      });
+      const source = { id: article.id, type: 'page' };
+      const memory = await createMemoryViaApi(apiContext, {
+        name: memoryName,
+        title: 'Article refund policy',
+        question: 'What is the refund window?',
+        answer: '30 days',
+        sourceType: 'PageExtraction',
+        sourceEntity: source,
+        primaryEntity: source,
+        entityStatus: 'Unprocessed',
+        shareConfig: { visibility: 'Entity' },
+      });
+
+      await navigateToArticle(page, article.fullyQualifiedName);
+      const card = page
+        .getByTestId('knowledge-page-right-panel')
+        .getByTestId('extracted-memories-card');
+      await expect(
+        card.getByTestId(`extracted-memory-${memory.id}`)
+      ).toBeVisible();
+      const approve = card.getByTestId('approve-extracted-memories-btn');
+      await expect(approve).toHaveText(/\b1 pending\b/);
+      const nextApprovalPreview = () =>
+        waitForResponseWithStatus(
+          page,
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              response.request().method() === 'GET' &&
+              url.pathname === `${MEMORIES_API}/extractedApproval` &&
+              url.searchParams.get('sourceId') === article.id
+            );
+          },
+          200
+        ).then((response) => response.json());
+      const refreshedApproval = nextApprovalPreview();
+      const approved = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname ===
+            `${MEMORIES_API}/extractedApproval`,
+        200
+      );
+      await clickIgnoringToasts(approve);
+
+      expect(await (await approved).json()).toMatchObject({
+        approved: 1,
+        failed: 0,
+        needsDecision: [],
+      });
+      expect(await getMemoryStatus(apiContext, memory.id)).toBe('Approved');
+      // Finish the mutation's refresh before a reload can discard its response body.
+      expect(await refreshedApproval).toMatchObject({
+        approved: 0,
+        approvable: [],
+      });
+      const reloadedApproval = nextApprovalPreview();
+      await page.reload();
+      expect(await reloadedApproval).toMatchObject({
+        approved: 0,
+        approvable: [],
+      });
+      await expect(
+        card.getByTestId(`extracted-memory-${memory.id}`)
+      ).toBeVisible();
+      await expect(approve).toHaveCount(0);
+    } finally {
+      try {
+        const results = [
+          ...(await Promise.allSettled([
+            apiContext
+              .delete(`${MEMORIES_API}/name/${memoryName}?hardDelete=true`)
+              .then(async (response) => {
+                expect([200, 404], await response.text()).toContain(
+                  response.status()
+                );
+              }),
+          ])),
+          ...(await Promise.allSettled([
+            deleteArticleByFqn(apiContext, articleName),
+          ])),
+        ];
+        expect(
+          results.filter((result) => result.status === 'rejected')
+        ).toEqual([]);
+      } finally {
+        await afterAction();
+      }
+    }
+  });
+
+  test('an article written while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
+    page,
+    browser,
+    dataConsumerPage,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const articleName = `cc_not_extracted_article_${uuid()}`;
+    try {
+      await expectMemoryExtractionOff(apiContext);
+      const article = await createArticleViaApi(apiContext, {
+        name: articleName,
+        displayName: `Not extracted ${uuid()}`,
+      });
+      const { neverExtracted } = await okJson<{ neverExtracted?: boolean }>(
+        await apiContext.get(
+          `/api/v1/contextCenter/pages/name/${encodeURIComponent(
+            article.fullyQualifiedName
+          )}`,
+          { params: { fields: 'neverExtracted' } }
+        ),
+        `Read whether ${article.fullyQualifiedName} was extracted`
+      );
+
+      expect(neverExtracted).toBe(true);
+
+      await navigateToArticle(page, article.fullyQualifiedName);
+      const panel = page.getByTestId('knowledge-page-right-panel');
+      await expect(panel.getByTestId('article-status-badge')).toHaveText(
+        'Not processed'
+      );
+      const extract = panel.getByTestId('memory-extraction-btn');
+      await expect(extract).toHaveText('Extract');
+      await expect(extract).toBeDisabled();
+      await expectMemoryExtractionOffTooltip(page);
+
+      await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
+      const consumerPanel = dataConsumerPage.getByTestId(
+        'knowledge-page-right-panel'
+      );
+      await expect(
+        consumerPanel.getByTestId('article-status-badge')
+      ).toHaveText('Not processed');
+      await expect(
+        consumerPanel.getByTestId('memory-extraction-btn')
+      ).toHaveCount(0);
+    } finally {
+      try {
+        await deleteArticleByFqn(apiContext, articleName);
+      } finally {
+        await afterAction();
+      }
+    }
   });
 
   test('Article detail layout, drawer, activity tab, and version page work', async ({

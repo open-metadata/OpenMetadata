@@ -44,6 +44,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo;
 
 /**
@@ -63,6 +64,21 @@ import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo;
 public class PermissionsResourceIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  @Test
+  void testServiceResourcesExposeTrigger() throws Exception {
+    for (String serviceType : Entity.getServiceEntityTypes()) {
+      ResourcePermission permission =
+          getPermissionForResource(SdkClients.adminClient(), serviceType);
+      assertTrue(
+          permission.getPermissions().stream()
+              .anyMatch(
+                  p ->
+                      p.getOperation() == MetadataOperation.TRIGGER
+                          && p.getAccess() == Permission.Access.ALLOW),
+          serviceType);
+    }
+  }
 
   @Test
   void testGetPermissionsForLoggedInUser() throws Exception {

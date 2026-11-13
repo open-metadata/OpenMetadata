@@ -20,6 +20,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -28,6 +29,24 @@ public final class PersonaContextAccess {
   private static final String CONTEXT_DEFINITION_FIELD = "contextDefinition";
 
   private PersonaContextAccess() {}
+
+  public static PersonaContextCache.CachedResult materialize(
+      Authorizer authorizer, SecurityContext securityContext, Persona persona, boolean refresh) {
+    authorize(securityContext, persona);
+    if (refresh) {
+      authorizeRefresh(securityContext);
+    }
+    PersonaContextCache.CachedResult result;
+    if (isAdminOrBot(securityContext)) {
+      result =
+          refresh
+              ? PersonaContextCache.getInstance().refresh(persona)
+              : PersonaContextCache.getInstance().get(persona, false);
+    } else {
+      result = PersonaContextCache.getInstance().getForCaller(persona, authorizer, securityContext);
+    }
+    return result;
+  }
 
   /** Admins and bots operate the context: they materialize it and see its cache diagnostics. */
   public static boolean isAdminOrBot(SecurityContext securityContext) {

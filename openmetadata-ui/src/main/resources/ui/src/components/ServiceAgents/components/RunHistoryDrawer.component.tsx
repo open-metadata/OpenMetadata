@@ -21,12 +21,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlignLeft,
-  LinkExternal02,
+  LinkExternal01,
+  PlayFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
@@ -376,7 +376,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="link-color"
               data-testid="agent-link-button"
               href={agentLinkProps.href}
-              iconTrailing={LinkExternal02}
+              iconTrailing={LinkExternal01}
               target="_blank">
               {agentLinkProps.label}
             </Button>
@@ -400,7 +400,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               className="tw:font-semibold"
               color="primary"
               data-testid="drawer-run-now-button"
-              iconLeading={PlayIcon}
+              iconLeading={PlayFilled}
               isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>

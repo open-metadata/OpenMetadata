@@ -13,9 +13,8 @@
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import {
-  Cube01 as DataProduct,
+  DataProduct,
   Globe01 as Domain,
-  Package,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
@@ -169,7 +168,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
               }
             : undefined,
           description: t('message.data-products-empty-description'),
-          icon: Package,
+          icon: DataProduct,
           summary: t('message.data-products-widget-description'),
           title: t('message.no-data-products-yet'),
         }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Following } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -18,7 +19,6 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
-import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/widget/following.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -266,7 +266,7 @@ function FollowingWidget({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<FollowingAssetsIcon height={24} width={24} />}
+        icon={<Following size={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
         sortOptions={translatedSortOptions}

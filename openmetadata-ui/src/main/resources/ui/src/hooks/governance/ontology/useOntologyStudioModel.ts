@@ -14,10 +14,15 @@ import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useMemo } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
+import { OntologyAxiom } from '../../../generated/entity/data/ontologyAxiom';
+import { OntologyConcept } from '../../../generated/entity/data/ontologyConcept';
+import { OntologyProperty } from '../../../generated/entity/data/ontologyProperty';
+import { MemberKind } from '../../../generated/type/ontologyReleaseMember';
 import {
   listOntologyAxioms,
   listOntologyConcepts,
   listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../../rest/ontologyAPI';
 import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
 import {
@@ -28,8 +33,12 @@ import {
 
 export const ONTOLOGY_STUDIO_MODEL_QUERY_KEY = 'ontology-studio-model';
 
+export const WORKING_CONCEPT_FIELDS =
+  'conceptMappings,lifecycleStatus,owners,subClasses,superClasses';
+
 const PAGE_SIZE = 1000;
-const MAX_DEFINITIONS = 10000;
+/** Mirrors the server's release member cap (`OntologyReleaseManifest.MAX_MEMBERS`). */
+const MAX_DEFINITIONS = 50_000;
 const MAX_DEFINITION_PAGES = MAX_DEFINITIONS / PAGE_SIZE;
 
 class AggregateCapacityError extends Error {}
@@ -51,7 +60,7 @@ const skipDeleted = async <T>(load: () => Promise<T>) => {
   }
 };
 
-const loadOntologyStudioModel = async (
+const loadWorkingModel = async (
   ontology: Ontology,
   signal: AbortSignal,
   consume?: (count: number) => void
@@ -74,8 +83,7 @@ const loadOntologyStudioModel = async (
           {
             ...params,
             after,
-            fields:
-              'conceptMappings,lifecycleStatus,owners,subClasses,superClasses',
+            fields: WORKING_CONCEPT_FIELDS,
           },
           signal
         ),
@@ -93,6 +101,61 @@ const loadOntologyStudioModel = async (
   ]);
 
   return { ontology, axioms, concepts, properties };
+};
+
+/** Reads the definitions a sealed release froze, so a reader sees what was published. */
+const loadReleaseModel = async (
+  ontology: Ontology,
+  releaseId: string,
+  signal: AbortSignal
+): Promise<OntologyStudioModel> => {
+  const loadKind = async <T>(kind: MemberKind): Promise<T[]> => {
+    const members = await listAllPages(
+      (after) =>
+        listOntologyReleaseMembers(
+          releaseId,
+          kind,
+          { limit: PAGE_SIZE, after },
+          signal
+        ),
+      MAX_DEFINITION_PAGES
+    );
+
+    return members.map((member) => member.payload as T);
+  };
+  const [concepts, properties, axioms] = await Promise.all([
+    loadKind<OntologyConcept>(MemberKind.Concept),
+    loadKind<OntologyProperty>(MemberKind.Property),
+    loadKind<OntologyAxiom>(MemberKind.Axiom),
+  ]);
+
+  return { ontology, axioms, concepts, properties };
+};
+
+const isForbidden = (error: unknown) =>
+  isAxiosError(error) && error.response?.status === 403;
+
+/**
+ * Working definitions are readable only with edit rights on the ontology. A reader without them
+ * sees what the active release published, and an ontology nothing has published yet reads empty.
+ */
+const loadOntologyStudioModel = async (
+  ontology: Ontology,
+  signal: AbortSignal,
+  consume?: (count: number) => void
+): Promise<OntologyStudioModel> => {
+  try {
+    return await loadWorkingModel(ontology, signal, consume);
+  } catch (error) {
+    if (!isForbidden(error)) {
+      throw error;
+    }
+    const releaseId = ontology.publicationStatus?.active?.releaseId;
+
+    return releaseId
+      ? loadReleaseModel(ontology, releaseId, signal)
+      : { ontology, axioms: [], concepts: [], properties: [] };
+  }
 };
 
 /** Checks the aggregate budget and returns the ontologies that still exist. */
@@ -113,7 +176,15 @@ const countAggregateOntologies = async (
         listOntologyProperties(params, signal),
         listOntologyAxioms(ontology.id, { limit: 1 }, signal),
       ]);
-    const pages = await skipDeleted(countPages); // NOSONAR sequential: the budget check stops further requests
+    const pages = await skipDeleted(() =>
+      countPages().catch((error: unknown) => {
+        if (isForbidden(error)) {
+          return [];
+        }
+
+        throw error;
+      })
+    ); // NOSONAR sequential: the budget check stops further requests
     if (!pages) {
       continue;
     }
@@ -193,10 +264,16 @@ export const useAllOntologyStudioModels = (
   };
 };
 
-/** Loads a native ontology's working concepts, properties and axioms as one model. */
-export const useOntologyStudioModel = (ontology?: Ontology) => {
+/**
+ * Loads a native ontology's working concepts, properties and axioms as one model, or, given a
+ * release id, the definitions that release froze.
+ */
+export const useOntologyStudioModel = (
+  ontology?: Ontology,
+  releaseId?: string
+) => {
   const query = useQuery({
-    queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id],
+    queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id, releaseId],
     enabled: Boolean(ontology),
     gcTime: 30_000,
     staleTime: 30_000,
@@ -206,7 +283,9 @@ export const useOntologyStudioModel = (ontology?: Ontology) => {
         throw new Error('Missing ontology');
       }
 
-      return loadOntologyStudioModel(ontology, signal);
+      return releaseId
+        ? loadReleaseModel(ontology, releaseId, signal)
+        : loadOntologyStudioModel(ontology, signal);
     },
   });
 

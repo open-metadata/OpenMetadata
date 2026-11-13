@@ -85,7 +85,8 @@ class AgentSparqlQueryValidatorTest {
         "SELECT ?s WHERE { { ?s ?p ?o } UNION { GRAPH ?g { ?s ?p ?o } } }",
         "SELECT ?s (EXISTS { GRAPH ?g { ?s ?p ?o } } AS ?inGraph) WHERE { ?s ?p ?o }",
         "SELECT ?s WHERE { ?s ?p ?o } ORDER BY (EXISTS { GRAPH ?g { ?s ?p ?o } })",
-        "SELECT ?s WHERE { ?s ?p ?o BIND(NOT EXISTS { GRAPH ?g { ?s ?p ?o } } AS ?x) }"
+        "SELECT ?s WHERE { ?s ?p ?o BIND(NOT EXISTS { GRAPH ?g { ?s ?p ?o } } AS ?x) }",
+        "SELECT ?s WHERE { ?s ?p ?o EXISTS { GRAPH ?g { ?s ?p ?o } } }"
       })
   void rejectsGraphSelectionAtAnyLevel(String sparql) {
     assertCode(AgentSparqlErrorCode.GRAPH_SELECTION_NOT_ALLOWED, sparql);
@@ -98,7 +99,9 @@ class AgentSparqlQueryValidatorTest {
         "SELECT ?s WHERE { SERVICE ?endpoint { ?s ?p ?o } }",
         "SELECT ?s WHERE { { SELECT ?s WHERE { SERVICE <urn:e> { ?s ?p ?o } } } }",
         "SELECT ?s WHERE { ?s ?p ?o FILTER NOT EXISTS { SERVICE <urn:e> { ?s ?p ?o } } }",
-        "SELECT ?s WHERE { ?s ?p ?o } GROUP BY ?s HAVING (EXISTS { SERVICE <urn:e> { ?s ?p ?o } })"
+        "SELECT ?s WHERE { ?s ?p ?o } GROUP BY ?s HAVING (EXISTS { SERVICE <urn:e> { ?s ?p ?o } })",
+        "SELECT ?s WHERE { ?s ?p ?o EXISTS { SERVICE <urn:e> { ?s ?p ?o } } }",
+        "SELECT ?s WHERE { ?s ?p ?o NOT EXISTS { SERVICE <urn:e> { ?s ?p ?o } } }"
       })
   void rejectsFederationAtAnyLevel(String sparql) {
     assertCode(AgentSparqlErrorCode.FEDERATION_NOT_ALLOWED, sparql);
@@ -130,7 +133,8 @@ class AgentSparqlQueryValidatorTest {
         "SELECT ?s WHERE { ?s <java:evil.Foo> ?o }",
         "SELECT ?s WHERE { ?s <java:evil.Foo>+ ?o }",
         "SELECT ?s WHERE { { SELECT ?s WHERE { ?s <java:evil.Foo> ?o } } }",
-        "SELECT ?s WHERE { ?s ?p ?o FILTER EXISTS { ?s <java:evil.Foo> ?o } }"
+        "SELECT ?s WHERE { ?s ?p ?o FILTER EXISTS { ?s <java:evil.Foo> ?o } }",
+        "SELECT ?s WHERE { ?s ?p ?o NOT EXISTS { ?s <java:evil.Foo> ?o } }"
       })
   void rejectsJavaSchemeCalls(String sparql) {
     // Jena dynamically loads classpath classes for java: IRIs with no configuration, so

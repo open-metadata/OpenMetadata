@@ -289,7 +289,7 @@ export const MOCK_TASK_RECOGNIZER_FEEDBACK: Task = {
   ],
   payload: {
     field: 'tags',
-    fieldPath: 'columns::email',
+    fieldPath: 'columns.email.tags',
     currentValue: '[]',
     suggestedValue:
       '[{"tagFQN":"PII.Sensitive","source":"Classification","name":"Sensitive"}]',

@@ -2,9 +2,11 @@ package org.openmetadata.service.context.center;
 
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.ContextMemoryReconciler.ReconcileResult;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor.DeriveResult;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -127,6 +129,14 @@ public abstract class ContextProcessingEngine {
    */
   protected void markProcessing(UUID entityId) {
     // No-op by default.
+  }
+
+  /**
+   * Bookkeeping, not an edit: a source keeps the person who last changed it
+   * (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
+   */
+  protected static String lastEditorOf(EntityInterface<?> source) {
+    return source.getUpdatedBy() == null ? Entity.ADMIN_USER_NAME : source.getUpdatedBy();
   }
 
   protected abstract Source loadSource(UUID entityId);

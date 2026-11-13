@@ -170,6 +170,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
         source.responseData.fullyQualifiedName
       );
 
+      await page.getByTestId('ontology-query-more').click();
       await page.getByTestId('ontology-query-save').click();
       await page.getByTestId('ontology-query-save-name').fill(savedQueryName);
       const saveResponsePromise = page.waitForResponse(
@@ -231,9 +232,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
       const queryResponse = await queryResponsePromise;
 
       expect(queryResponse.ok(), await queryResponse.text()).toBe(true);
-      await expect(page.getByTestId('ontology-builder-result')).toContainText(
-        '1'
-      );
+      await expect(
+        page.getByTestId('ontology-sparql-result-status')
+      ).toContainText('1 row');
     } finally {
       await afterAction();
     }

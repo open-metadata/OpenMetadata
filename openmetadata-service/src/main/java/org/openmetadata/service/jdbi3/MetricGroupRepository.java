@@ -19,10 +19,14 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.METRIC_GROUP;
 
+import jakarta.json.JsonException;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -30,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +47,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -52,8 +58,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.metrics.MetricGroupResource;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -189,6 +200,93 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     return metricGroup;
   }
 
+  @Override
+  protected void authorizeWrite(
+      final MetricGroup original,
+      final MetricGroup updated,
+      final ChangeActor actor,
+      final Edit edit) {
+    authorizeMembershipChange(
+        original, updated, (operation, resource) -> authorizeAuthor(actor, operation, resource));
+  }
+
+  // Before the patch is applied: one that reads or tests members needs view access to each, since
+  // responses hide the members the caller may not view. A system write is not a caller.
+  @Override
+  protected void authorizePatch(
+      final MetricGroup original, final JsonPatch patch, final ChangeActor actor) {
+    if (!actor.system() && addressesMembers(patch)) {
+      authorizeMemberView(original, actor);
+    }
+    try {
+      // Applied once here so a patch that can't be applied fails without the JSON-P message, which
+      // prints the document it failed on, members included.
+      JsonUtils.applyPatch(original, patch, MetricGroup.class);
+    } catch (JsonException e) {
+      throw new IllegalArgumentException("The JSON Patch cannot be applied to the metric group");
+    }
+  }
+
+  private static void authorizeMemberView(final MetricGroup group, final ChangeActor actor) {
+    for (final EntityReference metric : listOrEmpty(group.getMetrics())) {
+      authorizeAuthor(
+          actor,
+          new OperationContext(METRIC, MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(METRIC, metric.getId(), metric.getFullyQualifiedName()));
+    }
+  }
+
+  /** Whether any operation's path or from is the document root, /metrics, or below it. */
+  static boolean addressesMembers(final JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(
+            operation ->
+                pointsAtMembers(operation.getString("path", null))
+                    || pointsAtMembers(operation.getString("from", null)));
+  }
+
+  private static boolean pointsAtMembers(final String pointer) {
+    return pointer != null
+        && (pointer.isEmpty() || pointer.equals("/metrics") || pointer.startsWith("/metrics/"));
+  }
+
+  /** EditAll on each metric a write adds to the group or removes from it. */
+  private static void authorizeMembershipChange(
+      final MetricGroup original,
+      final MetricGroup updated,
+      final BiConsumer<OperationContext, ResourceContextInterface> authorize) {
+    membershipChanges(original, updated)
+        .forEach(metric -> MetricRepository.authorizeEditAll(metric, authorize));
+  }
+
+  /** The metrics in one member list and not the other; {@code original} is null for a create. */
+  public static List<EntityReference> membershipChanges(
+      final MetricGroup original, final MetricGroup updated) {
+    final Map<UUID, EntityReference> originalMembers = new LinkedHashMap<>();
+    final Map<UUID, EntityReference> updatedMembers = new LinkedHashMap<>();
+    for (EntityReference metric : listOrEmpty(original == null ? null : original.getMetrics())) {
+      originalMembers.put(metric.getId(), metric);
+    }
+    for (EntityReference metric : listOrEmpty(updated.getMetrics())) {
+      updatedMembers.put(metric.getId(), metric);
+    }
+    final List<EntityReference> changed = new ArrayList<>();
+    originalMembers.forEach(
+        (id, metric) -> {
+          if (!updatedMembers.containsKey(id)) {
+            changed.add(metric);
+          }
+        });
+    updatedMembers.forEach(
+        (id, metric) -> {
+          if (!originalMembers.containsKey(id)) {
+            changed.add(metric);
+          }
+        });
+    return changed;
+  }
+
   public MetricGroup getByNameWithMembers(String fullyQualifiedName, Include include) {
     MetricGroup metricGroup =
         getByName(null, fullyQualifiedName, EntityUtil.Fields.EMPTY_FIELDS, include, false);
@@ -301,12 +399,19 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
       updated.setMetrics(restoredMembers);
       publishMembershipChange(
           new MembershipChange(restoredMembers, Set.of(updated.getEntityReference())));
+    } else {
+      // The member list is loaded only to diff relationships. Task approvals, async jobs and bulk
+      // updates record the returned entity in a change event as is, and the audit log hands that
+      // event to anyone who may view the group - so the members must not leave the repository.
+      updated.setMetrics(null);
     }
   }
 
   @Override
   protected void postRestoreFromSearch(MetricGroup metricGroup) {
     refreshMembersAfterGroupLifecycle(metricGroup);
+    // The restore branch of postUpdate kept the members for this refresh only; see there.
+    metricGroup.setMetrics(null);
   }
 
   @Override

@@ -59,6 +59,8 @@ Applies to UI `*.{ts,tsx}`. Library choice in `component-library.md`; tokens/con
 - Form fields: real `<label htmlFor>` or the library `Form`/`Input` label prop — placeholder is not a
   label. Associate help text and errors via `aria-describedby`, set `aria-invalid` on the failing
   field, and move focus to the first invalid field on submit.
+- Browser autocomplete only on real form fields (sign-in, profile, password). Search, filter, picker
+  and editor inputs set `autoComplete="off"` (ADR:2026-11-05-browser-autocomplete-only-on-form-fields).
 - Give tables `<caption>` or `aria-label`, and `<th scope>` on header cells.
 
 ## Visual

@@ -13,10 +13,11 @@
 #
 
 # Script configuration
-readonly SCHEMA_DIRECTORY='openmetadata-spec/src/main/resources/json/schema/'
 readonly UI_OUTPUT_DIRECTORY='openmetadata-ui/src/main/resources/ui/src/generated'
 readonly MAX_PARALLEL_JOBS=35
-readonly TEMP_DIR=$(mktemp -d)
+readonly WORKSPACE_DIRECTORY=$(mktemp -d)
+trap 'rm -rf "$WORKSPACE_DIRECTORY"' EXIT
+readonly TEMP_DIR="$WORKSPACE_DIRECTORY/typescript-schemas"
 
 # Default value for add_licensing flag
 ADD_LICENSING=false
@@ -97,7 +98,7 @@ process_schema_files() {
         local temp_dir="$TEMP_DIR/$(dirname "$file_path")"
         mkdir -p "$temp_dir"
         local temp_schema_file="${temp_dir}/$(basename -- "$file_path")"
-        generate_temp_schema "$PWD/$SCHEMA_DIRECTORY$file_path" "$temp_schema_file"
+        generate_temp_schema "$SCHEMA_DIRECTORY$file_path" "$temp_schema_file"
     done
 
     # Second pass: Generate TypeScript files
@@ -127,6 +128,8 @@ cd "$(dirname "$0")/../../../../.." || {
     exit 1
 }
 
+SCHEMA_DIRECTORY="$(python3 openmetadata-spec/scripts/prepare_model_schemas.py --output-dir "$WORKSPACE_DIRECTORY/model-schemas")/" || exit 1
+
 # quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
 # keep the version identical to json2ts.sh. Resolved once so the parallel jobs skip npx.
 QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
@@ -138,6 +141,4 @@ process_schema_files
 wait $(jobs -p)
 node openmetadata-ui/src/main/resources/ui/scripts/normalize-generated-map-types.mjs "$QUICKTYPE" "$UI_OUTPUT_DIRECTORY" || exit 1
 
-# Cleanup
-rm -rf "$TEMP_DIR"
 echo "Conversion completed successfully!"

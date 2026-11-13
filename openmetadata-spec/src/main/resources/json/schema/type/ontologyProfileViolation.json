@@ -29,7 +29,9 @@
         "NON_SIMPLE_PROPERTY",
         "UNDECLARED_CLASS",
         "INVALID_CLASS_KIND",
-        "SUBCLASS_CYCLE"
+        "SUBCLASS_CYCLE",
+        "SUBPROPERTY_CYCLE",
+        "DISJOINT_CLASH"
       ]
     }
   },
@@ -45,6 +47,14 @@
     },
     "message": {
       "type": "string"
+    },
+    "conceptIds": {
+      "description": "Declared concepts a rule clash involves, the clashing class first, so a client can link to each.",
+      "type": "array",
+      "items": {
+        "$ref": "basic.json#/definitions/uuid"
+      },
+      "default": []
     }
   },
   "required": [

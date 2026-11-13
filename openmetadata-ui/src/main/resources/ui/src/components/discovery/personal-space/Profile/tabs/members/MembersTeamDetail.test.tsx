@@ -26,10 +26,12 @@ import { usePersistentStorage } from '../../../../../../hooks/currentUserStore/u
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
+  deleteUserFromTeam,
   getTeams,
   getTeamsAssetCounts,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
+import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
@@ -131,6 +133,8 @@ jest.mock('../../../../../../rest/teamsAPI', () => ({
 
 jest.mock('../../../../../../rest/userAPI', () => ({
   getUsers: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  getUserById: jest.fn(),
+  updateUserDetail: jest.fn().mockResolvedValue({ id: 'me', teams: [] }),
 }));
 
 jest.mock('../../../../../../rest/searchAPI', () => ({
@@ -140,8 +144,12 @@ jest.mock('../../../../../../rest/searchAPI', () => ({
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
 }));
 
+const mockUpdateCurrentUser = jest.fn();
 jest.mock('../../../../../../hooks/useApplicationStore', () => {
-  const state = { currentUser: { id: 'me', name: 'me', teams: [] } };
+  const state = {
+    currentUser: { id: 'me', name: 'me', teams: [] },
+    updateCurrentUser: (user: unknown) => mockUpdateCurrentUser(user),
+  };
 
   return {
     useApplicationStore: (selector?: (store: typeof state) => unknown) =>
@@ -287,6 +295,72 @@ describe('MembersTeamDetail', () => {
     jest.clearAllMocks();
     mockGetContributions.mockReturnValue([]);
     mockGlobalPermissions = {};
+  });
+
+  // The stored user has no teams, so each patch below can only have been built
+  // from the user fetched at the time of the click.
+  describe('join and leave', () => {
+    const renderJoinableTeam = (users: { id: string; type: string }[]) => {
+      mockGetTeamByName.mockResolvedValueOnce({
+        id: '1',
+        name: 'engineering',
+        fullyQualifiedName: 'engineering',
+        teamType: 'Group',
+        isJoinable: true,
+        users,
+        children: [],
+        defaultRoles: [],
+        policies: [],
+        domains: [],
+        owners: [],
+      });
+      renderWithRouter(<HeaderHarness onNavigate={jest.fn()} />);
+    };
+
+    it('leaves by patching the teams the server holds and keeps the stored user in step', async () => {
+      (getUserById as jest.Mock).mockResolvedValueOnce({
+        id: 'me',
+        teams: [
+          { id: 'org', type: 'team' },
+          { id: '1', type: 'team' },
+        ],
+      });
+      renderJoinableTeam([{ id: 'me', type: 'user' }]);
+
+      press(await screen.findByTestId('leave-team-button'));
+
+      await waitFor(() =>
+        expect(updateUserDetail).toHaveBeenCalledWith('me', [
+          { op: 'remove', path: '/teams/1' },
+        ])
+      );
+
+      expect(getUserById).toHaveBeenCalledWith('me', { fields: 'teams' });
+      expect(deleteUserFromTeam).not.toHaveBeenCalled();
+      expect(mockUpdateCurrentUser).toHaveBeenCalledWith({
+        id: 'me',
+        teams: [],
+      });
+    });
+
+    it('joins by appending to the teams the server holds', async () => {
+      (getUserById as jest.Mock).mockResolvedValueOnce({
+        id: 'me',
+        teams: [
+          { id: 'org', type: 'team' },
+          { id: 'other', type: 'team' },
+        ],
+      });
+      renderJoinableTeam([]);
+
+      press(await screen.findByTestId('join-team-button'));
+
+      await waitFor(() =>
+        expect(updateUserDetail).toHaveBeenCalledWith('me', [
+          { op: 'add', path: '/teams/2', value: { id: '1', type: 'team' } },
+        ])
+      );
+    });
   });
 
   describe('delete from the team menu', () => {

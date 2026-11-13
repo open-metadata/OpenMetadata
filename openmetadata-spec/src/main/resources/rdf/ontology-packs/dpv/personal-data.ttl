@@ -1,0 +1,3407 @@
+@prefix bibo: <http://purl.org/ontology/bibo/> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix dpv-owl: <https://w3id.org/dpv/owl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix org: <http://www.w3.org/ns/org#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix pd-owl: <https://w3id.org/dpv/pd/owl#> .
+@prefix profile: <http://www.w3.org/ns/dx/prof/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix role: <http://www.w3.org/ns/dx/prof/role/> .
+@prefix schema: <https://schema.org/> .
+@prefix scoro: <http://purl.org/spar/scoro/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix svd: <https://specialprivacy.ercim.eu/vocabs/data#> .
+@prefix sw: <http://www.w3.org/2003/06/sw-vocab-status/ns#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+pd-owl:Accent a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Language ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about linguistic and speech accents"@en ;
+    skos:prefLabel "Accent"@en .
+
+pd-owl:AccountIdentifier a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FinancialAccount ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial account identifier"@en ;
+    skos:prefLabel "Account Identifier"@en .
+
+pd-owl:Acquaintance a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:SocialNetwork ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about acquaintances in a social network"@en ;
+    skos:prefLabel "Acquaintance"@en .
+
+pd-owl:Age a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about age"@en ;
+    skos:prefLabel "Age"@en .
+
+pd-owl:AgeExact a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:AgeRange ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the exact age (i.e. to some degree within a year, month, or day)"@en ;
+    skos:prefLabel "Age Exact"@en .
+
+pd-owl:AgeRange a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Age ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about age range i.e. inexact age to some degree (i.e. some years)"@en ;
+    skos:prefLabel "Age Range"@en .
+
+pd-owl:ApartmentOwned a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:HouseOwned ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about apartment(s) owned and its history"@en ;
+    skos:prefLabel "Apartment Owned"@en .
+
+pd-owl:Association a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:SocialNetwork ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about associations in a social network with other individuals, groups, or entities e.g. friend of a friend"@en ;
+    skos:prefLabel "Association"@en .
+
+pd-owl:Attitude a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about attitude"@en ;
+    skos:prefLabel "Attitude"@en .
+
+pd-owl:Authenticating a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Internal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about authentication and information used for authenticating"@en ;
+    skos:prefLabel "Authenticating"@en .
+
+pd-owl:AuthenticationHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-georg-p-krog ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about prior authentication and its outcomes such as login attempts or location"@en ;
+    skos:prefLabel "Authentication History"@en .
+
+pd-owl:BankAccount a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FinancialAccount ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about bank accounts"@en ;
+    skos:prefLabel "Bank Account"@en .
+
+pd-owl:Behavioural a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about behaviour or activity"@en ;
+    skos:prefLabel "Behavioural"@en ;
+    skos:related svd:Activity .
+
+pd-owl:Biometric a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:Identifying ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about biometrics and biometric characteristics."@en ;
+    skos:prefLabel "Biometric"@en .
+
+pd-owl:BirthCountry a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2024-07-31"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:BirthPlace,
+        pd-owl:Country ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about country of birth"@en ;
+    skos:prefLabel "Birth Country"@en .
+
+pd-owl:BirthDate a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Age ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about birth date"@en ;
+    skos:prefLabel "Birth Date"@en .
+
+pd-owl:BirthPlace a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about birth place"@en ;
+    skos:prefLabel "Birth Place"@en .
+
+pd-owl:BloodType a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about blood type"@en ;
+    skos:prefLabel "Blood Type"@en .
+
+pd-owl:BrowserFingerprint a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:DeviceBased ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the web browser which is used as a 'fingerprint'"@en ;
+    skos:prefLabel "Browser Fingerprint"@en .
+
+pd-owl:BrowserHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:BrowsingBehaviour ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about and including web browsing history"@en ;
+    skos:prefLabel "Browser History"@en .
+
+pd-owl:BrowsingBehaviour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about browsing behaviour"@en ;
+    skos:prefLabel "Browsing Behaviour"@en ;
+    skos:related svd:OnlineActivity .
+
+pd-owl:BrowsingReferral a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-georg-p-krog ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:BrowsingBehaviour ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about web browsing referrer or referral, which can be based on location, targeted referrals, direct, organic search, social media or actions, campaigns."@en ;
+    skos:prefLabel "Browsing Referral"@en .
+
+pd-owl:CallLog a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about the calls that an individual has made"@en ;
+    skos:prefLabel "Call Log"@en .
+
+pd-owl:CarOwned a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Ownership ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about cars ownership and ownership history"@en ;
+    skos:prefLabel "Car Owned"@en .
+
+pd-owl:Character a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about character in the public sphere"@en ;
+    skos:prefLabel "Character"@en .
+
+pd-owl:Citizenship a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2024-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about citizenship"@en ;
+    skos:prefLabel "Citizenship"@en .
+
+pd-owl:City a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about city as a location"@en ;
+    skos:prefLabel "City"@en .
+
+pd-owl:Communication a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information communicated from or to an individual"@en ;
+    skos:prefLabel "Communication"@en .
+
+pd-owl:CommunicationsMetadata a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about communication metadata in the public sphere"@en ;
+    skos:prefLabel "Communications Metadata"@en ;
+    skos:related svd:Interactive .
+
+pd-owl:Connection a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:SocialNetwork ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about and including connections in a social network"@en ;
+    skos:prefLabel "Connection"@en .
+
+pd-owl:Contact a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Tracking ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about contacts or used for contacting e.g. email address or phone number"@en ;
+    skos:prefLabel "Contact"@en ;
+    skos:related svd:Physical .
+
+pd-owl:Country a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about country e.g. residence, travel"@en ;
+    skos:prefLabel "Country"@en .
+
+pd-owl:Credit a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about reputation with regards to money"@en ;
+    skos:prefLabel "Credit"@en .
+
+pd-owl:CreditCapacity a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Credit ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about credit capacity"@en ;
+    skos:prefLabel "Credit Capacity"@en .
+
+pd-owl:CreditCardNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PaymentCardNumber ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about credit card number"@en ;
+    skos:prefLabel "Credit Card Number"@en .
+
+pd-owl:CreditRecord a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Credit ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about credit record"@en ;
+    skos:prefLabel "Credit Record"@en .
+
+pd-owl:CreditScore a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:CreditWorthiness ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about credit score"@en ;
+    skos:prefLabel "Credit Score"@en .
+
+pd-owl:CreditStanding a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Credit ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about credit standing"@en ;
+    skos:prefLabel "Credit Standing"@en .
+
+pd-owl:CreditWorthiness a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Credit ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about credit worthiness"@en ;
+    skos:prefLabel "Credit Worthiness"@en .
+
+pd-owl:Criminal a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about criminal activity e.g. criminal convictions or jail time"@en ;
+    skos:prefLabel "Criminal"@en ;
+    skos:related svd:Judicial .
+
+pd-owl:CriminalCharge a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Criminal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about criminal charges"@en ;
+    skos:prefLabel "Criminal Charge"@en .
+
+pd-owl:CriminalConviction a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Criminal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about criminal convictions"@en ;
+    skos:prefLabel "Criminal Conviction"@en .
+
+pd-owl:CriminalOffence a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-georg-p-krog,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2022-10-22"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Criminal ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about criminal offences"@en ;
+    skos:prefLabel "Criminal Offence"@en .
+
+pd-owl:CriminalPardon a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Criminal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about criminal pardons"@en ;
+    skos:prefLabel "Criminal Pardon"@en .
+
+pd-owl:CurrentEmployment a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:EmploymentHistory ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about current employment"@en ;
+    skos:prefLabel "Current Employment"@en .
+
+pd-owl:CurrentLocation a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about a person's current location (e.g. by asking the address, using GPS)"@en ;
+    skos:prefLabel "Current Location"@en .
+
+pd-owl:DNACode a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about DNA"@en ;
+    skos:prefLabel "DNA Code"@en .
+
+pd-owl:Demeanour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about demeanour"@en ;
+    skos:prefLabel "Demeanour"@en .
+
+pd-owl:Demographic a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about demography and demographic characteristics"@en ;
+    skos:prefLabel "Demographic"@en .
+
+pd-owl:DeviceApplications a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-georg-p-krog,
+        _:person-harshvardhan-j-pandit,
+        _:person-paul-ryan ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:DeviceSoftware ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about applications or application-like software on a device"@en ;
+    skos:prefLabel "Device Applications"@en .
+
+pd-owl:DeviceBased a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Tracking ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about devices"@en ;
+    skos:prefLabel "Device Based"@en ;
+    skos:related svd:Computer .
+
+pd-owl:DeviceOperatingSystem a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-georg-p-krog,
+        _:person-harshvardhan-j-pandit,
+        _:person-paul-ryan ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:DeviceSoftware ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the operating system (OS) or system software that manages hardware or software resources."@en ;
+    skos:prefLabel "Device Operating System"@en .
+
+pd-owl:DeviceSoftware a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-georg-p-krog,
+        _:person-harshvardhan-j-pandit,
+        _:person-paul-ryan ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:DeviceBased ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about software on or related to a device"@en ;
+    skos:prefLabel "Device Software"@en .
+
+pd-owl:Dialect a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Language ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about linguistic dialects"@en ;
+    skos:prefLabel "Dialect"@en .
+
+pd-owl:DigitalFingerprint a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Tracking ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about a 'digital fingerprint' created for identification"@en ;
+    skos:prefLabel "Digital Fingerprint"@en .
+
+pd-owl:Disability a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about disabilities"@en ;
+    skos:prefLabel "Disability"@en .
+
+pd-owl:DisciplinaryAction a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about disciplinary actions and its history"@en ;
+    skos:prefLabel "Disciplinary Action"@en .
+
+pd-owl:Dislike a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Interest ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about dislikes or preferences regarding repulsions"@en ;
+    skos:prefLabel "Dislike"@en .
+
+pd-owl:Divorce a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FamilyStructure ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about divorce(s)"@en ;
+    skos:prefLabel "Divorce"@en .
+
+pd-owl:Domicile a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2024-04-20"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about domicile status e.g. which region or country a person is domiciled in"@en ;
+    skos:prefLabel "Domicile"@en ;
+    skos:scopeNote "Parent changed to pd:Location"@en .
+
+pd-owl:DrugTestResult a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about drug test results"@en ;
+    skos:prefLabel "Drug Test Result"@en .
+
+pd-owl:Education a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about education"@en ;
+    skos:prefLabel "Education"@en .
+
+pd-owl:EducationExperience a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Education ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about education experience e.g. attending a university"@en ;
+    skos:prefLabel "Education Experience"@en .
+
+pd-owl:EducationQualification a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Education ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about educational qualifications"@en ;
+    skos:prefLabel "Education Qualification"@en .
+
+pd-owl:EducationTraining a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Education ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about training as education"@en ;
+    skos:prefLabel "Education Training"@en .
+
+pd-owl:EmailAddress a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Contact ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about email address"@en ;
+    skos:prefLabel "Email Address"@en .
+
+pd-owl:EmailAddressPersonal a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:EmailAddress ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about email address used in personal capacity"@en ;
+    skos:prefLabel "Email Address Personal"@en .
+
+pd-owl:EmailAddressWork a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:EmailAddress ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about email address used for work or in professional capacity"@en ;
+    skos:prefLabel "Email Address Work"@en .
+
+pd-owl:EmailContent a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Communication ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the contents of emails sent or received"@en ;
+    skos:prefLabel "Email Content"@en .
+
+pd-owl:Emotion a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-georg-p-krog ;
+    dct:created "2024-12-17"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Internal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about emotion"@en ;
+    skos:prefLabel "Emotion"@en .
+
+pd-owl:EmploymentHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about employment history"@en ;
+    skos:prefLabel "Employment History"@en .
+
+pd-owl:EthnicOrigin a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:Ethnicity ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about ethnic origin"@en ;
+    skos:prefLabel "Ethnic Origin"@en .
+
+pd-owl:Ethnicity a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about ethnic origins and lineage"@en ;
+    skos:prefLabel "Ethnicity"@en .
+
+pd-owl:External a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about external characteristics that can be observed"@en ;
+    skos:prefLabel "External"@en .
+
+pd-owl:FacialExpression a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-georg-p-krog ;
+    dct:created "2024-12-17"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Biometric ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about facial expression"@en ;
+    skos:prefLabel "Facial Expression"@en .
+
+pd-owl:FacialPrint a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Biometric ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about facial print or pattern"@en ;
+    skos:prefLabel "Facial Print"@en .
+
+pd-owl:Family a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about family and relationships"@en ;
+    skos:prefLabel "Family"@en .
+
+pd-owl:FamilyHealthHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:HealthHistory ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about family health history"@en ;
+    skos:prefLabel "Family Health History"@en .
+
+pd-owl:FamilyStructure a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Family ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about family and familial structure"@en ;
+    skos:prefLabel "Family Structure"@en .
+
+pd-owl:Favourite a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Preference ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about favourites"@en ;
+    skos:prefLabel "Favourite"@en .
+
+pd-owl:FavouriteColour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Favourite ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about favourite colour"@en ;
+    skos:prefLabel "Favourite Colour"@en .
+
+pd-owl:FavouriteFood a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Favourite ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about favourite food"@en ;
+    skos:prefLabel "Favourite Food"@en .
+
+pd-owl:FavouriteMusic a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Favourite ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about favourite music"@en ;
+    skos:prefLabel "Favourite Music"@en .
+
+pd-owl:Fetish a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Sexual ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about an individual's sexual fetishes"@en ;
+    skos:prefLabel "Fetish"@en .
+
+pd-owl:Financial a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about finance including monetary characteristics and transactions"@en ;
+    skos:prefLabel "Financial"@en ;
+    skos:related svd:Financial .
+
+pd-owl:FinancialAccount a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Financial ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial accounts"@en ;
+    skos:prefLabel "Financial Account"@en .
+
+pd-owl:FinancialAccountNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:AccountIdentifier ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial account number"@en ;
+    skos:prefLabel "Financial Account Number"@en .
+
+pd-owl:FinancialStatus a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Financial ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial status or standing"@en ;
+    skos:prefLabel "Financial Status"@en .
+
+pd-owl:Fingerprint a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Biometric ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about fingerprint used for biometric purposes"@en ;
+    skos:prefLabel "Fingerprint"@en .
+
+pd-owl:Friend a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:SocialNetwork ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about friends in a social network, including aspects of friendships such as years together or nature of friendship"@en ;
+    skos:prefLabel "Friend"@en .
+
+pd-owl:GPSCoordinate a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:CurrentLocation ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about location expressed using Global Position System coordinates (GPS)"@en ;
+    skos:prefLabel "GPS Coordinate"@en .
+
+pd-owl:Gender a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about gender"@en ;
+    skos:prefLabel "Gender"@en .
+
+pd-owl:GeneralReputation a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about reputation in the public sphere"@en ;
+    skos:prefLabel "General Reputation"@en .
+
+pd-owl:Genetic a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-05-18"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Health ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about inherited or acquired genetic characteristics"@en ;
+    skos:prefLabel "Genetic"@en .
+
+pd-owl:Geographic a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Demographic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about location or based on geography (e.g. home address)"@en ;
+    skos:prefLabel "Geographic"@en .
+
+pd-owl:GroupMembership a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:SocialNetwork ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about groups and memberships included or associated with a social network"@en ;
+    skos:prefLabel "Group Membership"@en .
+
+pd-owl:GroupProfile a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2024-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Profile ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Group profile or category profile is information and representation of characteristics associated with a group or category of individuals"@en ;
+    skos:prefLabel "Group Profile"@en .
+
+pd-owl:HairColour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about hair colour"@en ;
+    skos:prefLabel "Hair Colour"@en .
+
+pd-owl:Health a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about health"@en ;
+    skos:prefLabel "Health"@en ;
+    skos:related svd:Health .
+
+pd-owl:HealthHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about health history"@en ;
+    skos:prefLabel "Health History"@en .
+
+pd-owl:HealthRecord a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about health record"@en ;
+    skos:prefLabel "Health Record"@en .
+
+pd-owl:Height a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about physical height"@en ;
+    skos:prefLabel "Height"@en .
+
+pd-owl:Historical a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about historical data related to or relevant regarding history or past events"@en ;
+    skos:prefLabel "Historical"@en .
+
+pd-owl:HomeLocation a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about a person's home place, including their location, address, and locality"@en ;
+    skos:prefLabel "Home Place"@en .
+
+pd-owl:HouseNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about house or apartment number as a location"@en ;
+    skos:prefLabel "House Number"@en .
+
+pd-owl:HouseOwned a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Ownership ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about house(s) owned and ownership history"@en ;
+    skos:prefLabel "House Owned"@en .
+
+pd-owl:Household a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about personal or household activities"@en ;
+    skos:prefLabel "Household"@en .
+
+pd-owl:IPAddress a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:DeviceBased ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the Internet Protocol (IP) address of a device"@en ;
+    skos:prefLabel "IP Address"@en .
+
+pd-owl:Identifier a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Tracking ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about an identifier or name used for identification"@en ;
+    skos:prefLabel "Identifier"@en .
+
+pd-owl:Identifying a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information that uniquely or semi-uniquely identifies an individual or a group"@en ;
+    skos:prefLabel "Identifying"@en .
+
+pd-owl:Income a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial income e.g. for individual or household or family"@en ;
+    skos:prefLabel "Income"@en .
+
+pd-owl:IncomeBracket a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Demographic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about income bracket"@en ;
+    skos:prefLabel "Income Bracket"@en .
+
+pd-owl:IndividualHealthHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:HealthHistory ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about information health history"@en ;
+    skos:prefLabel "Individual Health History"@en .
+
+pd-owl:IndividualProfile a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2024-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Profile ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Individual profile or user profile is information and representation of characteristics associated with a specific individual"@en ;
+    skos:prefLabel "Individual Profile"@en .
+
+pd-owl:Insurance a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Financial ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about Insurance"@en ;
+    skos:prefLabel "Insurance"@en .
+
+pd-owl:Intention a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Preference ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about intentions"@en ;
+    skos:prefLabel "Intention"@en .
+
+pd-owl:Interaction a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about interactions in the public sphere"@en ;
+    skos:prefLabel "Interaction"@en .
+
+pd-owl:Interest a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Preference ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about interests"@en ;
+    skos:prefLabel "Interest"@en .
+
+pd-owl:Internal a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about internal characteristics that cannot be seen or observed"@en ;
+    skos:prefLabel "Internal"@en .
+
+pd-owl:Job a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about professional jobs"@en ;
+    skos:prefLabel "Job"@en .
+
+pd-owl:KnowledgeBelief a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Internal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about knowledge and beliefs"@en ;
+    skos:prefLabel "Knowledge and Beliefs"@en .
+
+pd-owl:Language a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2022-04-20"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about language and lingual history"@en ;
+    skos:prefLabel "Language"@en .
+
+pd-owl:LifeHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Historical ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about personal history regarding events or activities - including their occurrences that might be directly related or have had an influence (e.g. World War, 9/11)"@en ;
+    skos:prefLabel "Life History"@en .
+
+pd-owl:Like a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Interest ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about likes or preferences regarding attractions"@en ;
+    skos:prefLabel "Like"@en .
+
+pd-owl:LinkClicked a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about the links that an individual has clicked"@en ;
+    skos:prefLabel "Link Clicked"@en ;
+    skos:related svd:Navigation .
+
+pd-owl:LoanRecord a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about loans, whether applied, provided or rejected, and its history"@en ;
+    skos:prefLabel "Loan Record"@en .
+
+pd-owl:Locality a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about locality e.g. city, village, town, portion of a city as a location"@en ;
+    skos:prefLabel "Locality"@en .
+
+pd-owl:Location a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Tracking ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about location"@en ;
+    skos:prefLabel "Location"@en ;
+    skos:related svd:Location .
+
+pd-owl:MACAddress a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:DeviceBased ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the Media Access Control (MAC) address of a device"@en ;
+    skos:prefLabel "MAC Address"@en .
+
+pd-owl:MaritalStatus a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about marital status and history"@en ;
+    skos:prefLabel "Marital Status"@en .
+
+pd-owl:Marriage a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FamilyStructure ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about marriage(s)"@en ;
+    skos:prefLabel "Marriage"@en .
+
+pd-owl:MedicalHealth a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about health, medical conditions or health care"@en ;
+    skos:prefLabel "Medical Health"@en .
+
+pd-owl:MentalHealth a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Health ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about mental health"@en ;
+    skos:prefLabel "Mental Health"@en .
+
+pd-owl:Mood a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-georg-p-krog ;
+    dct:created "2024-12-17"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Internal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about mood"@en ;
+    skos:prefLabel "Mood"@en .
+
+pd-owl:Name a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Identifying ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about names associated or used as given name or nickname"@en ;
+    skos:prefLabel "Name"@en .
+
+pd-owl:Nationality a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about nationality"@en ;
+    skos:prefLabel "Nationality"@en .
+
+pd-owl:OfficialID a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Identifying ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about an official identifier or identification document"@en ;
+    skos:prefLabel "Official ID"@en ;
+    skos:related svd:Government .
+
+pd-owl:Offspring a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FamilyStructure ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about offspring(s)"@en ;
+    skos:prefLabel "Offspring"@en .
+
+pd-owl:Opinion a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Preference ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about opinions"@en ;
+    skos:prefLabel "Opinion"@en .
+
+pd-owl:Ownership a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Financial ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about ownership and history, including renting, borrowing, possessions"@en ;
+    skos:prefLabel "Ownership"@en .
+
+pd-owl:PINCode a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Authenticating ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about personal identification number (PIN), which is usually used in the process of authenticating the individual as an user accessing a system"@en ;
+    skos:prefLabel "PIN Code"@en .
+
+pd-owl:Parent a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FamilyStructure ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about parent(s)"@en ;
+    skos:prefLabel "Parent"@en .
+
+pd-owl:Passport a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:OfficialID ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about passport"@en ;
+    skos:prefLabel "Passport"@en .
+
+pd-owl:Password a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Authenticating ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about password used in the process of authenticating the individual as an user accessing a system."@en ;
+    skos:prefLabel "Password"@en .
+
+pd-owl:PastEmployment a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:EmploymentHistory ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about past employment"@en ;
+    skos:prefLabel "Past Employment"@en .
+
+pd-owl:PaymentCard a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FinancialAccount ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about payment card such as credit and debit cards"@en ;
+    skos:prefLabel "Payment Card"@en .
+
+pd-owl:PaymentCardExpiry a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-georg-p-krog ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PaymentCard ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about payment card expiry such as a date"@en ;
+    skos:prefLabel "Payment Card Expiry"@en .
+
+pd-owl:PaymentCardNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-georg-p-krog ;
+    dct:created "2020-11-04"^^xsd:date ;
+    dct:source _:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:AccountIdentifier,
+        pd-owl:PaymentCard ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about payment card number"@en ;
+    skos:prefLabel "Payment Card Number"@en .
+
+pd-owl:PerformanceAtWork a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural,
+        pd-owl:Professional ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about performance at work or within work environments"@en ;
+    skos:prefLabel "Performance at Work"@en .
+
+pd-owl:PersonalDocuments a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about and including personal documents e.g. diaries or journals"@en ;
+    skos:prefLabel "Personal Documents"@en .
+
+pd-owl:PersonalPossession a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Ownership ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about personal possessions"@en ;
+    skos:prefLabel "Personal Possession"@en .
+
+pd-owl:Personality a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about personality (e.g., categorization in terms of the Big Five personality traits)"@en ;
+    skos:prefLabel "Personality"@en .
+
+pd-owl:PhilosophicalBelief a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:KnowledgeBelief ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about philosophical beliefs"@en ;
+    skos:prefLabel "Philosophical Belief"@en .
+
+pd-owl:PhysicalAddress a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Contact,
+        pd-owl:Location ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about physical address"@en ;
+    skos:prefLabel "Physical Address"@en .
+
+pd-owl:PhysicalCharacteristic a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about physical characteristics"@en ;
+    skos:prefLabel "Physical Characteristic"@en ;
+    skos:related svd:Demographic .
+
+pd-owl:PhysicalHealth a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Health ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about physical health"@en ;
+    skos:prefLabel "Physical Health"@en .
+
+pd-owl:PhysicalTrait a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Demographic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about defining traits or features regarding the body"@en ;
+    skos:prefLabel "Physical Trait"@en .
+
+pd-owl:Picture a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Identifying ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about visual representation or image e.g. profile photo"@en ;
+    skos:prefLabel "Picture"@en .
+
+pd-owl:Piercing a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about piercings"@en ;
+    skos:prefLabel "Piercing"@en .
+
+pd-owl:PoliticalAffiliation a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about political affiliation and history"@en ;
+    skos:prefLabel "Political Affiliation"@en ;
+    skos:related svd:Political .
+
+pd-owl:PoliticalOpinion a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-05-18"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about opinions regarding politics and political topics"@en ;
+    skos:prefLabel "Political Opinion"@en .
+
+pd-owl:PostalCode a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about postal code as a location"@en ;
+    skos:prefLabel "Postal Code"@en .
+
+pd-owl:Preference a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Internal ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about preferences or interests"@en ;
+    skos:prefLabel "Preference"@en ;
+    skos:related svd:Preference .
+
+pd-owl:Prescription a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:MedicalHealth ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about medical and pharmaceutical prescriptions"@en ;
+    skos:prefLabel "Prescription"@en .
+
+pd-owl:PrivacyPreference a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Preference ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about privacy preferences"@en ;
+    skos:prefLabel "Privacy Preference"@en .
+
+pd-owl:Proclivity a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2024-06-16"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Sexual ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about proclivities in a sexual context"@en ;
+    skos:prefLabel "Proclivity"@en .
+
+pd-owl:Professional a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about educational or professional career"@en ;
+    skos:prefLabel "Professional"@en .
+
+pd-owl:ProfessionalCertification a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about professional certifications"@en ;
+    skos:prefLabel "Professional Certification"@en .
+
+pd-owl:ProfessionalEvaluation a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about professional evaluations"@en ;
+    skos:prefLabel "Professional Evaluation"@en .
+
+pd-owl:ProfessionalExperience a rdfs:Class,
+        owl:Class,
+        pd-owl:PersonalData ;
+    dct:contributor _:person-delaram-golpayegani ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about professional experiences"@en ;
+    skos:prefLabel "Professional Experience"@en .
+
+pd-owl:ProfessionalInterview a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about professional interviews"@en ;
+    skos:prefLabel "Professional Interview"@en .
+
+pd-owl:ProfessionalTraining a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about professional training"@en ;
+    skos:prefLabel "Professional Training"@en .
+
+pd-owl:Profile a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Profile or user profile is information and representation of characteristics associated with person(s) or group(s)"@en ;
+    skos:prefLabel "Profile"@en .
+
+pd-owl:PublicLife a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about public life"@en ;
+    skos:prefLabel "Public Life"@en .
+
+pd-owl:PubliclyAvailableSocialMedia a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:SocialMedia ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about social media that is publicly available"@en ;
+    skos:prefLabel "Publicly Available Social Media"@en .
+
+pd-owl:Purchase a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about purchases such as items bought e.g. grocery or clothing"@en ;
+    skos:prefLabel "Purchase"@en ;
+    skos:related svd:Purchase .
+
+pd-owl:PurchasesAndSpendingHabit a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about analysis of purchases made and money spent expressed as a habit e.g. monthly shopping trends"@en ;
+    skos:prefLabel "Purchases and Spending Habit"@en .
+
+pd-owl:Race a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:Ethnicity ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about race or racial history"@en ;
+    skos:prefLabel "Race"@en .
+
+pd-owl:Reference a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about references in the professional context"@en ;
+    skos:prefLabel "Reference"@en .
+
+pd-owl:Region a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about region as a location"@en ;
+    skos:prefLabel "Region"@en .
+
+pd-owl:Relationship a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Family ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about relationships and relationship history"@en ;
+    skos:prefLabel "Relationship"@en .
+
+pd-owl:Reliability a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about reliability (e.g. of a person)"@en ;
+    skos:prefLabel "Reliability"@en .
+
+pd-owl:Religion a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about religion, religious inclinations, and religious history."@en ;
+    skos:prefLabel "Religion"@en .
+
+pd-owl:ReligiousBelief a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:KnowledgeBelief ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about religion and religious beliefs"@en ;
+    skos:prefLabel "Religious Belief"@en .
+
+pd-owl:Residency a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2024-04-20"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about residency e.g. which region or country a person is resident in"@en ;
+    skos:prefLabel "Residency"@en ;
+    skos:scopeNote "Parent changed to pd:Location"@en .
+
+pd-owl:Retina a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Biometric ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about retina and the retinal patterns"@en ;
+    skos:prefLabel "Retina"@en .
+
+pd-owl:RoomNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about location expressed as room number or similar numbering systems"@en ;
+    skos:prefLabel "Room Number"@en .
+
+pd-owl:Salary a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about salary"@en ;
+    skos:prefLabel "Salary"@en .
+
+pd-owl:Sale a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about sales e.g. selling of goods or services"@en ;
+    skos:prefLabel "Sale"@en .
+
+pd-owl:School a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about school such as name of school, conduct, or grades obtained"@en ;
+    skos:prefLabel "School"@en .
+
+pd-owl:SecretText a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Authenticating ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about secret text used in the process of authenticating the individual as an user accessing a system, e.g., when recovering a lost password"@en ;
+    skos:prefLabel "Secret Text"@en .
+
+pd-owl:ServiceConsumptionBehaviour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-harshvardhan-j-pandit,
+        _:person-rudy-jacob ;
+    dct:created "2019-11-26"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:bea6378d3ef9baf4a77841c3d4bb31623 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about the consumption of a service, e.g. time and duration of consumption"@en ;
+    skos:prefLabel "Service Consumption Behaviour"@en .
+
+pd-owl:Sexual a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about sexuality and sexual history"@en ;
+    skos:prefLabel "Sexual"@en .
+
+pd-owl:SexualHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Sexual ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about sexual history"@en ;
+    skos:prefLabel "Sexual History"@en .
+
+pd-owl:SexualPreference a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Sexual ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about sexual preferences"@en ;
+    skos:prefLabel "Sexual Preference"@en .
+
+pd-owl:Sibling a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:FamilyStructure ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about sibling(s)"@en ;
+    skos:prefLabel "Sibling"@en .
+
+pd-owl:SkinTone a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about skin tone"@en ;
+    skos:prefLabel "Skin Tone"@en .
+
+pd-owl:Social a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about social aspects such as family, public life, or professional networks"@en ;
+    skos:prefLabel "Social"@en .
+
+pd-owl:SocialBehaviour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-delaram-golpayegani ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural,
+        pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about social behaviour(s)"@en ;
+    skos:prefLabel "Social Behaviour"@en .
+
+pd-owl:SocialMedia a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Communication ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about social media"@en ;
+    skos:prefLabel "Social Media"@en .
+
+pd-owl:SocialMediaCommunication a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Communication ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about social media communication, including the communication itself and metadata"@en ;
+    skos:prefLabel "Social Media Communication"@en ;
+    skos:related svd:Social .
+
+pd-owl:SocialNetwork a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Social ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about friends or connections expressed as a social network"@en ;
+    skos:prefLabel "Social Network"@en .
+
+pd-owl:SocialStatus a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PublicLife ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about social status"@en ;
+    skos:prefLabel "Social Status"@en .
+
+pd-owl:Street a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-beatriz-esteves ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalAddress ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about street as a location"@en ;
+    skos:prefLabel "Street"@en .
+
+pd-owl:TVViewingBehaviour a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-harshvardhan-j-pandit,
+        _:person-rudy-jacob ;
+    dct:created "2019-11-26"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    dct:source _:bea6378d3ef9baf4a77841c3d4bb31623 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:ServiceConsumptionBehaviour ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about TV viewing behaviour, such as timestamps of channel change, duration of viewership, content consumed"@en ;
+    skos:prefLabel "TV Viewing Behaviour"@en .
+
+pd-owl:Tattoo a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about tattoos"@en ;
+    skos:prefLabel "Tattoo"@en .
+
+pd-owl:Tax a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial tax e.g. tax records or tax due"@en ;
+    skos:prefLabel "Tax"@en .
+
+pd-owl:TechnicalKnowledge a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-delaram-golpayegani ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:KnowledgeBelief ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about the technical knowledge"@en ;
+    skos:prefLabel "Technical Knowledge"@en .
+
+pd-owl:TelephoneNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Contact ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about telephone number"@en ;
+    skos:prefLabel "Telephone Number"@en .
+
+pd-owl:Thought a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:KnowledgeBelief ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about thoughts"@en ;
+    skos:prefLabel "Thought"@en .
+
+pd-owl:Tracking a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:PersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information used to track an individual or group e.g. location or email"@en ;
+    skos:prefLabel "Tracking"@en .
+
+pd-owl:TradeUnionMembership a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData,
+        dpv-owl:SpecialCategoryPersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-05-18"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SpecialCategoryPersonalData,
+        pd-owl:GroupMembership ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about trade union memberships and related topics"@en ;
+    skos:prefLabel "Trade Union Membership"@en .
+
+pd-owl:Transaction a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Transactional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about financial transactions e.g. bank transfers"@en ;
+    skos:prefLabel "Transaction"@en .
+
+pd-owl:Transactional a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Financial ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about a purchasing, spending or income"@en ;
+    skos:prefLabel "Transactional"@en .
+
+pd-owl:TravelHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-04-20"^^xsd:date ;
+    dct:modified "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about travel history"@en ;
+    skos:prefLabel "Travel History"@en .
+
+pd-owl:UID a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Identifying ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about unique identifiers"@en ;
+    skos:prefLabel "UID"@en ;
+    skos:related svd:UniqueId .
+
+pd-owl:UserAgent a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-georg-p-krog ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Tracking ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about software acting on behalf of users e.g. web browser"@en ;
+    skos:prefLabel "User agent"@en .
+
+pd-owl:Username a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Identifying ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about usernames"@en ;
+    skos:prefLabel "Username"@en .
+
+pd-owl:VehicalLicenseNumber a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:VehicleLicense ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about vehicle license number"@en ;
+    skos:prefLabel "Vehicle License Number"@en .
+
+pd-owl:VehicalLicenseRegistration a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:VehicleLicense ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about vehicle license registration"@en ;
+    skos:prefLabel "Vehicle License Registration"@en .
+
+pd-owl:Vehicle a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:External ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about vehicles"@en ;
+    skos:prefLabel "Vehicle"@en .
+
+pd-owl:VehicleLicense a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Identifying,
+        pd-owl:Vehicle ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about vehicle license"@en ;
+    skos:prefLabel "Vehicle License"@en .
+
+pd-owl:VehicleUsage a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    dct:modified "2025-08-06"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Behavioural,
+        pd-owl:Vehicle ;
+    sw:term_status "modified"@en ;
+    skos:definition "Information about usage of vehicles, e.g. driving statistics"@en ;
+    skos:prefLabel "Vehicle Usage"@en .
+
+pd-owl:VoiceCommunicationRecording a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Communication ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about vocal recorded communication (e.g. telephony, VoIP)"@en ;
+    skos:prefLabel "Voice Communication Recording"@en .
+
+pd-owl:VoiceMail a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Communication ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about voice mail messages"@en ;
+    skos:prefLabel "Voice Mail"@en .
+
+pd-owl:Vulnerability a rdfs:Class,
+        owl:Class,
+        dpv-owl:SensitivePersonalData ;
+    dct:contributor _:person-delaram-golpayegani,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf dpv-owl:SensitivePersonalData ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about vulnerability of a person or group"@en ;
+    skos:prefLabel "Vulnerability"@en .
+
+pd-owl:Weight a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:PhysicalCharacteristic ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about physical weight"@en ;
+    skos:prefLabel "Weight"@en .
+
+pd-owl:WorkEnvironment a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2022-06-15"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about work environments"@en ;
+    skos:prefLabel "Work Environment"@en .
+
+pd-owl:WorkExperience a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-delaram-golpayegani ;
+    dct:created "2026-02-09"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:ProfessionalExperience ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about work experiences"@en ;
+    skos:prefLabel "Work Experience"@en .
+
+pd-owl:WorkHistory a rdfs:Class,
+        owl:Class,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-harshvardhan-j-pandit ;
+    dct:created "2019-06-04"^^xsd:date ;
+    dct:source _:b8f8d6eb3335c473787a3f89f8bd3de15 ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Professional ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about work history in a professional context"@en ;
+    skos:prefLabel "Work History"@en .
+
+pd-owl:WorkLocation a rdfs:Class,
+        owl:Class,
+        dpv-owl:Location,
+        dpv-owl:PersonalData ;
+    dct:contributor _:person-harshvardhan-j-pandit ;
+    dct:created "2026-02-10"^^xsd:date ;
+    rdfs:isDefinedBy pd-owl: ;
+    rdfs:subClassOf pd-owl:Location ;
+    sw:term_status "accepted"@en ;
+    skos:definition "Information about a person's work place, including their location, address, and locality"@en ;
+    skos:prefLabel "Work Place"@en .
+
+pd-owl:serialisation-html a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TR/html/> ;
+    dct:format <https://www.iana.org/assignments/media-types/text/html> ;
+    dct:title "Personal Data Categories - HTML serialisation" ;
+    profile:hasArtifact <https://w3id.org/dpv/pd/pd-owl.html> ;
+    profile:hasRole role:specification .
+
+pd-owl:serialisation-jsonld a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TR/json-ld11/> ;
+    dct:format <https://www.iana.org/assignments/media-types/application/ld+json> ;
+    dct:title "Personal Data Categories - JSON-LD serialisation" ;
+    profile:hasArtifact <https://w3id.org/dpv/pd/pd-owl.jsonld> ;
+    profile:hasRole role:vocabulary .
+
+pd-owl:serialisation-n3 a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TeamSubmission/n3/> ;
+    dct:format <https://www.iana.org/assignments/media-types/text/n3> ;
+    dct:title "Personal Data Categories - N3 serialisation" ;
+    profile:hasArtifact <https://w3id.org/dpv/pd/pd-owl.n3> ;
+    profile:hasRole role:vocabulary .
+
+pd-owl:serialisation-rdf a profile:ResourceDescriptor ;
+    dct:conformsTo rdf: ;
+    dct:format <https://www.iana.org/assignments/media-types/application/rdf+xml> ;
+    dct:title "Personal Data Categories - RDF/XML serialisation" ;
+    profile:hasArtifact <https://w3id.org/dpv/pd/pd-owl.rdf> ;
+    profile:hasRole role:vocabulary .
+
+pd-owl:serialisation-ttl a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TR/turtle/> ;
+    dct:format <https://www.iana.org/assignments/media-types/text/turtle> ;
+    dct:title "Personal Data Categories - Turtle serialisation" ;
+    profile:hasArtifact <https://w3id.org/dpv/pd/pd-owl.ttl> ;
+    profile:hasRole role:vocabulary .
+
+<https://w3id.org/dpv/examples> a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TR/html/> ;
+    dct:format <https://www.iana.org/assignments/media-types/text/html> ;
+    dct:title "Examples" ;
+    profile:hasArtifact <https://w3id.org/dpv/examples> ;
+    profile:hasRole role:guidance .
+
+<https://w3id.org/dpv/guides> a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TR/html/> ;
+    dct:format <https://www.iana.org/assignments/media-types/text/html> ;
+    dct:title "Guides for Data Privacy Vocabulary" ;
+    profile:hasArtifact <https://w3id.org/dpv/guides> ;
+    profile:hasRole role:guidance .
+
+<https://w3id.org/dpv/primer> a profile:ResourceDescriptor ;
+    dct:conformsTo <https://www.w3.org/TR/html/> ;
+    dct:format <https://www.iana.org/assignments/media-types/text/html> ;
+    dct:title "Primer for Data Privacy Vocabulary" ;
+    profile:hasArtifact <https://w3id.org/dpv/primer> ;
+    profile:hasRole role:guidance .
+
+pd-owl: a owl:Ontology,
+        profile:Profile ;
+    dct:bibliographicCitation "Harshvardhan J. Pandit, Beatriz Esteves, Georg P. Krog, Paul Ryan, Delaram Golpayegani, Julian Flake (2025) Data Privacy Vocabulary (DPV) – Version 2.0. In: Demartini, G., et al. The Semantic Web – ISWC 2024. ISWC 2024. Lecture Notes in Computer Science, vol 15233. Springer, Cham. https://doi.org/10.1007/978-3-031-77847-6_10" ;
+    dct:conformsTo <http://www.w3.org/2002/07/owl>,
+        "http://www.w3.org/2000/01/rdf-schema",
+        "http://www.w3.org/2004/02/skos/core" ;
+    dct:contributor _:person-arthit-suriyawongkul,
+        _:person-beatriz-esteves,
+        _:person-delaram-golpayegani,
+        _:person-elmar-kiesling,
+        _:person-fajar-ekaputra,
+        _:person-georg-p-krog,
+        _:person-harshvardhan-j-pandit,
+        _:person-paul-ryan,
+        _:person-rudy-jacob ;
+    dct:created "2022-04-02"@en ;
+    dct:creator [ a dct:Agent,
+                foaf:Person ;
+            org:memberOf [ a foaf:Organization ;
+                    foaf:name "Vienna University of Economics and Business" ] ;
+            foaf:name "Axel Polleres" ],
+        _:person-beatriz-esteves,
+        _:person-georg-p-krog,
+        _:person-harshvardhan-j-pandit ;
+    dct:description "Extension to the Data Privacy Vocabulary (DPV) providing additional categories of personal data"@en ;
+    dct:hasVersion pd-owl: ;
+    dct:identifier "https://w3id.org/dpv/pd" ;
+    dct:issued "2022-04-02"@en ;
+    dct:license <https://www.w3.org/copyright/document-license-2023/> ;
+    dct:modified "2026-02-25"@en ;
+    dct:publisher <https://www.w3.org/> ;
+    dct:source <https://www.w3.org/groups/cg/dpvcg/> ;
+    dct:title "Personal Data Categories"@en ;
+    bibo:doi "10.5281/zenodo.12505841" ;
+    bibo:status "http://purl.org/ontology/bibo/status/published" ;
+    vann:preferredNamespacePrefix "pd" ;
+    vann:preferredNamespaceUri "https://w3id.org/dpv/pd#" ;
+    rdfs:Label "PD"@en ;
+    owl:versionIRI <https://w3id.org/dpv/2.3/pd/owl#> ;
+    owl:versionInfo "2.3" ;
+    profile:hasResource <https://w3id.org/dpv/examples>,
+        <https://w3id.org/dpv/guides>,
+        pd-owl:serialisation-html,
+        pd-owl:serialisation-jsonld,
+        pd-owl:serialisation-n3,
+        pd-owl:serialisation-rdf,
+        pd-owl:serialisation-ttl,
+        <https://w3id.org/dpv/primer> ;
+    profile:isProfileOf <http://www.w3.org/2002/07/owl>,
+        <https://w3id.org/dpv/owl>,
+        pd-owl: ;
+    foaf:logo <https://w3id.org/dpv/media/logo.png> ;
+    schema:version "2.3" .
+
+_:org-ai-accountability-lab-aial-trinity-college-dublin a foaf:Organization ;
+    foaf:name "AI Accountability Lab (AIAL), Trinity College Dublin" .
+
+_:org-idlab-imec-ghent-university a foaf:Organization ;
+    foaf:name "IDLab, IMEC, Ghent University" .
+
+_:org-proximus a foaf:Organization ;
+    foaf:name "Proximus" .
+
+_:org-signatu-as a foaf:Organization ;
+    foaf:name "Signatu AS" .
+
+_:org-uniphar-plc a foaf:Organization ;
+    foaf:name "Uniphar PLC" .
+
+_:bea6378d3ef9baf4a77841c3d4bb31623 a schema:WebPage ;
+    schema:name "SPECIAL project" ;
+    schema:url "https://specialprivacy.ercim.eu/" .
+
+_:org-adapt-centre-trinity-college-dublin a foaf:Organization ;
+    foaf:name "ADAPT Centre, Trinity College Dublin" .
+
+_:org-vienna-university-of-technology a foaf:Organization ;
+    foaf:name "Vienna University of Technology" .
+
+_:person-rudy-jacob a dct:Agent,
+        foaf:Person ;
+    org:memberOf _:org-proximus ;
+    foaf:name "Rudy Jacob" .
+
+_:person-paul-ryan a dct:Agent,
+        foaf:Person ;
+    scoro:hasORCID "0000-0003-0770-2737" ;
+    org:memberOf _:org-uniphar-plc ;
+    foaf:name "Paul Ryan" .
+
+_:person-delaram-golpayegani a dct:Agent,
+        foaf:Person ;
+    scoro:hasORCID "0000-0002-1208-186X" ;
+    org:memberOf _:org-adapt-centre-trinity-college-dublin ;
+    foaf:name "Delaram Golpayegani" .
+
+_:b7e7d51fbeba97b0dd11b8c1d4bdd2b0a a schema:WebPage ;
+    schema:name "DPVCG" ;
+    schema:url "https://www.w3.org/community/dpvcg/" .
+
+_:person-georg-p-krog a dct:Agent,
+        foaf:Person ;
+    org:memberOf _:org-signatu-as ;
+    foaf:homepage "https://www.linkedin.com/in/georg-philip-krog-a2a278104/" ;
+    foaf:name "Georg P. Krog" .
+
+_:person-beatriz-esteves a dct:Agent,
+        foaf:Person ;
+    scoro:hasORCID "0000-0003-0259-7560" ;
+    org:memberOf _:org-idlab-imec-ghent-university ;
+    foaf:homepage "https://w3id.org/people/besteves" ;
+    foaf:name "Beatriz Esteves" .
+
+_:person-arthit-suriyawongkul a dct:Agent,
+        foaf:Person ;
+    scoro:hasORCID "0000-0002-9698-1899" ;
+    org:memberOf _:org-adapt-centre-trinity-college-dublin ;
+    foaf:name "Arthit Suriyawongkul" .
+
+_:b8f8d6eb3335c473787a3f89f8bd3de15 a schema:WebPage ;
+    schema:name "EnterPrivacy Categories of Personal Information" ;
+    schema:url "https://enterprivacy.com/wp-content/uploads/2018/09/Categories-of-Personal-Information.pdf" .
+
+_:person-elmar-kiesling a dct:Agent,
+        foaf:Person ;
+    org:memberOf _:org-vienna-university-of-technology ;
+    foaf:name "Elmar Kiesling" .
+
+_:person-fajar-ekaputra a dct:Agent,
+        foaf:Person ;
+    org:memberOf _:org-vienna-university-of-technology ;
+    foaf:name "Fajar Ekaputra" .
+
+_:person-harshvardhan-j-pandit a dct:Agent,
+        foaf:Person ;
+    scoro:hasORCID "0000-0002-5068-3714" ;
+    org:memberOf _:org-ai-accountability-lab-aial-trinity-college-dublin ;
+    foaf:homepage "https://harshp.com/" ;
+    foaf:name "Harshvardhan J. Pandit" .
+

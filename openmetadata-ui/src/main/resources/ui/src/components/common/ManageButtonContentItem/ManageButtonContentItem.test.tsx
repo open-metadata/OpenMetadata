@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Teams } from '@openmetadata/ui-core-components/icons';
 import { render, screen } from '@testing-library/react';
-import { ReactComponent as Icon } from '../../../assets/svg/teams-grey.svg';
 import { ManageButtonItemLabel } from './ManageButtonContentItem.component';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
 const mockProps: MangeButtonItemLabelProps = {
   name: 'export',
-  icon: Icon,
+  icon: Teams,
   description: 'description',
   id: 'export',
 };

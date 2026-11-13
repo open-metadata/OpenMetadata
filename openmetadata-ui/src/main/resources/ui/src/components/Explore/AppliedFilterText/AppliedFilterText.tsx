@@ -16,10 +16,13 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, XCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle02,
+  Edit01,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {
@@ -53,7 +56,7 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
             aria-label="success-badge"
             className="align-middle m-l-xs tw:inline-flex tw:items-center tw:leading-none"
             role="img">
-            <IconSuccessBadge height={16} width={16} />
+            <CheckCircle02 className="tw:text-utility-green-500" size={16} />
           </span>
           <Typography data-testid="advance-search-filter-text">
             {filterText}

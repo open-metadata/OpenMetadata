@@ -17,9 +17,11 @@ import java.util.Map;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 
 /**
- * Sets the top-level {@code deleted} field on docs in indexes whose schema declares it. Refuses
- * to run against time-series indexes (no {@code deleted} field) — the previous string-template
- * version had no such guard and so polluted child docs of a soft-deleted parent.
+ * Sets the field that marks a document deleted, on docs in indexes whose capability names that
+ * field: the top-level {@code deleted} by default, or an embedded one such as an incident's {@code
+ * testCase.deleted}. Refuses to run against an index whose docs carry another deleted field or
+ * none — the previous string-template version had no such guard and so polluted child docs of a
+ * soft-deleted parent.
  *
  * <p>Also fixes a latent quoting bug: the legacy template was
  * {@code "ctx._source.put('deleted', '%s')"}, which wraps a boolean in single quotes — the
@@ -27,11 +29,25 @@ import org.openmetadata.service.search.capability.EntityIndexCapability;
  * Consumers that read {@code _source.deleted} as a boolean (the UI does) accept both forms today
  * but a stricter parser would not.
  */
-public record SoftDeleteScript(boolean deleted) implements IndexUpdateScript {
+public record SoftDeleteScript(boolean deleted, String field) implements IndexUpdateScript {
 
+  public SoftDeleteScript(boolean deleted) {
+    this(deleted, EntityIndexCapability.FIELD_DELETED);
+  }
+
+  // An embedded field is set only where its parent object exists.
   @Override
   public String painless() {
-    return "ctx._source.put('deleted', " + deleted + ")";
+    int lastDot = field.lastIndexOf('.');
+    return lastDot < 0
+        ? "ctx._source.put('" + field + "', " + deleted + ")"
+        : "if (ctx._source."
+            + field.substring(0, lastDot)
+            + " != null) { ctx._source."
+            + field
+            + " = "
+            + deleted
+            + "; }";
   }
 
   @Override
@@ -41,6 +57,6 @@ public record SoftDeleteScript(boolean deleted) implements IndexUpdateScript {
 
   @Override
   public boolean compatibleWith(EntityIndexCapability capability) {
-    return capability != null && capability.hasFieldDeleted();
+    return capability != null && field.equals(capability.deletedField());
   }
 }

@@ -6,6 +6,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -13,47 +14,52 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
-import java.util.regex.Pattern;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.Property;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
-import org.apache.jena.vocabulary.DCTerms;
-import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
-import org.apache.jena.vocabulary.SKOS;
 import org.apache.jena.vocabulary.XSD;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.NativeOntologyImportCounts;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportItem;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipped;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
-import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationState;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
-import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.type.RelationProvenance;
-import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
+import org.openmetadata.service.ontology.OntologyDisjointnessClashes;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPropertyRules;
+import org.openmetadata.service.ontology.OntologyStructureValidator;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -62,7 +68,20 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * change, and plans the regular native change-set request that applies it.
  */
 public final class NativeOntologyRdfImporter {
-  private static final int MAX_CHANGED_DEFINITIONS = 1000;
+  public static final int MAX_CHANGED_DEFINITIONS = 1000;
+  public static final int MAX_LISTED_ITEMS = 5_000;
+  private static final int MAX_NAME_LENGTH = 64;
+  private static final int ITEM_DIGEST_LENGTH = 16;
+  private static final OntologyWorkingSnapshot.Snapshot PREVIEW_TARGET =
+      new OntologyWorkingSnapshot.Snapshot(
+          new OntologyState().withWorkingRevision(0L),
+          List.of(
+              new OntologyWorkingSnapshot.Entry(
+                  MemberKind.ONTOLOGY,
+                  new Ontology()
+                      .withId(new UUID(0, 0))
+                      .withName("preview")
+                      .withFullyQualifiedName("preview"))));
   private static final String FORMAT_REQUIRED =
       "Specify format as one of turtle, rdfxml, ntriples, jsonld, or csv";
 
@@ -85,7 +104,7 @@ public final class NativeOntologyRdfImporter {
   }
 
   public static NativeOntologyDocument read(final Model model) {
-    return new Reader(model).read();
+    return new NativeOntologyRdfReader(model).read();
   }
 
   public Source read(final PreviewNativeOntologyImport request) {
@@ -110,18 +129,88 @@ public final class NativeOntologyRdfImporter {
 
   public NativeOntologyImportPreview preview(
       final Source source, final OntologyWorkingSnapshot.Snapshot working) {
-    final Stored stored = Stored.index(working);
-    requireApplicable(source.document(), stored, source.propertyRows());
-    final Outcomes outcomes = classify(source.document(), stored);
-    return new NativeOntologyImportPreview()
-        .withSummary(summary(source.format(), source.document().header(), outcomes))
-        .withChangeSet(plan(outcomes, stored, working, SourceFamily.of(source.format())));
+    return preview(source, working, MAX_CHANGED_DEFINITIONS);
   }
 
+  /**
+   * Previews checksum-verified bundled content, which the library install job cuts into slices, so
+   * the whole change is not held to {@link #MAX_CHANGED_DEFINITIONS}.
+   */
+  public NativeOntologyImportPreview previewUnbounded(
+      final Source source, final OntologyWorkingSnapshot.Snapshot working) {
+    return preview(source, working, Integer.MAX_VALUE);
+  }
+
+  private NativeOntologyImportPreview preview(
+      final Source source, final OntologyWorkingSnapshot.Snapshot working, final int maxChanged) {
+    final Stored stored = Stored.index(working);
+    requireApplicable(source.document(), stored, source.propertyRows());
+    final RdfSkipLedger dropped = RdfSkipLedger.continuing(source.document().skipped());
+    final Outcomes outcomes =
+        reject(classify(source.document(), stored, maxChanged), stored, dropped);
+    final Plan plan = new Plan(stored, working, SourceFamily.of(source.format()));
+    final CreateOntologyChangeSet changeSet = plan.of(outcomes);
+    return new NativeOntologyImportPreview()
+        .withSummary(
+            listing(
+                summary(source.format(), source.document(), outcomes, dropped.report()),
+                plan.itemsWithClashes()))
+        .withChangeSet(changeSet);
+  }
+
+  /**
+   * Counts and items against an empty target that does not exist yet. The items carry no
+   * operation, because no change set exists until the ontology does.
+   */
   public NativeOntologyImportSummary summarize(final Source source) {
+    final NativeOntologyImportSummary summary = summarize(source, MAX_CHANGED_DEFINITIONS);
+    return listing(summary, summary.getItems());
+  }
+
+  /** The same summary with every item listed and {@code maxChanged} as the size limit. */
+  NativeOntologyImportSummary summarize(final Source source, final int maxChanged) {
     requireApplicable(source.document(), Stored.EMPTY, source.propertyRows());
-    return summary(
-        source.format(), source.document().header(), classify(source.document(), Stored.EMPTY));
+    final RdfSkipLedger dropped = RdfSkipLedger.continuing(source.document().skipped());
+    final Outcomes outcomes =
+        reject(classify(source.document(), Stored.EMPTY, maxChanged), Stored.EMPTY, dropped);
+    final Plan plan = new Plan(Stored.EMPTY, PREVIEW_TARGET, SourceFamily.of(source.format()));
+    plan.of(outcomes);
+    final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
+    items.forEach(item -> item.setOperationId(null));
+    return summary(source.format(), source.document(), outcomes, dropped.report()).withItems(items);
+  }
+
+  /**
+   * Lists at most {@link #MAX_LISTED_ITEMS} items in source order. ALREADY_EXISTS items go first
+   * when the budget is short: nothing can be done with them, and the counts still cover them.
+   */
+  static NativeOntologyImportSummary listing(
+      final NativeOntologyImportSummary summary, final List<NativeOntologyImportItem> items) {
+    if (items.size() <= MAX_LISTED_ITEMS) {
+      return summary.withItems(items).withOmittedItems(0);
+    }
+    long existingBudget =
+        Math.max(
+            0,
+            MAX_LISTED_ITEMS
+                - items.stream()
+                    .filter(
+                        item -> item.getStatus() != NativeOntologyImportItemStatus.ALREADY_EXISTS)
+                    .count());
+    final List<NativeOntologyImportItem> listed = new ArrayList<>(MAX_LISTED_ITEMS);
+    for (final NativeOntologyImportItem item : items) {
+      if (listed.size() == MAX_LISTED_ITEMS) {
+        break;
+      }
+      if (item.getStatus() == NativeOntologyImportItemStatus.ALREADY_EXISTS) {
+        if (existingBudget == 0) {
+          continue;
+        }
+        existingBudget--;
+      }
+      listed.add(item);
+    }
+    return summary.withItems(listed).withOmittedItems(items.size() - listed.size());
   }
 
   public CreateOntologyChangeSet reconcile(
@@ -129,7 +218,31 @@ public final class NativeOntologyRdfImporter {
     final Stored stored = Stored.index(working);
     final NativeOntologyDocument document = read(model);
     requireApplicable(document, stored, Map.of());
-    return plan(classify(document, stored), stored, working, SourceFamily.RDF);
+    return plan(
+        reject(classify(document, stored), stored, new RdfSkipLedger()),
+        stored,
+        working,
+        SourceFamily.RDF);
+  }
+
+  /**
+   * Reconciles checksum-verified bundled content, which a library install job cuts into slices of
+   * at most {@link #MAX_CHANGED_DEFINITIONS}, so the whole change is not held to that limit.
+   */
+  public CreateOntologyChangeSet reconcileUnbounded(
+      final Model model, final OntologyWorkingSnapshot.Snapshot working) {
+    return reconcileUnbounded(read(model), working);
+  }
+
+  public CreateOntologyChangeSet reconcileUnbounded(
+      final NativeOntologyDocument document, final OntologyWorkingSnapshot.Snapshot working) {
+    final Stored stored = Stored.index(working);
+    requireApplicable(document, stored, Map.of());
+    return plan(
+        reject(classify(document, stored, Integer.MAX_VALUE), stored, new RdfSkipLedger()),
+        stored,
+        working,
+        SourceFamily.RDF);
   }
 
   /** Applying a draft refuses these properties, so a preview must not count them as importable. */
@@ -141,12 +254,14 @@ public final class NativeOntologyRdfImporter {
       final String iri = parsed.getIri().toString();
       final OntologyProperty current = stored.properties().get(iri);
       final OntologyPropertyRules.Violation violation =
-          OntologyPropertyRules.firstViolation(
-              parsed,
-              () ->
-                  current != null
-                      && JsonUtils.pojoToJson(current.getEnumValues())
-                          .equals(JsonUtils.pojoToJson(parsed.getEnumValues())));
+          firstNonNull(
+              OntologyPropertyRules.firstViolation(
+                  parsed,
+                  () ->
+                      current != null
+                          && JsonUtils.pojoToJson(current.getEnumValues())
+                              .equals(JsonUtils.pojoToJson(parsed.getEnumValues()))),
+              OntologyPropertyRules.datatypeViolation(parsed));
       if (violation != null) {
         final Integer row = propertyRows.get(iri);
         final String where =
@@ -159,6 +274,11 @@ public final class NativeOntologyRdfImporter {
         throw new BadRequestException(where + ": " + violation.message());
       }
     }
+  }
+
+  private static OntologyPropertyRules.Violation firstNonNull(
+      final OntologyPropertyRules.Violation first, final OntologyPropertyRules.Violation second) {
+    return first != null ? first : second;
   }
 
   private NativeOntologyDocument readRdf(final String data, final RdfSerializationFormat format) {
@@ -218,7 +338,7 @@ public final class NativeOntologyRdfImporter {
 
   /** What one parsed definition does to the target. Every parsed definition gets exactly one. */
   private sealed interface Outcome<T extends OntologyDefinition>
-      permits Added, Updated, Unchanged {}
+      permits Added, Updated, Unchanged, Duplicate, Rejected {}
 
   /** A definition the target lacks. {@code key} is what classification matched on; it seeds the name. */
   private record Added<T extends OntologyDefinition>(T parsed, String key) implements Outcome<T> {}
@@ -230,17 +350,23 @@ public final class NativeOntologyRdfImporter {
   /** A stored definition the source repeats unchanged. */
   private record Unchanged<T extends OntologyDefinition>(T parsed) implements Outcome<T> {}
 
+  /** A definition the source already stated earlier; only the first statement counts. */
+  private record Duplicate<T extends OntologyDefinition>(T parsed) implements Outcome<T> {}
+
+  /** A definition applying would refuse, with the reason; it carries no operation. */
+  private record Rejected<T extends OntologyDefinition>(T parsed, String reason)
+      implements Outcome<T> {}
+
   private record Outcomes(
       List<Outcome<OntologyConcept>> concepts,
       List<Outcome<OntologyProperty>> properties,
       List<Outcome<OntologyAxiom>> axioms) {
     int changed() {
-      return concepts.size()
-          + properties.size()
-          + axioms.size()
-          - count(concepts, Unchanged.class)
-          - count(properties, Unchanged.class)
-          - count(axioms, Unchanged.class);
+      return changes(concepts) + changes(properties) + changes(axioms);
+    }
+
+    private static int changes(final List<? extends Outcome<?>> outcomes) {
+      return count(outcomes, Added.class) + count(outcomes, Updated.class);
     }
   }
 
@@ -255,25 +381,39 @@ public final class NativeOntologyRdfImporter {
   }
 
   private static Outcomes classify(final NativeOntologyDocument document, final Stored stored) {
+    return classify(document, stored, MAX_CHANGED_DEFINITIONS);
+  }
+
+  private static Outcomes classify(
+      final NativeOntologyDocument document, final Stored stored, final int maxChanged) {
     final Outcomes outcomes =
         new Outcomes(
-            document.concepts().stream()
-                .map(
-                    concept ->
-                        classifyConcept(
-                            concept, stored.concepts().get(concept.getIri().toString())))
-                .toList(),
-            document.properties().stream()
-                .map(
-                    property ->
-                        classifyProperty(
-                            property, stored.properties().get(property.getIri().toString())))
-                .toList(),
+            firstOccurrences(
+                document.concepts(),
+                concept -> concept.getIri().toString(),
+                concept ->
+                    classifyConcept(concept, stored.concepts().get(concept.getIri().toString()))),
+            firstOccurrences(
+                document.properties(),
+                property -> property.getIri().toString(),
+                property ->
+                    classifyProperty(
+                        property, stored.properties().get(property.getIri().toString()))),
             classifyAxioms(document.axioms(), stored.axioms()));
-    if (outcomes.changed() > MAX_CHANGED_DEFINITIONS) {
+    if (outcomes.changed() > maxChanged) {
       throw new BadRequestException("A native import accepts at most 1000 changed definitions");
     }
     return outcomes;
+  }
+
+  private static <T extends OntologyDefinition> List<Outcome<T>> firstOccurrences(
+      final List<T> parsed,
+      final java.util.function.Function<T, String> key,
+      final java.util.function.Function<T, Outcome<T>> classify) {
+    final Set<String> seen = new HashSet<>();
+    return parsed.stream()
+        .map(value -> seen.add(key.apply(value)) ? classify.apply(value) : new Duplicate<>(value))
+        .toList();
   }
 
   private static Outcome<OntologyConcept> classifyConcept(
@@ -314,6 +454,7 @@ public final class NativeOntologyRdfImporter {
             .withCharacteristics(parsed.getCharacteristics())
             .withPropertyChain(parsed.getPropertyChain())
             .withDisjointWith(parsed.getDisjointWith())
+            .withSuperProperties(parsed.getSuperProperties())
             .withDeprecated(parsed.getDeprecated())
             .withReplacedBy(parsed.getReplacedBy());
     overlayLabel(proposed, parsed.getDisplayName(), parsed.getDescription());
@@ -340,12 +481,15 @@ public final class NativeOntologyRdfImporter {
 
   private static NativeOntologyImportSummary summary(
       final NativeOntologyImportFormat format,
-      final NativeOntologyDocument.Header header,
-      final Outcomes outcomes) {
+      final NativeOntologyDocument document,
+      final Outcomes outcomes,
+      final NativeOntologyImportSkipped skipped) {
+    final NativeOntologyDocument.Header header = document.header();
     return new NativeOntologyImportSummary()
         .withDetectedFormat(format)
         .withOntologyLabel(header == null ? null : header.label())
-        .withCounts(counts(outcomes));
+        .withCounts(counts(outcomes))
+        .withSkippedStatements(skipped);
   }
 
   private static NativeOntologyImportCounts counts(final Outcomes outcomes) {
@@ -357,10 +501,14 @@ public final class NativeOntologyRdfImporter {
         .withNewRelations(count(outcomes.axioms(), Added.class))
         .withNewMappings(
             outcomes.concepts().stream().mapToInt(NativeOntologyRdfImporter::newMappings).sum())
-        .withSkippedDefinitions(
-            count(outcomes.concepts(), Unchanged.class)
-                + count(outcomes.properties(), Unchanged.class))
-        .withSkippedRelations(count(outcomes.axioms(), Unchanged.class));
+        .withSkippedDefinitions(skipped(outcomes.concepts()) + skipped(outcomes.properties()))
+        .withSkippedRelations(skipped(outcomes.axioms()));
+  }
+
+  private static int skipped(final List<? extends Outcome<?>> outcomes) {
+    return count(outcomes, Unchanged.class)
+        + count(outcomes, Duplicate.class)
+        + count(outcomes, Rejected.class);
   }
 
   private static int count(final List<? extends Outcome<?>> outcomes, final Class<?> kind) {
@@ -376,6 +524,8 @@ public final class NativeOntologyRdfImporter {
         yield keys.size();
       }
       case Unchanged<OntologyConcept> ignored -> 0;
+      case Duplicate<OntologyConcept> ignored -> 0;
+      case Rejected<OntologyConcept> ignored -> 0;
     };
   }
 
@@ -387,14 +537,245 @@ public final class NativeOntologyRdfImporter {
     return new Plan(stored, working, family).of(outcomes);
   }
 
+  /**
+   * Refuses what applying the draft would refuse, so a preview never lists what apply rejects.
+   * Refusing one definition can strand another that names it, so the check repeats on what is
+   * left until nothing more is refused. Concepts are never refused: a stored concept the source
+   * touches keeps whatever it already holds, and only what names a concept can be refused.
+   *
+   * <p>A superproperty link is the one reference that is dropped rather than refused with its
+   * definition: real vocabularies specialize properties of other vocabularies, and refusing each
+   * such property would take its whole subtree with it. Each pass drops the links that no longer
+   * resolve, including links to definitions the previous pass refused, before it checks the rest.
+   */
+  private static Outcomes reject(
+      final Outcomes outcomes, final Stored stored, final RdfSkipLedger dropped) {
+    Outcomes current = outcomes;
+    int refused = -1;
+    while (refused < count(current)) {
+      refused = count(current);
+      current =
+          refuseWhatApplyWouldRefuse(
+              dropUnresolvedSuperProperties(current, stored, dropped), stored);
+    }
+    return current;
+  }
+
+  /**
+   * Drops the links to a property that is neither declared nor a fixed-vocabulary property of the
+   * candidate's kind, then the links on a cycle. A cycle states that its properties are equivalent,
+   * which the native model does not hold, so its links go and its properties stay, as a subclass
+   * cycle drops its axioms and keeps its classes.
+   */
+  private static Outcomes dropUnresolvedSuperProperties(
+      final Outcomes outcomes, final Stored stored, final RdfSkipLedger dropped) {
+    final Map<String, OntologyPropertyKind> kinds = new HashMap<>();
+    stored.properties().forEach((iri, property) -> kinds.put(iri, property.getKind()));
+    for (final Outcome<OntologyProperty> outcome : outcomes.properties()) {
+      final OntologyProperty candidate = candidate(outcome);
+      if (candidate != null) {
+        kinds.put(candidate.getIri().toString(), candidate.getKind());
+      }
+    }
+    final Outcomes resolved =
+        pruneSuperProperties(
+            outcomes,
+            dropped,
+            (candidate, superProperty) -> {
+              final OntologyPropertyKind kind =
+                  kinds.containsKey(superProperty.toString())
+                      ? kinds.get(superProperty.toString())
+                      : vocabularyPropertyKind(superProperty);
+              if (kind == candidate.getKind()) {
+                return null;
+              }
+              return kind == null
+                  ? NativeOntologyImportSkipReason.UNDECLARED_REFERENCE
+                  : NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE;
+            });
+    final Map<String, List<URI>> links = new HashMap<>();
+    stored
+        .properties()
+        .forEach((iri, property) -> links.put(iri, listOrEmpty(property.getSuperProperties())));
+    for (final Outcome<OntologyProperty> outcome : resolved.properties()) {
+      final OntologyProperty candidate = candidate(outcome);
+      if (candidate != null) {
+        links.put(candidate.getIri().toString(), listOrEmpty(candidate.getSuperProperties()));
+      }
+    }
+    return pruneSuperProperties(
+        resolved,
+        dropped,
+        (candidate, superProperty) ->
+            reaches(links, superProperty.toString(), candidate.getIri().toString())
+                ? NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE
+                : null);
+  }
+
+  private static boolean reaches(
+      final Map<String, List<URI>> links, final String from, final String to) {
+    final Set<String> visited = new HashSet<>();
+    final List<String> pending = new ArrayList<>(List.of(from));
+    while (!pending.isEmpty()) {
+      final String next = pending.removeLast();
+      if (next.equals(to)) {
+        return true;
+      }
+      if (visited.add(next)) {
+        listOrEmpty(links.get(next)).forEach(iri -> pending.add(iri.toString()));
+      }
+    }
+    return false;
+  }
+
+  /** Removes each link {@code dropReason} names a reason for, and records it under that reason. */
+  private static Outcomes pruneSuperProperties(
+      final Outcomes outcomes,
+      final RdfSkipLedger dropped,
+      final BiFunction<OntologyProperty, URI, NativeOntologyImportSkipReason> dropReason) {
+    return new Outcomes(
+        outcomes.concepts(),
+        outcomes.properties().stream()
+            .map(outcome -> pruneSuperProperties(outcome, dropped, dropReason))
+            .toList(),
+        outcomes.axioms());
+  }
+
+  private static Outcome<OntologyProperty> pruneSuperProperties(
+      final Outcome<OntologyProperty> outcome,
+      final RdfSkipLedger dropped,
+      final BiFunction<OntologyProperty, URI, NativeOntologyImportSkipReason> dropReason) {
+    final OntologyProperty candidate = candidate(outcome);
+    if (candidate == null || listOrEmpty(candidate.getSuperProperties()).isEmpty()) {
+      return outcome;
+    }
+    final List<URI> kept = new ArrayList<>();
+    for (final URI superProperty : candidate.getSuperProperties()) {
+      final NativeOntologyImportSkipReason reason = dropReason.apply(candidate, superProperty);
+      if (reason == null) {
+        kept.add(superProperty);
+      } else {
+        dropped.skip(reason, candidate.getIri().toString(), RDFS.subPropertyOf);
+      }
+    }
+    if (kept.size() == candidate.getSuperProperties().size()) {
+      return outcome;
+    }
+    // The parsed document stays as read, so a second preview of the same source sees every link.
+    final OntologyProperty pruned =
+        JsonUtils.deepCopy(candidate, OntologyProperty.class)
+            .withSuperProperties(List.copyOf(kept));
+    return switch (outcome) {
+      case Added<OntologyProperty> added -> new Added<>(pruned, added.key());
+      case Updated<OntologyProperty> updated -> sameProperty(updated.current(), pruned)
+          ? new Unchanged<>(pruned)
+          : new Updated<>(updated.current(), pruned);
+      default -> outcome;
+    };
+  }
+
+  private static OntologyPropertyKind vocabularyPropertyKind(final URI iri) {
+    return switch (OwlEntityDeclarations.vocabularyKind(iri.toString())) {
+      case OBJECT_PROPERTY -> OntologyPropertyKind.OBJECT;
+      case DATA_PROPERTY -> OntologyPropertyKind.DATA;
+      case ANNOTATION_PROPERTY -> OntologyPropertyKind.ANNOTATION;
+      case CLASS, DATATYPE, NAMED_INDIVIDUAL -> null;
+      case null -> null;
+    };
+  }
+
+  private static int count(final Outcomes outcomes) {
+    return count(outcomes.concepts(), Rejected.class)
+        + count(outcomes.properties(), Rejected.class)
+        + count(outcomes.axioms(), Rejected.class);
+  }
+
+  private static Outcomes refuseWhatApplyWouldRefuse(final Outcomes outcomes, final Stored stored) {
+    final Map<Outcome<?>, UUID> candidateIds = new IdentityHashMap<>();
+    final List<OntologyDefinition> definitions = afterImport(outcomes, stored, candidateIds);
+    final Map<UUID, String> errors =
+        OntologyStructureValidator.workingErrors(definitions, new HashSet<>(candidateIds.values()));
+    return new Outcomes(
+        outcomes.concepts(),
+        outcomes.properties().stream()
+            .map(outcome -> refuse(outcome, candidateIds, errors))
+            .toList(),
+        outcomes.axioms().stream().map(outcome -> refuse(outcome, candidateIds, errors)).toList());
+  }
+
+  /** The target as applying the surviving outcomes leaves it; each candidate gets a throwaway id. */
+  private static List<OntologyDefinition> afterImport(
+      final Outcomes outcomes, final Stored stored, final Map<Outcome<?>, UUID> candidateIds) {
+    final Map<String, OntologyConcept> concepts = new LinkedHashMap<>(stored.concepts());
+    outcomes.concepts().forEach(outcome -> overlay(concepts, outcome, candidateIds));
+    final Map<String, OntologyProperty> properties = new LinkedHashMap<>(stored.properties());
+    outcomes.properties().forEach(outcome -> overlay(properties, outcome, candidateIds));
+    final List<OntologyDefinition> definitions = new ArrayList<>(concepts.values());
+    definitions.addAll(properties.values());
+    stored.axioms().values().forEach(definitions::addAll);
+    outcomes.axioms().stream()
+        .filter(Added.class::isInstance)
+        .forEach(outcome -> definitions.add(identified(candidate(outcome), outcome, candidateIds)));
+    return definitions;
+  }
+
+  private static <T extends OntologyDefinition> void overlay(
+      final Map<String, T> index,
+      final Outcome<T> outcome,
+      final Map<Outcome<?>, UUID> candidateIds) {
+    final T candidate = candidate(outcome);
+    if (candidate != null && !(outcome instanceof Rejected)) {
+      index.put(iriOf(candidate), identified(candidate, outcome, candidateIds));
+    }
+  }
+
+  private static <T extends OntologyDefinition> T candidate(final Outcome<T> outcome) {
+    return switch (outcome) {
+      case Added<T> added -> added.parsed();
+      case Updated<T> updated -> updated.proposed();
+      default -> null;
+    };
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T extends OntologyDefinition> T identified(
+      final T candidate, final Outcome<?> outcome, final Map<Outcome<?>, UUID> candidateIds) {
+    final T copy = (T) JsonUtils.deepCopy(candidate, candidate.getClass());
+    copy.setId(UUID.randomUUID());
+    if (copy.getOntology() == null) {
+      copy.setOntology(new EntityReference().withId(new UUID(0, 0)).withType(Entity.ONTOLOGY));
+    }
+    candidateIds.put(outcome, copy.getId());
+    return copy;
+  }
+
+  private static String iriOf(final OntologyDefinition definition) {
+    return definition instanceof OntologyConcept concept
+        ? concept.getIri().toString()
+        : ((OntologyProperty) definition).getIri().toString();
+  }
+
+  private static <T extends OntologyDefinition> Outcome<T> refuse(
+      final Outcome<T> outcome,
+      final Map<Outcome<?>, UUID> candidateIds,
+      final Map<UUID, String> errors) {
+    final String error = errors.get(candidateIds.get(outcome));
+    return error == null ? outcome : new Rejected<>(candidate(outcome), error);
+  }
+
   /** Gives added definitions their catalog identity and wraps every change as a draft operation. */
   private static final class Plan {
+    private static final String DUPLICATE_REASON = "Listed more than once in the file.";
     private final OntologyWorkingSnapshot.Snapshot working;
     private final SourceFamily family;
     private final Set<String> conceptNames;
     private final Set<String> propertyNames;
     private final Set<String> axiomNames;
+    private final Map<String, String> labels = new HashMap<>();
+    private final Map<String, Integer> idCounts = new HashMap<>();
     private final List<OntologyChangeOperation> operations = new ArrayList<>();
+    private final List<NativeOntologyImportItem> items = new ArrayList<>();
+    private final Set<String> newConceptIris = new HashSet<>();
 
     private Plan(
         final Stored stored,
@@ -402,12 +783,27 @@ public final class NativeOntologyRdfImporter {
         final SourceFamily family) {
       this.working = working;
       this.family = family;
-      conceptNames = new HashSet<>(stored.conceptNames());
-      propertyNames = new HashSet<>(stored.propertyNames());
-      axiomNames = new HashSet<>(stored.axiomNames());
+      conceptNames = lowerCased(stored.conceptNames());
+      propertyNames = lowerCased(stored.propertyNames());
+      axiomNames = lowerCased(stored.axiomNames());
+      stored.concepts().forEach((iri, concept) -> labels.put(iri, shown(concept)));
+      stored.properties().forEach((iri, property) -> labels.put(iri, shown(property)));
+    }
+
+    private static Set<String> lowerCased(final Set<String> names) {
+      return names.stream()
+          .filter(Objects::nonNull)
+          .map(name -> name.toLowerCase(Locale.ROOT))
+          .collect(Collectors.toCollection(HashSet::new));
     }
 
     private CreateOntologyChangeSet of(final Outcomes outcomes) {
+      outcomes.concepts().forEach(outcome -> remember(outcome));
+      outcomes.concepts().stream()
+          .filter(Added.class::isInstance)
+          .forEach(
+              outcome -> newConceptIris.add(iriOf(((Added<OntologyConcept>) outcome).parsed())));
+      outcomes.properties().forEach(outcome -> remember(outcome));
       outcomes.concepts().forEach(this::concept);
       outcomes.properties().forEach(this::property);
       outcomes.axioms().forEach(this::axiom);
@@ -421,53 +817,285 @@ public final class NativeOntologyRdfImporter {
           .withUndoCursor(operations.size());
     }
 
+    /** Items in listing order, each warned when applying it would create a disjointness clash. */
+    private List<NativeOntologyImportItem> itemsWithClashes() {
+      final Map<UUID, OntologyDefinition> after = new LinkedHashMap<>();
+      final List<OntologyDefinition> before =
+          working.entries().stream().map(OntologyWorkingSnapshot.Entry::definition).toList();
+      before.forEach(definition -> after.put(definition.getId(), definition));
+      operations.forEach(
+          operation ->
+              Stream.of(operation.getConcept(), operation.getProperty(), operation.getAxiom())
+                  .filter(Objects::nonNull)
+                  .forEach(definition -> after.put(definition.getId(), definition)));
+      final Set<String> existing =
+          OntologyDisjointnessClashes.find(before).stream()
+              .map(Plan::clashKey)
+              .collect(Collectors.toSet());
+      for (final OntologyDisjointnessClashes.Clash clash :
+          OntologyDisjointnessClashes.find(new ArrayList<>(after.values()))) {
+        if (!existing.contains(clashKey(clash))) {
+          warn(clash);
+        }
+      }
+      return items;
+    }
+
+    private static String clashKey(final OntologyDisjointnessClashes.Clash clash) {
+      return clash.subject().getIri() + "|" + clash.first() + "|" + clash.second();
+    }
+
+    private void warn(final OntologyDisjointnessClashes.Clash clash) {
+      final Set<String> involved =
+          new HashSet<>(
+              List.of(clash.subject().getIri().toString(), clash.first(), clash.second()));
+      for (final NativeOntologyImportItem item : items) {
+        final boolean changes =
+            item.getStatus() == NativeOntologyImportItemStatus.NEW
+                || item.getStatus() == NativeOntologyImportItemStatus.UPDATE;
+        final boolean rule = item.getKind() != NativeOntologyImportItemKind.CONCEPT;
+        if (changes && rule && item.getIri() != null && involved.contains(item.getIri())) {
+          item.setWarning(
+              item.getWarning() == null
+                  ? clash.message()
+                  : item.getWarning() + "; " + clash.message());
+          final Set<UUID> ids = new LinkedHashSet<>(item.getConceptIds());
+          ids.addAll(clash.conceptIds());
+          item.setConceptIds(new ArrayList<>(ids));
+        }
+      }
+    }
+
+    private void remember(final Outcome<? extends OntologyDefinition> outcome) {
+      final OntologyDefinition parsed =
+          switch (outcome) {
+            case Added<?> added -> added.parsed();
+            case Updated<?> updated -> updated.proposed();
+            case Unchanged<?> unchanged -> unchanged.parsed();
+            case Duplicate<?> duplicate -> duplicate.parsed();
+            case Rejected<?> rejected -> rejected.parsed();
+          };
+      labels.putIfAbsent(iriOf(parsed), shown(parsed));
+    }
+
     private void concept(final Outcome<OntologyConcept> outcome) {
       switch (outcome) {
-        case Added<OntologyConcept> added -> operations.add(
-            operation(OntologyChangeOperationType.UPSERT_CONCEPT, null)
-                .withConcept(identified(added, OntologyConcept.class, conceptNames)));
-        case Updated<OntologyConcept> updated -> operations.add(
-            operation(OntologyChangeOperationType.UPSERT_CONCEPT, updated.current())
-                .withConcept(updated.proposed()));
-        case Unchanged<OntologyConcept> ignored -> {}
+        case Added<OntologyConcept> added -> {
+          final OntologyChangeOperation operation =
+              operation(OntologyChangeOperationType.UPSERT_CONCEPT, null)
+                  .withConcept(identified(added, OntologyConcept.class, conceptNames));
+          operations.add(operation);
+          items.add(
+              item(
+                      NativeOntologyImportItemKind.CONCEPT,
+                      NativeOntologyImportItemStatus.NEW,
+                      added.parsed())
+                  .withOperationId(operation.getId()));
+        }
+        case Updated<OntologyConcept> updated -> {
+          final OntologyChangeOperation operation =
+              operation(OntologyChangeOperationType.UPSERT_CONCEPT, updated.current())
+                  .withConcept(updated.proposed());
+          operations.add(operation);
+          items.add(
+              item(
+                      NativeOntologyImportItemKind.CONCEPT,
+                      NativeOntologyImportItemStatus.UPDATE,
+                      updated.proposed())
+                  .withDetail(conceptChanges(updated.current(), updated.proposed()))
+                  .withOperationId(operation.getId()));
+        }
+        case Unchanged<OntologyConcept> same -> items.add(
+            item(
+                NativeOntologyImportItemKind.CONCEPT,
+                NativeOntologyImportItemStatus.ALREADY_EXISTS,
+                same.parsed()));
+        case Duplicate<OntologyConcept> repeated -> items.add(
+            item(
+                    NativeOntologyImportItemKind.CONCEPT,
+                    NativeOntologyImportItemStatus.DUPLICATE,
+                    repeated.parsed())
+                .withReason(DUPLICATE_REASON));
+        case Rejected<OntologyConcept> rejected -> items.add(
+            item(
+                    NativeOntologyImportItemKind.CONCEPT,
+                    NativeOntologyImportItemStatus.SKIPPED,
+                    rejected.parsed())
+                .withReason(rejected.reason()));
       }
     }
 
     private void property(final Outcome<OntologyProperty> outcome) {
       switch (outcome) {
-        case Added<OntologyProperty> added -> operations.add(
-            operation(OntologyChangeOperationType.UPSERT_PROPERTY, null)
-                .withProperty(identified(added, OntologyProperty.class, propertyNames)));
-        case Updated<OntologyProperty> updated -> operations.add(
-            operation(OntologyChangeOperationType.UPSERT_PROPERTY, updated.current())
-                .withProperty(updated.proposed()));
-        case Unchanged<OntologyProperty> ignored -> {}
+        case Added<OntologyProperty> added -> {
+          final List<URI> needs = referencedNewConcepts(added.parsed());
+          final OntologyChangeOperation operation =
+              operation(OntologyChangeOperationType.UPSERT_PROPERTY, null)
+                  .withProperty(identified(added, OntologyProperty.class, propertyNames))
+                  .withRequiresConceptIris(needs.isEmpty() ? null : needs);
+          operations.add(operation);
+          items.add(
+              item(
+                      NativeOntologyImportItemKind.PROPERTY,
+                      NativeOntologyImportItemStatus.NEW,
+                      added.parsed())
+                  .withDependsOnIris(needs)
+                  .withOperationId(operation.getId()));
+        }
+        case Updated<OntologyProperty> updated -> {
+          final List<URI> needs = referencedNewConcepts(updated.proposed());
+          final OntologyChangeOperation operation =
+              operation(OntologyChangeOperationType.UPSERT_PROPERTY, updated.current())
+                  .withProperty(updated.proposed())
+                  .withRequiresConceptIris(needs.isEmpty() ? null : needs);
+          operations.add(operation);
+          items.add(
+              item(
+                      NativeOntologyImportItemKind.PROPERTY,
+                      NativeOntologyImportItemStatus.UPDATE,
+                      updated.proposed())
+                  .withDetail(propertyChanges(updated.current(), updated.proposed()))
+                  .withDependsOnIris(needs)
+                  .withOperationId(operation.getId()));
+        }
+        case Unchanged<OntologyProperty> same -> items.add(
+            item(
+                NativeOntologyImportItemKind.PROPERTY,
+                NativeOntologyImportItemStatus.ALREADY_EXISTS,
+                same.parsed()));
+        case Duplicate<OntologyProperty> repeated -> items.add(
+            item(
+                    NativeOntologyImportItemKind.PROPERTY,
+                    NativeOntologyImportItemStatus.DUPLICATE,
+                    repeated.parsed())
+                .withReason(DUPLICATE_REASON));
+        case Rejected<OntologyProperty> rejected -> items.add(
+            item(
+                    NativeOntologyImportItemKind.PROPERTY,
+                    NativeOntologyImportItemStatus.SKIPPED,
+                    rejected.parsed())
+                .withReason(rejected.reason()));
       }
     }
 
     private void axiom(final Outcome<OntologyAxiom> outcome) {
       // Axioms match by signature, so a changed axiom is a new one and the stored one stays.
-      if (outcome instanceof Added<OntologyAxiom> added) {
-        operations.add(
-            operation(OntologyChangeOperationType.UPSERT_AXIOM, null)
-                .withAxiom(
-                    identified(added, OntologyAxiom.class, axiomNames)
-                        .withDisplayName(
-                            "Imported "
-                                + added
-                                    .parsed()
-                                    .getAxiomType()
-                                    .value()
-                                    .replace('_', ' ')
-                                    .toLowerCase(Locale.ROOT))
-                        .withDescription("Imported from native " + family)
-                        .withProvenance(RelationProvenance.IMPORTED)));
+      switch (outcome) {
+        case Added<OntologyAxiom> added -> {
+          final OntologyAxiom axiom =
+              identified(added, OntologyAxiom.class, axiomNames)
+                  .withDisplayName(
+                      "Imported "
+                          + added
+                              .parsed()
+                              .getAxiomType()
+                              .value()
+                              .replace('_', ' ')
+                              .toLowerCase(Locale.ROOT))
+                  .withDescription("Imported from native " + family)
+                  .withProvenance(RelationProvenance.IMPORTED);
+          final List<URI> needs = referencedNewConcepts(added.parsed());
+          final OntologyChangeOperation operation =
+              operation(OntologyChangeOperationType.UPSERT_AXIOM, null)
+                  .withAxiom(axiom)
+                  .withRequiresConceptIris(needs.isEmpty() ? null : needs);
+          operations.add(operation);
+          items.add(
+              axiomItem(NativeOntologyImportItemStatus.NEW, added.parsed(), operation.getId())
+                  .withDependsOnIris(needs));
+        }
+        case Unchanged<OntologyAxiom> same -> items.add(
+            axiomItem(NativeOntologyImportItemStatus.ALREADY_EXISTS, same.parsed(), null));
+        case Rejected<OntologyAxiom> rejected -> items.add(
+            axiomItem(NativeOntologyImportItemStatus.SKIPPED, rejected.parsed(), null)
+                .withReason(rejected.reason()));
+        case Duplicate<OntologyAxiom> repeated -> items.add(
+            axiomItem(NativeOntologyImportItemStatus.DUPLICATE, repeated.parsed(), null)
+                .withReason(DUPLICATE_REASON));
+        case Updated<OntologyAxiom> ignored -> {}
       }
+    }
+
+    /** The concepts this import creates that the axiom states a fact about, in IRI order. */
+    private List<URI> referencedNewConcepts(final OntologyAxiom axiom) {
+      final Set<String> referenced = new TreeSet<>();
+      collectIris(axiom.getSubjectIri(), referenced);
+      collectIris(axiom.getTargetIri(), referenced);
+      listOrEmpty(axiom.getExpressions())
+          .forEach(expression -> collectIris(expression, referenced));
+      referenced.retainAll(newConceptIris);
+      return referenced.stream().map(URI::create).toList();
+    }
+
+    /** The concepts this import creates that the property names in its domain or range. */
+    private List<URI> referencedNewConcepts(final OntologyProperty property) {
+      final Set<String> referenced = new TreeSet<>();
+      listOrEmpty(property.getDomain()).forEach(iri -> collectIris(iri, referenced));
+      listOrEmpty(property.getRange()).forEach(iri -> collectIris(iri, referenced));
+      referenced.retainAll(newConceptIris);
+      return referenced.stream().map(URI::create).toList();
+    }
+
+    private static void collectIris(final URI iri, final Set<String> into) {
+      if (iri != null) {
+        into.add(iri.toString());
+      }
+    }
+
+    private static void collectIris(final OntologyExpression expression, final Set<String> into) {
+      if (expression == null) {
+        return;
+      }
+      collectIris(expression.getClassIri(), into);
+      collectIris(expression.getIndividualIri(), into);
+      listOrEmpty(expression.getIndividualIris()).forEach(iri -> collectIris(iri, into));
+      listOrEmpty(expression.getOperands()).forEach(operand -> collectIris(operand, into));
+      collectIris(expression.getFiller(), into);
+    }
+
+    /** Repeats of one id get a numbered suffix, so every id in a preview is unique. */
+    private String itemId(final String base) {
+      final int seen = idCounts.merge(base, 1, Integer::sum) - 1;
+      return seen == 0 ? base : base + "#" + seen;
+    }
+
+    private NativeOntologyImportItem item(
+        final NativeOntologyImportItemKind kind,
+        final NativeOntologyImportItemStatus status,
+        final OntologyDefinition definition) {
+      return new NativeOntologyImportItem()
+          .withId(itemId(kind.value().toLowerCase(Locale.ROOT) + ":" + iriOf(definition)))
+          .withKind(kind)
+          .withStatus(status)
+          .withLabel(shown(definition))
+          .withIri(iriOf(definition));
+    }
+
+    private NativeOntologyImportItem axiomItem(
+        final NativeOntologyImportItemStatus status,
+        final OntologyAxiom axiom,
+        final UUID operationId) {
+      return new NativeOntologyImportItem()
+          .withId(
+              itemId(
+                  "axiom:"
+                      + DigestUtils.sha256Hex(NativeOntologyDocument.signature(axiom))
+                          .substring(0, ITEM_DIGEST_LENGTH)))
+          .withKind(axiomKind(axiom))
+          .withStatus(status)
+          .withLabel(sentence(axiom))
+          .withIri(axiom.getSubjectIri() == null ? null : axiom.getSubjectIri().toString())
+          .withOperationId(operationId);
     }
 
     private <T extends OntologyDefinition> T identified(
         final Added<T> added, final Class<T> type, final Set<String> names) {
-      final String name = availableName(importedName(added.key()), names);
+      final String name =
+          availableName(
+              OntologyAxiom.class.equals(type)
+                  ? hashedName(added.key())
+                  : readableName(added.key()),
+              names);
       final T copy = JsonUtils.deepCopy(added.parsed(), type);
       copy.setId(UUID.randomUUID());
       copy.setName(name);
@@ -477,6 +1105,156 @@ public final class NativeOntologyRdfImporter {
       copy.setVersion(0.1);
       return copy;
     }
+
+    private String sentence(final OntologyAxiom axiom) {
+      final String subject = name(axiom.getSubjectIri());
+      return switch (axiom.getAxiomType()) {
+        case SUBCLASS_OF -> subject + " is a kind of " + expressions(axiom);
+        case EQUIVALENT_CLASS -> subject + " is equivalent to " + expressions(axiom);
+        case DISJOINT_WITH -> subject + " is disjoint with " + expressions(axiom);
+        case CLASS_ASSERTION -> subject + " is a " + expressions(axiom);
+        case OBJECT_PROPERTY_ASSERTION -> subject
+            + " "
+            + name(axiom.getPropertyIri())
+            + " "
+            + name(axiom.getTargetIri());
+        case DATA_PROPERTY_ASSERTION -> subject
+            + " "
+            + name(axiom.getPropertyIri())
+            + " \""
+            + axiom.getLiteral().getValue()
+            + "\"";
+      };
+    }
+
+    private String expressions(final OntologyAxiom axiom) {
+      return listOrEmpty(axiom.getExpressions()).stream()
+          .map(this::expression)
+          .collect(Collectors.joining(", "));
+    }
+
+    private String expression(final OntologyExpression expression) {
+      return switch (expression.getKind()) {
+        case NAMED_CLASS -> name(expression.getClassIri());
+        case INTERSECTION -> operands(expression, " and ");
+        case UNION -> operands(expression, " or ");
+        case ONE_OF -> "one of "
+            + listOrEmpty(expression.getIndividualIris()).stream()
+                .map(this::name)
+                .collect(Collectors.joining(", "));
+        case RESTRICTION -> name(expression.getPropertyIri())
+            + " "
+            + expression.getRestrictionKind().value().toLowerCase(Locale.ROOT)
+            + (expression.getCardinality() == null ? "" : " " + expression.getCardinality())
+            + (expression.getFiller() == null ? "" : " " + expression(expression.getFiller()))
+            + (expression.getIndividualIri() == null
+                ? ""
+                : " " + name(expression.getIndividualIri()))
+            + (expression.getLiteral() == null ? "" : " " + expression.getLiteral().getValue());
+      };
+    }
+
+    private String operands(final OntologyExpression expression, final String joiner) {
+      return listOrEmpty(expression.getOperands()).stream()
+          .map(this::expression)
+          .collect(Collectors.joining(joiner, "(", ")"));
+    }
+
+    private String name(final URI iri) {
+      return iri == null ? "" : labels.getOrDefault(iri.toString(), localName(iri.toString()));
+    }
+  }
+
+  private static NativeOntologyImportItemKind axiomKind(final OntologyAxiom axiom) {
+    final boolean named =
+        listOrEmpty(axiom.getExpressions()).stream()
+            .allMatch(
+                expression ->
+                    expression.getKind()
+                        == org.openmetadata.schema.type.OntologyExpressionKind.NAMED_CLASS);
+    return switch (axiom.getAxiomType()) {
+      case SUBCLASS_OF, CLASS_ASSERTION -> named
+          ? NativeOntologyImportItemKind.RELATIONSHIP
+          : NativeOntologyImportItemKind.RULE;
+      case OBJECT_PROPERTY_ASSERTION, DATA_PROPERTY_ASSERTION -> NativeOntologyImportItemKind
+          .RELATIONSHIP;
+      case EQUIVALENT_CLASS, DISJOINT_WITH -> NativeOntologyImportItemKind.RULE;
+    };
+  }
+
+  private static String conceptChanges(final OntologyConcept current, final OntologyConcept next) {
+    return changes(
+        change("Name", shown(current), shown(next), true),
+        change("Description", current.getDescription(), next.getDescription(), true),
+        change("Type", current.getConceptType(), next.getConceptType(), false),
+        change(
+            "Synonyms", setOrEmpty(current.getSynonyms()), setOrEmpty(next.getSynonyms()), false),
+        change("Abstract", flag(current.getAbstract()), flag(next.getAbstract()), false),
+        change(
+            "Mappings",
+            mappingKeys(current.getConceptMappings()),
+            mappingKeys(next.getConceptMappings()),
+            false),
+        change(
+            "Deprecation",
+            flag(current.getDeprecated()) + String.valueOf(current.getReplacedBy()),
+            flag(next.getDeprecated()) + String.valueOf(next.getReplacedBy()),
+            false));
+  }
+
+  private static String propertyChanges(
+      final OntologyProperty current, final OntologyProperty next) {
+    return changes(
+        change("Name", shown(current), shown(next), true),
+        change("Description", current.getDescription(), next.getDescription(), true),
+        change("Kind", current.getKind(), next.getKind(), false),
+        change("Domain", iriSet(current.getDomain()), iriSet(next.getDomain()), false),
+        change("Range", iriSet(current.getRange()), iriSet(next.getRange()), false),
+        change("Unit", current.getUnit(), next.getUnit(), false),
+        change(
+            "Characteristics",
+            setOrEmpty(current.getCharacteristics()),
+            setOrEmpty(next.getCharacteristics()),
+            false),
+        change("Inverse", iriText(current.getInverse()), iriText(next.getInverse()), false),
+        change(
+            "Superproperties",
+            iriSet(current.getSuperProperties()),
+            iriSet(next.getSuperProperties()),
+            false),
+        change(
+            "Deprecation",
+            flag(current.getDeprecated()) + String.valueOf(current.getReplacedBy()),
+            flag(next.getDeprecated()) + String.valueOf(next.getReplacedBy()),
+            false));
+  }
+
+  private static boolean flag(final Boolean value) {
+    return Boolean.TRUE.equals(value);
+  }
+
+  /** A changed field, with both values when a reader can use them. */
+  private static String change(
+      final String field, final Object current, final Object next, final boolean showValues) {
+    if (Objects.equals(current, next)) {
+      return null;
+    }
+    return showValues
+        ? field
+            + ": "
+            + (current == null ? "none" : current)
+            + " → "
+            + (next == null ? "none" : next)
+        : field;
+  }
+
+  private static String changes(final String... changed) {
+    return Stream.of(changed).filter(Objects::nonNull).collect(Collectors.joining("; "));
+  }
+
+  private static String localName(final String iri) {
+    return iri.substring(
+        Math.max(iri.lastIndexOf('/'), Math.max(iri.lastIndexOf('#'), iri.lastIndexOf(':'))) + 1);
   }
 
   private static <T> void unique(final Map<String, T> index, final String iri, final T value) {
@@ -485,11 +1263,13 @@ public final class NativeOntologyRdfImporter {
     }
   }
 
+  /** Names compare ignoring case, so a database collation cannot see a clash the plan missed. */
   private static String availableName(final String name, final Set<String> used) {
-    if (!used.add(name)) {
-      throw new BadRequestException("An imported definition name conflicts with an existing name");
+    String candidate = name;
+    for (int attempt = 2; !used.add(candidate.toLowerCase(Locale.ROOT)); attempt++) {
+      candidate = name + "-" + attempt;
     }
-    return name;
+    return candidate;
   }
 
   private static OntologyChangeOperation operation(
@@ -502,12 +1282,17 @@ public final class NativeOntologyRdfImporter {
         .withBaseVersion(current == null ? null : current.getVersion());
   }
 
-  private static String importedName(final String value) {
-    final int separator = Math.max(value.lastIndexOf('/'), value.lastIndexOf('#'));
-    final String local = value.substring(separator + 1).replaceAll("[^A-Za-z0-9_-]", "-");
-    final String stem =
-        local.isBlank() ? "definition" : local.substring(0, Math.min(40, local.length()));
-    return "imported-" + stem + "-" + DigestUtils.sha256Hex(value);
+  private static String readableName(final String iri) {
+    final String local =
+        localName(iri).replaceAll("[^A-Za-z0-9_-]+", "-").replaceAll("^-+|-+$", "");
+    return local.isBlank()
+        ? "definition"
+        : local.substring(0, Math.min(MAX_NAME_LENGTH, local.length()));
+  }
+
+  /** Axioms have no name worth reading, so theirs stays a digest of what they state. */
+  private static String hashedName(final String key) {
+    return "imported-axiom-" + DigestUtils.sha256Hex(key);
   }
 
   private static void overlayLabel(
@@ -553,6 +1338,7 @@ public final class NativeOntologyRdfImporter {
             .toList()
             .equals(listOrEmpty(b.getPropertyChain()).stream().map(URI::toString).toList())
         && iriSet(a.getDisjointWith()).equals(iriSet(b.getDisjointWith()))
+        && iriSet(a.getSuperProperties()).equals(iriSet(b.getSuperProperties()))
         && sameDeprecation(
             a.getDeprecated(), a.getReplacedBy(), b.getDeprecated(), b.getReplacedBy());
   }
@@ -607,450 +1393,15 @@ public final class NativeOntologyRdfImporter {
     return literal.getValue() + "^^" + (XSD.xstring.getURI().equals(datatype) ? null : datatype);
   }
 
-  private static String label(final OntologyDefinition value) {
-    return value.getDisplayName() == null ? value.getName() : value.getDisplayName();
+  /** What a reader calls a definition: its label, else its name, else the end of its IRI. */
+  private static String shown(final OntologyDefinition value) {
+    if (value.getDisplayName() != null) {
+      return value.getDisplayName();
+    }
+    return value.getName() != null ? value.getName() : localName(iriOf(value));
   }
 
-  private static final class Reader {
-    private final Model model;
-    private final Set<Statement> remaining;
-    private final OntologyExpressionRdfReader expressions;
-    private final Map<Statement, List<String>> sources = new HashMap<>();
-    private boolean nativeExport;
-    private String versionIri;
-    private NativeOntologyDocument.Header header;
-
-    private Reader(final Model model) {
-      this.model = model;
-      remaining = new LinkedHashSet<>(model.listStatements().toList());
-      expressions = new OntologyExpressionRdfReader(model, remaining);
-    }
-
-    private NativeOntologyDocument read() {
-      headers();
-      annotations();
-      final List<OntologyConcept> concepts = concepts();
-      final List<OntologyProperty> properties = properties();
-      final List<OntologyAxiom> axioms = axioms(properties);
-      references();
-      if (!remaining.isEmpty()) {
-        final Statement unsupported = remaining.iterator().next();
-        throw new BadRequestException(
-            "Unsupported RDF statement: " + diagnostic(unsupported.toString()));
-      }
-      return new NativeOntologyDocument(header, concepts, properties, axioms);
-    }
-
-    private static String diagnostic(final String value) {
-      return value.length() > 200 ? value.substring(0, 200) + "…" : value;
-    }
-
-    private void headers() {
-      if (model.contains(null, OWL2.imports)) {
-        throw new BadRequestException("owl:imports is not supported by native import");
-      }
-      final List<Resource> declared =
-          model.listSubjectsWithProperty(RDF.type, OWL2.Ontology).toList();
-      for (final Resource subject : declared) {
-        expressions.takeType(subject, OWL2.Ontology);
-        final NativeOntologyDocument.Header parsed =
-            new NativeOntologyDocument.Header(
-                subject.isURIResource() ? URI.create(subject.getURI()) : null,
-                text(subject, RDFS.label),
-                text(subject, RDFS.comment));
-        header = declared.size() == 1 ? parsed : null;
-        final RDFNode version = expressions.one(subject, OWL2.versionIRI);
-        if (version != null) {
-          versionIri = OntologyExpressionRdfReader.iri(version).toString();
-        }
-      }
-    }
-
-    private void annotations() {
-      for (final Resource annotation :
-          model.listSubjectsWithProperty(RDF.type, OWL2.Axiom).toList()) {
-        expressions.takeType(annotation, OWL2.Axiom);
-        final Resource source =
-            resource(
-                expressions.require(annotation, OWL2.annotatedSource),
-                "RDF axiom source must be a resource");
-        final URI predicate =
-            OntologyExpressionRdfReader.iri(
-                expressions.require(annotation, OWL2.annotatedProperty));
-        final RDFNode target = expressions.require(annotation, OWL2.annotatedTarget);
-        final RDFNode hint = expressions.one(annotation, DCTerms.source);
-        final Statement base =
-            model.createStatement(source, model.createProperty(predicate.toString()), target);
-        if (!model.contains(base)) {
-          throw new BadRequestException(
-              "RDF axiom annotation does not describe an asserted triple");
-        }
-        if (hint != null) {
-          sources
-              .computeIfAbsent(base, ignored -> new ArrayList<>())
-              .add(OntologyExpressionRdfReader.iri(hint).toString());
-          nativeExport |=
-              versionIri != null
-                  && OntologyExpressionRdfReader.iri(hint).toString().startsWith(versionIri + ":");
-        }
-      }
-    }
-
-    private List<OntologyConcept> concepts() {
-      final Set<Resource> subjects = new LinkedHashSet<>();
-      subjects.addAll(model.listSubjectsWithProperty(RDF.type, OWL2.Class).toList());
-      subjects.addAll(model.listSubjectsWithProperty(RDF.type, SKOS.Concept).toList());
-      final List<OntologyConcept> parsed = new ArrayList<>();
-      for (final Resource subject : subjects) {
-        if (!subject.isURIResource()
-            || OwlEntityDeclarations.isReservedVocabulary(subject.getURI())
-            || (nativeExport && !model.contains(subject, RDFS.label) && referenced(subject))) {
-          continue;
-        }
-        final boolean owl = expressions.takeType(subject, OWL2.Class);
-        final boolean skos = expressions.takeType(subject, SKOS.Concept);
-        if (skos) {
-          expressions.takeType(subject, OWL2.NamedIndividual);
-        }
-        final OntologyConcept concept =
-            new OntologyConcept()
-                .withIri(URI.create(subject.getURI()))
-                .withConceptType(
-                    owl && skos
-                        ? OntologyConceptType.BOTH
-                        : owl ? OntologyConceptType.OWL_CLASS : OntologyConceptType.SKOS_CONCEPT)
-                .withDisplayName(conceptText(subject, SKOS.prefLabel, RDFS.label))
-                .withDescription(conceptText(subject, SKOS.definition, RDFS.comment))
-                .withAbstract(flag(subject, OntologyRdfVocabulary.ABSTRACT))
-                .withDefinitionSource(optionalIri(expressions.one(subject, DCTerms.source)))
-                .withDeprecated(flag(subject, OWL2.deprecated))
-                .withReplacedBy(optionalIri(expressions.one(subject, DCTerms.isReplacedBy)));
-        final Set<String> synonyms = new LinkedHashSet<>();
-        for (final RDFNode synonym : takeAll(subject, SKOS.altLabel)) {
-          synonyms.add(string(synonym));
-        }
-        concept.withSynonyms(synonyms);
-        final List<ConceptMapping> mappings = new ArrayList<>();
-        for (final var kind : ConceptMapping.ConceptMappingType.values()) {
-          final Property predicate = OntologyRdfVocabulary.mapping(kind);
-          for (final RDFNode target : takeAll(subject, predicate)) {
-            mappings.add(
-                new ConceptMapping()
-                    .withMappingType(kind)
-                    .withConceptIri(OntologyExpressionRdfReader.iri(target)));
-          }
-        }
-        concept.withConceptMappings(mappings);
-        parsed.add(concept);
-      }
-      return parsed;
-    }
-
-    private List<OntologyProperty> properties() {
-      final List<OntologyProperty> parsed = new ArrayList<>();
-      for (final OntologyPropertyKind kind : OntologyPropertyKind.values()) {
-        final Resource type =
-            switch (kind) {
-              case OBJECT -> OWL2.ObjectProperty;
-              case DATA -> OWL2.DatatypeProperty;
-              case ANNOTATION -> OWL2.AnnotationProperty;
-            };
-        for (final Resource subject : model.listSubjectsWithProperty(RDF.type, type).toList()) {
-          if (!subject.isURIResource()
-              || OwlEntityDeclarations.isReservedVocabulary(subject.getURI())
-              || OntologyRdfVocabulary.ANNOTATIONS.contains(subject)
-              || (nativeExport && !model.contains(subject, RDFS.label) && referenced(subject))) {
-            continue;
-          }
-          expressions.takeType(subject, type);
-          final OntologyProperty property =
-              new OntologyProperty()
-                  .withIri(URI.create(subject.getURI()))
-                  .withKind(kind)
-                  .withDisplayName(text(subject, RDFS.label))
-                  .withDescription(text(subject, RDFS.comment))
-                  .withDomain(iris(subject, RDFS.domain))
-                  .withInverse(optionalIri(expressions.one(subject, OWL2.inverseOf)))
-                  .withDisjointWith(iris(subject, OWL2.propertyDisjointWith))
-                  .withUnit(text(subject, OntologyRdfVocabulary.UNIT))
-                  .withDeprecated(flag(subject, OWL2.deprecated))
-                  .withReplacedBy(optionalIri(expressions.one(subject, DCTerms.isReplacedBy)));
-          final RDFNode identifier =
-              expressions.one(subject, OntologyRdfVocabulary.IDENTIFIER_INTENT);
-          property.withIsIdentifier(identifier != null && booleanValue(identifier));
-          final Set<RelationshipCharacteristic> characteristics = new LinkedHashSet<>();
-          for (final RelationshipCharacteristic characteristic :
-              RelationshipCharacteristic.values()) {
-            if (expressions.takeType(
-                subject, OntologyRdfVocabulary.characteristic(characteristic))) {
-              characteristics.add(characteristic);
-            }
-          }
-          property.withCharacteristics(characteristics);
-          final RDFNode chain = expressions.one(subject, OWL2.propertyChainAxiom);
-          property.withPropertyChain(
-              chain == null
-                  ? List.of()
-                  : expressions.list(chain, 0).stream()
-                      .map(OntologyExpressionRdfReader::iri)
-                      .toList());
-          final List<URI> ranges = new ArrayList<>();
-          final List<OntologyLiteral> enums = new ArrayList<>();
-          for (final RDFNode range : takeAll(subject, RDFS.range)) {
-            final Resource value = resource(range, "Property range must be a resource");
-            if (model.contains(value, OWL2.equivalentClass) || model.contains(value, OWL2.oneOf)) {
-              final Resource enumeration;
-              if (value.isURIResource()) {
-                if (!nativeExport
-                    || versionIri == null
-                    || !value
-                        .getURI()
-                        .matches(Pattern.quote(versionIri) + ":PROPERTY:[0-9a-fA-F-]{36}:values")) {
-                  throw new BadRequestException(
-                      "A named data enumeration cannot preserve its datatype IRI");
-                }
-                expressions.takeType(value, RDFS.Datatype);
-                enumeration =
-                    resource(
-                        expressions.require(value, OWL2.equivalentClass),
-                        "Data enumeration must be a resource");
-              } else {
-                enumeration = value;
-              }
-              expressions.takeType(enumeration, RDFS.Datatype);
-              for (final RDFNode item :
-                  expressions.list(expressions.require(enumeration, OWL2.oneOf), 0)) {
-                if (!item.isLiteral()) {
-                  throw new BadRequestException("A data enumeration requires literal values");
-                }
-                enums.add(OntologyExpressionRdfReader.literal(item.asLiteral()));
-              }
-            } else {
-              ranges.add(OntologyExpressionRdfReader.iri(range));
-            }
-          }
-          property.withRange(ranges).withEnumValues(enums);
-          parsed.add(property);
-        }
-      }
-      NativeOntologyDocument.linkInverses(parsed);
-      return parsed;
-    }
-
-    private List<OntologyAxiom> axioms(final List<OntologyProperty> properties) {
-      final Map<String, OntologyAxiom> grouped = new LinkedHashMap<>();
-      final Map<String, OntologyPropertyKind> kinds = new HashMap<>();
-      model
-          .listSubjectsWithProperty(RDF.type, OWL2.ObjectProperty)
-          .forEachRemaining(property -> kinds.put(property.getURI(), OntologyPropertyKind.OBJECT));
-      model
-          .listSubjectsWithProperty(RDF.type, OWL2.DatatypeProperty)
-          .forEachRemaining(property -> kinds.put(property.getURI(), OntologyPropertyKind.DATA));
-      properties.forEach(property -> kinds.put(property.getIri().toString(), property.getKind()));
-      for (final Statement statement : List.copyOf(remaining)) {
-        if (!remaining.contains(statement) || !statement.getSubject().isURIResource()) {
-          continue;
-        }
-        final Property predicate = statement.getPredicate();
-        final OntologyPropertyKind propertyKind = assertionPropertyKind(predicate.getURI(), kinds);
-        final OntologyAxiomType type =
-            predicate.equals(RDFS.subClassOf)
-                ? OntologyAxiomType.SUBCLASS_OF
-                : predicate.equals(OWL2.equivalentClass)
-                    ? OntologyAxiomType.EQUIVALENT_CLASS
-                    : predicate.equals(OWL2.disjointWith)
-                        ? OntologyAxiomType.DISJOINT_WITH
-                        : predicate.equals(RDF.type) && isClassExpression(statement.getObject())
-                            ? OntologyAxiomType.CLASS_ASSERTION
-                            : propertyKind == OntologyPropertyKind.OBJECT
-                                ? OntologyAxiomType.OBJECT_PROPERTY_ASSERTION
-                                : propertyKind == OntologyPropertyKind.DATA
-                                    ? OntologyAxiomType.DATA_PROPERTY_ASSERTION
-                                    : null;
-        if (type == null) {
-          continue;
-        }
-        remaining.remove(statement);
-        final List<String> hints = sources.getOrDefault(statement, List.of(statement.toString()));
-        for (final String hint : hints) {
-          final String key =
-              type
-                  + ":"
-                  + statement.getSubject().getURI()
-                  + ":"
-                  + hint
-                  + (type == OntologyAxiomType.OBJECT_PROPERTY_ASSERTION
-                          || type == OntologyAxiomType.DATA_PROPERTY_ASSERTION
-                          || type == OntologyAxiomType.CLASS_ASSERTION
-                      ? ":" + statement
-                      : "");
-          final OntologyAxiom axiom =
-              grouped.computeIfAbsent(
-                  key,
-                  ignored ->
-                      new OntologyAxiom()
-                          .withAxiomType(type)
-                          .withSubjectIri(URI.create(statement.getSubject().getURI()))
-                          .withExpressions(new ArrayList<>()));
-          switch (type) {
-            case SUBCLASS_OF, EQUIVALENT_CLASS, DISJOINT_WITH, CLASS_ASSERTION -> axiom
-                .getExpressions()
-                .add(expressions.read(statement.getObject()));
-            case OBJECT_PROPERTY_ASSERTION -> axiom
-                .withPropertyIri(URI.create(predicate.getURI()))
-                .withTargetIri(OntologyExpressionRdfReader.iri(statement.getObject()));
-            case DATA_PROPERTY_ASSERTION -> {
-              if (!statement.getObject().isLiteral()) {
-                throw new BadRequestException("Data property assertion requires a literal");
-              }
-              axiom
-                  .withPropertyIri(URI.create(predicate.getURI()))
-                  .withLiteral(OntologyExpressionRdfReader.literal(statement.getLiteral()));
-            }
-          }
-        }
-      }
-      return List.copyOf(grouped.values());
-    }
-
-    private static OntologyPropertyKind assertionPropertyKind(
-        final String iri, final Map<String, OntologyPropertyKind> kinds) {
-      return switch (OwlEntityDeclarations.vocabularyKind(iri)) {
-        case OBJECT_PROPERTY -> OntologyPropertyKind.OBJECT;
-        case DATA_PROPERTY -> OntologyPropertyKind.DATA;
-        case null -> kinds.get(iri);
-        default -> null;
-      };
-    }
-
-    private boolean isClassExpression(final RDFNode node) {
-      return node.isAnon()
-          || (node.isURIResource()
-              && (model.contains(node.asResource(), RDF.type, OWL2.Class)
-                  || model.contains(node.asResource(), RDF.type, SKOS.Concept)
-                  || OwlEntityDeclarations.vocabularyKind(node.asResource().getURI())
-                      == OwlEntityDeclarations.EntityKind.CLASS));
-    }
-
-    private void references() {
-      for (final Statement statement : List.copyOf(remaining)) {
-        if (!statement.getPredicate().equals(RDF.type)
-            || !statement.getSubject().isURIResource()
-            || !statement.getObject().isURIResource()) {
-          continue;
-        }
-        final Resource type = statement.getResource();
-        if ((OwlEntityDeclarations.isReservedVocabulary(statement.getSubject().getURI())
-                || OntologyRdfVocabulary.ANNOTATIONS.contains(statement.getSubject())
-                || referenced(statement.getSubject())
-                || usedAsPredicate(statement.getSubject())
-                || usedAsAssertionSubject(statement.getSubject()))
-            && Set.of(
-                    OWL2.Class,
-                    OWL2.NamedIndividual,
-                    OWL2.ObjectProperty,
-                    OWL2.DatatypeProperty,
-                    OWL2.AnnotationProperty,
-                    RDFS.Datatype)
-                .contains(type)) {
-          remaining.remove(statement);
-        }
-      }
-    }
-
-    private boolean referenced(final Resource subject) {
-      return model.listStatements(null, null, subject).hasNext();
-    }
-
-    private boolean usedAsPredicate(final Resource subject) {
-      return subject.isURIResource()
-          && model
-              .listStatements(null, model.createProperty(subject.getURI()), (RDFNode) null)
-              .toList()
-              .stream()
-              .anyMatch(statement -> !remaining.contains(statement));
-    }
-
-    private boolean usedAsAssertionSubject(final Resource subject) {
-      return model.listStatements(subject, null, (RDFNode) null).toList().stream()
-          .anyMatch(
-              statement ->
-                  !statement.getPredicate().equals(RDF.type) && !remaining.contains(statement));
-    }
-
-    private List<RDFNode> takeAll(final Resource subject, final Property predicate) {
-      final List<Statement> statements =
-          model.listStatements(subject, predicate, (RDFNode) null).toList();
-      statements.forEach(remaining::remove);
-      return statements.stream().map(Statement::getObject).toList();
-    }
-
-    private List<URI> iris(final Resource subject, final Property predicate) {
-      return takeAll(subject, predicate).stream().map(OntologyExpressionRdfReader::iri).toList();
-    }
-
-    private String text(final Resource subject, final Property predicate) {
-      final RDFNode value = expressions.one(subject, predicate);
-      return value == null ? null : string(value);
-    }
-
-    private String conceptText(
-        final Resource subject, final Property skosPredicate, final Property rdfsPredicate) {
-      final String skosText = text(subject, skosPredicate);
-      final String rdfsText = text(subject, rdfsPredicate);
-      if (skosText != null && rdfsText != null && !skosText.equals(rdfsText)) {
-        throw new BadRequestException(
-            "Conflicting concept annotations: " + skosPredicate + " and " + rdfsPredicate);
-      }
-      return skosText == null ? rdfsText : skosText;
-    }
-
-    private static String string(final RDFNode value) {
-      if (!value.isLiteral()
-          || !value.asLiteral().getLanguage().isEmpty()
-          || (value.asLiteral().getDatatypeURI() != null
-              && !XSD.xstring.getURI().equals(value.asLiteral().getDatatypeURI()))) {
-        throw new BadRequestException("Expected a plain RDF literal");
-      }
-      return value.asLiteral().getLexicalForm();
-    }
-
-    private static URI optionalIri(final RDFNode value) {
-      return value == null ? null : OntologyExpressionRdfReader.iri(value);
-    }
-
-    private boolean flag(final Resource subject, final Property predicate) {
-      final RDFNode value = expressions.one(subject, predicate);
-      if (value == null) {
-        return false;
-      }
-      final String lexical =
-          value.isLiteral() && XSD.xboolean.getURI().equals(value.asLiteral().getDatatypeURI())
-              ? value.asLiteral().getLexicalForm()
-              : "";
-      return switch (lexical) {
-        case "true", "1" -> true;
-        case "false", "0" -> false;
-        default -> throw new BadRequestException(
-            predicate.getURI() + " requires an xsd:boolean value");
-      };
-    }
-
-    private static boolean booleanValue(final RDFNode value) {
-      if (!value.isLiteral()
-          || !value.asLiteral().getLanguage().isEmpty()
-          || !XSD.xboolean.getURI().equals(value.asLiteral().getDatatypeURI())
-          || !"true".equals(value.asLiteral().getLexicalForm())) {
-        throw new BadRequestException("Identifier intent must be true");
-      }
-      return true;
-    }
-
-    private static Resource resource(final RDFNode value, final String message) {
-      if (!value.isResource()) {
-        throw new BadRequestException(message);
-      }
-      return value.asResource();
-    }
+  private static String label(final OntologyDefinition value) {
+    return value.getDisplayName() == null ? value.getName() : value.getDisplayName();
   }
 }

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { MetricDetailsClassBase } from './MetricDetailsClassBase';
 
@@ -63,6 +66,21 @@ describe('MetricDetailsClassBase', () => {
       DetailPageWidgetKeys.METRIC_HIERARCHY,
       DetailPageWidgetKeys.METRIC_DEFINITION,
     ]);
+  });
+
+  it('shows and offers the Reviewers widget so approval-workflow reviewers are editable', () => {
+    const layout = metricDetails.getDefaultLayout(EntityTabs.OVERVIEW);
+    const widgetKeys = metricDetails
+      .getCommonWidgetList()
+      .map((widget) => widget.fullyQualifiedName);
+
+    expect(
+      layout.some(({ i }) => i === GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ).toBe(true);
+    expect(widgetKeys).toContain(GlossaryTermDetailPageWidgetKeys.REVIEWER);
+    expect(
+      metricDetails.getWidgetHeight(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ).toBe(2);
   });
 
   it('does not offer dimensions or measures in the customization widget list', () => {

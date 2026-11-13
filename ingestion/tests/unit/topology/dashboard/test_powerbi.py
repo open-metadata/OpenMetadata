@@ -17,6 +17,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -714,8 +715,7 @@ class PowerBIUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def __init__(self, methodName, create_connection, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, create_connection, test_connection) -> None:
         create_connection.return_value.client = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
@@ -1839,6 +1839,55 @@ class PowerBIUnitTest(TestCase):
         assert result is not None
         tables = {t["table"] for t in result}
         assert tables == {"first_table", "second_table"}
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_string_literals(self):
+        """
+        `--` inside a string literal is not a comment
+        """
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            wraps=LineageParser,
+        ) as parser_spy:
+            result = self.powerbi._extract_tables_from_sql(
+                "SELECT id#(lf)FROM orders#(lf)WHERE note = 'a--b'#(lf)  AND status = 1",
+                "MyDb",
+                "server",
+            )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+        assert "'a--b'" in parser_spy.call_args.args[0]
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_bracketed_identifiers(self):
+        """
+        `--` inside a [bracketed identifier] is not a comment
+        """
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            wraps=LineageParser,
+        ) as parser_spy:
+            result = self.powerbi._extract_tables_from_sql(
+                "SELECT [a--b]#(lf)FROM dbo.orders",
+                "MyDb",
+                "server",
+            )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+        assert "[a--b]" in parser_spy.call_args.args[0]
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_block_comments(self):
+        """
+        `--` inside a /* block comment */ does not hide the rest of the query
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT o.id#(lf)FROM dbo.orders o /* -- legacy */#(lf)JOIN dbo.customers c ON c.id = o.customer_id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders", "customers"}
 
     @pytest.mark.order(41)
     def test_create_dataflow_table_lineage(self):

@@ -130,7 +130,8 @@ test.describe('BigQuery sharded table identity', { tag: '@Discovery' }, () => {
   });
 
   for (const enabled of [true, false]) {
-    test(`persists metadata grouping enabled=${enabled}`, async ({
+    // Saving deploys the pipeline, so these cases need the Airflow-backed lane.
+    test(`persists metadata grouping enabled=${enabled} @ingestion`, async ({
       adminPage,
       browser,
     }) => {

@@ -10,7 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Headphones01,
+  IconProps,
+  Image01,
+  StickyNote,
+  Table,
+  TextEditorAttachment,
+  TextEditorCode,
+  TextEditorMention,
+  VideoRecorder,
+} from '@openmetadata/ui-core-components/icons';
 import type { Editor, Range } from '@tiptap/core';
+import type { FC } from 'react';
 import HashtagImage from '../../../../assets/img/ic-format-hashtag.png';
 import MathEquationImage from '../../../../assets/img/ic-format-math-equation.png';
 import BulletListImage from '../../../../assets/img/ic-slash-bullet-list.png';
@@ -22,15 +34,9 @@ import NumberedListImage from '../../../../assets/img/ic-slash-numbered-list.png
 import QuoteImage from '../../../../assets/img/ic-slash-quote.png';
 import TextImage from '../../../../assets/img/ic-slash-text.png';
 import TaskListIcon from '../../../../assets/img/ic-task-list.png';
-import IconFormatAttachment from '../../../../assets/svg/ic-format-attachment.svg';
-import IconFormatAudio from '../../../../assets/svg/ic-format-audio.svg';
-import IconFormatCallout from '../../../../assets/svg/ic-format-callout.svg';
-import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
-import IconFormatImage from '../../../../assets/svg/ic-format-image.svg';
-import IconTable from '../../../../assets/svg/ic-format-table.svg';
-import IconFormatVideo from '../../../../assets/svg/ic-format-video.svg';
-import MentionImage from '../../../../assets/svg/ic-mentions.svg';
 import { FileType } from '../../BlockEditor.interface';
+
+const MUTED_ICON_CLASS = 'tw:text-utility-gray-500';
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = 'Basic',
@@ -46,7 +52,9 @@ export interface SuggestionItem {
   title: string;
   description: string;
   type: SuggestionItemType;
-  imgSrc: string;
+  imgSrc?: string;
+  Icon?: FC<IconProps>;
+  iconClassName?: string;
   searchTerms: string[];
   command: (props: CommandProps) => void;
   isFileCommand?: boolean;
@@ -155,7 +163,7 @@ export const getSuggestionItems = (props: {
       type: SuggestionItemType.ADVANCED_BLOCKS,
       command: ({ editor, range }) =>
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
-      imgSrc: CodeBlockImage,
+      Icon: TextEditorCode,
       searchTerms: ['codeblock'],
       isSvg: true,
     },
@@ -182,7 +190,7 @@ export const getSuggestionItems = (props: {
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).insertContent('@').run();
       },
-      imgSrc: MentionImage,
+      Icon: TextEditorMention,
       searchTerms: ['user', 'mention'],
       isSvg: true,
     },
@@ -215,7 +223,8 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatImage,
+      Icon: Image01,
+      iconClassName: MUTED_ICON_CLASS,
       searchTerms: ['image', 'media'],
     },
     {
@@ -236,7 +245,8 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatVideo,
+      Icon: VideoRecorder,
+      iconClassName: MUTED_ICON_CLASS,
       searchTerms: ['video', 'media', 'player'],
       isFileCommand: true,
       isSvg: true,
@@ -259,7 +269,8 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatAudio,
+      Icon: Headphones01,
+      iconClassName: MUTED_ICON_CLASS,
       searchTerms: ['audio', 'sound', 'music'],
       isFileCommand: true,
       isSvg: true,
@@ -282,7 +293,8 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatAttachment,
+      Icon: TextEditorAttachment,
+      iconClassName: MUTED_ICON_CLASS,
       searchTerms: ['file', 'attachment', 'document'],
       isFileCommand: true,
       isSvg: true,
@@ -305,7 +317,7 @@ export const getSuggestionItems = (props: {
         editor.chain().focus().deleteRange(range).toggleCallout({}).run();
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
-      imgSrc: IconFormatCallout,
+      Icon: StickyNote,
       isSvg: true,
     },
     {
@@ -321,7 +333,7 @@ export const getSuggestionItems = (props: {
           .run();
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
-      imgSrc: IconTable,
+      Icon: Table,
       isSvg: true,
     },
     {

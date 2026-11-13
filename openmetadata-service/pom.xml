@@ -102,7 +102,7 @@
     <dependency>
       <groupId>org.glassfish.expressly</groupId>
       <artifactId>expressly</artifactId>
-      <version>5.0.0</version>
+      <version>6.0.0</version>
     </dependency>
     <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
     <dependency>
@@ -125,6 +125,10 @@
       <groupId>net.minidev</groupId>
       <artifactId>json-smart</artifactId>
       <version>${json-smart.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
     </dependency>
     <!-- Google OAuth Client Library -->
     <dependency>
@@ -688,7 +692,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20240303</version>
+      <version>20260719</version>
     </dependency>
     
     <dependency>
@@ -1058,6 +1062,14 @@
       <artifactId>jena-shacl</artifactId>
       <version>${jena.version}</version>
     </dependency>
+    <!-- Tests only: the TDB2 store Fuseki runs, so graph-replacement tests exercise its indexes.
+         jena-tdb2 does not pull jena-tdb1, whose static initialisation the note above avoids. -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-tdb2</artifactId>
+      <version>${jena.version}</version>
+      <scope>test</scope>
+    </dependency>
 
     <!-- Apache Calcite for SQL parsing -->
     <dependency>
@@ -1160,17 +1172,17 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-scratchpad</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
   </dependencies>
 

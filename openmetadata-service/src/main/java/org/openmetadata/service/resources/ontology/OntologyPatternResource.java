@@ -97,7 +97,7 @@ public final class OntologyPatternResource {
   private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_GLOSSARY_TERMS),
+        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL),
         new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository));
   }
 

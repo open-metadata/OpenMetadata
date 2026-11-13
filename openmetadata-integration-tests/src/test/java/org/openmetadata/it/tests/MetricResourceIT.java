@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,6 +37,7 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.ShortStackFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -78,6 +80,7 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
@@ -990,6 +993,53 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // HIERARCHY
   // ===================================================================
 
+  @Test
+  void patchCannotCopyAHiddenRelationIntoAReadableField(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String hiddenDescription = "Hidden parent description " + ns.uniqueShortId();
+    Metric hiddenParent =
+        createEntity(
+            createRequest(ns.prefix("copy_hidden_parent"), ns)
+                .withDescription(hiddenDescription)
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))));
+    Metric child = createChild(ns, "copy_visible_child", hiddenParent);
+
+    withRestrictedEditor(
+        ns,
+        new Rule()
+            .withName("DenyViewingRestrictedMetrics")
+            .withResources(List.of("metric", "metricGroup"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY),
+        editor -> {
+          assertNull(editor.metrics().get(child.getId().toString(), "parent").getParent());
+          for (String from : List.of("/parent/description", "/parent/name")) {
+            JsonNode copy =
+                JSON.createArrayNode()
+                    .add(
+                        JSON.createObjectNode()
+                            .put("op", "copy")
+                            .put("from", from)
+                            .put("path", "/description"));
+            try {
+              editor.metrics().patch(child.getId(), copy);
+            } catch (RuntimeException refused) {
+              // asserted below
+            }
+            String description =
+                editor.metrics().get(child.getId().toString(), "parent").getDescription();
+            assertFalse(
+                description.contains(hiddenDescription)
+                    || description.equals(hiddenParent.getName()),
+                "copy from " + from + " exposed the hidden parent: " + description);
+            assertApiStatus(400, () -> editor.metrics().patch(child.getId(), copy));
+          }
+        });
+    assertEquals(
+        "Child metric", admin.metrics().get(child.getId().toString(), "").getDescription());
+  }
+
   private Metric createChild(TestNamespace ns, String name, Metric parent) {
     return createEntity(
         new CreateMetric()
@@ -1140,7 +1190,8 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                           .put("op", "replace")
                           .put("path", "")
                           .set("value", JSON.valueToTree(rootDocument)));
-          assertApiStatus(403, () -> editor.metrics().patch(source.getId(), rootReplacePatch));
+          // A patch to the document root is refused for every type, before any hierarchy check.
+          assertApiStatus(400, () -> editor.metrics().patch(source.getId(), rootReplacePatch));
           assertNull(admin.metrics().get(source.getId().toString(), "parent").getParent());
 
           assertApiStatus(
@@ -1436,6 +1487,27 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     assertFalse(restored.getDeleted());
     assertNull(getWithHierarchy(child).getParent(), "A PUT without a parent restores a root");
+  }
+
+  @Test
+  void put_byBotChildOfDeletedParent_restoresItAsARoot(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("bot_orphan_parent"), ns));
+    Metric child = createChild(ns, "bot_orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    Metric restored =
+        SdkClients.ingestionBotClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metrics",
+                new CreateMetric().withName(child.getName()).withDescription("Child metric"),
+                Metric.class);
+
+    assertFalse(restored.getDeleted());
+    assertNull(getWithHierarchy(child).getParent(), "A bot PUT must not keep a deleted parent");
   }
 
   @Test
@@ -2617,6 +2689,301 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void put_reingestingRelatedMetricsIsANoOp(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.ingestionBotClient();
+    String referencedName = ns.prefix("reingested_referenced_metric");
+    String referencingName = ns.prefix("reingested_referencing_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(referencingName, ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    for (int run = 0; run < 2; run++) {
+      client
+          .getHttpClient()
+          .execute(HttpMethod.PUT, "/v1/metrics", createRequest(referencedName, ns), Metric.class);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/metrics",
+              createRequest(referencingName, ns)
+                  .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())),
+              Metric.class);
+    }
+
+    Metric fetchedReferenced =
+        getEntityWithFields(referenced.getId().toString(), "relatedMetrics,parent,childrenCount");
+    Metric fetchedReferencing =
+        getEntityWithFields(referencing.getId().toString(), "relatedMetrics,parent,childrenCount");
+    for (Metric fetched : List.of(fetchedReferenced, fetchedReferencing)) {
+      assertNull(fetched.getParent(), "A related metric must not become a hierarchy parent");
+      assertEquals(0, fetched.getChildrenCount());
+    }
+    assertEquals(referenced.getVersion(), fetchedReferenced.getVersion());
+    assertEquals(referencing.getVersion(), fetchedReferencing.getVersion());
+    assertEquals(
+        List.of(referencing.getId()),
+        fetchedReferenced.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(referenced.getId()),
+        fetchedReferencing.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void put_reingestingKeepsParentAndGroupSetInTheUi(TestNamespace ns) {
+    String parentName = ns.prefix("reingested_hierarchy_parent");
+    String childName = ns.prefix("reingested_hierarchy_child");
+    Metric parent = createEntity(createRequest(parentName, ns));
+    Metric child = createEntity(createRequest(childName, ns));
+    MetricGroup group =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metricGroups",
+                new CreateMetricGroup().withName(ns.prefix("reingested_hierarchy_group")),
+                MetricGroup.class);
+
+    Metric groupedParent = getEntityWithFields(parent.getId().toString(), "parent,metricGroup");
+    groupedParent.setMetricGroup(group.getEntityReference());
+    patchEntity(groupedParent.getId().toString(), groupedParent);
+    Metric parentedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    parentedChild.setParent(parent.getEntityReference());
+    patchEntity(parentedChild.getId().toString(), parentedChild);
+    Metric curatedParent = getEntityWithFields(parent.getId().toString(), "parent,metricGroup");
+    Metric curatedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    bot.getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(parentName, ns), Metric.class);
+    bot.getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(childName, ns), Metric.class);
+
+    Metric reingestedParent = getEntityWithFields(parent.getId().toString(), "parent,metricGroup");
+    Metric reingestedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    assertNotNull(reingestedParent.getMetricGroup(), "Re-ingestion removed the parent's group");
+    assertEquals(group.getId(), reingestedParent.getMetricGroup().getId());
+    assertNotNull(reingestedChild.getParent(), "Re-ingestion removed the child's parent");
+    assertEquals(parent.getId(), reingestedChild.getParent().getId());
+    assertNotNull(reingestedChild.getMetricGroup(), "Re-ingestion removed the child's group");
+    assertEquals(group.getId(), reingestedChild.getMetricGroup().getId());
+    assertEquals(curatedParent.getVersion(), reingestedParent.getVersion());
+    assertEquals(curatedChild.getVersion(), reingestedChild.getVersion());
+  }
+
+  @Test
+  void put_reingestingAParentKeepsTheChildAUserAddedUnderIt(TestNamespace ns) {
+    String parentName = ns.prefix("reingested_parent_of_manual_child");
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    Metric parent =
+        bot.getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/metrics", createRequest(parentName, ns), Metric.class);
+    Metric manualChild = createChild(ns, "manual_child_of_ingested_parent", parent);
+    Metric curatedParent = getWithHierarchy(parent);
+
+    bot.getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(parentName, ns), Metric.class);
+
+    Metric reingestedParent = getWithHierarchy(parent);
+    assertEquals(parent.getId(), getWithHierarchy(manualChild).getParent().getId());
+    assertEquals(1, reingestedParent.getChildrenCount());
+    assertEquals(
+        List.of(manualChild.getId()),
+        reingestedParent.getChildren().stream().map(EntityReference::getId).toList());
+    assertEquals(curatedParent.getVersion(), reingestedParent.getVersion());
+  }
+
+  @Test
+  void put_reingestingANewExpressionChangesOnlyTheExpression(TestNamespace ns) {
+    String metricName = ns.prefix("reingested_expression_metric");
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    Metric parent = createEntity(createRequest(ns.prefix("reingested_expression_parent"), ns));
+    Metric metric =
+        bot.getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metrics",
+                createRequest(metricName, ns)
+                    .withMetricExpression(
+                        new MetricExpression()
+                            .withCode("sum(revenue)")
+                            .withLanguage(MetricExpressionLanguage.SQL)),
+                Metric.class);
+    String curatedFields = "parent,reviewers,experts";
+    SharedEntities shared = SharedEntities.get();
+    Metric curated = getEntityWithFields(metric.getId().toString(), curatedFields);
+    curated.setParent(parent.getEntityReference());
+    curated.setDescription("Description a user wrote");
+    curated.setExperts(List.of(shared.USER2_REF));
+    patchEntity(curated.getId().toString(), curated);
+    patchMetricReviewers(metric.getId(), List.of(shared.USER1_REF));
+    Metric beforeRerun = getEntityWithFields(metric.getId().toString(), curatedFields);
+    assertEquals(List.of(shared.USER1_REF.getId()), ids(beforeRerun.getReviewers()));
+    assertEquals(List.of(shared.USER2_REF.getId()), ids(beforeRerun.getExperts()));
+
+    bot.getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics",
+            createRequest(metricName, ns)
+                .withDescription("Description the source sends")
+                .withMetricExpression(
+                    new MetricExpression()
+                        .withCode("sum(net_revenue)")
+                        .withLanguage(MetricExpressionLanguage.SQL)),
+            Metric.class);
+
+    Metric rerun = getEntityWithFields(metric.getId().toString(), curatedFields);
+    assertEquals("sum(net_revenue)", rerun.getMetricExpression().getCode());
+    assertEquals("Description a user wrote", rerun.getDescription());
+    assertEquals(parent.getId(), rerun.getParent().getId());
+    assertEquals(List.of(shared.USER1_REF.getId()), ids(rerun.getReviewers()));
+    assertEquals(List.of(shared.USER2_REF.getId()), ids(rerun.getExperts()));
+    assertEquals(beforeRerun.getEntityStatus(), rerun.getEntityStatus());
+    assertEquals(
+        List.of("metricExpression"),
+        rerun.getChangeDescription().getFieldsUpdated().stream()
+            .map(FieldChange::getName)
+            .toList());
+    assertTrue(listOrEmpty(rerun.getChangeDescription().getFieldsAdded()).isEmpty());
+    assertTrue(listOrEmpty(rerun.getChangeDescription().getFieldsDeleted()).isEmpty());
+  }
+
+  private static List<UUID> ids(List<EntityReference> references) {
+    return listOrEmpty(references).stream().map(EntityReference::getId).toList();
+  }
+
+  @Test
+  void put_byBotNamingAGroupMovesARootButNotAChild(TestNamespace ns) {
+    String rootName = ns.prefix("bot_group_root");
+    String childName = ns.prefix("bot_group_child");
+    MetricGroup storedGroup = createMetricGroup(ns.prefix("bot_group_stored"));
+    MetricGroup requestedGroup = createMetricGroup(ns.prefix("bot_group_requested"));
+    Metric root =
+        createEntity(
+            createRequest(rootName, ns).withMetricGroup(storedGroup.getFullyQualifiedName()));
+    Metric child = createEntity(createRequest(childName, ns));
+    Metric parentedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    parentedChild.setParent(root.getEntityReference());
+    patchEntity(parentedChild.getId().toString(), parentedChild);
+
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    bot.getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics",
+            createRequest(childName, ns).withMetricGroup(requestedGroup.getFullyQualifiedName()),
+            Metric.class);
+    Metric reingestedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    assertEquals(root.getId(), reingestedChild.getParent().getId());
+    assertEquals(storedGroup.getId(), reingestedChild.getMetricGroup().getId());
+
+    bot.getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics",
+            createRequest(rootName, ns).withMetricGroup(requestedGroup.getFullyQualifiedName()),
+            Metric.class);
+    Metric reingestedRoot = getEntityWithFields(root.getId().toString(), "parent,metricGroup");
+    assertEquals(requestedGroup.getId(), reingestedRoot.getMetricGroup().getId());
+  }
+
+  private MetricGroup createMetricGroup(String name) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metricGroups",
+            new CreateMetricGroup().withName(name),
+            MetricGroup.class);
+  }
+
+  @Test
+  void put_byUserReplacesRelatedMetrics(TestNamespace ns) {
+    String referencedName = ns.prefix("user_put_referenced_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(ns.prefix("user_put_referencing_metric"), ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(referencedName, ns), Metric.class);
+
+    assertNoRelatedMetrics(referenced);
+    assertNoRelatedMetrics(referencing);
+  }
+
+  @Test
+  void put_byBotNeverRemovesRelatedMetric(TestNamespace ns) throws Exception {
+    String referencedName = ns.prefix("bot_put_referenced_metric");
+    String referencingName = ns.prefix("bot_put_referencing_metric");
+    Metric referenced = createEntity(createRequest(referencedName, ns));
+    Metric referencing =
+        createEntity(
+            createRequest(referencingName, ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+    String botToken = BulkApi.botToken();
+
+    BulkOperationResult dropped =
+        BulkApi.upsert("metrics", List.of(createRequest(referencingName, ns)), false, botToken);
+    BulkOperationResult forceSynced =
+        BulkApi.upsert(
+            "metrics",
+            List.of(
+                createRequest(referencedName, ns),
+                createRequest(referencingName, ns)
+                    .withRelatedMetrics(List.of(referenced.getFullyQualifiedName()))),
+            true,
+            botToken);
+
+    assertEquals(0, dropped.getNumberOfRowsFailed());
+    assertEquals(0, forceSynced.getNumberOfRowsFailed());
+    assertEquals(
+        List.of(referenced.getId()),
+        getEntityWithFields(referencing.getId().toString(), "relatedMetrics")
+            .getRelatedMetrics()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+    assertEquals(
+        List.of(referencing.getId()),
+        getEntityWithFields(referenced.getId().toString(), "relatedMetrics")
+            .getRelatedMetrics()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
+  @Test
+  void patch_removesRelatedMetricFromBothSides(TestNamespace ns) {
+    Metric referenced = createEntity(createRequest(ns.prefix("patch_referenced_metric"), ns));
+    Metric referencing =
+        createEntity(
+            createRequest(ns.prefix("patch_referencing_metric"), ns)
+                .withRelatedMetrics(List.of(referenced.getFullyQualifiedName())));
+
+    Metric toPatch = getEntityWithFields(referencing.getId().toString(), "relatedMetrics");
+    toPatch.setRelatedMetrics(List.of());
+    patchEntity(referencing.getId().toString(), toPatch);
+
+    assertNoRelatedMetrics(referencing);
+    assertNoRelatedMetrics(referenced);
+  }
+
+  private void assertNoRelatedMetrics(Metric metric) {
+    assertTrue(
+        listOrEmpty(
+                getEntityWithFields(metric.getId().toString(), "relatedMetrics")
+                    .getRelatedMetrics())
+            .isEmpty(),
+        metric.getName() + " should have no related metrics");
+  }
+
+  @Test
   void inactiveAppliedToEdgeIsExcludedFromAssetReads(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Metric metric = createEntity(createRequest(ns.prefix("inactive_asset_metric"), ns));
@@ -3522,6 +3889,92 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(expectedAsset.getId().toString(), asset.path("asset").path("id").asText());
     assertEquals(expectedAsset.getType(), asset.path("asset").path("type").asText());
     assertEquals(expectedDirection, asset.path("direction").asText());
+  }
+
+  @Test
+  void approvalPreviewRefusesAMoveIntoAGroupTheCallerCannotEdit(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Metric source = createEntity(createRequest(ns.prefix("preview_source"), ns));
+    MetricGroup restrictedGroup =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/metricGroups",
+                new CreateMetricGroup()
+                    .withName(ns.prefix("preview_group"))
+                    .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))),
+                MetricGroup.class);
+    JsonNode describe =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/description")
+                    .put("value", "previewed"));
+    JsonNode moveIntoGroup =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/metricGroup")
+                    .set("value", JSON.valueToTree(restrictedGroup.getEntityReference())));
+
+    // The preview never went through the metric endpoint, so only the write's own check refuses it.
+    withRestrictedHierarchyDestinationEditor(
+        ns,
+        editor -> {
+          assertDoesNotThrow(() -> previewPatch(editor, source, describe));
+          assertApiStatus(403, () -> previewPatch(editor, source, moveIntoGroup));
+        });
+  }
+
+  @Test
+  void bulkPutRefusesOnlyTheMetricMovedIntoAGroupTheCallerCannotEdit(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Metric source = createEntity(createRequest(ns.prefix("bulk_move_source"), ns));
+    MetricGroup restrictedGroup =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/metricGroups",
+                new CreateMetricGroup()
+                    .withName(ns.prefix("bulk_move_group"))
+                    .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))),
+                MetricGroup.class);
+    String createdName = ns.prefix("bulk_move_created");
+
+    withRestrictedHierarchyDestinationEditor(
+        ns,
+        editor -> {
+          BulkOperationResult result =
+              editor
+                  .metrics()
+                  .bulkCreateOrUpdate(
+                      List.of(
+                          createRequest(source.getName(), ns)
+                              .withMetricGroup(restrictedGroup.getFullyQualifiedName()),
+                          createRequest(createdName, ns)));
+          assertEquals(1, result.getNumberOfRowsPassed());
+          assertEquals(1, result.getNumberOfRowsFailed());
+          assertEquals(403, result.getFailedRequest().getFirst().getStatus());
+        });
+
+    assertNull(admin.metrics().get(source.getId().toString(), "metricGroup").getMetricGroup());
+    assertDoesNotThrow(() -> admin.metrics().getByName(createdName));
+  }
+
+  private static String previewPatch(OpenMetadataClient client, Metric metric, JsonNode patch) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/preview/metric/" + metric.getId(),
+            patch.toString(),
+            RequestOptions.builder()
+                .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                .build());
   }
 
   private static void withRestrictedHierarchyDestinationEditor(

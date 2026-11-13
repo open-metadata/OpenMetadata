@@ -670,6 +670,7 @@ const BulkEditEntity = ({
       {changedCellCount > 0 && renderEditedBadge()}
       <div className="bulk-edit-toolbar-actions">
         <Input
+          autoComplete="off"
           className="bulk-edit-search"
           data-testid="bulk-edit-search"
           icon={BulkEditSearchIcon}

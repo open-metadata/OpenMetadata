@@ -118,6 +118,18 @@ public interface OntologyReferenceDAO {
       @Define("locking") String locking);
 
   @SqlQuery(
+      "SELECT a.json FROM ontology_axiom_entity a JOIN ontology_reference r "
+          + "ON r.sourceId = a.id AND r.ontologyId = a.ontologyId "
+          + "WHERE a.ontologyId = :ontologyId AND a.deleted = FALSE AND a.axiomType = 'DISJOINT_WITH' "
+          + "AND r.sourceType = 'ontologyAxiom' AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>) "
+          + "ORDER BY a.name, a.id LIMIT :limit <locking>")
+  List<String> disjointAxioms(
+      @BindUUID("ontologyId") UUID ontologyId,
+      @BindList("iriHashes") List<String> iriHashes,
+      @Bind("limit") int limit,
+      @Define("locking") String locking);
+
+  @SqlQuery(
       "SELECT p.json FROM ontology_property_entity p JOIN ontology_reference r "
           + "ON r.sourceId = p.id AND r.ontologyId = p.ontologyId "
           + "WHERE p.ontologyId = :ontologyId AND p.deleted = FALSE "

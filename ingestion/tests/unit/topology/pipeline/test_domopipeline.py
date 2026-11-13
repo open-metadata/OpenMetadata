@@ -235,8 +235,7 @@ class DomoPipelineUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, domo_client, test_connection) -> None:
         test_connection.return_value = False
         domo_client.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)

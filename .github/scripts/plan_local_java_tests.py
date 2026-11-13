@@ -16,6 +16,8 @@ whatever the planner cannot place runs more tests, never fewer.
     python .github/scripts/plan_local_java_tests.py                 # list + commands
     python .github/scripts/plan_local_java_tests.py --run           # run + write results
     python .github/scripts/plan_local_java_tests.py --run --update-pr
+    python .github/scripts/plan_local_java_tests.py --scope focused --run
+    python .github/scripts/plan_local_java_tests.py --publish-results
 
 See ``.github/java-tests/README.md`` for how tests are selected.
 """
@@ -24,7 +26,9 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
+import os
 import re
 import shlex
 import shutil
@@ -48,6 +52,7 @@ RESULTS_DIR = "target/java-tests"
 # class run, why it was chosen, the commands) goes in the details, posted as a PR comment.
 RESULTS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results.md"
 DETAILS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results-details.md"
+EVIDENCE_JSON = f"{RESULTS_DIR}/evidence.json"
 BLOCK_START = "<!-- local-java-test-results:start -->"
 BLOCK_END = "<!-- local-java-test-results:end -->"
 # Marks the details comment, so a re-run edits it rather than adding another.
@@ -139,6 +144,8 @@ class Command:
 @dataclass
 class Plan:
     changed_files: list[str]
+    scope: str = "full"
+    deferred_commands: list[Command] = field(default_factory=list)
     unit_tests: dict[str, dict[str, set[str]]] = field(default_factory=dict)
     full_unit_modules: dict[str, set[str]] = field(default_factory=dict)
     integration_tests: dict[str, Selection] = field(default_factory=dict)
@@ -163,6 +170,10 @@ class Plan:
 
     def to_json(self) -> dict[str, Any]:
         return {
+            "scope": self.scope,
+            "deferredCommands": [
+                display_command(c.argv) for c in self.deferred_commands
+            ],
             "changedFiles": self.changed_files,
             "unitTests": {
                 module: {
@@ -775,6 +786,7 @@ class Planner:
         add_areas: list[str] = (),
         changed_methods: dict[str, set[str]] | None = None,
         reason: str = "",
+        scope: str = "full",
     ) -> Plan:
         plan = Plan(changed_files=changed_files)
         for path in changed_files:
@@ -800,7 +812,54 @@ class Planner:
                 self._add_it(plan, relative, "full suite", set())
         self._drop_unrunnable(plan)
         plan.commands = self._commands(plan)
+        if scope == "focused":
+            return self._focused_plan(plan, add_its, add_units, add_areas, reason)
         return plan
+
+    def _focused_plan(
+        self,
+        broad: Plan,
+        add_its: list[str],
+        add_units: list[str],
+        add_areas: list[str],
+        reason: str,
+    ) -> Plan:
+        focused = Plan(broad.changed_files, scope="focused")
+        focused.unmapped_files = broad.unmapped_files
+        focused.untested_classes = broad.untested_classes
+        focused.not_run_locally = dict(broad.not_run_locally)
+        for path in broad.changed_files:
+            relative = path.removeprefix(self.repo.it_root + "/")
+            if (
+                path.startswith(self.repo.it_root + "/")
+                and relative in self.repo.it_classes
+            ):
+                self._add_it(focused, relative, "changed", self._engines_for(path))
+            module = self._unit_module(path)
+            name = simple_name(path)
+            if (
+                module
+                and "/src/test/java/" in path
+                and name in self.repo.unit_test_classes.get(module, {})
+            ):
+                self._add_unit(focused, module, name, "changed")
+            if "/src/main/java/" in path and path.endswith(".java"):
+                for owner, classes in self.repo.unit_test_classes.items():
+                    for candidate in (f"{name}Test", f"{name}Tests"):
+                        if candidate in classes:
+                            self._add_unit(focused, owner, candidate, f"tests {name}")
+        self._add_author_choices(focused, add_its, add_units, add_areas, reason)
+        self._drop_unrunnable(focused)
+        focused.commands = self._commands(focused)
+        selected = {tuple(c.argv) for c in focused.commands}
+        focused.deferred_commands = [
+            c for c in broad.commands if tuple(c.argv) not in selected
+        ]
+        if broad.commands and not focused.commands:
+            raise SystemExit(
+                "Focused scope found no runnable tests; select --add-it or --add-unit with --reason, or use --scope full."
+            )
+        return focused
 
     def _add_author_choices(
         self,
@@ -1767,6 +1826,11 @@ def check_branch(
 
 def print_plan(plan: Plan, planner: Planner) -> None:
     print(f"Changed files vs base: {len(plan.changed_files)}")
+    if plan.scope == "focused":
+        print(
+            "Scope: focused; merge readiness is not established. Use --scope full for broader coverage."
+        )
+        print(f"Broader steps deferred: {len(plan.deferred_commands)}")
     if not plan.has_tests():
         print(
             "\nNo impacted Java test runs locally."
@@ -1837,8 +1901,9 @@ def print_plan(plan: Plan, planner: Planner) -> None:
         for command in plan.commands:
             print(f"  # {command.kind}: {command.label}")
             print(f"  {shlex.join(command.argv)}")
-        print("\nOr run them all and record the results for the PR description:")
-        print('  make java_affected_run ARGS="--update-pr"')
+        print("\nRun this scope once, then publish saved results without rerunning:")
+        print(f'  make java_affected_run ARGS="--scope {plan.scope}"')
+        print('  make java_affected ARGS="--publish-results"')
 
 
 @dataclass
@@ -2334,6 +2399,10 @@ def render_block(
         lines.append(
             f"- [Details]({details_url}): the classes each step ran, why these tests, the commands"
         )
+    if plan.scope == "focused":
+        lines.append(
+            f"- Scope: focused; merge readiness is not established. Broader steps deferred: {len(plan.deferred_commands)} (run `--scope full`)."
+        )
     lines += [
         "",
         "| Step | Scope | Classes | Tests | Failed | Skipped | Min | Result |",
@@ -2395,6 +2464,9 @@ def render_details(
     ]
     lines += attention_lines(results, DETAILS_NAME_LIMIT)
     lines += render_tests_run(results)
+    if plan.deferred_commands:
+        lines += ["", "### Broader coverage not executed by this focused run", ""]
+        lines += [f"- `{display_command(c.argv)}`" for c in plan.deferred_commands]
 
     reasons = [
         f"- **full suite** ← {reason}"
@@ -2552,7 +2624,7 @@ def update_pr_body(
     if len(body) > GITHUB_BODY_LIMIT:
         raise SystemExit(
             f"The PR description would be {len(body):,} characters, over GitHub's limit of "
-            f"{GITHUB_BODY_LIMIT:,}. Shorten the rest of it, then re-run with --update-pr; "
+            f"{GITHUB_BODY_LIMIT:,}. Shorten the rest of it, then use --publish-results; "
             f"the block is in {RESULTS_MARKDOWN}."
         )
     with tempfile.NamedTemporaryFile(
@@ -2566,6 +2638,119 @@ def update_pr_body(
     )
     Path(body_file.name).unlink(missing_ok=True)
     print(f"Updated PR description: {pr['url']}")
+
+
+def evidence_fingerprint(repo_root: Path) -> str:
+    paths = [
+        "pom.xml",
+        ":(glob)**/pom.xml",
+        ".mvn",
+        "conf",
+        "bootstrap",
+        ":(glob)**/src/main/**",
+        ":(glob)**/src/test/**",
+        IMPACT_MAP,
+        ".github/scripts/plan_local_java_tests.py",
+    ]
+    digest = hashlib.sha256()
+    sources = git(
+        repo_root,
+        "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+        "--",
+        *paths,
+    )
+    for path in sorted(set(sources.splitlines())):
+        source = repo_root / path
+        if not source.is_file() or source.suffix == ".md":
+            continue
+        digest.update(path.encode())
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(source.read_bytes()).digest())
+    for name in (
+        "JAVA_HOME",
+        "JAVA_TOOL_OPTIONS",
+        "JDK_JAVA_OPTIONS",
+        "_JAVA_OPTIONS",
+        "MAVEN_OPTS",
+        "MAVEN_ARGS",
+        "MAVEN_HOME",
+        "M2_HOME",
+    ):
+        digest.update(f"{name}={os.environ.get(name, '')}\0".encode())
+    for tool in ("java", "mvn"):
+        executable = shutil.which(tool)
+        digest.update(str(executable).encode())
+        if executable:
+            stat = Path(executable).stat()
+            digest.update(f"{stat.st_mtime_ns}:{stat.st_size}".encode())
+    return digest.hexdigest()
+
+
+def save_evidence(
+    repo_root: Path, exit_code: int, fingerprint: str | None = None
+) -> None:
+    files = {}
+    for name in (RESULTS_MARKDOWN, DETAILS_MARKDOWN):
+        path = repo_root / name
+        files[name] = (
+            hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+        )
+    evidence = {
+        "version": 1,
+        "fingerprint": fingerprint or evidence_fingerprint(repo_root),
+        "files": files,
+        "exitCode": exit_code,
+    }
+    evidence_path = repo_root / EVIDENCE_JSON
+    evidence_path.parent.mkdir(parents=True, exist_ok=True)
+    evidence_path.write_text(json.dumps(evidence, indent=2) + "\n")
+
+
+def load_evidence(repo_root: Path) -> dict[str, Any]:
+    try:
+        evidence = json.loads((repo_root / EVIDENCE_JSON).read_text())
+        if evidence["version"] != 1 or evidence["fingerprint"] != evidence_fingerprint(
+            repo_root
+        ):
+            raise ValueError("inputs changed")
+        for name in (RESULTS_MARKDOWN, DETAILS_MARKDOWN):
+            path = repo_root / name
+            actual = (
+                hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+            )
+            if actual != evidence["files"][name]:
+                raise ValueError("reports changed")
+        if not (repo_root / RESULTS_MARKDOWN).is_file() or evidence["exitCode"] not in (
+            0,
+            1,
+        ):
+            raise ValueError("incomplete evidence")
+        return evidence
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise SystemExit(
+            f"Saved evidence is missing or changed; run the selected checks again: {error}"
+        ) from error
+
+
+def publish_evidence(repo_root: Path, impact_map: dict[str, Any]) -> int:
+    evidence = load_evidence(repo_root)
+    pr = current_pr(repo_root)
+    details_path = repo_root / DETAILS_MARKDOWN
+    details_url = (
+        upsert_details_comment(repo_root, pr, details_path.read_text())
+        if details_path.exists()
+        else ""
+    )
+    block = (repo_root / RESULTS_MARKDOWN).read_text()
+    if details_url and f"]({details_url})" not in block:
+        block = block.replace(BLOCK_END, f"- [Details]({details_url})\n{BLOCK_END}")
+    update_pr_body(
+        repo_root, pr, block, impact_map.get("prHeading", DEFAULT_PR_HEADING)
+    )
+    return evidence["exitCode"]
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -2639,6 +2824,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "lane steps on its engine (repeat for more engines)",
     )
     parser.add_argument(
+        "--scope",
+        choices=("full", "focused"),
+        default="full",
+        help="Full preserves all impacted checks; focused runs changed tests, convention unit tests and explicit --add-* choices, reporting broader checks as deferred",
+    )
+    parser.add_argument(
+        "--publish-results",
+        action="store_true",
+        help="Publish validated saved results without running tests",
+    )
+    parser.add_argument(
         "--run",
         action="store_true",
         help="Run the selected tests and write the results summary and details",
@@ -2659,6 +2855,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --run, start the ITs even if another Testcontainers stack is already running",
     )
     args = parser.parse_args(argv)
+    if args.publish_results and (
+        args.run
+        or args.update_pr
+        or args.ci_run
+        or args.changed_files
+        or args.add_it
+        or args.add_unit
+        or args.add_area
+        or args.json
+        or args.check_map
+        or args.check_owner
+        or args.check_branch
+    ):
+        parser.error(
+            "--publish-results cannot be combined with planning or execution options"
+        )
     if args.update_pr and not args.run:
         parser.error("--update-pr requires --run")
     if args.ci_run and not args.run:
@@ -2672,6 +2884,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     repo_root = Path(git(Path.cwd(), "rev-parse", "--show-toplevel"))
     impact_map = json.loads((repo_root / IMPACT_MAP).read_text(encoding="utf-8"))
+    if args.publish_results:
+        return publish_evidence(repo_root, impact_map)
 
     if args.check_map:
         problems = audit_impact_map(Repo(repo_root, impact_map), impact_map)
@@ -2754,6 +2968,7 @@ def main(argv: list[str] | None = None) -> int:
         add_areas=names(args.add_area),
         changed_methods=changed_methods,
         reason=args.reason.strip(),
+        scope=args.scope,
     )
 
     if args.json:
@@ -2787,6 +3002,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     commit = git(repo_root, "rev-parse", "HEAD")
+    fingerprint = evidence_fingerprint(repo_root)
     dirty = has_uncommitted_changes(repo_root, impact_map["ignore"])
     results: list[StepResult] = []
     details = ""
@@ -2844,6 +3060,8 @@ def main(argv: list[str] | None = None) -> int:
         f"\nSummary written to {RESULTS_MARKDOWN}"
         + (f", details to {DETAILS_MARKDOWN}" if details else "")
     )
+    exit_code = 0 if not results or overall_status(plan, results) == "PASSED" else 1
+    save_evidence(repo_root, exit_code, fingerprint)
     if pr:
         if details_url:
             print(f"Posted the details: {details_url}")
@@ -2854,9 +3072,9 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "Paste the summary into the PR description"
             + (" and post the details as a PR comment" if details else "")
-            + ", or re-run with --update-pr."
+            + ", or publish with --publish-results (no test rerun)."
         )
-    return 0 if not results or overall_status(plan, results) == "PASSED" else 1
+    return exit_code
 
 
 if __name__ == "__main__":

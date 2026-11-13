@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAssetBinding;
+import org.openmetadata.schema.type.OntologyAssetConceptLinks;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyColumnBinding;
@@ -157,6 +158,87 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
       assertEquals(List.of(), remove(client, concept, visible, 2L).getAssets());
       assertEquals(hidden.getAssetId(), get(admin(), concept).getAssets().getFirst().getAssetId());
     }
+  }
+
+  @Test
+  void anAssetListsTheConceptsItIsBoundToWithTheColumnsBoundToEach(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var customer = declareClass(ontology, "Customer", URI.create("urn:Customer"));
+    final var order = declareClass(ontology, "Order", URI.create("urn:Order"));
+    final var table = table(ns);
+    final var property = property(ontology, customer);
+    put(admin(), customer, association(table, property), 0L);
+    put(
+        admin(),
+        order,
+        new OntologyAssetBinding()
+            .withAssetType(OntologyBindingAssetType.TABLE)
+            .withAssetId(table.getId()),
+        0L);
+    final var other = table(ns);
+
+    final var links = conceptsBoundTo(admin(), "table", table);
+
+    assertEquals(
+        Set.of(customer.getId(), order.getId()),
+        links.getLinks().stream()
+            .map(link -> link.getConcept().getId())
+            .collect(Collectors.toSet()));
+    final var customerLink =
+        links.getLinks().stream()
+            .filter(link -> link.getConcept().getId().equals(customer.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ontology.getId(), customerLink.getOntology().getId());
+    assertEquals("postal.code", customerLink.getColumns().getFirst().getColumn().getName());
+    assertEquals(property.getId(), customerLink.getColumns().getFirst().getProperty().getId());
+    assertEquals(
+        OntologyColumnBindingState.RESOLVED, customerLink.getColumns().getFirst().getState());
+    assertEquals(List.of(), conceptsBoundTo(admin(), "table", other).getLinks());
+    assertEquals(
+        List.of(), conceptsBoundTo(admin(), "topic", TopicTestFactory.createSimple(ns)).getLinks());
+  }
+
+  @Test
+  void anAssetListsEveryVisibleLinkEvenWhenHiddenConceptsComeFirstPastOneHundredRows(
+      TestNamespace ns) {
+    final var live = createOntology(ns, "liveLinks");
+    final var archived = createOntology(ns, "archivedLinks");
+    final var table = table(ns);
+    final var visible = new HashSet<java.util.UUID>();
+    for (int index = 0; index < 70; index++) {
+      final var concept = declareClass(live, "Live" + index, URI.create("urn:Live" + index));
+      put(admin(), concept, association(table, null), 0L);
+      visible.add(concept.getId());
+    }
+    for (int index = 0; index < 60; index++) {
+      final var concept = declareClass(archived, "Gone" + index, URI.create("urn:Gone" + index));
+      put(admin(), concept, association(table, null), 0L);
+    }
+    admin().ontologies().delete(archived.getId().toString(), Map.of("recursive", "true"));
+
+    final var links = conceptsBoundTo(admin(), "table", table);
+
+    assertEquals(
+        visible,
+        links.getLinks().stream()
+            .map(link -> link.getConcept().getId())
+            .collect(Collectors.toSet()));
+  }
+
+  @Test
+  void aReaderDeniedTheAssetIsRefusedTheLinks(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var concept = declareClass(ontology, "Customer", URI.create("urn:Customer"));
+    final var table = table(ns);
+    put(admin(), concept, association(table, property(ontology, concept)), 0L);
+    try (var fixtures = new RdfAccessFixtures("links" + ns.shortPrefix())) {
+      final var denied = fixtures.denyRole(MetadataOperation.VIEW_ALL, Entity.TABLE);
+      final var reader = client(fixtures.userToken("reader", List.of(denied.getId())));
+
+      assertStatus(403, () -> conceptsBoundTo(reader, "table", table));
+    }
+    assertEquals(1, conceptsBoundTo(admin(), "table", table).getLinks().size());
   }
 
   @Test
@@ -532,6 +614,11 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
   }
 
   private static OntologyAssetBinding association(Table table, OntologyProperty property) {
+    if (property == null) {
+      return new OntologyAssetBinding()
+          .withAssetId(table.getId())
+          .withAssetType(OntologyBindingAssetType.TABLE);
+    }
     return new OntologyAssetBinding()
         .withAssetId(table.getId())
         .withAssetType(OntologyBindingAssetType.TABLE)
@@ -553,6 +640,17 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
 
   private static String path(OntologyConcept concept) {
     return "/v1/ontologyConcepts/" + concept.getId() + "/bindings";
+  }
+
+  private static OntologyAssetConceptLinks conceptsBoundTo(
+      OpenMetadataClient client, String assetType, org.openmetadata.schema.EntityInterface asset) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/ontologyConcepts/boundTo/" + assetType + "/" + asset.getId(),
+            null,
+            OntologyAssetConceptLinks.class);
   }
 
   private static OntologyConceptBindingsResponse get(

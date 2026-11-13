@@ -19,7 +19,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -233,6 +236,53 @@ public class LineageResourceIT {
     cleanupTable(client, table1);
     cleanupTable(client, table2);
     cleanupTable(client, table3);
+  }
+
+  /**
+   * Four tables that each feed the other three: three hops reach every table on several paths, and
+   * each edge still comes back once per direction.
+   */
+  @Test
+  void testGetLineage_DenseGraph_ReturnsEachEdgeOnce() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      tables.add(createTable(client, namespace, "dense_table_" + i));
+    }
+    List<List<Table>> pairs =
+        tables.stream()
+            .flatMap(from -> tables.stream().filter(to -> to != from).map(to -> List.of(from, to)))
+            .toList();
+    for (List<Table> pair : pairs) {
+      addLineage(client, pair.getFirst(), pair.getLast());
+    }
+
+    EntityLineage lineage =
+        getLineage(client, "table", tables.getFirst().getId().toString(), "3", "3");
+
+    Set<List<UUID>> everyEdge =
+        pairs.stream()
+            .map(pair -> List.of(pair.getFirst().getId(), pair.getLast().getId()))
+            .collect(Collectors.toSet());
+    assertEquals(12, lineage.getUpstreamEdges().size());
+    assertEquals(everyEdge, edgeEnds(lineage.getUpstreamEdges()));
+    assertEquals(12, lineage.getDownstreamEdges().size());
+    assertEquals(everyEdge, edgeEnds(lineage.getDownstreamEdges()));
+
+    for (List<Table> pair : pairs) {
+      deleteLineage(
+          client, pair.getFirst().getEntityReference(), pair.getLast().getEntityReference());
+    }
+    for (Table table : tables) {
+      cleanupTable(client, table);
+    }
+  }
+
+  private static Set<List<UUID>> edgeEnds(List<Edge> edges) {
+    return edges.stream()
+        .map(edge -> List.of(edge.getFromEntity(), edge.getToEntity()))
+        .collect(Collectors.toSet());
   }
 
   @Test

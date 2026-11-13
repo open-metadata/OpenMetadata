@@ -21,13 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,13 +44,17 @@ import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueSeverity;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSRole;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSServer;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeam;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -62,6 +67,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
 
 class ODCSConverterTest {
 
@@ -360,12 +366,15 @@ class ODCSConverterTest {
 
     boolean hasRefreshFrequency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "freshness".equals(p.getProperty()) && "1".equals(p.getValue()));
+            .anyMatch(
+                p ->
+                    "freshness".equals(p.getProperty()) && Integer.valueOf(1).equals(p.getValue()));
     assertTrue(hasRefreshFrequency);
 
     boolean hasMaxLatency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "latency".equals(p.getProperty()) && "4".equals(p.getValue()));
+            .anyMatch(
+                p -> "latency".equals(p.getProperty()) && Integer.valueOf(4).equals(p.getValue()));
     assertTrue(hasMaxLatency);
   }
 
@@ -513,7 +522,7 @@ class ODCSConverterTest {
     contributor.setRole("contributor");
     team.add(contributor);
 
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     EntityReference entityRef = new EntityReference();
     entityRef.setId(UUID.randomUUID());
@@ -548,7 +557,7 @@ class ODCSConverterTest {
     namedTeam.setName("DataOps");
     namedTeam.setRole("owner");
 
-    odcs.setTeam(List.of(namedUser, namedTeam));
+    odcs.setTeam(new ODCSTeam().withMembers(List.of(namedUser, namedTeam)));
 
     EntityReference entityRef = new EntityReference().withId(UUID.randomUUID()).withType("table");
 
@@ -703,10 +712,10 @@ class ODCSConverterTest {
     List<ODCSSchemaElement> props = tableObject.getProperties();
 
     assertEquals(ODCSSchemaElement.LogicalType.INTEGER, props.get(0).getLogicalType()); // INT
-    assertEquals(ODCSSchemaElement.LogicalType.LONG, props.get(1).getLogicalType()); // BIGINT
-    assertEquals(ODCSSchemaElement.LogicalType.FLOAT, props.get(2).getLogicalType()); // FLOAT
-    assertEquals(ODCSSchemaElement.LogicalType.DOUBLE, props.get(3).getLogicalType()); // DOUBLE
-    assertEquals(ODCSSchemaElement.LogicalType.DECIMAL, props.get(4).getLogicalType()); // DECIMAL
+    assertEquals(ODCSSchemaElement.LogicalType.INTEGER, props.get(1).getLogicalType()); // BIGINT
+    assertEquals(ODCSSchemaElement.LogicalType.NUMBER, props.get(2).getLogicalType()); // FLOAT
+    assertEquals(ODCSSchemaElement.LogicalType.NUMBER, props.get(3).getLogicalType()); // DOUBLE
+    assertEquals(ODCSSchemaElement.LogicalType.NUMBER, props.get(4).getLogicalType()); // DECIMAL
     assertEquals(ODCSSchemaElement.LogicalType.BOOLEAN, props.get(5).getLogicalType()); // BOOLEAN
     assertEquals(ODCSSchemaElement.LogicalType.STRING, props.get(6).getLogicalType()); // STRING
     assertEquals(ODCSSchemaElement.LogicalType.DATE, props.get(7).getLogicalType()); // DATE
@@ -1018,7 +1027,7 @@ class ODCSConverterTest {
     assertEquals("1.0.0", odcs.getVersion());
     assertEquals("service.database", odcs.getDomain());
     assertEquals("service.database.schema.table", odcs.getDataProduct());
-    assertEquals(new Date(1700000000000L), odcs.getContractCreatedTs());
+    assertEquals("2023-11-14T22:13:20Z", odcs.getContractCreatedTs());
     assertEquals(List.of("terms-of-use"), odcs.getTags());
     assertEquals("fallback_contract", odcs.getSchema().get(0).getName());
     assertEquals("Entity level description", odcs.getSchema().get(0).getDescription());
@@ -1138,7 +1147,7 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertEquals("data-consumer", odcs.getRoles().get(0).getRole());
-    assertEquals(List.of("owner@example.com"), odcs.getRoles().get(0).getFirstLevelApprovers());
+    assertEquals("owner@example.com", odcs.getRoles().get(0).getFirstLevelApprovers());
     ODCSSchemaElement exportedColumn = odcs.getSchema().get(0).getProperties().get(0);
     assertTrue(exportedColumn.getUnique());
     assertEquals("confidential", exportedColumn.getClassification());
@@ -1322,8 +1331,8 @@ class ODCSConverterTest {
             .anyMatch(
                 r ->
                     "data-analyst".equals(r.getRole())
-                        && r.getFirstLevelApprovers() != null
-                        && r.getFirstLevelApprovers().contains("user1@example.com"));
+                        && "user1@example.com,user2@example.com"
+                            .equals(r.getFirstLevelApprovers()));
     assertTrue(hasAnalystRole);
 
     boolean hasEngineerRole =
@@ -1331,8 +1340,7 @@ class ODCSConverterTest {
             .anyMatch(
                 r ->
                     "data-engineer".equals(r.getRole())
-                        && r.getFirstLevelApprovers() != null
-                        && r.getFirstLevelApprovers().contains("eng-team@example.com"));
+                        && "eng-team@example.com".equals(r.getFirstLevelApprovers()));
     assertTrue(hasEngineerRole);
 
     boolean hasClassificationRole =
@@ -1355,7 +1363,7 @@ class ODCSConverterTest {
     ODCSRole consumerRole = new ODCSRole();
     consumerRole.setRole("data-consumer");
     consumerRole.setAccess(ODCSRole.Access.READ);
-    consumerRole.setFirstLevelApprovers(List.of("approver1@example.com", "approver2@example.com"));
+    consumerRole.setFirstLevelApprovers("approver1@example.com,approver2@example.com");
     roles.add(consumerRole);
 
     ODCSRole classificationRole = new ODCSRole();
@@ -1412,7 +1420,7 @@ class ODCSConverterTest {
 
     ODCSSlaProperty freshnessProperty = odcs.getSlaProperties().get(0);
     assertEquals("freshness", freshnessProperty.getProperty());
-    assertEquals("24", freshnessProperty.getValue());
+    assertEquals(24, freshnessProperty.getValue());
     assertEquals("hour", freshnessProperty.getUnit());
   }
 
@@ -1442,7 +1450,7 @@ class ODCSConverterTest {
 
     ODCSSlaProperty latencyProperty = odcs.getSlaProperties().get(0);
     assertEquals("latency", latencyProperty.getProperty());
-    assertEquals("30", latencyProperty.getValue());
+    assertEquals(30, latencyProperty.getValue());
     assertEquals("minute", latencyProperty.getUnit());
   }
 
@@ -1529,8 +1537,8 @@ class ODCSConverterTest {
             .anyMatch(
                 p ->
                     "availabilityTime".equals(p.getProperty())
-                        && p.getValueExt() != null
-                        && p.getValueExt().contains("America"));
+                        && p.getValueExt() instanceof String valueExt
+                        && valueExt.contains("America"));
     assertTrue(hasTimezone);
   }
 
@@ -1786,16 +1794,16 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertNotNull(odcs);
-    assertNotNull(odcs.getQuality());
-    assertEquals(2, odcs.getQuality().size());
+    assertNull(odcs.getQuality());
+    assertEquals(1, odcs.getSchema().getFirst().getQuality().size());
 
-    ODCSQualityRule exportedRule1 = odcs.getQuality().get(0);
+    ODCSQualityRule exportedRule1 = findProperty(odcs, "user_id").getQuality().getFirst();
     assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule1.getType());
     assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, exportedRule1.getMetric());
-    assertEquals("user_id", exportedRule1.getColumn());
+    assertNull(exportedRule1.getColumn());
     assertEquals("user_id_not_null", exportedRule1.getName());
 
-    ODCSQualityRule exportedRule2 = odcs.getQuality().get(1);
+    ODCSQualityRule exportedRule2 = odcs.getSchema().getFirst().getQuality().getFirst();
     assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, exportedRule2.getMetric());
   }
 
@@ -1831,13 +1839,13 @@ class ODCSConverterTest {
     DataContract contract = ODCSConverter.fromODCS(original, entityRef);
     ODCSDataContract exported = ODCSConverter.toODCS(contract);
 
-    assertNotNull(exported.getQuality());
-    assertEquals(1, exported.getQuality().size());
+    assertNull(exported.getQuality());
+    assertEquals(1, findProperty(exported, "id").getQuality().size());
 
-    ODCSQualityRule exportedRule = exported.getQuality().get(0);
+    ODCSQualityRule exportedRule = findProperty(exported, "id").getQuality().get(0);
     assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule.getType());
     assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedRule.getMetric());
-    assertEquals("id", exportedRule.getColumn());
+    assertNull(exportedRule.getColumn());
     assertEquals("id_uniqueness", exportedRule.getName());
     assertEquals("ID must be unique", exportedRule.getDescription());
     assertEquals(ODCSQualityRule.Dimension.UNIQUENESS, exportedRule.getDimension());
@@ -2390,9 +2398,9 @@ class ODCSConverterTest {
 
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
-    assertNotNull(odcs.getQuality());
-    assertEquals(1, odcs.getQuality().size());
-    assertEquals("row_count", odcs.getQuality().get(0).getName());
+    assertNull(odcs.getQuality());
+    assertEquals(1, odcs.getSchema().getFirst().getQuality().size());
+    assertEquals("row_count", odcs.getSchema().getFirst().getQuality().getFirst().getName());
 
     ODCSSchemaElement tableObject = odcs.getSchema().get(0);
     ODCSSchemaElement emailProp = tableObject.getProperties().get(0);
@@ -2425,8 +2433,8 @@ class ODCSConverterTest {
     DataContract contract = ODCSConverter.fromODCS(source, tableRef("shipments"));
     ODCSDataContract exported = ODCSConverter.toODCS(contract);
 
-    assertNotNull(exported.getQuality());
-    ODCSQualityRule exportedRule = exported.getQuality().getFirst();
+    assertNull(exported.getQuality());
+    ODCSQualityRule exportedRule = exported.getSchema().getFirst().getQuality().getFirst();
     assertEquals(ODCSQualityRule.Type.CUSTOM, exportedRule.getType());
     assertEquals("soda", exportedRule.getEngine());
     assertEquals(sodaRule.getImplementation(), exportedRule.getImplementation());
@@ -2627,9 +2635,8 @@ class ODCSConverterTest {
     ODCSConverter.normalizeODCSInput(root);
 
     JsonNode teamNode = root.get("team");
-    assertTrue(teamNode.isArray());
-    assertEquals(1, teamNode.size());
-    assertEquals("alice", teamNode.get(0).get("username").asText());
+    assertTrue(teamNode.isObject());
+    assertEquals("alice", teamNode.get("members").get(0).get("username").asText());
   }
 
   @Test
@@ -2648,9 +2655,9 @@ class ODCSConverterTest {
     ODCSConverter.normalizeODCSInput(root);
 
     JsonNode teamNode = root.get("team");
-    assertTrue(teamNode.isArray());
-    assertEquals(1, teamNode.size());
-    assertEquals("bob", teamNode.get(0).get("username").asText());
+    assertTrue(teamNode.isObject());
+    assertEquals(1, teamNode.get("members").size());
+    assertEquals("bob", teamNode.get("members").get(0).get("username").asText());
   }
 
   @Test
@@ -2670,14 +2677,12 @@ class ODCSConverterTest {
     ODCSConverter.normalizeODCSInput(root);
 
     JsonNode firstApprovers = root.get("roles").get(0).get("firstLevelApprovers");
-    assertTrue(firstApprovers.isArray());
-    assertEquals(1, firstApprovers.size());
-    assertEquals("manager@company.com", firstApprovers.get(0).asText());
+    assertTrue(firstApprovers.isTextual());
+    assertEquals("manager@company.com", firstApprovers.asText());
 
     JsonNode secondApprovers = root.get("roles").get(0).get("secondLevelApprovers");
-    assertTrue(secondApprovers.isArray());
-    assertEquals(1, secondApprovers.size());
-    assertEquals("director@company.com", secondApprovers.get(0).asText());
+    assertTrue(secondApprovers.isTextual());
+    assertEquals("director@company.com", secondApprovers.asText());
   }
 
   @Test
@@ -2698,10 +2703,8 @@ class ODCSConverterTest {
     ODCSConverter.normalizeODCSInput(root);
 
     JsonNode firstApprovers = root.get("roles").get(0).get("firstLevelApprovers");
-    assertTrue(firstApprovers.isArray());
-    assertEquals(2, firstApprovers.size());
-    assertEquals("approver1@company.com", firstApprovers.get(0).asText());
-    assertEquals("approver2@company.com", firstApprovers.get(1).asText());
+    assertTrue(firstApprovers.isTextual());
+    assertEquals("approver1@company.com,approver2@company.com", firstApprovers.asText());
   }
 
   @Test
@@ -2835,6 +2838,98 @@ class ODCSConverterTest {
     assertEquals(
         List.of("id is set"),
         idProperty.getQuality().stream().map(ODCSQualityRule::getName).toList());
+  }
+
+  @Test
+  void exportEmitsTheTeamAsAnObjectWithMembers() {
+    EntityReference owner =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("user")
+            .withName("alice")
+            .withDisplayName("Alice Doe");
+    DataContract contract =
+        new DataContract().withName("orders_contract").withOwners(List.of(owner));
+
+    ODCSTeam team = ODCSConverter.toODCS(contract).getTeam();
+
+    assertNotNull(team);
+    assertEquals(1, team.getMembers().size());
+    assertEquals("alice", team.getMembers().getFirst().getUsername());
+    assertEquals("Alice Doe", team.getMembers().getFirst().getName());
+  }
+
+  @Test
+  void exportOmitsTheBlocksTheContractDoesNotDeclare() throws Exception {
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withEntity(tableRef("orders"))
+            .withSchema(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    String exported =
+        new ObjectMapper(new YAMLFactory())
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .writeValueAsString(ODCSConverter.toODCS(contract));
+
+    assertFalse(exported.contains("[]"), exported);
+    assertFalse(exported.contains("tags:"), exported);
+    assertFalse(exported.contains("support:"), exported);
+    assertFalse(exported.contains("customProperties:"), exported);
+    assertFalse(exported.contains("authoritativeDefinitions:"), exported);
+  }
+
+  @Test
+  void fromODCSReadsASpecCompliantV310Document() {
+    ODCSDataContract odcs = newODCSContract();
+    ODCSTeamMember owner = new ODCSTeamMember();
+    owner.setUsername("alice");
+    owner.setRole("owner");
+    odcs.setTeam(new ODCSTeam().withMembers(List.of(owner)));
+
+    ODCSSchemaElement id = propertyNamed("id");
+    id.setCustomProperties(List.of(new ODCSCustomProperty().withProperty("pii").withValue(false)));
+    odcs.setSchema(List.of(objectWithProperties("orders", id)));
+
+    ODCSRole consumer = new ODCSRole();
+    consumer.setRole("data-consumer");
+    consumer.setFirstLevelApprovers("approver@example.com");
+    odcs.setRoles(List.of(consumer));
+
+    odcs.setSlaProperties(
+        List.of(new ODCSSlaProperty().withProperty("latency").withValue(1).withUnit("h")));
+
+    ODCSServer server = new ODCSServer();
+    server.setServer("prod");
+    server.setType("snowflake");
+    server.setCustomProperties(
+        List.of(new ODCSCustomProperty().withProperty("account").withValue("svc-account")));
+    odcs.setServers(List.of(server));
+
+    ODCSImportIssues issues = ODCSImportIssues.discarding();
+    DataContract contract = ODCSConverter.fromODCS(odcs, tableRef("orders"), "orders", issues);
+
+    assertEquals("id", contract.getSchema().getFirst().getName());
+    assertEquals(1, contract.getSla().getMaxLatency().getValue());
+    assertEquals(
+        List.of("approver@example.com"),
+        contract.getSecurity().getPolicies().getFirst().getIdentities());
+    assertTrue(
+        issues.toList().stream()
+            .noneMatch(issue -> issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING));
+  }
+
+  @Test
+  void exportOmitsTheApproversWhenThePolicyHasNone() {
+    Policy policy = new Policy().withAccessPolicy("data-consumer").withIdentities(List.of());
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withSecurity(new ContractSecurity().withPolicies(List.of(policy)));
+
+    ODCSRole exportedRole = ODCSConverter.toODCS(contract).getRoles().getFirst();
+
+    assertNull(exportedRole.getFirstLevelApprovers());
   }
 
   private static EntityReference testCaseRef(String name) {

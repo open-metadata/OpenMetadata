@@ -102,6 +102,12 @@ def build_bigquery_baseline(project: str, dataset: str) -> SqlSourceBaseline:
         LEFT JOIN {quoted}.transactions t ON c.id = t.customer_id
         GROUP BY c.id, c.full_name, c.status
     """,
+        # A STRUCT selected as-is and expanded with `.*`: view lineage must reach its fields.
+        f"""
+        CREATE VIEW {quoted}.struct_fields_view AS
+        SELECT id, struct_col, struct_col.*
+        FROM {quoted}.all_types
+    """,
         f"""
         CREATE PROCEDURE {quoted}.sp_active_customer_count()
         BEGIN

@@ -25,7 +25,7 @@ import time
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ometa_logger
 
@@ -67,7 +67,7 @@ class OMetaLogsMixin:
         try:
             # Extract the UUID string value from the object if it has a .root attribute
             # Build the API endpoint
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
 
             # Prepare log batch data matching Java LogBatch structure
             log_batch = {
@@ -192,7 +192,7 @@ class OMetaLogsMixin:
     ) -> bool:
         """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
             log_batch = {
                 "logs": log_content,
                 "timestamp": int(time.time() * 1000),
@@ -218,7 +218,7 @@ class OMetaLogsMixin:
     ) -> bool:
         """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}/close"
             close_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
                 "timestamp": int(time.time() * 1000),
@@ -248,7 +248,7 @@ class OMetaLogsMixin:
         """
         try:
             # Initialize log stream with the server
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
 
             init_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -282,7 +282,7 @@ class OMetaLogsMixin:
             bool: True if stream was closed successfully, False otherwise
         """
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}/close"
 
             close_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -322,7 +322,7 @@ class OMetaLogsMixin:
             Optional[str]: Log content if available, None otherwise
         """
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
 
             params = {
                 "offset": offset,

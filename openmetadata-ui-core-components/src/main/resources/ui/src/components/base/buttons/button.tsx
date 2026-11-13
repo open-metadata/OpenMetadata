@@ -177,6 +177,8 @@ export const styles = sortCx({
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
         'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-700 tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        // A link sits in running text, so its leading icon takes the 18px frame.
+        'tw:*:data-[icon=leading]:size-4.5 tw:*:data-[icon=leading]:p-[0.25px]',
       ].join(' '),
     },
     'primary-destructive': {

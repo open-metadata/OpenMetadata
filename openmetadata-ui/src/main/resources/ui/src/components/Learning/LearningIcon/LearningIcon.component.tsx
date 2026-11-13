@@ -125,7 +125,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
         <ButtonUtility
           aria-label={t('label.learn-how-this-feature-works')}
           className={classNames(
-            'tw:align-middle tw:*:data-icon:text-utility-brand-600',
+            'tw:align-middle tw:*:data-icon:size-5 tw:*:data-icon:p-0',
             className
           )}
           data-testid="learning-icon"

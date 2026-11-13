@@ -12,8 +12,11 @@
 """Unit tests for Snowflake semantic view lineage (issue #23680)."""
 
 from unittest.mock import MagicMock, patch
-from uuid import UUID
+from uuid import NAMESPACE_DNS, UUID, uuid5
 
+import pytest
+
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.source.database import semantic_metric_lineage as sml
 from metadata.ingestion.source.database.snowflake import semantic_view_lineage as svl
@@ -54,6 +57,83 @@ def test_extract_column_refs_handles_quoted_and_qualified():
     assert extract_column_refs("db.public.orders.o_totalprice") == [("orders", "o_totalprice")]
     # mixed quoting
     assert extract_column_refs('SUM("orders".amount)') == [("orders", "amount")]
+
+
+def test_extract_column_refs_returns_unqualified_names_without_a_table():
+    assert extract_column_refs("CUSTOMER_ID") == [(None, "CUSTOMER_ID")]
+    assert extract_column_refs("SUM(amount)") == [(None, "amount")]
+    assert extract_column_refs("orders.a + b") == [("orders", "a"), (None, "b")]
+    # keywords, function names and string literals are not column references
+    assert extract_column_refs("CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END") == [(None, "status")]
+    assert extract_column_refs("DATE_TRUNC('MONTH', event_at)") == [(None, "event_at")]
+    # a quoted identifier is a column even when it spells a keyword
+    assert extract_column_refs('"end"') == [(None, "end")]
+    assert extract_column_refs('"a""b"') == [(None, 'a"b')]
+    # a function name is skipped only where it is called
+    assert extract_column_refs("DATE(date)") == [(None, "date")]
+    # cast targets, path steps and exponents are not columns
+    assert extract_column_refs("amount::NUMBER(10, 2) * 1e5") == [(None, "amount")]
+    assert extract_column_refs("payload:region::string") == [(None, "payload")]
+    assert extract_column_refs("src:customer.name[0]::string") == [(None, "src")]
+    assert extract_column_refs("TRY_CAST(created_at AS DATE) + CAST(x AS NUMBER(10, 2))") == [
+        (None, "created_at"),
+        (None, "x"),
+    ]
+    # punctuation inside a quoted identifier is part of the name
+    assert extract_column_refs('orders."amount (USD)" + orders."a:b"') == [
+        ("orders", "amount (USD)"),
+        ("orders", "a:b"),
+    ]
+    assert extract_column_refs('"it\'s" || \'a "b"\'') == [(None, "it's")]
+    # backslash-escaped and dollar-quoted strings are literals too
+    assert extract_column_refs(r"IFF(customers.last_name = 'O\'Reilly', customers.first_name, 'x')") == [
+        ("customers", "last_name"),
+        ("customers", "first_name"),
+    ]
+    assert extract_column_refs("REGEXP_LIKE(STATUS, $$^(OPEN|CLOSED)$$)") == [(None, "STATUS")]
+    # a schema-qualified function name is not a column
+    assert extract_column_refs("analytics.normalize(amount)") == [(None, "amount")]
+    # a date part is not a column, but a column called year still is
+    assert extract_column_refs(
+        "EXTRACT(year FROM event_at) + DATE_PART(year, event_at) + DATEADD(day, 1, d) + year"
+    ) == [
+        (None, "event_at"),
+        (None, "event_at"),
+        (None, "d"),
+        (None, "year"),
+    ]
+    # $$ inside a name, multi-word type names and comments
+    assert extract_column_refs("o.A$$B + o.C$$D") == [("o", "A$$B"), ("o", "C$$D")]
+    assert extract_column_refs("CAST(o.AMOUNT AS DOUBLE PRECISION) + x::TIMESTAMP WITH LOCAL TIME ZONE") == [
+        ("o", "AMOUNT"),
+        (None, "x"),
+    ]
+    assert extract_column_refs("o.AMOUNT /* COMMENTCOL */ + 1 -- COMMENTCOL\n + '--keep' || o.B") == [
+        ("o", "AMOUNT"),
+        ("o", "B"),
+    ]
+    assert extract_column_refs("o.AMOUNT // COMMENTCOL\n + o.B || 'http://x'") == [("o", "AMOUNT"), ("o", "B")]
+    # a typed literal's type is not a column, but a column with that name still is
+    assert extract_column_refs(
+        "CASE WHEN o.SHIP_DATE >= DATE '2026-01-01' AND TIMESTAMP_NTZ '2026-01-01 00:00' < ts THEN o.DATE END"
+    ) == [("o", "SHIP_DATE"), ("o", "DATE"), (None, "ts")]
+
+
+# Snowflake's normal form: each object's expression is relative to its own logical table.
+BARE_COLUMNS = {
+    ("CUSTOMERS", "CUSTOMER_NAME"): {"logical_table": "CUSTOMERS", "expression": "C_NAME"},
+    ("ORDERS", "LINE_AMOUNT"): {"logical_table": "ORDERS", "expression": "O_TOTALPRICE"},
+    ("ORDERS", "O_ORDERSTATUS"): {"logical_table": "ORDERS", "expression": "O_ORDERSTATUS"},
+    ("ORDERS", "TOTAL_REVENUE"): {"logical_table": "ORDERS", "expression": "SUM(LINE_AMOUNT)"},
+}
+
+
+def test_resolve_base_columns_resolves_unqualified_names_on_the_owning_logical_table():
+    assert resolve_base_columns(("CUSTOMERS", "CUSTOMER_NAME"), BARE_COLUMNS, TABLE_MAP) == [(CUSTOMERS_TBL, "C_NAME")]
+    # an object named after the column it reads resolves to that column, not to itself
+    assert resolve_base_columns(("ORDERS", "O_ORDERSTATUS"), BARE_COLUMNS, TABLE_MAP) == [(ORDERS_TBL, "O_ORDERSTATUS")]
+    # a metric over a fact follows the fact to its physical column
+    assert resolve_base_columns(("ORDERS", "TOTAL_REVENUE"), BARE_COLUMNS, TABLE_MAP) == [(ORDERS_TBL, "O_TOTALPRICE")]
 
 
 def test_match_semantic_name_is_case_insensitive():
@@ -223,6 +303,299 @@ def test_iter_database_lineage_emits_table_and_column_edges():
     assert len(requests) == 2
     # column lineage is attached (every base table here has resolvable columns)
     assert all(r.right.edge.lineageDetails.columnsLineage for r in requests)
+
+
+def test_iter_database_lineage_attaches_column_lineage_for_unqualified_expressions():
+    extractor = _extractor()
+    view_entity, orders_entity, customers_entity = MagicMock(), MagicMock(), MagicMock()
+    view_entity.id = Uuid(root=UUID("11111111-1111-1111-1111-111111111111"))
+    orders_entity.id = Uuid(root=UUID("22222222-2222-2222-2222-222222222222"))
+    customers_entity.id = Uuid(root=UUID("33333333-3333-3333-3333-333333333333"))
+    entities = {"SALES_ANALYSIS": view_entity, "ORDERS_TBL": orders_entity, "CUSTOMERS_TBL": customers_entity}
+
+    extractor.resolve_table_by_fqn = MagicMock(
+        side_effect=lambda table_fqn: next((e for name, e in entities.items() if name in table_fqn), None)
+    )
+    extractor._fetch_table_maps = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): TABLE_MAP})
+    extractor._fetch_columns = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): BARE_COLUMNS})
+
+    with patch.object(sml, "get_column_fqn", side_effect=lambda entity, column: f"{id(entity)}.{column}"):
+        requests = list(extractor._iter_database_lineage("DB"))
+
+    lineage = {
+        r.right.edge.fromEntity.id.root: {
+            (c.toColumn.root.split(".")[-1], tuple(f.root.split(".")[-1] for f in c.fromColumns))
+            for c in r.right.edge.lineageDetails.columnsLineage
+        }
+        for r in requests
+    }
+    assert lineage[orders_entity.id.root] == {
+        ("LINE_AMOUNT", ("O_TOTALPRICE",)),
+        ("O_ORDERSTATUS", ("O_ORDERSTATUS",)),
+        ("TOTAL_REVENUE", ("O_TOTALPRICE",)),
+    }
+    assert lineage[customers_entity.id.root] == {("CUSTOMER_NAME", ("C_NAME",))}
+
+
+def _table(name: str, columns: list[str]) -> Table:
+    table_fqn = f"snow.DB.PUBLIC.{name}"
+    return Table(
+        id=uuid5(NAMESPACE_DNS, table_fqn),
+        name=name,
+        fullyQualifiedName=table_fqn,
+        columns=[
+            Column(name=column, dataType=DataType.STRING, fullyQualifiedName=f"{table_fqn}.{column}")
+            for column in columns
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    "expression, source_columns",
+    [
+        ("{'customer': o.AMOUNT}", ["AMOUNT"]),
+        ("{'customer': AMOUNT}", ["AMOUNT"]),
+        ("{'customer': o.AMOUNT + o.TAX}", ["AMOUNT", "TAX"]),
+        ("{'customer': AMOUNT + TAX}", ["AMOUNT", "TAX"]),
+        ("{'customer': SUM(o.AMOUNT)}", ["AMOUNT"]),
+        ("{'customer': {'name': o.AMOUNT}}", ["AMOUNT"]),
+        ("{'customer': o.PAYLOAD:customer.name[0]::string, 'name': o.AMOUNT}", ["PAYLOAD", "AMOUNT"]),
+        ("({'customer': o.AMOUNT}):customer::number", ["AMOUNT"]),
+        ("OBJECT_CONSTRUCT('customer', o.AMOUNT)", ["AMOUNT"]),
+        ("o.PAYLOAD:customer.name[0]::string", ["PAYLOAD"]),
+        ('"PAYLOAD" :customer.name[0]::string', ["PAYLOAD"]),
+        ("(o.PAYLOAD) :customer.name[0]::string", ["PAYLOAD"]),
+        ("o.PAYLOAD[0] :customer.name::string", ["PAYLOAD"]),
+        ("o.PAYLOAD:customer:name::string", ["PAYLOAD"]),
+        ("{'customer': o.\"amount:USD\"::number}", ["amount:USD"]),
+        ("{'customer': 'o.TAX', 'name': o.AMOUNT /* customer */}", ["AMOUNT"]),
+    ],
+)
+def test_build_view_lineage_preserves_object_values_and_excludes_path_members(expression, source_columns):
+    """Collision columns make object keys and path members observable false dependencies."""
+    base = _table("ORDERS_TBL", ["AMOUNT", "TAX", "PAYLOAD", "customer", "name", "amount:USD"])
+    for column in base.columns:
+        column.dataType = {"AMOUNT": DataType.INT, "TAX": DataType.INT, "PAYLOAD": DataType.VARIANT}.get(
+            column.name.root, DataType.STRING
+        )
+    view = _table("SALES_ANALYSIS", ["OBJECT_VALUE"])
+    view.columns[0].dataType = DataType.VARIANT
+    entities = {table.fullyQualifiedName.root: table for table in (base, view)}
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=None,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=entities.get,
+        resolve_metric_by_name=lambda _name: None,
+    )
+    columns = {("O", "OBJECT_VALUE"): {"logical_table": "O", "expression": expression}}
+
+    (request,) = extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", {"O": ORDERS_TBL}, columns)
+
+    edge = request.right.edge
+    assert edge.fromEntity.id == base.id
+    assert edge.toEntity.id == view.id
+    assert [
+        (entry.toColumn.root, [source.root for source in entry.fromColumns])
+        for entry in edge.lineageDetails.columnsLineage or []
+    ] == [
+        (
+            "snow.DB.PUBLIC.SALES_ANALYSIS.OBJECT_VALUE",
+            [f"snow.DB.PUBLIC.ORDERS_TBL.{column}" for column in source_columns],
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "expression, source_columns",
+    [
+        ("o.DATE_KEY + INTERVAL '1' MONTH", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '3' DAYS", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '1-1' YEAR TO MONTH", ["DATE_KEY"]),
+        ("CAST(o.DURATION AS INTERVAL DAY TO SECOND)", ["DURATION"]),
+        ("o.DURATION::INTERVAL YEAR TO MONTH", ["DURATION"]),
+        ("o.DATE_KEY + INTERVAL '1-08' YEAR(3) TO MONTH", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '1 02:03' DAY(2) TO MINUTE", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '1 02:03:04.123' DAY(2) TO SECOND(3)", ["DATE_KEY"]),
+        ("CAST(o.DURATION AS INTERVAL YEAR(2) TO MONTH)", ["DURATION"]),
+        ("o.DURATION::INTERVAL DAY(2) TO HOUR", ["DURATION"]),
+        ("DATE_KEY + INTERVAL '1' MONTH + MONTH", ["DATE_KEY", "MONTH"]),
+        ("DATE_KEY + INTERVAL '1' MONTH + YEAR", ["DATE_KEY", "YEAR"]),
+    ]
+    + [
+        (f"o.DATE_KEY + {reference}", ["DATE_KEY", unit])
+        for unit in ("YEAR", "MONTH", "DAY", "DAYS", "HOUR", "MINUTE", "SECOND", "TO")
+        for reference in (unit, f'"{unit}"', f"o.{unit}")
+    ]
+    + [
+        (f"{reference} {negation}{operator} 'OPEN.*'", ["STATUS"])
+        for operator in ("RLIKE", "REGEXP", "ILIKE")
+        for negation in ("", "NOT ")
+        for reference in ("o.STATUS", "STATUS")
+    ]
+    + [
+        (reference, [operator])
+        for operator in ("RLIKE", "REGEXP", "ILIKE")
+        for reference in (f'"{operator}"', f"o.{operator}", f'o."{operator}"')
+    ],
+)
+def test_build_view_lineage_excludes_interval_qualifiers_and_infix_operators(expression, source_columns):
+    """Real collision columns expose syntax tokens that would otherwise resolve as sources."""
+    base = _table(
+        "ORDERS_TBL",
+        [
+            "DATE_KEY",
+            "DURATION",
+            "STATUS",
+            "YEAR",
+            "MONTH",
+            "DAY",
+            "DAYS",
+            "HOUR",
+            "MINUTE",
+            "SECOND",
+            "TO",
+            "RLIKE",
+            "REGEXP",
+            "ILIKE",
+        ],
+    )
+    base.columns[0].dataType = DataType.DATE
+    view = _table("SALES_ANALYSIS", ["NEXT_VALUE"])
+    entities = {table.fullyQualifiedName.root: table for table in (base, view)}
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=None,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=entities.get,
+        resolve_metric_by_name=lambda _name: None,
+    )
+    columns = {("O", "NEXT_VALUE"): {"logical_table": "O", "expression": expression}}
+
+    (request,) = extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", {"O": ORDERS_TBL}, columns)
+
+    edge = request.right.edge
+    assert edge.fromEntity.id == base.id
+    assert edge.fromEntity.type == "table"
+    assert edge.toEntity.id == view.id
+    assert edge.toEntity.type == "table"
+    assert [
+        (entry.toColumn.root, [source.root for source in entry.fromColumns])
+        for entry in edge.lineageDetails.columnsLineage or []
+    ] == [
+        (
+            "snow.DB.PUBLIC.SALES_ANALYSIS.NEXT_VALUE",
+            [f"snow.DB.PUBLIC.ORDERS_TBL.{column}" for column in source_columns],
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "function_name",
+    ["CURRENT_DATE", "CURRENT_TIME", "CURRENT_TIMESTAMP", "CURRENT_USER", "LOCALTIME", "LOCALTIMESTAMP"],
+)
+@pytest.mark.parametrize(
+    "reference, is_column",
+    [
+        ("{name}", False),
+        ("{lower_name}", False),
+        ("{name}()", False),
+        ('"{name}"', True),
+        ("o.{name}", True),
+        ('o."{name}"', True),
+    ],
+)
+def test_build_view_lineage_excludes_bare_context_functions(function_name, reference, is_column):
+    """A context function must not resolve to a real same-named physical column."""
+    base = _table("ORDERS_TBL", ["STATUS", function_name])
+    view = _table("SALES_ANALYSIS", ["NEXT_VALUE"])
+    entities = {table.fullyQualifiedName.root: table for table in (base, view)}
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=None,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=entities.get,
+        resolve_metric_by_name=lambda _name: None,
+    )
+    reference = reference.format(name=function_name, lower_name=function_name.lower())
+    columns = {("O", "NEXT_VALUE"): {"logical_table": "O", "expression": f"o.STATUS || TO_VARCHAR({reference})"}}
+
+    (request,) = extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", {"O": ORDERS_TBL}, columns)
+
+    edge = request.right.edge
+    assert edge.fromEntity.id == base.id
+    assert edge.fromEntity.type == "table"
+    assert edge.toEntity.id == view.id
+    assert edge.toEntity.type == "table"
+    source_columns = ["STATUS", function_name] if is_column else ["STATUS"]
+    assert [
+        (entry.toColumn.root, [source.root for source in entry.fromColumns])
+        for entry in edge.lineageDetails.columnsLineage or []
+    ] == [
+        (
+            "snow.DB.PUBLIC.SALES_ANALYSIS.NEXT_VALUE",
+            [f"snow.DB.PUBLIC.ORDERS_TBL.{column}" for column in source_columns],
+        )
+    ]
+
+
+@pytest.mark.parametrize("type_name", ["DATE", "TIME", "TIMESTAMP"])
+@pytest.mark.parametrize("reference", ["{type_name}", "o.{type_name}", '"{type_name}"', "TO_CHAR({type_name})"])
+def test_extract_column_refs_preserves_type_named_columns(type_name, reference):
+    expression = reference.format(type_name=type_name)
+    qualifier = "o" if expression.startswith("o.") else None
+    assert extract_column_refs(expression) == [(qualifier, type_name)]
+
+
+@pytest.mark.parametrize(
+    "literal",
+    ["DATE '2026-01-01'", "TIME '12:00:00'", "TIMESTAMP '2026-01-01 12:00:00'", "TIMESTAMP_NTZ '2026-01-01'"],
+)
+def test_extract_column_refs_excludes_typed_literals_in_object_values(literal):
+    assert extract_column_refs("{'customer': " + literal + ", 'name': o.AMOUNT}") == [("o", "AMOUNT")]
+
+
+def test_column_lineage_ignores_names_that_are_not_column_references():
+    """Each trap names a column that really exists on the base table, so only the
+    extractor stands between it and a wrong lineage entry."""
+    base = _table(
+        "ORDERS_TBL",
+        ["AMOUNT", "A$$B", "C$$D", "A", "D", "PRECISION", "COMMENTCOL", "SHIP_DATE", "DATE", "TIMESTAMP"],
+    )
+    view = _table("SALES_ANALYSIS", ["DOLLAR_NAMES", "AMOUNT_DP", "COMMENTED", "SHIPPED_THIS_YEAR", "ORDER_DATE"])
+    columns = {
+        ("O", "DOLLAR_NAMES"): {"logical_table": "O", "expression": "o.A$$B + o.C$$D"},
+        ("O", "AMOUNT_DP"): {"logical_table": "O", "expression": "CAST(o.AMOUNT AS DOUBLE PRECISION)"},
+        ("O", "COMMENTED"): {
+            "logical_table": "O",
+            "expression": "o.AMOUNT /* COMMENTCOL */ -- COMMENTCOL\n // COMMENTCOL",
+        },
+        ("O", "SHIPPED_THIS_YEAR"): {
+            "logical_table": "O",
+            "expression": "CASE WHEN o.SHIP_DATE >= DATE '2026-01-01' AND TIMESTAMP '2026-01-01' < NOW() THEN 1 END",
+        },
+        ("O", "ORDER_DATE"): {"logical_table": "O", "expression": "o.DATE"},
+    }
+    extractor = _extractor()
+    extractor.resolve_table_by_fqn = MagicMock(
+        side_effect=lambda table_fqn: next((t for t in (base, view) if table_fqn.endswith(t.name.root)), None)
+    )
+    extractor._fetch_table_maps = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): {"O": ORDERS_TBL}})
+    extractor._fetch_columns = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): columns})
+
+    (request,) = extractor._iter_database_lineage("DB")
+
+    lineage = {
+        c.toColumn.root.split(".")[-1]: sorted(f.root.split(".")[-1] for f in c.fromColumns)
+        for c in request.right.edge.lineageDetails.columnsLineage
+    }
+    assert lineage == {
+        "DOLLAR_NAMES": ["A$$B", "C$$D"],
+        "AMOUNT_DP": ["AMOUNT"],
+        "COMMENTED": ["AMOUNT"],
+        "SHIPPED_THIS_YEAR": ["SHIP_DATE"],
+        "ORDER_DATE": ["DATE"],
+    }
 
 
 def test_iter_database_lineage_emits_table_level_edge_without_columns():

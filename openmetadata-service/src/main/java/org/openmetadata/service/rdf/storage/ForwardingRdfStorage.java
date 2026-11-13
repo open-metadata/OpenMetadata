@@ -19,6 +19,9 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.openmetadata.service.rdf.RdfWriteMode;
 
@@ -27,8 +30,9 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   protected abstract RdfStorageInterface delegate();
 
   @Override
-  public void storeEntity(String type, UUID id, Model model) {
-    delegate().storeEntity(type, id, model);
+  public RdfEntityWriteResult storeEntity(
+      String type, UUID id, Model model, RdfEntityWriteStrategy strategy) {
+    return delegate().storeEntity(type, id, model, strategy);
   }
 
   @Override
@@ -78,6 +82,12 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
+  public void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    delegate().readQuery(query, timeoutMillis, reader);
+  }
+
+  @Override
   public void executeSparqlUpdate(String update) {
     delegate().executeSparqlUpdate(update);
   }
@@ -88,8 +98,8 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void replaceGraph(final String graph, final Model model) {
-    delegate().replaceGraph(graph, model);
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
+    delegate().replaceGraph(graph, releaseId, model);
   }
 
   @Override

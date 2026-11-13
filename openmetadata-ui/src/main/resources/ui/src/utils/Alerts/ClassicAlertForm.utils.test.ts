@@ -13,7 +13,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { ModifiedCreateEventSubscription } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../../utils/AlertsClassBase.interface';
 import { applyAlertValueChanges } from './ClassicAlertForm.utils';
 
 const initial = {

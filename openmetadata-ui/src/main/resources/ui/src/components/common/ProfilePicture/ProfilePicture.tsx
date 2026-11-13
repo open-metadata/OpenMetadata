@@ -12,11 +12,10 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
-import { AiAgent } from '@openmetadata/ui-core-components/icons';
+import { AiAgent, Teams } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ComponentProps, CSSProperties, useMemo, type ReactNode } from 'react';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { User } from '../../../generated/entity/teams/user';
@@ -47,7 +46,14 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
 
 const AgentIcon = () => <AiAgent className="tw:size-5/8" />;
 
+const TRANSPARENT_BACKGROUND: CSSProperties = {
+  backgroundColor: 'transparent',
+};
+
 const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
+
+const isBotLogo = (profileURL: string | null, user?: User) =>
+  Boolean(profileURL && user?.isBot);
 
 // Resolve the effective Avatar size: prefer the defined `size`, otherwise map
 // the legacy numeric `width` to the nearest defined size (default `sm`).
@@ -182,7 +188,7 @@ const ProfilePicture = ({
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
   }, [permissions]);
 
-  const [profileURL, isPicLoading] = useUserProfile({
+  const [profileURL, isPicLoading, user] = useUserProfile({
     permission: viewUserPermission && !isAgent,
     name,
     isTeam,
@@ -212,9 +218,23 @@ const ProfilePicture = ({
         className={classNames('tw:text-fg-secondary', className)}
         contrastBorder={false}
         data-testid="profile-avatar"
-        placeholderIcon={IconTeams}
+        placeholderIcon={Teams}
         size={avatarSize}
-        style={{ backgroundColor: 'transparent' }}
+        style={TRANSPARENT_BACKGROUND}
+      />
+    );
+  }
+
+  if (isBotLogo(profileURL, user)) {
+    return (
+      <Avatar
+        className={className}
+        contrastBorder={false}
+        data-testid="profile-avatar"
+        initials={character}
+        size={avatarSize}
+        src={profileURL}
+        style={TRANSPARENT_BACKGROUND}
       />
     );
   }

@@ -12,17 +12,15 @@
  */
 import {
   Alert,
-  Badge,
   Box,
   Button,
-  Card,
+  ButtonUtility,
   Table,
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { useQuery } from '@tanstack/react-query';
-import { PagingResponse } from 'Models';
+import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import { isAxiosError } from 'axios';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -30,25 +28,56 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { ListParams } from '../../../../interface/API.interface';
+import { restoreOntologyDefinition } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
+import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
+import { pageCount, pageOf } from './OntologyDefinitionTable.utils';
+
+export interface DefinitionColumn<T> {
+  readonly id: string;
+  readonly label: string;
+  readonly render: (item: T) => ReactNode;
+  /** A fixed width, e.g. `tw:w-24`; columns without one share what is left. */
+  readonly width?: string;
+  /** Numbers read right-aligned. */
+  readonly align?: 'end';
+}
 
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
   canCreate: boolean;
   definitionType: 'concept' | 'property' | 'axiom';
-  load: (
-    params: ListParams & { ontology?: string },
-    signal?: AbortSignal
-  ) => Promise<PagingResponse<T[]>>;
-  onWorkingChange?: () => void;
+  /** The rows after the tab's search and filters; undefined while the model loads. */
+  items?: readonly T[];
+  isError?: boolean;
+  onRetry?: () => void;
+  /** Called after a create, save, delete or undo so the tab reloads its rows. */
+  onChanged?: () => void;
+  /** Columns after Name. */
+  columns: readonly DefinitionColumn<T>[];
+  /** Search and filters, left of the count. */
+  toolbar?: ReactNode;
+  /** "6 concepts" or "3 of 8", right of the filters. */
+  summary?: ReactNode;
+  /** Changes whenever the tab's search or filters change, which sends the list back to its first page. */
+  filterKey?: string;
+  /** Replaces the side editor for a row, e.g. to open a concept on the graph. */
+  onOpen?: (item: T) => void;
+  /** Replaces the inline editor for a new definition; `saved` is set once, to keep the new one open. */
+  renderCreate?: (actions: {
+    close: () => void;
+    onCreated: (saved?: T) => void;
+  }) => ReactNode;
   children: (
     definition: T | undefined,
     canEdit: boolean,
-    onSaved: (saved: T) => void
+    onSaved: (saved: T) => void,
+    close: () => void
   ) => ReactNode;
 }
 
@@ -62,15 +91,24 @@ const DEFINITION_ENTITIES = {
   property: EntityType.ONTOLOGY_PROPERTY,
   axiom: EntityType.ONTOLOGY_AXIOM,
 };
+// Narrower than the table's default padding, so every column fits at 1440 wide.
+const CELL_PADDING = 'tw:px-3 tw:first:pl-5 tw:last:pr-5';
 
-const definitionKind = (definition: object) => {
-  const { conceptType, kind, axiomType } = definition as {
-    conceptType?: string;
-    kind?: string;
-    axiomType?: string;
-  };
+const columnClassName = <T,>(column: DefinitionColumn<T>) =>
+  [CELL_PADDING, column.width, column.align === 'end' ? 'tw:text-right' : '']
+    .filter(Boolean)
+    .join(' ');
 
-  return conceptType ?? kind ?? axiomType;
+/** The page index, back to the first page whenever `resetKey` changes. */
+const usePageResetOn = (resetKey?: string) => {
+  const [page, setPage] = useState(0);
+  const [pagedKey, setPagedKey] = useState(resetKey);
+  if (pagedKey !== resetKey) {
+    setPagedKey(resetKey);
+    setPage(0);
+  }
+
+  return [page, setPage] as const;
 };
 
 const OntologyDefinitionList = <
@@ -82,19 +120,26 @@ const OntologyDefinitionList = <
   ontology,
   canCreate,
   definitionType,
-  load,
+  items,
+  isError,
+  onRetry,
+  onChanged,
+  columns,
+  toolbar,
+  summary,
+  filterKey,
+  onOpen,
   children,
-  onWorkingChange,
+  renderCreate,
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const guard = useOntologyDraftGuard();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
   const entityLabel = t(`label.${label}`);
+  // Sentence case: "Add concept", not "Add Concept".
+  const entityText = entityLabel.toLocaleLowerCase();
   const pluralLabel = t(`label.${label}-plural`);
-  const [pagination, setPagination] = useState<
-    Pick<ListParams, 'after' | 'before'>
-  >({});
+  const [page, setPage] = usePageResetOn(filterKey);
   const [selected, setSelected] = useState<T | 'new'>();
   const [isDeleting, setIsDeleting] = useState(false);
   const definition = selected === 'new' ? undefined : selected;
@@ -106,34 +151,14 @@ const OntologyDefinitionList = <
       deleted: definition?.deleted,
     }
   );
-  const page = useQuery({
-    queryKey: ['ontology-definitions', definitionType, ontology.id, pagination],
-    queryFn: ({ signal }) =>
-      load(
-        {
-          ontology: ontology.fullyQualifiedName,
-          limit: 25,
-          fields: 'owners',
-          ...pagination,
-        },
-        signal
-      ),
-    retry: false,
-    gcTime: 0,
-  });
-
-  if (page.isError) {
+  if (isError) {
     return (
       <Alert variant="error">
         <Box direction="col" gap={2}>
           {t('server.entity-fetch-error', {
             entity: pluralLabel,
           })}
-          <Button
-            color="secondary"
-            onPress={() => {
-              void page.refetch();
-            }}>
+          <Button color="secondary" onPress={onRetry}>
             {t('label.retry')}
           </Button>
         </Box>
@@ -141,39 +166,107 @@ const OntologyDefinitionList = <
     );
   }
 
-  const renderDelete = () => (
-    <>
-      {definition && permission.canDelete && (
-        <Button
-          color={isAiMode ? 'secondary-destructive' : 'primary-destructive'}
-          size={isAiMode ? 'sm' : undefined}
-          onPress={() => setIsDeleting(true)}>
-          {t('label.delete')}
-        </Button>
-      )}
-      {definition && isDeleting && (
-        <DeleteEntityModal
-          allowSoftDelete
-          visible
-          afterDeleteAction={() => {
-            setIsDeleting(false);
-            setSelected(undefined);
-            void page.refetch();
-            onWorkingChange?.();
-          }}
-          entityId={definition.id}
-          entityName={getEntityName(definition)}
-          entityType={DEFINITION_ENTITIES[definitionType]}
-          onCancel={() => setIsDeleting(false)}
-        />
-      )}
-    </>
-  );
+  const offerUndo = (
+    deleted: T,
+    restore = () => restoreOntologyDefinition(definitionType, deleted.id)
+  ) =>
+    showUndoToast(
+      t('message.ontology-definition-deleted', {
+        name: getEntityName(deleted),
+      }),
+      async () => {
+        try {
+          await restore();
+          onChanged?.();
+        } catch (error) {
+          showErrorToast(
+            isAxiosError(error) ? error : t('server.unexpected-error')
+          );
+        }
+      }
+    );
 
-  const renderEditor = () => {
-    if (!selected) {
+  const closeAfterDelete = () => {
+    setIsDeleting(false);
+    setSelected(undefined);
+    onChanged?.();
+  };
+
+  const renderDeleteDialog = () => {
+    if (!definition || !isDeleting) {
       return null;
     }
+
+    return definitionType === 'concept' ? (
+      <OntologyConceptDeleteDialog
+        concept={definition}
+        onCancel={() => setIsDeleting(false)}
+        onDeleted={({ restore }) => {
+          closeAfterDelete();
+          offerUndo(definition, restore);
+        }}
+      />
+    ) : (
+      <DeleteEntityModal
+        allowSoftDelete
+        visible
+        afterDeleteAction={(isSoftDelete) => {
+          closeAfterDelete();
+          if (isSoftDelete) {
+            offerUndo(definition);
+          }
+        }}
+        entityId={definition.id}
+        entityName={getEntityName(definition)}
+        entityType={DEFINITION_ENTITIES[definitionType]}
+        onCancel={() => setIsDeleting(false)}
+      />
+    );
+  };
+
+  const renderDeleteAction = () =>
+    definition && permission.canDelete ? (
+      <ButtonUtility
+        aria-label={t('label.delete')}
+        color="tertiary"
+        data-testid="ontology-definition-delete"
+        icon={Trash01}
+        size="sm"
+        tooltip={t('label.delete')}
+        onClick={() => setIsDeleting(true)}
+      />
+    ) : null;
+
+  const closeEditor = () => guard(() => setSelected(undefined));
+
+  const renderEditorForm = () => (
+    <Fragment
+      key={definition ? definition.id + ':' + definition.version : 'new'}>
+      {children(
+        definition,
+        selected === 'new' ? canCreate : permission.canEditAll,
+        (saved) => {
+          setSelected(saved);
+          onChanged?.();
+        },
+        closeEditor
+      )}
+      {renderDeleteDialog()}
+    </Fragment>
+  );
+
+  const renderCreateForm = (create: NonNullable<typeof renderCreate>) =>
+    create({
+      close: closeEditor,
+      onCreated: (saved) => {
+        if (saved) {
+          setSelected(saved);
+        }
+        onChanged?.();
+      },
+    });
+
+  const renderBlockedState = () => {
     if (definition && permission.isLoading) {
       return <Typography role="status">{t('label.loading')}</Typography>;
     }
@@ -185,59 +278,98 @@ const OntologyDefinitionList = <
       );
     }
 
-    const editor = (
-      <Fragment
-        key={definition ? definition.id + ':' + definition.version : 'new'}>
-        {children(
-          definition,
-          selected === 'new' ? canCreate : permission.canEditAll,
-          (saved) => {
-            setSelected(saved);
-            void page.refetch();
-            onWorkingChange?.();
-          }
-        )}
-        {isAiMode ? (
-          <div className="tw:flex tw:empty:hidden">{renderDelete()}</div>
-        ) : (
-          renderDelete()
-        )}
-      </Fragment>
-    );
+    return null;
+  };
 
-    return isAiMode ? (
-      <Card size="lg">
-        <Card.Content className="tw:flex tw:flex-col tw:gap-4">
-          {editor}
-        </Card.Content>
-      </Card>
-    ) : (
-      editor
+  // Row editors open in the Studio's right slide-over, beside the list.
+  const renderDrawer = (title: string, content: ReactNode) => (
+    <OntologyStudioDrawer
+      placement="overlay"
+      testId="ontology-definition-drawer">
+      <Box
+        align="center"
+        className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-4"
+        gap={2}>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Typography color="secondary" size="text-sm">
+            {t('label.in-entity', { entity: getEntityName(ontology) })}
+          </Typography>
+          <Typography
+            ellipsis
+            as="h2"
+            className="not-prose tw:m-0"
+            size="text-lg"
+            weight="semibold">
+            {title}
+          </Typography>
+        </Box>
+        {renderDeleteAction()}
+        <ButtonUtility
+          data-testid="ontology-definition-drawer-close"
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.close')}
+          onClick={closeEditor}
+        />
+      </Box>
+      <Box
+        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6"
+        direction="col"
+        gap={4}>
+        {content}
+      </Box>
+    </OntologyStudioDrawer>
+  );
+
+  const renderEditor = () => {
+    if (!selected) {
+      return null;
+    }
+    if (selected === 'new' && renderCreate) {
+      return renderDrawer(
+        t('label.add-entity', { entity: entityText }),
+        renderCreateForm(renderCreate)
+      );
+    }
+    const blocked = renderBlockedState();
+    if (blocked) {
+      return blocked;
+    }
+
+    return renderDrawer(
+      definition
+        ? getEntityName(definition)
+        : t('label.new-entity', { entity: entityText }),
+      renderEditorForm()
     );
   };
+
+  const total = items?.length ?? 0;
+  const lastPage = pageCount(total) - 1;
+  const currentPage = Math.min(page, lastPage);
 
   const renderPagination = () => (
     <>
       <Button
         color="secondary"
-        isDisabled={page.isFetching || !page.data?.paging.before}
-        size={isAiMode ? 'sm' : undefined}
+        isDisabled={currentPage === 0}
+        size="sm"
         onPress={() =>
           guard(() => {
             setSelected(undefined);
-            setPagination({ before: page.data?.paging.before });
+            setPage(currentPage - 1);
           })
         }>
         {t('label.previous')}
       </Button>
       <Button
         color="secondary"
-        isDisabled={page.isFetching || !page.data?.paging.after}
-        size={isAiMode ? 'sm' : undefined}
+        isDisabled={currentPage >= lastPage}
+        size="sm"
         onPress={() =>
           guard(() => {
             setSelected(undefined);
-            setPagination({ after: page.data?.paging.after });
+            setPage(currentPage + 1);
           })
         }>
         {t('label.next')}
@@ -245,16 +377,33 @@ const OntologyDefinitionList = <
     </>
   );
 
-  const renderAiTable = (items: T[]) => (
-    <TableCard.Root size="sm">
-      <Table aria-label={pluralLabel} size="sm">
+  const openRow = (item: T) =>
+    guard(() => (onOpen ? onOpen(item) : setSelected(item)));
+
+  const renderTable = (rows: readonly T[]) => (
+    <TableCard.Root
+      data-testid={`ontology-definition-group-${definitionType}`}
+      size="sm">
+      <Table aria-label={pluralLabel} className="tw:table-fixed" size="sm">
         <Table.Header>
-          <Table.Head isRowHeader id="name" label={t('label.name')} />
-          <Table.Head id="type" label={t('label.type')} />
-          <Table.Head id="description" label={t('label.description')} />
+          <Table.Head
+            isRowHeader
+            className={`${CELL_PADDING} tw:w-44`}
+            id="name"
+            label={t('label.name')}
+          />
+          {columns.map((column) => (
+            <Table.Head
+              align={column.align}
+              className={columnClassName(column)}
+              id={column.id}
+              key={column.id}
+              label={column.label}
+            />
+          ))}
         </Table.Header>
         <Table.Body
-          items={items}
+          items={rows}
           renderEmptyState={() => (
             <div className="tw:m-4 tw:rounded-lg tw:bg-secondary_alt tw:p-4">
               <Typography as="p" size="text-sm" weight="medium">
@@ -263,99 +412,81 @@ const OntologyDefinitionList = <
             </div>
           )}>
           {(item) => (
-            <Table.Row id={item.id}>
-              <Table.Cell>
-                <Button
-                  color="link-gray"
-                  size="sm"
-                  onPress={() => guard(() => setSelected(item))}>
-                  {getEntityName(item)}
-                </Button>
+            <Table.Row id={item.id} onAction={() => openRow(item)}>
+              <Table.Cell className={CELL_PADDING}>
+                <Box
+                  align="center"
+                  className="tw:min-w-0 tw:overflow-hidden"
+                  gap={2}>
+                  {definitionType === 'concept' ? (
+                    <span
+                      aria-hidden
+                      className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
+                    />
+                  ) : null}
+                  <Button
+                    ellipsis
+                    className="tw:min-w-0 tw:max-w-full tw:overflow-hidden"
+                    color="link-gray"
+                    size="sm"
+                    onPress={() => openRow(item)}>
+                    <span className="tw:font-semibold tw:text-primary">
+                      {getEntityName(item)}
+                    </span>
+                  </Button>
+                </Box>
               </Table.Cell>
-              <Table.Cell>
-                {definitionKind(item) ? (
-                  <Badge color="gray" size="sm" type="pill-color">
-                    {definitionKind(item)}
-                  </Badge>
-                ) : null}
-              </Table.Cell>
-              <Table.Cell>
-                <Typography
-                  as="span"
-                  className="tw:line-clamp-1"
-                  size="text-sm">
-                  {(item as { description?: string }).description}
-                </Typography>
-              </Table.Cell>
+              {columns.map((column) => (
+                <Table.Cell className={columnClassName(column)} key={column.id}>
+                  {column.render(item)}
+                </Table.Cell>
+              ))}
             </Table.Row>
           )}
         </Table.Body>
       </Table>
-      <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
-        {renderPagination()}
-      </div>
+      {lastPage > 0 ? (
+        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
+          {renderPagination()}
+        </div>
+      ) : null}
     </TableCard.Root>
   );
 
-  if (isAiMode) {
-    return (
-      <Box direction="col" gap={5}>
-        <Box align="center" gap={3} justify="between">
-          <Typography as="h2" size="text-md" weight="semibold">
-            {pluralLabel}
-          </Typography>
-          {canCreate && (
-            <Button
-              color="secondary"
-              data-testid={`ontology-add-${definitionType}`}
-              iconLeading={Plus}
-              size="sm"
-              onPress={() => guard(() => setSelected('new'))}>
-              {t('label.add-entity', { entity: entityLabel })}
-            </Button>
-          )}
-        </Box>
-        {page.isPending ? (
-          <Typography role="status">{t('label.loading')}</Typography>
-        ) : (
-          renderAiTable(page.data.data)
-        )}
-        {renderEditor()}
-      </Box>
-    );
-  }
-
   return (
     <Box direction="col" gap={4}>
-      <Box align="center" gap={3}>
-        <Typography as="h2" size="text-lg" weight="semibold">
-          {pluralLabel}
-        </Typography>
+      <Box align="center" gap={3} wrap="wrap">
+        <Box
+          align="center"
+          className="tw:min-w-0 tw:flex-1"
+          gap={2}
+          wrap="wrap">
+          {toolbar}
+        </Box>
+        {summary ? (
+          <Typography
+            color="secondary"
+            data-testid="ontology-definition-summary"
+            size="text-sm">
+            {summary}
+          </Typography>
+        ) : null}
         {canCreate && (
           <Button
-            color="secondary"
+            color={definitionType === 'axiom' ? 'primary' : 'secondary'}
             data-testid={`ontology-add-${definitionType}`}
+            iconLeading={Plus}
+            size="sm"
             onPress={() => guard(() => setSelected('new'))}>
-            {t('label.add-entity', { entity: entityLabel })}
+            {t('label.add-entity', { entity: entityText })}
           </Button>
         )}
       </Box>
-      {page.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
+      {items ? (
+        renderTable(pageOf(items, currentPage))
       ) : (
-        <ul className="tw:m-0 tw:list-none tw:p-0">
-          {page.data.data.map((item) => (
-            <li key={item.id}>
-              <Button
-                color="link-color"
-                onPress={() => guard(() => setSelected(item))}>
-                {getEntityName(item)}
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <Typography role="status">{t('label.loading')}</Typography>
       )}
-      <Box gap={2}>{renderPagination()}</Box>
       {renderEditor()}
     </Box>
   );

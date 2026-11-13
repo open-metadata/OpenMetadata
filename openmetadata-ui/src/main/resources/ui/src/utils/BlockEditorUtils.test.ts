@@ -261,7 +261,9 @@ describe('Image transformation in setEditorContent', () => {
 
       setEditorContent(mockEditor as unknown as Editor, htmlString);
 
-      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(htmlString);
+      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(htmlString, {
+        emitUpdate: false,
+      });
     });
 
     it('should transform simple img tag to file attachment div', () => {
@@ -392,7 +394,8 @@ describe('Image transformation in setEditorContent', () => {
       setEditorContent(mockEditor as unknown as Editor, content);
 
       expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
-        '<p>Hello world</p>'
+        '<p>Hello world</p>',
+        { emitUpdate: false }
       );
       expect(mockEditor.view.updateState).toHaveBeenCalled();
     });

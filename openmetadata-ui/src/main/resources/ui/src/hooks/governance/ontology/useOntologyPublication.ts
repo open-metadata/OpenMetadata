@@ -19,7 +19,6 @@ import {
 import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import {
   TaskCategory,
   TaskType,
@@ -29,6 +28,7 @@ import {
   EntityStatus,
   OntologyRelease,
 } from '../../../generated/entity/data/ontologyRelease';
+import { Stage } from '../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../generated/type/ontologyState';
 import {
   activateOntologyRelease,
@@ -41,13 +41,16 @@ import {
   listOntologyReleaseHistory,
   patchOntology,
 } from '../../../rest/ontologyAPI';
-import { createTask } from '../../../rest/tasksAPI';
+import { closeTask, createTask } from '../../../rest/tasksAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getTaskDetailPath } from '../../../utils/TaskUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useApplicationStore } from '../../useApplicationStore';
 import type {
+  CapturedIdentity,
   OntologyReleaseMetadata,
+  PublicationNotice,
   PublicationReceipt,
   ReceiptRead,
   ReceiptScope,
@@ -62,7 +65,6 @@ import {
   isReviewableCandidate,
   isValidReviewSettings,
   joinPublicationReads,
-  latestVersionedOntologyRelease,
   matchesCapturedIdentity,
   matchesCaptureMetadata,
   matchesPublicationReview,
@@ -73,6 +75,7 @@ import {
   reusablePublicationCandidate,
   samePublicationState,
   savePublicationReceipt,
+  selectVersionBase,
 } from './useOntologyPublication.utils';
 import { ONTOLOGY_STUDIO_MODEL_QUERY_KEY } from './useOntologyStudioModel';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from './useOntologyStudioScopes';
@@ -81,12 +84,54 @@ export type { OntologyReleaseMetadata } from './useOntologyPublication.types';
 export const ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY =
   'ontology-release-validation';
 export const ONTOLOGY_WORKING_DIFF_QUERY_KEY = 'ontology-working-diff';
-const RELEASE_QUERY = 'ontology-release';
-const PROJECTION_QUERY = 'ontology-publication';
-const REVIEW_QUERY = 'ontology-release-review';
+// The server's page maximum: search, filters, per-kind counts and the version
+// suggestion read every change, so a 25-row first page would make them wrong.
+export const ONTOLOGY_WORKING_DIFF_LIMIT = 1000;
+export const RELEASE_QUERY = 'ontology-release';
+export const PROJECTION_QUERY = 'ontology-publication';
+export const REVIEW_QUERY = 'ontology-release-review';
+const releaseVersion = (
+  release: Pick<OntologyRelease, 'semanticVersion' | 'fullyQualifiedName'>
+) =>
+  release.semanticVersion
+    ? 'v' + release.semanticVersion
+    : release.fullyQualifiedName;
 const isDefinitiveWriteRejection = (error: unknown) =>
   isAxiosError(error) &&
   [400, 401, 403, 404, 409, 412, 422].includes(error.response?.status ?? 0);
+
+// A withdrawn request leaves its task on the Draft, and a closed task has no
+// review to read, so only a release past Draft looks the review up.
+const reviewTaskToRead = (stage: Stage | undefined, reviewTask?: string) =>
+  stage === Stage.Draft ? undefined : reviewTask;
+
+// A notice belongs to the ontology and user it was raised for, so switching
+// either hides it instead of announcing another scope's outcome.
+const useScopedNotice = (scopeKey: string, owner: { current: string }) => {
+  const [state, setState] = useState<{
+    owner: string;
+    notice: PublicationNotice;
+  }>();
+  const showNotice = useCallback(
+    (forScope: string, next: PublicationNotice) => {
+      if (owner.current === forScope) {
+        setState({ owner: forScope, notice: next });
+      }
+    },
+    [owner]
+  );
+  const dismissNotice = useCallback(() => setState(undefined), []);
+
+  return {
+    notice: state?.owner === scopeKey ? state.notice : undefined,
+    showNotice,
+    dismissNotice,
+  };
+};
+
+// Readers without edit rights never request the working diff, so it cannot gate their reads.
+const isWorkingReady = (canEdit: boolean, workingLoaded: boolean) =>
+  !canEdit || workingLoaded;
 
 export const useOntologyPublication = (
   ontologyId: string,
@@ -94,7 +139,6 @@ export const useOntologyPublication = (
   showHistory = true
 ) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useApplicationStore((store) => store.currentUser);
   const userId = currentUser?.id ?? '';
@@ -119,6 +163,10 @@ export const useOntologyPublication = (
     receiptState?.owner === scopeKey
       ? receiptState.read
       : ({ kind: 'loading' } as const);
+  const { notice, showNotice, dismissNotice } = useScopedNotice(
+    scopeKey,
+    owner
+  );
   const [busyFor, setBusyFor] = useState<{ owner: string } | null>(null);
   const isBusy = busyFor?.owner === scopeKey;
   const [refreshFailed, setRefreshFailed] = useState<string>();
@@ -140,6 +188,10 @@ export const useOntologyPublication = (
       return value;
     },
   });
+  // A ref, so the task title reads the loaded name without changing the
+  // identity of the callbacks that submit the review.
+  const ontologyName = useRef('');
+  ontologyName.current = getEntityName(projection.data);
   const state = useQuery({
     queryKey: ['ontology-state', ontologyId, userId],
     retry: false,
@@ -155,12 +207,13 @@ export const useOntologyPublication = (
   });
   const working = useQuery({
     queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId, undefined, userId],
+    enabled: canEdit,
     retry: false,
     gcTime: 0,
     queryFn: async ({ signal }) => {
       const value = await getOntologyWorkingDiff(
         ontologyId,
-        { limit: 25, groupBy: 'concept' },
+        { limit: ONTOLOGY_WORKING_DIFF_LIMIT, groupBy: 'concept' },
         signal
       );
       if (value.state.ontologyId !== ontologyId) {
@@ -169,18 +222,6 @@ export const useOntologyPublication = (
 
       return value;
     },
-  });
-  const latestVersioned = useQuery({
-    queryKey: [
-      'ontology-latest-versioned-release',
-      ontologyId,
-      working.data?.state.lastReleaseRevision,
-      userId,
-    ],
-    enabled: working.isSuccess,
-    retry: false,
-    gcTime: 0,
-    queryFn: ({ signal }) => latestVersionedOntologyRelease(ontologyId, signal),
   });
   const history = useInfiniteQuery({
     queryKey: [
@@ -215,6 +256,7 @@ export const useOntologyPublication = (
     getNextPageParam: (last, pages) =>
       pages.length < 40 ? last.paging.after : undefined,
   });
+  const activeReleaseId = state.data?.activeReleaseId;
   const currentId = projection.data?.publicationStatus?.latest?.releaseId;
   const releaseId = selectedId ?? currentId;
   const readRelease = async (id: string | undefined, signal: AbortSignal) => {
@@ -242,15 +284,28 @@ export const useOntologyPublication = (
     gcTime: 0,
     queryFn: ({ signal }) => readRelease(releaseId, signal),
   });
+  const activeRelease = useQuery({
+    queryKey: [RELEASE_QUERY, ontologyId, activeReleaseId, userId],
+    enabled: [
+      Boolean(activeReleaseId),
+      isWorkingReady(canEdit, working.isSuccess),
+    ].every(Boolean),
+    retry: false,
+    gcTime: 0,
+    queryFn: ({ signal }) => readRelease(activeReleaseId, signal),
+  });
+  const versionBase = selectVersionBase(
+    activeRelease,
+    Boolean(activeReleaseId),
+    [state.isSuccess, isWorkingReady(canEdit, working.isSuccess)].every(Boolean)
+  );
+  const reviewTask = reviewTaskToRead(
+    projection.data?.publicationStatus?.latest?.stage,
+    candidate.data?.reviewTask
+  );
   const review = useQuery({
-    queryKey: [
-      REVIEW_QUERY,
-      ontologyId,
-      currentId,
-      candidate.data?.reviewTask,
-      userId,
-    ],
-    enabled: Boolean(candidate.data?.reviewTask),
+    queryKey: [REVIEW_QUERY, ontologyId, currentId, reviewTask, userId],
+    enabled: Boolean(reviewTask),
     retry: false,
     gcTime: 0,
     queryFn: ({ signal }) => getOntologyReleaseReview(currentId ?? '', signal),
@@ -258,7 +313,7 @@ export const useOntologyPublication = (
   const candidateRead = currentId
     ? readPublicationQuery(candidate)
     : { kind: 'ready' as const, value: null };
-  const reviewRead = candidate.data?.reviewTask
+  const reviewRead = reviewTask
     ? readPublicationQuery(review)
     : { kind: 'ready' as const, value: null };
   const current =
@@ -270,18 +325,18 @@ export const useOntologyPublication = (
           candidateRead,
           reviewRead
         );
-  const activeReleaseId = state.data?.activeReleaseId;
   const refresh = useCallback(async () => {
     const keys = [
       [PROJECTION_QUERY, ontologyId],
       ['ontology-state', ontologyId],
       [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId],
       ['ontology-release-history', ontologyId],
-      ['ontology-latest-versioned-release', ontologyId],
       [RELEASE_QUERY, ontologyId],
-      [REVIEW_QUERY, ontologyId],
     ];
+    // A withdrawn request's review refetches once more before the Draft stage
+    // disables it; that read fails, and must not mark the whole panel failed.
     const independentKeys = [
+      [REVIEW_QUERY, ontologyId],
       ['ontology-release-events'],
       [ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY],
       [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
@@ -307,10 +362,7 @@ export const useOntologyPublication = (
     }
   }, [ontologyId, queryClient, scopeKey]);
   useEffect(() => {
-    if (
-      candidate.isSuccess &&
-      (!candidate.data.reviewTask || review.isSuccess)
-    ) {
+    if (candidate.isSuccess && (!reviewTask || review.isSuccess)) {
       void queryClient.invalidateQueries({
         queryKey: [PROJECTION_QUERY, ontologyId],
       });
@@ -319,7 +371,7 @@ export const useOntologyPublication = (
     candidate.dataUpdatedAt,
     review.dataUpdatedAt,
     candidate.isSuccess,
-    candidate.data?.reviewTask,
+    reviewTask,
     review.isSuccess,
     ontologyId,
     queryClient,
@@ -353,6 +405,10 @@ export const useOntologyPublication = (
         task = await createTask({
           category: TaskCategory.Approval,
           type: TaskType.RequestApproval,
+          displayName: t('message.ontology-review-task-title', {
+            ontology: ontologyName.current,
+            version: releaseVersion(attempt.release),
+          }),
           about: getEntityFeedLink(
             'ontologyRelease',
             attempt.release.fullyQualifiedName
@@ -377,11 +433,15 @@ export const useOntologyPublication = (
         throw error;
       }
       storeReceipt(null, running, attempt);
-      if (owner.current === `${attempt.userId}:${attempt.ontologyId}`) {
-        navigate(getTaskDetailPath(task));
-      }
+      showNotice(`${attempt.userId}:${attempt.ontologyId}`, {
+        kind: 'requested',
+        version: releaseVersion(attempt.release),
+        reviewers: (task.reviewers ?? task.assignees ?? []).map(getEntityName),
+        taskId: task.id,
+        taskHref: getTaskDetailPath(task),
+      });
     },
-    [navigate, storeReceipt]
+    [showNotice, storeReceipt, t]
   );
   const reconcileActivation = useCallback(
     async (
@@ -457,18 +517,21 @@ export const useOntologyPublication = (
           throw new Error('Recovery review identity does not match');
         }
         storeReceipt(null, attempt, attempt);
-        if (
-          allowSubmit &&
-          owner.current === `${attempt.userId}:${attempt.ontologyId}`
-        ) {
-          navigate(
-            getTaskDetailPath({
+        if (allowSubmit) {
+          showNotice(`${attempt.userId}:${attempt.ontologyId}`, {
+            kind: 'requested',
+            version: releaseVersion(attempt.release),
+            reviewers: task.assignees.map(({ assignee }) =>
+              getEntityName(assignee)
+            ),
+            taskId: task.task.id,
+            taskHref: getTaskDetailPath({
               id: task.task.id,
               taskId: task.taskId,
               type: TaskType.RequestApproval,
               about: task.release,
-            })
-          );
+            }),
+          });
         }
       } else if (
         allowSubmit &&
@@ -478,7 +541,7 @@ export const useOntologyPublication = (
         await submitReview(attempt);
       }
     },
-    [navigate, storeReceipt, submitReview]
+    [showNotice, storeReceipt, submitReview]
   );
   const reconcile = useCallback(
     (attempt: PublicationReceipt, allowSubmit: boolean) => {
@@ -510,13 +573,14 @@ export const useOntologyPublication = (
     recoveryReady,
     !isBusy,
   ].every(Boolean);
-  const run = async (action: () => Promise<void>) => {
+  const run = async (action: () => Promise<unknown>) => {
     if (busy.current?.owner === scopeKey) {
       return;
     }
     const startedFor = { owner: scopeKey };
     busy.current = startedFor;
     setBusyFor(startedFor);
+    dismissNotice();
     try {
       await action();
     } catch (error) {
@@ -533,11 +597,29 @@ export const useOntologyPublication = (
       setBusyFor((value) => (value === startedFor ? null : value));
     }
   };
+  // An unchanged capture returns the existing Draft with its own version and
+  // notes, so only its source revision and base can be checked against the attempt.
+  const isReusedDraft = (
+    captured: OntologyRelease,
+    attempt: Extract<PublicationReceipt, { operation: 'capture' }>
+  ) => {
+    const reusable =
+      current.kind === 'ready'
+        ? reusablePublicationCandidate(current.value)
+        : undefined;
+
+    return (
+      captured.id === reusable?.id &&
+      captured.ontology.id === attempt.ontologyId &&
+      captured.sourceWorkingRevision === attempt.state.workingRevision &&
+      captured.baseReleaseId === attempt.state.activeReleaseId
+    );
+  };
   const captureCandidate = async (
     preview: OntologyState,
     metadata: OntologyReleaseMetadata,
     intent: 'capture' | 'review'
-  ) => {
+  ): Promise<OntologyRelease | undefined> => {
     const attempt: PublicationReceipt = {
       origin: window.location.origin,
       userId,
@@ -549,7 +631,7 @@ export const useOntologyPublication = (
       metadata: { ...metadata },
       expectedVersion: metadata.versionBump
         ? nextPublicationVersion(
-            latestVersioned.data?.semanticVersion,
+            versionBase.data?.semanticVersion,
             metadata.versionBump
           )
         : undefined,
@@ -565,7 +647,10 @@ export const useOntologyPublication = (
           : {}),
         ...attempt.metadata,
       });
-      if (!matchesCaptureMetadata(captured, attempt)) {
+      if (
+        !isReusedDraft(captured, attempt) &&
+        !matchesCaptureMetadata(captured, attempt)
+      ) {
         throw new Error('Captured release does not match the attempt');
       }
     } catch (error) {
@@ -586,7 +671,7 @@ export const useOntologyPublication = (
     if (intent === 'capture') {
       storeReceipt(null, attempt, attempt);
 
-      return;
+      return captured;
     }
     const reviewAttempt: PublicationReceipt = {
       origin: attempt.origin,
@@ -599,15 +684,15 @@ export const useOntologyPublication = (
     };
     storeReceipt(reviewAttempt, attempt, attempt);
     await submitReview(reviewAttempt);
+
+    return captured;
   };
   const canCapture = (preview: OntologyState) => {
     if (!canWrite || current.kind !== 'ready' || !working.isSuccess) {
       return false;
     }
     const available =
-      latestVersioned.isSuccess &&
-      !latestVersioned.isFetching &&
-      !working.isFetching;
+      versionBase.isSuccess && !versionBase.isFetching && !working.isFetching;
 
     return (
       available &&
@@ -623,7 +708,23 @@ export const useOntologyPublication = (
       return Promise.resolve();
     }
 
-    return run(() => captureCandidate(preview, metadata, 'capture'));
+    const priorDraft =
+      current.kind === 'ready' ? current.value.candidate : undefined;
+
+    return run(async () => {
+      const saved = await captureCandidate(preview, metadata, 'capture');
+      if (
+        saved &&
+        priorDraft?.entityStatus === EntityStatus.Draft &&
+        saved.id === priorDraft.id
+      ) {
+        showNotice(scopeKey, {
+          kind: 'unchanged',
+          version: releaseVersion(saved),
+          releaseNotes: saved.releaseNotes ?? '',
+        });
+      }
+    });
   };
   const captureAndRequestApproval = (
     preview: OntologyState,
@@ -660,6 +761,48 @@ export const useOntologyPublication = (
       }
     });
   };
+  const activateRelease = async (
+    release: CapturedIdentity,
+    snapshot: OntologyState
+  ) => {
+    const attempt: PublicationReceipt = {
+      origin: window.location.origin,
+      userId,
+      ontologyId,
+      state: { ...snapshot },
+      operation: 'activation',
+      phase: 'running',
+      release,
+    };
+    storeReceipt(attempt, null, attempt);
+    try {
+      const activated = await activateOntologyRelease(ontologyId, {
+        releaseId: attempt.release.id,
+        expectedActivationRevision: attempt.state.activationRevision,
+      });
+      if (
+        activated.ontologyId !== ontologyId ||
+        activated.activeReleaseId !== attempt.release.id
+      ) {
+        throw new Error('Activation response does not match');
+      }
+      storeReceipt(null, attempt, attempt);
+      showNotice(scopeKey, {
+        kind: 'published',
+        version: releaseVersion(attempt.release),
+      });
+    } catch (error) {
+      storeReceipt(
+        isDefinitiveWriteRejection(error)
+          ? null
+          : { ...attempt, phase: 'unknown' },
+        attempt,
+        attempt
+      );
+
+      throw error;
+    }
+  };
   const activate = (
     subject: { kind: 'current' | 'selected' } = { kind: 'selected' }
   ) => {
@@ -675,41 +818,39 @@ export const useOntologyPublication = (
     if (!canActivate) {
       return Promise.resolve();
     }
-    const attempt: PublicationReceipt = {
-      origin: window.location.origin,
-      userId,
-      ontologyId,
-      state: { ...state.data },
-      operation: 'activation',
-      phase: 'running',
-      release: capturedIdentity(target.data),
-    };
+    const release = capturedIdentity(target.data);
+    const snapshot = state.data;
+
+    return run(() => activateRelease(release, snapshot));
+  };
+  const publishDirectly = (
+    preview: OntologyState,
+    metadata: OntologyReleaseMetadata
+  ) => {
+    if (!canCapture(preview) || current.kind !== 'ready') {
+      return Promise.resolve();
+    }
 
     return run(async () => {
-      storeReceipt(attempt, null, attempt);
-      try {
-        const activated = await activateOntologyRelease(ontologyId, {
-          releaseId: attempt.release.id,
-          expectedActivationRevision: attempt.state.activationRevision,
-        });
-        if (
-          activated.ontologyId !== ontologyId ||
-          activated.activeReleaseId !== attempt.release.id
-        ) {
-          throw new Error('Activation response does not match');
-        }
-        storeReceipt(null, attempt, attempt);
-      } catch (error) {
-        storeReceipt(
-          isDefinitiveWriteRejection(error)
-            ? null
-            : { ...attempt, phase: 'unknown' },
-          attempt,
-          attempt
-        );
-
-        throw error;
+      const saved = await captureCandidate(preview, metadata, 'capture');
+      if (saved) {
+        await activateRelease(capturedIdentity(saved), preview);
       }
+    });
+  };
+  const withdraw = () => {
+    const taskId =
+      current.kind === 'ready' ? current.value.review?.task.id : undefined;
+    if (!canWrite || !taskId || current.kind !== 'ready') {
+      return Promise.resolve();
+    }
+    const version = current.value.candidate
+      ? releaseVersion(current.value.candidate)
+      : '';
+
+    return run(async () => {
+      await closeTask(taskId);
+      showNotice(scopeKey, { kind: 'withdrawn', version });
     });
   };
   const retryRecovery = () =>
@@ -814,7 +955,7 @@ export const useOntologyPublication = (
     review,
     projection,
     currentUser,
-    latestVersioned,
+    versionBase,
     history,
     setSelectedId,
     isBusy,
@@ -824,6 +965,10 @@ export const useOntologyPublication = (
     refresh,
     capture,
     captureAndRequestApproval,
+    publishDirectly,
+    withdraw,
+    notice,
+    dismissNotice,
     activate,
     retryRecovery,
     dismissActivationConflict,

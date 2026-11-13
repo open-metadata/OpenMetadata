@@ -405,6 +405,7 @@ const SystemAnnouncementsTable = ({
             aria-label={t('label.search-for-type', {
               type: t('label.announcement-plural'),
             })}
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="announcement-search"
             icon={Search}
