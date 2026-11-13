@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
@@ -42,6 +43,8 @@ import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -58,6 +61,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -5044,4 +5048,214 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   // collate-integration-tests/src/test/java/io/collate/it/governance/DarStatusGroupIT.java —
   // they need the DAR workflow + policyAgentTask handler that Collate seeds via MigrationUtil
   // 2.0.0, so they cannot run against the OSS OpenMetadataApplication used by this file.
+
+  /**
+   * The UI approves a TagUpdate with newValue set to the previewed final list (currentTags minus
+   * tagsToRemove plus tagsToAdd). A Replace inside a mutually exclusive classification must leave
+   * only the new tag on the column.
+   */
+  @Test
+  void testApproveColumnTagReplaceWithNewValueLeavesOnlyTheNewTag(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "replace-me", true, "a", "b");
+    TagLabel original = tags.get(0);
+    TagLabel replacement = tags.get(1);
+    Table table = createTableWithFirstColumnTags(ns, List.of(original));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Map<String, Object> payload =
+        tagUpdatePayload(
+            fieldPath, "Replace", List.of(original), List.of(replacement), List.of(original));
+    Task resolved = approveTagUpdateAsTheUiDoes(ns, "tag-replace", table, payload, replacement);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        List.of(replacement.getTagFQN()),
+        firstColumnTagFqns(table),
+        "Replace must swap the tag, not add next to it");
+  }
+
+  /**
+   * The column's tag was swapped for another tag of the same mutually exclusive classification
+   * after the task was filed. Approving the task applies the reviewer's tag in its place instead of
+   * failing on the conflict.
+   */
+  @Test
+  void testApproveColumnTagReplaceAfterAConcurrentSwapAppliesTheApprovedTag(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "swap-me", true, "a", "b", "c");
+    TagLabel original = tags.get(0);
+    TagLabel replacement = tags.get(1);
+    TagLabel swappedIn = tags.get(2);
+    Table table = createTableWithFirstColumnTags(ns, List.of(original));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Map<String, Object> payload =
+        tagUpdatePayload(
+            fieldPath, "Replace", List.of(original), List.of(replacement), List.of(original));
+    Task task = createTagUpdateTask(ns, "tag-swap", table, payload);
+    setFirstColumnTags(table, List.of(swappedIn));
+    Task resolved = resolveAsTheUiDoes(task, payload, replacement);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(List.of(replacement.getTagFQN()), firstColumnTagFqns(table));
+  }
+
+  /**
+   * A Remove approved from the UI must drop the removed tag, and a tag added to the column after
+   * the task was filed is not the reviewer's to drop.
+   */
+  @Test
+  void testApproveColumnTagRemoveWithNewValueDropsOnlyTheRemovedTag(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "remove", false, "kept", "dropped", "later");
+    TagLabel kept = tags.get(0);
+    TagLabel dropped = tags.get(1);
+    TagLabel addedLater = tags.get(2);
+    Table table = createTableWithFirstColumnTags(ns, List.of(kept, dropped));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Map<String, Object> payload =
+        tagUpdatePayload(fieldPath, "Remove", List.of(kept, dropped), List.of(), List.of(dropped));
+    Task task = createTagUpdateTask(ns, "tag-remove", table, payload);
+    setFirstColumnTags(table, List.of(kept, dropped, addedLater));
+    Task resolved = resolveAsTheUiDoes(task, payload, kept);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        List.of(kept.getTagFQN(), addedLater.getTagFQN()),
+        firstColumnTagFqns(table),
+        "Remove must drop the removed tag and keep the tag added after the task");
+  }
+
+  /**
+   * A task filed through the API without a currentTags snapshot records nothing the reviewer saw,
+   * so resolving it with newValue adds the approved tags and leaves the column's other tags alone.
+   */
+  @Test
+  void testApproveColumnTagAddWithoutSnapshotKeepsTheColumnsOtherTags(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "no-snapshot", false, "x", "y", "z");
+    Table table = createTableWithFirstColumnTags(ns, List.of(tags.get(0), tags.get(1)));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Task task =
+        createTagUpdateTask(
+            ns,
+            "tag-no-snapshot",
+            table,
+            Map.of("fieldPath", fieldPath, "operation", "Add", "tagsToAdd", List.of(tags.get(2))));
+    Task resolved =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tags.get(2)))));
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        tags.stream().map(TagLabel::getTagFQN).sorted().toList(), firstColumnTagFqns(table));
+  }
+
+  private static List<TagLabel> createClassificationTags(
+      TestNamespace ns, String name, boolean mutuallyExclusive, String... tagNames) {
+    Classification classification =
+        SdkClients.adminClient()
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix(name))
+                    .withDescription("TagUpdate resolution test classification")
+                    .withMutuallyExclusive(mutuallyExclusive));
+    return Arrays.stream(tagNames)
+        .map(
+            tagName ->
+                SdkClients.adminClient()
+                    .tags()
+                    .create(
+                        new CreateTag()
+                            .withName(tagName)
+                            .withDescription("TagUpdate resolution test tag")
+                            .withClassification(classification.getName())))
+        .map(
+            tag ->
+                new TagLabel()
+                    .withTagFQN(tag.getFullyQualifiedName())
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)
+                    .withLabelType(TagLabel.LabelType.MANUAL)
+                    .withState(TagLabel.State.CONFIRMED))
+        .toList();
+  }
+
+  private static Table createTableWithFirstColumnTags(TestNamespace ns, List<TagLabel> tags) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+    setFirstColumnTags(table, tags);
+    return table;
+  }
+
+  private static void setFirstColumnTags(Table table, List<TagLabel> tags) {
+    String patch =
+        "[{\"op\":\"add\",\"path\":\"/columns/0/tags\",\"value\":%s}]"
+            .formatted(JsonUtils.pojoToJson(tags));
+    SdkClients.adminClient().tables().patch(table.getId().toString(), JsonUtils.readTree(patch));
+  }
+
+  private static Map<String, Object> tagUpdatePayload(
+      String fieldPath,
+      String operation,
+      List<TagLabel> currentTags,
+      List<TagLabel> tagsToAdd,
+      List<TagLabel> tagsToRemove) {
+    return Map.of(
+        "fieldPath", fieldPath,
+        "operation", operation,
+        "currentTags", currentTags,
+        "tagsToAdd", tagsToAdd,
+        "tagsToRemove", tagsToRemove);
+  }
+
+  private static Task createTagUpdateTask(
+      TestNamespace ns, String name, Table table, Map<String, Object> payload) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix(name))
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.TagUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
+  }
+
+  private static Task approveTagUpdateAsTheUiDoes(
+      TestNamespace ns,
+      String name,
+      Table table,
+      Map<String, Object> payload,
+      TagLabel... finalTags) {
+    return resolveAsTheUiDoes(createTagUpdateTask(ns, name, table, payload), payload, finalTags);
+  }
+
+  // The UI resolves with the payload and newValue = the previewed final list
+  // (TaskFormSchemaUtils.mergeResolutionTags).
+  private static Task resolveAsTheUiDoes(
+      Task task, Map<String, Object> payload, TagLabel... finalTags) {
+    return SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(JsonUtils.pojoToJson(List.of(finalTags)))
+                .withPayload(JsonUtils.convertValue(payload, Payload.class)));
+  }
+
+  private static List<String> firstColumnTagFqns(Table table) {
+    Table updated =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    return listOrEmpty(updated.getColumns().get(0).getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .sorted()
+        .toList();
+  }
 }
