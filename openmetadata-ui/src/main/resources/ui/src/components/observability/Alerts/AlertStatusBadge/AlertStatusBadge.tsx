@@ -11,17 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EventSubscription } from '../../../../generated/events/eventSubscription';
 import { getAlertListStatus } from '../../../../utils/observability/alertStatus.utils';
 import { ALERT_STATUS_BADGE } from './AlertStatusBadge.constants';
-import AlertStatusReasons from './AlertStatusReasons';
+import StatusReasonBadge from './StatusReasonBadge';
 
 /** The alert's status in a list; one that is not sending says why on hover and focus. */
 function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
@@ -43,31 +38,9 @@ function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
       ].filter((section) => section.reasons.length > 0),
     [failureReasons, t, unusableReasons]
   );
-  const badge = (
-    <Badge color={color} data-testid="alert-status" size="sm" type="pill-color">
-      {t(labelKey)}
-    </Badge>
-  );
-
-  if (sections.length === 0) {
-    return badge;
-  }
 
   return (
-    <Tooltip
-      description={<AlertStatusReasons sections={sections} />}
-      title={sections[0].title}>
-      <TooltipTrigger
-        aria-label={[
-          t(labelKey),
-          ...sections.map(
-            (section) => `${section.title}: ${section.reasons.join(' ')}`
-          ),
-        ].join('. ')}
-        data-testid="alert-status-reason">
-        {badge}
-      </TooltipTrigger>
-    </Tooltip>
+    <StatusReasonBadge color={color} label={t(labelKey)} sections={sections} />
   );
 }
 

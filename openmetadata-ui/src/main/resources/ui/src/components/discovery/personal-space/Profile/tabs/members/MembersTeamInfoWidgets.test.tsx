@@ -162,9 +162,15 @@ describe('MembersTeamInfoWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('subscription-not-sending')).toHaveTextContent(
-      `message.webhook-does-not-send-until-fixed${reason}`
+    expect(screen.getByTestId('alert-status')).toHaveTextContent(
+      'label.failed'
     );
+    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
+      `label.failed. message.webhook-does-not-send-until-fixed: ${reason}`
+    );
+    expect(
+      screen.queryByTestId('subscription-not-sending')
+    ).not.toBeInTheDocument();
   });
 
   it('asks for an endpoint in words when it is left empty', async () => {
