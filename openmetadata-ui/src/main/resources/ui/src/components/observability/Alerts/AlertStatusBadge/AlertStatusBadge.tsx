@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EventSubscription } from '../../../../generated/events/eventSubscription';
-import { getAlertListStatus } from '../../../../utils/observability/alertStatus.utils';
+import { getAlertListStatus } from '../../../../utils/observability/alerts/alertStatus.utils';
+import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import { ALERT_STATUS_BADGE } from './AlertStatusBadge.constants';
-import StatusReasonBadge from './StatusReasonBadge';
+import { AlertStatusReasonSection } from './AlertStatusBadge.types';
+import AlertStatusReasons from './AlertStatusReasons';
 
 /** The alert's status in a list; one that is not sending says why on hover and focus. */
 function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
@@ -25,9 +28,9 @@ function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
     () => getAlertListStatus(alert),
     [alert]
   );
-  const { color, labelKey } = ALERT_STATUS_BADGE[status];
+  const badge = ALERT_STATUS_BADGE[status];
   // Stored configurations to change, then sends that failed, each under its own heading.
-  const sections = useMemo(
+  const sections: AlertStatusReasonSection[] = useMemo(
     () =>
       [
         {
@@ -38,9 +41,24 @@ function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
       ].filter((section) => section.reasons.length > 0),
     [failureReasons, t, unusableReasons]
   );
+  const statusBadge = (
+    <StatusBadgeV2
+      dataTestId="alert-status"
+      label={t(badge.labelKey)}
+      status={badge.status}
+    />
+  );
 
-  return (
-    <StatusReasonBadge color={color} label={t(labelKey)} sections={sections} />
+  // triggerClassName wraps the badge in a focusable trigger, so a keyboard reaches the reasons.
+  return sections.length > 0 ? (
+    <Tooltip
+      description={<AlertStatusReasons sections={sections} />}
+      title={sections[0].title}
+      triggerClassName="tw:inline-flex">
+      {statusBadge}
+    </Tooltip>
+  ) : (
+    statusBadge
   );
 }
 

@@ -6904,7 +6904,6 @@
     "vote-recorded-waiting-for-other-approvers": "O seu voto foi registado. A aguardar os restantes aprovadores.",
     "waiting-for-approval-request": "A aguardar a abertura do pedido de aprovação.",
     "waiting-on-deciders": "A aguardar {{names}} — apenas os revisores atribuídos podem aprovar.",
-    "webhook-does-not-send-until-fixed": "Este webhook não envia até que isto seja corrigido",
     "webhook-listing-message": "O webhook permite que serviços externos sejam notificados dos eventos de mudança de metadados que ocorrem em sua organização por meio de APIs. Registe URLs de retorno de chamada com integração de webhook para receber notificações de eventos de metadados. Você pode adicionar, listar, atualizar e excluir webhooks.",
     "webhook-type-listing-message": "Forneça atualizações oportunas aos produtores e consumidores de metadados por meio de notificações {{webhookType}}. Use webhooks {{webhookType}} para enviar notificações sobre eventos de mudança de metadados em sua organização por meio de APIs. Você pode adicionar, listar, atualizar e excluir esses webhooks.",
     "welcome-screen-message": "Descubra, compreenda e colabore em todos os seus dados num só local.",

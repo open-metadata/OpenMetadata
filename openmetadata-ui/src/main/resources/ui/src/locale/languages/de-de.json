@@ -6904,7 +6904,6 @@
     "vote-recorded-waiting-for-other-approvers": "Ihre Stimme wurde erfasst. Warten auf die anderen Genehmigenden.",
     "waiting-for-approval-request": "Warten auf die Eröffnung der Genehmigungsanfrage.",
     "waiting-on-deciders": "Warten auf {{names}} — nur zugewiesene Prüfer können genehmigen.",
-    "webhook-does-not-send-until-fixed": "Dieser Webhook sendet nicht, bis dies behoben ist",
     "webhook-listing-message": "Die Webhook ermöglicht es externen Diensten, über APIs über Metadatenänderungsereignisse in Ihrer Organisation informiert zu werden. Registrieren Sie Callback-URLs mit der Webhook-Integration, um Metadatenereignisbenachrichtigungen zu erhalten. Sie können Webhooks hinzufügen, auflisten, aktualisieren und löschen.",
     "webhook-type-listing-message": "Geben Sie den Produzenten und Konsumenten von Metadaten rechtzeitig Aktualisierungen über {{webhookType}}-Benachrichtigungen. Verwenden Sie {{webhookType}}-Webhooks, um Benachrichtigungen über Metadatenänderungsereignisse in Ihrer Organisation über APIs zu senden. Sie können diese Webhooks hinzufügen, auflisten, aktualisieren und löschen.",
     "welcome-screen-message": "Entdecken, verstehen und bearbeiten Sie alle Ihre Daten gemeinsam an einem Ort.",

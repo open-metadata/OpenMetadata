@@ -556,10 +556,13 @@ describe('DestinationSelectItem', () => {
         ],
       });
 
-      expect(screen.getByTestId('alert-warning')).toHaveTextContent(
+      // An error, as an unusable configuration is, under its own title.
+      expect(screen.getByTestId('alert-error')).toHaveTextContent(
         'label.failure-reasonWebhook failed with status: 503'
       );
-      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-error')).not.toHaveTextContent(
+        'message.destination-does-not-send-until-fixed'
+      );
     }
   );
 

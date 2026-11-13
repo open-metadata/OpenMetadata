@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -39,7 +38,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
-import org.openmetadata.schema.type.profile.SubscriptionStatusConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.BoundCiphertext;
@@ -303,53 +301,6 @@ class ProfileWebhookSecretsTest {
     assertNull(ProfileWebhookSecrets.decrypted(HOLDER, inAnotherSlot).getSubscription().getSlack());
     assertNull(
         ProfileWebhookSecrets.decrypted(HOLDER, encryptedElsewhere).getSubscription().getGeneric());
-  }
-
-  @Test
-  void aReadReportsEachWebhookThatDoesNotSendAndAWriteNeverStoresIt() {
-    Profile stored =
-        ProfileWebhookSecrets.ofANewEntity(
-            HOLDER,
-            new Profile()
-                .withSubscription(
-                    new SubscriptionConfig()
-                        .withGeneric(oauth2("the secret"))
-                        .withSlack(oauth2("x"))));
-    stored
-        .getSubscription()
-        .getSlack()
-        .withHeaders(Map.of("X-Api-Key", Fernet.getInstance().encrypt("never decrypted")));
-    User user = new User().withId(HOLDER.id()).withName("u").withProfile(stored);
-
-    ProfileWebhookSecrets.maskForRead(user);
-    Profile saved = ProfileWebhookSecrets.updated(HOLDER, stored, user.getProfile());
-
-    SubscriptionStatusConfig status = user.getProfile().getSubscriptionStatus();
-    assertEquals(SubscriptionStatus.Status.FAILED, status.getSlack().getStatus());
-    assertTrue(status.getSlack().getConfigurationUnusable());
-    assertTrue(
-        status.getSlack().getLastFailedReason().contains("/headers/X-Api-Key"),
-        status.getSlack().getLastFailedReason());
-    assertNull(status.getGeneric());
-    assertEquals(PASSWORD_MASK, clientSecretOf(user.getProfile()));
-    assertNull(saved.getSubscriptionStatus());
-    Profile sentWithAStatus = profileWith(oauth2("s")).withSubscriptionStatus(status);
-    assertNull(ProfileWebhookSecrets.ofANewEntity(HOLDER, sentWithAStatus).getSubscriptionStatus());
-  }
-
-  @Test
-  void aChangeEventNeverRecordsTheReadStatus() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("x")));
-    stored
-        .getSubscription()
-        .getGeneric()
-        .withHeaders(Map.of("X-Api-Key", Fernet.getInstance().encrypt("never decrypted")));
-    Team team = new Team().withId(UUID.randomUUID()).withName("t").withProfile(stored);
-    ProfileWebhookSecrets.Holder holder = new ProfileWebhookSecrets.Holder("team", team.getId());
-    team.withProfile(ProfileWebhookSecrets.withStatus(holder, stored));
-
-    assertTrue(JsonUtils.pojoToJson(team).contains("subscriptionStatus"));
-    assertFalse(JsonUtils.pojoToMaskedJson(team).contains("subscriptionStatus"));
   }
 
   @Test

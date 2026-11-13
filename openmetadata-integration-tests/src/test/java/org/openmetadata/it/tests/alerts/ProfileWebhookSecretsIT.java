@@ -166,82 +166,44 @@ class ProfileWebhookSecretsIT {
   }
 
   /**
-   * A profile webhook holding a value that does not open reports it on every read, and on the
-   * team's write responses; a PUT or a PATCH that sends the status back never stores it, and no
-   * change event records it.
+   * A team whose saved webhook cannot be used is reported on the alert that targets it, as one of
+   * its recipients, and nothing is sent to it; a team without a webhook is not a recipient at all.
    */
   @Test
-  void aProfileWebhookThatCannotSendIsReportedWhenReadAndNeverStored(TestNamespace ns) {
-    Team team =
-        SdkClients.adminClient()
-            .teams()
-            .create(
-                new CreateTeam()
-                    .withName(ns.prefix("unusable_team"))
-                    .withTeamType(CreateTeam.TeamType.GROUP)
-                    .withProfile(profileWith(oauth2Webhook("https://hooks.example.com/t", "s"))));
-    holdAValueThatDoesNotOpen(Entity.TEAM, team.getId());
-    String userName = "unusable" + ns.shortPrefix();
-    User user =
-        SdkClients.adminClient()
-            .users()
-            .create(
-                new CreateUser()
-                    .withName(userName)
-                    .withEmail(userName + "@open-metadata.org")
-                    .withProfile(profileWith(oauth2Webhook("https://hooks.example.com/u", "s"))));
-    holdAValueThatDoesNotOpen(Entity.USER, user.getId());
+  void aTeamWhoseWebhookCannotBeUsedIsReportedOnTheAlert(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      Team working =
+          teamWith(ns, "working_team", new Webhook().withEndpoint(URI.create(receiver.url("/ok"))));
+      Team unusable =
+          teamWith(
+              ns, "unusable_team", new Webhook().withEndpoint(URI.create(receiver.url("/held"))));
+      holdAValueThatDoesNotOpen(Entity.TEAM, unusable.getId());
+      Team withoutWebhook = teamWith(ns, "no_webhook_team", null);
+      EventSubscription alert =
+          createAlert(
+              ns,
+              new SubscriptionDestination()
+                  .withType(WEBHOOK)
+                  .withCategory(SubscriptionDestination.SubscriptionCategory.TEAMS)
+                  .withConfig(
+                      Map.of(
+                          "receivers",
+                          List.of(
+                              working.getName(), unusable.getName(), withoutWebhook.getName()))));
+      QuietAlert.settle(alert);
 
-    Team readTeam = SdkClients.adminClient().teams().get(team.getId().toString(), "profile");
-    User readUser = SdkClients.adminClient().users().get(user.getId().toString(), "profile");
-    assertReportsTheHeader(readTeam.getProfile());
-    assertReportsTheHeader(readUser.getProfile());
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(alert);
 
-    JsonNode sendStatusBack =
-        JsonUtils.valueToTree(
-            List.of(
-                Map.of(
-                    "op",
-                    "add",
-                    "path",
-                    "/profile/subscriptionStatus",
-                    "value",
-                    readTeam.getProfile().getSubscriptionStatus()),
-                Map.of("op", "add", "path", "/description", "value", "patched")));
-    Team patchedTeam = SdkClients.adminClient().teams().patch(team.getId(), sendStatusBack);
-    SdkClients.adminClient().users().patch(user.getId(), sendStatusBack);
-    assertReportsTheHeader(patchedTeam.getProfile());
-    assertNoStatusStored(storedTeam(team.getId()));
-    assertNoStatusStored(storedUser(user.getId()));
-
-    Team putTeam =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(
-                HttpMethod.PUT,
-                "/v1/teams",
-                new CreateTeam()
-                    .withName(team.getName())
-                    .withTeamType(CreateTeam.TeamType.GROUP)
-                    .withDescription("put")
-                    .withProfile(readTeam.getProfile()),
-                Team.class);
-    SdkClients.adminClient()
-        .getHttpClient()
-        .execute(
-            HttpMethod.PUT,
-            "/v1/users",
-            new CreateUser()
-                .withName(userName)
-                .withEmail(userName + "@open-metadata.org")
-                .withDescription("put")
-                .withProfile(readUser.getProfile()),
-            User.class);
-    assertReportsTheHeader(putTeam.getProfile());
-    assertNoStatusStored(storedTeam(team.getId()));
-    assertNoStatusStored(storedUser(user.getId()));
-    assertFalse(changeEventsOf(team.getId()).contains("subscriptionStatus"));
-    assertFalse(changeEventsOf(user.getId()).contains("subscriptionStatus"));
+      assertTrue(receiver.received().stream().anyMatch(it -> "/ok".equals(it.path())));
+      assertTrue(receiver.received().stream().noneMatch(it -> "/held".equals(it.path())));
+      String reason = lastFailedReasonOf(alert.getId());
+      assertEquals(
+          "1 of 2 recipients failed. "
+              + unusable.getName()
+              + ": the saved webhook value cannot be used; enter it again on the team",
+          reason);
+    }
   }
 
   @Test
@@ -399,32 +361,20 @@ class ProfileWebhookSecretsIT {
         entityType, id, row.path("fullyQualifiedName").asText());
   }
 
-  private static void assertReportsTheHeader(Profile profile) {
-    SubscriptionStatus status = profile.getSubscriptionStatus().getGeneric();
-    assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
-    assertTrue(status.getConfigurationUnusable());
-    assertTrue(status.getLastFailedReason().contains("/headers/X-Api-Key"), status.toString());
+  private static Team teamWith(TestNamespace ns, String name, Webhook webhook) {
+    CreateTeam team =
+        new CreateTeam().withName(ns.prefix(name)).withTeamType(CreateTeam.TeamType.GROUP);
+    return SdkClients.adminClient()
+        .teams()
+        .create(webhook == null ? team : team.withProfile(profileWith(webhook)));
   }
 
-  private static void assertNoStatusStored(JsonNode row) {
-    assertTrue(row.at("/profile/subscriptionStatus").isMissingNode(), row.toString());
-  }
-
-  private static String changeEventsOf(UUID entityId) {
-    String sql =
-        isMySql()
-            ? "SELECT CAST(json AS CHAR) FROM change_event WHERE json ->> '$.entityId' = :id"
-            : "SELECT json::text FROM change_event WHERE json ->> 'entityId' = :id";
-    List<String> events =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle ->
-                    handle
-                        .createQuery(sql)
-                        .bind("id", entityId.toString())
-                        .mapTo(String.class)
-                        .list());
-    return String.join("\n", events);
+  private static String lastFailedReasonOf(UUID alertId) {
+    EventSubscription read =
+        SdkClients.adminClient().eventSubscriptions().get(alertId.toString(), "statusDetails");
+    return JsonUtils.convertValue(
+            read.getDestinations().getFirst().getStatusDetails(), SubscriptionStatus.class)
+        .getLastFailedReason();
   }
 
   private static boolean isMySql() {

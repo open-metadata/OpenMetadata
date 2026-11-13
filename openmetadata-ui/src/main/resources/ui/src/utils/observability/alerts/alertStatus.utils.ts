@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { SUBSCRIPTION_WEBHOOK } from '../../constants/Teams.constants';
-import { MessagingProviderStatus } from '../../generated/entity/teams/team';
+import { TFunction } from 'i18next';
 import {
   EventSubscription,
   Status,
-} from '../../generated/events/eventSubscription';
+  TionStatus,
+} from '../../../generated/events/eventSubscription';
 
 export type AlertListStatus = Status.Active | Status.Disabled | Status.Failed;
 
@@ -28,30 +28,10 @@ export interface AlertListStatusDetails {
   failureReasons: string[];
 }
 
-// A destination's and a profile webhook's status share this shape, typed per generated file.
-interface ReportedStatus {
-  status?: string;
-  lastFailedReason?: string;
-  configurationUnusable?: boolean;
-}
-
-// The statuses of a destination that is not sending: its last send failed, or waits to be retried.
-const NOT_SENDING: ReadonlySet<string> = new Set([
-  Status.Failed,
-  Status.AwaitingRetry,
-  Status.RetryLimitReached,
-]);
-
-/**
- * Why a destination or profile webhook does not send until its stored configuration is changed,
- * as the server reports it; nothing for a send that failed.
- */
-export const getNotSendingReason = (
-  statusDetails?: ReportedStatus
-): string | undefined =>
-  statusDetails?.status === Status.Failed && statusDetails.configurationUnusable
-    ? statusDetails.lastFailedReason
-    : undefined;
+type ReportedStatus = Pick<
+  TionStatus,
+  'status' | 'lastFailedReason' | 'configurationUnusable'
+>;
 
 /** Why a destination is not sending: a stored configuration to change, or a send that failed. */
 export interface DestinationProblem {
@@ -59,8 +39,35 @@ export interface DestinationProblem {
   reason: string;
 }
 
+// The statuses of a destination that is not sending: its last send failed, or waits to be retried.
+const NOT_SENDING: ReadonlySet<Status | undefined> = new Set([
+  Status.Failed,
+  Status.AwaitingRetry,
+  Status.RetryLimitReached,
+]);
+
+// Both stop the destination, so both read as errors; the title says which to act on.
+const DESTINATION_PROBLEM_TITLE_KEY: Record<
+  DestinationProblem['kind'],
+  string
+> = {
+  unusable: 'message.destination-does-not-send-until-fixed',
+  sendFailed: 'label.failure-reason',
+};
+
 const isNotSending = (statusDetails?: ReportedStatus) =>
-  NOT_SENDING.has(statusDetails?.status ?? '');
+  NOT_SENDING.has(statusDetails?.status);
+
+/**
+ * Why a destination does not send until its stored configuration is changed, as the server
+ * reports it; nothing for a send that failed.
+ */
+export const getNotSendingReason = (
+  statusDetails?: ReportedStatus
+): string | undefined =>
+  statusDetails?.status === Status.Failed && statusDetails.configurationUnusable
+    ? statusDetails.lastFailedReason
+    : undefined;
 
 /**
  * Why a destination is not sending, as its stored status says: its configuration cannot be used,
@@ -81,6 +88,15 @@ export const getDestinationProblem = (
     : undefined;
 };
 
+/** The title and tone of the alert box that shows a destination's problem next to it. */
+export const getDestinationProblemAlertProps = (
+  problem: DestinationProblem,
+  t: TFunction
+) => ({
+  title: t(DESTINATION_PROBLEM_TITLE_KEY[problem.kind]),
+  variant: 'error' as const,
+});
+
 // Each distinct reason of one kind once, in the order the destinations give them.
 const reasonsOf = (
   problems: DestinationProblem[],
@@ -94,24 +110,27 @@ const reasonsOf = (
 ];
 
 /**
- * The status an alert shows in a list: failed while any of its destinations is not sending, with
- * the stored configurations to change apart from the sends that failed; otherwise disabled or
- * active, as the alert is switched.
+ * The status an alert shows in a list: disabled while it is switched off; otherwise failed while
+ * any of its enabled destinations is not sending, with the stored configurations to change apart
+ * from the sends that failed, and active when none is.
  */
 export const getAlertListStatus = (
   alert: EventSubscription
 ): AlertListStatusDetails => {
-  const statuses = (alert.destinations ?? []).map(
-    (destination) => destination.statusDetails
-  );
+  const switchedOff = alert.enabled === false;
+  const statuses = switchedOff
+    ? []
+    : (alert.destinations ?? [])
+        .filter((destination) => destination.enabled !== false)
+        .map((destination) => destination.statusDetails);
   const problems = statuses
     .map(getDestinationProblem)
     .filter((problem): problem is DestinationProblem => Boolean(problem));
   let status: AlertListStatus = Status.Active;
-  if (statuses.some(isNotSending)) {
-    status = Status.Failed;
-  } else if (alert.enabled === false) {
+  if (switchedOff) {
     status = Status.Disabled;
+  } else if (statuses.some(isNotSending)) {
+    status = Status.Failed;
   }
 
   return {
@@ -119,16 +138,4 @@ export const getAlertListStatus = (
     unusableReasons: reasonsOf(problems, 'unusable'),
     failureReasons: reasonsOf(problems, 'sendFailed'),
   };
-};
-
-/** Why the team's profile webhook in `slot` does not send, as the server reports it. */
-export const getWebhookNotSendingReason = (
-  statuses: MessagingProviderStatus | undefined,
-  slot: string | undefined
-): string | undefined => {
-  const webhook = Object.values(SUBSCRIPTION_WEBHOOK).find(
-    (known) => known === slot
-  );
-
-  return webhook ? getNotSendingReason(statuses?.[webhook]) : undefined;
 };

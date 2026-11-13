@@ -1286,10 +1286,12 @@ describe('AlertAi form field components', () => {
       />
     );
 
-    expect(screen.getByTestId('alert-warning')).toHaveTextContent(
+    expect(screen.getByTestId('alert-error')).toHaveTextContent(
       'label.failure-reasonWebhook failed with status: 503'
     );
-    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-error')).not.toHaveTextContent(
+      'message.destination-does-not-send-until-fixed'
+    );
   });
 
   it('says nothing on the details page about a destination that sends', () => {

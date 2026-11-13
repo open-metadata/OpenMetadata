@@ -172,6 +172,7 @@ export enum TabSpecificField {
   SCHEMA_DEFINITION = 'schemaDefinition',
   START_DATE = 'startDate',
   STATE = 'state',
+  STATUS_DETAILS = 'statusDetails',
   SUMMARY = 'summary',
   TABLE_CONSTRAINTS = 'tableConstraints',
   TABLE_QUERIES = 'tableQueries',

@@ -37,7 +37,10 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
-import { getDestinationProblem } from '../../../utils/observability/alertStatus.utils';
+import {
+  getDestinationProblem,
+  getDestinationProblemAlertProps,
+} from '../../../utils/observability/alerts/alertStatus.utils';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
@@ -53,7 +56,6 @@ import {
   getSubscriptionItems,
   renderSelectItem,
 } from './AlertAiFormFieldsSelectUtils';
-import DestinationProblemAlert from './DestinationProblemAlert/DestinationProblemAlert';
 
 type ComboBoxProps = ComponentProps<typeof Select.ComboBox> & {
   showSearchIcon?: boolean;
@@ -388,10 +390,11 @@ const AlertAiDestinationItem = ({
       : undefined;
 
     return problem ? (
-      <DestinationProblemAlert
+      <Alert
         data-testid={`destination-not-sending-${name}`}
-        problem={problem}
-      />
+        {...getDestinationProblemAlertProps(problem, t)}>
+        {problem.reason}
+      </Alert>
     ) : null;
   };
 

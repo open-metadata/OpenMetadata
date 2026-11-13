@@ -12,11 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
-import {
-  Status,
-  Team,
-  TeamType,
-} from '../../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
 let mockIsAdminUser = true;
@@ -136,48 +132,6 @@ describe('MembersTeamInfoWidgets', () => {
         },
       })
     );
-  });
-
-  it('tells why the team webhook does not send', () => {
-    const reason = "The value at '/endpoint' must be entered again";
-    render(
-      <MembersTeamInfoWidgets
-        canEdit={false}
-        team={
-          {
-            ...groupTeam,
-            profile: {
-              subscription: { slack: { endpoint: MASKED_PASSWORD_VALUE } },
-              subscriptionStatus: {
-                slack: {
-                  status: Status.Failed,
-                  lastFailedReason: reason,
-                  configurationUnusable: true,
-                },
-              },
-            },
-          } as Team
-        }
-        onPatch={jest.fn()}
-      />
-    );
-
-    expect(screen.getByTestId('alert-status')).toHaveTextContent(
-      'label.failed'
-    );
-    // On its own line, so the webhook name keeps the card's width.
-    expect(screen.getByTestId('subscription-value')).not.toContainElement(
-      screen.getByTestId('alert-status')
-    );
-    expect(
-      screen.getByTestId('subscription-value').parentElement
-    ).not.toContainElement(screen.getByTestId('subscription-status'));
-    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed. message.webhook-does-not-send-until-fixed: ${reason}`
-    );
-    expect(
-      screen.queryByTestId('subscription-not-sending')
-    ).not.toBeInTheDocument();
   });
 
   it('asks for an endpoint in words when it is left empty', async () => {

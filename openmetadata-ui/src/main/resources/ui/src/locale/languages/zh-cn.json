@@ -6904,7 +6904,6 @@
     "vote-recorded-waiting-for-other-approvers": "您的投票已记录，正在等待其他审批人。",
     "waiting-for-approval-request": "正在等待创建审批请求。",
     "waiting-on-deciders": "正在等待 {{names}} — 只有指定的审核者才能批准。",
-    "webhook-does-not-send-until-fixed": "在修复此问题之前，此 Webhook 不会发送",
     "webhook-listing-message": "组织内发生的元数据更改事件, 可以通过 Webhook API 通知外部服务。请注册回调 URL 以接收元数据事件通知。您还可以添加、列表、更新和删除 Webhook。",
     "webhook-type-listing-message": "通过{{webhookType}}通知及时向元数据的生产者和使用者提供更新。使用{{webhookType}} Webhook 通过 API 发送组织内元数据更改事件的通知。您还可以添加、列表、更新和删除这些 Webhook。",
     "welcome-screen-message": "在一个地方发现、理解并协作处理您的所有数据。",

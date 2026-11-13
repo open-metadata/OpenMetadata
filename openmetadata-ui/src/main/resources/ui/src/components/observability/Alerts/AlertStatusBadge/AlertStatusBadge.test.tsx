@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   AlertType,
   EventSubscription,
@@ -45,21 +46,39 @@ const alertWith = (
   })),
 });
 
+// A keyboard reaches the badge, and focus shows its reasons.
+const reasonsOnFocus = async () => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  await user.tab();
+  await act(async () => {
+    jest.advanceTimersByTime(1000);
+  });
+
+  return screen.getByRole('tooltip');
+};
+
 describe('AlertStatusBadge', () => {
-  it('shows an alert whose configuration cannot send as failed, with the value to change', () => {
+  it('shows an alert whose configuration cannot send as failed, with the value to change', async () => {
     render(<AlertStatusBadge alert={alertWith([UNUSABLE_STATUS])} />);
 
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.failed'
     );
-    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed. message.destination-does-not-send-until-fixed: ${UNUSABLE}`
+
+    const tooltip = await reasonsOnFocus();
+
+    expect(tooltip).toHaveTextContent(
+      'message.destination-does-not-send-until-fixed'
+    );
+    expect(tooltip).toHaveTextContent(UNUSABLE);
+    expect(screen.getByRole('button')).toHaveAccessibleDescription(
+      expect.stringContaining(UNUSABLE)
     );
   });
 
   it.each([Status.Failed, Status.AwaitingRetry, Status.RetryLimitReached])(
     'names a %s send by its failure reason',
-    (status) => {
+    async (status) => {
       render(
         <AlertStatusBadge
           alert={alertWith([{ status, lastFailedReason: REFUSED }])}
@@ -69,13 +88,15 @@ describe('AlertStatusBadge', () => {
       expect(screen.getByTestId('alert-status')).toHaveTextContent(
         'label.failed'
       );
-      expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-        `label.failed. label.failure-reason: ${REFUSED}`
-      );
+
+      const tooltip = await reasonsOnFocus();
+
+      expect(tooltip).toHaveTextContent('label.failure-reason');
+      expect(tooltip).toHaveTextContent(REFUSED);
     }
   );
 
-  it('keeps the value to change apart from a failed send', () => {
+  it('keeps the value to change apart from a failed send', async () => {
     render(
       <AlertStatusBadge
         alert={alertWith([
@@ -85,8 +106,10 @@ describe('AlertStatusBadge', () => {
       />
     );
 
-    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed. message.destination-does-not-send-until-fixed: ${UNUSABLE}. label.failure-reason: ${REFUSED}`
+    const tooltip = await reasonsOnFocus();
+
+    expect(tooltip).toHaveTextContent(
+      `message.destination-does-not-send-until-fixed${UNUSABLE}label.failure-reason${REFUSED}`
     );
   });
 
@@ -96,18 +119,19 @@ describe('AlertStatusBadge', () => {
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.active'
     );
-    expect(screen.queryByTestId('alert-status-reason')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('shows a switched-off alert as disabled', () => {
+  it('shows a switched-off alert as disabled, even with a failure left from before', () => {
     render(
       <AlertStatusBadge
-        alert={alertWith([{ status: Status.Disabled }], false)}
+        alert={alertWith([UNUSABLE_STATUS, { status: Status.Disabled }], false)}
       />
     );
 
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.disabled'
     );
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

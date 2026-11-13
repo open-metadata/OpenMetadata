@@ -37,14 +37,12 @@ import {
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { getWebhookNotSendingReason } from '../../../../../../utils/observability/alertStatus.utils';
 import { getWebhookIcon } from '../../../../../../utils/TeamUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import { DomainSelectTrigger } from '../../../../../common/DomainSelect/DomainSelectTrigger';
 import DomainTags from '../../../../../common/DomainTags/DomainTags';
 import PersonaSelect from '../../../../../common/PersonaSelect/PersonaSelect';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import StatusReasonBadge from '../../../../../observability/Alerts/AlertStatusBadge/StatusReasonBadge';
 import type { SubscriptionWebhook } from '../../../../../Settings/Team/TeamDetails/team.interface';
 import { WIDGET_CLASS } from './Members.constants';
 import { toDomainArray } from './Members.utils';
@@ -310,34 +308,6 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
   );
 };
 
-// The card is narrow, so a webhook that cannot send shows, under its name, a badge whose tooltip
-// says why.
-const WebhookNotSendingBadge: FC<{ team: Team; slot?: string }> = ({
-  team,
-  slot,
-}) => {
-  const { t } = useTranslation();
-  const reason = getWebhookNotSendingReason(
-    team.profile?.subscriptionStatus,
-    slot
-  );
-
-  return reason ? (
-    <Box align="start" className="tw:pt-2" data-testid="subscription-status">
-      <StatusReasonBadge
-        color="error"
-        label={t('label.failed')}
-        sections={[
-          {
-            title: t('message.webhook-does-not-send-until-fixed'),
-            reasons: [reason],
-          },
-        ]}
-      />
-    </Box>
-  ) : null;
-};
-
 const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
   team,
   canEdit,
@@ -542,7 +512,6 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
           {subLabel}
         </Typography>
       </Box>
-      <WebhookNotSendingBadge slot={subKey} team={team} />
     </InfoWidget>
   );
 };
