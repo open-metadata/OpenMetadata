@@ -1317,16 +1317,18 @@ const OntologyGraphView = ({
     selectNode({ id: conceptId });
     setConflictReviewId(conceptId);
   };
-  const showConflictOnGraph = (conceptId: string) => {
-    setConflictReviewId(undefined);
-    setSelectedId(undefined);
-    setPendingFocusId(conceptId);
-    changeGraphMode('model');
-    if (surface !== 'graph') {
-      onRequestGraphSurface();
-    }
-    graphRef.current?.focusNode(conceptId);
-  };
+  // All of it behind the discard prompt, so Cancel leaves the drawer, mode and surface as they were.
+  const showConflictOnGraph = (conceptId: string) =>
+    guard(() => {
+      setConflictReviewId(undefined);
+      setSelectedId(undefined);
+      setPendingFocusId(conceptId);
+      changeGraphMode('model');
+      if (surface !== 'graph') {
+        onRequestGraphSurface();
+      }
+      graphRef.current?.focusNode(conceptId);
+    });
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
     onRequestEdit?.();

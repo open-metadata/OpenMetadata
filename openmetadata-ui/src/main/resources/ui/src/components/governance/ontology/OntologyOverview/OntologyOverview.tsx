@@ -531,7 +531,6 @@ type ValidationRead = { data?: { violations: readonly unknown[] } };
 const countConflicts = (validation: ValidationRead) =>
   validation.data?.violations.length ?? 0;
 
-/** "3 in conflict" — constraints, not clashes — once validation has run; nothing before. */
 /**
  * What the Overview points at for the conflicts: the constraints in conflict when the clashes name
  * them, otherwise the server's violation count and the constraints it left unchecked.
@@ -541,6 +540,7 @@ const conflictFocus = (constraintsInConflict: number, violations: number) =>
     ? { count: constraintsInConflict, filter: 'conflict' as const }
     : { count: violations, filter: 'not-checked' as const };
 
+/** "3 in conflict" — constraints, not clashes — once validation has run; nothing before. */
 const conflictDetail = (
   validation: ValidationRead,
   count: number,
