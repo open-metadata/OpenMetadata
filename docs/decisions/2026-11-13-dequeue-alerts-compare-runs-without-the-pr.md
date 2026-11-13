@@ -32,7 +32,8 @@ readable report names a failed test. A summary gate is never evidence, because i
 its upstream jobs skip; a run where only the gate failed gets its own Unknown line and does not set
 the alert's icon. A failed job whose logs show a dependency download or network error is reported
 as **Infrastructure**, with no history comparison. Report artifacts of the failed run that are
-expired or unreadable get their own Unknown line. Two failures are the same when their failing
+expired or unreadable get their own Unknown line, and so do failed test jobs beyond the number of
+readable reports that name a failed test. Two failures are the same when their failing
 file and first error line agree, with numbers ignored. A comparable run that cannot be read is
 skipped.
 

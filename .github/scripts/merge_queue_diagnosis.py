@@ -65,6 +65,7 @@ TAGS = {
     "other": "different failure without this PR",
     "none": "no comparable run without this PR",
     "unread": "report unavailable",
+    "unnamed": "failure in no report",
 }
 
 
@@ -367,9 +368,12 @@ class Evidence:
         return {job["name"]: job for job in jobs}
 
     @lru_cache(maxsize=64)
-    def reports(self, run_id: int) -> tuple[frozenset[str], dict[str, Result], int]:
-        """Test results from the run's report artifacts, the artifacts read, and how
-        many could not be read: expired, too large or failing to download."""
+    def reports(
+        self, run_id: int
+    ) -> tuple[frozenset[str], dict[str, Result], int, int]:
+        """Test results from the run's report artifacts, the artifacts read, how many
+        could not be read (expired, too large or failing to download), and how many
+        of those read name a failed test."""
         latest = {}
         for artifact in self.items(f"actions/runs/{run_id}/artifacts", "artifacts"):
             name = ATTEMPT.sub("", artifact["name"])
@@ -377,7 +381,7 @@ class Evidence:
                 "id", 0
             ):
                 latest[name] = artifact
-        names, results, unread = set(), {}, 0
+        names, results, unread, failing = set(), {}, 0, 0
         for name, artifact in latest.items():
             path = f"repos/{self.repo}/actions/artifacts/{artifact['id']}/zip"
             try:
@@ -391,9 +395,10 @@ class Evidence:
                 unread += 1
                 continue
             names.add(name)
+            failing += any(result.status == "failed" for result in parsed.values())
             for test, result in parsed.items():
                 results[test] = merge(results.get(test), result)
-        return frozenset(names), results, unread
+        return frozenset(names), results, unread, failing
 
     @lru_cache(maxsize=32)
     def dependencies(self, run_id: int) -> tuple[tuple[str, str], ...] | None:
@@ -447,7 +452,7 @@ class Evidence:
         observed = {}
         tests = [name for kind, name in keys if kind == "test"]
         if tests:
-            found, results, _ = self.reports(run["id"])
+            found, results, *_ = self.reports(run["id"])
             # A test missing from main's own content, read in full, did not exist there.
             complete = found >= names and self.landed(run) == run["head_sha"]
             absent = Result("absent") if complete else None
@@ -483,29 +488,35 @@ class Evidence:
             return Verdict("unknown", (f"Unknown — the comparison evidence {reason}.",))
 
     def compare(self, run: dict, causes: list[dict], infra: dict[str, str]) -> Verdict:
-        names, results, unread = self.reports(run["id"])
+        names, results, unread, failing = self.reports(run["id"])
         mine = {
             ("test", name): result
             for name, result in results.items()
             if result.status == "failed"
         }
-        reported = bool(mine)
+        reported, silent = bool(mine), 0
         for job in causes:
             result = job_result(job)
             tested = any(TEST_STEP.search(step) for step in failed_steps(job))
+            if not (result and result.error):
+                continue
             # A failure outside the tests, or in tests that no report names, is the job's.
-            if (
-                result
-                and result.error
-                and (job["name"] in infra or not (reported and tested))
-            ):
+            if job["name"] in infra or not (reported and tested):
                 mine[("job", job["name"])] = result
-        if not mine and not unread:
+            else:
+                silent += 1
+        # Each failed test job leaves one report; one with no failed test left none.
+        unnamed = max(0, silent - failing - unread)
+        if not mine and not unread and not unnamed:
             # Its upstream jobs were cancelled or skipped: nothing to attribute.
             reason = "no test or job failed besides the summary gate"
             return Verdict("gate", (f"Unknown — {reason}.",))
         # A download or network error is not a code change, so history cannot explain it.
-        outcomes = {("unread", ""): ("unread", None, unread)} if unread else {}
+        outcomes = {
+            (kind, ""): (kind, None, count)
+            for kind, count in (("unread", unread), ("unnamed", unnamed))
+            if count
+        }
         outcomes |= {
             key: ("infra", None, infra[key[1]])
             for key in mine
@@ -618,6 +629,8 @@ class Evidence:
     def subject(keys: list[tuple[str, str]], total: int, detail) -> str:
         if keys[0][0] == "unread":
             return f"{detail} report artifact{'s' * (detail != 1)}"
+        if keys[0][0] == "unnamed":
+            return f"{detail} failed test job{'s' * (detail != 1)}"
         tests = sum(kind == "test" for kind, _ in keys)
         parts = [mq.shorten_check_name(name) for kind, name in keys if kind == "job"]
         if tests == total == 1:
@@ -645,6 +658,8 @@ class Evidence:
             return [detail]
         if kind == "unread":
             return ["unreadable or expired, not compared"]
+        if kind == "unnamed":
+            return ["not named in any readable report, not compared"]
         if kind == "none":
             limit = "before the time limit" if exhausted else "in the recent history"
             return [f"no comparable run without this PR {limit}"]
