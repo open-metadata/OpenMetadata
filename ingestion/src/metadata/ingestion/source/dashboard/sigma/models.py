@@ -47,6 +47,8 @@ class WorkbookDetails(BaseModel):
     elements: list["Elements"] = []
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
     lineage: list["WorkbookLineageEntry"] | None = None
+    # Not in Sigma's response: each element's column formulas by column name, read by SigmaSource.get_dashboard_details.
+    formulas: dict[str, dict[str, str]] = {}
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -160,6 +162,17 @@ class Connection(BaseModel):
 class ConnectionPath(BaseModel):
     connectionId: str  # noqa: N815
     path: list[str]
+
+
+class ColumnEntry(BaseModel):
+    elementId: str  # noqa: N815
+    name: str
+    formula: str | None = None
+
+
+class ColumnsResponse(BaseModel):
+    entries: list[ColumnEntry] = []
+    nextPage: str | None = None  # noqa: N815
 
 
 class WorkbookLineageEntry(BaseModel):

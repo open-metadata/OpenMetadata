@@ -14,6 +14,7 @@ REST Auth & Client for Sigma
 
 import traceback
 from base64 import b64encode
+from collections import Counter
 from collections.abc import Iterator
 
 from cachetools import LRUCache
@@ -25,6 +26,7 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
+    ColumnsResponse,
     Connection,
     ConnectionPath,
     DataModel,
@@ -222,8 +224,29 @@ class SigmaApiClient:
                 return None
         return self._file_cache[node_id]
 
+    def get_column_formulas(self, path: str) -> dict[str, dict[str, str]]:
+        """
+        Each element's non-empty column formulas by column name, from a /columns listing of a workbook or data
+        model. A name an element holds twice is left out, as its formula cannot be told apart. Empty when any
+        page fails to read, so a partial listing never stands for the whole.
+        """
+        try:
+            columns = list(self._read_all(path, ColumnsResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the column formulas of %s: %s", path, exc)
+            return {}
+        names = Counter((column.elementId, column.name) for column in columns)
+        formulas: dict[str, dict[str, str]] = {}
+        for column in columns:
+            if column.formula and names[column.elementId, column.name] == 1:
+                formulas.setdefault(column.elementId, {})[column.name] = column.formula
+        return formulas
+
     def _read_all(
-        self, path: str, response_model: type[DataModelsResponse | ElementsResponse | WorkbookLineageResponse]
+        self,
+        path: str,
+        response_model: type[ColumnsResponse | DataModelsResponse | ElementsResponse | WorkbookLineageResponse],
     ) -> Iterator:
         """Every entry of a paginated Sigma listing; raises when a page cannot be read"""
         data = None

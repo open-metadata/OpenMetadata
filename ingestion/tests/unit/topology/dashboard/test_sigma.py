@@ -773,6 +773,7 @@ def sigma_routes() -> dict:
         routes["GET", workbook_path] = workbook
         routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None}
         routes["GET", f"{workbook_path}/lineage"] = {"entries": [], "nextPage": None}
+        routes["GET", f"{workbook_path}/columns"] = {"entries": [], "nextPage": None}
         routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
             "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
             "nextPage": None,
@@ -1353,6 +1354,7 @@ def sigma_data_models(routes):
         "nextPage": None,
     }
     routes["GET", "/v2/dataModels/dm-1/lineage"] = {"entries": [], "nextPage": None}
+    routes["GET", "/v2/dataModels/dm-1/columns"] = {"entries": [], "nextPage": None}
     return routes
 
 
@@ -1678,6 +1680,96 @@ def test_sigma_data_model_lineage_is_sent_after_every_data_model_is_written(sigm
         "Barrier",
         "OMetaLineageRequest",
     ]
+
+
+def sigma_column(element_id: str, name: str, formula: str) -> dict:
+    return {
+        "columnId": f"{element_id}-{name}",
+        "name": name,
+        "formula": formula,
+        "type": {"type": "number"},
+        "elementId": element_id,
+    }
+
+
+MARGIN_COLUMNS = [
+    sigma_column("el-wb-1", "Cost", "[ORDERS/Cost]"),
+    sigma_column("el-wb-1", "Total", "[Cost] + [MRP]"),
+    sigma_column("el-wb-1", "Note", ""),
+]
+
+
+def workbook_column_descriptions(source, routes) -> dict[str, str | None]:
+    """The description of each column of wb-1's element, as the data model stage sends it"""
+    routes["GET", "/v2/workbooks/wb-1/pages/page-1/elements"]["entries"][0]["columns"] = ["Cost", "Total", "Note"]
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    [request] = [either.right for either in source.yield_datamodel(details)]
+    return {column.displayName: column.description and column.description.root for column in request.columns}
+
+
+@pytest.mark.parametrize(
+    "pages, descriptions",
+    [
+        (
+            [MARGIN_COLUMNS],
+            {"Cost": "**Formula:** `[ORDERS/Cost]`", "Total": "**Formula:** `[Cost] + [MRP]`", "Note": None},
+        ),
+        (
+            [MARGIN_COLUMNS[:1], MARGIN_COLUMNS[1:]],
+            {"Cost": "**Formula:** `[ORDERS/Cost]`", "Total": "**Formula:** `[Cost] + [MRP]`", "Note": None},
+        ),
+        # A name an element holds twice cannot be told apart: neither gets the formula
+        (
+            [[*MARGIN_COLUMNS, sigma_column("el-wb-1", "Total", "[Cost] * 2")]],
+            {"Cost": "**Formula:** `[ORDERS/Cost]`", "Total": None, "Note": None},
+        ),
+        (500, {"Cost": None, "Total": None, "Note": None}),
+    ],
+    ids=["one-page", "two-pages", "repeated-name", "failed-read"],
+)
+def test_a_workbook_element_column_shows_its_sigma_formula(sigma_over_http, routes, pages, descriptions):
+    source, _ = sigma_over_http
+    if isinstance(pages, int):
+        routes["GET", "/v2/workbooks/wb-1/columns"] = pages
+    else:
+        for number, entries in enumerate(pages, start=1):
+            page = {"entries": entries, "nextPage": str(number + 1) if number < len(pages) else None}
+            routes[
+                ("GET", "/v2/workbooks/wb-1/columns", str(number))
+                if number > 1
+                else ("GET", "/v2/workbooks/wb-1/columns")
+            ] = page
+
+    assert workbook_column_descriptions(source, routes) == descriptions
+
+
+def test_column_formulas_are_not_read_when_data_models_are_off(sigma_over_http):
+    source, calls = sigma_over_http
+    source.source_config.includeDataModels = False
+
+    source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    assert calls["GET", "/v2/workbooks/wb-1/columns"] == 0
+
+
+def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/columns"]["entries"] = [
+        sigma_column("dmEl1", "Amount", "[ORDERS/Amount]"),
+        sigma_column("dmEl2", "Customer Id", ""),
+    ]
+
+    [data_model] = bulk_data_models(source)
+
+    assert {
+        (column.displayName, child.displayName): child.description and child.description.root
+        for column in data_model.columns
+        for child in column.children
+    } == {
+        ("Orders", "Order Id"): None,
+        ("Orders", "Amount"): "**Formula:** `[ORDERS/Amount]`",
+        ("Customers", "Customer Id"): None,
+    }
 
 
 # Sigma's documented example response for the workbook lineage endpoint (list-lineage-tree): element
@@ -2199,6 +2291,109 @@ def test_fallback_lineage_links_no_column_when_a_source_could_not_be_read(lineag
 
     # "Customer Id" looks unique without ORDERS, which is exactly when linking it would guess
     assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
+
+
+COSTS = sales_table("COSTS", ["COST", "MRP"])
+PRICES = sales_table("PRICES", ["LIST_PRICE"])
+MARGIN_LABELS = ["Cost", "MRP", "Total", "Margin"]
+
+
+def formula_column_links(
+    lineage_source, labels: list[str], formulas: dict[str, str], tables: list[Table], all_sources_read: bool = True
+) -> dict[str, dict[str, list[str]]]:
+    """For each table edge of an element without SQL: each data model column it feeds, with the table columns"""
+    element = Elements(elementId="amountByCustomer", name="Margins", vizualizationType="bar", columns=labels)
+    data_model = DashboardDataModel(
+        id=uuid5(NAMESPACE_URL, AMOUNT_MODEL_FQN),
+        name="amountByCustomer",
+        fullyQualifiedName=AMOUNT_MODEL_FQN,
+        dataModelType="SigmaDataModel",
+        columns=[
+            column.model_copy(
+                update={"fullyQualifiedName": FullyQualifiedEntityName(f"{AMOUNT_MODEL_FQN}.{column.displayName}")}
+            )
+            for column in lineage_source.get_column_info(element)
+        ],
+    )
+    lineage_source.metadata.get_by_name = lambda entity, fqn, **_: (
+        data_model if entity is DashboardDataModel else MOCK_DATABASE_SERVICE
+    )
+    lineage_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **_: next(
+        (table for table in tables if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")), None
+    )
+    lineage_source.data_models = [element]
+    lineage_source.client.get_workbook_queries = lambda *_: None
+    lineage_source.client.get_lineage_details = lambda *_: (
+        [
+            NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake/SALES.PUBLIC")
+            for table in tables
+        ],
+        all_sources_read,
+    )
+    details = MOCK_DASHBOARD_DETAILS.model_copy(update={"formulas": {"amountByCustomer": formulas}})
+    return {
+        either.right.edge.fromEntity.fullyQualifiedName.rsplit(".", 1)[-1]: {
+            column.toColumn.root.rsplit(".", 1)[-1]: sorted(
+                source.root.rsplit(".", 1)[-1] for source in column.fromColumns
+            )
+            for column in either.right.edge.lineageDetails.columnsLineage or []
+        }
+        for either in lineage_source.yield_dashboard_lineage_details(details, db_service_prefix="mock_mysql")
+        if either.right
+    }
+
+
+LABELED = {"Cost": ["COST"], "MRP": ["MRP"]}
+
+
+@pytest.mark.parametrize(
+    "formulas, computed",
+    [
+        ({"Total": "[Cost] + [MRP]"}, {"Total": ["COST", "MRP"]}),
+        (
+            {"Total": "[Cost] + [MRP]", "Margin": "[Total] - [Cost]"},
+            {"Total": ["COST", "MRP"], "Margin": ["COST", "MRP"]},
+        ),
+        ({"Total": "[Margin] + [Cost]", "Margin": "[Total]"}, {"Total": ["COST"], "Margin": ["COST"]}),
+        ({"Total": "[Cost] * [Rate-Control]"}, {"Total": ["COST"]}),
+        ({"Total": 'If([Cost] > 0, "[MRP]", "none")'}, {"Total": ["COST"]}),
+        # Another element or source, an escape, or nothing of the element: not traced
+        ({"Total": "[COSTS/Cost] + [MRP]"}, {}),
+        ({"Total": "[Co\\st] + [MRP]"}, {}),
+        ({"Total": "[Rate-Control] * 2"}, {}),
+        ({"Total": "[cost] + [MRP]"}, {"Total": ["MRP"]}),
+    ],
+    ids=[
+        "same-element-columns",
+        "through-another-computed-column",
+        "cycle",
+        "control-adds-nothing",
+        "string-literal-is-not-a-reference",
+        "other-element-reference",
+        "escape",
+        "no-column-of-the-element",
+        "names-match-exactly",
+    ],
+)
+def test_a_computed_column_without_sql_gets_the_sources_of_the_columns_it_reads(lineage_source, formulas, computed):
+    assert formula_column_links(lineage_source, MARGIN_LABELS, formulas, [COSTS]) == {"COSTS": {**LABELED, **computed}}
+
+
+def test_a_computed_column_reading_two_tables_is_linked_from_each(lineage_source):
+    links = formula_column_links(
+        lineage_source, ["Cost", "List Price", "Total"], {"Total": "[Cost] + [List Price]"}, [COSTS, PRICES]
+    )
+
+    assert links == {
+        "COSTS": {"Cost": ["COST"], "Total": ["COST"]},
+        "PRICES": {"List Price": ["LIST_PRICE"], "Total": ["LIST_PRICE"]},
+    }
+
+
+def test_a_computed_column_is_not_traced_when_a_source_could_not_be_read(lineage_source):
+    assert formula_column_links(
+        lineage_source, MARGIN_LABELS, {"Total": "[Cost] + [MRP]"}, [COSTS], all_sources_read=False
+    ) == {"COSTS": {}}
 
 
 def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_source):

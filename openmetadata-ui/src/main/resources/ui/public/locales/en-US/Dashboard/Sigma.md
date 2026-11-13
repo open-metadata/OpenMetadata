@@ -56,7 +56,7 @@ A Sigma workbook's project is its workspace, the first part of the workbook's pa
 
 ## Data Models
 
-When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it.
+When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it. Each column shows its Sigma formula in its description.
 
 A Sigma Data Model also gets lineage from the warehouse tables and the other Sigma Data Models its elements read. Its tables are looked up as described under **Lineage**.
 
@@ -68,4 +68,4 @@ When **Include Custom Properties** is on, each workbook's dashboard gets a `late
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
 
-Source tables are looked up only in the database services listed in **Database Service Prefixes**, so set it to get lineage. A table is linked only when exactly one table matches across those services; a table that matches several is left without lineage. When a table's Sigma path finds no single table, the connector also asks Sigma for the table's connection path (database, schema and table) and tries that.
+Source tables are looked up only in the database services listed in **Database Service Prefixes**, so set it to get lineage. A table is linked only when exactly one table matches across those services; a table that matches several is left without lineage. When a table's Sigma path finds no single table, the connector also asks Sigma for the table's connection path (database, schema and table) and tries that. Without SQL, a calculated column gets the source columns of the columns its formula reads from its own element, such as `Total` from `[Cost] + [MRP]`.

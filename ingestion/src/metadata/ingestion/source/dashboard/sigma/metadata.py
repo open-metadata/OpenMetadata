@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Sigma source module"""
 
+import re
 import traceback
 from collections.abc import Iterable
 from datetime import datetime
@@ -128,6 +129,48 @@ def _access_details(moment: datetime | None) -> AccessDetails | None:
     return AccessDetails(timestamp=Timestamp(datetime_to_timestamp(moment, milliseconds=True))) if moment else None
 
 
+_BRACKET_REFERENCE = re.compile(r"\[([^\[\]]+)\]")
+_STRING_LITERAL = re.compile(r'"[^"]*"')
+
+
+def _same_element_references(formula: str) -> list[str] | None:
+    """
+    The names a formula reads as bare [Name] references, which name columns of its own element (or controls).
+    None when it also reads another element or source ([Name/Column]) or holds an escape: Sigma does not
+    document how those resolve.
+    """
+    if "\\" in formula:
+        return None
+    references = _BRACKET_REFERENCE.findall(_STRING_LITERAL.sub("", formula))
+    return None if any("/" in reference for reference in references) else references
+
+
+def _inherit_formula_sources(
+    sources: dict[str, list[tuple[str, str]]], labels: list[str], formulas: dict[str, str]
+) -> None:
+    """
+    Give each column that has no source of its own and is computed from columns of its own element the sources
+    of those columns, directly or through other computed columns (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-trace-only-same-element-columns).
+    A reference naming no column of the element, such as a control, adds nothing. Sources only grow, so a cycle
+    of references ends.
+    """
+    columns_read = {
+        label: [reference for reference in references if reference in labels]
+        for label in labels
+        if label not in sources and (references := _same_element_references(formulas.get(label, "")))
+    }
+    changed = True
+    while changed:
+        changed = False
+        for label, read in columns_read.items():
+            inherited = list(
+                dict.fromkeys([*sources.get(label, []), *(s for column in read for s in sources.get(column, []))])
+            )
+            if len(inherited) > len(sources.get(label, [])):
+                sources[label] = inherited
+                changed = True
+
+
 # Dashboard custom property set from the workbook (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
 # The spec types it number(double), so it is not registered as an integer
 # (ADR:2026-11-07-sigma-latest-version-is-a-number-dashboard-custom-property).
@@ -197,6 +240,8 @@ class SigmaSource(DashboardServiceSource):
             dashboard_details.badge = self.client.get_badge(dashboard.workbookId)
         if dashboard_details:
             dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
+        if dashboard_details and self.source_config.includeDataModels:
+            dashboard_details.formulas = self.client.get_column_formulas(f"/workbooks/{dashboard.workbookId}/columns")
         return dashboard_details
 
     def yield_tags(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -443,6 +488,7 @@ class SigmaSource(DashboardServiceSource):
                 tables,
                 data_model_entity,
                 data_model.columns,
+                dashboard_details.formulas.get(data_model.elementId, {}),
                 all_sources_found=all_sources_read and len(tables) == len(nodes),
             )
         except Exception as exc:
@@ -459,6 +505,7 @@ class SigmaSource(DashboardServiceSource):
         tables: list[Table],
         data_model_entity: DashboardDataModel,
         labels: list[str] | None,
+        formulas: dict[str, str],
         all_sources_found: bool,
     ):
         """
@@ -466,21 +513,32 @@ class SigmaSource(DashboardServiceSource):
         columns for reading (CUSTOMER_NAME shows as "Customer Name"), so names are compared
         normalized. Lineage must not guess, so a label is linked only when every source of the element was
         found (a missing one could hold the column too) and exactly one column across its tables matches.
+        A column computed from other columns of the element gets their sources, read from its formula.
         """
-        column_lineage: dict[str, list[ColumnLineage]] = {}
-        for label in (labels or []) if all_sources_found else []:
+        labels = labels or []
+        sources: dict[str, list[tuple[str, str]]] = {}
+        for label in labels if all_sources_found else []:
             matches = [
-                (table, column_fqn)
+                (model_str(table.id), model_str(column_fqn))
                 for table in tables
                 for column in table.columns or []
                 if (column_fqn := column.fullyQualifiedName)
                 and normalize_column_name(column.name.root) == normalize_column_name(label)
             ]
+            if len(matches) == 1:
+                sources[label] = matches
+        _inherit_formula_sources(sources, labels, formulas)
+        column_lineage: dict[str, list[ColumnLineage]] = {}
+        for label in labels:
             to_column = self._get_data_model_column_fqn(data_model_entity=data_model_entity, column=label)
-            if len(matches) == 1 and to_column:
-                table, column_fqn = matches[0]
-                column_lineage.setdefault(str(table.id.root), []).append(
-                    ColumnLineage(fromColumns=[column_fqn], toColumn=FullyQualifiedEntityName(to_column))
+            if not to_column:
+                continue
+            columns_by_table: dict[str, list[FullyQualifiedEntityName]] = {}
+            for table_id, column_fqn in sources.get(label, []):
+                columns_by_table.setdefault(table_id, []).append(FullyQualifiedEntityName(column_fqn))
+            for table_id, from_columns in columns_by_table.items():
+                column_lineage.setdefault(table_id, []).append(
+                    ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(to_column))
                 )
         for table in tables:
             yield self._get_add_lineage_request(
@@ -804,8 +862,8 @@ class SigmaSource(DashboardServiceSource):
             return False
         return True
 
-    def get_column_info(self, element: Elements) -> list[Column] | None:
-        """Build data model columns"""
+    def get_column_info(self, element: Elements, formulas: dict[str, str] | None = None) -> list[Column]:
+        """Build data model columns, each showing its Sigma formula"""
         datamodel_columns = []
         for col in element.columns or []:
             try:
@@ -815,6 +873,9 @@ class SigmaSource(DashboardServiceSource):
                         displayName=col,
                         dataType=DataType.UNKNOWN,
                         dataTypeDisplay="Sigma Field",
+                        description=Markdown(f"**Formula:** `{formula}`")
+                        if (formula := (formulas or {}).get(col))
+                        else None,
                     )
                 )
             except Exception as exc:
@@ -846,7 +907,7 @@ class SigmaSource(DashboardServiceSource):
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
-                        columns=self.get_column_info(data_model),
+                        columns=self.get_column_info(data_model, dashboard_details.formulas.get(data_model.elementId)),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
@@ -897,6 +958,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
                 return
+            formulas = self.client.get_column_formulas(f"/dataModels/{data_model.dataModelId}/columns")
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.dataModelId),
                 displayName=display_name,
@@ -911,7 +973,7 @@ class SigmaSource(DashboardServiceSource):
                         displayName=element.name or element.elementId,
                         dataType=DataType.TABLE,
                         dataTypeDisplay="Sigma Data Model Element",
-                        children=self.get_column_info(element),
+                        children=self.get_column_info(element, formulas.get(element.elementId)),
                     )
                     for element in elements
                 ],
