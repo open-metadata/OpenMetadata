@@ -161,19 +161,6 @@ def _raise_for_api_error(response: dict, action: str) -> None:
     raise NatsApiError(f"{action}: {description}")
 
 
-def _get_streams(client: NatsClient) -> None:
-    response = client.request(_JS_STREAM_LIST)
-    _raise_for_api_error(response, "JetStream API error")
-
-
-def _check_schema_kv_bucket(client: NatsClient, service_connection: NatsConnectionConfig) -> None:
-    bucket = service_connection.schemaKvBucket
-    if not bucket:
-        return
-    response = client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
-    _raise_for_api_error(response, f"Schema KV bucket '{bucket}' is unavailable")
-
-
 class NatsStep(StepName):
     CheckAccess = "CheckAccess"
     GetTopics = "GetTopics"
@@ -208,13 +195,16 @@ class NatsChecks:
 
     @check(NatsStep.GetTopics)
     def get_topics(self) -> None:
-        _get_streams(self._client.client)
+        response = self._client.client.request(_JS_STREAM_LIST)
+        _raise_for_api_error(response, "JetStream API error")
 
     @check(NatsStep.CheckSchemaKvBucket)
     def check_schema_kv_bucket(self) -> Evidence | None:
-        if not self._config.schemaKvBucket:
+        bucket = self._config.schemaKvBucket
+        if not bucket:
             return Evidence(summary="Schema KV bucket not configured; check not required")
-        _check_schema_kv_bucket(self._client.client, self._config)
+        response = self._client.client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
+        _raise_for_api_error(response, f"Schema KV bucket '{bucket}' is unavailable")
         return None
 
 

@@ -36,9 +36,7 @@ from metadata.ingestion.source.messaging.nats.connection import (
     NatsClient,
     _build_connect_opts,
     _build_tls_context,
-    _check_schema_kv_bucket,
     _cleanup_temp_certs,
-    _get_streams,
     _write_temp_cert,
 )
 from metadata.ingestion.source.messaging.nats.connection import (
@@ -1059,42 +1057,59 @@ class TestNatsTestConnection:
         assert "JetStream unavailable" in result.steps[1].errorLog
         assert result.status.value == "Failed"
 
-    def _make_client(self) -> MagicMock:
-        return MagicMock(spec=NatsClient)
+    def test_get_topics_lists_jetstream_metadata(self, metadata, sdk_client):
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
+        ):
+            result = owned.test_connection(metadata)
 
-    def test_get_streams_lists_jetstream_metadata(self):
-        client = self._make_client()
-        client.request.return_value = {"streams": []}
-        _get_streams(client)
-        client.request.assert_called_once_with("$JS.API.STREAM.LIST")
+        assert result.steps[1].status.value == "Passed"
+        assert result.status.value == "Successful"
+        sdk_client.request.assert_awaited_once_with("$JS.API.STREAM.LIST", b"{}", timeout=5.0)
 
-    def test_get_streams_raises_on_api_error(self):
-        client = self._make_client()
-        client.request.return_value = {"error": {"description": "no JetStream found"}}
-        with pytest.raises(ConnectionError, match="JetStream API error"):
-            _get_streams(client)
+    def test_get_topics_reports_api_error(self, metadata, sdk_client):
+        sdk_client.request.return_value = MagicMock(data=b'{"error": {"description": "no JetStream found"}}')
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
+        ):
+            result = owned.test_connection(metadata)
 
-    def test_check_schema_kv_bucket_does_not_request_an_unconfigured_bucket(self):
-        client = self._make_client()
-        conn = MagicMock()
-        conn.schemaKvBucket = None
-        _check_schema_kv_bucket(client, conn)
-        client.request.assert_not_called()
+        assert result.status.value == "Failed"
+        assert "JetStream API error" in result.steps[1].errorLog
 
-    def test_check_schema_kv_bucket_succeeds_when_bucket_found(self):
-        client = self._make_client()
-        client.request.return_value = {"config": {"name": "KV_my-bucket"}}
-        conn = MagicMock()
-        conn.schemaKvBucket = "my-bucket"
-        _check_schema_kv_bucket(client, conn)
+    @pytest.mark.parametrize(
+        ("bucket", "response", "expected_status"),
+        [
+            (None, None, "Passed"),
+            ("my_bucket", {"config": {"name": "KV_my_bucket"}}, "Passed"),
+            ("my_missing_bucket", {"error": {"description": "stream not found"}}, "Warning"),
+        ],
+    )
+    def test_schema_bucket_check(self, metadata, sdk_client, bucket, response, expected_status):
+        responses = [MagicMock(data=b'{"streams": []}')]
+        if response is not None:
+            responses.append(MagicMock(data=json.dumps(response).encode()))
+        sdk_client.request.side_effect = responses
+        config = NatsConnectionConfig(natsServers="nats://localhost:4222", schemaKvBucket=bucket)
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(config) as owned,
+        ):
+            result = owned.test_connection(metadata)
 
-    def test_check_schema_kv_bucket_raises_when_bucket_not_found(self):
-        client = self._make_client()
-        client.request.return_value = {"error": {"description": "stream not found"}}
-        conn = MagicMock()
-        conn.schemaKvBucket = "missing-bucket"
-        with pytest.raises(ConnectionError, match="missing-bucket"):
-            _check_schema_kv_bucket(client, conn)
+        assert result.status.value == "Successful"
+        assert result.steps[2].status.value == expected_status
+        if bucket is None:
+            assert result.steps[2].resultSummary == "Schema KV bucket not configured; check not required"
+            sdk_client.request.assert_awaited_once_with("$JS.API.STREAM.LIST", b"{}", timeout=5.0)
+        else:
+            assert sdk_client.request.await_count == 2
+            sdk_client.request.assert_awaited_with(f"$JS.API.STREAM.INFO.KV_{bucket}", b"{}", timeout=5.0)
+            if expected_status == "Warning":
+                assert bucket in result.steps[2].errorLog
+                assert "stream not found" in result.steps[2].errorLog
 
     def test_connection_dispatch_runs_distinct_topic_and_schema_steps(self, metadata, sdk_client):
         from metadata.ingestion.source.connections import get_test_connection_fn
