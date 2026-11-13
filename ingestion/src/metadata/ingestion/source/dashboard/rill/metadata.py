@@ -449,7 +449,9 @@ class RillSource(DashboardServiceSource):
                 component = self._get_component(component_name)
                 spec = self._get_component_spec(component)
                 title = spec.renderer_properties.get("title")
-                display_name = (spec.display_name or "").strip() or (title.strip() if isinstance(title, str) else "")
+                display_name = (spec.display_name or "").strip()
+                if not display_name and isinstance(title, str):
+                    display_name = title.strip()
                 if not display_name:
                     renderer = (spec.renderer or "chart").replace("_", " ").capitalize()
                     display_name = (
