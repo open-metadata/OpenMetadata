@@ -30,8 +30,8 @@ import {
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC, MouseEvent, useEffect, useRef, useState } from 'react';
 import { upperFirst } from 'lodash';
+import { FC, MouseEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -47,12 +47,12 @@ import { useOntologyConceptBindings } from '../../../../hooks/governance/ontolog
 import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
   getOntologyAssetPath,
   getUnlinkDescription,
   NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';

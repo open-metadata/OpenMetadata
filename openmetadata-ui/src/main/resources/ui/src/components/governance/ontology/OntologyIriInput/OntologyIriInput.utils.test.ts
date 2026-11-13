@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import {
-  OPTION_SUPPORTING_TEXT_MAX,
   optionSupportingText,
+  OPTION_SUPPORTING_TEXT_MAX,
   truncateMiddle,
 } from './OntologyIriInput.utils';
 

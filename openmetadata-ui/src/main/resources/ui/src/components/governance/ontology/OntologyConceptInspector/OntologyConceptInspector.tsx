@@ -46,6 +46,7 @@ import {
 } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -80,10 +81,9 @@ import {
   OntologyConceptEditorState,
 } from '../OntologyConceptEditor/OntologyConceptEditor';
 import { CONCEPT_TYPE_LABELS } from '../OntologyConceptEditor/OntologyConceptEditor.utils';
-import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
-import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
-import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import { OntologyConflict } from '../OntologyGraphView/OntologyConflicts.utils';
+import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import OntologyConceptConflicts from './OntologyConceptConflicts';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';

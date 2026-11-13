@@ -46,6 +46,7 @@ import { Provenance } from '../../generated/type/termRelation';
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import Fqn from '../../utils/Fqn';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { truncateMiddle } from '../governance/ontology/OntologyIriInput/OntologyIriInput.utils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
 import { OntologyConceptDataAssets } from './OntologyConceptDataAssets';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
@@ -64,7 +65,6 @@ import {
   isValidUUID,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
-import { truncateMiddle } from '../governance/ontology/OntologyIriInput/OntologyIriInput.utils';
 import { getEffectiveRelationColor } from './utils/graphStyles';
 
 interface OntologyAuthoringInspectorProps {

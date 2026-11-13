@@ -141,14 +141,12 @@ const SelectingMode = ({
   revision,
   initialConceptId = 'transfer',
   canEditBindings = false,
-  linkWhenPickedEmpty,
   onLinkData,
   onSelectConcept,
 }: {
   revision: number;
   initialConceptId?: string;
   canEditBindings?: boolean;
-  linkWhenPickedEmpty?: boolean;
   onLinkData?: (conceptId: string) => void;
   onSelectConcept: (conceptId: string) => void;
 }) => {
@@ -159,7 +157,6 @@ const SelectingMode = ({
       isActive
       canEditBindings={canEditBindings}
       concepts={CONCEPTS}
-      linkWhenPickedEmpty={linkWhenPickedEmpty}
       ontologyId="ontology-1"
       revision={revision}
       selectedConceptId={selectedConceptId}
@@ -177,7 +174,6 @@ const renderMode = (
   options: {
     initialConceptId?: string;
     canEditBindings?: boolean;
-    linkWhenPickedEmpty?: boolean;
     onLinkData?: (conceptId: string) => void;
   } = {}
 ) => {
@@ -471,35 +467,30 @@ it('shows only the picker, not the load error, before a concept is picked', asyn
   ).not.toBeInTheDocument();
 });
 
-it.each([
-  [true, ['unused']],
-  [false, []],
-])(
-  'when linkWhenPickedEmpty is %s, picking a concept with nothing linked asks to link %j',
-  async (linkWhenPickedEmpty, expected) => {
-    fetchPage.mockResolvedValue(firstPage());
-    const onLinkData = jest.fn();
-    renderMode(jest.fn(), {
-      initialConceptId: NO_CONCEPT,
-      canEditBindings: true,
-      linkWhenPickedEmpty,
-      onLinkData,
-    });
+// The mode never changes on a pick: a concept with nothing linked shows its empty state, in place.
+it('picking a concept with nothing linked shows its empty state without starting Link data', async () => {
+  fetchPage.mockResolvedValue(firstPage());
+  const onLinkData = jest.fn();
+  renderMode(jest.fn(), {
+    initialConceptId: NO_CONCEPT,
+    canEditBindings: true,
+    onLinkData,
+  });
 
-    fireEvent.click(
-      await screen.findByTestId('ontology-data-concept-picker-trigger')
-    );
-    fireEvent.click(
-      await screen.findByTestId('ontology-data-concept-option-unused')
-    );
+  fireEvent.click(
+    await screen.findByTestId('ontology-data-concept-picker-trigger')
+  );
+  fireEvent.click(
+    await screen.findByTestId('ontology-data-concept-option-unused')
+  );
 
-    expect(await screen.findByTestId('ontology-data-empty')).toBeVisible();
+  expect(await screen.findByTestId('ontology-data-empty')).toBeVisible();
+  expect(onLinkData).not.toHaveBeenCalled();
 
-    await waitFor(() =>
-      expect(onLinkData.mock.calls.map(([id]) => id)).toEqual(expected)
-    );
-  }
-);
+  fireEvent.click(screen.getByTestId('ontology-data-link-asset'));
+
+  expect(onLinkData).toHaveBeenCalledWith('unused');
+});
 
 it('does not start Link data on picking a concept that has data', async () => {
   fetchPage.mockResolvedValue(firstPage());
@@ -507,7 +498,6 @@ it('does not start Link data on picking a concept that has data', async () => {
   renderMode(jest.fn(), {
     initialConceptId: NO_CONCEPT,
     canEditBindings: true,
-    linkWhenPickedEmpty: true,
     onLinkData,
   });
 

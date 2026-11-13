@@ -28,6 +28,7 @@ import { EntityReference } from '../../../../generated/type/entityReference';
 import { Include } from '../../../../generated/type/include';
 import { State } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -39,7 +40,6 @@ import {
   getOntologyBindingWriteMessage,
   getOntologyColumnOptions,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
-import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 
 export type ColumnMappingProperty = SuggestableProperty;

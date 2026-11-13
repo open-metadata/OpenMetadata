@@ -33,6 +33,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getModelRelationLabel,
@@ -42,7 +43,6 @@ import {
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
-import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 
 export type OntologyRelationStatus = 'conflict' | 'clear' | 'unchecked';

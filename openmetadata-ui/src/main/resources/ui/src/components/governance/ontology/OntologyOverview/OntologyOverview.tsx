@@ -50,8 +50,8 @@ import { buildNativeTreeIndex } from '../../../OntologyExplorer/OntologyStudio.u
 import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
 import {
   AxiomStatus,
-  countAxiomStatuses,
   constraintCheckTime,
+  countAxiomStatuses,
   findAxiomConflicts,
 } from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace.utils';
 import {

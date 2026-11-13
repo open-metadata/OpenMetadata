@@ -25,8 +25,8 @@ import {
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { isAxiosError } from 'axios';
+import classNames from 'classnames';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';

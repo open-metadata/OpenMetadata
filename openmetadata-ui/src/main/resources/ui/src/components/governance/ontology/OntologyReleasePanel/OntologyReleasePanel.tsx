@@ -34,6 +34,7 @@ import {
   useOntologyPublication,
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
@@ -80,7 +81,6 @@ import OntologyReleaseValidation, {
   useWorkingValidation,
 } from './OntologyReleaseValidation';
 import OntologyVersionEditor from './OntologyVersionEditor';
-import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 
 export interface PublicationSummary {
   fromVersion?: string;

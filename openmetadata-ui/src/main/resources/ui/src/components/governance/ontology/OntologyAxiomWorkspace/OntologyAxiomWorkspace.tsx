@@ -43,7 +43,7 @@ import { getOntologyWorkingValidation } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { toReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
+import { makeReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
 import OntologyDefinitionList, {
   DefinitionColumn,
 } from '../OntologyAuthoringWorkspace/OntologyDefinitionList';
@@ -59,8 +59,8 @@ import {
   AxiomConflict,
   axiomStatus,
   AxiomStatus,
-  AXIOM_STATUS_LABELS,
   AXIOM_STATUSES,
+  AXIOM_STATUS_LABELS,
   constraintCheckTime,
   findAxiomConflicts,
 } from './OntologyAxiomWorkspace.utils';
@@ -289,6 +289,17 @@ const OntologyAxiomWorkspace = ({
         : undefined,
     [model]
   );
+  const readableMessage = useMemo(
+    () =>
+      makeReadableViolationMessage(
+        (model?.concepts ?? []).map((concept) => ({
+          name: concept.name,
+          iri: concept.iri,
+          label: getEntityName(concept),
+        }))
+      ),
+    [model?.concepts]
+  );
   const conceptIdByIri = useMemo(
     () =>
       new Map(
@@ -364,14 +375,7 @@ const OntologyAxiomWorkspace = ({
       });
     }
 
-    return toReadableViolationMessage(
-      violation.message,
-      (model?.concepts ?? []).map((concept) => ({
-        name: concept.name,
-        iri: concept.iri,
-        label: getEntityName(concept),
-      }))
-    );
+    return readableMessage(violation.message);
   };
   const toggleExpanded = (id: string) =>
     setExpanded((current) => {

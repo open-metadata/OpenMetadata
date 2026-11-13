@@ -25,6 +25,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
   createOntologyAxiom,
   softDeleteOntologyDefinition,
@@ -35,7 +36,6 @@ import {
   OntologyModelRelation,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
-import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';

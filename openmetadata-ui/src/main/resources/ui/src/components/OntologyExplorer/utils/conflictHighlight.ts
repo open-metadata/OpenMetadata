@@ -158,10 +158,9 @@ export const wholeNamePattern = (names: readonly string[]) => {
  * them by display name, so each name or IRI in a message is replaced with the concept's label.
  * One pass over whole names, so an inserted label is never rewritten again.
  */
-export const toReadableViolationMessage = (
-  message: string,
+export const makeReadableViolationMessage = (
   concepts: ReadonlyArray<{ name: string; iri?: string; label: string }>
-): string => {
+): ((message: string) => string) => {
   const labels = new Map<string, string>();
   concepts.forEach(({ name, iri, label }) =>
     [iri, name].forEach((token) => {
@@ -172,7 +171,9 @@ export const toReadableViolationMessage = (
   );
   const pattern = wholeNamePattern([...labels.keys()]);
 
-  return pattern
-    ? message.replace(pattern, (token) => labels.get(token) ?? token)
-    : message;
+  // Built once per concept list: the alternation spans every name, so callers memoize the result.
+  return (message) =>
+    pattern
+      ? message.replace(pattern, (token) => labels.get(token) ?? token)
+      : message;
 };

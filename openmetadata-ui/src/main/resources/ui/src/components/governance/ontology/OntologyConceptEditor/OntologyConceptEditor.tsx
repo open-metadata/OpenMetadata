@@ -49,6 +49,7 @@ import {
 } from '../OntologyConceptInspector/OntologyConceptSection';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
+import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -59,7 +60,6 @@ import {
   OntologyConceptFormValues,
 } from './OntologyConceptEditor.utils';
 import { useMappingTargetOptions } from './useReadableConceptOptions';
-import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 
 interface OntologyConceptEditorProps {
   ontology: Ontology;

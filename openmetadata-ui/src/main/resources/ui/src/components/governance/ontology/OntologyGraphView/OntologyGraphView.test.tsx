@@ -60,7 +60,6 @@ import {
   getOntologyConcept,
   getOntologyState,
   getOntologyWorkingValidation,
-  softDeleteOntologyDefinition,
   getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyAxiom,
@@ -68,6 +67,7 @@ import {
   patchOntologyProperty,
   patchRelationshipType,
   releaseOntologyEditLock,
+  softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';

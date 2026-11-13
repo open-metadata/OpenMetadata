@@ -132,9 +132,9 @@ import {
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import {
   buildConflictHighlight,
-  toReadableViolationMessage,
   conflictEdgeKey,
   ConflictHighlight,
+  makeReadableViolationMessage,
 } from '../../../OntologyExplorer/utils/conflictHighlight';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
@@ -627,15 +627,17 @@ const OntologyGraphView = ({
     [conflictsQuery.data]
   );
   const readableViolations = useMemo(() => {
-    const concepts = (model?.concepts ?? []).map((concept) => ({
-      name: concept.name,
-      iri: concept.iri,
-      label: getEntityName(concept),
-    }));
+    const readable = makeReadableViolationMessage(
+      (model?.concepts ?? []).map((concept) => ({
+        name: concept.name,
+        iri: concept.iri,
+        label: getEntityName(concept),
+      }))
+    );
 
     return conflictViolations.map((violation) => ({
       ...violation,
-      message: toReadableViolationMessage(violation.message, concepts),
+      message: readable(violation.message),
     }));
   }, [conflictViolations, model?.concepts]);
   const conflicts = useMemo(
@@ -1693,9 +1695,8 @@ const OntologyGraphView = ({
         }
         hidden={graphMode !== 'data'}>
         <OntologyNativeDataMode
-          linkWhenPickedEmpty
           canEditBindings={canEditDataBindings}
-          concepts={pickerConcepts}
+          concepts={dataConcepts}
           getConceptProperties={getConceptProperties}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}

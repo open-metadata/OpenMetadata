@@ -20,10 +20,10 @@ import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/use
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import Loader from '../../../common/Loader/Loader';
-import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyNewClassPanel, {
   OntologyFieldProps,
 } from '../OntologyNewClassPanel/OntologyNewClassPanel';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 
 interface Props {
   ontology: Ontology;

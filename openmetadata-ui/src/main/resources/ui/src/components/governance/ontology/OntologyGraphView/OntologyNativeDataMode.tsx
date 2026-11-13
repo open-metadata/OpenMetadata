@@ -94,8 +94,6 @@ interface OntologyNativeDataModeProps {
   /** The properties a column of the concept can be bound to; without it, no column step is offered. */
   getConceptProperties?: (conceptId: string) => ColumnMappingProperty[];
   isActive?: boolean;
-  /** Picking a concept with nothing linked here goes straight to Link data, as if Link data asset were pressed. */
-  linkWhenPickedEmpty?: boolean;
   ontologyId: string;
   revision?: number;
   selectedConceptId?: string;
@@ -116,7 +114,6 @@ const OntologyNativeDataMode = ({
   concepts,
   getConceptProperties,
   isActive,
-  linkWhenPickedEmpty = false,
   ontologyId,
   revision,
   selectedConceptId,
@@ -158,11 +155,8 @@ const OntologyNativeDataMode = ({
     onSelectedAssetChange?.(panelAssetId);
   }, [onSelectedAssetChange, panelAssetId]);
 
-  // The concept the person last picked here, until Data knows whether it has anything linked.
-  const pickedByPerson = useRef<string>();
   const choose = useCallback(
     (conceptId: string | undefined, announce: boolean) => {
-      pickedByPerson.current = announce ? conceptId : undefined;
       setPickedId(conceptId);
       setIsPicking(false);
       setBindAssets(undefined);
@@ -306,19 +300,6 @@ const OntologyNativeDataMode = ({
           onLinkData(pickedId);
         }
       : undefined;
-  useEffect(() => {
-    if (!pickedId || pickedByPerson.current !== pickedId) {
-      return;
-    }
-    if (isEmpty) {
-      pickedByPerson.current = undefined;
-      if (linkWhenPickedEmpty) {
-        onLinkData?.(pickedId);
-      }
-    } else if (pickedCluster) {
-      pickedByPerson.current = undefined;
-    }
-  }, [isEmpty, linkWhenPickedEmpty, onLinkData, pickedCluster, pickedId]);
   const conceptNode = data.nodes.find(
     (node) => node.type === 'ontologyConcept'
   );

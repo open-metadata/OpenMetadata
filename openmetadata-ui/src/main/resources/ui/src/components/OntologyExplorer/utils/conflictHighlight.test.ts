@@ -14,7 +14,7 @@
 import {
   buildConflictHighlight,
   conflictEdgeKey,
-  toReadableViolationMessage,
+  makeReadableViolationMessage,
 } from './conflictHighlight';
 
 describe('conflict highlight', () => {
@@ -83,7 +83,7 @@ describe('conflict highlight', () => {
   });
 });
 
-describe('toReadableViolationMessage', () => {
+describe('makeReadableViolationMessage', () => {
   it('names concepts by display name, longest internal name first', () => {
     const concepts = [
       { name: 'imported-Record-1', iri: 'urn:x#Record', label: 'Record' },
@@ -95,15 +95,26 @@ describe('toReadableViolationMessage', () => {
     ];
 
     expect(
-      toReadableViolationMessage(
-        'imported-Record-1-child is disjoint with its ancestor imported-Record-1 (urn:x#Record)',
-        concepts
+      makeReadableViolationMessage(concepts)(
+        'imported-Record-1-child is disjoint with its ancestor imported-Record-1 (urn:x#Record)'
       )
     ).toBe('Medication Record is disjoint with its ancestor Record (Record)');
   });
 
+  it('applies one built replacer to every message of the same concepts', () => {
+    const readable = makeReadableViolationMessage([
+      { name: 'dog', label: 'Dog' },
+      { name: 'plant', label: 'Plant' },
+    ]);
+
+    expect(['dog clashes', 'plant clashes'].map(readable)).toEqual([
+      'Dog clashes',
+      'Plant clashes',
+    ]);
+  });
+
   it('leaves a message about unknown concepts as it is', () => {
-    expect(toReadableViolationMessage('Something failed', [])).toBe(
+    expect(makeReadableViolationMessage([])('Something failed')).toBe(
       'Something failed'
     );
   });
@@ -154,22 +165,19 @@ describe('the disjoint rule behind a clash', () => {
 describe('readable names in a conflict message', () => {
   it('replaces whole names only, so a name inside a longer one stays intact', () => {
     expect(
-      toReadableViolationMessage(
-        'VipCustomer is disjoint with its ancestor Customer',
-        [
-          { name: 'Customer', label: 'Customer QA Edited' },
-          { name: 'VipCustomer', label: 'VIP customer' },
-        ]
-      )
+      makeReadableViolationMessage([
+        { name: 'Customer', label: 'Customer QA Edited' },
+        { name: 'VipCustomer', label: 'VIP customer' },
+      ])('VipCustomer is disjoint with its ancestor Customer')
     ).toBe('VIP customer is disjoint with its ancestor Customer QA Edited');
   });
 
   it('does not rewrite a label it has just put in', () => {
     expect(
-      toReadableViolationMessage('Order clashes with LineItem', [
+      makeReadableViolationMessage([
         { name: 'Order', label: 'LineItem order' },
         { name: 'LineItem', label: 'Line item' },
-      ])
+      ])('Order clashes with LineItem')
     ).toBe('LineItem order clashes with Line item');
   });
 });

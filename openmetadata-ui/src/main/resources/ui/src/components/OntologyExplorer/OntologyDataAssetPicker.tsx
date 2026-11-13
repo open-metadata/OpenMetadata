@@ -43,6 +43,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
+import { useOntologyDirtyForm } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { NativeBindingBatchOutcome } from '../../interface/governance/ontology/ontologyConceptBindings.types';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
@@ -58,7 +59,6 @@ import {
 } from '../../utils/governance/ontology/OntologyAssetSuggestion.utils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useOntologyDirtyForm } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 
 type AssetScope = 'all' | 'tables' | 'columns';
 

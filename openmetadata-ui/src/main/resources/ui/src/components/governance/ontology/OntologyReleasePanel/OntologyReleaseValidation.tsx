@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   OntologyProfileReport,
@@ -37,7 +38,7 @@ import {
   getOntologyWorkingValidation,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { toReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
+import { makeReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
 
 export const useReleaseValidation = (release?: OntologyRelease) => {
   const userId = useApplicationStore((store) => store.currentUser?.id);
@@ -201,8 +202,14 @@ const QueryNotice = ({
   );
 };
 
+const NO_CONCEPTS: ReadonlyArray<{
+  name: string;
+  iri?: string;
+  label: string;
+}> = [];
+
 const OntologyReleaseValidation = ({
-  concepts = [],
+  concepts = NO_CONCEPTS,
   release,
   working,
 }: {
@@ -213,8 +220,10 @@ const OntologyReleaseValidation = ({
   working?: WorkingDraft;
 }) => {
   const { t } = useTranslation();
-  const readable = (message: string) =>
-    toReadableViolationMessage(message, concepts);
+  const readable = useMemo(
+    () => makeReadableViolationMessage(concepts),
+    [concepts]
+  );
   const validation = useReleaseValidation(release);
   const report = settledReport(validation);
   const workingValidation = useWorkingValidation(working);
