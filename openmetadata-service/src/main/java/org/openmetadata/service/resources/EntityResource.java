@@ -659,8 +659,9 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   }
 
   /**
-   * Whether a row-dependent rule could refuse a row the listing's own check allowed: a listing is
-   * authorized once for its type (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+   * Whether a row-dependent rule could refuse a row that a check on the type alone allows. Only then
+   * does a listing that is not scoped in SQL check its rows one at a time
+   * (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
    */
   protected final boolean rowsMayDiffer(SecurityContext securityContext, Fields fields) {
     RowAuthorization<T> rows = rowAuthorization(fields);
@@ -728,8 +729,9 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   /**
    * The page as the caller may read it. Rows the caller may not read are dropped and replaced from
    * the pages that follow, within {@link #MAX_FILTERED_PAGE_READS} reads and
-   * {@link #MAX_FILTERED_ROWS_SCANNED} rows; past that the page comes back short. The total still
-   * counts every row, and the cursors are sealed because one may point at a dropped row.
+   * {@link #MAX_FILTERED_ROWS_SCANNED} rows; past that the page comes back short. The total counts
+   * the rows the query's condition selects, including the rows dropped here, and the cursors are
+   * sealed because one may point at a dropped row.
    */
   private ResultList<T> readableRowsPage(
       UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {

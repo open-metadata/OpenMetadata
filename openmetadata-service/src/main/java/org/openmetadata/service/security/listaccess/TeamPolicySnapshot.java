@@ -79,7 +79,8 @@ final class TeamPolicySnapshot implements TeamTree {
   /**
    * The team and every live team under it, walked down the edges {@code TeamHierarchyResolver} walks
    * up. A deleted team ends its branch there too. Every team without a live parent sits under the
-   * Organization, so its subtree is never listed.
+   * Organization, so its subtree is never listed. Callers pass a live team: the name overload
+   * resolves only live teams, and {@link #denies()} holds only live teams.
    */
   @Override
   public TeamSubtree subtreeOf(UUID teamId) {
@@ -138,7 +139,11 @@ final class TeamPolicySnapshot implements TeamTree {
     return teamId;
   }
 
-  /** The deny rules of every policy attached to a team, grouped by the team. */
+  /**
+   * The deny rules of every policy attached to a live team, grouped by the team. A policy lists its
+   * deleted teams too, and the read path never resolves a deleted team as an owner or a parent, so
+   * its rules reach no row.
+   */
   private static TeamPolicySnapshot load() {
     Map<UUID, TeamDenies> byTeam = new LinkedHashMap<>();
     for (Policy policy : teamPolicies()) {
@@ -147,7 +152,9 @@ final class TeamPolicySnapshot implements TeamTree {
               .filter(rule -> rule.getEffect() == Rule.Effect.DENY)
               .toList();
       if (!denyRules.isEmpty()) {
-        policy.getTeams().forEach(team -> addDenies(byTeam, team, denyRules));
+        policy.getTeams().stream()
+            .filter(team -> !Boolean.TRUE.equals(team.getDeleted()))
+            .forEach(team -> addDenies(byTeam, team, denyRules));
       }
     }
     return new TeamPolicySnapshot(new ArrayList<>(byTeam.values()));

@@ -231,19 +231,27 @@ final class SqlRowFilterRenderer {
     };
   }
 
-  /** The users who belong directly to one of {@code teams}. */
+  /**
+   * The live users who belong directly to one of {@code teams}. A deleted user keeps its membership
+   * rows, and the read path does not resolve it, so it is under no team there.
+   */
   private String membersOf(Set<UUID> teams) {
     String member = alias();
+    String user = alias();
     return ("SELECT %1$s.toId FROM %2$s %1$s WHERE %1$s.fromId IN (%3$s)"
             + " AND %1$s.fromEntity = '%4$s' AND %1$s.toEntity = '%5$s'"
-            + " AND %1$s.relation = %6$d AND %1$s.deleted = FALSE")
+            + " AND %1$s.relation = %6$d AND %1$s.deleted = FALSE"
+            + " AND EXISTS (SELECT 1 FROM %7$s %8$s"
+            + " WHERE %8$s.id = %1$s.toId AND %8$s.deleted = FALSE)")
         .formatted(
             member,
             RELATIONSHIPS,
             uuids(teams),
             Entity.TEAM,
             Entity.USER,
-            Relationship.HAS.ordinal());
+            Relationship.HAS.ordinal(),
+            USER_TABLE,
+            user);
   }
 
   private String ownDomainWithin(List<String> domainHashes, Level row) {
