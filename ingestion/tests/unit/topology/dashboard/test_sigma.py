@@ -27,6 +27,9 @@ import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import (
@@ -66,9 +69,11 @@ from metadata.ingestion.models.patch_request import (
     build_patch,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma import metadata as sigma_metadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
+    EdgeSourceResponse,
     Elements,
     ElementsResponse,
     NodeDetails,
@@ -407,7 +412,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
-        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True)
+        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True, EdgeSourceResponse())
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -771,6 +776,7 @@ def sigma_routes() -> dict:
         routes["GET", workbook_path] = workbook
         routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None}
         routes["GET", f"{workbook_path}/lineage"] = {"entries": [], "nextPage": None}
+        routes["GET", f"{workbook_path}/columns"] = {"entries": [], "nextPage": None}
         routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
             "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
             "nextPage": None,
@@ -1216,6 +1222,92 @@ def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
     assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1")[0]] == ["PETS"]
 
 
+# ORDERS is in two databases of wh_a: a display path that drops the database finds no single table
+TWO_ORDERS = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "ORDERS", database="SALES")]
+SALES_ORDERS = ["wh_a.SALES.PUBLIC.ORDERS"]
+# Read as schema ORDERS: finds no table
+TABLE_IN_PATH = "Connection Root/SALES/PUBLIC/ORDERS"
+
+
+@pytest.mark.parametrize(
+    "files_path, connection_path, catalog, prefixes, linked, path_reads",
+    [
+        ("Connection Root/SALES.PUBLIC", 500, TWO_ORDERS, ["wh_a"], SALES_ORDERS, 0),
+        ("Connection Root/ANALYTICS/PUBLIC", ["SALES", "PUBLIC", "ORDERS"], TWO_ORDERS, ["wh_a"], SALES_ORDERS, 1),
+        (
+            "Connection Root/ANALYTICS/PUBLIC",
+            ["SALES", "PUBLIC", "ORDERS"],
+            TWO_ORDERS,
+            ["wh_a", "wh_b"],
+            SALES_ORDERS,
+            1,
+        ),
+        (TABLE_IN_PATH, ["SALES", "PUBLIC", "ORDERS"], TWO_ORDERS, ["wh_a.SALES"], SALES_ORDERS, 1),
+        (TABLE_IN_PATH, ["SALES", "PUBLIC", "ORDERS"], TWO_ORDERS, ["wh_a.ANALYTICS"], [], 1),
+        (
+            "Connection Root/MY.DB/PUBLIC",
+            ["MY.DB", "PUBLIC", "ORDERS"],
+            [warehouse_table("wh_a", "ORDERS", database='"MY.DB"')],
+            ["wh_a"],
+            ['wh_a."MY.DB".PUBLIC.ORDERS'],
+            1,
+        ),
+        (
+            "Connection Root/SALES DATA/PUBLIC/ORDERS",
+            ["SALES DATA", "PUBLIC", "ORDERS"],
+            [warehouse_table("wh_a", "ORDERS", database="SALES DATA")],
+            ["wh_a"],
+            ["wh_a.SALES DATA.PUBLIC.ORDERS"],
+            1,
+        ),
+        ("Connection Root/ANALYTICS/STAGING", ["PUBLIC", "ORDERS"], TWO_ORDERS[:1], ["wh_a"], [], 1),
+        (
+            "Connection Root/ANALYTICS/PUBLIC",
+            ["SALES", "PUBLIC", "CUSTOMERS"],
+            [*TWO_ORDERS, warehouse_table("wh_a", "CUSTOMERS", database="SALES")],
+            ["wh_a"],
+            [],
+            1,
+        ),
+        ("Connection Root/ANALYTICS/PUBLIC", 500, TWO_ORDERS, ["wh_a"], [], 1),
+        ("Connection Root/ANALYTICS/PUBLIC", 500, TWO_ORDERS, ["wh_a", "wh_b"], [], 1),
+    ],
+    ids=[
+        "display-path-finds-it",
+        "connection-path-names-the-database",
+        "read-once-across-prefixes",
+        "inside-the-prefix-database",
+        "outside-the-prefix-database",
+        "dot-in-database-name",
+        "space-in-database-name",
+        "two-parts-not-read-as-schema-and-table",
+        "other-table-in-the-path",
+        "failed-read",
+        "failed-read-once-across-prefixes",
+    ],
+)
+def test_the_connection_path_is_read_only_when_the_display_path_finds_no_table(
+    sigma_over_http, routes, files_path, connection_path, catalog, prefixes, linked, path_reads
+):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/files/T1"]["path"] = files_path
+    routes["GET", "/v2/connections/paths/T1"] = (
+        {"connectionId": "conn-1", "path": connection_path} if isinstance(connection_path, list) else connection_path
+    )
+
+    assert lineage_sources(source, routes, prefixes, catalog, None) == linked
+    assert calls["GET", "/v2/connections/paths/T1"] == path_reads
+
+
+def test_the_connection_path_of_a_dataset_is_not_read(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/files/T1"].update(type="dataset", path="Connection Root/ANALYTICS/PUBLIC")
+    routes["GET", "/v2/connections/paths/T1"] = {"connectionId": "conn-1", "path": ["SALES", "PUBLIC", "ORDERS"]}
+
+    assert lineage_sources(source, routes, ["wh_a"], TWO_ORDERS, None) == []
+    assert calls["GET", "/v2/connections/paths/T1"] == 0
+
+
 def sheet(node_id: str, element_id: str) -> dict:
     return {"nodeId": node_id, "type": "sheet", "name": node_id, "elementId": element_id}
 
@@ -1288,6 +1380,17 @@ def test_element_lineage_keeps_the_tables_the_element_reaches(sigma_over_http, r
     routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("2MLjb1f67ldr3FMNI2L6Pf", "STATIONS", "table")
 
     assert sorted(node.name for node in source.client.get_lineage_details("wb-1", element_id)[0]) == sorted(tables)
+
+
+def test_element_lineage_keeps_the_id_it_names_a_table_by(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/5AbJJlOiPPtgpL3cCk7GqA"] = DOCUMENTED_ELEMENT_LINEAGE
+    routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("stations-inode", "STATIONS", "table")
+
+    [stations] = source.client.get_lineage_details("wb-1", "5AbJJlOiPPtgpL3cCk7GqA")[0]
+
+    # Formulas name the table as the lineage does, which need not be the id /files answers with
+    assert (stations.id, stations.nodeId) == ("stations-inode", "2MLjb1f67ldr3FMNI2L6Pf")
 
 
 def sigma_connection(connection_id: str, connection_type: str) -> dict:
@@ -1393,11 +1496,18 @@ def sigma_data_models(routes):
         ],
         "nextPage": None,
     }
+    routes["GET", "/v2/dataModels/dm-1/lineage"] = {"entries": [], "nextPage": None}
+    routes["GET", "/v2/dataModels/dm-1/columns"] = {"entries": [], "nextPage": None}
     return routes
 
 
-def bulk_data_models(source) -> list:
+def bulk_stage(source) -> list:
+    """Every record the bulk data model stage sends, in order"""
     return [either.right for model in source.list_datamodels() for either in source.yield_bulk_datamodel(model)]
+
+
+def bulk_data_models(source) -> list:
+    return [record for record in bulk_stage(source) if isinstance(record, CreateDashboardDataModelRequest)]
 
 
 def test_a_sigma_data_model_is_one_data_model_with_a_table_column_per_element(sigma_over_http, sigma_data_models):
@@ -1455,6 +1565,357 @@ def test_a_sigma_data_model_is_owned_by_its_owner(sigma_over_http, sigma_data_mo
     [data_model] = bulk_data_models(source)
 
     assert [owner.name for owner in data_model.owners.root] == ["ada@example.com"]
+
+
+def table_row(inode_id: str, name: str) -> dict:
+    return {"type": "table", "connectionId": "conn-1", "name": name, "inodeId": inode_id}
+
+
+def element_row(element_id: str, source_ids: list[str], data_source_ids: list[str] | None = None) -> dict:
+    """An element row; its root sources default to its direct ones"""
+    return {
+        "type": "element",
+        "elementId": element_id,
+        "sourceIds": source_ids,
+        "dataSourceIds": source_ids if data_source_ids is None else data_source_ids,
+    }
+
+
+def data_model_row(data_model_id: str, name: str) -> dict:
+    return {"type": "data-model", "connectionId": None, "name": name, "dataModelId": data_model_id}
+
+
+@pytest.fixture
+def two_sigma_data_models(sigma_data_models):
+    """dm-1 (Sales Model) and dm-2 (Orders Model, url id url-dm-2); neither has lineage rows yet"""
+    routes = sigma_data_models
+    routes["GET", "/v2/dataModels"]["entries"].append(sigma_data_model("dm-2", "Orders Model"))
+    routes["GET", "/v2/dataModels/dm-2/elements"] = {
+        "entries": [{"elementId": "dm2El1", "name": "Orders", "type": "table", "columns": ["Order Id"]}],
+        "nextPage": None,
+    }
+    routes["GET", "/v2/dataModels/dm-2/lineage"] = {"entries": [], "nextPage": None}
+    return routes
+
+
+def serve_openmetadata(source, catalog: list[Table], prefixes: list[str]) -> None:
+    """OpenMetadata knows every data model, and answers table searches from `catalog` with its wildcard matching"""
+    services = {table.fullyQualifiedName.root.split(".")[0] for table in catalog}
+
+    def es_search_from_fqn(entity_type, fqn_search_string, **_):
+        if entity_type is DatabaseService:
+            return (
+                [warehouse_service(fqn_search_string, DatabaseServiceType.Snowflake)]
+                if fqn_search_string in services
+                else []
+            )
+        return [table for table in catalog if fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())]
+
+    def get_by_name(entity, fqn, **_):
+        if entity is DatabaseService:
+            return warehouse_service(fqn, DatabaseServiceType.Snowflake) if fqn in services else None
+        if entity is DashboardDataModel:
+            return DashboardDataModel(
+                id=str(uuid5(NAMESPACE_URL, fqn)),
+                name=fqn.rsplit(".", 1)[-1],
+                fullyQualifiedName=fqn,
+                dataModelType="SigmaDataModel",
+                columns=[],
+            )
+        return None
+
+    source.metadata.es_search_from_fqn = es_search_from_fqn
+    source.metadata.get_by_name = get_by_name
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=prefixes)
+
+
+def data_model_lineage(source, prefixes: list[str] | None = None, catalog: list[Table] | None = None):
+    """(from FQN, to FQN) of every lineage edge the bulk data model stage sends"""
+    serve_openmetadata(
+        source, catalog or [warehouse_table("wh_a", "ORDERS")], ["wh_a"] if prefixes is None else prefixes
+    )
+    return [
+        (
+            record.lineage_request.edge.fromEntity.fullyQualifiedName,
+            record.lineage_request.edge.toEntity.fullyQualifiedName,
+        )
+        for record in bulk_stage(source)
+        if hasattr(record, "lineage_request")
+    ]
+
+
+ORDERS_TO_SALES_MODEL = ("wh_a.ANALYTICS.PUBLIC.ORDERS", "mock_sigma.model.dm-1")
+
+
+# T1's /files entry has id T1 and url id t1-url: an element can name it by either, with or without `inode-`
+@pytest.mark.parametrize("source_id", ["inode-t1-url", "t1-url", "inode-T1", "T1"])
+def test_a_table_an_element_reads_is_linked_to_its_sigma_data_model(sigma_over_http, sigma_data_models, source_id):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", [source_id]),
+    ]
+
+    assert data_model_lineage(source) == [ORDERS_TO_SALES_MODEL]
+
+
+def test_a_table_read_by_several_elements_is_linked_once(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-t1-url"]),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl2", ["inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source) == [ORDERS_TO_SALES_MODEL]
+
+
+def test_a_table_no_element_reads_is_not_linked(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-other-url"]),
+    ]
+
+    assert data_model_lineage(source) == []
+    assert calls["GET", "/v2/files/T1"] == 1
+
+
+def test_a_sigma_data_model_another_one_reads_is_linked_to_it(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    # The element names dm-2's element in the <id>/<suffix> form of Sigma's workbook lineage example; the table
+    # feeds dm-2, not dm-1
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["url-dm-2/dm2El1"]),
+    ]
+
+    assert data_model_lineage(source) == [("mock_sigma.model.dm-2", "mock_sigma.model.dm-1")]
+
+
+def test_a_sigma_data_model_named_by_its_id_is_linked(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        element_row("dmEl1", ["dm-2"]),
+    ]
+
+    assert data_model_lineage(source) == [("mock_sigma.model.dm-2", "mock_sigma.model.dm-1")]
+
+
+@pytest.mark.parametrize(
+    "source_ids, data_source_ids",
+    [([], ["dm-2", "inode-t1-url"]), (["dm-2", "inode-t1-url"], [])],
+    ids=["root-sources-only", "direct-sources-only"],
+)
+def test_a_source_named_in_either_list_of_an_element_is_linked(
+    sigma_over_http, two_sigma_data_models, source_ids, data_source_ids
+):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", source_ids, data_source_ids),
+    ]
+
+    assert sorted(data_model_lineage(source)) == [
+        ("mock_sigma.model.dm-2", "mock_sigma.model.dm-1"),
+        ORDERS_TO_SALES_MODEL,
+    ]
+
+
+def test_a_sigma_data_model_no_element_reads_is_not_linked(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        element_row("dmEl1", ["inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source) == []
+
+
+def test_every_page_of_a_sigma_data_model_lineage_is_read(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"] = {
+        "entries": [element_row("dmEl1", ["inode-t1-url"])],
+        "nextPage": "2",
+    }
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage", "2"] = {
+        "entries": [table_row("T1", "ORDERS")],
+        "nextPage": None,
+    }
+
+    assert data_model_lineage(source) == [ORDERS_TO_SALES_MODEL]
+
+
+def test_a_sigma_data_model_table_found_in_two_services_is_not_linked(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-t1-url"]),
+    ]
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "ORDERS")]
+
+    assert data_model_lineage(source, ["wh_a", "wh_b"], catalog) == []
+
+
+def test_a_sigma_data_model_table_is_found_through_its_connection_path(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    # The display path drops the database, and ORDERS is in two
+    sigma_data_models["GET", "/v2/files/T1"]["path"] = "Connection Root/ANALYTICS/PUBLIC"
+    sigma_data_models["GET", "/v2/connections/paths/T1"] = {"connectionId": "c1", "path": ["SALES", "PUBLIC", "ORDERS"]}
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source, catalog=TWO_ORDERS) == [("wh_a.SALES.PUBLIC.ORDERS", "mock_sigma.model.dm-1")]
+    assert calls["GET", "/v2/connections/paths/T1"] == 1
+
+
+def test_without_db_service_prefixes_a_sigma_data_model_table_is_searched_in_every_service(
+    sigma_over_http, two_sigma_data_models
+):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["url-dm-2/dm2El1", "inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source, prefixes=[]) == [
+        ("mock_sigma.model.dm-2", "mock_sigma.model.dm-1"),
+        ORDERS_TO_SALES_MODEL,
+    ]
+
+
+def test_a_failed_sigma_data_model_lineage_read_links_nothing_and_keeps_the_data_model(
+    sigma_over_http, sigma_data_models
+):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"] = 500
+
+    assert data_model_lineage(source) == []
+    assert [data_model.name.root for data_model in bulk_data_models(source)] == ["dm-1"]
+
+
+def test_a_filtered_sigma_data_model_lineage_is_not_read(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    source.source_config.dataModelFilterPattern = FilterPattern(excludes=["^Sales Model$"])
+
+    assert data_model_lineage(source) == []
+    assert calls["GET", "/v2/dataModels/dm-1/lineage"] == 0
+
+
+def test_sigma_data_model_lineage_is_sent_after_every_data_model_is_written(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        element_row("dmEl1", ["url-dm-2/dm2El1"]),
+    ]
+    serve_openmetadata(source, [], [])
+
+    records = [type(record).__name__ for record in bulk_stage(source)]
+
+    # dm-1 reads dm-2, which is written after it: the barrier flushes both before the edge is sent
+    assert records == [
+        "CreateDashboardDataModelRequest",
+        "CreateDashboardDataModelRequest",
+        "Barrier",
+        "OMetaLineageRequest",
+    ]
+
+
+def sigma_column(element_id: str, name: str, formula: str) -> dict:
+    return {
+        "columnId": f"{element_id}-{name}",
+        "name": name,
+        "formula": formula,
+        "type": {"type": "number"},
+        "elementId": element_id,
+    }
+
+
+MARGIN_COLUMNS = [
+    sigma_column("el-wb-1", "Cost", "[ORDERS/Cost]"),
+    sigma_column("el-wb-1", "Total", "[Cost] + [MRP]"),
+    sigma_column("el-wb-1", "Note", ""),
+]
+
+
+def workbook_column_descriptions(source, routes) -> dict[str, str | None]:
+    """The description of each column of wb-1's element, as the data model stage sends it"""
+    routes["GET", "/v2/workbooks/wb-1/pages/page-1/elements"]["entries"][0]["columns"] = ["Cost", "Total", "Note"]
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    [request] = [either.right for either in source.yield_datamodel(details)]
+    return {column.displayName: column.description and column.description.root for column in request.columns}
+
+
+TOTAL_FORMULA = {"Cost": None, "Total": "**Formula:** `[Cost] + [MRP]`", "Note": None}
+
+
+@pytest.mark.parametrize(
+    "pages, descriptions",
+    [
+        # Cost only names its source column, which its lineage already shows
+        ([MARGIN_COLUMNS], TOTAL_FORMULA),
+        ([MARGIN_COLUMNS[:1], MARGIN_COLUMNS[1:]], TOTAL_FORMULA),
+        ([[*MARGIN_COLUMNS, sigma_column("elOther", "Total", "[Cost] * 2")]], TOTAL_FORMULA),
+        # A name an element holds twice cannot be told apart: neither gets the formula
+        ([[*MARGIN_COLUMNS, sigma_column("el-wb-1", "Total", "[Cost] * 2")]], {**TOTAL_FORMULA, "Total": None}),
+        (500, {"Cost": None, "Total": None, "Note": None}),
+    ],
+    ids=["one-page", "two-pages", "same-name-in-another-element", "repeated-name", "failed-read"],
+)
+def test_a_workbook_element_column_shows_its_sigma_formula(sigma_over_http, routes, pages, descriptions):
+    source, _ = sigma_over_http
+    if isinstance(pages, int):
+        routes["GET", "/v2/workbooks/wb-1/columns"] = pages
+    else:
+        for number, entries in enumerate(pages, start=1):
+            page = {"entries": entries, "nextPage": str(number + 1) if number < len(pages) else None}
+            routes[
+                ("GET", "/v2/workbooks/wb-1/columns", str(number))
+                if number > 1
+                else ("GET", "/v2/workbooks/wb-1/columns")
+            ] = page
+
+    assert workbook_column_descriptions(source, routes) == descriptions
+
+
+def test_column_formulas_are_not_read_when_data_models_are_off(sigma_over_http):
+    source, calls = sigma_over_http
+    source.source_config.includeDataModels = False
+
+    source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    assert calls["GET", "/v2/workbooks/wb-1/columns"] == 0
+
+
+def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/elements"]["entries"][1]["columns"].append("City")
+    sigma_data_models["GET", "/v2/dataModels/dm-1/columns"]["entries"] = [
+        sigma_column("dmEl1", "Order Id", "[ORDERS/Order Id]"),
+        sigma_column("dmEl1", "Amount", "Round([ORDERS/Amount], 2)"),
+        sigma_column("dmEl2", "Customer Id", "[Order Id]"),
+        sigma_column("dmEl2", "City", "[ORDERS/Customer/City]"),
+    ]
+
+    [data_model] = bulk_data_models(source)
+
+    assert {
+        (column.displayName, child.displayName): child.description and child.description.root
+        for column in data_model.columns
+        for child in column.children
+    } == {
+        ("Orders", "Order Id"): None,
+        ("Orders", "Amount"): "**Formula:** `Round([ORDERS/Amount], 2)`",
+        ("Customers", "Customer Id"): "**Formula:** `[Order Id]`",
+        ("Customers", "City"): "**Formula:** `[ORDERS/Customer/City]`",
+    }
 
 
 # Sigma's documented example response for the workbook lineage endpoint (list-lineage-tree): element
@@ -1940,6 +2401,7 @@ def test_fallback_lineage_links_labels_that_differ_from_the_column_in_case_and_s
             for table in (CUSTOMERS, ORDERS)
         ],
         True,
+        EdgeSourceResponse(),
     )
 
     results = list(
@@ -1976,6 +2438,314 @@ def test_fallback_lineage_links_no_column_when_a_source_could_not_be_read(lineag
 
     # "Customer Id" looks unique without ORDERS, which is exactly when linking it would guess
     assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
+
+
+COSTS = sales_table("COSTS", ["COST", "MRP"])
+PRICES = sales_table("PRICES", ["LIST_PRICE"])
+MARGIN_LABELS = ["Cost", "MRP", "Total", "Margin"]
+
+
+def formula_column_links(
+    lineage_source,
+    labels: list[str],
+    formulas: dict[str, str],
+    tables: list[Table],
+    all_sources_read: bool = True,
+    graph: dict | None = None,
+    other_elements: dict[str, dict[str, str]] | None = None,
+) -> dict[str, dict[str, list[str]]]:
+    """
+    For each table edge of an element without SQL: each data model column it feeds, with the table columns. By
+    default the element's lineage reads each table directly.
+    """
+    graph = graph or {
+        "dependencies": {
+            "Margins": sheet("Margins", "amountByCustomer"),
+            **{
+                table.name.root: {"nodeId": table.name.root, "type": "table", "name": table.name.root}
+                for table in tables
+            },
+        },
+        "edges": [edge(table.name.root, "Margins") for table in tables],
+    }
+    element = Elements(elementId="amountByCustomer", name="Margins", vizualizationType="bar", columns=labels)
+    data_model = DashboardDataModel(
+        id=uuid5(NAMESPACE_URL, AMOUNT_MODEL_FQN),
+        name="amountByCustomer",
+        fullyQualifiedName=AMOUNT_MODEL_FQN,
+        dataModelType="SigmaDataModel",
+        columns=[
+            column.model_copy(
+                update={"fullyQualifiedName": FullyQualifiedEntityName(f"{AMOUNT_MODEL_FQN}.{column.displayName}")}
+            )
+            for column in lineage_source.get_column_info(element)
+        ],
+    )
+    lineage_source.metadata.get_by_name = lambda entity, fqn, **_: (
+        data_model if entity is DashboardDataModel else MOCK_DATABASE_SERVICE
+    )
+    lineage_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **_: next(
+        (table for table in tables if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")), None
+    )
+    lineage_source.data_models = [element]
+    lineage_source.client.get_workbook_queries = lambda *_: None
+    lineage_source.client.get_lineage_details = lambda *_: (
+        [
+            NodeDetails(
+                id=f"file-{table.name.root}",
+                nodeId=table.name.root,
+                name=table.name.root,
+                type="table",
+                path="Snowflake/SALES.PUBLIC",
+            )
+            for table in tables
+        ],
+        all_sources_read,
+        EdgeSourceResponse.model_validate(graph),
+    )
+    details = MOCK_DASHBOARD_DETAILS.model_copy(
+        update={"formulas": {**(other_elements or {}), "amountByCustomer": formulas}}
+    )
+    return {
+        either.right.edge.fromEntity.fullyQualifiedName.rsplit(".", 1)[-1]: {
+            column.toColumn.root.rsplit(".", 1)[-1]: sorted(
+                source.root.rsplit(".", 1)[-1] for source in column.fromColumns
+            )
+            for column in either.right.edge.lineageDetails.columnsLineage or []
+        }
+        for either in lineage_source.yield_dashboard_lineage_details(details, db_service_prefix="mock_mysql")
+        if either.right
+    }
+
+
+LABELED = {"Cost": ["COST"], "MRP": ["MRP"]}
+
+
+@pytest.mark.parametrize(
+    "formulas, computed",
+    [
+        ({"Total": "[Cost] + [MRP]"}, {"Total": ["COST", "MRP"]}),
+        (
+            {"Total": "[Cost] + [MRP]", "Margin": "[Total] - [Cost]"},
+            {"Total": ["COST", "MRP"], "Margin": ["COST", "MRP"]},
+        ),
+        ({"Total": "[Margin] + [Cost]", "Margin": "[Total]"}, {"Total": ["COST"], "Margin": ["COST"]}),
+        ({"Total": "[Cost] * [Rate-Control]"}, {"Total": ["COST"]}),
+        ({"Total": 'If([Cost] > 0, "[MRP]", "none")'}, {"Total": ["COST"]}),
+        ({"Total": "[COSTS/Cost] + [MRP]"}, {"Total": ["COST", "MRP"]}),
+        ({"Total": "[ORDERS/Cost] + [MRP]"}, {"Total": ["MRP"]}),
+        # An escape, or nothing of the element: not traced
+        ({"Total": "[Co\\st] + [MRP]"}, {}),
+        ({"Total": "[Rate-Control] * 2"}, {}),
+        ({"Total": "[cost] + [MRP]"}, {"Total": ["MRP"]}),
+    ],
+    ids=[
+        "same-element-columns",
+        "through-another-computed-column",
+        "cycle",
+        "control-adds-nothing",
+        "string-literal-is-not-a-reference",
+        "a-source-the-element-reads",
+        "a-source-the-element-does-not-read-adds-nothing",
+        "escape",
+        "no-column-of-the-element",
+        "names-match-exactly",
+    ],
+)
+def test_a_computed_column_without_sql_gets_the_sources_of_the_columns_it_reads(lineage_source, formulas, computed):
+    assert formula_column_links(lineage_source, MARGIN_LABELS, formulas, [COSTS]) == {"COSTS": {**LABELED, **computed}}
+
+
+def test_a_computed_column_read_before_the_column_it_reads_still_gets_its_sources(lineage_source):
+    formulas = {"Margin": "[Total] - [Cost]", "Total": "[Cost] + [MRP]"}
+
+    links = formula_column_links(lineage_source, ["Cost", "MRP", "Margin", "Total"], formulas, [COSTS])
+
+    assert links == {"COSTS": {**LABELED, "Margin": ["COST", "MRP"], "Total": ["COST", "MRP"]}}
+
+
+def test_a_computed_column_named_like_a_warehouse_column_takes_its_sources_from_its_formula(lineage_source):
+    costs_with_total = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
+    formulas = {"Total": "[Cost] + [MRP]", "Margin": "[Total] - [Cost]"}
+
+    links = formula_column_links(lineage_source, MARGIN_LABELS, formulas, [costs_with_total])
+
+    assert links == {"COSTS": {**LABELED, "Total": ["COST", "MRP"], "Margin": ["COST", "MRP"]}}
+
+
+COSTS_WITH_TOTAL = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
+
+
+@pytest.mark.parametrize(
+    "formula, total",
+    [
+        ("[COSTS/Cost] * 2", ["COST"]),
+        ("[COSTS/Cost] + [COSTS/Cost]", ["COST"]),
+        ("1", None),
+        ("[ORDERS/Cost] * 2", None),
+        # Three parts name a relationship, even when they read together as a column of the table
+        ("[COSTS/Co/st] * 2", None),
+        ("[COSTS/Cost]", ["COST"]),
+        ("[COSTS/Customer/Cost]", None),
+        ("[ORDERS/Customer/Total]", None),
+        # A plain copy of a source not found is matched by name, as before
+        ("[ORDERS/Total]", ["TOTAL"]),
+    ],
+    ids=[
+        "source-column",
+        "same-column-twice",
+        "constant",
+        "source-not-read",
+        "relationship",
+        "renamed-copy",
+        "copy-through-a-relationship",
+        "copy-through-a-relationship-of-a-source-not-read",
+        "copy-of-unknown-source",
+    ],
+)
+def test_a_calculated_column_never_takes_a_same_named_warehouse_column(lineage_source, formula, total):
+    links = formula_column_links(lineage_source, ["Cost", "MRP", "Total"], {"Total": formula}, [COSTS_WITH_TOTAL])
+
+    assert links["COSTS"].get("Total") == total
+
+
+COSTS_NODE = {"nodeId": "COSTS", "type": "table", "name": "COSTS"}
+# Margins reads the element Prep, which reads COSTS
+THROUGH_PREP = {
+    "dependencies": {
+        "Margins": sheet("Margins", "amountByCustomer"),
+        "Prep": sheet("Prep", "elPrep"),
+        "COSTS": COSTS_NODE,
+    },
+    "edges": [edge("COSTS", "Prep"), edge("Prep", "Margins")],
+}
+PREP = {"Cost": "[COSTS/Cost]", "MRP": "[COSTS/MRP]", "Margin": "[MRP] - [Cost]"}
+# Margins reads an element named like the table it is built on
+ELEMENT_NAMED_LIKE_ITS_TABLE = {
+    "dependencies": {
+        "Margins": sheet("Margins", "amountByCustomer"),
+        "sheetCosts": {**sheet("sheetCosts", "elCosts"), "name": "COSTS"},
+        "COSTS": COSTS_NODE,
+    },
+    "edges": [edge("COSTS", "sheetCosts"), edge("sheetCosts", "Margins")],
+}
+# Margins reads the table COSTS and an element named COSTS
+TWO_SOURCES_NAMED_COSTS = {
+    **ELEMENT_NAMED_LIKE_ITS_TABLE,
+    "edges": [edge("COSTS", "Margins"), edge("sheetCosts", "Margins")],
+}
+PREP_READS_MARGINS = {
+    **THROUGH_PREP,
+    "edges": [edge("Prep", "Margins"), edge("Margins", "Prep")],
+}
+
+
+@pytest.mark.parametrize(
+    "graph, formula, other_elements, total",
+    [
+        (THROUGH_PREP, "[Prep/Margin] * 2", {"elPrep": PREP}, ["COST", "MRP"]),
+        (THROUGH_PREP, "[Prep/Cost]", {"elPrep": PREP}, ["COST"]),
+        (ELEMENT_NAMED_LIKE_ITS_TABLE, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, ["COST"]),
+        (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
+        (PREP_READS_MARGINS, "[Prep/Margin] * 2", {"elPrep": {"Margin": "[Margins/Total]"}}, None),
+        (THROUGH_PREP, "[Prep/Total]", {"elPrep": {"Total": "1"}}, None),
+        (THROUGH_PREP, "[Prep/Customer/Cost]", {"elPrep": PREP}, None),
+        (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost]", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
+        (
+            {
+                "dependencies": {**THROUGH_PREP["dependencies"], "COSTS": {**COSTS_NODE, "type": "dataset"}},
+                "edges": [edge("COSTS", "Margins")],
+            },
+            "[COSTS/Cost] * 2",
+            {},
+            ["COST"],
+        ),
+    ],
+    ids=[
+        "calculated-column-of-another-element",
+        "copy-in-another-element",
+        "element-named-like-its-table",
+        "two-sources-of-that-name",
+        "elements-reading-each-other",
+        "copy-of-a-constant-in-another-element",
+        "copy-through-a-relationship-of-another-element",
+        "copy-from-two-sources-of-that-name",
+        "column-of-a-dataset",
+    ],
+)
+def test_a_calculated_column_follows_the_element_it_reads(lineage_source, graph, formula, other_elements, total):
+    links = formula_column_links(
+        lineage_source,
+        ["Total"],
+        {"Total": formula},
+        [COSTS_WITH_TOTAL],
+        graph=graph,
+        other_elements=other_elements,
+    )
+
+    assert links["COSTS"].get("Total") == total
+
+
+def test_a_computed_column_reading_two_tables_is_linked_from_each(lineage_source):
+    links = formula_column_links(
+        lineage_source, ["Cost", "List Price", "Total"], {"Total": "[Cost] + [List Price]"}, [COSTS, PRICES]
+    )
+
+    assert links == {
+        "COSTS": {"Cost": ["COST"], "Total": ["COST"]},
+        "PRICES": {"List Price": ["LIST_PRICE"], "Total": ["LIST_PRICE"]},
+    }
+
+
+@pytest.mark.parametrize("formula", ["[Cost] + [MRP]", "[COSTS/Cost] * 2"])
+def test_a_computed_column_is_not_traced_when_a_source_could_not_be_read(lineage_source, formula):
+    assert formula_column_links(lineage_source, MARGIN_LABELS, {"Total": formula}, [COSTS], all_sources_read=False) == {
+        "COSTS": {}
+    }
+
+
+def test_a_copy_of_a_column_its_source_lacks_is_not_matched_in_another_table(lineage_source):
+    pay = sales_table("PAY", ["AMOUNT"])
+
+    assert formula_column_links(lineage_source, ["Amount"], {"Amount": "[COSTS/Amount]"}, [COSTS, pay]) == {
+        "COSTS": {},
+        "PAY": {},
+    }
+
+
+def test_a_reference_matching_two_columns_of_its_table_adds_nothing(lineage_source):
+    costs = sales_table("COSTS", ["COST", "CO_ST"])
+
+    assert formula_column_links(lineage_source, ["Total"], {"Total": "[COSTS/Cost] * 2"}, [costs]) == {"COSTS": {}}
+
+
+def test_an_element_read_through_a_chain_is_traced_once(lineage_source, monkeypatch):
+    # Margins reads E1, which reads E2, which reads E3, which reads COSTS; each copies Cost and MRP from the next
+    graph = {
+        "dependencies": {
+            "Margins": sheet("Margins", "amountByCustomer"),
+            **{f"E{level}": sheet(f"E{level}", f"el{level}") for level in (1, 2, 3)},
+            "COSTS": COSTS_NODE,
+        },
+        "edges": [edge("COSTS", "E3"), edge("E3", "E2"), edge("E2", "E1"), edge("E1", "Margins")],
+    }
+    chain = {
+        f"el{level}": {column: f"[{read}/{column}]" for column in ("Cost", "MRP")}
+        for level, read in ((1, "E2"), (2, "E3"), (3, "COSTS"))
+    }
+    inherited = []
+    original = sigma_metadata._inherit_formula_sources
+    monkeypatch.setattr(
+        sigma_metadata, "_inherit_formula_sources", lambda *args: inherited.append(1) or original(*args)
+    )
+
+    links = formula_column_links(
+        lineage_source, ["Total"], {"Total": "[E1/Cost] + [E1/MRP]"}, [COSTS], graph=graph, other_elements=chain
+    )
+
+    assert links == {"COSTS": {"Total": ["COST", "MRP"]}}
+    # Once for each element read, and once for Margins; tracing an element again per reference grows exponentially
+    assert len(inherited) == 4
 
 
 def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_source):
