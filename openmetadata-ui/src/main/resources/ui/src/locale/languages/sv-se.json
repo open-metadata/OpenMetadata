@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "Läsbar RDF-serialisering",
     "ontology-generated-read-only": "Genereras automatiskt. Skrivskyddad.",
     "ontology-graph-feature-description": "Utforska begrepp och deras relationer i en sammanhängande vy.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "Visar {{shown}} av {{total}} begrepp",
     "ontology-graph-limit": "Grafen visar upp till {{count}} begrepp. Använd modellutforskaren för större ontologier.",
     "ontology-graph-too-large": "Den här ontologin har {{total}} begrepp, för många för att rita på en gång. Välj ett begrepp för att se det med dess grannar.",
     "ontology-history-limit": "Showing the first 1,000 history records.",

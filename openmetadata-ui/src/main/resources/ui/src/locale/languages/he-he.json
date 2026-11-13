@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "סריאליזציית RDF קריאה",
     "ontology-generated-read-only": "נוצר אוטומטית. לקריאה בלבד.",
     "ontology-graph-feature-description": "חקרו מושגים ואת הקשרים ביניהם בתצוגה מחוברת אחת.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "מוצגים {{shown}} מתוך {{total}} מושגים",
     "ontology-graph-limit": "הגרף מציג עד {{count}} מושגים. עבור אונטולוגיות גדולות יותר, השתמשו בדפדפן המודל.",
     "ontology-graph-too-large": "באונטולוגיה זו יש {{total}} מושגים, יותר מדי כדי לשרטט אותם בבת אחת. בחר מושג כדי לראות אותו עם שכניו.",
     "ontology-history-limit": "Showing the first 1,000 history records.",

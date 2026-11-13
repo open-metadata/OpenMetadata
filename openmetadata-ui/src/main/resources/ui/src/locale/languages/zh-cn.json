@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "易读的 RDF 序列化格式",
     "ontology-generated-read-only": "自动生成。只读。",
     "ontology-graph-feature-description": "在一个相互连接的视图中探索概念及其关系。",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "显示 {{total}} 个概念中的 {{shown}} 个",
     "ontology-graph-limit": "图谱最多显示 {{count}} 个概念。对于更大的本体，请使用模型浏览器。",
     "ontology-graph-too-large": "此本体包含 {{total}} 个概念，数量过多，无法一次绘制。选择一个概念即可查看它及其相邻概念。",
     "ontology-history-limit": "Showing the first 1,000 history records.",

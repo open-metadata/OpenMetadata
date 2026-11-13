@@ -15,6 +15,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Checkbox,
   Dialog,
@@ -23,8 +24,10 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
+import classNames from 'classnames';
 import {
   ComponentProps,
   KeyboardEvent,
@@ -687,16 +690,30 @@ const OntologyGraphView = ({
       graph ? rankConceptMatches(graph.nodes, searchMatchIds, search) : [],
     [graph, search, searchMatchIds]
   );
-  const scope = useMemo(
-    () =>
-      buildStudioGraphScope(graph ?? NO_GRAPH, {
-        seedIds: [
-          ...(selectedId ? [selectedId] : []),
-          ...searchResults.map(({ id }) => id),
-        ],
-      }),
-    [graph, searchResults, selectedId]
-  );
+  // On a graph too large to draw, the concept whose neighbourhood is drawn. It outlives the
+  // selection, so closing the drawer or clicking the canvas keeps the view instead of emptying it.
+  const [focusId, setFocusId] = useState<string>();
+  const scope = useMemo(() => {
+    const focus = focusId ?? selectedId;
+
+    return buildStudioGraphScope(graph ?? NO_GRAPH, {
+      seedIds: [
+        ...(focus ? [focus] : []),
+        ...searchResults.map(({ id }) => id),
+      ],
+    });
+  }, [focusId, graph, searchResults, selectedId]);
+  // A concept selected outside the drawn neighbourhood (Find, Tree, a link) becomes the focus;
+  // one picked inside it does not, so the layout holds still while you explore it.
+  useEffect(() => {
+    if (
+      selectedId &&
+      scope.isFocused &&
+      !scope.graph.nodes.some(({ id }) => id === selectedId)
+    ) {
+      setFocusId(selectedId);
+    }
+  }, [scope, selectedId]);
   const conflictHighlight = useMemo<ConflictHighlight>(
     () => buildConflictHighlight(conflictViolations, scope.graph.edges),
     [conflictViolations, scope.graph.edges]
@@ -1736,6 +1753,16 @@ const OntologyGraphView = ({
     );
   };
 
+  // An explicit pick always refocuses, even on a concept already drawn.
+  const pickConcept = (id: string) => {
+    setFocusId(id);
+    selectNode({ id });
+  };
+  const clearFocus = () => {
+    setFocusId(undefined);
+    setSelectedId(undefined);
+  };
+
   const renderScopeNotice = () => {
     if (!scope.isFocused) {
       return null;
@@ -1758,30 +1785,51 @@ const OntologyGraphView = ({
             </Typography>
             <OntologyConceptPicker
               concepts={pickerConcepts}
-              onPick={(id) => selectNode({ id })}
+              onPick={pickConcept}
             />
           </Box>
         </div>
       );
     }
 
+    const focus = focusId ?? selectedId;
+
+    // Top left, clear of the concept drawer that opens on the right.
     return (
-      <div className="tw:absolute tw:top-16 tw:left-1/2 tw:z-6 tw:w-[min(32rem,calc(100%-2rem))] tw:-translate-x-1/2">
-        <Alert data-testid="ontology-graph-focused-notice" variant="brand">
+      <div
+        className={classNames(
+          'tw:absolute tw:left-3.5 tw:z-6 tw:flex tw:max-w-[calc(100%-2rem)] tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:py-1 tw:pr-1 tw:pl-3 tw:shadow-xs',
+          searchSlot ? 'tw:top-3.5' : 'tw:top-16'
+        )}
+        data-testid="ontology-graph-focused-notice">
+        <Typography className="tw:shrink-0" color="secondary" size="text-sm">
           {t('message.ontology-graph-focused', {
             shown: scope.shownCount,
             total: scope.totalCount,
           })}
-          {onRequestTreeSurface ? (
-            <Button
-              color="secondary"
-              data-testid="ontology-graph-open-tree"
-              size="sm"
-              onPress={onRequestTreeSurface}>
-              {t('label.open-entity', { entity: t('label.tree') })}
-            </Button>
-          ) : null}
-        </Alert>
+        </Typography>
+        <OntologyConceptPicker
+          concepts={pickerConcepts}
+          label={pickerConcepts.find(({ id }) => id === focus)?.name}
+          onPick={pickConcept}
+        />
+        {onRequestTreeSurface ? (
+          <Button
+            className="tw:shrink-0"
+            color="link-gray"
+            data-testid="ontology-graph-open-tree"
+            size="sm"
+            onPress={onRequestTreeSurface}>
+            {t('label.open-entity', { entity: t('label.tree') })}
+          </Button>
+        ) : null}
+        <ButtonUtility
+          aria-label={t('label.clear')}
+          data-testid="ontology-graph-clear-focus"
+          icon={XClose}
+          size="xs"
+          onPress={clearFocus}
+        />
       </div>
     );
   };

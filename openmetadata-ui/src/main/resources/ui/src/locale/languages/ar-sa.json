@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "صيغة RDF قابلة للقراءة",
     "ontology-generated-read-only": "يُنشأ تلقائيًا. للقراءة فقط.",
     "ontology-graph-feature-description": "استكشف المفاهيم والعلاقات بينها في عرض واحد مترابط.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "عرض {{shown}} من {{total}} مفهومًا",
     "ontology-graph-limit": "يعرض الرسم البياني ما يصل إلى {{count}} مفهوم. استخدم متصفح النموذج للأنطولوجيات الأكبر.",
     "ontology-graph-too-large": "تحتوي هذه الأنطولوجيا على {{total}} مفهومًا، وهو عدد أكبر من أن يُرسم دفعة واحدة. اختر مفهومًا لعرضه مع المفاهيم المجاورة له.",
     "ontology-history-limit": "Showing the first 1,000 history records.",

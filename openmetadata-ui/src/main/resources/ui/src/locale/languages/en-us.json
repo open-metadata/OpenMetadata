@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "Readable RDF serialization",
     "ontology-generated-read-only": "Generated automatically. Read-only.",
     "ontology-graph-feature-description": "Explore concepts and their relationships in one connected view.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts",
     "ontology-graph-limit": "The graph displays up to {{count}} concepts. Use the model browser for larger ontologies.",
     "ontology-graph-too-large": "This ontology has {{total}} concepts, too many to draw at once. Pick a concept to see it with its neighbours.",
     "ontology-history-limit": "Showing the first 1,000 history records.",

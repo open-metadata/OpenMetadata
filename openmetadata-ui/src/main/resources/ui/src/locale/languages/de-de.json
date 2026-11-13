@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "Lesbare RDF-Serialisierung",
     "ontology-generated-read-only": "Automatisch erzeugt. Schreibgeschützt.",
     "ontology-graph-feature-description": "Erkunden Sie Konzepte und ihre Beziehungen in einer vernetzten Ansicht.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "{{shown}} von {{total}} Konzepten angezeigt",
     "ontology-graph-limit": "Der Graph zeigt bis zu {{count}} Konzepte. Verwenden Sie für größere Ontologien den Modellbrowser.",
     "ontology-graph-too-large": "Diese Ontologie hat {{total}} Konzepte, zu viele, um sie auf einmal darzustellen. Wählen Sie ein Konzept, um es mit seinen Nachbarn zu sehen.",
     "ontology-history-limit": "Showing the first 1,000 history records.",

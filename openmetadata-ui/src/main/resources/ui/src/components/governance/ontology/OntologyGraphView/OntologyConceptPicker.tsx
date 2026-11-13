@@ -32,6 +32,8 @@ import { matchConcepts, PickerConcept } from './OntologyConceptPicker.utils';
 
 interface OntologyConceptPickerProps {
   readonly concepts: readonly PickerConcept[];
+  /** The trigger's text: the concept in focus, or a prompt when none is. */
+  readonly label?: string;
   readonly onPick: (conceptId: string) => void;
 }
 
@@ -41,6 +43,7 @@ const MOVE_KEYS: Record<string, number> = { ArrowDown: 1, ArrowUp: -1 };
 /** Picks one concept of a graph too large to draw, styled like the header's ontology picker. */
 const OntologyConceptPicker = ({
   concepts,
+  label,
   onPick,
 }: OntologyConceptPickerProps) => {
   const { t } = useTranslation();
@@ -98,11 +101,13 @@ const OntologyConceptPicker = ({
   return (
     <PopoverTrigger isOpen={isOpen} onOpenChange={handleOpenChange}>
       <Button
+        ellipsis
+        className="tw:max-w-60"
         color="secondary"
         data-testid="ontology-graph-concept-picker"
         iconTrailing={ChevronDown}
         size="sm">
-        {t('label.select-entity', { entity: t('label.concept') })}
+        {label ?? t('label.select-entity', { entity: t('label.concept') })}
       </Button>
       <Popover
         aria-label={t('label.concept-plural')}

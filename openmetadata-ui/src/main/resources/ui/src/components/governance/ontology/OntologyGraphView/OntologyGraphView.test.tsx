@@ -2830,6 +2830,81 @@ describe('OntologyGraphView', () => {
         ).not.toBeInTheDocument();
       });
 
+      const pickFiller = async (label: string, id: string) => {
+        fireEvent.click(
+          await screen.findByTestId('ontology-graph-concept-picker')
+        );
+        fireEvent.change(
+          await screen.findByTestId('ontology-graph-concept-picker-search'),
+          { target: { value: label } }
+        );
+        fireEvent.click(
+          screen.getByTestId(`ontology-graph-concept-option-${id}`)
+        );
+        await screen.findByTestId('native-ontology-graph');
+      };
+      const drawnLabels = () =>
+        latestGraphProps().nodes.map(({ label }: { label: string }) => label);
+
+      it('keeps the picked neighbourhood drawn after the selection is cleared', async () => {
+        const onSelectedConceptChange = jest.fn();
+        const { rerender } = renderGraph({
+          selectedConceptId: undefined,
+          onSelectedConceptChange,
+        });
+        fireEvent.click(
+          await screen.findByTestId('ontology-graph-concept-picker')
+        );
+        fireEvent.change(
+          await screen.findByTestId('ontology-graph-concept-picker-search'),
+          { target: { value: 'Filler 300' } }
+        );
+        fireEvent.click(
+          screen.getByTestId('ontology-graph-concept-option-filler-300')
+        );
+
+        expect(onSelectedConceptChange).toHaveBeenLastCalledWith('filler-300');
+
+        const view = (selectedConceptId?: string) => (
+          <OntologyGraphView
+            ontology={ontology}
+            selectedConceptId={selectedConceptId}
+            surface="graph"
+            onRequestGraphSurface={jest.fn()}
+            onSelectedConceptChange={onSelectedConceptChange}
+          />
+        );
+        rerender(view('filler-300'));
+        await screen.findByTestId('native-ontology-graph');
+        // The drawer closing clears the selection.
+        rerender(view(undefined));
+
+        expect(screen.getByTestId('native-ontology-graph')).toBeInTheDocument();
+        expect(drawnLabels()).toContain('Filler 300');
+        expect(
+          screen.queryByTestId('ontology-graph-too-large')
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByTestId('ontology-graph-concept-picker')
+        ).toHaveTextContent('Filler 300');
+      });
+
+      it('does not recentre when a drawn concept is clicked, and clears back to the picker', async () => {
+        renderGraph();
+        await pickFiller('Filler 300', 'filler-300');
+        const before = drawnLabels();
+
+        fireEvent.click(screen.getByTestId('native-graph-node-filler-301'));
+
+        expect(drawnLabels()).toEqual(before);
+
+        fireEvent.click(screen.getByTestId('ontology-graph-clear-focus'));
+
+        expect(
+          await screen.findByTestId('ontology-graph-too-large')
+        ).toBeInTheDocument();
+      });
+
       it('pages the picker list and narrows it by search', async () => {
         renderGraph();
         fireEvent.click(

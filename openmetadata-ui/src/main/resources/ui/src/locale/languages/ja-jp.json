@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "可読性の高いRDFシリアライズ形式",
     "ontology-generated-read-only": "自動生成。読み取り専用。",
     "ontology-graph-feature-description": "概念とその関係を、つながりを示す一つのビューで探索します。",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "{{total}} 個中 {{shown}} 個の概念を表示中",
     "ontology-graph-limit": "グラフには最大 {{count}} 個の概念が表示されます。より大きなオントロジーにはモデルブラウザーを使用してください。",
     "ontology-graph-too-large": "このオントロジーには {{total}} 個の概念があり、一度に描画するには多すぎます。概念を選択すると、その近傍とともに表示されます。",
     "ontology-history-limit": "Showing the first 1,000 history records.",

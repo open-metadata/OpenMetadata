@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "वाचनीय RDF क्रमिकीकरण",
     "ontology-generated-read-only": "स्वयंचलितपणे तयार केले. फक्त वाचनीय.",
     "ontology-graph-feature-description": "एकाच जोडलेल्या दृश्यात संकल्पना आणि त्यांचे परस्परसंबंध एक्सप्लोर करा.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "{{total}} पैकी {{shown}} संकल्पना दाखवत आहे",
     "ontology-graph-limit": "आलेखामध्ये जास्तीत जास्त {{count}} संकल्पना दिसतात. मोठ्या ऑन्टोलॉजींसाठी मॉडेल ब्राउझर वापरा.",
     "ontology-graph-too-large": "या ऑन्टोलॉजीमध्ये {{total}} संकल्पना आहेत, एकाच वेळी काढण्यासाठी खूप जास्त. एखादी संकल्पना तिच्या शेजारी संकल्पनांसह पाहण्यासाठी ती निवडा.",
     "ontology-history-limit": "Showing the first 1,000 history records.",

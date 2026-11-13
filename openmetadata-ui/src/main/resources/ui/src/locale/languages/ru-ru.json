@@ -6050,7 +6050,7 @@
     "ontology-format-turtle-description": "Читаемая сериализация RDF",
     "ontology-generated-read-only": "Создаётся автоматически. Только для чтения.",
     "ontology-graph-feature-description": "Исследуйте понятия и их связи в едином связанном представлении.",
-    "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
+    "ontology-graph-focused": "Показано {{shown}} из {{total}} понятий",
     "ontology-graph-limit": "Граф отображает до {{count}} концептов. Для более крупных онтологий используйте браузер модели.",
     "ontology-graph-too-large": "В этой онтологии {{total}} понятий — слишком много, чтобы нарисовать их сразу. Выберите понятие, чтобы увидеть его вместе с соседями.",
     "ontology-history-limit": "Showing the first 1,000 history records.",
