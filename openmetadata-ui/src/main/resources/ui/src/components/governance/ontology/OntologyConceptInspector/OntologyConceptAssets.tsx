@@ -31,7 +31,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { upperFirst } from 'lodash';
-import { FC, MouseEvent, useEffect, useRef, useState } from 'react';
+import { FC, MouseEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -92,7 +92,14 @@ const ASSET_BADGE_COLORS: Partial<Record<string, BadgeColors>> = {
   [AssetType.Topic]: 'orange',
 };
 
-const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
+const OntologyAssetLinks = ({
+  asset,
+  action,
+}: {
+  asset: EntityReference;
+  /** Leads the links line, ahead of Sample Data, e.g. Bind columns. */
+  action?: ReactNode;
+}) => {
   const { t } = useTranslation();
   const path = getOntologyAssetPath(asset);
   const { canViewSampleData } = useEntityPermissions(
@@ -101,35 +108,44 @@ const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
     { enabled: asset.type === EntityType.TABLE, deleted: asset.deleted }
   );
 
+  const sampleDataLink =
+    asset.type === EntityType.TABLE &&
+    asset.fullyQualifiedName &&
+    canViewSampleData ? (
+      <Link
+        className="tw:shrink-0 tw:text-sm"
+        to={getEntityDetailsPath(
+          EntityType.TABLE,
+          asset.fullyQualifiedName,
+          EntityTabs.SAMPLE_DATA
+        )}>
+        {t('label.sample-data')}
+      </Link>
+    ) : null;
+
   return (
     <Box className="tw:min-w-0 tw:flex-1" direction="col">
       {path ? (
-        <Link className="tw:truncate tw:text-md tw:text-primary" to={path}>
+        <Link
+          className="tw:truncate tw:text-sm tw:font-medium tw:text-primary"
+          to={path}>
           {getEntityName(asset)}
         </Link>
       ) : (
-        <Typography ellipsis size="text-md">
+        <Typography ellipsis size="text-sm" weight="medium">
           {getEntityName(asset)}
         </Typography>
       )}
-      <Box align="center" className="tw:min-w-0" gap={2}>
-        <Typography ellipsis className="tw:text-tertiary" size="text-sm">
-          {getAssetPath(asset.fullyQualifiedName)}
-        </Typography>
-        {asset.type === EntityType.TABLE &&
-        asset.fullyQualifiedName &&
-        canViewSampleData ? (
-          <Link
-            className="tw:shrink-0 tw:text-sm"
-            to={getEntityDetailsPath(
-              EntityType.TABLE,
-              asset.fullyQualifiedName,
-              EntityTabs.SAMPLE_DATA
-            )}>
-            {t('label.sample-data')}
-          </Link>
-        ) : null}
-      </Box>
+      <Typography ellipsis className="tw:text-tertiary" size="text-sm">
+        {getAssetPath(asset.fullyQualifiedName)}
+      </Typography>
+      {/* Links get their own line, so the path keeps the row's full width. */}
+      {sampleDataLink || action ? (
+        <Box align="center" className="tw:mt-0.5" gap={3}>
+          {action}
+          {sampleDataLink}
+        </Box>
+      ) : null}
     </Box>
   );
 };
@@ -286,7 +302,7 @@ const OntologyConceptAssets = ({
 
           return (
             <Box
-              align="center"
+              align="start"
               aria-current={isSelected || undefined}
               className={classNames(
                 'tw:min-h-16 tw:px-4 tw:py-3',
@@ -302,7 +318,24 @@ const OntologyConceptAssets = ({
                   className="tw:size-4 tw:text-fg-brand-primary"
                 />
               </span>
-              <OntologyAssetLinks asset={binding.asset} />
+              <OntologyAssetLinks
+                action={
+                  canEdit &&
+                  properties.length > 0 &&
+                  binding.assetType === AssetType.Table ? (
+                    <Button
+                      className="tw:shrink-0 tw:font-normal"
+                      color="link-color"
+                      data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
+                      isDisabled={!bindings.editableSnapshot}
+                      size="sm"
+                      onPress={() => setBindAssets([binding.asset])}>
+                      {t('label.ontology-bind-columns')}
+                    </Button>
+                  ) : undefined
+                }
+                asset={binding.asset}
+              />
               <Badge
                 className="tw:shrink-0"
                 color={ASSET_BADGE_COLORS[binding.assetType] ?? 'gray'}
@@ -315,18 +348,6 @@ const OntologyConceptAssets = ({
                     )}`
                   : upperFirst(humanizeName(binding.assetType))}
               </Badge>
-              {canEdit &&
-              properties.length > 0 &&
-              binding.assetType === AssetType.Table ? (
-                <Button
-                  color="link-color"
-                  data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
-                  isDisabled={!bindings.editableSnapshot}
-                  size="xs"
-                  onPress={() => setBindAssets([binding.asset])}>
-                  {t('label.ontology-bind-columns')}
-                </Button>
-              ) : null}
               {canEdit ? (
                 <ButtonUtility
                   data-testid={`ontology-native-asset-remove-${binding.assetId}`}
@@ -414,7 +435,7 @@ const OntologyConceptAssets = ({
           title={t('message.ontology-no-data-assets-yet')}
         />
       ) : (
-        <Typography className="tw:text-tertiary" size="text-xs">
+        <Typography className="tw:-mt-2.5 tw:text-tertiary" size="text-xs">
           {t('message.ontology-current-catalog-links')}
         </Typography>
       )}

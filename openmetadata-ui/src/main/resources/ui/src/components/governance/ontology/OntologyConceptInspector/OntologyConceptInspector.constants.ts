@@ -17,3 +17,6 @@ export const CONCEPT_STATUS_LABELS: Record<OntologyDefinitionStatus, string> = {
   [OntologyDefinitionStatus.InReview]: 'label.in-review',
   [OntologyDefinitionStatus.Approved]: 'label.approved',
 };
+
+// Long class hierarchies list hundreds of relationships; the panel reveals them in pages.
+export const RELATION_PAGE_SIZE = 10;

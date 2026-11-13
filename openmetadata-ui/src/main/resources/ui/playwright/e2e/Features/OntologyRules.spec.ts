@@ -815,8 +815,11 @@ test.describe(
 
         await test.step('Annotation property', async () => {
           const form = await openForm();
-          await form.getByTestId('ontology-property-kind-more').click();
-          await form.getByTestId('ontology-property-kind-annotation').click();
+          await form
+            .getByTestId('ontology-property-kind')
+            .getByRole('button')
+            .click();
+          await page.getByTestId('ontology-property-kind-annotation').click();
           await form.getByTestId('ontology-property-name').fill('internalNote');
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')

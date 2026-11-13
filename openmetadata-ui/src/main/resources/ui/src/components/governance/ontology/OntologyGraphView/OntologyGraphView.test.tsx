@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Cube01 } from '@openmetadata/ui-core-components/icons';
 import {
   act,
   fireEvent,
@@ -2494,6 +2495,37 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('closes the concept drawer once its edits are saved', async () => {
+    (patchOntologyConcept as jest.Mock).mockResolvedValue({
+      ...customer,
+      description: 'Saved wording',
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'label.description' }),
+      { target: { value: 'Saved wording' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(patchOntologyConcept).toHaveBeenCalledTimes(1);
+  });
+
   it('says the working copy failed to load instead of leaving Edit read-only without a reason', async () => {
     (getOntologyConcept as jest.Mock).mockRejectedValue(new Error('boom'));
     render(
@@ -2825,6 +2857,15 @@ describe('OntologyGraphView', () => {
         const state = await screen.findByTestId('ontology-graph-too-large');
 
         expect(state).toHaveTextContent('message.ontology-graph-too-large');
+        expect(within(state).getByTestId('empty-placeholder')).toBeVisible();
+
+        const cubePath = render(<Cube01 />)
+          .container.querySelector('path')
+          ?.getAttribute('d');
+
+        expect(
+          within(state).getByTestId('empty-placeholder').querySelector('path')
+        ).toHaveAttribute('d', cubePath);
         expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
         expect(
           screen.queryByTestId('ontology-graph-focused-notice')
@@ -3505,7 +3546,7 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
   });
 
-  it('asks to delete a concept inside its panel rather than over the page', async () => {
+  it('asks to delete a concept in a page modal rather than inside its panel', async () => {
     mockCanDeleteConcept = true;
     render(
       <MemoryRouter>
@@ -3524,7 +3565,7 @@ describe('OntologyGraphView', () => {
     fireEvent.click(within(inspector).getByTestId('ontology-concept-more'));
     fireEvent.click(await screen.findByTestId('ontology-concept-delete'));
 
-    expect(inspector).toContainElement(
+    expect(inspector).not.toContainElement(
       await screen.findByTestId('ontology-concept-delete-dialog')
     );
   });

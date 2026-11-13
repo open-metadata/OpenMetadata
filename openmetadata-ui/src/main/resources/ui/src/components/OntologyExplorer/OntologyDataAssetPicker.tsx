@@ -698,7 +698,12 @@ const OntologyDataAssetPicker = ({
         </span>
         <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
           <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
-            <Typography ellipsis as="span" size="text-sm" weight="semibold">
+            <Typography
+              ellipsis
+              as="span"
+              className="tw:mt-px"
+              size="text-sm"
+              weight="semibold">
               {asset.displayName ?? asset.name}
             </Typography>
             <Typography
@@ -735,6 +740,7 @@ const OntologyDataAssetPicker = ({
         key={asset.id}>
         <Checkbox
           aria-label={asset.displayName ?? asset.name}
+          boxClassName={isDialog ? undefined : 'tw:mt-1.5'}
           className="tw:min-w-0"
           data-testid={`ontology-data-asset-option-${asset.id}`}
           isDisabled={isLinked}
@@ -758,7 +764,7 @@ const OntologyDataAssetPicker = ({
                 {reason ? (
                   <Typography
                     as="span"
-                    className="tw:text-brand-secondary"
+                    className="tw:mt-px tw:text-brand-secondary"
                     data-testid={`ontology-data-asset-reason-${asset.id}`}
                     size="text-xs">
                     {t(`message.ontology-suggest-${reason.kind}`, {
@@ -1103,9 +1109,7 @@ const OntologyDataAssetPicker = ({
         <Box
           className={classNames(
             'tw:border-b tw:border-secondary',
-            isAiMode
-              ? 'tw:bg-secondary_alt tw:px-3.5 tw:py-3'
-              : 'tw:bg-secondary tw:px-3 tw:py-2.5'
+            isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:bg-secondary tw:px-3 tw:py-2.5'
           )}>
           {renderSelectAll()}
         </Box>
