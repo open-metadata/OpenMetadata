@@ -61,6 +61,7 @@ import {
   AxiomStatus,
   AXIOM_STATUS_LABELS,
   AXIOM_STATUSES,
+  constraintCheckTime,
   findAxiomConflicts,
 } from './OntologyAxiomWorkspace.utils';
 
@@ -304,7 +305,11 @@ const OntologyAxiomWorkspace = ({
       ),
     [model, validation.data]
   );
-  const checkedAt = validation.data ? validation.dataUpdatedAt : undefined;
+  const checkedAt = constraintCheckTime(
+    conflicts,
+    validation.data?.violations ?? [],
+    validation.data ? validation.dataUpdatedAt : undefined
+  );
   const statusOf = (axiom: OntologyAxiom) =>
     axiomStatus(axiom, conflicts, checkedAt);
   const items = model?.axioms.filter(
@@ -511,7 +516,7 @@ const OntologyAxiomWorkspace = ({
     <>
       {validation.data ? (
         <ConflictsChip
-          count={validation.data.violations.length}
+          count={conflicts.size}
           isOn={status === 'conflict'}
           onToggle={() => setStatus(status === 'conflict' ? ALL : 'conflict')}
         />

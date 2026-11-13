@@ -1581,7 +1581,7 @@ const OntologyConceptInspector = ({
     <OntologyStudioDrawer
       confirm={confirmDialog}
       testId="ontology-concept-inspector"
-      // Only while nothing is being written: an open form or confirm keeps the drawer.
+      // Unsaved work in the drawer (registered dirty forms) goes through the discard prompt first.
       onInteractOutside={onClose}>
       {renderHeader()}
       {isEditorUnavailable ? (

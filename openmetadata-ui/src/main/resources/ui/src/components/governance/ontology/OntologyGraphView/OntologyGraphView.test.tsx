@@ -1152,6 +1152,49 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('shows a clash on the graph from the Tree, focusing the concept once the graph is drawn', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    const TreeThenGraph = () => {
+      const [surface, setSurface] = useState<'graph' | 'tree'>('tree');
+
+      return (
+        <OntologyGraphView
+          ontology={ontology}
+          surface={surface}
+          onRequestGraphSurface={() => setSurface('graph')}
+        />
+      );
+    };
+    render(<TreeThenGraph />);
+    fireEvent.click(
+      await screen.findByTestId('ontology-tree-term-concept-customer')
+    );
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-conflicts-toggle')
+    );
+    fireEvent.click(
+      screen.getByTestId('ontology-concept-conflict-show-on-graph')
+    );
+
+    expect(
+      await screen.findByTestId('native-ontology-graph')
+    ).toBeInTheDocument();
+    expect(mockGraphProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ focusNodeId: 'concept-customer' })
+    );
+  });
+
   it('clears the badge and the row after the fix when Validate all runs again', async () => {
     (getOntologyWorkingValidation as jest.Mock)
       .mockResolvedValueOnce({

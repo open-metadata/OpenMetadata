@@ -106,6 +106,25 @@ export const findAxiomConflicts = (
 };
 
 /**
+ * When the last check finished, as far as it vouches for every constraint. A violation that names
+ * no constraint (an invalid shape, an undeclared class…) could be about any of them, so none can be
+ * called valid: the time is withheld and the rest read as not checked.
+ */
+export const constraintCheckTime = (
+  conflicts: ReadonlyMap<string, AxiomConflict>,
+  violations: readonly OntologyProfileViolation[],
+  checkedAt?: number
+) => {
+  const attributed = new Set(
+    [...conflicts.values()].map(({ violation }) => violation)
+  );
+
+  return violations.every((violation) => attributed.has(violation))
+    ? checkedAt
+    : undefined;
+};
+
+/**
  * Conflict when a clash involves it; not checked when no validation run has answered or the
  * constraint changed after the last run; valid otherwise.
  */

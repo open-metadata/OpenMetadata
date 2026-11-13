@@ -567,6 +567,14 @@ const OntologyGraphView = ({
     ? selectedConceptId
     : localSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
+  // A concept to bring into view once the graph is drawn: Show on graph from the Tree or the Data
+  // view asks before the Model graph exists, so the graph focuses it when it mounts.
+  const [pendingFocusId, setPendingFocusId] = useState<string>();
+  useEffect(() => {
+    if (selectedId) {
+      setPendingFocusId(undefined);
+    }
+  }, [selectedId]);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string>();
   // The concept a relationship was opened from, so its panel can lead back there.
   const [relationBackId, setRelationBackId] = useState<string>();
@@ -1312,6 +1320,8 @@ const OntologyGraphView = ({
   const showConflictOnGraph = (conceptId: string) => {
     setConflictReviewId(undefined);
     setSelectedId(undefined);
+    setPendingFocusId(conceptId);
+    changeGraphMode('model');
     if (surface !== 'graph') {
       onRequestGraphSurface();
     }
@@ -1794,7 +1804,7 @@ const OntologyGraphView = ({
               checkRelation={issueFor}
               conflictEdgeKeys={conflictHighlight.edgeKeys}
               edges={scope.graph.edges}
-              focusNodeId={selectedId}
+              focusNodeId={selectedId ?? pendingFocusId}
               ghostNode={conceptGhost}
               glossaries={[]}
               glossaryColorMap={{}}

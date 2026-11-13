@@ -58,6 +58,7 @@ import {
 } from '../../utils/governance/ontology/OntologyAssetSuggestion.utils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useOntologyDirtyForm } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 
 type AssetScope = 'all' | 'tables' | 'columns';
 
@@ -281,6 +282,8 @@ const OntologyDataAssetPicker = ({
   const [selected, setSelected] = useState<Map<string, EntityReference>>(
     () => new Map()
   );
+  // Picked assets not yet saved: closing the drawer asks before dropping them.
+  useOntologyDirtyForm(selected.size > 0);
   const [isSaving, setIsSaving] = useState(false);
   const [nativeResult, setNativeResult] = useState<NativeBindingBatchOutcome>();
   const [typeFilter, setTypeFilter] = useState(ANY);

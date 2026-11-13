@@ -39,6 +39,7 @@ import {
   getOntologyBindingWriteMessage,
   getOntologyColumnOptions,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 
 export type ColumnMappingProperty = SuggestableProperty;
@@ -103,6 +104,8 @@ const OntologyColumnMappingStep = ({
   const { t } = useTranslation();
   const bindings = useOntologyConceptBindings(conceptId);
   const [edits, setEdits] = useState<Record<string, RowState>>({});
+  // Unsaved bindings: closing the drawer asks before dropping them.
+  useOntologyDirtyForm(Object.keys(edits).length > 0);
   const columnQueries = useQueries({
     queries: assets.map((asset) => ({
       queryKey: ['ontology-column-mapping', asset.id],

@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isEqual } from 'lodash';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
@@ -34,6 +35,7 @@ import {
   OntologyModelRelation,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
@@ -187,6 +189,10 @@ const ConceptRuleForm = ({
     ...EMPTY_QUICK_RULE,
     subjectIri: concept.iri,
   });
+  // A rule with anything filled in is unsaved work: closing the drawer asks before dropping it.
+  useOntologyDirtyForm(
+    !isEqual(rule, { ...EMPTY_QUICK_RULE, subjectIri: concept.iri })
+  );
   const [isSaving, setIsSaving] = useState(false);
   const nameSuffix = useRef(generateUUID().slice(0, 6));
   const references = useMemo(

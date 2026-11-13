@@ -46,6 +46,5 @@ export const comboBoxLabelProps = (label: string, hideLabel?: boolean) => ({
   ...fieldLabelProps(label, hideLabel),
   fontSize: hideLabel ? ('sm' as const) : undefined,
   placeholder: hideLabel ? label : undefined,
-  shortcut: !hideLabel,
   showSearchIcon: !hideLabel,
 });

@@ -19,6 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import {
   Code,
   OntologyProfileReport,
@@ -1877,6 +1878,41 @@ describe('OntologyConceptInspector relationship authoring', () => {
       expect(
         screen.queryByTestId('ontology-rule-form')
       ).not.toBeInTheDocument();
+    });
+
+    it('asks before a press outside the drawer drops a rule being written', async () => {
+      const onClose = jest.fn();
+      renderWithQueryClient(
+        <MemoryRouter>
+          <OntologyDraftProvider>
+            <button data-testid="outside-the-drawer" type="button">
+              canvas
+            </button>
+            <EditableInspector
+              canAddProperty
+              canAddRelation
+              canAddRule
+              concept={concept}
+              model={authoringModel}
+              relationTypeGroups={relationTypeGroups}
+              relations={getModelRelations(authoringModel)}
+              onAddProperty={jest.fn().mockResolvedValue(true)}
+              onAddRelation={jest.fn().mockResolvedValue(true)}
+              onClose={onClose}
+              onRuleCreated={jest.fn()}
+              onSelectConcept={jest.fn()}
+            />
+          </OntologyDraftProvider>
+        </MemoryRouter>
+      );
+      await fillNeverAlsoBeParty();
+
+      fireEvent.pointerDown(screen.getByTestId('outside-the-drawer'));
+
+      expect(
+        await screen.findByText('message.discard-your-changes')
+      ).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

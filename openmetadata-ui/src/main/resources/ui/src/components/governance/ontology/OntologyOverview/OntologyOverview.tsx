@@ -51,6 +51,7 @@ import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.consta
 import {
   AxiomStatus,
   countAxiomStatuses,
+  constraintCheckTime,
   findAxiomConflicts,
 } from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace.utils';
 import {
@@ -531,6 +532,15 @@ const countConflicts = (validation: ValidationRead) =>
   validation.data?.violations.length ?? 0;
 
 /** "3 in conflict" — constraints, not clashes — once validation has run; nothing before. */
+/**
+ * What the Overview points at for the conflicts: the constraints in conflict when the clashes name
+ * them, otherwise the server's violation count and the constraints it left unchecked.
+ */
+const conflictFocus = (constraintsInConflict: number, violations: number) =>
+  constraintsInConflict
+    ? { count: constraintsInConflict, filter: 'conflict' as const }
+    : { count: violations, filter: 'not-checked' as const };
+
 const conflictDetail = (
   validation: ValidationRead,
   count: number,
@@ -560,19 +570,24 @@ const OntologyOverview = ({
     () => buildNativeTreeIndex(graph, FILTERS, []),
     [graph]
   );
-  const statusCounts = useMemo(
-    () =>
-      countAxiomStatuses(
-        model?.axioms ?? [],
-        findAxiomConflicts(
-          model?.axioms ?? [],
-          model?.concepts ?? [],
-          validation.data?.violations ?? []
-        ),
+  const statusCounts = useMemo(() => {
+    const violations = validation.data?.violations ?? [];
+    const conflicts = findAxiomConflicts(
+      model?.axioms ?? [],
+      model?.concepts ?? [],
+      violations
+    );
+
+    return countAxiomStatuses(
+      model?.axioms ?? [],
+      conflicts,
+      constraintCheckTime(
+        conflicts,
+        violations,
         validation.data ? validation.dataUpdatedAt : undefined
-      ),
-    [model, validation.data, validation.dataUpdatedAt]
-  );
+      )
+    );
+  }, [model, validation.data, validation.dataUpdatedAt]);
   const version = getVersionLabel(status, t);
   const versionLabel = t(releaseId ? 'label.published' : 'label.draft');
 
@@ -650,8 +665,13 @@ const OntologyOverview = ({
         />
         <StatCard
           count={model.axioms.length}
-          detail={conflictDetail(validation, statusCounts.conflict, t)}
-          isAlert={statusCounts.conflict > 0}
+          // The server's violations decide the alert: one that names no constraint still counts.
+          detail={conflictDetail(
+            validation,
+            conflictFocus(statusCounts.conflict, facts.conflictCount).count,
+            t
+          )}
+          isAlert={facts.conflictCount > 0}
           label={t('label.constraint-plural')}
           testId="ontology-overview-count-constraints"
           onOpen={openTab('axiom')}
@@ -665,7 +685,10 @@ const OntologyOverview = ({
             isChecking={validation.isFetching}
             isFailed={validation.isError}
             statusCounts={statusCounts}
-            onReview={openTab('axiom', 'conflict')}
+            onReview={openTab(
+              'axiom',
+              conflictFocus(statusCounts.conflict, facts.conflictCount).filter
+            )}
             onValidate={() => void validation.refetch()}
           />
         )}
