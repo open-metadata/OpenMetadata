@@ -319,6 +319,11 @@ test.describe(
 
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Toolbar');
+          // The new concept opens in the inspector, which narrows the canvas; at 1280px
+          // in AI mode no point is left clear of the nodes until it closes.
+          const inspector = page.getByTestId('ontology-concept-inspector');
+          await inspector.getByRole('button', { name: 'Close' }).click();
+          await expect(inspector).toHaveCount(0);
 
           // The graph re-renders after the first concept lands; a double-click in that window is
           // dropped, so re-measure and retry until the drawer opens.

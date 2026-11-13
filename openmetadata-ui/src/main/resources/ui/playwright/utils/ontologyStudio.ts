@@ -312,7 +312,8 @@ const CANVAS_OVERLAY_TEST_IDS = [
 
 export async function findEmptyCanvasPoint(
   page: Page,
-  clearance = 160
+  clearance = 160,
+  { besideDrawer = false } = {}
 ): Promise<{ x: number; y: number }> {
   // The graph re-fits when a side panel opens or closes, so measure only once
   // two reads agree.
@@ -356,8 +357,18 @@ export async function findEmptyCanvasPoint(
         y >= rect.y - 40 &&
         y <= rect.y + rect.height + 40
     );
+  // A studio drawer is 40vw with a 420px floor plus its 8px inset
+  // (ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor). A node created
+  // under it is panned into view when it opens, so it no longer sits at the click.
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const right = besideDrawer
+    ? Math.min(
+        box.x + box.width,
+        viewportWidth - Math.max(viewportWidth * 0.4, 420) - 8
+      )
+    : box.x + box.width;
   const candidates = [];
-  for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
+  for (let x = box.x + 120; x < right - 120; x += 40) {
     for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
       if (!isUnderOverlay(x, y)) {
         candidates.push({ x, y });
