@@ -121,11 +121,6 @@
       "8420314ef52596a953b81cc9608142a77e1000f7ace87d57e415218e991779e1": 1,
       "9e79c613e6e86ae84faf01b3949c06048a3810bd7581785eb97bdd5d9c208556": 1
     },
-    "ingestion/src/metadata/clients/azure_client.py": {
-      "283abfb0ca54e9363fb36be15ed4f7d00e1d1f4c8d38735efb10adb224b511b4": 1,
-      "8c7d419cdd384a6d1e1ed8207aa340b3653a01da54f04739baf4b4e4ff74f6b9": 1,
-      "f5dd3b536267c8156496ae14bd9197d3ffeee991b6f18d0342d67e3a605f1594": 1
-    },
     "ingestion/src/metadata/clients/domo_client.py": {
       "3a94744ed6a6964e71afc7bf401b94438c3886ba65943c047a72bdbf9c71a528": 1,
       "5b71255cc754a6b22f9c7d22066427934d253dc2c278e969f72b2a5d4789d794": 1,
@@ -2729,7 +2724,6 @@
     },
     "ingestion/src/metadata/readers/dataframe/parquet.py": {
       "07b1ee46fee813c18afbc36287c2bc5b3c293ed7b3a3e3099e6416497d073e6b": 1,
-      "328712cc81dfe3d9138fbaf32a4c82e5824341ed287433dea9c98e25d4631e47": 1,
       "4221215b023613d2fc0e3659da376a7898521182bc919db5d830acbf909db5d4": 1,
       "486f76682c802d035cfd48f9b0da2f98e5549bcff729379ab3c7e0cddbac6b93": 1,
       "5d85b54672ec36581966c17e2f5dcc1d36a1473c96bc6c505dcf81973627fdaa": 1,
@@ -2739,7 +2733,6 @@
       "94c339e6fe7d9f3f5034f806a7f6c83290a8841209bb2529b36a00e80f0f36c2": 1,
       "a2c5ceb9ac2d0de5dd271cbbd7048f046345e4362b168ece2292997de7ce5ffd": 1,
       "b6433a12c63a90ea768fc53c54d183d2f93a78589eea2f1f7fd2eff0430a9372": 1,
-      "e5ea2fa0b69fe96d58aaadc6a588c23a5fdb431a4ab2141e25769eed5f3e1a7c": 1,
       "ea746965a279c98aa6cca888585101e135d2dad8e6afb0c703af0d0289a46cd1": 1
     },
     "ingestion/src/metadata/readers/file/base.py": {

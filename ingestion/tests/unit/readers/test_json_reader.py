@@ -262,5 +262,118 @@ class TestJSONReader(unittest.TestCase):
         self.assertEqual(total_rows, 2)
 
 
+class TestAzureSovereignAndStreamingJSONReader:
+    @patch("adlfs.AzureBlobFileSystem")
+    def test_azure_us_gov_strips_account_name_and_reads_system_container(self, mock_adlfs):
+        import io
+
+        mock_fs = Mock()
+        mock_adlfs.return_value = mock_fs
+        payload = b'{"id": 1, "agency": "NASA"}\n{"id": 2, "agency": "NOAA"}\n'
+        mock_fs.open.side_effect = lambda *_args, **_kwargs: io.BytesIO(payload)
+
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="  govjsonacct  ",
+                clientId="gov-client",
+                clientSecret="gov-secret",
+                tenantId="11111111-2222-3333-4444-555555555555",
+                endpointSuffix="core.usgovcloudapi.net",
+            )
+        )
+        reader = JSONDataFrameReader(config, None)
+        result = reader._read(key="events/feed.jsonl", bucket_name="$web")
+        chunks = list(result.dataframes())
+
+        assert len(chunks) == 1
+        assert len(chunks[0]) == 2
+        fs_kwargs = mock_adlfs.call_args.kwargs
+        assert fs_kwargs["account_name"] == "govjsonacct"
+        assert fs_kwargs["account_host"] == "govjsonacct.blob.core.usgovcloudapi.net"
+        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        mock_fs.open.assert_called_with("$web/events/feed.jsonl", "rb")
+
+    def test_azure_missing_security_config_and_missing_account_name_raise(self):
+        import pytest
+
+        from metadata.readers.dataframe.base import DataFrameReadException
+
+        missing_sec_reader = JSONDataFrameReader(AzureConfig(securityConfig=None), None)
+        with pytest.raises(ValueError, match="Azure securityConfig is required"):
+            missing_sec_reader._read(key="data.json", bucket_name="container")
+        with pytest.raises(DataFrameReadException, match="Azure securityConfig is required"):
+            missing_sec_reader.read(key="data.json", bucket_name="container")
+
+        missing_acct_reader = JSONDataFrameReader(
+            AzureConfig(
+                securityConfig=AzureCredentials(
+                    accountName=None,
+                    clientId="cid",
+                    clientSecret="sec",
+                    tenantId="11111111-2222-3333-4444-555555555555",
+                )
+            ),
+            None,
+        )
+        with pytest.raises(ValueError, match="Account Name is required"):
+            missing_acct_reader._read(key="data.json", bucket_name="container")
+
+    def test_large_json_array_streams_via_ijson_and_edge_formats(self, tmp_path):
+        import io
+
+        import pytest
+
+        from metadata.readers.dataframe.base import (
+            MAX_FILE_SIZE_FOR_PREVIEW,
+            FileFormatException,
+        )
+
+        # Large JSON array triggers ijson streaming path
+        arr_path = tmp_path / "large_array.json"
+        arr_path.write_text(json.dumps([{"id": 1}, {"id": 2}, {"id": 3}]), encoding="utf-8")
+        reader = JSONDataFrameReader(LocalConfig(), None)
+        large_res = reader._read(
+            key=str(arr_path),
+            bucket_name="",
+            file_size=MAX_FILE_SIZE_FOR_PREVIEW + 4096,
+        )
+        streamed_chunks = list(large_res.dataframes())
+        assert sum(len(c) for c in streamed_chunks) == 3
+
+        # Direct _stream_json_array batch boundary check
+        batched = list(
+            JSONDataFrameReader._stream_json_array(
+                io.BytesIO(b'[{"id": 1}, {"id": 2}, {"id": 3}]'),
+                batch_size=2,
+            )
+        )
+        assert [len(c) for c in batched] == [2, 1]
+
+        # Invalid JSON line skipped cleanly & exact batch boundary (empty trailing batch)
+        mixed_lines = io.StringIO('{"id": 1}\n{not-valid-json}\n{"id": 2}\n')
+        line_batches = list(JSONDataFrameReader._stream_json_lines(mixed_lines, batch_size=2))
+        assert len(line_batches) == 1
+        assert len(line_batches[0]) == 2
+
+        # _is_json_lines edge cases: empty string input and Iceberg/Delta schema dict
+        assert JSONDataFrameReader._is_json_lines(io.StringIO("")) is True
+        iceberg_meta = '{"schema": {"fields": [{"name": "id", "type": "long"}]}}'
+        assert JSONDataFrameReader._is_json_lines(io.StringIO(iceberg_meta)) is False
+        iceberg_gen, raw_data = JSONDataFrameReader._read_json_object(iceberg_meta.encode("utf-8"))
+        assert raw_data == iceberg_meta
+        assert len(list(iceberg_gen())) == 1
+
+        # Zip archive without any .json/.jsonl file raises ValueError
+        empty_zip = tmp_path / "no_json.zip"
+        with zipfile.ZipFile(empty_zip, "w") as zf:
+            zf.writestr("readme.txt", "plain text")
+        with pytest.raises(ValueError, match="No JSON files found in zip archive"):
+            reader._read(key=str(empty_zip), bucket_name="")
+
+        # Unsupported ConfigSource raises FileFormatException
+        with pytest.raises(FileFormatException):
+            reader._read_json_dispatch(object(), "x.json", "bkt")  # type: ignore[arg-type]
+
+
 if __name__ == "__main__":
     unittest.main()

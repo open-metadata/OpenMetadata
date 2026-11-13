@@ -17,6 +17,7 @@ Extracts header metadata (small data) with streaming where possible.
 import tempfile
 from functools import singledispatchmethod
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -100,17 +101,23 @@ class MF4DataFrameReader(DataFrameReader):
             return self._extract_header_from_mdf(mdf)
 
     @_read_mf4_dispatch.register
-    def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _(self, azure_config: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Read MF4 header from Azure. Uses temp file as MDF requires seekable stream."""
         from adlfs import AzureBlobFileSystem
         from asammdf import MDF
 
-        storage_options = return_azure_storage_options(self.config_source)
+        security_config = azure_config.securityConfig
+        if security_config is None:
+            raise ValueError("Azure securityConfig is required")
+
+        account_name = AzureClient.validate_resource_name(security_config.accountName, "Account Name")
+        validated_bucket = AzureClient.validate_container_name(bucket_name)
+        storage_options = return_azure_storage_options(azure_config)
         adlfs_fs = AzureBlobFileSystem(
-            account_name=self.config_source.securityConfig.accountName,
+            account_name=account_name,
             **storage_options,
         )
-        file_path = f"{bucket_name}/{key}"
+        file_path = f"{validated_bucket}/{key}"
 
         with tempfile.NamedTemporaryFile(suffix=".mf4", delete=True) as tmp:
             adlfs_fs.get(file_path, tmp.name)

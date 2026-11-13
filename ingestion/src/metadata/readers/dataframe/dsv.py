@@ -20,6 +20,7 @@ from functools import singledispatchmethod
 from io import StringIO
 from typing import Any
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -34,7 +35,11 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.adls import (
+    build_azure_abfs_path,
+    ensure_azure_pandas_storage_options,
+    return_azure_storage_options,
+)
 from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
@@ -184,17 +189,22 @@ class DSVDataFrameReader(DataFrameReader):
         return DatalakeColumnWrapper(dataframes=chunk_generator, columns=None, raw_data=None)
 
     @_read_dsv_dispatch.register
-    def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        # Determine compression based on file extension
-        compression = None
-        if key.endswith(".gz"):
-            compression = "gzip"
+    def _(self, azure_config: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+        security_config = azure_config.securityConfig
+        if security_config is None:
+            raise ValueError("Azure securityConfig is required")
 
-        storage_options = return_azure_storage_options(self.config_source)
-        path = AZURE_PATH.format(
+        account_name = AzureClient.validate_resource_name(security_config.accountName, "Account Name")
+        compression = "gzip" if key.endswith(".gz") else None
+        storage_options = ensure_azure_pandas_storage_options(
+            return_azure_storage_options(azure_config),
+            account_name,
+        )
+        path = build_azure_abfs_path(
             bucket_name=bucket_name,
-            account_name=self.config_source.securityConfig.accountName,
+            account_name=account_name,
             key=key,
+            endpoint_suffix=security_config.endpointSuffix,
         )
         return self.read_from_pandas(
             path=path,
