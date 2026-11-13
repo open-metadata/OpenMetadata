@@ -32,7 +32,9 @@ import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -55,6 +57,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ClassificationLanguage;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -95,6 +98,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+  private static final String PREDEFINED_RECOGNIZER_TYPE = "predefined";
+  private static final String SUPPORTED_LANGUAGE = "supportedLanguage";
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TagRepository() {
@@ -214,6 +219,10 @@ public class TagRepository extends EntityRepository<Tag> {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
         prepareRecognizer(recognizer);
         validateRecognizer(recognizer);
+        // Updates check only new or edited recognizers, in TagUpdater
+        if (!update) {
+          validateSupportedLanguage(recognizer);
+        }
       }
     }
   }
@@ -238,6 +247,28 @@ public class TagRepository extends EntityRepository<Tag> {
 
     if (recognizer.getId() == null) {
       throw new IllegalArgumentException("Can't create recognizer without an ID");
+    }
+  }
+
+  /**
+   * The ingestion client's Tag model requires a valid supportedLanguage on every recognizer type
+   * but predefined, where it may be omitted; a tag it cannot parse is skipped by
+   * auto-classification while the run passes.
+   */
+  static void validateSupportedLanguage(Recognizer recognizer) {
+    JsonNode config = JsonUtils.valueToTree(recognizer.getRecognizerConfig());
+    JsonNode language = config.path(SUPPORTED_LANGUAGE);
+    boolean languageOmitted =
+        PREDEFINED_RECOGNIZER_TYPE.equals(config.path("type").asText())
+            && (language.isMissingNode() || language.isNull());
+    boolean languageValid =
+        Arrays.stream(ClassificationLanguage.values())
+            .anyMatch(l -> l.value().equals(language.asText()));
+    if (!languageOmitted && !languageValid) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Recognizer '%s' must set recognizerConfig.%s to a supported language",
+              recognizer.getName(), SUPPORTED_LANGUAGE));
     }
   }
 
@@ -1073,6 +1104,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveRecognizerConfigOnPut();
+      validateChangedRecognizers();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -1108,6 +1140,19 @@ public class TagRepository extends EntityRepository<Tag> {
       updated.setRecognizers(original.getRecognizers());
       updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
       updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
+    }
+
+    // Holding only new or edited recognizer configs to the language rule keeps a tag stored before
+    // it editable, including by recognizer feedback that patches the whole tag. Configs are
+    // matched by value because a PUT may resend recognizers without their ids.
+    private void validateChangedRecognizers() {
+      Set<JsonNode> stored =
+          listOrEmpty(original.getRecognizers()).stream()
+              .map(r -> JsonUtils.valueToTree(r.getRecognizerConfig()))
+              .collect(Collectors.toSet());
+      listOrEmpty(updated.getRecognizers()).stream()
+          .filter(r -> !stored.contains(JsonUtils.valueToTree(r.getRecognizerConfig())))
+          .forEach(TagRepository::validateSupportedLanguage);
     }
 
     /**
