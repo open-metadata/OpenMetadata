@@ -49,9 +49,14 @@ import {
   InspectorSection,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 
+export type LiveDataBindingState = 'loading' | 'failed' | 'bound' | 'unbound';
+
 interface OntologyConceptLiveDataProps {
   readonly concept: OntologyConcept;
+  /** The server refuses a query for a concept with no bound table, so only `bound` requests one. */
+  readonly bindingState: LiveDataBindingState;
   readonly model: OntologyStudioModel;
+  readonly onRetryBindings: () => void;
   readonly relations: OntologyModelRelation[];
 }
 
@@ -108,7 +113,9 @@ const conceptName = (concept: OntologyConcept) =>
 
 const OntologyConceptLiveData = ({
   concept,
+  bindingState,
   model,
+  onRetryBindings,
   relations,
 }: OntologyConceptLiveDataProps) => {
   const { t } = useTranslation();
@@ -127,6 +134,7 @@ const OntologyConceptLiveData = ({
     queryKey: ['ontology-concept-query', concept.id, request],
     queryFn: ({ signal }) =>
       generateOntologyConceptQuery(concept.id, request, signal),
+    enabled: bindingState === 'bound',
     retry: false,
   });
   const sql = query.data?.sql ?? '';
@@ -148,6 +156,36 @@ const OntologyConceptLiveData = ({
   };
 
   const renderSql = () => {
+    if (bindingState === 'unbound') {
+      return (
+        <InspectorEmptyText>
+          {t('message.ontology-live-data-needs-binding')}
+        </InspectorEmptyText>
+      );
+    }
+    if (bindingState === 'failed') {
+      return (
+        <Box align="center" gap={2} wrap="wrap">
+          <InspectorEmptyText>
+            {t('message.ontology-live-data-bindings-unavailable')}
+          </InspectorEmptyText>
+          <Button
+            color="link-color"
+            data-testid="ontology-live-data-retry-bindings"
+            size="xs"
+            onPress={onRetryBindings}>
+            {t('label.retry')}
+          </Button>
+        </Box>
+      );
+    }
+    if (bindingState === 'loading') {
+      return (
+        <Typography color="secondary" size="text-xs">
+          {t('label.generating')}
+        </Typography>
+      );
+    }
     if (query.isError) {
       return (
         <InspectorEmptyText>

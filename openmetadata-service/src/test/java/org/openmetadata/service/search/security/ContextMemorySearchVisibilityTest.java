@@ -612,6 +612,54 @@ class ContextMemorySearchVisibilityTest {
         "the admin's own Unprocessed memories are admitted");
   }
 
+  /**
+   * The Context Center listing selects stages through its status list. Release testing: a reader
+   * listed another user's Shared memory awaiting review. A pending stage reaches the subject's own
+   * memories only, exactly as a search asking for it does; an admin reads every stage.
+   */
+  @Test
+  void aListingShowsAPendingMemoryToItsOwnersAndAdminsOnly() {
+    List<ContextMemoryStatus> listed =
+        List.of(
+            ContextMemoryStatus.APPROVED,
+            ContextMemoryStatus.UNPROCESSED,
+            ContextMemoryStatus.DRAFT);
+    SubjectContext admin =
+        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+    OMQueryBuilder everyStage =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(admin, listed, List.of(), List.of());
+
+    assertEquals(
+        ownerPendingJson(nonAdminSubject(), OWNER_PENDING_REQUESTED),
+        listingJson(nonAdminSubject(), listed));
+    assertEquals(
+        serializeElasticQuery(((ElasticQueryBuilder) everyStage).build()),
+        listingJson(admin, listed));
+  }
+
+  /**
+   * A listing asking only for pending stages leaves the share rules nothing to admit: their stage
+   * clause is an empty terms query, which matches no document, and only the owner's branch admits.
+   */
+  @Test
+  void aListingAskingOnlyForPendingStagesAdmitsOnlyTheSubjectsOwn() {
+    List<ContextMemoryStatus> pending =
+        List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT);
+
+    List<List<String>> stageClauses =
+        JsonPath.parse(listingJson(nonAdminSubject(), pending)).read("$..terms.entityStatus");
+
+    assertEquals(List.of(List.of(), List.of("Unprocessed", "Draft")), stageClauses);
+  }
+
+  private String listingJson(SubjectContext subject, List<ContextMemoryStatus> listed) {
+    OMQueryBuilder listing =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(subject, listed);
+    return serializeElasticQuery(((ElasticQueryBuilder) listing).build());
+  }
+
   @Test
   void noPendingStageRequestedBuildsTheUnwidenedFilter() {
     SubjectContext admin =

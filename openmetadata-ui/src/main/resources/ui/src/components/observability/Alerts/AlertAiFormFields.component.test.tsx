@@ -49,15 +49,15 @@ import {
   type Destination,
 } from '../../../generated/events/eventSubscription';
 import type { AlertSelection } from '../../../hooks/useAlertSelection';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';
 import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from '../../../utils/AlertsClassBase.interface';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';

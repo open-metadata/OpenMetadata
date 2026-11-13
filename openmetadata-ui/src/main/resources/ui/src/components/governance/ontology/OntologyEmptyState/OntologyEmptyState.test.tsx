@@ -97,16 +97,29 @@ describe('OntologyEmptyState', () => {
     ]);
   });
 
-  it('disables every option without permission to create ontologies', () => {
-    const handlers = renderEmptyState(false);
+  it('shows no buttons and names the OntologyAuthor role without permission to create ontologies', () => {
+    renderEmptyState(false);
 
-    screen.getAllByRole('button').forEach((button) => {
-      expect(button).toBeDisabled();
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.create-from-scratch' })
+    expect(
+      screen.getByRole('heading', { name: 'label.no-ontologies-yet' })
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-empty-no-create')).toHaveTextContent(
+      'message.ontology-create-requires-author-role'
     );
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
 
-    expect(handlers.onCreateFromScratch).not.toHaveBeenCalled();
+  it('shows three enabled options and no permission sentence with permission to create', () => {
+    renderEmptyState(true);
+
+    const buttons = screen.getAllByRole('button');
+
+    expect(buttons).toHaveLength(3);
+
+    buttons.forEach((button) => expect(button).toBeEnabled());
+
+    expect(
+      screen.queryByTestId('ontology-empty-no-create')
+    ).not.toBeInTheDocument();
   });
 });

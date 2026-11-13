@@ -30,7 +30,7 @@ import { SettingsSkeleton } from './SettingsFormLayout';
 /** Rules are toggled on and off in place; adding rules is not supported yet. */
 const DataAssetRulesSettings = () => {
   const { t } = useTranslation();
-  const { semanticsRules, isLoading, isSaveLoading, updateSemanticsRules } =
+  const { semanticsRules, isLoading, isSaveLoading, toggleRuleEnabled } =
     useSemanticsRulesState();
 
   const columns = useMemo(
@@ -43,11 +43,7 @@ const DataAssetRulesSettings = () => {
   );
 
   const toggleRule = (rule: SemanticsRule) =>
-    updateSemanticsRules(
-      semanticsRules.map((item) =>
-        item.name === rule.name ? { ...item, enabled: !item.enabled } : item
-      )
-    ).catch(() => undefined);
+    toggleRuleEnabled(rule.name, !rule.enabled).catch(() => undefined);
 
   const renderCell = (rule: SemanticsRule, columnId: string) => {
     if (columnId === 'name') {

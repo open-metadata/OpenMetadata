@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+  ExclamationCircleFilled,
+  StatusRunning,
+  StatusSkipped,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CSSProperties, FC } from 'react';
-import { ReactComponent as RunFailedIcon } from '../../../assets/svg/agents/run-failed.svg';
-import { ReactComponent as RunPartialIcon } from '../../../assets/svg/agents/run-partial.svg';
-import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
-import { ReactComponent as RunSkippedIcon } from '../../../assets/svg/agents/run-skipped.svg';
-import { ReactComponent as RunSuccessIcon } from '../../../assets/svg/agents/run-success.svg';
 import { RunStatus } from '../AgentsPage.interface';
 
 interface RunGlyphProps {
@@ -32,23 +34,23 @@ interface GlyphMeta {
 
 const GLYPH_META: Record<RunStatus, GlyphMeta> = {
   success: {
-    Icon: RunSuccessIcon,
+    Icon: CheckCircleFilled,
     colorClass: 'tw:text-utility-success-500',
   },
   partial: {
-    Icon: RunPartialIcon,
+    Icon: ExclamationCircleFilled,
     colorClass: 'tw:text-utility-warning-500',
   },
   failed: {
-    Icon: RunFailedIcon,
+    Icon: CloseCircleFilled,
     colorClass: 'tw:text-utility-error-600',
   },
   running: {
-    Icon: RunRunningIcon,
+    Icon: StatusRunning,
     colorClass: 'tw:text-utility-brand-600',
   },
   skipped: {
-    Icon: RunSkippedIcon,
+    Icon: StatusSkipped,
     colorClass: 'tw:text-utility-gray-300',
   },
 };

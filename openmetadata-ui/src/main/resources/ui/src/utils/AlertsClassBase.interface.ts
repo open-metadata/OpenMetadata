@@ -74,3 +74,17 @@ export interface HandleAlertSaveProps {
   fqn?: string;
   currentUser?: User;
 }
+
+export type AlertAiFormValue =
+  | ModifiedCreateEventSubscription
+  | ModifiedEventSubscription;
+
+export type RuleSectionField = 'actions' | 'filters';
+
+export type AlertAiFormChangeHandler = (
+  valueOrUpdater:
+    | ModifiedCreateEventSubscription
+    | ((
+        prev: ModifiedCreateEventSubscription
+      ) => ModifiedCreateEventSubscription)
+) => void;

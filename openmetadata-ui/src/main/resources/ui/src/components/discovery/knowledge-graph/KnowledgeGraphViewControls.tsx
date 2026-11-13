@@ -17,11 +17,14 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Minus, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Maximize02,
+  Minus,
+  Plus,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FitScreenIcon } from '../../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as RefreshIcon } from '../../../assets/svg/reload.svg';
 import { KnowledgeGraphViewControlsProps } from './KnowledgeGraph.interface';
 
 /** The Button `iconLeading` prop accepts a component; align the SVG asset to that shape. */
@@ -81,7 +84,7 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
             aria-label={t('label.fit-to-screen')}
             color="link-gray"
             data-testid="fit-screen"
-            iconLeading={FitScreenIcon as IconComponent}
+            iconLeading={Maximize02 as IconComponent}
             size="sm"
             tooltip={t('label.fit-to-screen')}
             onPress={onFit}
@@ -90,7 +93,7 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
             aria-label={t('label.refresh')}
             color="link-gray"
             data-testid="refresh"
-            iconLeading={RefreshIcon as IconComponent}
+            iconLeading={RefreshCw01 as IconComponent}
             size="sm"
             tooltip={t('label.refresh')}
             onPress={onRefresh}

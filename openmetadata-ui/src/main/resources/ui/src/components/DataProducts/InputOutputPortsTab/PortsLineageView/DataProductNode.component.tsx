@@ -12,10 +12,10 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { DataProduct } from '@openmetadata/ui-core-components/icons';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Position } from 'reactflow';
-import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { LINEAGE_NODE_DARK_CLASS } from '../../../Entity/EntityLineage/CustomNode.utils';
 import './PortsLineageView.style.less';
@@ -43,13 +43,13 @@ const DataProductNode = memo(({ data }: DataProductNodeProps) => {
       />
 
       <div className="data-product-badge">
-        <DataProductIcon height={12} width={12} />
+        <DataProduct size={12} />
         {t('label.data-product')}
       </div>
 
       <div className="data-product-content">
         <div className="data-product-icon-container">
-          <DataProductIcon height={24} width={24} />
+          <DataProduct size={24} />
         </div>
         <Typography
           as="h4"

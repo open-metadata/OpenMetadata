@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { SearchIndex } from '../../../src/enums/search.enum';
-import { CreateOntologyChangeSet } from '../../../src/generated/api/data/createOntologyChangeSet';
+import { Status as InstallJobStatus } from '../../../src/generated/api/data/ontologyPackInstallJob';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
-import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyChangeSet';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
@@ -30,7 +29,10 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { readNodePositions } from '../../utils/ontologyStudio';
+import {
+  readNodePositions,
+  waitForPackInstallJob,
+} from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -138,8 +140,13 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
+          const columnSelect = editor.getByRole('button', {
+            name: /profile › customer_id/,
+          });
+          // The editor pre-selects the column whose name matches the property.
+          await expect(columnSelect).toBeVisible();
           await selectOptionWithRetry(
-            editor.getByRole('button', { name: 'Select Column', exact: true }),
+            columnSelect,
             page.getByRole('option', { name: /profile › customer_id/ })
           );
           const saved = page.waitForResponse(
@@ -170,11 +177,15 @@ test.describe(
           await expect(
             dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
           ).toContainText('Customer');
-          const row = dataGraph.getByTestId(
-            `ontology-data-asset-asset:${concept.id}:${table.entityResponseData.id}`
-          );
-          await expect(row).toContainText(table.entity.displayName);
-          await expect(row).toContainText('1 col');
+          const assetId = `asset:${concept.id}:${table.entityResponseData.id}`;
+          await expect(
+            dataGraph.getByTestId(`ontology-data-asset-${assetId}`)
+          ).toContainText(table.entity.displayName);
+          await expect(
+            dataGraph.getByTestId(
+              `ontology-data-asset-columns-toggle-${assetId}`
+            )
+          ).toHaveText('1 column');
         });
         await test.step('Remove the column binding and table link', async () => {
           await page.getByTestId('ontology-graph-mode-model').click();
@@ -244,23 +255,25 @@ test.describe(
 
     for (const pack of [
       {
-        id: 'fibo',
-        industry: 'finance',
-        base: 'foundations',
-        extra: 'business-entities',
-        label: 'Business Entity',
+        id: 'sosa-ssn',
+        industry: 'cross-industry',
+        base: 'sosa',
+        extra: 'ssn',
+        label: 'Sensor',
         fromOwner: false,
       },
       {
-        id: 'fhir',
-        industry: 'healthcare',
-        base: 'core',
-        extra: 'clinical',
-        label: 'FHIR Resource',
+        id: 'sosa-ssn',
+        industry: 'cross-industry',
+        base: 'sosa',
+        extra: 'ssn',
+        label: 'Sensor',
         fromOwner: true,
       },
     ]) {
-      test(`installs ${pack.id} into a new native ontology and explicitly reuses it without changes`, async ({
+      test(`installs ${pack.id} ${
+        pack.fromOwner ? 'from a source ontology' : 'from the studio'
+      } into a new native ontology and explicitly reuses it without changes`, async ({
         isolatedUserPage: page,
       }) => {
         test.slow();
@@ -273,8 +286,8 @@ test.describe(
           'Create source owner'
         );
         let installed: Ontology | undefined;
-        let createdDraft: OntologyChangeSet | undefined;
-        let draftWrites = 0;
+        let installStarts = 0;
+        const installRoute = `**/api/v1/ontologies/*/library/${pack.id}/install`;
         try {
           const before = await okJson<OntologyState>(
             await api.get(`/api/v1/ontologies/${owner.id}/state`),
@@ -303,21 +316,12 @@ test.describe(
           await page.getByTestId(`ontology-module-${pack.extra}`).click();
           await expect(
             page.getByTestId('ontology-pack-concept-count')
-          ).toHaveText('8');
-          await page.route('**/api/v1/ontologyChangeSets', async (route) => {
-            if (route.request().method() !== 'POST') {
-              await route.continue();
-              return;
-            }
-            draftWrites++;
-            const response = await route.fetch();
-            createdDraft = await okJson<OntologyChangeSet>(
-              response,
-              'Create native library draft'
-            );
-            if (pack.fromOwner && draftWrites === 1)
+          ).toHaveText('27');
+          await page.route(installRoute, async (route) => {
+            installStarts++;
+            if (pack.fromOwner && installStarts === 1)
               await route.abort('failed');
-            else await route.fulfill({ response });
+            else await route.continue();
           });
           const created = page.waitForResponse(
             (response) =>
@@ -329,6 +333,11 @@ test.describe(
             await created,
             'Install into new ontology'
           );
+          if (pack.fromOwner) {
+            const install = page.getByTestId('ontology-library-native-install');
+            await expect(install).toHaveText('Retry');
+            await install.click();
+          }
           await expect(
             page.getByTestId(`ontology-pack-${pack.id}`)
           ).toContainText('Installed');
@@ -342,15 +351,14 @@ test.describe(
           await expect(
             page.getByTestId(`ontology-library-installed-in-${installed.id}`)
           ).toBeVisible();
-          expect(draftWrites).toBe(1);
-          expect(createdDraft?.baseWorkingRevision).toBe(1);
+          expect(installStarts).toBe(pack.fromOwner ? 2 : 1);
           const concepts = await okJson<{ data: OntologyConcept[] }>(
             await api.get('/api/v1/ontologyConcepts', {
               params: { ontology: installed.fullyQualifiedName, limit: 100 },
             }),
             'Read installed concepts'
           );
-          expect(concepts.data).toHaveLength(8);
+          expect(concepts.data).toHaveLength(22);
           const concept = concepts.data.find(
             (item) => item.displayName === pack.label
           );
@@ -386,21 +394,12 @@ test.describe(
               exact: true,
             })
             .click();
-          const previewPath = `/api/v1/ontologies/${installed.id}/library/${pack.id}/preview`;
-          const replayed = page.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname === previewPath &&
-              response.request().method() === 'POST'
-          );
+          const replayed = waitForPackInstallJob(page, installed.id);
           await page.getByTestId('ontology-library-native-install').click();
-          expect(
-            (
-              await okJson<CreateOntologyChangeSet>(
-                await replayed,
-                'Preview existing native target'
-              )
-            ).operations
-          ).toEqual([]);
+          expect(await replayed).toMatchObject({
+            status: InstallJobStatus.Completed,
+            total: 0,
+          });
           await expect(
             page.getByTestId(`ontology-pack-${pack.id}`)
           ).toContainText('Installed');
@@ -408,14 +407,8 @@ test.describe(
           await expect(
             page.getByTestId(`ontology-library-installed-in-${installed.id}`)
           ).toContainText(installed.displayName ?? installed.name);
-          expect(draftWrites).toBe(1);
         } finally {
-          await page.unroute('**/api/v1/ontologyChangeSets');
-          if (createdDraft)
-            await deleteFixtureEntity(
-              api,
-              `/api/v1/ontologyChangeSets/${createdDraft.id}?hardDelete=true`
-            );
+          await page.unroute(installRoute);
           if (installed)
             await deleteFixtureEntity(
               api,
@@ -500,7 +493,10 @@ test.describe(
           await submitted,
           'Retry real review task submission'
         );
-        await expect(page).toHaveURL(new RegExp(`/tasks/${task.id}$`));
+        await expect(
+          page.getByTestId('ontology-publication-notice-requested')
+        ).toBeVisible();
+        await expect(page).toHaveURL(/\/governance\/ontology/);
         const history = await okJson<{ data: OntologyRelease[] }>(
           await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
           'Read owner release history'

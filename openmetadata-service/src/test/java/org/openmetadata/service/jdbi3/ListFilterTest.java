@@ -245,6 +245,22 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_changeSetOntologyBindsTheIdAndOnlyFiltersChangeSets() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("changeSetOntologyId", "11111111-1111-1111-1111-111111111111");
+
+    String condition = filter.getCondition("ontology_change_set_entity");
+
+    assertTrue(condition.contains("ontology_change_set_entity.id IN (SELECT"), condition);
+    assertTrue(condition.contains("entity_relationship.fromId = :changeSetOntologyIdParam"));
+    assertTrue(condition.contains("entity_relationship.fromEntity = 'ontology'"));
+    assertFalse(condition.contains("11111111"), condition);
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111", filter.getQueryParam("changeSetOntologyIdParam"));
+    assertFalse(filter.getCondition("ontology_concept_entity").contains("changeSetOntologyId"));
+  }
+
+  @Test
   void taskConditions_bindValuesInsteadOfInliningThemInSql() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("taskType", "task-type");

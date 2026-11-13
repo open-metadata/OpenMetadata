@@ -16,10 +16,10 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -167,11 +167,7 @@ export const ExtraInfoLink = ({
           </a>
         </TooltipTrigger>
       </Tooltip>
-      <IconExternalLink
-        className="tw:text-fg-quaternary"
-        height={18}
-        width={18}
-      />
+      <LinkExternal01 className="tw:text-fg-quaternary" size={18} />
     </div>
   </div>
 );

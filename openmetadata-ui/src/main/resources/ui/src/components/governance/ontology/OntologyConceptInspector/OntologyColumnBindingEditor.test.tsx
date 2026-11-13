@@ -434,3 +434,64 @@ it('binds a column and cancels from the AI-mode card', async () => {
 
   (useIsAiMode as jest.Mock).mockReturnValue(false);
 });
+
+it('holds the column that matches the property and saves it without a further choice', async () => {
+  http.get.mockImplementation(async (url) => ({
+    data: url.includes('/columns/search')
+      ? {
+          data: [
+            {
+              name: 'patient_id',
+              dataType: DataType.String,
+              fullyQualifiedName: 'service.db.schema.customers.patient_id',
+            },
+            {
+              name: 'dosage',
+              dataType: DataType.Int,
+              fullyQualifiedName: 'service.db.schema.customers.dosage',
+            },
+          ],
+          paging: { total: 2 },
+        }
+      : response(0),
+  }));
+  http.put.mockResolvedValue({ data: response(1) });
+  const { queryClient, rerender } = renderWithQueryClient(<div />);
+  queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+    kind: 'complete',
+    ...response(0),
+  });
+  rerender(
+    <OntologyColumnBindingEditor
+      conceptId="concept"
+      propertyId="dosage-property"
+      propertyLabel="dosage"
+      onClose={jest.fn()}
+    />
+  );
+  const editor = screen.getByTestId('ontology-column-binding-editor');
+  const button = within(editor).getByRole('button', { name: /label.column/ });
+  await waitFor(() => expect(button).toHaveTextContent('dosage'));
+
+  fireEvent.click(button);
+
+  expect(
+    await screen.findByRole('option', { name: /dosage/ })
+  ).toHaveTextContent('label.ontology-suggested-column');
+  expect(
+    screen.getByRole('option', { name: /patient_id/ })
+  ).not.toHaveTextContent('label.ontology-suggested-column');
+
+  fireEvent.keyDown(document.activeElement ?? editor, { key: 'Escape' });
+  fireEvent.click(screen.getByTestId('ontology-binding-save'));
+  await waitFor(() => expect(http.put).toHaveBeenCalledTimes(1));
+
+  expect(http.put.mock.calls[0][1]).toEqual({
+    expectedRevision: 0,
+    asset: {
+      assetId: 'table',
+      assetType: 'table',
+      columns: [{ propertyId: 'dosage-property', columnPath: ['dosage'] }],
+    },
+  });
+});

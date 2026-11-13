@@ -261,6 +261,7 @@ export const CustomPropertyPicker = ({
         </Tabs.List>
         <Input
           aria-label={searchLabel}
+          autoComplete="off"
           className="tw:min-w-48 tw:flex-1"
           icon={Search}
           inputDataTestId="custom-property-picker-search"

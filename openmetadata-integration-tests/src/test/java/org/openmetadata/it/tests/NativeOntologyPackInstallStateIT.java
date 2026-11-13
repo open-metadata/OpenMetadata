@@ -39,42 +39,45 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
-@Execution(ExecutionMode.CONCURRENT)
+// Installing upstream packs writes thousands of definitions and relationships; concurrent
+// installs deadlock on MySQL gap locks.
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
   @Test
   void applyingAPackRecordsItsVerifiedProvenanceAndCatalogueLocation(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
-    final var applied = install(ns, ontology, "fibo", Set.of("business-entities"));
+    final var applied = install(ns, ontology, "sosa-ssn", Set.of("ssn"));
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
 
     final Ontology stored = SdkClients.adminClient().ontologies().get(ontology.getId());
     assertEquals(1, stored.getInstalledPacks().size());
     final var installation = stored.getInstalledPacks().getFirst();
-    final var fibo =
+    final var sensors =
         packs().getPacks().stream()
-            .filter(pack -> pack.getId().equals("fibo"))
+            .filter(pack -> pack.getId().equals("sosa-ssn"))
             .findFirst()
             .orElseThrow();
-    assertEquals("fibo", installation.getPackId());
-    assertEquals(fibo.getVersion(), installation.getVersion());
+    assertEquals("sosa-ssn", installation.getPackId());
+    assertEquals(sensors.getVersion(), installation.getVersion());
     assertEquals(
-        List.of("foundations", "business-entities"),
+        List.of("sosa", "ssn"),
         installation.getModules().stream()
             .map(OntologyPackModuleInstallation::getModuleId)
             .toList());
     assertEquals(
-        fibo.getModules().getFirst().getSha256(), installation.getModules().getFirst().getSha256());
+        sensors.getModules().getFirst().getSha256(),
+        installation.getModules().getFirst().getSha256());
     assertNotNull(installation.getInstalledAt());
     assertNotNull(installation.getInstalledBy());
-    assertEquals(fibo.getLicense(), installation.getLicense());
+    assertEquals(sensors.getLicense(), installation.getLicense());
     assertTrue(stored.getVersion() > ontology.getVersion());
     assertTrue(
         packs().getInstallations().stream()
             .anyMatch(
                 record ->
                     record.getOntology().getId().equals(ontology.getId())
-                        && record.getInstallation().getPackId().equals("fibo")));
+                        && record.getInstallation().getPackId().equals("sosa-ssn")));
   }
 
   @Test
@@ -100,22 +103,24 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
             .getIndustry()
             .value());
 
+    assertEquals("cross-industry", industryOf(catalogue, "dcat"));
+    assertEquals("buildings-and-energy", industryOf(catalogue, "brick"));
     final Ontology first = createOntology(ns, "libraryFirst");
     final Ontology second = createOntology(ns, "librarySecond");
-    install(ns, first, "fhir", Set.of("clinical"));
-    install(ns, first, "fhir", Set.of("workflow"));
-    install(ns, second, "fhir", Set.of("clinical"));
+    install(ns, first, "sosa-ssn", Set.of("sosa"));
+    install(ns, first, "sosa-ssn", Set.of("ssn"));
+    install(ns, second, "sosa-ssn", Set.of("sosa"));
 
     final var stored = SdkClients.adminClient().ontologies().get(first.getId());
     assertEquals(1, stored.getInstalledPacks().size());
     assertEquals(
-        List.of("core", "clinical", "workflow"),
+        List.of("sosa", "ssn"),
         stored.getInstalledPacks().getFirst().getModules().stream()
             .map(OntologyPackModuleInstallation::getModuleId)
             .toList());
     final var installs =
         packs().getInstallations().stream()
-            .filter(record -> record.getInstallation().getPackId().equals("fhir"))
+            .filter(record -> record.getInstallation().getPackId().equals("sosa-ssn"))
             .filter(
                 record ->
                     Set.of(first.getId(), second.getId()).contains(record.getOntology().getId()))
@@ -126,7 +131,7 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
   @Test
   void installedPacksSurvivePutAndRejectClientPatch(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
-    install(ns, ontology, "fibo", Set.of("foundations"));
+    install(ns, ontology, "prov-o", Set.of("prov-o"));
     final var client = SdkClients.adminClient();
     final Ontology stored = client.ontologies().get(ontology.getId());
     final Ontology put =
@@ -164,19 +169,19 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
   void sourcePackMustMatchTheVerifiedCatalogAndCannotChange(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
-    final CreateOntologyChangeSet plan = preview(ontology, "fibo", Set.of("foundations"));
+    final CreateOntologyChangeSet plan = preview(ontology, "dcat", Set.of("dcat"));
     for (final OntologyPackSource source :
         List.of(
             new OntologyPackSource()
                 .withPackId("missing")
                 .withVersion(plan.getSourcePack().getVersion())
-                .withModuleIds(Set.of("foundations")),
+                .withModuleIds(Set.of("dcat")),
             new OntologyPackSource()
-                .withPackId("fibo")
+                .withPackId("dcat")
                 .withVersion("0.0.0")
-                .withModuleIds(Set.of("foundations")),
+                .withModuleIds(Set.of("dcat")),
             new OntologyPackSource()
-                .withPackId("fibo")
+                .withPackId("dcat")
                 .withVersion(plan.getSourcePack().getVersion())
                 .withModuleIds(Set.of("missing")))) {
       final CreateOntologyChangeSet invalid =
@@ -217,7 +222,7 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
     final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
-    final CreateOntologyChangeSet plan = preview(ontology, "fibo", Set.of("foundations"));
+    final CreateOntologyChangeSet plan = preview(ontology, "dcat", Set.of("dcat"));
     final OntologyChangeOperation firstConcept =
         plan.getOperations().stream()
             .filter(
@@ -259,7 +264,7 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
   @Test
   void catalogueHidesDeletedAndUnauthorizedInstallations(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
-    install(ns, ontology, "fibo", Set.of("foundations"));
+    install(ns, ontology, "foaf", Set.of("foaf"));
     final var client = SdkClients.adminClient();
     assertTrue(installedIn(packs(), ontology.getId()));
 
@@ -298,8 +303,8 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
                         .withOwners(
                             List.of(admin.users().getByName("admin").getEntityReference()))));
     final Ontology unowned = createOntology(ns, "unownedLibrary");
-    install(ns, owned, "fibo", Set.of("foundations"));
-    install(ns, unowned, "fibo", Set.of("foundations"));
+    install(ns, owned, "prov-o", Set.of("prov-o"));
+    install(ns, unowned, "prov-o", Set.of("prov-o"));
     assertTrue(installedIn(packs(), owned.getId()));
     assertTrue(installedIn(packs(), unowned.getId()));
 
@@ -358,5 +363,14 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
   private static boolean installedIn(final OntologyPackList catalogue, final UUID ontologyId) {
     return catalogue.getInstallations().stream()
         .anyMatch(record -> record.getOntology().getId().equals(ontologyId));
+  }
+
+  private static String industryOf(final OntologyPackList catalogue, final String packId) {
+    return catalogue.getPacks().stream()
+        .filter(pack -> pack.getId().equals(packId))
+        .findFirst()
+        .orElseThrow()
+        .getIndustry()
+        .value();
   }
 }

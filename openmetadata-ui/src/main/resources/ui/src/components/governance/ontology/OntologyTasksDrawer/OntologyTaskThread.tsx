@@ -12,6 +12,10 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  FileCheck02,
+  MessageSquare01,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
@@ -31,6 +35,26 @@ type Props = {
   events: readonly OntologyReleaseEvent[];
 };
 
+type Appearance = {
+  color: 'gray' | 'blue' | 'success' | 'error' | 'warning';
+  label: string;
+};
+
+const entryAppearance = (
+  entry: ReturnType<typeof buildThreadEntries>[number]
+): Appearance => {
+  if (entry.decision) {
+    return reviewDecisionAppearance(entry.decision);
+  }
+  if (entry.event?.eventType === EventType.Activated) {
+    return { color: 'blue', label: 'label.published' };
+  }
+
+  return entry.source === 'comment'
+    ? { color: 'gray', label: 'label.comment' }
+    : { color: 'gray', label: 'label.captured' };
+};
+
 const OntologyTaskThread = ({ task, review, events }: Props) => {
   const { t } = useTranslation();
   const entries = useMemo(
@@ -39,38 +63,58 @@ const OntologyTaskThread = ({ task, review, events }: Props) => {
   );
 
   return (
-    <Box direction="col" gap={3}>
-      <Typography as="h3" size="text-md" weight="semibold">
-        {t('label.conversation')}
-      </Typography>
-      <ol className="tw:m-0 tw:list-none tw:p-0">
+    <Box data-testid="ontology-task-activity" direction="col" gap={3}>
+      <Box align="center" gap={2}>
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0"
+          size="text-md"
+          weight="semibold">
+          {t('label.activity')}
+        </Typography>
+        <Badge color="gray" size="sm" type="pill-color">
+          {entries.length}
+        </Badge>
+      </Box>
+      <ol className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-4 tw:p-0">
         {entries.map((entry) => {
-          let appearance: {
-            color: 'gray' | 'blue' | 'success' | 'error' | 'warning';
-            label: string;
-          } = { color: 'gray', label: 'label.captured' };
-          if (entry.source === 'comment') {
-            appearance = { color: 'gray', label: 'label.comment' };
-          }
-          if (entry.event?.eventType === EventType.Activated) {
-            appearance = { color: 'blue', label: 'label.published' };
-          }
-          if (entry.decision) {
-            appearance = reviewDecisionAppearance(entry.decision);
-          }
+          const appearance = entryAppearance(entry);
+          const Icon =
+            entry.source === 'comment' ? MessageSquare01 : FileCheck02;
 
           return (
-            <li data-testid={entry.id} key={entry.id}>
-              <Box direction="col" gap={1}>
+            <li
+              className="tw:flex tw:gap-3"
+              data-testid={entry.id}
+              key={entry.id}>
+              <span className="tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary">
+                <Icon
+                  aria-hidden
+                  className="tw:size-3.5 tw:text-fg-quaternary"
+                />
+              </span>
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
                 <Box align="center" gap={2} wrap="wrap">
-                  <Typography weight="medium">{entry.actor}</Typography>
-                  <Badge color={appearance.color}>{t(appearance.label)}</Badge>
-                  <time dateTime={new Date(entry.timestamp).toISOString()}>
-                    {new Date(entry.timestamp).toLocaleString()}
-                  </time>
+                  <Typography size="text-sm" weight="semibold">
+                    {entry.actor}
+                  </Typography>
+                  <Badge color={appearance.color} size="sm">
+                    {t(appearance.label)}
+                  </Badge>
+                  <Typography
+                    className="tw:ml-auto"
+                    color="secondary"
+                    size="text-xs">
+                    <time dateTime={new Date(entry.timestamp).toISOString()}>
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </time>
+                  </Typography>
                 </Box>
                 {entry.message && (
-                  <Typography className="tw:whitespace-pre-wrap">
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:whitespace-pre-wrap tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary_subtle tw:px-4 tw:py-3"
+                    size="text-sm">
                     {entry.message}
                   </Typography>
                 )}

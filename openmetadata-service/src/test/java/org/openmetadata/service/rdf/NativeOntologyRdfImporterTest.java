@@ -10,8 +10,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,7 +24,12 @@ import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.ConceptMapping.ConceptMappingType;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportItem;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipped;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -30,8 +37,10 @@ import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
@@ -45,11 +54,43 @@ class NativeOntologyRdfImporterTest {
   private final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
 
   @Test
-  void bundledPacksPreviewAsNativeConceptsAndExactSkosRelations() {
+  void aListingKeepsEveryActionableItemAndDropsExistingOnesPastTheBudget() {
+    final List<NativeOntologyImportItem> items = new ArrayList<>();
+    for (int i = 0; i < NativeOntologyRdfImporter.MAX_LISTED_ITEMS + 200; i++) {
+      final boolean actionable = i % 1_000 == 999;
+      items.add(
+          new NativeOntologyImportItem()
+              .withId("item-" + i)
+              .withKind(NativeOntologyImportItemKind.CONCEPT)
+              .withStatus(
+                  actionable
+                      ? NativeOntologyImportItemStatus.NEW
+                      : NativeOntologyImportItemStatus.ALREADY_EXISTS));
+    }
+    final NativeOntologyImportSummary summary =
+        NativeOntologyRdfImporter.listing(new NativeOntologyImportSummary(), items);
+    assertEquals(NativeOntologyRdfImporter.MAX_LISTED_ITEMS, summary.getItems().size());
+    assertEquals(200, summary.getOmittedItems());
+    assertEquals(
+        List.of("item-999", "item-1999", "item-2999", "item-3999", "item-4999"),
+        summary.getItems().stream()
+            .filter(item -> item.getStatus() == NativeOntologyImportItemStatus.NEW)
+            .map(NativeOntologyImportItem::getId)
+            .toList());
+    assertEquals("item-0", summary.getItems().getFirst().getId());
+    assertEquals("item-4999", summary.getItems().getLast().getId());
+    assertEquals(
+        0,
+        NativeOntologyRdfImporter.listing(new NativeOntologyImportSummary(), items.subList(0, 3))
+            .getOmittedItems());
+  }
+
+  @Test
+  void starterPacksPreviewAsNativeConceptsAndExactSkosRelations() {
     final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
     final var loader = new OntologyPackContentLoader(getClass().getClassLoader());
     for (final var pack : catalog.list()) {
-      if (!Boolean.TRUE.equals(pack.getBundled())) {
+      if (!"OpenMetadata".equals(pack.getPublisher())) {
         continue;
       }
       final String rdf =
@@ -143,19 +184,8 @@ class NativeOntologyRdfImporterTest {
   }
 
   @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "skos:prefLabel \"Customer\"; rdfs:label \"Conflicting\"",
-        "skos:prefLabel \"Customer\", \"Conflicting\"",
-        "skos:prefLabel \"Customer\"@en",
-        "skos:prefLabel 17",
-        "skos:definition \"A customer.\"; rdfs:comment \"Conflicting\"",
-        "skos:definition \"A customer.\", \"Conflicting\"",
-        "skos:definition \"A customer.\"@en",
-        "skos:definition 17",
-        "skos:hiddenLabel \"Unsupported\""
-      })
-  void ambiguousOrUnrepresentedSkosAnnotationsFailClosed(String labels) {
+  @ValueSource(strings = {"skos:prefLabel 17", "skos:definition 17"})
+  void textAnnotationsOfTheWrongShapeFailClosed(String labels) {
     final var root = root();
     final var snapshot =
         new OntologyWorkingSnapshot.Snapshot(
@@ -320,41 +350,612 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
-  void rejectsUnrepresentedTripleInsteadOfLosingIt() {
-    final var root = root();
-    final var snapshot =
-        new OntologyWorkingSnapshot.Snapshot(
-            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
-    final var model =
-        importer.parse(
-            "<https://example.org/Customer> <https://example.org/unknown> \"lost\" .",
-            RdfSerializationFormat.N_TRIPLES);
-    try {
-      assertThrows(BadRequestException.class, () -> importer.reconcile(model, snapshot));
-    } finally {
-      model.close();
+  void aValueOfADatatypeOutsideOwl2IsReportedInsteadOfAssertedWhereApplyingWouldRefuseIt() {
+    final var document =
+        readDocument(
+            """
+            ex:P a owl:DatatypeProperty ;
+              skos:notation "15"^^ex:AI ;
+              skos:notation "12"^^xsd:integer .
+            """);
+
+    assertEquals(
+        List.of("12"),
+        document.axioms().stream()
+            .filter(axiom -> axiom.getAxiomType() == OntologyAxiomType.DATA_PROPERTY_ASSERTION)
+            .map(axiom -> axiom.getLiteral().getValue())
+            .toList());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2004/02/skos/core#notation x1"
+            + " [https://example.org/P]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void unrepresentedStatementIsReportedInsteadOfLost() {
+    final var document =
+        readDocument("<https://example.org/Customer> <https://example.org/unknown> \"lost\" .");
+
+    assertEquals(
+        "[UNSUPPORTED_ANNOTATION https://example.org/unknown x1 [https://example.org/Customer]]",
+        skippedGroups(document));
+    assertEquals(1, document.skipped().getTotal());
+  }
+
+  @Test
+  void aBlankNodeListIsCountedFromItsHeadWhateverOrderTheParserProduces() {
+    final var source = new StringBuilder();
+    for (int index = 0; index < 60; index++) {
+      source.append(
+          "[ <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <https://example.org/a%d> ;\n"
+              .formatted(index));
+      source.append(
+          "  <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> [\n"
+              + "    <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <https://example.org/b> ;\n"
+              + "    <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>"
+              + " <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> ] ] .\n");
+    }
+
+    for (int run = 0; run < 5; run++) {
+      assertEquals(120, readDocument(source.toString()).skipped().getTotal(), "run " + run);
     }
   }
 
   @Test
-  void unsupportedStatementDiagnosticIsBounded() {
+  void anAxiomNamingAPropertyThePlanRefusesIsRefusedWithIt() {
     final var root = root();
     final var snapshot =
         new OntologyWorkingSnapshot.Snapshot(
             state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
-    final var model =
-        importer.parse(
+    final var request =
+        new PreviewNativeOntologyImport()
+            .withFormat(NativeOntologyImportFormat.TURTLE)
+            .withData(
+                TURTLE_PREFIXES
+                    + """
+                    ex:Org a owl:Class .
+                    ex:hasMember a owl:ObjectProperty ; rdfs:domain ex:Org ; rdfs:range ex:Elsewhere .
+                    ex:Collab a owl:Class ; owl:equivalentClass [ a owl:Restriction ;
+                      owl:onProperty ex:hasMember ; owl:allValuesFrom ex:Org ] .
+                    """);
+
+    final var preview = importer.preview(importer.read(request), snapshot);
+
+    final var operations = preview.getChangeSet().getOperations();
+    assertEquals(
+        2, operations.stream().filter(operation -> operation.getConcept() != null).count());
+    assertTrue(
+        operations.stream().noneMatch(operation -> operation.getProperty() != null),
+        "the property names a class nothing declares");
+    assertTrue(
+        operations.stream().noneMatch(operation -> operation.getAxiom() != null),
+        "the restriction names the refused property");
+    assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(1, preview.getSummary().getCounts().getSkippedRelations());
+  }
+
+  @Test
+  void skippedReportStaysSmallWhateverTheSourceStates() {
+    final var document =
+        readDocument(
             "<https://example.org/C> <https://example.org/unknown> \""
                 + "x".repeat(10_000)
-                + "\" .",
-            RdfSerializationFormat.N_TRIPLES);
-    try {
-      final var error =
-          assertThrows(BadRequestException.class, () -> importer.reconcile(model, snapshot));
-      assertTrue(error.getMessage().length() < 300);
-    } finally {
-      model.close();
+                + "\" .");
+
+    assertTrue(JsonUtils.pojoToJson(document.skipped()).length() < 400);
+  }
+
+  @Test
+  void multilingualTextKeepsOneLanguageAndReportsTheRest() {
+    final var document =
+        readDocument(
+            """
+            ex:Loan a owl:Class; rdfs:label "Loan"@en, "Pret"@fr, "Darlehen"@de;
+              rdfs:comment "Money lent."@en, "Argent prete."@fr .
+            """);
+
+    final var concept = document.concepts().getFirst();
+    assertEquals("Loan", concept.getDisplayName());
+    assertEquals("Money lent.", concept.getDescription());
+    assertEquals(
+        "[NON_PREFERRED_LANGUAGE http://www.w3.org/2000/01/rdf-schema#label x2"
+            + " [https://example.org/Loan]; NON_PREFERRED_LANGUAGE"
+            + " http://www.w3.org/2000/01/rdf-schema#comment x1 [https://example.org/Loan]]",
+        skippedGroups(document));
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "\"Plain\", \"Tagged\"@en | Plain",
+        "\"Gruss\"@de, \"Hello\"@en-GB, \"Hi\"@en | Hi",
+        "\"Gruss\"@de, \"Color\"@en-US, \"Colour\"@en-GB | Colour",
+        "\"Bonjour\"@fr, \"Hallo\"@de | Hallo",
+        "\"Hello\"@EN, \"Hallo\"@de | Hello"
+      })
+  void languageChoiceIsUntaggedThenEnglishThenFirstTag(String values, String expected) {
+    final var document = readDocument("ex:C a owl:Class; rdfs:label " + values + " .");
+
+    assertEquals(expected, document.concepts().getFirst().getDisplayName());
+  }
+
+  @Test
+  void languageChoiceDoesNotDependOnStatementOrder() {
+    final List<String> lines =
+        new ArrayList<>(
+            List.of(
+                "<https://example.org/C> <http://www.w3.org/2000/01/rdf-schema#label> \"A\"@fr .",
+                "<https://example.org/C> <http://www.w3.org/2000/01/rdf-schema#label> \"B\"@de .",
+                "<https://example.org/C> <http://www.w3.org/2000/01/rdf-schema#comment> \"y\" .",
+                "<https://example.org/C> <http://www.w3.org/2000/01/rdf-schema#comment> \"x\" .",
+                "<https://example.org/C> a <http://www.w3.org/2002/07/owl#Class> ."));
+    final var forward = readRaw(String.join("\n", lines));
+    Collections.reverse(lines);
+    final var backward = readRaw(String.join("\n", lines));
+
+    assertEquals(forward, backward);
+    assertEquals("B", forward.concepts().getFirst().getDisplayName());
+    assertEquals("x", forward.concepts().getFirst().getDescription());
+  }
+
+  @Test
+  void extraValuesOfASingleValuedFieldKeepTheFirstAndReportTheRest() {
+    final var document =
+        readDocument("ex:C a owl:Class; rdfs:comment \"b text\", \"a text\", \"c text\" .");
+
+    assertEquals("a text", document.concepts().getFirst().getDescription());
+    assertEquals(
+        "[EXTRA_VALUE http://www.w3.org/2000/01/rdf-schema#comment x2 [https://example.org/C]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void skosDefinitionWinsOverADifferentRdfsComment() {
+    final var document =
+        readDocument(
+            "ex:C a skos:Concept; skos:prefLabel \"Loan\"; rdfs:label \"Debt\";"
+                + " skos:definition \"Money lent.\"; rdfs:comment \"Other text.\" .");
+
+    final var concept = document.concepts().getFirst();
+    assertEquals("Loan", concept.getDisplayName());
+    assertEquals("Money lent.", concept.getDescription());
+    assertEquals(
+        "[EXTRA_VALUE http://www.w3.org/2000/01/rdf-schema#comment x1 [https://example.org/C];"
+            + " EXTRA_VALUE http://www.w3.org/2000/01/rdf-schema#label x1 [https://example.org/C]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void descriptionsThatAreResourcesOrMarkupAreSkippedAndTheConceptKeepsItsOtherText() {
+    final var document =
+        readDocument(
+            """
+            ex:Skill a skos:Concept; skos:prefLabel "Weld";
+              skos:definition <https://example.org/node-literal/1>; rdfs:comment "Joins metal." .
+            ex:Job a skos:Concept; skos:prefLabel "Welder"; skos:definition "Welds.";
+              rdfs:comment "<p>Welds <b>metal</b>.</p>"^^rdf:HTML .
+            ex:Note a skos:Concept; skos:prefLabel "Note"; skos:definition [ rdf:value "Blank." ] .
+            ex:Memo a skos:Concept; skos:prefLabel "Memo"; rdfs:comment "<b>Memo</b>"^^rdf:XMLLiteral .
+            """);
+
+    assertEquals(
+        "Memo=null; Note=null; Weld=Joins metal.; Welder=Welds.",
+        document.concepts().stream()
+            .map(concept -> concept.getDisplayName() + "=" + concept.getDescription())
+            .sorted()
+            .collect(Collectors.joining("; ")));
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#comment x2"
+            + " [https://example.org/Job, https://example.org/Memo];"
+            + " UNSUPPORTED_STRUCTURE http://www.w3.org/2004/02/skos/core#definition x2"
+            + " [https://example.org/Note, https://example.org/Skill]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void rdfsClassAndRdfPropertyDeclareDefinitionsAndTheRangeDecidesTheKind() {
+    final var document =
+        readDocument(
+            """
+            ex:Thing a rdfs:Class; rdfs:label "Thing" .
+            ex:name a rdf:Property; rdfs:range xsd:string .
+            ex:kind a rdf:Property; rdfs:range rdfs:Literal .
+            ex:knows a rdf:Property; rdfs:range ex:Thing .
+            ex:related a rdf:Property .
+            """);
+
+    assertEquals(OntologyConceptType.OWL_CLASS, document.concepts().getFirst().getConceptType());
+    assertEquals(
+        "https://example.org/kind=DATA, https://example.org/knows=OBJECT,"
+            + " https://example.org/name=DATA, https://example.org/related=OBJECT",
+        document.properties().stream()
+            .map(property -> property.getIri() + "=" + property.getKind())
+            .collect(Collectors.joining(", ")));
+    assertEquals(0, document.skipped().getTotal());
+  }
+
+  @Test
+  void commonAnnotationsAreReportedByPredicateWithBoundedSamples() {
+    final var document =
+        readDocument(
+            """
+            ex:A a owl:Class; rdfs:isDefinedBy <https://example.org/>; skos:scopeNote "n1" .
+            ex:B a owl:Class; rdfs:isDefinedBy <https://example.org/>; skos:scopeNote "n2" .
+            ex:C a owl:Class; rdfs:isDefinedBy <https://example.org/>; skos:scopeNote "n3" .
+            ex:D a owl:Class; rdfs:isDefinedBy <https://example.org/>; skos:scopeNote "n4";
+              dct:issued "2020-01-01" .
+            """);
+
+    assertEquals(4, document.concepts().size());
+    assertEquals(
+        "[UNSUPPORTED_ANNOTATION http://www.w3.org/2000/01/rdf-schema#isDefinedBy x4"
+            + " [https://example.org/A, https://example.org/B, https://example.org/C];"
+            + " UNSUPPORTED_ANNOTATION http://www.w3.org/2004/02/skos/core#scopeNote x4"
+            + " [https://example.org/A, https://example.org/B, https://example.org/C];"
+            + " UNSUPPORTED_ANNOTATION http://purl.org/dc/terms/issued x1 [https://example.org/D]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void namedIndividualsAreSkippedAsOneGroupButClassesThatAreAlsoIndividualsStay() {
+    final var document =
+        readDocument(
+            """
+            ex:C a owl:Class .
+            ex:i a owl:NamedIndividual, ex:C; rdfs:label "i"; ex:p ex:C .
+            ex:Both a owl:Class, owl:NamedIndividual .
+            """);
+
+    assertEquals(2, document.concepts().size());
+    assertEquals(0, document.axioms().size());
+    assertEquals("[INDIVIDUAL - x4 [https://example.org/i]]", skippedGroups(document));
+  }
+
+  @Test
+  void aNativeExportKeepsTheIndividualsItsAssertionsNameAndSkipsNothing() {
+    final var document =
+        readRaw(
+            """
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            <https://external.example/o> a owl:Ontology; owl:versionIRI <urn:version> .
+            <https://example.org/C> a owl:Class; rdfs:label "C" .
+            <https://example.org/i> a owl:NamedIndividual, <https://example.org/C> .
+            [] a owl:Axiom; owl:annotatedSource <https://example.org/i>;
+               owl:annotatedProperty rdf:type; owl:annotatedTarget <https://example.org/C>;
+               dct:source <urn:version:AXIOM:00000000-0000-0000-0000-000000000001> .
+            """);
+
+    assertEquals(1, document.axioms().size());
+    assertEquals(OntologyAxiomType.CLASS_ASSERTION, document.axioms().getFirst().getAxiomType());
+    assertEquals(0, document.skipped().getTotal());
+  }
+
+  @Test
+  void importsAreSkippedAndReportedNeverFollowed() {
+    final var document =
+        readRaw(
+            """
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            <https://example.org/o> a owl:Ontology; owl:imports <https://example.org/other> .
+            <https://example.org/C> a owl:Class .
+            """);
+
+    assertEquals(1, document.concepts().size());
+    assertEquals(
+        "[IMPORTS http://www.w3.org/2002/07/owl#imports x1 [https://example.org/o]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void unionRangesAndSchemaOrgIncludesAreSkippedBecauseDomainListsAreIntersections() {
+    final var document =
+        readDocument(
+            """
+            @prefix schema: <https://schema.org/> .
+            ex:A a owl:Class . ex:B a owl:Class .
+            ex:p a owl:ObjectProperty; rdfs:domain ex:A;
+              rdfs:range [ a owl:Class; owl:unionOf (ex:A ex:B) ];
+              schema:domainIncludes ex:A, ex:B .
+            """);
+
+    final var property = document.properties().getFirst();
+    assertEquals(List.of(URI.create("https://example.org/A")), property.getDomain());
+    assertEquals(List.of(), property.getRange());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE https://schema.org/domainIncludes x2 [https://example.org/p];"
+            + " UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#range x1"
+            + " [https://example.org/p]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void anyIntegerDatatypeStatesACardinalityButNegativesAndStringsStayMalformed() {
+    final String restriction =
+        "ex:A a owl:Class . ex:p a owl:ObjectProperty . ex:A rdfs:subClassOf [ a owl:Restriction;"
+            + " owl:onProperty ex:p; owl:minCardinality %s ] .";
+
+    final var document = readDocument(restriction.formatted("\"2\"^^xsd:integer"));
+
+    final var expression = document.axioms().getFirst().getExpressions().getFirst();
+    assertEquals(2, expression.getCardinality());
+    assertEquals(0, document.skipped().getTotal());
+    for (final String bad : List.of("\"-1\"^^xsd:integer", "\"2\"", "\"two\"^^xsd:integer")) {
+      assertThrows(BadRequestException.class, () -> readDocument(restriction.formatted(bad)));
     }
+  }
+
+  @Test
+  void aWellFormedExpressionTheModelCannotStateIsSkippedButABrokenOneFails() {
+    final var skipped =
+        readDocument(
+            """
+            ex:A a owl:Class . ex:B a owl:Class . ex:p a owl:ObjectProperty .
+            ex:A rdfs:subClassOf [ a owl:Restriction; owl:onProperty [ owl:inverseOf ex:p ];
+              owl:someValuesFrom ex:B ] .
+            ex:A rdfs:subClassOf [ a owl:Class; owl:complementOf ex:B ] .
+            ex:A rdfs:subClassOf ex:B .
+            """);
+
+    assertEquals(1, skipped.axioms().size());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subClassOf x2"
+            + " [https://example.org/A]]",
+        skippedGroups(skipped));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            readDocument(
+                "ex:A a owl:Class . ex:A rdfs:subClassOf [ a owl:Restriction;"
+                    + " owl:someValuesFrom ex:A ] ."));
+  }
+
+  @Test
+  void aNamedEnumerationDatatypeCannotKeepItsIriSoItsRangeIsSkipped() {
+    final var document =
+        readDocument(
+            """
+            ex:q a owl:DatatypeProperty; rdfs:range ex:Colour .
+            ex:Colour a rdfs:Datatype; owl:equivalentClass [ a rdfs:Datatype;
+              owl:oneOf ("red" "green") ] .
+            """);
+
+    assertEquals(List.of(), document.properties().getFirst().getRange());
+    assertEquals(List.of(), document.properties().getFirst().getEnumValues());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#range x1"
+            + " [https://example.org/q]; UNSUPPORTED_STRUCTURE"
+            + " http://www.w3.org/2002/07/owl#equivalentClass x1 [https://example.org/Colour]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void anAnnotationOfATripleTheFileDoesNotAssertIsSkippedWithItsNode() {
+    final var document =
+        readDocument(
+            """
+            ex:A a owl:Class . ex:B a owl:Class .
+            [] a owl:Axiom; owl:annotatedSource ex:A; owl:annotatedProperty rdfs:subClassOf;
+               owl:annotatedTarget ex:B; rdfs:comment "reified only" .
+            """);
+
+    assertEquals(0, document.axioms().size());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            + " http://www.w3.org/2002/07/owl#Axiom x1 [(blank node)]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void aPropertyKeepsOnlyWhatItsKindMayCarryAndReportsTheRest() {
+    final var document =
+        readDocument(
+            """
+            ex:d a owl:DatatypeProperty, owl:InverseFunctionalProperty, owl:FunctionalProperty .
+            ex:a a owl:AnnotationProperty, owl:ObjectProperty .
+            ex:c1 a owl:ObjectProperty; owl:propertyChainAxiom (ex:a ex:d) .
+            ex:c2 a owl:ObjectProperty; owl:propertyChainAxiom (ex:a ex:d), (ex:d ex:a) .
+            """);
+
+    final var byIri =
+        document.properties().stream()
+            .collect(
+                Collectors.toMap(property -> property.getIri().toString(), property -> property));
+    assertEquals(OntologyPropertyKind.OBJECT, byIri.get("https://example.org/a").getKind());
+    assertEquals(
+        Set.of(RelationshipCharacteristic.FUNCTIONAL),
+        byIri.get("https://example.org/d").getCharacteristics());
+    assertEquals(
+        List.of(URI.create("https://example.org/a"), URI.create("https://example.org/d")),
+        byIri.get("https://example.org/c2").getPropertyChain());
+    assertEquals(
+        "[EXTRA_VALUE http://www.w3.org/2002/07/owl#propertyChainAxiom x1 [https://example.org/c2];"
+            + " UNSUPPORTED_STRUCTURE http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+            + " http://www.w3.org/2002/07/owl#InverseFunctionalProperty x1 [https://example.org/d]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void superpropertyLinksOfEveryKindReadBackAndASelfLinkIsSkipped() {
+    final var document =
+        readDocument(
+            """
+            ex:a a owl:ObjectProperty ; rdfs:subPropertyOf ex:b, ex:a, <https://schema.org/relatedTo> .
+            ex:b a owl:ObjectProperty .
+            ex:c a owl:DatatypeProperty ; rdfs:subPropertyOf ex:d .
+            ex:d a owl:DatatypeProperty .
+            ex:e a owl:AnnotationProperty ; rdfs:subPropertyOf rdfs:label .
+            """);
+
+    final var byIri =
+        document.properties().stream()
+            .collect(
+                Collectors.toMap(property -> property.getIri().toString(), property -> property));
+    assertEquals(
+        List.of(URI.create("https://example.org/b"), URI.create("https://schema.org/relatedTo")),
+        byIri.get("https://example.org/a").getSuperProperties());
+    assertEquals(
+        List.of(URI.create("https://example.org/d")),
+        byIri.get("https://example.org/c").getSuperProperties());
+    assertEquals(
+        List.of(URI.create(RDFS.label.getURI())),
+        byIri.get("https://example.org/e").getSuperProperties());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/a]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void aSuperpropertyNothingDeclaresOrOfAnotherKindIsDroppedWhileThePropertyImports() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES
+                    + """
+                    ex:a a owl:ObjectProperty ; rdfs:subPropertyOf <https://schema.org/relatedTo>, ex:b .
+                    ex:b a owl:ObjectProperty .
+                    ex:c a owl:DatatypeProperty ; rdfs:subPropertyOf ex:b .
+                    """));
+
+    final var summary = importer.summarize(source);
+    assertEquals(3, summary.getCounts().getNewProperties());
+    assertEquals(0, summary.getCounts().getSkippedDefinitions());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/c];"
+            + " UNDECLARED_REFERENCE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/a]]",
+        skippedGroups(summary.getSkippedStatements()));
+
+    final var planned =
+        importer.preview(source, emptySnapshot(root())).getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getProperty() != null)
+            .collect(
+                Collectors.toMap(
+                    operation -> operation.getProperty().getIri().toString(),
+                    OntologyChangeOperation::getProperty));
+    assertEquals(
+        List.of(URI.create("https://example.org/b")),
+        planned.get("https://example.org/a").getSuperProperties());
+    assertEquals(List.of(), planned.get("https://example.org/c").getSuperProperties());
+  }
+
+  @Test
+  void aLinkToASuperpropertyThePlanRefusesIsDroppedInsteadOfRefusingTheSubproperty() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES
+                    + """
+                    ex:s a owl:ObjectProperty ; owl:inverseOf ex:missing .
+                    ex:p a owl:ObjectProperty ; rdfs:subPropertyOf ex:s .
+                    """));
+
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    assertEquals(1, preview.getSummary().getCounts().getNewProperties());
+    assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(
+        "[UNDECLARED_REFERENCE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/p]]",
+        skippedGroups(preview.getSummary().getSkippedStatements()));
+    final var kept =
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getProperty() != null)
+            .map(OntologyChangeOperation::getProperty)
+            .toList();
+    assertEquals(1, kept.size());
+    assertEquals("https://example.org/p", kept.getFirst().getIri().toString());
+    assertEquals(List.of(), kept.getFirst().getSuperProperties());
+  }
+
+  @Test
+  void theLinksOfASuperpropertyCycleAreDroppedAndItsPropertiesImport() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES
+                    + """
+                    ex:a a owl:ObjectProperty ; rdfs:subPropertyOf ex:b .
+                    ex:b a owl:ObjectProperty ; rdfs:subPropertyOf ex:a, ex:top .
+                    ex:c a owl:ObjectProperty ; rdfs:subPropertyOf ex:a .
+                    ex:top a owl:ObjectProperty .
+                    """));
+
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    assertEquals(4, preview.getSummary().getCounts().getNewProperties());
+    assertEquals(0, preview.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x2"
+            + " [https://example.org/a, https://example.org/b]]",
+        skippedGroups(preview.getSummary().getSkippedStatements()));
+    final var planned =
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getProperty() != null)
+            .collect(
+                Collectors.toMap(
+                    operation -> operation.getProperty().getIri().toString(),
+                    operation -> operation.getProperty().getSuperProperties()));
+    assertEquals(List.of(), planned.get("https://example.org/a"));
+    assertEquals(
+        List.of(URI.create("https://example.org/top")), planned.get("https://example.org/b"));
+    assertEquals(
+        List.of(URI.create("https://example.org/a")), planned.get("https://example.org/c"));
+  }
+
+  @Test
+  void aStoredPropertyWhoseOnlyChangeIsAnUnresolvableLinkStaysAsItIs() {
+    final var root = root();
+    final var snapshot =
+        imported(root, TURTLE_PREFIXES + "ex:a a owl:ObjectProperty . ex:b a owl:ObjectProperty .");
+
+    final var unresolved =
+        importer.preview(
+            importer.read(
+                turtleRequest(
+                    TURTLE_PREFIXES
+                        + "ex:a a owl:ObjectProperty ; rdfs:subPropertyOf <https://schema.org/relatedTo> .")),
+            snapshot);
+    assertEquals(0, unresolved.getSummary().getCounts().getUpdatedProperties());
+    assertEquals(
+        NativeOntologyImportItemStatus.ALREADY_EXISTS,
+        unresolved.getSummary().getItems().getFirst().getStatus());
+    assertEquals(1, unresolved.getSummary().getSkippedStatements().getTotal());
+
+    final var linked =
+        importer.preview(
+            importer.read(
+                turtleRequest(
+                    TURTLE_PREFIXES + "ex:a a owl:ObjectProperty ; rdfs:subPropertyOf ex:b .")),
+            snapshot);
+    assertEquals(1, linked.getSummary().getCounts().getUpdatedProperties());
+    assertEquals("Superproperties", linked.getSummary().getItems().getFirst().getDetail());
+    assertEquals(0, linked.getSummary().getSkippedStatements().getTotal());
+  }
+
+  @Test
+  void aPreviewCarriesTheSkippedReportAndANativeCsvCarriesNone() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES + "ex:A a owl:Class; rdfs:isDefinedBy <https://example.org/> ."));
+
+    final var summary = importer.summarize(source);
+
+    assertEquals(1, summary.getSkippedStatements().getTotal());
+    assertEquals(
+        "http://www.w3.org/2000/01/rdf-schema#isDefinedBy",
+        summary.getSkippedStatements().getGroups().getFirst().getPredicate());
+    final var csv =
+        new NativeOntologyRdfImporter.Source(
+            NativeOntologyImportFormat.CSV,
+            new NativeOntologyDocument(null, List.of(), List.of(), List.of()));
+    assertEquals(0, importer.summarize(csv).getSkippedStatements().getTotal());
   }
 
   @Test
@@ -376,7 +977,7 @@ class NativeOntologyRdfImporterTest {
       assertEquals(
           "https://external.example/C",
           plan.getOperations().getFirst().getConcept().getIri().toString());
-      assertTrue(plan.getOperations().getFirst().getConcept().getName().startsWith("imported-C-"));
+      assertEquals("C", plan.getOperations().getFirst().getConcept().getName());
       assertEquals(
           root.getFullyQualifiedName()
               + "."
@@ -440,7 +1041,7 @@ class NativeOntologyRdfImporterTest {
             """
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-        <https://example.org/p> a owl:ObjectProperty; rdfs:range "bad" .
+        <https://example.org/C> a owl:Class; owl:deprecated "yes" .
         """,
             """
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -557,24 +1158,24 @@ class NativeOntologyRdfImporterTest {
       return turtleRequest(METADATA_BASE + (populated ? METADATA_ANNOTATIONS : ""));
     }
     final String header =
-        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
     final List<String> rows = new ArrayList<>();
     rows.add(header);
     for (final String name : List.of("Customer", "Account", "code", "identifier")) {
       final boolean concept = name.equals("Customer") || name.equals("Account");
-      final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+      final var cells = new ArrayList<>(Collections.nCopies(28, ""));
       cells.set(0, concept ? "CONCEPT" : "PROPERTY");
       cells.set(1, "https://example.org/" + name);
       cells.set(concept ? 4 : 8, concept ? "OWL_CLASS" : "DATA");
       if (populated && name.equals("Customer")) {
-        cells.set(23, "true");
-        cells.set(24, "https://example.org/standard");
-        cells.set(25, "true");
-        cells.set(26, "https://example.org/Account");
+        cells.set(24, "true");
+        cells.set(25, "https://example.org/standard");
+        cells.set(26, "true");
+        cells.set(27, "https://example.org/Account");
       }
       if (populated && name.equals("code")) {
-        cells.set(25, "true");
-        cells.set(26, "https://example.org/identifier");
+        cells.set(26, "true");
+        cells.set(27, "https://example.org/identifier");
       }
       rows.add(String.join(",", cells));
     }
@@ -645,9 +1246,7 @@ class NativeOntologyRdfImporterTest {
       value = {
         "owl:deprecated \"yes\" | http://www.w3.org/2002/07/owl#deprecated requires an xsd:boolean value",
         "om:abstract \"true\" | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
-        "om:abstract \"2\"^^xsd:boolean | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
-        "dct:source \"ISO 8000\" | Expected an absolute RDF IRI",
-        "dct:isReplacedBy \"Account\" | Expected an absolute RDF IRI"
+        "om:abstract \"2\"^^xsd:boolean | https://open-metadata.org/ontology/abstract requires an xsd:boolean value"
       })
   void classModelAnnotationsRefuseValuesOfTheWrongShape(String statement, String message) {
     final var root = root();
@@ -731,7 +1330,15 @@ class NativeOntologyRdfImporterTest {
     final var summary = importer.summarize(source);
     final var preview = importer.preview(source, emptySnapshot(root()));
 
-    assertEquals(summary, preview.getSummary());
+    assertEquals(summary.getCounts(), preview.getSummary().getCounts());
+    assertEquals(summary.getDetectedFormat(), preview.getSummary().getDetectedFormat());
+    assertEquals(summary.getOntologyLabel(), preview.getSummary().getOntologyLabel());
+    assertEquals(
+        summary.getItems().stream().map(item -> item.getId() + item.getStatus()).toList(),
+        preview.getSummary().getItems().stream()
+            .map(item -> item.getId() + item.getStatus())
+            .toList());
+    assertTrue(summary.getItems().stream().allMatch(item -> item.getOperationId() == null));
     final var counts = summary.getCounts();
     assertEquals(3, counts.getNewConcepts());
     assertEquals(0, counts.getUpdatedConcepts());
@@ -881,6 +1488,49 @@ class NativeOntologyRdfImporterTest {
           ex:A rdfs:subClassOf ex:B .
           ex:C rdfs:subClassOf ex:A .
           """;
+
+  private static final String TURTLE_PREFIXES =
+      """
+      @prefix owl: <http://www.w3.org/2002/07/owl#> .
+      @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+      @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+      @prefix dct: <http://purl.org/dc/terms/> .
+      @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+      @prefix ex: <https://example.org/> .
+      """;
+
+  private NativeOntologyDocument readDocument(final String turtle) {
+    return readRaw(TURTLE_PREFIXES + turtle);
+  }
+
+  private NativeOntologyDocument readRaw(final String turtle) {
+    final var model = importer.parse(turtle, RdfSerializationFormat.TURTLE);
+    try {
+      return NativeOntologyRdfImporter.read(model);
+    } finally {
+      model.close();
+    }
+  }
+
+  private static String skippedGroups(final NativeOntologyDocument document) {
+    return skippedGroups(document.skipped());
+  }
+
+  private static String skippedGroups(final NativeOntologyImportSkipped skipped) {
+    return skipped.getGroups().stream()
+        .map(
+            group ->
+                group.getReason()
+                    + " "
+                    + (group.getPredicate() == null ? "-" : group.getPredicate())
+                    + (group.getObject() == null ? "" : " " + group.getObject())
+                    + " x"
+                    + group.getCount()
+                    + " "
+                    + group.getSubjects())
+        .collect(Collectors.joining("; ", "[", "]"));
+  }
 
   private static String classes(int count) {
     final StringBuilder turtle = new StringBuilder();

@@ -1,20 +1,16 @@
 # AGENTS.md
 
-Always-loaded guidance for every session, whatever the harness — **the only instruction file:** every `CLAUDE.md` and
-`.github/copilot-instructions.md` is a symlink to the `AGENTS.md` beside it
-(ADR:2026-10-09-agents-md-is-the-one-instruction-file), so edit this file, never a copy. **Language- and path-specific
-rules live in `.claude/rules/*.md` (Claude Code auto-loads them on matching files; other harnesses read the matching
-one before editing); procedures live in skills (loaded on invoke).** This file is the map — see the pointer index at
-the bottom. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the request/ingestion/search
-paths, the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test, and add an entity or
-connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) — the **knowledge index** —
-to **find existing design, plan, and reference docs** for whatever area you're working on.
+Always-loaded guidance for every session, whatever the harness — **the only instruction file:** every `CLAUDE.md` and `.github/copilot-instructions.md` is a symlink to the
+`AGENTS.md` beside it (ADR:2026-10-09-agents-md-is-the-one-instruction-file), so edit this file, never a copy. **Language- and path-specific rules live in `.claude/rules/*.md`
+(Claude Code auto-loads them on matching files; other harnesses read the matching one before editing); procedures live in skills (loaded on invoke).** This file is the map — see
+the pointer index at the bottom. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the request/ingestion/search paths, the invariants that hold); read
+[DEVELOPER.md](DEVELOPER.md) for **how to build, test, and add an entity or connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) — the
+**knowledge index** — to **find existing design, plan, and reference docs** for whatever area you're working on.
 
 ## About OpenMetadata
 
-OpenMetadata is a unified metadata platform for data discovery, observability, and governance — a
-multi-module project with a Java backend, a React/TypeScript frontend, a Python ingestion framework,
-and Docker infrastructure.
+OpenMetadata is a unified metadata platform for data discovery, observability, and governance — a multi-module project with a Java backend, a React/TypeScript frontend, a Python
+ingestion framework, and Docker infrastructure.
 
 ## Stack at a glance
 
@@ -82,44 +78,32 @@ Other key trees: `ingestion/` (Python framework + connectors), `bootstrap/sql/` 
 
 ## Hard cross-cutting constraints (apply to every session, all languages)
 
-**Secrets & security.** Never commit secrets — use environment variables or a secrets manager.
-Auth is JWT with OAuth2/SAML; RBAC lives in Java entities; config in `conf/openmetadata.yaml`.
-**Do not modify `.github/workflows/**` on your own** — CI workflows are a supply-chain surface; a
-`PreToolUse` hook blocks edits there unless the user explicitly authorizes them (by setting
-`CLAUDE_ALLOW_WORKFLOW_EDITS=1`). Ask first.
+**Secrets & security.** Never commit secrets — use environment variables or a secrets manager. Auth is JWT with OAuth2/SAML; RBAC lives in Java entities; config in
+`conf/openmetadata.yaml`. **Do not modify `.github/workflows/**` on your own** — CI workflows are a supply-chain surface; a `PreToolUse` hook blocks edits there unless the user
+explicitly authorizes them (by setting `CLAUDE_ALLOW_WORKFLOW_EDITS=1`). Ask first.
 
-**All caches MUST be bounded.** Never use a bare `dict` / `HashMap` / `Map` as a cache without an
-explicit size cap — they grow with input and OOM on large catalogs/ingestions (only exception: the
-user explicitly asks for unbounded). Pick a sane default (100–1000 entries); if unsure, ask.
-Python: `collections.OrderedDict` + `popitem(last=False)`, `@functools.lru_cache(maxsize=N)`, or
-`cachetools.LRUCache` (cache hits **and** misses). Java: Caffeine/Guava `maximumSize(N)`.
-TypeScript: `lru-cache`. Before adding a cache, check it isn't already cached a layer down (e.g.
-`OpenMetadata._search_es_entity` is already `@lru_cache(maxsize=512)`).
+**All caches MUST be bounded.** Never use a bare `dict` / `HashMap` / `Map` as a cache without an explicit size cap — they grow with input and OOM on large catalogs/ingestions
+(only exception: the user explicitly asks for unbounded). Pick a sane default (100–1000 entries); if unsure, ask. Python: `collections.OrderedDict` + `popitem(last=False)`,
+`@functools.lru_cache(maxsize=N)`, or `cachetools.LRUCache` (cache hits **and** misses). Java: Caffeine/Guava `maximumSize(N)`. TypeScript: `lru-cache`. Before adding a cache,
+check it isn't already cached a layer down (e.g. `OpenMetadata._search_es_entity` is already `@lru_cache(maxsize=512)`).
 
-**Comments explain *why*, never restate code.** Do NOT add comments that describe what obvious code
-does (`// Create user` before `createUser()`). Only comment complex business logic, non-obvious
-algorithms/workarounds, public-API JavaDoc, or `TODO/FIXME` with a ticket reference. If code needs a
-comment to be understood, refactor it to be clearer instead.
+**Comments explain *why*, never restate code.** Do NOT add comments that describe what obvious code does (`// Create user` before `createUser()`). Only comment complex business
+logic, non-obvious algorithms/workarounds, public-API JavaDoc, or `TODO/FIXME` with a ticket reference. If code needs a comment to be understood, refactor it to be clearer instead.
 
-**Testing philosophy.** Test real behavior, not mock wiring — if a test mocks 3+ of your own classes
-to verify a method call, it tests the wrong thing. Prefer integration tests over heavily-mocked unit
-tests (this project has real ITs: `OpenMetadataApplicationTest`, Docker, real OpenSearch). Mocks are
-for boundaries (HTTP clients, third-party APIs), not internals. Ask "what breaks if this test passes
-but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on observable outcomes
-(API responses, DB state), not internal `verify()` calls.
+**Testing philosophy.** Test real behavior, not mock wiring — if a test mocks 3+ of your own classes to verify a method call, it tests the wrong thing. Prefer integration tests
+over heavily-mocked unit tests (this project has real ITs: `OpenMetadataApplicationTest`, Docker, real OpenSearch). Mocks are for boundaries (HTTP clients, third-party APIs), not
+internals. Ask "what breaks if this test passes but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on observable outcomes (API responses, DB state), not
+internal `verify()` calls.
 
-**License headers are per-module — copy one from a sibling file, never assume Apache.** UI TS/TSX:
-Apache-2.0 (`yarn license-header-fix`). Python: `ingestion/` is **Collate Community License 1.0** (`ingestion/LICENSE`); `openmetadata-airflow-apis/` Python files use the same Collate header template.
-Java: Apache-2.0, most files carry none.
-Only the UI is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; spotless
-and `py_format_check` never look at headers, so a wrong Python or Java header ships silently.
+**License headers are per-module — copy one from a sibling file, never assume Apache.** UI TS/TSX: Apache-2.0 (`yarn license-header-fix`). Python: `ingestion/` is **Collate
+Community License 1.0** (`ingestion/LICENSE`); `openmetadata-airflow-apis/` Python files use the same Collate header template. Java: Apache-2.0, most files carry none. Only the UI
+is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; spotless and `py_format_check` never look at headers, so a wrong Python or Java header ships silently.
 
-**Schema-first.** JSON Schemas in `openmetadata-spec/` are the single source of truth; all generated
-code (Java POJOs, Pydantic models, TS types) is derived. **Edit the schema, then regenerate — never
-hand-edit generated output.** Details in `.claude/rules/schema-first.md`.
+**Schema-first.** JSON Schemas in `openmetadata-spec/` are the single source of truth; all generated code (Java POJOs, Pydantic models, TS types) is derived. **Edit the schema,
+then regenerate — never hand-edit generated output.** Details in `.claude/rules/schema-first.md`.
 
-**Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus
-on functionality over education. Do not add unnecessary blank lines between prose and code blocks.
+**Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus on functionality over education. Do not add unnecessary blank lines between
+prose and code blocks.
 
 **No wrappers around core-ui components.** If a wrapper component exists that wraps a core-ui component, skip it — use the `openmetadata-ui-core-components` component directly at the call site. Only create a wrapper if it adds genuine, non-trivial behaviour (custom hook logic, composed sub-components, domain-specific state). A wrapper that only passes props through is a maintenance liability: it hides which core component is in use and drifts from upstream updates.
 
@@ -187,8 +171,8 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 ### Harness integrity (CI, warnings-only)
 
-A CI workflow (harness-integrity.yml) runs `scripts/harness/check_harness.py` on PRs — also `make harness-check` locally.
-It **warns, never blocks** (promote to a gate only with maintainer sign-off) when the agent-facing config decays:
+A CI workflow (harness-integrity.yml) runs `scripts/harness/check_harness.py` on PRs — also `make harness-check` locally. It **warns, never blocks** (promote to a gate only with
+maintainer sign-off) when the agent-facing config decays:
 
 - **dead references** — a path, `make`/`yarn` target, or `mvn` goal named in this file,
   ARCHITECTURE.md, `docs/index.md`, `.claude/rules/**`, or a SKILL.md that no longer resolves;
@@ -200,6 +184,13 @@ It **warns, never blocks** (promote to a gate only with maintainer sign-off) whe
 - **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
 - **generated-doc freshness** — `docs/generated/**` out of date with its source;
 - **decision records** — a malformed record or a dangling `ADR:` citation (also a pre-commit hook).
+
+## Task completion and resource use
+
+Follow ADR:2026-11-05-agent-work-stops-at-the-requested-outcome: select verification once and reuse applicable evidence across skills. Implementation/push/PR creation uses focused
+checks; merge readiness includes full coverage. Report pending checks honestly and finish after confirming the requested deliverable. Monitoring CI or dispatching extra workflows
+requires that task scope. Expand checks for changed behavior, relevant failures or a named risk; retry infrastructure only after addressing its cause. Read instructions once, batch
+independent reads, use compact tool summaries, and let runners wait instead of repeatedly inspecting unchanged logs.
 
 ## Git commit conventions
 - Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 

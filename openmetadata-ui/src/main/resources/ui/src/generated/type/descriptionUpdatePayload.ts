@@ -23,8 +23,11 @@ export interface DescriptionUpdatePayload {
      */
     currentDescription?: string;
     /**
-     * Path to the field being updated (e.g., 'columns.customer_id.description' or just
-     * 'description' for entity-level).
+     * Path to the description being updated. Written as <container>.<name>[.<child
+     * name>...].description, for example 'columns.customer_id.description',
+     * 'columns.address.city.description' for a nested column or
+     * 'messageSchema.schemaFields."order.id".description' for a name that contains a dot;
+     * 'description' alone, or no path, means the entity itself.
      */
     fieldPath?: string;
     /**

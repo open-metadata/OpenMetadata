@@ -1,0 +1,100 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackInstallJob.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPackInstallJob",
+  "description": "Background execution state of a library install into a native ontology. Progress counts completed slices.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackInstallJob",
+  "definitions": {
+    "status": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyPackInstallJobStatus",
+      "type": "string",
+      "enum": ["QUEUED", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"]
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "integer",
+      "minimum": 1,
+      "existingJavaType": "java.lang.Long"
+    },
+    "ontologyId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "moduleIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "$ref": "#/definitions/status"
+    },
+    "progress": {
+      "description": "Slices applied.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "total": {
+      "description": "Slices planned. Zero until the plan exists.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "membersApplied": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "memberCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "planDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "error": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "cancelRequested": {
+      "type": "boolean",
+      "default": false
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "createdAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "completedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": [
+    "id",
+    "ontologyId",
+    "packId",
+    "version",
+    "moduleIds",
+    "status",
+    "progress",
+    "total",
+    "membersApplied",
+    "memberCount",
+    "createdBy",
+    "createdAt",
+    "updatedAt"
+  ],
+  "additionalProperties": false
+}

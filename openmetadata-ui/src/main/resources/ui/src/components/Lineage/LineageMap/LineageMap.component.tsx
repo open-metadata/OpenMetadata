@@ -495,7 +495,7 @@ const getHydratedSceneEdge = async (
 // widest card.
 const getSemanticZoomBand = (
   band: LineageBand,
-  previousZoom: number,
+  restingZoom: number,
   zoom: number,
   flowNodes: Node<SceneFlowNodeData>[],
   screen?: DOMRect,
@@ -514,7 +514,7 @@ const getSemanticZoomBand = (
     height: 0,
   };
   const direction = getSemanticZoomDirection({
-    previousZoom,
+    previousZoom: restingZoom,
     zoom,
     graph,
     card,
@@ -1039,7 +1039,11 @@ const LineageMapCanvas = ({
   const pendingFetchRef = useRef(false);
   const preserveViewportRef = useRef(false);
   const lastSemanticZoomAtRef = useRef(0);
-  const previousZoomRef = useRef<number>();
+  // The zoom the viewport last came to rest at. Semantic zoom judges a move
+  // against it, not against the previous move: once the zoom reaches a limit,
+  // moves keep arriving with the same zoom, and only this still shows which
+  // way the user zoomed.
+  const restingZoomRef = useRef<number>();
   const semanticZoomSuppressedRef = useRef(false);
   const semanticZoomSuppressedUntilRef = useRef(0);
   const semanticZoomResumeTimerRef = useRef<number>();
@@ -1169,7 +1173,7 @@ const LineageMapCanvas = ({
         if (Date.now() < semanticZoomSuppressedUntilRef.current) {
           return;
         }
-        previousZoomRef.current = reactFlowInstance?.getZoom();
+        restingZoomRef.current = reactFlowInstance?.getZoom();
         semanticZoomSuppressedRef.current = false;
       }, Math.max(durationMs, semanticZoomSuppressedUntilRef.current - now));
     },
@@ -1726,47 +1730,45 @@ const LineageMapCanvas = ({
     [handleDrill, pickZoomTargetNode, t]
   );
 
-  const handleMove = useCallback(
-    (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
-      // Any further move, a pan included, restarts or cancels a pending drill.
-      window.clearTimeout(semanticZoomInTimerRef.current);
-      // Zoom only changes band on the main Lineage page.
-      if (!isPlatformLineage || !scene || semanticZoomSuppressedRef.current) {
-        previousZoomRef.current = viewport.zoom;
-
-        return;
-      }
-      const previousZoom = previousZoomRef.current ?? viewport.zoom;
-      previousZoomRef.current = viewport.zoom;
-      const now = Date.now();
-      if (now - lastSemanticZoomAtRef.current < SEMANTIC_ZOOM_COOLDOWN) {
-        return;
-      }
+  const getRequestedBand = useCallback(
+    (
+      currentScene: LineageScene,
+      event: ZoomGestureEvent | null,
+      zoom: number
+    ) => {
+      const restingZoom = restingZoomRef.current ?? zoom;
       const { target, leaf } =
-        viewport.zoom > previousZoom ? pickZoomTargetNode(event) : {};
+        zoom > restingZoom ? pickZoomTargetNode(event) : {};
       const zoomTarget = nodesRef.current.find(
         (node) => node.data.sceneNode === (target ?? leaf)
       );
-      const nextBand = getSemanticZoomBand(
-        scene.band,
-        previousZoom,
-        viewport.zoom,
+
+      return getSemanticZoomBand(
+        currentScene.band,
+        restingZoom,
+        zoom,
         nodesRef.current,
         wrapperRef.current?.getBoundingClientRect(),
         zoomTarget
       );
-      if (nextBand === scene.band) {
+    },
+    [pickZoomTargetNode]
+  );
+
+  const handleMove = useCallback(
+    (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
+      // Any further move, a pan included, restarts the settle window.
+      window.clearTimeout(semanticZoomInTimerRef.current);
+      // Zoom only changes band on the main Lineage page.
+      if (!isPlatformLineage || !scene || semanticZoomSuppressedRef.current) {
         return;
       }
-      if (isDeeperBand(scene.band, nextBand)) {
-        semanticZoomInTimerRef.current = window.setTimeout(() => {
-          if (semanticZoomSuppressedRef.current || sceneRef.current !== scene) {
-            return;
-          }
-          lastSemanticZoomAtRef.current = Date.now();
-          handleSemanticZoomIn(event);
-        }, SEMANTIC_ZOOM_IN_SETTLE_MS);
-      } else {
+      const now = Date.now();
+      if (now - lastSemanticZoomAtRef.current < SEMANTIC_ZOOM_COOLDOWN) {
+        return;
+      }
+      const nextBand = getRequestedBand(scene, event, viewport.zoom);
+      if (nextBand !== scene.band && !isDeeperBand(scene.band, nextBand)) {
         lastSemanticZoomAtRef.current = now;
         const parentRequest = getParentSceneRequest(scene);
         if (parentRequest) {
@@ -1775,13 +1777,28 @@ const LineageMapCanvas = ({
           return;
         }
         handleBandChange(nextBand);
+
+        return;
       }
+      // A drill waits until the viewport is still. This is the last move
+      // before it settles, judged against the resting zoom, so the drill fires
+      // even when the final moves no longer change the zoom.
+      semanticZoomInTimerRef.current = window.setTimeout(() => {
+        if (semanticZoomSuppressedRef.current || sceneRef.current !== scene) {
+          return;
+        }
+        restingZoomRef.current = viewport.zoom;
+        if (isDeeperBand(scene.band, nextBand)) {
+          lastSemanticZoomAtRef.current = Date.now();
+          handleSemanticZoomIn(event);
+        }
+      }, SEMANTIC_ZOOM_IN_SETTLE_MS);
     },
     [
+      getRequestedBand,
       handleBandChange,
       handleSemanticZoomIn,
       isPlatformLineage,
-      pickZoomTargetNode,
       scene,
       updateRequest,
     ]

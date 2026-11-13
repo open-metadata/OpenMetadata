@@ -15,11 +15,10 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Download01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps } from '@tiptap/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DownloadIcon } from '../../../../../assets/svg/action-icons/download.svg';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { bytesToSize } from '../../../../../utils/StringUtils';
 
@@ -57,7 +56,7 @@ const UploadStatus = ({
       <span className="separator">|</span>
       <ButtonUtility
         data-testid="download-file-attachment"
-        icon={DownloadIcon}
+        icon={Download01}
         isDisabled={isFileLoading}
         size="sm"
         tooltip={t('label.download')}

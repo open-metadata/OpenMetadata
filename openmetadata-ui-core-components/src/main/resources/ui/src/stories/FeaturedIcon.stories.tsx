@@ -40,6 +40,7 @@ const meta = {
         'outline',
         'modern',
         'modern-neue',
+        'surface',
       ],
     },
   },
@@ -94,6 +95,7 @@ export const Themes: StoryObj = {
         size="lg"
         theme="modern-neue"
       />
+      <FeaturedIcon color="brand" icon={InfoCircle} size="lg" theme="surface" />
     </div>
   ),
 };
@@ -113,6 +115,16 @@ export const Colors: StoryObj = {
       <FeaturedIcon color="success" icon={InfoCircle} size="lg" theme="light" />
       <FeaturedIcon color="warning" icon={InfoCircle} size="lg" theme="light" />
       <FeaturedIcon color="error" icon={InfoCircle} size="lg" theme="light" />
+    </div>
+  ),
+};
+
+// Entity page header icon: md is the 36px badge next to the entity title.
+export const Surface: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <FeaturedIcon color="brand" icon={InfoCircle} size="md" theme="surface" />
+      <FeaturedIcon color="gray" icon={InfoCircle} size="md" theme="surface" />
     </div>
   ),
 };

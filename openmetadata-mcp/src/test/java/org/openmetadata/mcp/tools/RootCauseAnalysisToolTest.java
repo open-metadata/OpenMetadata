@@ -17,16 +17,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /**
  * Pins the in-memory slimming that {@link RootCauseAnalysisTool} applies to the raw {@code
@@ -316,6 +329,43 @@ class RootCauseAnalysisToolTest {
     assertThat(outDownstream.get("downstreamImpactedEdgesCount")).isEqualTo(200);
     assertThat(JsonUtils.pojoToJson(output).length())
         .isLessThan(McpResponseTrim.MAX_RESPONSE_CHARS);
+  }
+
+  @Test
+  void failingTestsOfAnAssetAreWithheldWithoutViewTests() {
+    Authorizer authorizer = mock(Authorizer.class);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            eq(securityContext),
+            argThat(context -> context.getOperations(null).contains(MetadataOperation.VIEW_TESTS)),
+            any());
+    RootCauseAnalysisTool.RcaRequest request =
+        new RootCauseAnalysisTool.RcaRequest(
+            "svc.db.payroll",
+            "table",
+            1,
+            1,
+            null,
+            false,
+            false,
+            null,
+            securityContext,
+            authorizer,
+            null);
+    Map<String, Object> node = new HashMap<>();
+    node.put("fullyQualifiedName", "svc.db.payroll");
+    node.put("entityType", "table");
+    node.put("testSuite", Map.of("id", "suite-id"));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      Map<String, Object> result =
+          new RootCauseAnalysisTool().addTestCaseResultForTestSuite(node, request);
+
+      assertThat(result).containsKey("note").doesNotContainKey("testCaseResults");
+      entity.verify(() -> Entity.getEntityTimeSeriesRepository(any()), never());
+    }
   }
 
   @Test

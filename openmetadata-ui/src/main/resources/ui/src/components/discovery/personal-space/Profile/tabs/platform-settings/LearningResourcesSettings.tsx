@@ -388,6 +388,7 @@ const LearningResourcesSettings = ({
         <Box className="tw:shrink-0 tw:p-3" direction="col" gap={2}>
           <Box align="center" gap={2} wrap="wrap">
             <Input
+              autoComplete="off"
               className="tw:max-w-72"
               data-testid="search-resources"
               icon={Search}

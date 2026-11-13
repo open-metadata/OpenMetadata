@@ -609,3 +609,113 @@ export function layoutDataClusters(
     width: Math.max(connected.width, grid.width),
   };
 }
+
+export const SOURCE_ROOT_WIDTH = 204;
+export const SOURCE_ROOT_HEIGHT = 36;
+export const SOURCE_CARD_WIDTH = 260;
+export const SOURCE_CARD_HEIGHT = 52;
+export const SOURCE_GROUP_HEADER_HEIGHT = 32;
+const SOURCE_MARGIN = 40;
+const SOURCE_ROOT_GAP = 44;
+const SOURCE_GROUP_PADDING = 12;
+const SOURCE_CARD_GAP = 8;
+const SOURCE_GROUP_GAP = 12;
+// The root sits level with the first cards rather than the middle of a long list.
+const SOURCE_ROOT_MAX_CENTER = 240;
+
+export interface SourceGroupInput {
+  key: string;
+  itemIds: string[];
+}
+
+export interface SourceGroupLayout {
+  /** Below the last group, where the footer controls start. */
+  bottom: number;
+  cards: Map<string, CardBox>;
+  groups: Array<CardBox & { key: string }>;
+  root: CardBox;
+  /** The left edge of the group column. */
+  groupLeft: number;
+  width: number;
+}
+
+/**
+ * Lays out one concept as a root node with its assets in source panels to the
+ * right, stacked top to bottom in the given order.
+ */
+export function layoutSourceGroups(
+  groups: SourceGroupInput[]
+): SourceGroupLayout {
+  const groupLeft = SOURCE_MARGIN + SOURCE_ROOT_WIDTH + SOURCE_ROOT_GAP;
+  const groupWidth = SOURCE_CARD_WIDTH + 2 * SOURCE_GROUP_PADDING;
+  const cards = new Map<string, CardBox>();
+  let top = SOURCE_MARGIN;
+  const placed = groups.map(({ key, itemIds }) => {
+    const groupTop = top;
+    itemIds.forEach((id, index) =>
+      cards.set(id, {
+        height: SOURCE_CARD_HEIGHT,
+        left: groupLeft + SOURCE_GROUP_PADDING,
+        top:
+          groupTop +
+          SOURCE_GROUP_HEADER_HEIGHT +
+          index * (SOURCE_CARD_HEIGHT + SOURCE_CARD_GAP),
+        width: SOURCE_CARD_WIDTH,
+      })
+    );
+    const height =
+      SOURCE_GROUP_HEADER_HEIGHT +
+      itemIds.length * (SOURCE_CARD_HEIGHT + SOURCE_CARD_GAP) -
+      SOURCE_CARD_GAP +
+      SOURCE_GROUP_PADDING;
+    top += height + SOURCE_GROUP_GAP;
+
+    return { height, key, left: groupLeft, top: groupTop, width: groupWidth };
+  });
+  const contentHeight = Math.max(
+    SOURCE_ROOT_HEIGHT,
+    top - SOURCE_GROUP_GAP - SOURCE_MARGIN
+  );
+  const rootCenter =
+    SOURCE_MARGIN + Math.min(contentHeight / 2, SOURCE_ROOT_MAX_CENTER);
+
+  return {
+    bottom: top,
+    cards,
+    groupLeft,
+    groups: placed,
+    root: {
+      height: SOURCE_ROOT_HEIGHT,
+      left: SOURCE_MARGIN,
+      top: rootCenter - SOURCE_ROOT_HEIGHT / 2,
+      width: SOURCE_ROOT_WIDTH,
+    },
+    width: groupLeft + groupWidth + SOURCE_MARGIN,
+  };
+}
+
+/** A curve from the right middle of `from` to the left middle of `to`. */
+export function sideCurve(from: CardBox, to: CardBox): string {
+  const startX = from.left + from.width;
+  const startY = from.top + from.height / 2;
+  const endX = to.left;
+  const endY = to.top + to.height / 2;
+  const handle = (endX - startX) / 2;
+
+  return `M${startX} ${startY} C${startX + handle} ${startY} ${
+    endX - handle
+  } ${endY} ${endX} ${endY}`;
+}
+
+const LINEAGE_BULGE = 32;
+
+/** A loop out of the right side of one card into the right side of another in the same column. */
+export function rightSideLoop(from: CardBox, to: CardBox): string {
+  const x = from.left + from.width;
+  const startY = from.top + from.height / 2;
+  const endY = to.top + to.height / 2;
+
+  return `M${x} ${startY} C${x + LINEAGE_BULGE} ${startY} ${
+    x + LINEAGE_BULGE
+  } ${endY} ${x} ${endY}`;
+}

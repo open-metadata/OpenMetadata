@@ -93,6 +93,15 @@ generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS
 .PHONY: generate-reference-docs
 generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
 
+## Ontology library packs (verbatim pinned upstream releases; see docs/decisions/2026-11-06-ontology-library-packs-are-verbatim-pinned-upstream-releases.md)
+.PHONY: ontology-packs
+ontology-packs:  ## Regenerate the bundled ontology library packs from scripts/ontology-packs/sources.json
+	python3 -I scripts/ontology-packs/generate.py $(if $(CACHE),--cache $(CACHE))
+
+.PHONY: ontology-packs-check
+ontology-packs-check:  ## Verify the bundled ontology library packs match sources.json (offline)
+	python3 -I scripts/ontology-packs/generate.py --check
+
 .PHONY: harness-check
 harness-check:  ## Warn on harness decay (dead refs, doc sizes, rule globs, generated-doc freshness)
 	python3 scripts/harness/check_harness.py
@@ -323,12 +332,12 @@ update_openapi_version:  ## To update the OpenAPI version in OpenMetadataApplica
 #make update_openapi_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_pyproject_version
-update_pyproject_version:  ## To update the pyproject.toml files
+update_pyproject_version: python_tools  ## To update the pyproject.toml files
 	file_paths="ingestion/pyproject.toml \
 				openmetadata-airflow-apis/pyproject.toml"; \
 	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) ; \
+	    "$(NOX_BOOTSTRAP)/bin/python" scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) || exit $$?; \
 	done
 # Commented section for independent usage of the module update_pyproject_version independently to update github actions
 #make update_pyproject_version RELEASE_VERSION=2.2.2

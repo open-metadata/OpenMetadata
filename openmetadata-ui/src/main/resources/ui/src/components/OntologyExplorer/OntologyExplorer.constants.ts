@@ -588,3 +588,9 @@ export const LABEL_TEXT_ALIGN_LEFT = 'left';
 
 // Concept drawers open full-height over the app chrome, like the Domain and Data Product forms.
 export const ONTOLOGY_DRAWER_WIDTH = 'max(420px, 40vw)';
+
+// Past this many concepts the Studio graph draws a neighbourhood instead of the
+// whole ontology: Fit would shrink every label below legibility.
+export const STUDIO_GRAPH_NODE_LIMIT = 500;
+export const STUDIO_FOCUS_NODE_CAP = 120;
+export const STUDIO_FOCUS_DEPTH = 2;

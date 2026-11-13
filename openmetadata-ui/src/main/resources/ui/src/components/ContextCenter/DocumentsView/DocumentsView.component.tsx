@@ -27,9 +27,15 @@ import {
   Check,
   ChevronRight,
   Copy01,
+  Documents,
+  DotsVertical,
+  Download01,
   Eye,
+  FolderArrowRight,
+  NoSearch,
   Share07,
   Trash01,
+  UploadCloud01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -37,25 +43,24 @@ import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
-import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import {
   ShareConfig,
   ShareRole,
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { EntityReference } from '../../../generated/entity/type';
+import { useMemoryExtraction } from '../../../hooks/discovery/context-center/useMemoryExtraction';
 import {
+  extractFileMemories,
+  getContextFileById,
   moveFileToFolder,
   moveFileToRoot,
   updateContextFile,
 } from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getFileExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -64,6 +69,7 @@ import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.type
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import MemoryExtractionMenuItem from '../../discovery/context-center/MemoryExtractionMenuItem/MemoryExtractionMenuItem';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
@@ -128,9 +134,10 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
             {() => (
               <Box align="center" className="tw:w-full" justify="between">
                 <Box align="center" gap={2}>
-                  <FolderIcon
+                  <Documents
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0"
+                    className="tw:shrink-0"
+                    size={16}
                   />
                   <div className="tw:max-w-40">
                     <Typography ellipsis size="text-sm">
@@ -141,7 +148,8 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 {isCurrent && (
                   <Check
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
+                    className="tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
+                    size={16}
                     strokeWidth={2}
                   />
                 )}
@@ -194,6 +202,7 @@ const FileActions: FC<FileActionsProps> = ({
   isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onFileRefreshed,
   onFileUpdated,
   onLoadMoreFolders,
 }) => {
@@ -201,6 +210,15 @@ const FileActions: FC<FileActionsProps> = ({
   const [isMoving, setIsMoving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isSharePickerOpen, setIsSharePickerOpen] = useState(false);
+  // Its response replaces the row, never merging through onFileUpdated, which keeps neverExtracted.
+  const extraction = useMemoryExtraction<ContextFile>({
+    action: getFileExtractionAction(file),
+    documentId: file.id,
+    owners: file.owners,
+    reload: () => getContextFileById(file.id),
+    request: () => extractFileMemories(file.id),
+    onUpdate: (refreshed) => onFileRefreshed?.(refreshed),
+  });
 
   const applyShareConfig = async (shareConfig: ShareConfig) => {
     try {
@@ -276,7 +294,7 @@ const FileActions: FC<FileActionsProps> = ({
     }
   };
 
-  if (!canEdit && !canDelete) {
+  if (!canEdit && !canDelete && !extraction.action) {
     return null;
   }
 
@@ -299,7 +317,7 @@ const FileActions: FC<FileActionsProps> = ({
         <Dropdown.Root>
           <ButtonUtility
             data-testid="manage-button"
-            icon={DotsVerticalIcon}
+            icon={DotsVertical}
             size="lg"
             tooltip={t('label.manage-entity', { entity: t('label.document') })}
           />
@@ -318,11 +336,7 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <Share07
-                            className="tw:text-secondary"
-                            height={20}
-                            width={20}
-                          />
+                          <Share07 className="tw:text-secondary" size={20} />
                           <Typography
                             ellipsis
                             className="tw:grow tw:text-secondary">
@@ -331,7 +345,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          className="tw:shrink-0 tw:text-fg-quaternary"
+                          size={16}
                           strokeWidth={2}
                         />
                       </Box>
@@ -385,10 +400,9 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <MoveFolderIcon
+                          <FolderArrowRight
                             className="tw:text-secondary"
-                            height={20}
-                            width={20}
+                            size={20}
                           />
                           <Typography
                             ellipsis
@@ -398,7 +412,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          className="tw:shrink-0 tw:text-fg-quaternary"
+                          size={16}
                           strokeWidth={2}
                         />
                       </Box>
@@ -419,6 +434,8 @@ const FileActions: FC<FileActionsProps> = ({
                   </Dropdown.Popover>
                 </SubmenuTrigger>
               )}
+
+              <MemoryExtractionMenuItem {...extraction} />
 
               {canDelete && (
                 <Dropdown.Item data-testid="delete-btn" id="delete">
@@ -530,7 +547,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={DownloadIcon}
+          iconLeading={Download01}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -542,7 +559,7 @@ const ListHeader: FC<ListHeaderProps> = ({
               className="tw:py-1.5"
               color="tertiary"
               data-testid="bulk-move-btn"
-              iconLeading={FolderIcon}
+              iconLeading={Documents}
               size="sm">
               {t('label.move')}
             </Button>
@@ -610,6 +627,7 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileRefreshed,
   onFileUpdated,
   onOpenPreview,
   onPreview,
@@ -750,11 +768,7 @@ const FileRow: FC<FileRowProps> = ({
         onKeyDown={(e) => e.stopPropagation()}>
         {/* Hidden on narrow rows (preview panel open) so it can't squeeze the file details */}
         <span className="tw:hidden tw:@xl:inline-flex">
-          <DocumentStatusBadge
-            error={file.processingError}
-            stats={file.extractionStats}
-            status={file.processingStatus}
-          />
+          <DocumentStatusBadge file={file} />
         </span>
         <ButtonUtility
           className={`tw:ml-1.5${
@@ -768,7 +782,7 @@ const FileRow: FC<FileRowProps> = ({
         />
         <ButtonUtility
           data-testid="download-btn"
-          icon={DownloadIcon}
+          icon={Download01}
           size="lg"
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
@@ -785,6 +799,7 @@ const FileRow: FC<FileRowProps> = ({
           isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onFileRefreshed={onFileRefreshed}
           onFileUpdated={onFileUpdated}
           onLoadMoreFolders={onLoadMoreFolders}
         />
@@ -820,9 +835,11 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onBulkDelete,
   onBulkDownload,
   onBulkMove,
+  onClearSelection,
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileRefreshed,
   onFileUpdated,
   onOpenPreview,
   onPreview,
@@ -835,6 +852,11 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   const selectedCount = selectedIds?.size ?? 0;
 
   const handleClear = () => {
+    if (onClearSelection) {
+      onClearSelection();
+
+      return;
+    }
     data.forEach((file) => {
       if (selectedIds?.has(file.id)) {
         onSelectFile?.(file.id);
@@ -865,7 +887,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             : []
         }
         description={t('message.context-center-folder-empty-subtitle')}
-        icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+        icon={<UploadCloud01 className="tw:text-fg-brand-primary" />}
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}
@@ -875,7 +897,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
     <div className="tw:relative tw:flex-1">
       <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon />}
+        icon={<NoSearch />}
         title={t('label.no-matching-results')}
       />
     </div>
@@ -930,6 +952,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onFileRefreshed={onFileRefreshed}
                     onFileUpdated={onFileUpdated}
                     onLoadMoreFolders={onLoadMoreFolders}
                     onOpenPreview={onOpenPreview}

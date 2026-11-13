@@ -13,7 +13,10 @@
 
 import { TFunction } from 'i18next';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
-import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
+import {
+  ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,
+  EXTERNAL_CATEGORY_OPTIONS,
+} from '../../../constants/Alerts.constants';
 import {
   ArgumentsInput,
   Effect,
@@ -23,16 +26,14 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import {
+  AlertAiFormChangeHandler,
+  AlertAiFormValue,
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
-import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
-import {
-  AlertAiFormFieldsProps,
-  AlertAiFormValue,
+  ModifiedEventSubscription,
   RuleSectionField,
-} from './AlertAiFormFields.interface';
+} from '../../../utils/AlertsClassBase.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 
 export type WebhookDestinationType =
   | SubscriptionType.Slack
@@ -96,7 +97,7 @@ export const getListValue = (value?: string | string[]) =>
 /** Reads the selected alert source from create/edit form values or existing alert details. */
 export const getAlertAiResources = (
   value: AlertAiFormValue,
-  alert?: AlertAiFormFieldsProps['alert']
+  alert?: ModifiedEventSubscription
 ) => {
   if ('resources' in value && value.resources) {
     return value.resources;
@@ -244,7 +245,7 @@ export const setValueAtPath = (
  */
 export const updateAlertAiValue = (
   _value: AlertAiFormValue,
-  onChange: AlertAiFormFieldsProps['onChange'] | undefined,
+  onChange: AlertAiFormChangeHandler | undefined,
   path: (string | number)[],
   nextValue: unknown
 ) => {

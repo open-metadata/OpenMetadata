@@ -12,7 +12,11 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  InfoCircle,
+  Key,
+  LockUnlocked01,
+} from '@openmetadata/ui-core-components/icons';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
@@ -25,14 +29,12 @@ import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
 } from 'react-aria-components';
-import { ReactComponent as LockIcon } from '../../../../../../assets/svg/closed-lock.svg';
-import { ReactComponent as KeyIcon } from '../../../../../../assets/svg/key.svg';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 
 const KEY_BASED_METHOD = /(key|iam|token|certificate|azure|gcp|jwt|oauth|sso)/i;
 
 const getMethodIcon = (title: string) =>
-  KEY_BASED_METHOD.test(title) ? KeyIcon : LockIcon;
+  KEY_BASED_METHOD.test(title) ? Key : LockUnlocked01;
 
 const getOptionTitle = (option: RJSFSchema, index: number): string =>
   option.title ??

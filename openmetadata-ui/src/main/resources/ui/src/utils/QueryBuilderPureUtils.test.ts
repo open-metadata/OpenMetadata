@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import type {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../pages/ExplorePage/ExplorePage.interface';
 import {
+  getJsonTreeFromQueryFilter,
   getJsonTreePropertyFromQueryFilter,
   getSelectEqualsNotEqualsProperties,
+  isQueryFilterFullyRepresentable,
 } from './QueryBuilderPureUtils';
 
 type RuleProperties = {
@@ -140,5 +145,276 @@ describe('getJsonTreePropertyFromQueryFilter – multi-value negated select', ()
           (entry as { properties: { operator: string } }).properties.operator
       )
     ).toEqual(['select_not_equals', 'select_not_equals']);
+  });
+});
+
+// The backend stores `queryFilter` as a free-form JSON object and embeds the
+// DSL `query` node verbatim — it never requires `bool.must`. Rules created via
+// the REST API (which never populates `filterJsonTree`) use `should`, `filter`,
+// `must_not`, or bare `term` shapes, all of which the original parser silently
+// discarded. These tests pin the reconstruction of every backend-supported
+// shape so the editor shows the saved conditions instead of a blank builder.
+describe('getJsonTreeFromQueryFilter – DSL shape coverage', () => {
+  type Tree = {
+    type?: string;
+    properties?: { conjunction?: string; not?: boolean };
+    children1?: Record<string, unknown>;
+  };
+
+  const rootGroup = (tree: unknown): Tree =>
+    (tree as unknown as { id?: string })?.id
+      ? (tree as Tree)
+      : { type: 'empty' };
+
+  const innerGroup = (tree: unknown): Tree | undefined => {
+    const root = rootGroup(tree);
+    const children = root.children1;
+    if (!children) {
+      return undefined;
+    }
+    const first = Object.values(children)[0] as Tree | undefined;
+
+    return first;
+  };
+
+  const collectRules = (
+    node: unknown
+  ): Array<{
+    field: string;
+    operator: string;
+    value: unknown[];
+  }> => {
+    if (!node || typeof node !== 'object') {
+      return [];
+    }
+    const n = node as Tree;
+    if (n.type === 'rule') {
+      const props = (
+        n as {
+          properties?: { field?: string; operator?: string; value?: unknown[] };
+        }
+      ).properties;
+
+      return [
+        {
+          field: props?.field ?? '',
+          operator: props?.operator ?? '',
+          value: props?.value ?? [],
+        },
+      ];
+    }
+    const children = n.children1;
+    if (!children) {
+      return [];
+    }
+
+    return Object.values(children).flatMap(collectRules);
+  };
+
+  it('reconstructs the UI-emitted double-nested bool.must shape', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [{ term: { entityType: 'table' } }],
+              },
+            },
+          ],
+        },
+      },
+    } as unknown as QueryFilterInterface);
+
+    expect(rootGroup(tree).type).toBe('group');
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].field).toBe('entityType');
+  });
+
+  it('reconstructs a top-level bool.should (root OR) shape', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: {
+        bool: {
+          should: [{ term: { deleted: false } }, { term: { name: 'x' } }],
+        },
+      },
+    } as unknown as QueryFilterInterface);
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(2);
+    expect(rules.map((r) => r.field)).toContain('deleted');
+    expect(rules.map((r) => r.field)).toContain('name');
+    // Root OR → inner group conjunction is OR.
+    expect(innerGroup(tree)?.properties?.conjunction).toBe('OR');
+  });
+
+  it('reconstructs a top-level bool.filter shape', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: {
+        bool: {
+          filter: [{ term: { deleted: false } }],
+        },
+      },
+    } as unknown as QueryFilterInterface);
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].field).toBe('deleted');
+  });
+
+  it('reconstructs a top-level bool.must_not shape with group negation', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: {
+        bool: {
+          must_not: [{ term: { deleted: true } }],
+        },
+      },
+    } as unknown as QueryFilterInterface);
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].field).toBe('deleted');
+    // must_not → inner group is negated.
+    expect(innerGroup(tree)?.properties?.not).toBe(true);
+  });
+
+  it('reconstructs a bare query.term shape (no bool wrapper)', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: {
+        term: { fullyQualifiedName: 'dim_customer' },
+      },
+    } as unknown as QueryFilterInterface);
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].field).toBe('fullyQualifiedName');
+  });
+
+  it('reconstructs a bare term without the query wrapper', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      term: { 'tier.tagFQN': 'Tier.Tier1' },
+    } as unknown as QueryFilterInterface);
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].field).toBe('tier.tagFQN');
+  });
+
+  it('reconstructs a single must clause (not double-nested)', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: {
+        bool: {
+          must: [{ term: { name: 'x' } }],
+        },
+      },
+    } as unknown as QueryFilterInterface);
+
+    const rules = collectRules(tree);
+
+    expect(rules).toHaveLength(1);
+    expect(rules[0].field).toBe('name');
+  });
+
+  it('returns an empty tree for an empty must array', () => {
+    const tree = getJsonTreeFromQueryFilter({
+      query: { bool: { must: [] } },
+    } as unknown as QueryFilterInterface);
+
+    expect(Object.keys(tree)).toHaveLength(0);
+  });
+
+  it('returns an empty tree for an empty object', () => {
+    const tree = getJsonTreeFromQueryFilter(
+      {} as unknown as QueryFilterInterface
+    );
+
+    expect(Object.keys(tree)).toHaveLength(0);
+  });
+
+  it('returns an empty tree for undefined', () => {
+    const tree = getJsonTreeFromQueryFilter(
+      undefined as unknown as QueryFilterInterface
+    );
+
+    expect(Object.keys(tree)).toHaveLength(0);
+  });
+});
+
+// The persona editor warns before an edit replaces a filter it cannot show in full (#37304).
+describe('isQueryFilterFullyRepresentable', () => {
+  const tier1 = { term: { 'tier.tagFQN': 'Tier.Tier1' } };
+  const tier2 = { term: { 'tier.tagFQN': 'Tier.Tier2' } };
+  const pii = { term: { 'tags.tagFQN': 'PII.Sensitive' } };
+
+  it.each([
+    [
+      'UI root-AND shape',
+      { query: { bool: { must: [{ bool: { must: [tier1, pii] } }] } } },
+    ],
+    ['bool.should', { query: { bool: { should: [tier1, tier2] } } }],
+    [
+      'bool.should with minimum_should_match 1',
+      { query: { bool: { should: [tier1, tier2], minimum_should_match: 1 } } },
+    ],
+    ['bool.filter', { query: { bool: { filter: [tier1, pii] } } }],
+    ['bool.must_not', { query: { bool: { must_not: [tier1, pii] } } }],
+    ['bare query.term', { query: tier1 }],
+    ['match_all', { query: { match_all: {} } }],
+  ])('is true for %s', (_, filter) => {
+    expect(
+      isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'should + filter',
+      { query: { bool: { should: [tier1, tier2], filter: [pii] } } },
+    ],
+    [
+      'must + must_not',
+      { query: { bool: { must: [tier1], must_not: [pii] } } },
+    ],
+    [
+      'minimum_should_match above one',
+      {
+        query: {
+          bool: { should: [tier1, tier2, pii], minimum_should_match: 2 },
+        },
+      },
+    ],
+    [
+      'an unsupported range clause',
+      { query: { bool: { filter: [{ range: { updatedAt: { gte: 1 } } }] } } },
+    ],
+    [
+      'a supported and an unsupported clause',
+      {
+        query: {
+          bool: { filter: [tier1, { range: { updatedAt: { gte: 1 } } }] },
+        },
+      },
+    ],
+    [
+      'siblings of the unwrapped inner must',
+      { query: { bool: { must: [{ bool: { must: [tier1] } }, pii] } } },
+    ],
+    [
+      'an unsupported bare clause',
+      { query: { terms: { 'tier.tagFQN': ['Tier.Tier1'] } } },
+    ],
+    ['an empty query', { query: {} }],
+  ])('is false for %s', (_, filter) => {
+    expect(
+      isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
+    ).toBe(false);
   });
 });

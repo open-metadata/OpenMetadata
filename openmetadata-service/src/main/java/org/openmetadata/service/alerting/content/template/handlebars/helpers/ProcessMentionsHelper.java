@@ -158,6 +158,6 @@ public class ProcessMentionsHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{{processMentions }}}")
-                    .withExample("{{{processMentions message}}}")));
+                    .withExample("{{{processMentions entity.description}}}")));
   }
 }

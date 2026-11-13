@@ -96,6 +96,19 @@ final class OntologyCaptureFixture {
       return release;
     }
 
+    void addConcept(String name) {
+      concepts.create(
+          null,
+          new OntologyConcept()
+              .withId(UUID.randomUUID())
+              .withName(name)
+              .withOntology(ontology.getEntityReference())
+              .withConceptType(OntologyConceptType.OWL_CLASS)
+              .withVersion(0.1)
+              .withUpdatedAt(1L)
+              .withUpdatedBy("admin"));
+    }
+
     void addConcepts(int count) {
       List<OntologyConcept> members =
           IntStream.range(0, count)

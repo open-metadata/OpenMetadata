@@ -18,7 +18,15 @@ import {
   Dropdown,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  DotsVertical,
+  Edit01,
+  ThumbsDown,
+  ThumbsDownFilled,
+  ThumbsUp,
+  ThumbsUpFilled,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -27,9 +35,6 @@ import Qs from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
-import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -172,14 +177,12 @@ const QueryCardExtraOption = ({
           className={classNames(
             'tw:gap-1',
             voteStatus === QueryVoteType.votedUp &&
-              'tw:*:data-icon:text-fg-success-primary'
+              'tw:*:data-icon:text-utility-brand-600'
           )}
           color="secondary"
           data-testid="up-vote-btn"
           iconLeading={
-            voteStatus === QueryVoteType.votedUp
-              ? ThumbsUpFilled
-              : ThumbsUpOutline
+            voteStatus === QueryVoteType.votedUp ? ThumbsUpFilled : ThumbsUp
           }
           isLoading={loading === QueryVoteType.votedUp}
           size="xs"
@@ -198,11 +201,9 @@ const QueryCardExtraOption = ({
           color="secondary"
           data-testid="down-vote-btn"
           iconLeading={
-            voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsUpFilled data-icon className="tw:rotate-180" />
-            ) : (
-              <ThumbsUpOutline data-icon className="tw:rotate-180" />
-            )
+            voteStatus === QueryVoteType.votedDown
+              ? ThumbsDownFilled
+              : ThumbsDown
           }
           isLoading={loading === QueryVoteType.votedDown}
           size="xs"
@@ -214,7 +215,7 @@ const QueryCardExtraOption = ({
       <Dropdown.Root>
         <ButtonUtility
           data-testid="query-btn"
-          icon={IconDropdown}
+          icon={DotsVertical}
           size="lg"
           tooltip={t('label.manage-entity', {
             entity: t('label.query'),

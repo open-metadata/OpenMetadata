@@ -20,7 +20,6 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { listOntologyReleases } from '../../../../rest/ontologyAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 interface OntologyReleasePickerProps {
@@ -37,6 +36,14 @@ const OntologyReleasePicker = ({
   onChange,
 }: OntologyReleasePickerProps) => {
   const { t } = useTranslation();
+  const releaseName = useCallback(
+    (release: OntologyRelease) =>
+      release.semanticVersion ??
+      t('label.ontology-release-revision', {
+        revision: release.releaseRevision,
+      }),
+    [t]
+  );
   const fetchData = useCallback<TreeSelectDataFetcher<OntologyRelease>>(
     async ({ after, pageSize = 25, signal }) => {
       const page = await listOntologyReleases(
@@ -50,7 +57,7 @@ const OntologyReleasePicker = ({
           id: release.id,
           value: release.id,
           data: release,
-          label: `${getEntityName(release)} (${t(
+          label: `${releaseName(release)} (${t(
             `label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`
           )})`,
           isLeaf: true,
@@ -60,7 +67,7 @@ const OntologyReleasePicker = ({
         hasMore: Boolean(page.paging.after),
       };
     },
-    [ontologyId, t]
+    [ontologyId, releaseName, t]
   );
 
   return (
@@ -72,7 +79,7 @@ const OntologyReleasePicker = ({
       pageSize={25}
       renderTrigger={({ toggle }) => (
         <Button aria-label={label} color="secondary" size="sm" onPress={toggle}>
-          {value ? getEntityName(value) : label}
+          {value ? `${label}: ${releaseName(value)}` : label}
         </Button>
       )}
       value={
@@ -80,7 +87,7 @@ const OntologyReleasePicker = ({
           ? {
               id: value.id,
               value: value.id,
-              label: getEntityName(value),
+              label: releaseName(value),
               data: value,
             }
           : null

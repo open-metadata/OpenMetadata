@@ -9,3 +9,7 @@
 -- 3072-byte key.
 ALTER TABLE task_entity MODIFY COLUMN aboutFqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.aboutFqnHash'))) STORED;
 ALTER TABLE domain_entity MODIFY COLUMN fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+
+-- The MySQL user-name indexes of the MCP grant tables are added by the 2.0.8 Java migration, see
+-- org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes and
+-- ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration.

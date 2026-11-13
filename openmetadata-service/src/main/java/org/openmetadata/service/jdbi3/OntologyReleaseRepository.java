@@ -40,6 +40,7 @@ import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.ontology.OntologyDecisionNotice;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.ontology.OntologyReview;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -110,6 +111,33 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
             .withVoters(decision.voters())
             .withResolution(task.getResolution());
     daoCollection.ontologyReleaseDAO().appendEvent(event);
+    PostCommitActionQueue.runOrDefer(
+        () ->
+            OntologyDecisionNotice.publish(
+                release,
+                decision.resolution(),
+                decision.user(),
+                decision.comment(),
+                task.getResolution().getResolvedAt()));
+  }
+
+  /**
+   * Approves a Draft that no reviewer decided. The caller holds the ontology state lock and has
+   * checked that the ontology has no reviewers, so no vote exists to record.
+   */
+  public OntologyRelease approveWithoutReview(
+      final OntologyRelease original, final String user, final long time) {
+    final OntologyRelease updated = JsonUtils.deepCopy(original, entityClass);
+    updated.setEntityStatus(EntityStatus.APPROVED);
+    updated.setApprovalBasis(OntologyRelease.ApprovalBasis.NO_REVIEWERS_CONFIGURED);
+    persistWorkflowState(original, updated, user);
+    daoCollection
+        .ontologyReleaseDAO()
+        .appendEvent(
+            event(original, EventType.APPROVED, user, time)
+                .withVoters(List.of())
+                .withApprovalBasis(OntologyRelease.ApprovalBasis.NO_REVIEWERS_CONFIGURED));
+    return updated;
   }
 
   public ResultList<OntologyReleaseEvent> listEvents(
@@ -273,11 +301,12 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
   public ResultList<OntologyReleaseReview> listReviews(
       final OntologyReleaseReviewReader.View view,
       final String caller,
+      final UUID ontologyId,
       final int limit,
       final String after,
       final Predicate<OntologyRelease> canView) {
     final int offset = offset(after);
-    final List<OpenReview> reviews = openReviews(view, caller, canView);
+    final List<OpenReview> reviews = openReviews(view, caller, ontologyId, canView);
     final int from = Math.min(offset, reviews.size());
     final int to = Math.min(reviews.size(), from + limit);
     return page(
@@ -290,9 +319,11 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
   private List<OpenReview> openReviews(
       final OntologyReleaseReviewReader.View view,
       final String caller,
+      final UUID ontologyId,
       final Predicate<OntologyRelease> canView) {
     final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    final ListFilter filter = reviewTaskFilter(view, SubjectContext.getSubjectContext(caller));
+    final ListFilter filter =
+        reviewTaskFilter(view, SubjectContext.getSubjectContext(caller), ontologyId);
     final List<Task> reviewTasks =
         tasks.listAll(tasks.getFields(LISTED_REVIEW_TASK_FIELDS), filter);
     final Map<UUID, OntologyRelease> releases = releasesById(reviewTasks);
@@ -336,8 +367,13 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
 
   /** The database-side narrowing to the approval tasks that {@code view} can match for the caller. */
   static ListFilter reviewTaskFilter(
-      final OntologyReleaseReviewReader.View view, final SubjectContext subject) {
+      final OntologyReleaseReviewReader.View view,
+      final SubjectContext subject,
+      final UUID ontologyId) {
     final ListFilter filter = new ListFilter(Include.NON_DELETED);
+    if (ontologyId != null) {
+      filter.addQueryParam("ontologyReviewOntologyId", ontologyId.toString());
+    }
     filter.addQueryParam("taskType", TaskEntityType.RequestApproval.value());
     filter.addQueryParam("aboutEntityType", Entity.ONTOLOGY_RELEASE);
     filter.addQueryParam(
@@ -401,6 +437,15 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     updated.setReviewTask(task.getId());
     updated.setEntityStatus(EntityStatus.IN_REVIEW);
     persistWorkflowState(original, updated, task.getUpdatedBy());
+    daoCollection
+        .ontologyReleaseDAO()
+        .appendEvent(
+            event(
+                    original,
+                    EventType.REVIEW_REQUESTED,
+                    task.getUpdatedBy(),
+                    System.currentTimeMillis())
+                .withTaskId(task.getId()));
   }
 
   /**
@@ -432,6 +477,28 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
         && !Objects.equals(entity.getReviewTask(), task.getId())) {
       throw TaskStateConflictException.of("This ontology definition already has an open review");
     }
+    requireNoOtherOpenReview(entity);
+  }
+
+  private void requireNoOtherOpenReview(final OntologyRelease entity) {
+    if (entity.getOntology() == null) {
+      return;
+    }
+    daoCollection
+        .ontologyReleaseDAO()
+        .listByStatus(entity.getOntology().getId(), EntityStatus.IN_REVIEW.value())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
+        .filter(open -> !Objects.equals(open.getId(), entity.getId()))
+        .filter(open -> open.getReviewTask() != null)
+        .findFirst()
+        .ifPresent(
+            open -> {
+              throw TaskStateConflictException.of(
+                  "Ontology release "
+                      + open.getName()
+                      + " already has an open review; close it before requesting another");
+            });
   }
 
   public void validateReview(final Task task, final String user) {
@@ -474,6 +541,9 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     }
     final OntologyRelease updated = JsonUtils.deepCopy(original, entityClass);
     updated.setEntityStatus(decision);
+    if (decision == EntityStatus.APPROVED) {
+      updated.setApprovalBasis(OntologyRelease.ApprovalBasis.REVIEWED);
+    }
     persistWorkflowState(original, updated, user);
   }
 
@@ -494,6 +564,15 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     updated.setReviewTask(null);
     updated.setEntityStatus(EntityStatus.DRAFT);
     persistWorkflowState(original, updated, task.getUpdatedBy());
+    daoCollection
+        .ontologyReleaseDAO()
+        .appendEvent(
+            event(
+                    original,
+                    EventType.REVIEW_WITHDRAWN,
+                    task.getUpdatedBy(),
+                    System.currentTimeMillis())
+                .withTaskId(task.getId()));
   }
 
   private String lockCancellationTarget(final UUID id) {
@@ -603,6 +682,7 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     protected void entitySpecificUpdate(final boolean consolidatingChanges) {
       recordChange("reviewTask", original.getReviewTask(), updated.getReviewTask());
       recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+      recordChange("approvalBasis", original.getApprovalBasis(), updated.getApprovalBasis());
     }
   }
 

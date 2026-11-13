@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
+import {
+  File05,
+  KeyHand,
+  LargeTable,
+  NoSearch,
+  NoTier,
+  SecuritySafe,
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
-import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
-import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
-import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
-import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
-import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
-import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import type { AgentsStatusWidgetProps } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
@@ -80,7 +82,7 @@ const TotalDataAssetsWidget = withSuspenseFallback(
 ) as React.ComponentType<TotalAssetsWidgetProps>;
 
 type ServiceInsightsPlaceholderConfig = {
-  Icon: typeof NoDataPlaceholderIcon;
+  Icon: typeof NoSearch;
   localizationKey: string;
   getDocsLink: () => string;
 };
@@ -95,7 +97,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
       SystemChartType.TotalDataAssetsLive,
     ],
     {
-      Icon: NoDataPlaceholderIcon,
+      Icon: NoSearch,
       localizationKey: 'message.total-data-assets-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS,
@@ -107,7 +109,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
       SystemChartType.AssetsWithDescriptionLive,
     ],
     {
-      Icon: DescriptionPlaceholderIcon,
+      Icon: File05,
       localizationKey: 'message.description-coverage-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS()
@@ -117,7 +119,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [SystemChartType.OwnersCoverage, SystemChartType.AssetsWithOwnerLive],
     {
-      Icon: OwnersPlaceholderIcon,
+      Icon: KeyHand,
       localizationKey: 'message.owners-coverage-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS()
@@ -127,7 +129,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [SystemChartType.PIICoverage, SystemChartType.AssetsWithPIILive],
     {
-      Icon: PiiPlaceholderIcon,
+      Icon: SecuritySafe,
       localizationKey: 'message.pii-coverage-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS,
@@ -136,7 +138,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [SystemChartType.PIIDistribution],
     {
-      Icon: PiiPlaceholderIcon,
+      Icon: SecuritySafe,
       localizationKey: 'message.pii-distribution-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS,
@@ -145,7 +147,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [SystemChartType.TierCoverage],
     {
-      Icon: TierPlaceholderIcon,
+      Icon: NoTier,
       localizationKey: 'message.tier-coverage-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS,
@@ -154,7 +156,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [SystemChartType.TierDistribution],
     {
-      Icon: TierPlaceholderIcon,
+      Icon: NoTier,
       localizationKey: 'message.tier-distribution-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS,
@@ -163,7 +165,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [ServiceInsightsWidgetType.COLLATE_AI],
     {
-      Icon: TablePlaceholderIcon,
+      Icon: LargeTable,
       localizationKey: 'message.collate-ai-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS,
@@ -172,7 +174,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [ServiceInsightsWidgetType.MOST_USED_ASSETS],
     {
-      Icon: TablePlaceholderIcon,
+      Icon: LargeTable,
       localizationKey: 'message.most-used-assets-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS,
@@ -181,7 +183,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
   [
     [ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES],
     {
-      Icon: TablePlaceholderIcon,
+      Icon: LargeTable,
       localizationKey: 'message.most-expensive-queries-widget-description',
       getDocsLink: () =>
         documentationLinksClassBase.getDocsURLS()
@@ -192,7 +194,7 @@ const SERVICE_INSIGHTS_PLACEHOLDER_GROUPS: [
 
 const DEFAULT_SERVICE_INSIGHTS_PLACEHOLDER_CONFIG: ServiceInsightsPlaceholderConfig =
   {
-    Icon: NoDataPlaceholderIcon,
+    Icon: NoSearch,
     localizationKey: 'server.no-records-found',
     getDocsLink: () => documentationLinksClassBase.getDocsBaseURL(),
   };

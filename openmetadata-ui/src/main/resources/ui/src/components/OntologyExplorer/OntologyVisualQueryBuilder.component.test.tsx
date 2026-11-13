@@ -221,7 +221,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: /label\.relationship-type/ })
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
     );
     fireEvent.click(await screen.findByRole('option', { name: 'Part Of' }));
 
@@ -256,7 +256,40 @@ describe('OntologyVisualQueryBuilder component', () => {
       )
     );
 
-    expect(await screen.findByTestId('ontology-builder-result')).toBeVisible();
+    expect(
+      await screen.findByTestId('ontology-sparql-result-status')
+    ).toHaveTextContent('1 label.row');
+    expect(screen.getAllByRole('row')[0]).toHaveTextContent('?concept');
+  });
+
+  it('keeps the chosen conditions when the glossary find kind changes', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Part Of' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Know Your Customer' })
+    );
+    fireEvent.click(screen.getByTestId('ontology-builder-find-metrics'));
+
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(generated).toHaveTextContent(
+      '<https://open-metadata.org/ontology/partOf>'
+    );
+    expect(generated).toHaveTextContent(
+      'FinancialRiskCompliance.Compliance.KnowYourCustomer'
+    );
+    expect(generated).toHaveTextContent('?concept a om:Metric');
   });
 
   it('queries native selections through the owner endpoint and reports a missing active release', async () => {
@@ -309,8 +342,8 @@ describe('OntologyVisualQueryBuilder component', () => {
     await waitFor(() => expect(target).toHaveValue('Party'));
 
     expect(
-      screen.getByText('message.ontology-native-builder-scope')
-    ).toBeVisible();
+      screen.getByTestId('ontology-builder-find-properties')
+    ).toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-builder-find-metrics')
     ).not.toBeInTheDocument();
@@ -319,7 +352,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /label\.relationship-type/ })
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
     );
     fireEvent.click(await screen.findByRole('option', { name: /disjoint/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
@@ -338,6 +371,9 @@ describe('OntologyVisualQueryBuilder component', () => {
     fireEvent.click(screen.getByTestId('ontology-builder-run'));
 
     expect(await screen.findByText('Customer result')).toBeVisible();
+    expect(screen.getAllByRole('row')[0]).toHaveTextContent(
+      /#\s*label\.concept\s*label\.iri/
+    );
     expect(post).toHaveBeenCalledWith(
       '/ontologies/native-owner/sparql',
       {
@@ -362,7 +398,54 @@ describe('OntologyVisualQueryBuilder component', () => {
     ).toBeVisible();
     expect(screen.queryByText('Customer result')).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('ontology-builder-result')
+      screen.queryByTestId('ontology-sparql-result')
+    ).not.toBeInTheDocument();
+  });
+
+  it('lists native properties by the concept they are on', async () => {
+    mockListOntologyConcepts.mockResolvedValue({
+      data: nativeConcepts,
+      paging: { total: 3 },
+    });
+    mockListOntologyProperties.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockListOntologyAxioms.mockResolvedValue({
+      data: [subclass],
+      paging: { total: 1 },
+    });
+    render(<OntologyVisualQueryBuilder ontology={nativeOntology} />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'label.concept' })
+      ).toHaveValue('Party')
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-find-properties'));
+
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
+    ).toHaveTextContent('label.is-on');
+    expect(screen.getByTestId('ontology-builder-incomplete')).toBeVisible();
+    expect(generated).toHaveTextContent(
+      'VALUES ?propertyType { owl:ObjectProperty owl:DatatypeProperty }'
+    );
+    expect(generated).not.toHaveTextContent('rdfs:domain ?target');
+    expect(screen.getByTestId('ontology-builder-run')).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Customer' }));
+
+    expect(generated).toHaveTextContent(
+      'VALUES ?target { <urn:retail:Customer> }'
+    );
+    expect(generated).toHaveTextContent('?property rdfs:domain ?target .');
+    expect(screen.getByTestId('ontology-builder-run')).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-builder-incomplete')
     ).not.toBeInTheDocument();
   });
 
@@ -386,6 +469,12 @@ describe('OntologyVisualQueryBuilder component', () => {
         'FinancialRiskCompliance.Compliance.AntiMoneyLaundering'
       )
     );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-remove-condition-0'));
+
+    expect(
+      screen.getByTestId('ontology-builder-edit-as-sparql')
+    ).toBeDisabled();
   });
 
   it('hides the Edit as SPARQL action when no handler is provided', async () => {
@@ -437,12 +526,100 @@ describe('OntologyVisualQueryBuilder component', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /label\.relationship-type/ })
+        screen.getByRole('button', {
+          name: /label\.ontology-relationship-type/,
+        })
       ).toHaveTextContent('Part Of')
     );
 
     expect(screen.getByText('Know Your Customer')).toBeVisible();
     expect(mockListRelationshipTypes).not.toHaveBeenCalled();
     expect(mockGetGlossaryTerms).not.toHaveBeenCalled();
+  });
+
+  it('shows the generated SPARQL beside the results and hides it on request', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      'SELECT ?concept ?conceptFqn WHERE'
+    );
+    expect(
+      screen.getByTestId('ontology-sparql-results-empty')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
+    expect(
+      screen.queryByTestId('ontology-generated-sparql')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-builder-toggle-sparql')
+    ).toHaveTextContent('label.show-sparql');
+
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toBeVisible();
+  });
+
+  it('ignores an incomplete condition, reports it, and resets to the default query', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+    const initialQuery = screen.getByTestId(
+      'ontology-generated-sparql'
+    ).textContent;
+
+    fireEvent.click(screen.getByTestId('ontology-builder-add-condition'));
+
+    expect(screen.getByTestId('ontology-builder-incomplete')).toHaveTextContent(
+      'message.incomplete-condition-ignored'
+    );
+    expect(screen.getByTestId('ontology-generated-sparql').textContent).toBe(
+      initialQuery
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-remove-condition-0'));
+
+    expect(
+      screen.getByTestId('ontology-generated-sparql')
+    ).not.toHaveTextContent('AntiMoneyLaundering');
+    expect(screen.getByTestId('ontology-builder-run')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('ontology-builder-reset'));
+
+    expect(screen.getByTestId('ontology-generated-sparql').textContent).toBe(
+      initialQuery
+    );
+    expect(
+      screen.queryByTestId('ontology-builder-incomplete')
+    ).not.toBeInTheDocument();
+  });
+
+  it('applies the chosen limit to the generated SPARQL', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      'LIMIT 100'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /label\.limit/ }));
+    fireEvent.click(await screen.findByRole('option', { name: '10' }));
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      /LIMIT 10$/
+    );
   });
 });
