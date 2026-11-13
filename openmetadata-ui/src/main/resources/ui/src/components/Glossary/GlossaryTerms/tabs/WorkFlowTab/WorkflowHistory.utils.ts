@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { compact, keyBy, orderBy, uniq } from 'lodash';
-import { WorkflowDefinition } from '../../../../../generated/governance/workflows/workflowDefinition';
 import { ApprovalOutcome } from '../../../../../generated/governance/workflows/approvalOutcome';
+import { WorkflowDefinition } from '../../../../../generated/governance/workflows/workflowDefinition';
 import { WorkflowInstance } from '../../../../../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../../../../../generated/governance/workflows/workflowInstanceState';
 import {
@@ -55,7 +55,7 @@ const getInstanceStart = ({ startedAt, timestamp }: WorkflowInstance) =>
 
 // Definitions are resolved together and a run whose definition cannot be read (deleted, or hidden
 // from the user by a conditional rule) is skipped, so an older readable run still shows.
-const getReadableDefinitions = async (instances: WorkflowInstance[]) => {
+export const getReadableDefinitions = async (instances: WorkflowInstance[]) => {
   const ids = uniq(
     compact(instances.map(({ workflowDefinitionId }) => workflowDefinitionId))
   );

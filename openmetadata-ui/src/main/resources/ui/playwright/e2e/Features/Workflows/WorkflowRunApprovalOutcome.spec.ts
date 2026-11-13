@@ -12,6 +12,8 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { okJson } from '../../../utils/apiResponse';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -290,6 +292,115 @@ test.describe(
         if (table.entityResponseData.id) {
           await table.delete(apiContext);
         }
+        await afterAction();
+      }
+    });
+
+    test('the status badge says who approved the status', async ({
+      page,
+      dataConsumerPage,
+    }) => {
+      test.slow();
+      const reviewer = await loggedInUserName(dataConsumerPage);
+      await redirectToHomePage(page);
+      const { apiContext, afterAction } = await getApiContext(page);
+      const glossary = new Glossary(`PwStatusDecision${uuid()}`);
+      const term = new GlossaryTerm(glossary, undefined, `NetRevenue${uuid()}`);
+      const termStatus = async () =>
+        (
+          await okJson<{ entityStatus?: string }>(
+            await apiContext.get(
+              `/api/v1/glossaryTerms/${term.responseData.id}`
+            ),
+            'glossaryTerm'
+          )
+        ).entityStatus;
+
+      try {
+        await glossary.create(apiContext);
+        await term.create(apiContext);
+        await expect.poll(termStatus, { timeout: 60_000 }).toBe('Approved');
+
+        await test.step('the reviewer approves the term', async () => {
+          // A reviewer added to an approved term sends it back for review.
+          await okJson(
+            await apiContext.patch(
+              `/api/v1/glossaryTerms/${term.responseData.id}`,
+              {
+                data: [
+                  {
+                    op: 'add',
+                    path: '/reviewers',
+                    value: [{ id: reviewer.id, type: 'user' }],
+                  },
+                ],
+                headers: { 'Content-Type': 'application/json-patch+json' },
+              }
+            ),
+            'addReviewer'
+          );
+          await expect.poll(termStatus, { timeout: 60_000 }).toBe('In Review');
+          const reviewerContext = await getApiContext(dataConsumerPage);
+          try {
+            let taskId = '';
+            await expect
+              .poll(
+                async () => {
+                  const { data } = await okJson<{
+                    data: { id: string; assignees?: { name: string }[] }[];
+                  }>(
+                    await reviewerContext.apiContext.get('/api/v1/tasks', {
+                      params: {
+                        aboutEntity: term.responseData.fullyQualifiedName,
+                        status: 'Open',
+                        limit: 20,
+                        fields: 'assignees',
+                      },
+                    }),
+                    'openTasks'
+                  );
+                  taskId =
+                    data.find((task) =>
+                      task.assignees?.some(({ name }) => name === reviewer.name)
+                    )?.id ?? '';
+
+                  return taskId;
+                },
+                { timeout: 90_000 }
+              )
+              .toBeTruthy();
+            await okJson(
+              await reviewerContext.apiContext.post(
+                `/api/v1/tasks/${taskId}/resolve`,
+                { data: { transitionId: 'approve' } }
+              ),
+              'resolveTask'
+            );
+          } finally {
+            await reviewerContext.afterAction();
+          }
+          await expect.poll(termStatus, { timeout: 60_000 }).toBe('Approved');
+        });
+
+        await test.step('hovering the status names the reviewer', async () => {
+          await page.goto(
+            `/glossary/${encodeURIComponent(
+              term.responseData.fullyQualifiedName
+            )}`,
+            { waitUntil: 'domcontentloaded' }
+          );
+          await waitForAllLoadersToDisappear(page);
+          await page.getByTestId('entity-status-badge-trigger').hover();
+
+          await expect(
+            page.getByTestId('entity-status-decision-outcome')
+          ).toHaveText(`Approved by ${reviewer.name}`);
+          await expect(
+            page.getByTestId('entity-status-decision-detail')
+          ).not.toBeEmpty();
+        });
+      } finally {
+        await glossary.delete(apiContext);
         await afterAction();
       }
     });

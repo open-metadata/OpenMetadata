@@ -55,7 +55,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useHover, useInteractOutside } from 'react-aria';
 import {
   Button as AriaButton,
   Checkbox as AriaCheckbox,
@@ -65,6 +64,7 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import HoverPopover from '../../common/HoverPopover/HoverPopover';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   NO_DATA_PLACEHOLDER,
@@ -172,10 +172,6 @@ const WorkflowHistory = withSuspenseFallback(
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
-
-// Grace period that lets the pointer travel from the status badge into its
-// workflow-history popover without the popover closing underneath it.
-const STATUS_POPOVER_CLOSE_DELAY_MS = 120;
 
 type GlossaryResolveTask = ResolveTask & { newValue: string };
 
@@ -483,84 +479,19 @@ const GlossaryTermStatusCell = ({
   record,
   status,
   children,
-}: GlossaryTermStatusCellProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverContentRef = useRef<HTMLDivElement>(null);
-
-  const clearCloseTimeout = useCallback(() => {
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = undefined;
+}: GlossaryTermStatusCellProps) => (
+  <HoverPopover
+    contentClassName="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
+    contentTestId="workflow-history-popover"
+    trigger={
+      children ?? (
+        <StatusBadge label={status} status={EntityStatusClass[status]} />
+      )
     }
-  }, []);
-
-  const openPopover = useCallback(() => {
-    clearCloseTimeout();
-    setIsOpen(true);
-  }, [clearCloseTimeout]);
-
-  const closePopover = useCallback(() => {
-    clearCloseTimeout();
-    closeTimeoutRef.current = setTimeout(
-      () => setIsOpen(false),
-      STATUS_POPOVER_CLOSE_DELAY_MS
-    );
-  }, [clearCloseTimeout]);
-
-  useEffect(() => clearCloseTimeout, [clearCloseTimeout]);
-
-  // Hovering the popover itself keeps it open, as antd's hover Popover did.
-  const { hoverProps: popoverHoverProps } = useHover({
-    onHoverStart: openPopover,
-    onHoverEnd: closePopover,
-  });
-
-  // `isNonModal` turns off react-aria's own outside-press and Escape dismissal,
-  // so a popover opened by tap or keyboard needs them wired here. The trigger is
-  // excluded because its own press already toggles the popover.
-  useInteractOutside({
-    ref: popoverContentRef,
-    isDisabled: !isOpen,
-    onInteractOutside: (event) => {
-      if (!triggerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    },
-  });
-
-  return (
-    <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
-      <AriaButton
-        className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
-        data-testid={`${record.fullyQualifiedName ?? ''}-status`}
-        ref={triggerRef}
-        onHoverEnd={closePopover}
-        onHoverStart={openPopover}
-        onKeyDown={(event) => event.key === 'Escape' && setIsOpen(false)}>
-        {children ?? (
-          <StatusBadge label={status} status={EntityStatusClass[status]} />
-        )}
-      </AriaButton>
-      {/* The flex chain hands react-aria's max-height down to the timeline, so
-          only the steps scroll and the header stays in view. */}
-      <Popover
-        isNonModal
-        className="tw:flex tw:flex-col"
-        containerClassName="tw:flex tw:min-h-0 tw:flex-col"
-        placement="top start">
-        <div
-          className="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
-          data-testid="workflow-history-popover"
-          ref={popoverContentRef}
-          {...popoverHoverProps}>
-          <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
-        </div>
-      </Popover>
-    </PopoverTrigger>
-  );
-};
+    triggerTestId={`${record.fullyQualifiedName ?? ''}-status`}>
+    <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+  </HoverPopover>
+);
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();

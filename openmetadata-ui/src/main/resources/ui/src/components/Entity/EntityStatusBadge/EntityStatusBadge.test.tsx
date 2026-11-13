@@ -10,9 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import { Decision } from '../../../generated/governance/workflows/approvalOutcome';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { EntityStatusBadge } from './EntityStatusBadge.component';
+import { getStatusChange } from './EntityStatusDecision.utils';
+
+// Only the lookup is mocked; the wording runs for real.
+jest.mock('./EntityStatusDecision.utils', () => ({
+  ...jest.requireActual('./EntityStatusDecision.utils'),
+  getStatusChange: jest.fn(),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  getShortRelativeTime: jest.fn().mockReturnValue('5 mins ago'),
+}));
+
+const hoverableBadge = () => (
+  <EntityStatusBadge
+    entityId="product-id"
+    entityType="dataProduct"
+    fqn="Finance.Invoices"
+    showDivider={false}
+    status={EntityStatus.Approved}
+  />
+);
+
+const openPopover = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('entity-status-badge-trigger'));
+  });
+};
 
 describe('EntityStatusBadge', () => {
   it('should render status badge with divider by default', () => {
@@ -50,5 +79,84 @@ describe('EntityStatusBadge', () => {
 
       unmount();
     });
+  });
+
+  it('only looks up who set the status once the badge is hovered', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'Approved',
+      changedAt: 1,
+      workflowName: 'Data product approval',
+      outcome: {
+        id: 'outcome',
+        node: 'Review',
+        decision: Decision.Approved,
+        decidedBy: ['ana.lopez', 'ben.carter'],
+        decidedAt: 1,
+      },
+    });
+    renderWithQueryClient(hoverableBadge());
+
+    expect(getStatusChange).not.toHaveBeenCalled();
+
+    await openPopover();
+
+    expect(getStatusChange).toHaveBeenCalledWith(
+      'dataProduct',
+      'product-id',
+      '<#E::dataProduct::Finance.Invoices>'
+    );
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.workflow-run-approved-by');
+    expect(
+      screen.getByTestId('entity-status-decision-detail')
+    ).toHaveTextContent('Data product approval');
+  });
+
+  it('names the workflow and whose change started it when it set the status without an approval', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'In Review',
+      changedAt: 1,
+      workflowName: 'Data product lifecycle',
+      triggeredBy: 'ana.lopez',
+    });
+    renderWithQueryClient(hoverableBadge());
+
+    await openPopover();
+
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.entity-status-set-by');
+    expect(
+      screen.getByTestId('entity-status-decision-detail')
+    ).toHaveTextContent('message.entity-status-after-change-by');
+  });
+
+  it('names the person who set the status by hand', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'Deprecated',
+      changedAt: 1,
+      changedBy: 'ana.lopez',
+    });
+    renderWithQueryClient(hoverableBadge());
+
+    await openPopover();
+
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.entity-status-set-by');
+    expect(
+      screen.queryByTestId('entity-status-decision-detail')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders a plain badge without a popover when it does not know the entity', () => {
+    render(
+      <EntityStatusBadge showDivider={false} status={EntityStatus.Draft} />
+    );
+
+    expect(
+      screen.queryByTestId('entity-status-badge-trigger')
+    ).not.toBeInTheDocument();
   });
 });
