@@ -903,6 +903,50 @@ public class ServiceAttributePolicyIT {
   }
 
   /**
+   * collate#7981: a tag edit answers with the tags a read returns. A client renders the PATCH
+   * response, so leaving the inherited tag out showed it removed until the next read -- after an
+   * edit of the asset's own tags, and after an attempt to remove the inherited one, which the asset
+   * cannot drop because it is never stored on it.
+   */
+  @Test
+  void patchingTags_answersWithTheTagsTheAssetInherits(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.shortPrefix();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = createTable(admin, prefix + "_answer", schema);
+    String tableId = table.getId().toString();
+    tagService(admin, service, HIDDEN_TAG);
+    assertEquals(
+        List.of(HIDDEN_TAG),
+        tagFqnList(admin.tables().get(tableId, TAGS_FIELD)),
+        "the inherited tag is the table's only one");
+
+    // What the tag editor sends when the inherited tag is unticked.
+    Table afterRemoval =
+        admin
+            .tables()
+            .patch(tableId, MAPPER.readTree("[{\"op\":\"remove\",\"path\":\"/tags/0\"}]"));
+    assertEquals(
+        TagLabel.LabelType.DERIVED,
+        labelOf(afterRemoval, HIDDEN_TAG).getLabelType(),
+        "an inherited tag is not removed on the asset, so the response keeps it as inherited");
+    assertTrue(
+        tagFqnsOf(admin.tables().get(tableId, TAGS_FIELD)).contains(HIDDEN_TAG),
+        "and a read agrees");
+
+    Table afterAddition = addOwnTag(admin, table, TIER_TAG);
+    assertEquals(
+        TagLabel.LabelType.MANUAL,
+        labelOf(afterAddition, TIER_TAG).getLabelType(),
+        "the added tag is the table's own");
+    assertEquals(
+        TagLabel.LabelType.DERIVED,
+        labelOf(afterAddition, HIDDEN_TAG).getLabelType(),
+        "and the inherited tag stays in the response beside it");
+  }
+
+  /**
    * The mirror of the edit case, on the other side of the comparison.
    *
    * <p>`restoreEntity` builds `updated` as a deep copy of an `original` that inheritance has
@@ -983,6 +1027,17 @@ public class ServiceAttributePolicyIT {
       tags.forEach(tag -> fqns.add(tag.getTagFQN()));
     }
     return fqns;
+  }
+
+  private static List<String> tagFqnList(Table table) {
+    return listOrEmpty(table.getTags()).stream().map(TagLabel::getTagFQN).toList();
+  }
+
+  private static TagLabel labelOf(Table table, String tagFqn) {
+    return listOrEmpty(table.getTags()).stream()
+        .filter(tag -> tagFqn.equals(tag.getTagFQN()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError(tagFqn + " is missing from " + table.getTags()));
   }
 
   /** Tags a service through a PATCH, which works the same for every service type. */
