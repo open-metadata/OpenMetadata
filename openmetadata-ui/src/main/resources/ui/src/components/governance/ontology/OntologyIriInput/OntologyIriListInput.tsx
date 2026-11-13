@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Label,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +25,9 @@ import { OntologyIriOption } from './OntologyIriInput.types';
 
 interface OntologyIriListInputProps {
   label: string;
+  /** One line under the label saying what the field holds. */
+  hint?: string;
+  isRequired?: boolean;
   value: string[];
   options?: ReadonlyArray<OntologyIriOption>;
   isDisabled?: boolean;
@@ -29,6 +37,8 @@ interface OntologyIriListInputProps {
 
 const OntologyIriListInput = ({
   label,
+  hint,
+  isRequired,
   value,
   options,
   isDisabled,
@@ -52,6 +62,14 @@ const OntologyIriListInput = ({
 
   return (
     <Box data-testid={testId} direction="col" gap={2}>
+      <Box direction="col">
+        <Label isRequired={isRequired}>{label}</Label>
+        {hint ? (
+          <Typography color="secondary" size="text-sm">
+            {hint}
+          </Typography>
+        ) : null}
+      </Box>
       {value.length > 0 && (
         <Box direction="row" gap={2} wrap="wrap">
           {value.map((iri) => (
@@ -69,15 +87,20 @@ const OntologyIriListInput = ({
           ))}
         </Box>
       )}
-      <Box align="end" direction="row" gap={2}>
-        <OntologyIriInput
-          error={error}
-          isDisabled={isDisabled}
-          label={label}
-          options={options}
-          value={draft}
-          onChange={setDraft}
-        />
+      {/* The search takes the row; Add sits beside it and an error goes under the search only. */}
+      <Box align="start" direction="row" gap={2}>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <OntologyIriInput
+            hideLabel
+            error={error}
+            isDisabled={isDisabled}
+            label={label}
+            options={options}
+            value={draft}
+            onChange={setDraft}
+            onSubmit={add}
+          />
+        </Box>
         <Button
           color="secondary"
           isDisabled={isDisabled || !isValid}

@@ -12,6 +12,8 @@
  */
 package org.openmetadata.it.bootstrap;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.dropwizard.testing.ResourceHelpers;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -22,7 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.openmetadata.it.bootstrap.ForkedServerConfig.Ports;
+import org.openmetadata.it.util.SdkClients;
 
 /**
  * Runs {@code OpenMetadataOperations}, the ops CLI, in its own JVM against the suite's database with
@@ -43,9 +47,17 @@ public final class ForkedOperations {
    * @return the CLI's exit code; its output is in {@code target/forked-ops-<n>.log}
    */
   public static int run(String... command) {
+    return run(config -> {}, command);
+  }
+
+  /**
+   * Runs one CLI command with the rendered configuration adjusted by the caller, for example to
+   * point {@code jwtTokenConfiguration} at another key pair.
+   */
+  public static int run(Consumer<ObjectNode> adjustConfig, String... command) {
     int number = SEQUENCE.incrementAndGet();
     Path log = ForkedJvm.logFile("forked-ops-" + number + ".log");
-    List<String> args = new ArrayList<>(List.of("-c", writeYaml(number).toString()));
+    List<String> args = new ArrayList<>(List.of("-c", writeYaml(number, adjustConfig).toString()));
     args.addAll(List.of(command));
     Process process = ForkedJvm.launch(MAIN_CLASS, args, Map.of("user.timezone", "UTC"), log);
     try {
@@ -61,7 +73,7 @@ public final class ForkedOperations {
     return process.exitValue();
   }
 
-  private static Path writeYaml(int number) {
+  private static Path writeYaml(int number, Consumer<ObjectNode> adjustConfig) {
     Path baseYaml = Path.of(ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml"));
     try {
       String yaml =
@@ -70,7 +82,14 @@ public final class ForkedOperations {
               TestSuiteBootstrap.createApplicationConfigCopy(),
               new Ports(0, 0),
               Map.of());
-      return Files.writeString(ForkedJvm.logFile("forked-ops-" + number + ".yaml"), yaml);
+      YAMLMapper mapper = new YAMLMapper();
+      ObjectNode root = (ObjectNode) mapper.readTree(yaml);
+      // The CLI checks the signing key against the server it is configured for, as in production.
+      ((ObjectNode) root.path("pipelineServiceClientConfiguration"))
+          .put("metadataApiEndpoint", SdkClients.baseUrl());
+      adjustConfig.accept(root);
+      return Files.writeString(
+          ForkedJvm.logFile("forked-ops-" + number + ".yaml"), mapper.writeValueAsString(root));
     } catch (IOException failure) {
       throw new UncheckedIOException(failure);
     }

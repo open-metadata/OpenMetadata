@@ -37,10 +37,55 @@ export interface ColumnSuggestionProperty {
   isIdentifier?: boolean;
 }
 
+export interface SuggestableProperty extends ColumnSuggestionProperty {
+  id: string;
+}
+
 export interface SuggestableColumn {
   /** The column path, JSON encoded, as the binding editor identifies options. */
   id: string;
 }
+
+const MATCH_SAME_WORDS = 3;
+const MATCH_ONE_HOLDS_OTHER = 2;
+const MATCH_IDENTIFIER = 1;
+
+/** How well a column name fits a property label, 0 when it does not. */
+const scoreMatch = (
+  property: ColumnSuggestionProperty,
+  columnName: string
+): number => {
+  const wanted = normalize(property.label);
+  const name = normalize(columnName);
+  if (name === wanted) {
+    return MATCH_SAME_WORDS;
+  }
+  if (
+    wanted.length >= MIN_PART_LENGTH &&
+    name.length >= MIN_PART_LENGTH &&
+    (name.includes(wanted) || wanted.includes(name))
+  ) {
+    return MATCH_ONE_HOLDS_OTHER;
+  }
+
+  return property.isIdentifier &&
+    IDENTIFIER_COLUMN.test(name.replace(/ /g, '_'))
+    ? MATCH_IDENTIFIER
+    : 0;
+};
+
+const pickBest = <T>(
+  candidates: readonly T[],
+  score: (candidate: T) => number
+): T | undefined =>
+  candidates.reduce<{ candidate?: T; score: number }>(
+    (top, candidate) => {
+      const next = score(candidate);
+
+      return next > top.score ? { candidate, score: next } : top;
+    },
+    { score: 0 }
+  ).candidate;
 
 /**
  * The column most likely meant for a property: the same words first, then one name
@@ -49,32 +94,12 @@ export interface SuggestableColumn {
 export const suggestColumnForProperty = <T extends SuggestableColumn>(
   property: ColumnSuggestionProperty,
   columns: readonly T[]
-): T | undefined => {
-  const wanted = normalize(property.label);
-  const scored = columns.map((column) => {
-    const name = normalize(lastSegment(column.id));
-    let score = 0;
-    if (name === wanted) {
-      score = 3;
-    } else if (
-      wanted.length >= MIN_PART_LENGTH &&
-      name.length >= MIN_PART_LENGTH &&
-      (name.includes(wanted) || wanted.includes(name))
-    ) {
-      score = 2;
-    } else if (
-      property.isIdentifier &&
-      IDENTIFIER_COLUMN.test(name.replace(/ /g, '_'))
-    ) {
-      score = 1;
-    }
+): T | undefined =>
+  pickBest(columns, (column) => scoreMatch(property, lastSegment(column.id)));
 
-    return { column, score };
-  });
-  const best = scored.reduce(
-    (top, item) => (item.score > top.score ? item : top),
-    { column: undefined as T | undefined, score: 0 }
-  );
-
-  return best.column;
-};
+/** The property a column most likely holds, by the same rules as `suggestColumnForProperty`. */
+export const suggestPropertyForColumn = <T extends SuggestableProperty>(
+  columnName: string,
+  properties: readonly T[]
+): T | undefined =>
+  pickBest(properties, (property) => scoreMatch(property, columnName));

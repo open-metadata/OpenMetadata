@@ -18,26 +18,151 @@ import {
   ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
-import { KeyboardEvent } from 'react';
+import { LinkExternal01, XClose } from '@openmetadata/ui-core-components/icons';
+import { KeyboardEvent, ReactElement, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssetBinding } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getUnlinkDescription } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import { getAssetPath } from '../OntologyConceptInspector/OntologyConceptInspector.utils';
+import { CLEAR_OF_STUDIO_DRAWER } from '../OntologyStudioDrawer/OntologyStudioDrawer.constants';
 
+interface AssetUnlinkConfirmProps {
+  readonly assetName: string;
+  readonly binding: AssetBinding;
+  readonly children?: ReactElement;
+  readonly conceptName: string;
+  readonly isOpen?: boolean;
+  readonly triggerRef?: RefObject<Element | null>;
+  readonly onOpenChange?: (isOpen: boolean) => void;
+  readonly onUnlink: (binding: AssetBinding) => Promise<boolean>;
+  readonly onUnlinked?: () => void;
+}
+
+/** The one confirmation for unlinking an asset, from the panel or from a card's menu. */
+export const AssetUnlinkConfirm = ({
+  assetName,
+  binding,
+  children,
+  conceptName,
+  isOpen,
+  triggerRef,
+  onOpenChange,
+  onUnlink,
+  onUnlinked,
+}: AssetUnlinkConfirmProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <ConfirmPopover
+      cancelText={t('label.cancel')}
+      confirmText={t('label.unlink')}
+      data-testid="ontology-unlink"
+      description={getUnlinkDescription(binding, t)}
+      isOpen={isOpen}
+      title={t('message.ontology-unlink-asset-title', {
+        asset: assetName,
+        concept: conceptName,
+      })}
+      triggerRef={triggerRef}
+      onConfirm={async () => {
+        const isUnlinked = await onUnlink(binding);
+        if (isUnlinked) {
+          onUnlinked?.();
+        }
+
+        return isUnlinked;
+      }}
+      onOpenChange={onOpenChange}>
+      {children}
+    </ConfirmPopover>
+  );
+};
+
+// Sized to its content and capped above the canvas's bottom toolbar, so Open asset is never covered.
 const PANEL_CLASS = [
-  'tw:absolute tw:top-16 tw:right-3.5 tw:bottom-3.5 tw:z-20 tw:flex tw:w-80 tw:flex-col tw:gap-4',
-  'tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-4 tw:shadow-lg',
+  'tw:absolute tw:top-16 tw:right-3.5 tw:z-20 tw:flex tw:max-h-[calc(100%-9rem)] tw:w-80 tw:flex-col',
+  CLEAR_OF_STUDIO_DRAWER,
+  'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-lg',
 ].join(' ');
+const SECTION_CLASS = 'tw:border-t tw:border-secondary tw:px-4 tw:py-3';
+
+/** Path, name, type and service of the asset, with the close button. */
+const AssetPanelHeader = ({
+  fullyQualifiedName,
+  name,
+  path,
+  serviceLabel,
+  type,
+  onClose,
+}: {
+  readonly fullyQualifiedName?: string;
+  readonly name: string;
+  readonly path: string;
+  readonly serviceLabel?: string;
+  readonly type?: string;
+  readonly onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="start" className="tw:px-4 tw:pt-4 tw:pb-3" gap={2}>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+        {path ? (
+          <Typography
+            ellipsis
+            className="tw:text-tertiary"
+            data-testid="ontology-data-asset-panel-fqn"
+            size="text-xs"
+            title={fullyQualifiedName}>
+            {path}
+          </Typography>
+        ) : null}
+        <Typography
+          ellipsis
+          as="h3"
+          className="not-prose tw:m-0 tw:text-primary"
+          data-testid="ontology-data-asset-panel-name"
+          size="text-md"
+          weight="semibold">
+          {name}
+        </Typography>
+        <Box align="center" className="tw:pt-1" gap={2} wrap="wrap">
+          {type ? (
+            <Badge color="blue" size="sm" type="pill-color">
+              {entityUtilClassBase.getFormattedEntityType(type)}
+            </Badge>
+          ) : null}
+          {serviceLabel ? (
+            <Typography color="secondary" size="text-xs">
+              {serviceLabel}
+            </Typography>
+          ) : null}
+        </Box>
+      </Box>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="ontology-data-asset-panel-close"
+        icon={XClose}
+        size="xs"
+        tooltip={t('label.close')}
+        onClick={onClose}
+      />
+    </Box>
+  );
+};
 
 interface OntologyDataAssetPanelProps {
   /** The bound asset with its columns, once the concept's bindings have loaded. */
   readonly binding?: AssetBinding;
   readonly conceptName: string;
+  readonly canBindColumns?: boolean;
   readonly canUnlink: boolean;
   /** The row the person clicked, shown while the bindings are still loading. */
   readonly node: OntologyNode;
+  readonly onBindColumns?: () => void;
   readonly onClose: () => void;
   readonly onOpenAsset: () => void;
   readonly onUnlink: (binding: AssetBinding) => Promise<boolean>;
@@ -47,8 +172,10 @@ interface OntologyDataAssetPanelProps {
 const OntologyDataAssetPanel = ({
   binding,
   conceptName,
+  canBindColumns = false,
   canUnlink,
   node,
+  onBindColumns,
   onClose,
   onOpenAsset,
   onUnlink,
@@ -57,6 +184,10 @@ const OntologyDataAssetPanel = ({
   const asset = binding?.asset ?? node.entityRef;
   const name = asset ? getEntityName(asset) : node.label;
   const columns = binding?.columns ?? [];
+  const path = getAssetPath(asset?.fullyQualifiedName)
+    .split(' › ')
+    .slice(0, -1)
+    .join(' › ');
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape') {
@@ -73,47 +204,31 @@ const OntologyDataAssetPanel = ({
       className={PANEL_CLASS}
       data-testid="ontology-data-asset-panel"
       onKeyDown={handleKeyDown}>
-      <Box align="start" gap={2} justify="between">
-        <Box className="tw:min-w-0" direction="col" gap={1}>
-          <Typography
-            as="h3"
-            data-testid="ontology-data-asset-panel-name"
-            size="text-md"
-            weight="semibold">
-            {name}
-          </Typography>
-          <Typography
-            color="secondary"
-            data-testid="ontology-data-asset-panel-fqn"
-            size="text-xs">
-            {asset?.fullyQualifiedName}
-          </Typography>
-        </Box>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="ontology-data-asset-panel-close"
-          icon={XClose}
-          size="xs"
-          tooltip={t('label.close')}
-          onClick={onClose}
-        />
-      </Box>
-      <Box align="center" gap={2} wrap="wrap">
-        {asset?.type ? (
-          <Badge color="indigo" size="sm" type="pill-color">
-            {asset.type}
-          </Badge>
-        ) : null}
-        {node.serviceLabel ? (
-          <Typography color="secondary" size="text-xs">
-            {node.serviceLabel}
-          </Typography>
-        ) : null}
-      </Box>
-      <Box direction="col" gap={2}>
+      <AssetPanelHeader
+        fullyQualifiedName={asset?.fullyQualifiedName}
+        name={name}
+        path={path}
+        serviceLabel={node.serviceLabel}
+        type={asset?.type}
+        onClose={onClose}
+      />
+      <Box
+        className={`${SECTION_CLASS} tw:min-h-0 tw:flex-1 tw:overflow-y-auto`}
+        direction="col"
+        gap={2}>
         <Typography size="text-sm" weight="semibold">
           {t('label.bound-column-count', { count: columns.length })}
         </Typography>
+        {columns.length === 0 ? (
+          <Typography
+            color="secondary"
+            data-testid="ontology-data-asset-panel-no-columns"
+            size="text-xs">
+            {t('message.ontology-asset-no-bound-columns', {
+              concept: conceptName,
+            })}
+          </Typography>
+        ) : null}
         <ul
           className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1.5 tw:p-0"
           data-testid="ontology-data-asset-panel-columns">
@@ -137,41 +252,43 @@ const OntologyDataAssetPanel = ({
             </li>
           ))}
         </ul>
+        {canBindColumns ? (
+          <Button
+            className="tw:self-start"
+            color="link-color"
+            data-testid="ontology-data-asset-bind-columns"
+            size="sm"
+            onPress={onBindColumns}>
+            {t('label.ontology-bind-columns')}
+          </Button>
+        ) : null}
       </Box>
-      <Box className="tw:mt-auto" gap={2}>
-        <Button
-          color="primary"
-          data-testid="ontology-data-asset-open"
-          size="sm"
-          onPress={onOpenAsset}>
-          {t('label.open-asset')}
-        </Button>
+      {/* One footer row, as the drawers do: the destructive action reads as secondary, Open leads. */}
+      <Box align="center" className={SECTION_CLASS} gap={2} justify="end">
         {canUnlink && binding ? (
-          <ConfirmPopover
-            cancelText={t('label.cancel')}
-            confirmText={t('label.unlink')}
-            data-testid="ontology-unlink"
-            description={getUnlinkDescription(binding, t)}
-            title={t('message.ontology-unlink-asset-title', {
-              asset: name,
-              concept: conceptName,
-            })}
-            onConfirm={async () => {
-              const isUnlinked = await onUnlink(binding);
-              if (isUnlinked) {
-                onClose();
-              }
-
-              return isUnlinked;
-            }}>
+          <AssetUnlinkConfirm
+            assetName={name}
+            binding={binding}
+            conceptName={conceptName}
+            onUnlink={onUnlink}
+            onUnlinked={onClose}>
             <Button
-              color="secondary-destructive"
+              className="tw:mr-auto"
+              color="tertiary-destructive"
               data-testid="ontology-data-asset-unlink"
               size="sm">
               {t('label.unlink')}
             </Button>
-          </ConfirmPopover>
+          </AssetUnlinkConfirm>
         ) : null}
+        <Button
+          color="secondary"
+          data-testid="ontology-data-asset-open"
+          iconTrailing={LinkExternal01}
+          size="sm"
+          onPress={onOpenAsset}>
+          {t('label.open-asset')}
+        </Button>
       </Box>
     </aside>
   );

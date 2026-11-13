@@ -27,11 +27,11 @@ class OntologyPackContentLoaderTest {
   @Test
   void readsExactClasspathContentAndComputesItsChecksum() {
     final OntologyPackContentLoader.PackContent content =
-        loader.load("rdf/ontology-packs/fhir/core.ttl");
+        loader.load("rdf/ontology-packs/dcat/dcat.ttl");
 
-    assertTrue(content.body().contains("FHIR Resource"));
+    assertTrue(content.body().contains("dcat:Dataset"));
     assertEquals(
-        "3b296bd1c87d2045f9f892334c08c776494adb0b4bfa2a75cebc0180cd56bcd3", content.sha256());
+        "d1624d3bbf364f6fc1d43b9a188bbb9e67639b1a7d46a5cb7ea3f5d47d02b62f", content.sha256());
   }
 
   @Test
@@ -46,22 +46,37 @@ class OntologyPackContentLoaderTest {
   @Test
   void selectedContentIncludesItsVerifiedDependencies() {
     final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
-    final var selected = loader.loadSelected(catalog, "fibo", List.of("business-entities"));
-    assertEquals("fibo", selected.manifest().getId());
+    final var selected = loader.loadSelected(catalog, "sosa-ssn", List.of("ssn"));
+    assertEquals("sosa-ssn", selected.manifest().getId());
     assertEquals(
-        List.of("foundations", "business-entities"),
-        selected.modules().stream().map(module -> module.getId()).toList());
+        List.of("sosa", "ssn"), selected.modules().stream().map(module -> module.getId()).toList());
     assertEquals("turtle", selected.format());
-    assertTrue(selected.body().contains("Financial Instrument"));
-    assertTrue(selected.body().contains("Legal Entity"));
+    assertTrue(selected.body().contains("sosa:Sensor"));
+    assertTrue(selected.body().contains("ssn:System"));
+  }
+
+  @Test
+  void aPackInRdfXmlKeepsItsFormat() {
+    final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
+    final var selected = loader.loadSelected(catalog, "foaf", List.of("foaf"));
+    assertEquals("rdfxml", selected.format());
+    assertTrue(selected.body().contains("http://xmlns.com/foaf/0.1/Person"));
   }
 
   @Test
   void independentlyLicensedPacksCannotLoadABundledPayload() {
     final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
-    catalog.require("fibo").setBundled(false);
+    catalog.require("dcat").setBundled(false);
     assertThrows(
         IllegalArgumentException.class,
-        () -> loader.loadSelected(catalog, "fibo", List.of("foundations")));
+        () -> loader.loadSelected(catalog, "dcat", List.of("dcat")));
+  }
+
+  @Test
+  void loadsAPackTooBigForOneInteractiveImport() {
+    final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
+    final var selected = loader.loadSelected(catalog, "fibo", List.of("fibo-quickstart"));
+    assertEquals("turtle", selected.format());
+    assertTrue(selected.body().contains("https://spec.edmcouncil.org/fibo/ontology/"));
   }
 }

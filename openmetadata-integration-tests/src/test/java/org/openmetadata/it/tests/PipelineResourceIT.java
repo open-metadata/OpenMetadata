@@ -914,6 +914,28 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void test_pipelineScheduleIntervalUpdate_200_OK(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_schedule_interval"));
+    request.setService(service.getFullyQualifiedName());
+    request.setScheduleInterval("0 2 * * *");
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals("0 2 * * *", pipeline.getScheduleInterval());
+
+    // A cadence-only change must be stored, not just echoed in the response
+    pipeline.setScheduleInterval("0 */6 * * *");
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals("0 */6 * * *", updated.getScheduleInterval());
+
+    Pipeline stored = getEntity(pipeline.getId().toString());
+    assertEquals("0 */6 * * *", stored.getScheduleInterval());
+    assertTrue(stored.getVersion() > pipeline.getVersion());
+  }
+
+  @Test
   void test_pipelineConcurrency_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);

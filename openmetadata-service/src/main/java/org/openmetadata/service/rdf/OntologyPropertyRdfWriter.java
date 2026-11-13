@@ -63,6 +63,19 @@ final class OntologyPropertyRdfWriter {
                         kind == OntologyPropertyKind.DATA
                             ? EntityKind.DATA_PROPERTY
                             : EntityKind.OBJECT_PROPERTY)));
+    listOrEmpty(definition.getSuperProperties())
+        .forEach(
+            iri ->
+                property.addProperty(
+                    RDFS.subPropertyOf,
+                    reference(
+                        model,
+                        iri,
+                        switch (kind) {
+                          case OBJECT -> EntityKind.OBJECT_PROPERTY;
+                          case DATA -> EntityKind.DATA_PROPERTY;
+                          case ANNOTATION -> EntityKind.ANNOTATION_PROPERTY;
+                        })));
     if (!nullOrEmpty(definition.getPropertyChain())) {
       property.addProperty(
           OWL2.propertyChainAxiom,

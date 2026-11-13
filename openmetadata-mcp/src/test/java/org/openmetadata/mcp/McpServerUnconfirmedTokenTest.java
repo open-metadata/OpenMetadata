@@ -46,9 +46,11 @@ class McpServerUnconfirmedTokenTest {
   void toolCallerReadsTemporarilyUnavailable() {
     server.jwtFilter = filterThatCannotConfirm();
     McpSchema.Tool tool =
-        McpSchema.Tool.builder().name("search_metadata").description("desc").build();
+        McpSchema.Tool.builder("search_metadata", Map.of("type", "object"))
+            .description("desc")
+            .build();
     McpSchema.CallToolRequest request =
-        McpSchema.CallToolRequest.builder().name("search_metadata").arguments(Map.of()).build();
+        McpSchema.CallToolRequest.builder("search_metadata").arguments(Map.of()).build();
 
     assertThatThrownBy(() -> server.getTool(tool).callHandler().apply(callerContext(), request))
         .isInstanceOfSatisfying(
@@ -59,9 +61,13 @@ class McpServerUnconfirmedTokenTest {
   @Test
   void promptCallerReadsTemporarilyUnavailable() {
     server.jwtFilter = filterThatCannotConfirm();
-    McpSchema.Prompt prompt = new McpSchema.Prompt("search_metadata", "desc", List.of());
+    McpSchema.Prompt prompt =
+        McpSchema.Prompt.builder("search_metadata")
+            .description("desc")
+            .arguments(List.of())
+            .build();
     McpSchema.GetPromptRequest request =
-        new McpSchema.GetPromptRequest("search_metadata", Map.of());
+        McpSchema.GetPromptRequest.builder("search_metadata").arguments(Map.of()).build();
 
     assertThatThrownBy(
             () -> server.getPrompt(prompt).promptHandler().apply(callerContext(), request))

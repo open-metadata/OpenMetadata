@@ -19,8 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useLayoutEffect, useRef } from 'react';
-import { useIsAiMode } from '../../hooks/useAppMode';
-import PortOverlay from './PortOverlay.component';
+import PortOverlay, { getPickerPosition } from './PortOverlay.component';
 import {
   OntologyEditNodeClickDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
@@ -29,18 +28,15 @@ import {
 } from './PortOverlay.interface';
 import { RelationshipTypePickerProps } from './RelationshipTypePicker.interface';
 
-jest.mock('../../hooks/useAppMode', () => ({
-  ...jest.requireActual('../../hooks/useAppMode'),
-  useIsAiMode: jest.fn().mockReturnValue(false),
-}));
-
 jest.mock(
   './RelationshipTypePicker.component',
   () =>
     function RelationshipTypePickerMock({
       onCancel,
       onSelect,
+      sourceId,
       sourceLabel,
+      targetId,
       targetLabel,
     }: RelationshipTypePickerProps) {
       return (
@@ -51,6 +47,9 @@ jest.mock(
             onClick={() => onSelect('broader')}>
             {sourceLabel} {targetLabel}
           </button>
+          <span data-testid="relationship-type-picker-ends">
+            {sourceId}:{targetId}
+          </span>
           <button
             aria-label="cancel relationship type selection"
             data-testid="relationship-type-picker-cancel"
@@ -156,10 +155,13 @@ describe('PortOverlay', () => {
     expect(screen.getByTestId('relationship-type-picker')).toHaveTextContent(
       'Remittance Settlement'
     );
+    expect(
+      screen.getByTestId('relationship-type-picker-ends')
+    ).toHaveTextContent('source:target');
+    // The 600x400 canvas has no room below the click, so the picker is held inside it.
     expect(screen.getByTestId('ontology-relation-picker-anchor')).toHaveStyle({
-      left: '490px',
-      top: '100px',
-      transform: 'translate(-50%, 16px)',
+      left: '292px',
+      top: '8px',
     });
     expect(screen.getByTestId('ontology-connection-line')).toHaveAttribute(
       'x1',
@@ -374,37 +376,41 @@ describe('PortOverlay', () => {
     ).not.toBeInTheDocument();
   });
 
-  describe('in AI mode', () => {
-    beforeEach(() => {
-      (useIsAiMode as jest.Mock).mockReturnValue(true);
+  it('shows the connect pill and cancels the connection from its close button', () => {
+    render(<Harness onCreateRelation={jest.fn()} />);
+
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
     });
 
-    afterEach(() => {
-      (useIsAiMode as jest.Mock).mockReturnValue(false);
-    });
+    expect(
+      screen.getByTestId('ontology-connect-instruction')
+    ).toHaveTextContent('label.esc');
 
-    it('shows the connect pill and cancels the connection from its close button', () => {
-      render(<Harness onCreateRelation={jest.fn()} />);
+    fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
 
-      dispatchNodeClick({
-        clientX: 600,
-        clientY: 180,
-        isPort: true,
-        nodeId: 'source',
-      });
+    expect(
+      screen.queryByTestId('ontology-connect-instruction')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
+  });
+});
 
-      expect(
-        screen.getByTestId('ontology-connect-instruction')
-      ).toHaveTextContent('label.esc');
+describe('getPickerPosition', () => {
+  it('centres the picker below the click when the canvas has room', () => {
+    expect(
+      getPickerPosition({ x: 500, y: 100 }, { width: 1200, height: 900 })
+    ).toEqual({ left: 350, top: 116 });
+  });
 
-      fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
-
-      expect(
-        screen.queryByTestId('ontology-connect-instruction')
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('ontology-connection-line')
-      ).not.toBeInTheDocument();
-    });
+  it('keeps the picker off the left edge and above the bottom toolbars', () => {
+    expect(
+      getPickerPosition({ x: 40, y: 600 }, { width: 1200, height: 900 })
+    ).toEqual({ left: 8, top: 396 });
   });
 });

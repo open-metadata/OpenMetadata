@@ -2343,7 +2343,8 @@
                           "description": "Custom HTTP headers to include in every request when fetching dbt artifacts (e.g. Authorization for private GitLab/GitHub repos).",
                           "type": "object",
                           "additionalProperties": {
-                            "type": "string"
+                            "type": "string",
+                            "format": "password"
                           }
                         },
                         "dbtVerifySSL": {
@@ -4029,6 +4030,21 @@
                         "botToken": {
                           "title": "Bot Token",
                           "description": "Bot Token",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "connectionMode": {
+                          "description": "Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance for production) receives events on a public HTTP endpoint and scales horizontally behind a load balancer. SocketMode uses an outbound WebSocket connection for single-instance deployments that cannot expose a public endpoint (on-prem/firewalled).",
+                          "type": "string",
+                          "enum": [
+                            "Webhook",
+                            "SocketMode"
+                          ],
+                          "default": "Webhook"
+                        },
+                        "appToken": {
+                          "title": "App Token",
+                          "description": "App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under App-Level Tokens with connections:write scope.",
                           "type": "string",
                           "format": "password"
                         }
@@ -7348,9 +7364,15 @@
                         "hostPort": {
                           "expose": true,
                           "title": "Host and Port",
-                          "description": "Host and Port of the MicroStrategy instance.",
+                          "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                           "type": "string",
                           "format": "uri"
+                        },
+                        "libraryPath": {
+                          "title": "Library Path",
+                          "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                          "type": "string",
+                          "default": "MicroStrategyLibrary"
                         },
                         "projectName": {
                           "title": "Project Name",
@@ -7359,9 +7381,16 @@
                         },
                         "loginMode": {
                           "title": "Login Mode",
-                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                           "type": "string",
                           "default": "1"
+                        },
+                        "verifySSL": {
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/verifySSL",
+                          "default": "no-ssl"
+                        },
+                        "sslConfig": {
+                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -7390,9 +7419,7 @@
                       },
                       "additionalProperties": false,
                       "required": [
-                        "hostPort",
-                        "username",
-                        "password"
+                        "hostPort"
                       ]
                     },
                     {
@@ -16051,14 +16078,94 @@
                           "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "sasl.password": {
+                              "title": "sasl.password",
+                              "description": "SASL password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.client.secret": {
+                              "title": "sasl.oauthbearer.client.secret",
+                              "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.config": {
+                              "title": "sasl.oauthbearer.config",
+                              "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.passphrase": {
+                              "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                              "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.pem": {
+                              "title": "sasl.oauthbearer.assertion.private.key.pem",
+                              "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.password": {
+                              "title": "ssl.key.password",
+                              "description": "Passphrase of the client's private key.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.pem": {
+                              "title": "ssl.key.pem",
+                              "description": "Client's private key as a PEM string.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.keystore.password": {
+                              "title": "ssl.keystore.password",
+                              "description": "Password of the client keystore (PKCS#12).",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.truststore.password": {
+                              "title": "ssl.truststore.password",
+                              "description": "Password of the truststore.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "basic.auth.user.info": {
+                              "title": "basic.auth.user.info",
+                              "description": "Schema Registry credentials in the form of username:password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.token": {
+                              "title": "bearer.auth.token",
+                              "description": "Static bearer token for the Schema Registry.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.client.secret": {
+                              "title": "bearer.auth.client.secret",
+                              "description": "Client secret for the Schema Registry OAuth token request.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryTopicSuffixName": {
                           "title": "Schema Registry Topic Suffix Name",
@@ -16182,14 +16289,94 @@
                           "description": "Confluent Redpanda Consumer Config",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "sasl.password": {
+                              "title": "sasl.password",
+                              "description": "SASL password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.client.secret": {
+                              "title": "sasl.oauthbearer.client.secret",
+                              "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.config": {
+                              "title": "sasl.oauthbearer.config",
+                              "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.passphrase": {
+                              "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                              "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.pem": {
+                              "title": "sasl.oauthbearer.assertion.private.key.pem",
+                              "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.password": {
+                              "title": "ssl.key.password",
+                              "description": "Passphrase of the client's private key.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.pem": {
+                              "title": "ssl.key.pem",
+                              "description": "Client's private key as a PEM string.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.keystore.password": {
+                              "title": "ssl.keystore.password",
+                              "description": "Password of the client keystore (PKCS#12).",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.truststore.password": {
+                              "title": "ssl.truststore.password",
+                              "description": "Password of the truststore.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Redpanda Schema Registry Config.",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "basic.auth.user.info": {
+                              "title": "basic.auth.user.info",
+                              "description": "Schema Registry credentials in the form of username:password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.token": {
+                              "title": "bearer.auth.token",
+                              "description": "Static bearer token for the Schema Registry.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.client.secret": {
+                              "title": "bearer.auth.client.secret",
+                              "description": "Client secret for the Schema Registry OAuth token request.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "topicFilterPattern": {
                           "description": "Regex to only fetch topics that matches the pattern.",

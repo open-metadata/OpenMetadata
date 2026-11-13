@@ -85,11 +85,11 @@ describe('OntologyConceptEditor', () => {
 
     expect(
       screen.getByRole('button', { name: /label\.type$/ })
-    ).toHaveTextContent('OWL_CLASS');
+    ).toHaveTextContent('label.class-owl');
 
     fireEvent.click(screen.getByRole('button', { name: /label\.type$/ }));
     fireEvent.click(
-      await screen.findByRole('option', { name: 'SKOS_CONCEPT' })
+      await screen.findByRole('option', { name: 'label.concept-skos' })
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() =>
@@ -124,7 +124,7 @@ describe('OntologyConceptEditor', () => {
     ).toBeDisabled();
 
     fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.display-name' }),
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' }),
       { target: { value: 'Customers' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
@@ -250,7 +250,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'relative/concept' },
       }
@@ -263,7 +263,7 @@ describe('OntologyConceptEditor', () => {
     expect(patch).not.toHaveBeenCalled();
 
     fireEvent.change(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: ' https://example.org/Customer ' },
       }
@@ -344,9 +344,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(
       first.getByRole('button', { name: /label\.mapping-type$/ })
     );
-    fireEvent.click(
-      await screen.findByRole('option', { name: ConceptMappingType.ExactMatch })
-    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Exact match' }));
     fireEvent.click(
       within(rows[1]).getByRole('button', { name: 'label.remove' })
     );
@@ -389,7 +387,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'urn:external:Customer' },
       }
@@ -397,19 +395,17 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
     );
-    fireEvent.click(
-      await screen.findByRole('option', { name: ConceptMappingType.SameAs })
-    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Same as' }));
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
 
     expect(saved).not.toHaveBeenCalled();
     expect(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ })
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ })
     ).toHaveValue('urn:external:Customer');
     expect(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
-    ).toHaveTextContent(ConceptMappingType.SameAs);
+    ).toHaveTextContent('Same as');
     expect(screen.getByRole('button', { name: 'label.save' })).toBeEnabled();
   });
 
@@ -426,7 +422,7 @@ describe('OntologyConceptEditor', () => {
       />
     );
     fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.display-name' }),
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' }),
       { target: { value: 'Customers' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
@@ -434,7 +430,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(saved).not.toHaveBeenCalled();
     expect(
-      screen.getByRole('textbox', { name: 'label.display-name' })
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' })
     ).toHaveValue('Customers');
     expect(screen.getByRole('button', { name: 'label.save' })).toBeEnabled();
   });
@@ -459,7 +455,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
     expect(
-      screen.getByRole('textbox', { name: 'label.display-name' })
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' })
     ).toBeDisabled();
     expect(patch).not.toHaveBeenCalled();
     expect(
@@ -469,7 +465,7 @@ describe('OntologyConceptEditor', () => {
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
 
     expect(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ })
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ })
     ).toBeDisabled();
     expect(
       mapping.getByRole('textbox', { name: 'label.scheme-iri' })
@@ -525,7 +521,7 @@ describe('OntologyConceptEditor', () => {
       ).toHaveFocus();
 
       fireEvent.change(
-        screen.getByRole('textbox', { name: 'label.display-name' }),
+        screen.getByRole('textbox', { name: 'label.ontology-display-name' }),
         { target: { value: 'Customers' } }
       );
 
@@ -556,7 +552,7 @@ describe('OntologyConceptEditor', () => {
         screen.getByRole('button', { name: 'label.add-mapping' })
       ).toBeDisabled();
       expect(
-        screen.getByRole('textbox', { name: 'label.display-name' })
+        screen.getByRole('textbox', { name: 'label.ontology-display-name' })
       ).toBeDisabled();
     });
   });

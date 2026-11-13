@@ -43,6 +43,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -799,7 +800,11 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     } catch (SparqlFederationGuard.FederationDisallowedException exception) {
       throw new ForbiddenException(exception.getMessage(), exception);
     } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
-      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+      throw new ClientErrorException(
+          exception.getMessage(),
+          Response.status(Response.Status.TOO_MANY_REQUESTS)
+              .header(HttpHeaders.RETRY_AFTER, 1)
+              .build());
     } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
       throw new ServiceUnavailableException(
           Response.status(Response.Status.SERVICE_UNAVAILABLE)

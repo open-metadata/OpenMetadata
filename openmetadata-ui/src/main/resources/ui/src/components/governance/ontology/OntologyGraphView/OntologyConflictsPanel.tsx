@@ -13,101 +13,196 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+} from '@openmetadata/ui-core-components/icons';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
+import {
+  getAxiomProvenance,
+  getConflictRule,
+  OntologyConflict,
+  splitConflictMessage,
+} from './OntologyConflicts.utils';
 
 interface OntologyConflictsPanelProps {
   isChecking: boolean;
   isFailed: boolean;
-  violations: OntologyProfileViolation[];
+  conflicts: OntologyConflict[];
   conceptLabel: (conceptId: string) => string | undefined;
-  onOpenConcept: (conceptId: string) => void;
+  onResolve: (conceptId: string) => void;
   onValidateAll: () => void;
 }
 
 const ConflictRow = ({
-  violation,
+  conflict,
   conceptLabel,
-  onOpenConcept,
+  onResolve,
 }: {
-  violation: OntologyProfileViolation;
+  conflict: OntologyConflict;
   conceptLabel: OntologyConflictsPanelProps['conceptLabel'];
-  onOpenConcept: (conceptId: string) => void;
-}) => (
-  <li
-    className="tw:flex tw:flex-col tw:gap-1"
-    data-testid="ontology-conflict-row">
-    <Typography size="text-sm">{violation.message}</Typography>
-    <Box gap={2} wrap="wrap">
-      {(violation.conceptIds ?? []).map((conceptId) => (
-        <Button
-          color="link-color"
-          data-testid="ontology-conflict-link"
-          key={conceptId}
-          size="sm"
-          onPress={() => onOpenConcept(conceptId)}>
-          {conceptLabel(conceptId) ?? conceptId}
-        </Button>
-      ))}
-    </Box>
-  </li>
-);
+  onResolve: (conceptId: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const { conceptIds = [], message } = conflict.violation;
+  const names = conceptIds.map((id) => conceptLabel(id) ?? '');
+  const rule = getConflictRule(conflict) ?? conflict.parts[0];
+  const provenance = getAxiomProvenance(rule?.axiom, t);
 
-/** Lists what the server finds wrong with the working draft, with a link to each concept a clash names. */
-const OntologyConflictsPanel = ({
-  isChecking,
+  return (
+    <li
+      className="tw:flex tw:flex-col tw:gap-1 tw:border-t tw:border-secondary tw:px-4 tw:pt-3 tw:pb-2"
+      data-testid="ontology-conflict-row">
+      <Typography className="tw:break-words tw:text-secondary" size="text-sm">
+        {splitConflictMessage(message, names).map(({ isName, offset, text }) =>
+          isName ? (
+            <strong className="tw:font-semibold tw:text-primary" key={offset}>
+              {text}
+            </strong>
+          ) : (
+            text
+          )
+        )}
+      </Typography>
+      {provenance ? (
+        <Typography
+          className="tw:truncate"
+          color="secondary"
+          data-testid="ontology-conflict-provenance"
+          size="text-xs">
+          {provenance}
+        </Typography>
+      ) : null}
+      {conceptIds[0] ? (
+        <Box>
+          <Button
+            color="link-destructive"
+            data-testid="ontology-conflict-resolve"
+            iconTrailing={ChevronRight}
+            size="sm"
+            onPress={() => onResolve(conceptIds[0])}>
+            {t('label.resolve')}
+          </Button>
+        </Box>
+      ) : null}
+    </li>
+  );
+};
+
+/** A failed run has no count; "0 conflicts" would read as a clean draft. */
+const ConflictsTitle = ({
+  count,
   isFailed,
-  violations,
-  conceptLabel,
-  onOpenConcept,
-  onValidateAll,
-}: OntologyConflictsPanelProps) => {
+}: {
+  count: number;
+  isFailed: boolean;
+}) => {
   const { t } = useTranslation();
 
   return (
-    <Card data-testid="ontology-conflicts-panel" size="sm" variant="muted">
-      <Card.Content className="tw:flex tw:flex-col tw:gap-3">
-        <Box align="center" gap={2} justify="between">
-          <Typography
-            data-testid="ontology-conflicts-title"
-            size="text-sm"
-            weight="semibold">
-            {t('label.n-conflicts-to-resolve', { count: violations.length })}
-          </Typography>
-          <Button
-            color="secondary"
-            data-testid="ontology-validate-all"
-            isLoading={isChecking}
+    <Typography
+      color={isFailed ? 'danger' : undefined}
+      data-testid="ontology-conflicts-title"
+      size="text-sm"
+      weight="semibold">
+      {isFailed
+        ? t('message.ontology-conflicts-check-failed')
+        : t('label.conflicts-to-resolve', { count })}
+    </Typography>
+  );
+};
+
+/** Lists what the server finds wrong with the working draft; Resolve opens the clashing concept. */
+const OntologyConflictsPanel = ({
+  isChecking,
+  isFailed,
+  conflicts,
+  conceptLabel,
+  onResolve,
+  onValidateAll,
+}: OntologyConflictsPanelProps) => {
+  const { t } = useTranslation();
+  const hasConflicts = conflicts.length > 0;
+  const [isExpanded, setIsExpanded] = useState(true);
+  const toggleLabel = t(isExpanded ? 'label.collapse' : 'label.expand');
+
+  // As in the design, the card exists only while there is something to resolve;
+  // a clean draft or a run still pending leaves the canvas clear.
+  if (!hasConflicts && !isFailed) {
+    return null;
+  }
+
+  return (
+    <Card
+      className="tw:absolute tw:top-16 tw:right-4 tw:z-6 tw:flex tw:max-h-[calc(100%-16rem)] tw:w-86 tw:max-w-[calc(100%-2rem)] tw:flex-col tw:overflow-hidden"
+      data-testid="ontology-conflicts-panel"
+      variant="elevated">
+      <Box align="center" className="tw:px-4 tw:py-3" gap={2}>
+        {hasConflicts ? (
+          <Badge
+            color="error"
+            data-testid="ontology-conflicts-count"
             size="sm"
-            onPress={onValidateAll}>
-            {t('label.validate-all')}
-          </Button>
-        </Box>
-        {isFailed ? (
-          <Alert variant="error">{t('server.unexpected-error')}</Alert>
+            type="pill-color">
+            {conflicts.length}
+          </Badge>
         ) : null}
-        {violations.length ? (
-          <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-            {violations.map((violation) => (
-              <ConflictRow
-                conceptLabel={conceptLabel}
-                key={`${violation.code}-${violation.message}`}
-                violation={violation}
-                onOpenConcept={onOpenConcept}
-              />
-            ))}
-          </ul>
-        ) : (
-          <Typography color="secondary" size="text-xs">
-            {t('message.ontology-validate-all-clean')}
-          </Typography>
-        )}
-      </Card.Content>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <ConflictsTitle count={conflicts.length} isFailed={isFailed} />
+          {hasConflicts ? (
+            <Typography color="secondary" size="text-xs">
+              {t('message.ontology-conflicts-block-publishing')}
+            </Typography>
+          ) : null}
+        </Box>
+        <Button
+          color="secondary"
+          data-testid="ontology-validate-all"
+          isLoading={isChecking}
+          size="sm"
+          onPress={onValidateAll}>
+          {t('label.validate-all')}
+        </Button>
+        <ButtonUtility
+          aria-expanded={isExpanded}
+          aria-label={toggleLabel}
+          data-testid="ontology-conflicts-toggle"
+          icon={isExpanded ? ChevronUp : ChevronDown}
+          size="lg"
+          tooltip={toggleLabel}
+          onPress={() => setIsExpanded(!isExpanded)}
+        />
+      </Box>
+      {isExpanded ? (
+        <Box className="tw:min-h-0 tw:overflow-y-auto" direction="col">
+          {isFailed ? (
+            <Box className="tw:px-4 tw:pb-3">
+              <Alert variant="error">{t('server.unexpected-error')}</Alert>
+            </Box>
+          ) : null}
+          {hasConflicts ? (
+            <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:p-0">
+              {conflicts.map((conflict) => (
+                <ConflictRow
+                  conceptLabel={conceptLabel}
+                  conflict={conflict}
+                  key={`${conflict.violation.code}-${conflict.violation.message}`}
+                  onResolve={onResolve}
+                />
+              ))}
+            </ul>
+          ) : null}
+        </Box>
+      ) : null}
     </Card>
   );
 };

@@ -216,6 +216,58 @@ class TestTagScorer:
             score=IsNumeric(gt=0.5),
         )
 
+    @pytest.mark.parametrize(
+        "patterns, language",
+        [
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")],
+                ClassificationLanguage.en,
+                id="invalid-regex",
+            ),
+            pytest.param([], ClassificationLanguage.en, id="no-patterns"),
+            # Too deeply nested to compile; the recognizer is not even for the language analyzed.
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.de,
+                id="too-deeply-nested-other-language",
+            ),
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.en,
+                id="too-deeply-nested",
+            ),
+        ],
+    )
+    def test_broken_recognizer_does_not_drop_other_tags(
+        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns, language
+    ):
+        broken_tag = TagFactory.create(
+            tag_name="BadgeTag",
+            tag_classification=general_classification,
+            autoClassificationEnabled=True,
+            recognizers=[
+                RecognizerFactory.create(
+                    name="BadgeRecognizer",
+                    recognizerConfig=PatternRecognizerFactory.create(
+                        patterns=patterns,
+                        context=[],
+                        supportedLanguage=language,
+                    ),
+                    target=Target.content,
+                )
+            ],
+        )
+        classifier = TagScorer(
+            tag_analyzers=[
+                TagAnalyzer(tag=email_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+                TagAnalyzer(tag=broken_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+            ],
+        )
+
+        scores = classifier.predict_scores(["john.doe@example.com", "jane.smith@test.org"])
+
+        assert [scored_tag.tag.fullyQualifiedName for scored_tag in scores] == ["PII.EmailTag"]
+
     def test_empty_data_returns_empty(self, classifier):
         """Test that empty data returns empty scores"""
         scores = classifier.predict_scores([])

@@ -114,6 +114,45 @@ def test_lineage_view_references_tables(cli, bigquery):
     expect.poll(lineage_query(bigquery.om, view)).satisfies(check)
 
 
+@pytest.mark.e2e_contract("lineage.view.nested-fields")
+def test_lineage_view_reaches_struct_fields(cli, bigquery):
+    """A STRUCT selected as-is maps field to field; `struct_col.*` maps each field to its own column."""
+    cli.run(bigquery.invocation(MetadataPipeline(includeDDL=True)))
+    view = bigquery.table_fqn("struct_fields_view")
+    expect.poll(bigquery.table_query("all_types")).satisfies(entity_exists)
+    expect.poll(indexed_table_query(bigquery.om, view)).satisfies(indexed_schema_definition_contains("struct_col.*"))
+    cli.run(
+        bigquery.invocation(
+            LineagePipeline(processViewLineage=True, processQueryLineage=False, processStoredProcedureLineage=False)
+        )
+    )
+    source_struct = bigquery.column_fqn("all_types", "struct_col")
+    view_struct = bigquery.column_fqn("struct_fields_view", "struct_col")
+
+    def check(graph):
+        lineage_has_edge(bigquery.table_fqn("all_types"), view)(graph)
+        lineage_has_columns(
+            (
+                bigquery.column_fqn("all_types", "id"),
+                source_struct,
+                f"{source_struct}.x",
+                f"{source_struct}.y",
+                f"{source_struct}.x",
+                f"{source_struct}.y",
+            ),
+            (
+                bigquery.column_fqn("struct_fields_view", "id"),
+                view_struct,
+                f"{view_struct}.x",
+                f"{view_struct}.y",
+                bigquery.column_fqn("struct_fields_view", "x"),
+                bigquery.column_fqn("struct_fields_view", "y"),
+            ),
+        )(graph)
+
+    expect.poll(lineage_query(bigquery.om, view)).satisfies(check)
+
+
 @pytest.mark.e2e_contract("classification.tags")
 def test_auto_classification_tags_pii_columns(cli, bigquery):
     cli.run(bigquery.invocation(MetadataPipeline()))
@@ -194,7 +233,7 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, bigquery):
         ),
         pytest.param(
             {"tableFilterPattern": {"excludes": ["transactions"]}},
-            {"customers", "all_types", "customer_txn_summary"},
+            {"customers", "all_types", "customer_txn_summary", "struct_fields_view"},
             id="exclude-one",
             marks=pytest.mark.e2e_contract("filter.table.exclude-one"),
         ),
@@ -208,7 +247,7 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, bigquery):
             {
                 "tableFilterPattern": {
                     "includes": [".*"],
-                    "excludes": ["transactions", "all_types", "customer_txn_summary"],
+                    "excludes": ["transactions", "all_types", "customer_txn_summary", "struct_fields_view"],
                 }
             },
             {"customers"},

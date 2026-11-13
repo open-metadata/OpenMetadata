@@ -15,6 +15,7 @@ import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
+import { DataType } from '../../../src/generated/entity/data/table';
 import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyAssetConceptLinks } from '../../../src/generated/type/ontologyAssetConceptLinks';
 import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
@@ -24,6 +25,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { selectOntologyOption } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
 const MANY_ASSETS = 100;
@@ -338,9 +340,13 @@ test.describe(
           [customer, tables[0], tables[1]],
           [order, tables[1], tables[0]],
         ] as const) {
-          if (concept !== customer) {
-            await page.getByTestId('ontology-data-concept-change').click();
-          }
+          await page
+            .getByTestId(
+              concept === customer
+                ? 'ontology-data-concept-picker-trigger'
+                : 'ontology-data-concept-change'
+            )
+            .click();
           await page
             .getByTestId(`ontology-data-concept-option-${concept.id}`)
             .click();
@@ -377,6 +383,8 @@ test.describe(
           empty.getByTestId('ontology-data-link-asset')
         ).toBeVisible();
         await expect(page.getByText(/0 of 0 properties bound/)).toHaveCount(0);
+        // Picking never changes the mode; only Link data asset or Edit does.
+        await expect(page).not.toHaveURL(/mode=edit/);
         await page.screenshot({ path: `${SCREENSHOTS}/g17-empty.png` });
       } finally {
         await cleanUp(api, { ontology, tables: [] });
@@ -638,7 +646,7 @@ test.describe(
         const concept = await createConcept(api, ontology, 'Customer');
         await bindTables(api, concept, tables);
         await openData(page, ontology);
-        await page.getByTestId('ontology-data-concept-picker').click();
+        await page.getByTestId('ontology-data-concept-picker-trigger').click();
 
         const startedAt = Date.now();
         await page
@@ -714,6 +722,224 @@ test.describe(
             `/api/v1/tasks/${taskId}?hardDelete=true`
           );
         }
+        await cleanUp(api, { ontology, tables: [table] });
+      }
+    });
+  }
+);
+
+const PATIENT_COLUMNS = [
+  'patient_id',
+  'date_of_birth',
+  'patient_name',
+  'created_at',
+];
+
+/** A table whose column names match some of the properties of the Patient concept. */
+const createPatientTable = async (api: APIRequestContext) => {
+  const table = new TableClass({ name: `patients_${uuid()}` });
+  table.entity.columns = PATIENT_COLUMNS.map((name) => ({
+    name,
+    dataType: DataType.Varchar,
+    dataLength: 100,
+    dataTypeDisplay: 'varchar',
+  }));
+  await table.create(api);
+
+  return table;
+};
+
+const createPatientFixture = async (api: APIRequestContext) => {
+  const ontology = await createOntology(api);
+  const concept = await createConcept(api, ontology, 'Patient');
+  const [patientId, dateOfBirth, patientName] = await Promise.all(
+    ['patientId', 'dateOfBirth', 'patientName'].map((name) =>
+      createProperty(api, ontology, concept, name)
+    )
+  );
+  const table = await createPatientTable(api);
+
+  return {
+    concept,
+    ontology,
+    properties: { dateOfBirth, patientId, patientName },
+    table,
+  };
+};
+
+const boundColumns = async (api: APIRequestContext, concept: OntologyConcept) =>
+  (await readBindings(api, concept)).assets
+    .flatMap((asset) =>
+      asset.columns.map((column) => [
+        column.columnPath.join('.'),
+        column.propertyId,
+      ])
+    )
+    .sort(([left], [right]) => left.localeCompare(right));
+
+const mappingRow = (page: Page, column: string) =>
+  page.getByTestId(`ontology-column-mapping-row-${column}`);
+
+const linkThroughPicker = async (page: Page, table: TableClass) => {
+  await page.getByTestId('ontology-data-link-asset').click();
+  const picker = page.getByTestId('ontology-data-asset-picker');
+  await picker
+    .getByTestId('ontology-data-asset-search')
+    .locator('input')
+    .fill(table.entityResponseData.name);
+  const option = picker.getByTestId(
+    `ontology-data-asset-option-${table.entityResponseData.id}`
+  );
+  await expect(option).toBeVisible({ timeout: 30_000 });
+  await option.click();
+  await picker.getByTestId('ontology-data-asset-save').click();
+};
+
+test.describe(
+  'Binding a table suggests a property for each of its columns',
+  { tag: ['@Features', '@Governance'] },
+  () => {
+    for (const mode of APP_MODES) {
+      test(`${mode}: linking a table lists its columns with suggested properties, and saving writes the checked rows`, async ({
+        isolatedUserPage: page,
+      }) => {
+        test.slow();
+        const api = await getWorkerAdminAPIContext();
+        const { concept, ontology, properties, table } =
+          await createPatientFixture(api);
+        try {
+          await setMode(page, mode);
+          await openData(page, ontology, concept);
+          await linkThroughPicker(page, table);
+
+          const step = page.getByTestId('ontology-column-mapping-step');
+
+          await expect(step).toContainText(
+            'Bind columns to Patient’s properties'
+          );
+          for (const [column, property] of [
+            ['patient_id', 'patient id'],
+            ['date_of_birth', 'date of birth'],
+            ['patient_name', 'patient name'],
+          ]) {
+            const row = mappingRow(page, column);
+
+            await expect(row.getByRole('button')).toContainText(property);
+            await expect(row).toContainText('Suggested');
+            await expect(row.getByRole('checkbox')).toBeChecked();
+          }
+          await expect(mappingRow(page, 'created_at')).not.toContainText(
+            'Suggested'
+          );
+          await expect(
+            mappingRow(page, 'created_at').getByRole('checkbox')
+          ).not.toBeChecked();
+          await page.screenshot({ path: `${SCREENSHOTS}/f2-step-${mode}.png` });
+
+          await mappingRow(page, 'patient_name')
+            .getByTestId('ontology-column-mapping-check-patient_name')
+            .click();
+          await expect(
+            mappingRow(page, 'patient_name').getByRole('checkbox')
+          ).not.toBeChecked();
+          await step.getByTestId('ontology-column-mapping-save').click();
+          await expect(step).toBeHidden();
+
+          await expect
+            .poll(() => boundColumns(api, concept))
+            .toEqual([
+              ['date_of_birth', properties.dateOfBirth.id],
+              ['patient_id', properties.patientId.id],
+            ]);
+
+          await page.goto(
+            `/table/${table.entityResponseData.fullyQualifiedName}`
+          );
+          const linked = page
+            .getByTestId('table-linked-concepts')
+            .getByTestId('table-linked-concept-column');
+
+          await expect(linked).toHaveCount(2);
+          await expect(linked.filter({ hasText: 'patient_id' })).toHaveCount(1);
+          await expect(linked.filter({ hasText: 'date_of_birth' })).toHaveCount(
+            1
+          );
+          await expect(linked.filter({ hasText: 'patient_name' })).toHaveCount(
+            0
+          );
+        } finally {
+          await cleanUp(api, { ontology, tables: [table] });
+        }
+      });
+    }
+
+    test('skipping the step leaves the table linked with no column bindings', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const { concept, ontology, table } = await createPatientFixture(api);
+      try {
+        await openData(page, ontology, concept);
+        await linkThroughPicker(page, table);
+        await page.getByTestId('ontology-column-mapping-skip').click();
+
+        await expect(
+          page.getByTestId('ontology-column-mapping-step')
+        ).toBeHidden();
+        await expect(assetRow(page, table)).toBeVisible();
+
+        const bindings = await readBindings(api, concept);
+
+        expect(bindings.assets.map((asset) => asset.assetId)).toEqual([
+          table.entityResponseData.id,
+        ]);
+        expect(await boundColumns(api, concept)).toEqual([]);
+      } finally {
+        await cleanUp(api, { ontology, tables: [table] });
+      }
+    });
+
+    test('a table already linked can have its columns bound from its panel, changing a suggestion', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const { concept, ontology, properties, table } =
+        await createPatientFixture(api);
+      try {
+        await bindTable(api, concept, table, 0);
+        await openData(page, ontology, concept);
+        await assetRow(page, table).click();
+        await page.getByTestId('ontology-data-asset-bind-columns').click();
+
+        const step = page.getByTestId('ontology-column-mapping-step');
+
+        await expect(mappingRow(page, 'patient_id')).toContainText('Suggested');
+        await selectOntologyOption(
+          page,
+          mappingRow(page, 'created_at').getByRole('button'),
+          'patient name'
+        );
+        await expect(
+          mappingRow(page, 'created_at').getByRole('checkbox')
+        ).toBeChecked();
+        await expect(mappingRow(page, 'created_at')).not.toContainText(
+          'Suggested'
+        );
+        await page.screenshot({ path: `${SCREENSHOTS}/f2-step-panel.png` });
+        await step.getByTestId('ontology-column-mapping-save').click();
+        await expect(step).toBeHidden();
+
+        await expect
+          .poll(() => boundColumns(api, concept))
+          .toEqual([
+            ['created_at', properties.patientName.id],
+            ['date_of_birth', properties.dateOfBirth.id],
+            ['patient_id', properties.patientId.id],
+            ['patient_name', properties.patientName.id],
+          ]);
+      } finally {
         await cleanUp(api, { ontology, tables: [table] });
       }
     });

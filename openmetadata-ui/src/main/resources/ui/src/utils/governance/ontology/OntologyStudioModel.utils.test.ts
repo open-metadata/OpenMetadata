@@ -32,6 +32,7 @@ import {
   buildReusePropertyPatch,
   buildSubClassAxiomRequest,
   getAvailableName,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
@@ -40,6 +41,7 @@ import {
   getObjectProperties,
   humanizeName,
   OntologyStudioModel,
+  withSuperClasses,
 } from './OntologyStudioModel.utils';
 
 const NS = 'https://example.org/retail/';
@@ -208,6 +210,32 @@ describe('OntologyStudioModel utils', () => {
       property: placedBy,
       restriction: { cardinality: 1, kind: RestrictionKind.Exact },
     });
+  });
+
+  it('sets superclasses from named SubClassOf parents, skipping restrictions and deleted axioms', () => {
+    const concepts = withSuperClasses(model.concepts, [
+      ...model.axioms,
+      axiom('ExternalParent', AxiomType.SubclassOf, customer.iri, [
+        named('https://schema.org/Person'),
+      ]),
+      {
+        ...axiom('Gone', AxiomType.SubclassOf, shipment.iri, [
+          named(party.iri),
+        ]),
+        deleted: true,
+      },
+    ]);
+    const parentsOf = (iri: string) =>
+      concepts.find((concept) => concept.iri === iri)?.superClasses;
+
+    expect(parentsOf(customer.iri)).toEqual([
+      party.iri,
+      'https://schema.org/Person',
+    ]);
+    expect(parentsOf(premiumCustomer.iri)).toEqual([customer.iri]);
+    expect(parentsOf(order.iri)).toEqual([]);
+    expect(parentsOf(shipment.iri)).toEqual([]);
+    expect(parentsOf(physicalProduct.iri)).toEqual([product.iri]);
   });
 
   it('ignores definitions pointing outside the model and deleted ones', () => {
@@ -386,6 +414,28 @@ describe('OntologyStudioModel utils', () => {
         row.inheritedFrom?.name,
       ])
     ).toContainEqual(['internalNote', 'annotation', undefined]);
+  });
+
+  it('offers data properties to bind, own then inherited, and leaves out annotations', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+
+    expect(
+      getBindableConceptProperties(
+        { ...model, properties: [...model.properties, note] },
+        getModelRelations(model),
+        premiumCustomer
+      ).map(({ label, isIdentifier }) => [label, isIdentifier])
+    ).toEqual([
+      ['customer id', true],
+      ['legal name', undefined],
+    ]);
   });
 
   it('labels data types by their XSD local name, and enumerations as enum', () => {

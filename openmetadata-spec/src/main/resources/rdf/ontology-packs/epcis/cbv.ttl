@@ -1,0 +1,949 @@
+@prefix cbv:   <https://ref.gs1.org/cbv/> .
+@prefix epcis: <https://ref.gs1.org/epcis/> .
+@prefix gs1:   <https://ref.gs1.org/voc/> .
+
+@prefix dct:    <http://purl.org/dc/terms/> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <http://schema.org/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix sw:     <http://www.w3.org/2003/06/sw-vocab-status/ns#> .
+@prefix vann:   <http://purl.org/vocab/vann/> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+#################### Ontology
+
+cbv: a owl:Ontology;
+  rdfs:label "CBV Ontology";
+  rdfs:comment """The Comprehensive Business Vocabulary defines various enumerations used by EPCIS.""";
+  dct:creator <https://gs1.org/>;
+  dct:publisher <https://gs1.org/>;
+  dct:created  "2021-06-01"^^xsd:date;
+  dct:modified "2021-09-30"^^xsd:date;
+  # dct:issued   "2021-06-30"^^xsd:date; # after release
+  rdfs:seeAlso epcis:, gs1: ;
+  owl:versionInfo "2.0";
+  vann:preferredNamespaceUri "https://ref.gs1.org/cbv/";
+  vann:preferredNamespacePrefix "cbv".
+
+<https://gs1.org/> a schema:Organization;
+  schema:name "GS1";
+  schema:description "GS1 is an international organization that sets the global standards in transport and logistics".
+
+#################### Business Transaction Type
+
+cbv:BTT  a                owl:Class , rdfs:Class ;
+        rdfs:comment      "These identifiers may be used to populate the type attribute of a bizTransaction element in an EPCIS event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Business Transaction Type"@en ;
+        rdfs:subClassOf   cbv:TypeCode ;
+        sw:term_status    "stable" .
+
+cbv:BTT-bol  a            cbv:BTT ;
+        rdfs:comment      "A document issued by a carrier to a shipper, listing and acknowledging receipt of goods for transport and specifying terms of delivery."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Bill of Lading"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:bol> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-cert  a           cbv:BTT ;
+        rdfs:comment      "A document confirming certain characteristics of an object (e.g. product), person, or organisation, typically issued by a third party."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Certificate"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:cert> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-desadv  a         cbv:BTT ;
+        rdfs:comment      "A document/message by means of which the seller or consignor informs the consignee about the despatch of goods. \nAlso called an 'Advanced Shipment Notice', but the value `desadv` is always used regardless of local nomenclature."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Despatch Advice"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:desadv> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-inv  a            cbv:BTT ;
+        rdfs:comment      "A document/message claiming payment for goods or services supplied under conditions agreed by the seller and buyer."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Invoice"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:inv> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-pedigree  a       cbv:BTT ;
+        rdfs:comment      "A record that traces the ownership or custody and transactions of a product as it moves among various trading partners."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Pedigree"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:pedigree> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-po  a             cbv:BTT ;
+        rdfs:comment      "A document/message that specifies details for goods and services ordered under conditions agreed by the seller and buyer."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Purchase Order"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:po> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-poc  a            cbv:BTT ;
+        rdfs:comment      "A document that provides confirmation from an external supplier to the request of a purchaser to deliver a specified quantity of material, or perform a specified service, at a specified price within a specified time. \n(Sometimes internally referred to as a 'Sales Order'.)"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Purchase Order Confirmation"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:poc> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-prodorder  a      cbv:BTT ;
+        rdfs:comment      "An organisation-internal document or message issued by a producer that initiates a manufacturing process of goods."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Production Order"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:prodorder> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-recadv  a         cbv:BTT ;
+        rdfs:comment      "A document/message that provides the receiver of the shipment the capability to inform the shipper of actual goods received, compared to what was advised as being sent."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Receiving Advice"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:recadv> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-rma  a            cbv:BTT ;
+        rdfs:comment      "A document issued by the seller that authorises a buyer to return merchandise for credit determination."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Return Merchandise Authorisation"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:rma> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-testprd  a        cbv:BTT ;
+        rdfs:comment      "A document that provides a formal specification of a sequence of instructions for the purpose of verifying one or several criteria."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Test Procedure"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:testprd> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-testres  a        cbv:BTT ;
+        rdfs:comment      "A document that includes the outcome of the execution of a given test procedure."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Test Result"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:testres> ;
+        sw:term_status    "stable" .
+
+cbv:BTT-upevt  a        cbv:BTT ;
+        rdfs:comment      "Event ID URI(s) of event(s) provided by an upstream supplier, such as packing and shipping events (e.g., as the basis for the inferred completeness of inbound aggregations)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Upstream EPCIS Event"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:btt:upevt> ;
+        sw:term_status    "stable" .
+
+#################### Business Step
+
+cbv:BizStep  a            owl:Class , rdfs:Class ;
+        rdfs:comment      "These identifiers populate the bizStep field in an EPCIS event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Business Step ID"@en ;
+        rdfs:subClassOf   cbv:TypeCode ;
+        sw:term_status    "stable" .
+
+cbv:BizStep-accepting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object changes possession and/or ownership."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "accepting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:accepting> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X unloads a pallet on to the receiving dock. The numbers of cases on the pallet are counted. The pallets are disaggregated from the shipping conveyance. The quantity is verified against the delivery document (Freight Bill or Bill of Lading), notating any over, short or damaged product at the time of delivery. Typically this process releases freight payment and completes the contractual agreement with the carrier of delivering the product/assets to a specified location.\nA parcel carrier drops off five boxes at Distributor Y's DC. A person on the Receiving Dock signs that they accept the five boxes from the parcel carrier.\nA wholesaler is assigned a lot of fish at a fish auction, verifies the quantity and acknowledges receipt.\nA manufacturer's fork lift driver scans the IDs of components which have been removed from a consignment warehouse. In doing so, the components are added to the manufacturer's inventory."@en .
+
+cbv:BizStep-arriving  a   cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object arrives at a location."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "arriving"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:arriving> ;
+        sw:term_status    "stable" ;
+        skos:example      "Truckload of a shipment arrives into a yard. Shipment has not yet been received or accepted."@en .
+
+cbv:BizStep-assembling
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes an activity within a business process whereby one or more objects are combined to create a new finished product. \nIn contrast to transformation, in the output of `assembling` the original objects are still recognisable and/or the process is reversible; hence, `assembling` would be used preferably in an Association Event or, alternatively, an Aggregation Event, but not a Transformation Event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "assembling"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:assembling> ;
+        sw:term_status    "stable" ;
+        skos:example      "Computer parts (hard drive, battery, RAM) assembled into a consumer ready computer\nMaintenance, repair and overhaul processes involving components added to an assembly comprised of multiple parts.\nHealthcare kitting: a surgical kit including drug, syringe, and gauze are combined to create a new 'product': a *kit*."@en .
+
+cbv:BizStep-collecting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is picked up and collected for future disposal, recycling or re-used."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "collecting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:collecting> ;
+        sw:term_status    "stable" ;
+        skos:example      "An organisation picks up disposed consumer electronics in an end of life state from various different organisations. After the goods are picked up, they typically are brought back and received into a Collection Centre\nRented or leased pallets are picked up and brought to a collection centre."@en .
+
+cbv:BizStep-commissioning
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of associating an instance-level identifier (such as an EPC) with a specific object, or the process of associating a class-level identifier, not previously used, with one or more objects. \nA tag may have been encoded and applied in this step, or may have been previously encoded. \n`commissioning` is applied to this association of object and serialised identifier, regardless of industry/sector; it encompasses sector-specific process steps including, but not limited to: \n- catching (of fish), \n- harvesting (of fruit/vegetable), \n- picking (of fruit/vegetables), \n- producing (on an automated line), \n- slaughtering (of livestock). \nIn the case of a class-level identifier, `commissioning` differs from `creating_class_instance` in that `commissioning` always indicates that this is the first use of the class-level identifier, whereas `creating_class_instance` does not specify whether the class-level identifier has been used before."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "commissioning"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:commissioning> ;
+        sw:term_status    "stable" ;
+        skos:example      "On a packaging line, an encoded EPC is applied to a case and associated to the product.\nAn individual virtual document (e.g. digital coupon, digital voucher, etc.) is assigned an EPC.\nOne hundred bottles of a particular batch of pharmaceutical product are produced, those being the first bottles of that batch to be produced.\nSides of beef are transformed into individual packaged steaks. This may be an EPCIS 1.2 TransformationEvent if the input sides of beef are also tracked."@en .
+
+cbv:BizStep-consigning
+        a                 cbv:BizStep ;
+        rdfs:comment      "Indicates the overall process of `staging_outbound`, `loading`, `departing`, and `accepting`. \nIt may be used when more granular process step information is unknown or inaccessible. \nThe use of `consigning` is mutually exclusive from the use of `staging_outbound`, `loading`, `departing`, and `accepting`. \nNote: This business step is similar to `shipping`, but includes a change of possession and/or ownership at the outbound side."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "consigning"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:consigning> ;
+        sw:term_status    "stable" ;
+        skos:example      "A wholesaler comes aboard a fishing vessel, selects and buys boxes of fish, and brings them to his premises. \nA manufacturer retrieves components from a consignment warehouse for use in its assembly line. In the logical second of leaving the consignment warehouse, the components pass into the ownership of the manufacturer.\nA manufacturer stages products for loading, loads them into a container, the container is sealed, and the container departs. Ownership transfers to the receiver sometime during this overall process. If this is done in a single step, then business step `consigning` is used."@en .
+
+cbv:BizStep-creating_class_instance
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a step in a business process where an instance or increased quantity of a class-level identifier is produced. \nUnlike `commissioning`, this business step may be repeated for the same class-level identifier."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "creating class instance"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:creating_class_instance> ;
+        sw:term_status    "stable" ;
+        skos:example      "Water, sugar, and other ingredients are combined to produce a single batch of soda over a single shift on a single production line. This may be an EPCIS 1.2 `TransformationEvent` if the input ingredients are tracked.\nPotatoes are sorted by size and quality, washed, and packed into cases of a single lot in a single packaging facility on a single date."@en .
+
+cbv:BizStep-cycle_counting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of counting objects within a location in order to obtain an accurate inventory for business needs other than accounting purposes (e.g., replenishment and allocation)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "cycle counting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:cycle_counting> ;
+        sw:term_status    "stable" ;
+        skos:example      "A preselected subset of objects (for instance, all products belonging to a certain brand owner or a specific object class) within a retail store, are counted by a handheld reader.\nAll objects of a specific sub-location (sales floor or a shelf on the sales floor, e.g.) are counted by a handheld reader."@en .
+
+cbv:BizStep-decommissioning
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of disassociating an instance-level identifier (such as an EPC) with an object.\nThe object may be re-commissioned at some point in the future - however only with a new instance-level identifier."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "decommissioning"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:decommissioning> ;
+        sw:term_status    "stable" ;
+        skos:example      "An eSeal on a reusable container is broken when the container is opened, so that the container is no longer identified by the instance-level identifier that was in the eSeal.\nA digital coupon or an empties refund voucher is redeemed at retail point-of-sale."@en .
+
+cbv:BizStep-departing
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object leaves a location on its way to a destination."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "departing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:departing> ;
+        sw:term_status    "stable" ;
+        skos:example      "Truckload of a shipment departs a yard, typically through a gate and begins transit to another location."@en .
+
+cbv:BizStep-destroying
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of terminating an object. \nFor an instance-level identifier, the object should not be the subject of subsequent events; subsequent events are likely indicative of error (such as a stray read of a tag inside an incinerator). \nFor a class level identifier, quantities are reduced; however, the class-level identifier may still be used in subsequent events (referring to different instances that were not destroyed)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "destroying"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:destroying> ;
+        sw:term_status    "stable" ;
+        skos:example      "Distributor or Retailer puts empty case in the incinerator or box crusher."@en .
+
+cbv:BizStep-disassembling
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is broken down into separate, uniquely identified component parts."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "disassembling"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:disassembling> ;
+        sw:term_status    "stable" ;
+        skos:example      "Before feeding a consumer electronics end of life item (a computer) into recycling operation line, it is necessary to disassemble the parts for the purpose of being recycled or disposed of in an environmentally sound manner.\nA surgical kit (e.g. 2- 50 count bottles of medication and 1 syringe gauze)  is broken down into its separate component parts."@en .
+
+cbv:BizStep-dispensing
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where a product is made available in full or part to a consumer."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "dispensing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:dispensing> ;
+        sw:term_status    "stable" ;
+        skos:example      "A pharmacist dispenses a pharmaceutical to fill a specific prescription written by a physician, to a consumer or patient.\nA deli manager slices a 5 pound package of turkey for sale."@en .
+
+cbv:BizStep-encoding  a   cbv:BizStep ;
+        rdfs:comment      "Process of writing an instance-level identifier (typically an EPC) to a barcode or RFID tag, where the identifier is not yet associated with an object at this step in the process. \n Encoding SHOULD only be used in a `TransactionEvent`."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "encoding"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:encoding> ;
+        sw:term_status    "stable" ;
+        skos:example      "3rd Party writes tags and returns spool of case tags to Manufacturer."@en .
+
+cbv:BizStep-entering_exiting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity at the Entrance/Exit door of a facility where customers are either leaving with purchased product or entering with product to be returned to the facility."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "entering / exiting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:entering_exiting> ;
+        sw:term_status    "stable" ;
+        skos:example      "Customer leaves the facility of Retailer X with their purchased items through a customer entrance/exit door."@en .
+
+cbv:BizStep-holding  a    cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is segregated for further review."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "holding"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:holding> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X unloads a second pallet on to their receiving dock, and, finding no purchase order for the pallet, moves the pallet to a holding area on the dock.\nDistributor Y obtains a shipment of pharmaceutical product. Distributor Y finds that their supplier cannot provide a complete pedigree. Distributor Y moves the shipment to a quarantine area on their dock.\nShipper Z is told by Customs to move a container to a special area until Customs can inspect and clear the container."@en .
+
+cbv:BizStep-inspecting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of reviewing objects to address potential physical or documentation defects. \n In contrast to *sampled* objects, *inspected* objects **remain viable** in the supply chain. \n `inspecting` is non-destructive and typically only checks the plausibility of the product packaging, security devices (e.g. holograms, watermarks, etc.) and integrity of any tamper-evident seals, whereas `sampling` is always destructive, i.e., makes the sampled product instance no longer viable for sale or onward distribution in the retail/dispensing supply chain)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "inspecting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:inspecting> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A pulls 10 bottles from every batch to ensure that the product and pill count in the bottles match expectations.\nDistributor Y checks all returned products to designate them either as saleable or as damaged.\nRegulator R pulls 3 bottles from a shelf to determine if the bottles have a correct pedigree.\nCustoms Agent C uses a machine to scan the contents of a shipping container.\nPallet pool operator Z checks if certain pallets comply with quality standards."@en .
+
+cbv:BizStep-installing
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is put into a composite object (not merely a container). \nIn `installing` the composite object exists prior to this step, whereas in `assembling` the composite object is created during the step."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "installing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:installing> ;
+        sw:term_status    "stable" ;
+        skos:example      "Additional memory chips and a rechargeable battery are installed within a computer \nA duplexing unit is installed on a laser printer \nAdditional safety equipment is installed within the cabin of an aircraft or vehicle (e.g. fire extinguishers)"@en .
+
+cbv:BizStep-killing  a    cbv:BizStep ;
+        rdfs:comment      "Process of terminating an RFID tag previously associated with an object. \nThe object and its instance-level identifier may continue to exist and be the subject of subsequent events (via a barcode, manual data entry, replacement tag, etc.)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "killing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:killing> ;
+        sw:term_status    "stable" ;
+        skos:example      "Kill Command is issued to the tag to prevent any further reading of the tag or the information on the tag."@en .
+
+cbv:BizStep-loading  a    cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is loaded into shipping conveyance."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "loading"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:loading> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A loads pallets into a container. The pallets are aggregated to the container.\nDistributor Y loads racks full of totes on to a truck."@en .
+
+cbv:BizStep-other  a      cbv:BizStep ;
+        rdfs:comment      "A business step not identified by any of the values listed in the CBV."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "other"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:other> ;
+        sw:term_status    "stable" ;
+        skos:example      "`other` may be used for terms that have yet to be added to the CBV from an industry or a user."@en .
+
+cbv:BizStep-packing  a    cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process that includes putting objects into a larger container - usually for shipping. \nAggregation of one unit to another typically occurs at this point."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "packing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:packing> ;
+        sw:term_status    "stable" ;
+        skos:example      "12 packs of soda are placed into a case.\nLoose potatoes are placed into a tote."@en .
+
+cbv:BizStep-picking  a    cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process that includes the selecting of objects to fill an order."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "picking"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:picking> ;
+        sw:term_status    "stable" ;
+        skos:example      "Distributor Y places three units into a tote to meet the requirements of a purchase order.\nManufacturer A pulls three pallets from its racks to fulfil a purchase order."@en .
+
+cbv:BizStep-receiving
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process that indicates that an object is being received at a location and is added to the receiver's inventory. \nThe use of `receiving` is mutually exclusive from the use of `arriving` and `accepting`."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "receiving"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:receiving> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X confirms that the count of cases on the pallet equals the expected count in a purchase order. Retailer X takes the cases into inventory. Typically, this process matches the product to the purchase order for payment to the supplier.\nA shipment from a manufacturer factory site to manufacturer distribution centre, is matched against the transaction record then added to local inventory."@en .
+
+cbv:BizStep-removing  a   cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is taken out of a composite object. \nOpposite of `installing`."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "removing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:removing> ;
+        sw:term_status    "stable" ;
+        skos:example      "A defective airplane part is taken out of the engine."@en .
+
+cbv:BizStep-repackaging
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object's packaging configuration is changed."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "repackaging"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:repackaging> ;
+        sw:term_status    "stable" ;
+        skos:example      "Distributor Y receives one box full of batteries and another box full of laptops without batteries. Distributor Y ships out new boxes containing one laptop and one battery."@en .
+
+cbv:BizStep-repairing
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where a malfunctioning product is repaired (typically by a post-sales service), without replacing it by a new one."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "repairing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:repairing> ;
+        sw:term_status    "stable" ;
+        skos:example      "A computer is brought to a repair centre to fix a problem.\nAn airplane part is in maintenance centre to diagnose an issue."@en .
+
+cbv:BizStep-replacing
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is substituted or exchanged for another object."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "replacing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:replacing> ;
+        sw:term_status    "stable" ;
+        skos:example      "A defective airplane part is replaced by a new part."@en .
+
+cbv:BizStep-reserving
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process in which a set of instance-level identifiers, not yet commissioned, are provided for use by another party."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "reserving"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:reserving> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer provides set of case EPC numbers to a 3rd Party labeller."@en .
+
+cbv:BizStep-retail_selling
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process at a point-of-sale for the purpose of transferring ownership to a customer in exchange for something of value (currency, credit, etc.)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "retail selling"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:retail_selling> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X sells a screwdriver to a customer by checking it out through a point-of-sale system."@en .
+
+cbv:BizStep-sampling  a   cbv:BizStep ;
+        rdfs:comment      "Denotes a testing activity within a business process where one or more portions of an object are examined for quality testing, quality inspection, or customs clearance purposes. \nIn contrast to *inspected* objects, *sampled* objects are **no longer viable** in the supply chain. \n`inspecting` is non-destructive and typically only checks the plausibility of the product packaging, security devices (e.g. holograms, watermarks, etc.) and integrity of any tamper-evident seals, whereas `sampling` is always destructive, i.e., makes the sampled product instance no longer viable for sale or onward distribution in the retail/dispensing supply chain). \nWhen a serialised instance undergoes `sampling`, the subsequent business step SHALL be an end-of-life event (i.e., with action DELETE), to prevent the return of the sampled object (or its identifier) into the supply chain."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "sampling"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:sampling> ;
+        sw:term_status    "stable" ;
+        skos:example      "Customs authority X removes a pharmaceutical product from a case for quality testing at a customs office.\nFood laboratory Y pulls a random product sample and checks it for authenticity."@en .
+
+cbv:BizStep-sensor_reporting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where sensor data, pertaining to the physical properties and condition of an object or location, is returned. \nIf an EPCIS event accommodates sensor data in conjunction with specific business process steps (e.g. sensor observations in the context of a `commissioning`, `packing`, or `sampling`), the business step value describing the process step SHOULD be used. \n`sensor_reporting` SHOULD only be used when no other business step is in progress."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "sensor reporting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:sensor_reporting> ;
+        sw:term_status    "stable" ;
+        skos:example      "Several packages of frozen food are kept in cold storage, with temperature monitoring. An EPCIS event is triggered once a specific, pre-set temperature threshold is reached.\nA dust-free room is continuously checked for the presence of contaminants. An EPCIS event is captured at regular intervals for documentation purposes.\nA wine/cheese cellar is continuously checked for absolute humidity and temperature. Each time the door is opened or closed, an EPCIS event is captured, including the range of temperature and absolute humidity values within the period of time since the previously captured `commissioning` EPCIS event."@en .
+
+cbv:BizStep-shipping  a   cbv:BizStep ;
+        rdfs:comment      "Indicates the overall process of `staging_outbound`, `loading` and `departing`. \nIt may be used when more granular process step information is unknown or inaccessible. \nIt may indicate a final event from a shipping point. \nThe use of `shipping` is mutually exclusive from the use of `staging_outbound`, `departing`, or `loading`."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "shipping"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:shipping> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A loads and reads product into the shipping container and closes the door. The product has been read out of the shipping facility. The shipment is immediately picked up and a BOL is associated at this point. (The shipment has left the yard)\nAt Distributor Y, the truck containing racks full of totes pulls away from the shipping dock or staging area.\nManufacturer A completes loading product into trailer and seals door. The trailer is ready for pickup. The generation of a Despatch Advice / ASN triggers a `shipping` event.\nA 3PL picks and tags the product. The product is loaded into a trailer and signed over to a transportation carrier. The 3PL notifies the manufacturer who generates a `shipping` event. NOTE: This would be the case if there were NO departing step at a read point at the gate.\nTypical Process flow:\n- `staging_outbound`\n- `loading`\n- `departing`\nThe above steps assume an organisation's ability and desire to share all steps in the process. If those process steps are not captured, the single business step of `shipping` would be used."@en .
+
+cbv:BizStep-staging_outbound
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process in which an object moves from a facility to an area where it will await transport pick-up."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "staging outbound"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:staging_outbound> ;
+        sw:term_status    "stable" ;
+        skos:example      "Container is being closed and will be subsequently loaded onto a vehicle in the yard.\nContainer is being closed and seal is applied, and will be subsequently loaded onto a vehicle in the yard.\nProduct has been picked and is now in a staging lane waiting for loading into a container."@en .
+
+cbv:BizStep-stock_taking
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of counting objects within a location following established rules and/or standards to serve as a basis for accounting purposes."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "stock taking"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:stock_taking> ;
+        sw:term_status    "stable" ;
+        skos:example      "All EPCs in a retail store are read by a handheld reader following a procedure accepted by the organisation’s accounting firm."@en .
+
+cbv:BizStep-stocking  a   cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process within a location to make an object available to the customer or for order fulfilment within a DC."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "stocking"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:stocking> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X places cans from a case on to a shelf on the sales floor.\nDistributor X moves goods from a storage area to a picking area."@en .
+
+cbv:BizStep-storing  a    cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is moved into and out of storage within a location."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "storing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:storing> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A moves a pallet from the receiving area to a rack \nRetailer X moves a case from the receiving dock to a shelf in the backroom."@en .
+
+cbv:BizStep-transporting
+        a                 cbv:BizStep ;
+        rdfs:comment      "Process of moving an object from one location to another using a vehicle (e.g., a ship, a train, a lorry, an aircraft)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "transporting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:transporting> ;
+        sw:term_status    "stable" ;
+        skos:example      "Carrier X conveys 150 sea containers from Hong Kong seaport to Hamburg seaport with a container vessel.\nA train with 20 goods wagons goes from one train station to another.\nA lorry moves a swap trailer from a depot to a distribution centre."@en .
+
+cbv:BizStep-unloading
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process where an object is unloaded from a shipping conveyance."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "unloading"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:unloading> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A unloads pallets from a shipping conveyance. The pallets are disaggregated from the shipping conveyance.\nDistributor Y unloads racks full of totes from a truck."@en .
+
+cbv:BizStep-unpacking
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a specific activity within a business process that includes removing products (individuals, inners, cases, pallets) from a larger container - usually after receiving or accepting. \nDisaggregation of one unit from another typically occurs at this point."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "unpacking"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:unpacking> ;
+        sw:term_status    "stable" ;
+        skos:example      "12 packs of soda are removed from a case.\nLoose potatoes are taken off from a tote."@en .
+
+cbv:BizStep-void_shipping
+        a                 cbv:BizStep ;
+        rdfs:comment      "Denotes a process of declaring that one or more objects in a prior outbound process (captured in an EPCIS event having business step `shipping`, `departing`, or `consigning`) were not shipped (or departed or consigned) as previously indicated."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "void shipping"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:bizstep:void_shipping> ;
+        sw:term_status    "stable" ;
+        skos:example      "A sender cancels a shipment after a prior shipping event.\nA sender discovers, either by notification from a recipient or on their own, that a shipment they believed occurred and created a shipping event for, did not actually occur. The record is updated to reflect this.\nA sender discovers that three out of ten items, previously believed as having been shipped, were not included in the shipment. The `voidShipping` event indicates that those three items were not shipped."@en .
+
+#################### Disposition
+
+cbv:Disp  a               owl:Class , rdfs:Class ;
+        rdfs:comment      "These identifiers populate the disposition field of an EPCIS event or the set / unset fields within the persistentDisposition field of an EPCIS event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Disposition ID"@en ;
+        rdfs:subClassOf   cbv:TypeCode ;
+        sw:term_status    "stable" ;
+        skos:example      ""@en .
+
+cbv:Disp-active  a        cbv:Disp ;
+        rdfs:comment      "A commissioned object has just been introduced into the supply chain."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "active"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:active> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A commissions tags for 10 cases of product.\nA virtual document has been assigned an EPC\nBusiness step: \n- `commissioning`"@en .
+
+cbv:Disp-available  a     cbv:Disp ;
+        rdfs:comment      "Object has been returned to service or to the supply chain (e.g., following a successfully completed `repairing` step)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "available"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:available> ;
+        sw:term_status    "stable" ;
+        skos:example      "A mechanical component has been serviced and made available for use."@en .
+
+cbv:Disp-completeness_inferred
+        a                 cbv:Disp ;
+        rdfs:comment      "Applied as `persistentDisposition` of an `AggregationEvent` or `ObjectEvent` with action `OBSERVE` to indicate the **inferred** integrity of that aggregation (without unpacking the aggregated children from the parent) on the basis of aggregation information (e.g., earlier EPCIS packing event data and/or ASN/DESADV) provided by an upstream supplier. \nInferred children SHALL be explicitly listed when captured in an `AggregationEvent`, but SHALL NOT be listed when captured in an `ObjectEvent`."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "completeness inferred"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:completeness_inferred> ;
+        sw:term_status    "stable" ;
+        skos:example      "A downstream recipient *infers* that the contents of a shipment below the outer packing layer are complete, as indicated in EPCIS packing and shipping events provided by the upstream supplier."@en .
+
+cbv:Disp-completeness_verified
+        a                 cbv:Disp ;
+        rdfs:comment      "Applied as `disposition` of an `AggregationEvent` with action `DELETE` and business step `unpacking` to explicitly indicate the verified integrity of that aggregation when the aggregated children are unpacked from their parent. \nApplied as `persistentDisposition` of an `ObjectEvent` with business step `inspecting`, if the inspection has verified the presence of each of the aggregated children."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "completeness verified"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:completeness_verified> ;
+        sw:term_status    "stable" ;
+        skos:example      "A downstream recipient *verifies* that the contents of a shipment below the outer packing layer are complete, by means of unpacking and scanning the barcodes or EPC/RFID tags of the contents."@en .
+
+cbv:Disp-conformant  a    cbv:Disp ;
+        rdfs:comment      "Outcome of a successful/passed inspection in an `inspecting` or `repairing` step."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "conformant"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:conformant> ;
+        sw:term_status    "stable" ;
+        skos:example      "A mechanical component has been successfully tested for conformity to safety or performance requirements."@en .
+
+cbv:Disp-container_closed
+        a                 cbv:Disp ;
+        rdfs:comment      "Object has been loaded onto a container, the doors have been closed and the shipment sealed."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "container closed"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:container_closed> ;
+        sw:term_status    "stable" ;
+        skos:example      "Container is being closed and will be awaiting pickup in the yard.\nContainer is being closed and electronic seal is applied.\nBusiness step (non-exclusive example):\n- `staging_outbound`"@en .
+
+cbv:Disp-container_open
+        a                 cbv:Disp ;
+        rdfs:comment      "A container's doors have been opened; or a seal of a shipment has been broken. \nThis disposition makes no indication as to whether the act of opening was authorised."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "container open"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:container_open> ;
+        sw:term_status    "stable" ;
+        skos:example      "Container has been opened in the normal process of unloading.\nContainer has been opened unexpectedly, with no apparent reason."@en .
+
+cbv:Disp-damaged  a       cbv:Disp ;
+        rdfs:comment      "Object is impaired in its usefulness and/or reduced in value due to a defect."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "damaged"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:damaged> ;
+        sw:term_status    "stable" ;
+        skos:example      "Pallet pool operator P notices that a plank of a pallet is broken and records this incident by scanning the EPC of the pallet.\nRetailer R receives a shipment where the product packages on the pallet have been dented.\nBusiness steps:\n- `accepting`\n- `inspecting`\n- `receiving`\n- `removing`\n- `repairing`\n- `replacing`\nNote: `damaged` can also apply to non-apparent (physical) damage determined by means of sensor data. For example, product pH has dropped beyond a minimum acceptable threshold for viability."@en .
+
+cbv:Disp-destroyed  a     cbv:Disp ;
+        rdfs:comment      "Object has been fully rendered non-usable."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "destroyed"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:destroyed> ;
+        sw:term_status    "stable" ;
+        skos:example      "Incinerator Operator B indicates that product and packaging have been incinerated.\nBusiness step:\n- `destroying`"@en .
+
+cbv:Disp-dispensed  a     cbv:Disp ;
+        rdfs:comment      "A full quantity of product is distributed to a consumer."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "dispensed"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:dispensed> ;
+        sw:term_status    "stable" ;
+        skos:example      "A pharmacist dispenses a pharmaceutical in a container’s totality to fill a specific prescription written by a physician, to a consumer or patient.\nA deli manager slices the complete contents of a 5 pound package of turkey for sale.\nNOTE: this disposition reflects the disposition of the original object, not what was dispensed."@en .
+
+cbv:Disp-disposed  a      cbv:Disp ;
+        rdfs:comment      "Object has been returned for disposal."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "disposed"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:disposed> ;
+        sw:term_status    "stable" ;
+        skos:example      "A package of pharmaceuticals has been picked up by a distributor and will be subsequently destroyed."@en .
+
+cbv:Disp-encoded  a       cbv:Disp ;
+        rdfs:comment      "An instance-level identifier has been written to a barcode or RFID tag, but not yet commissioned."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "encoded"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:encoded> ;
+        sw:term_status    "stable" ;
+        skos:example      "3rd Party has written EPCs to tags and returns spool of case tags to Manufacturer.\nBusiness step:\n- `encoding`"@en .
+
+cbv:Disp-expired  a       cbv:Disp ;
+        rdfs:comment      "Object's expiration date is in the past."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "expired"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:expired> ;
+        sw:term_status    "stable" ;
+        skos:example      "Distributor Y indicates that a product is past its expiration date \nBusiness step (examples):\n- `holding`\n- `staging_outbound`\n- `storing`"@en .
+
+cbv:Disp-in_progress  a   cbv:Disp ;
+        rdfs:comment      "Optional disposition for object proceeding through points in the supply chain."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "in progress"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:in_progress> ;
+        sw:term_status    "stable" ;
+        skos:example      "Note: *Omission* of disposition is generally recommended instead of `in_progress`, which adds little value to event data."@en .
+
+cbv:Disp-in_transit  a    cbv:Disp ;
+        rdfs:comment      "Object being shipped between two trading partners."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "in transit"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:in_transit> ;
+        sw:term_status    "stable" ;
+        skos:example      "Shipper Z pulled a container/product out of a manufacturer’s yard on to a road.\nBusiness step:\n- `shipping`\n- `departing`"@en .
+
+cbv:Disp-inactive  a      cbv:Disp ;
+        rdfs:comment      "Decommissioned object that may be reintroduced to the supply chain."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "inactive"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:inactive> ;
+        sw:term_status    "stable" ;
+        skos:example      "A reusable tag is removed from a reusable transport item.\nA digital coupon or an empties refund voucher has been redeemed at retail point-of-sale.\nBusiness step:\n- `decommissioning`"@en .
+
+cbv:Disp-mismatch_class
+        a                 cbv:Disp ;
+        rdfs:comment      "Class-level identifiers do not correspond to the identifiers that were expected."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "mismatch class"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:mismatch_class> ;
+        sw:term_status    "stable" ;
+        skos:example      "Recipient unpacks 10 of expected 10, but GTINs do not match data communicated via the EPCIS Packing event provided by the supplier.\nNote:  It is recommended to capture all `mismatch_` dispositions as persistentDisposition."@en .
+
+cbv:Disp-mismatch_instance
+        a                 cbv:Disp ;
+        rdfs:comment      "Instance-level identifiers do not correspond to the identifiers that were expected."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "mismatch instance"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:mismatch_instance> ;
+        sw:term_status    "stable" ;
+        skos:example      "Recipient unpacks 10 of expected 10, but SGTINs do not match data communicated via the EPCIS Packing event provided by the supplier.\nNote:  It is recommended to capture all `mismatch_` dispositions as persistentDisposition."@en .
+
+cbv:Disp-mismatch_quantity
+        a                 cbv:Disp ;
+        rdfs:comment      "Quantity do not correspond to the quantity that was expected."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "mismatch quantity"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:mismatch_quantity> ;
+        sw:term_status    "stable" ;
+        skos:example      "Recipient unpacks 9 of expected 10 (an 'underage'), or 11 of expected 10 (an 'overage').\nNote:  It is recommended to capture all `mismatch_` dispositions as persistentDisposition."@en .
+
+cbv:Disp-needs_replacement
+        a                 cbv:Disp ;
+        rdfs:comment      "Component(s) or other asset(s) must be replaced to ensure fulfilment of functional requirements."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "needs replacement"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:needs_replacement> ;
+        sw:term_status    "stable" ;
+        skos:example      "An assembly component's service duration has exceeded its (theoretical, e.g., per EN 50126) mean time to failure, and is marked as needing replacement."@en .
+
+cbv:Disp-no_pedigree_match
+        a                 cbv:Disp ;
+        rdfs:comment      "In validating the pedigree for the object, no match was found, causing the product to be quarantined for further investigation and disposition."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "no pedigree match"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:no_pedigree_match> ;
+        sw:term_status    "stable" ;
+        skos:example      "Distributor Y could not obtain a valid pedigree for a product from its Manufacturer A\nBusiness step:\n- `holding`\n- `staging_outbound`\n- `storing`"@en .
+
+cbv:Disp-non_conformant
+        a                 cbv:Disp ;
+        rdfs:comment      "Outcome of an unsuccessful/failed inspection in an `inspecting` or `repairing` step. \n(`non_conformant` is the opposite of `available`)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "non conformant"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:non_conformant> ;
+        sw:term_status    "stable" ;
+        skos:example      "A mechanical component has been failed conformity testing against safety or performance requirements.\nIf disposition is `non_conformant``, follow up steps may be used to capture subsequent and/or final disposition. For example, if the `non_conformant` object is not usable, it might be moved to a separate location for storage. If the object is still installed in an assembly but not function-critical, the assembly might be allowed to continue running until the next repair cycle; alternatively, a disassembly event might follow."@en .
+
+cbv:Disp-non_sellable_other
+        a                 cbv:Disp ;
+        rdfs:comment      "Object cannot be sold to a customer."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "non sellable other"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:non_sellable_other> ;
+        sw:term_status    "stable" ;
+        skos:example      "A product is not sellable pending further evaluation.\nA product is not sellable, and one of the other dispositions (`expired`, `recalled`, `damaged`, `no_pedigree_match`) does not apply.\nProduct has been sold and is awaiting customer pick-up.\nBusiness step:\n- `holding`\n- `inspecting`\n- `staging_outbound`\n- `storing`"@en .
+
+cbv:Disp-partially_dispensed
+        a                 cbv:Disp ;
+        rdfs:comment      "A portion of a product is distributed to a customer, while additional product is retained for subsequent distribution."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "partially dispensed"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:partially_dispensed> ;
+        sw:term_status    "stable" ;
+        skos:example      "A pharmacist dispenses 10 pills from a 100-count bottle to fill a customer prescription.\nA deli manager slides and packages one pound of a 10 pound ham for customer purchase.\nNOTE: This disposition reflects the disposition of the original object, not what was dispensed."@en .
+
+cbv:Disp-recalled  a      cbv:Disp ;
+        rdfs:comment      "Object is non-sellable because of public safety reasons."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "recalled"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:recalled> ;
+        sw:term_status    "stable" ;
+        skos:example      "Manufacturer A requested that all Retailers and Distributors return its batteries that could overheat and explode.\nBusiness step:\n- `holding`\n- `staging_outbound`\n- `storing`"@en .
+
+cbv:Disp-reserved  a      cbv:Disp ;
+        rdfs:comment      "Instance-level identifier has been allocated for a third party."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "reserved"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:reserved> ;
+        sw:term_status    "stable" ;
+        skos:example      "Distributor receives EPC numbers and can encode tag with the numbers.\nBusiness step:\n- `reserving`"@en .
+
+cbv:Disp-retail_sold  a   cbv:Disp ;
+        rdfs:comment      "Product has been purchased by a customer."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "retail sold"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:retail_sold> ;
+        sw:term_status    "stable" ;
+        skos:example      "A customer at Retailer X purchased a screwdriver by checking it out through the point of sale system.\nBusiness step:\n- `retail_selling`"@en .
+
+cbv:Disp-returned  a      cbv:Disp ;
+        rdfs:comment      "Object has been sent or brought back for various reasons. \nIt may or may not be sellable."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "returned"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:returned> ;
+        sw:term_status    "stable" ;
+        skos:example      "Product is received at a returns centre from a customer because of an over-shipment, recall, expired product, etc.\nProduct is returned to retail POS by a customer, who no longer wants the product.\nBusiness step:\n- `receiving`\n- `holding`\n- `shipping`"@en .
+
+cbv:Disp-sellable_accessible
+        a                 cbv:Disp ;
+        rdfs:comment      "Product can be sold as is and customer can access product for purchase."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "sellable accessible"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:sellable_accessible> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X puts a case of screwdrivers on to a shelf or display within customer reach.\nBusiness step:\n- `stocking`\n- `receiving`"@en .
+
+cbv:Disp-sellable_not_accessible
+        a                 cbv:Disp ;
+        rdfs:comment      "Product can be sold as is, but customer cannot access product for purchase."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "sellable not accessible"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:sellable_not_accessible> ;
+        sw:term_status    "stable" ;
+        skos:example      "Retailer X puts a case of screwdrivers on to a shelf in a store backroom.\nBusiness step:\n- `receiving`\n- `storing`\n- `loading`\n- `holding`\n- `inspecting`"@en .
+
+cbv:Disp-stolen  a        cbv:Disp ;
+        rdfs:comment      "An object has been taken without permission or right."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "stolen"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:stolen> ;
+        sw:term_status    "stable" ;
+        skos:example      "A pharmaceutical manufacturer completes an investigation of serial numbers that are missing from inventory, and concludes that they have been stolen."@en .
+
+cbv:Disp-unavailable  a   cbv:Disp ;
+        rdfs:comment      "Object has been removed from service or from the supply chain (e.g., pending repair)."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "unavailable"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:unavailable> ;
+        sw:term_status    "stable" ;
+        skos:example      "A mechanical component in need of maintenance is taken out of service."@en .
+
+cbv:Disp-unknown  a       cbv:Disp ;
+        rdfs:comment      "An object's condition is not known."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "unknown"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:disp:unknown> ;
+        sw:term_status    "stable" ;
+        skos:example      ""@en .
+
+#################### Error Reason
+
+cbv:ER  a                 owl:Class , rdfs:Class ;
+        rdfs:comment      "These identifiers may be used to populate the reason attribute of an errorDeclaration element in an EPCIS event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Error Reason"@en ;
+        rdfs:subClassOf   cbv:TypeCode ;
+        sw:term_status    "stable" .
+
+cbv:ER-did_not_occur  a   cbv:ER ;
+        rdfs:comment      "The prior event is considered erroneous because it did not actually occur. \nThere are no corrective events. \n(In a CBV-Compliant Document, this error reason SHALL NOT be used in an error declaration that contains one or more corrective event IDs.)"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "did not occur"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:er:did_not_occur> ;
+        sw:term_status    "stable" .
+
+cbv:ER-incorrect_data
+        a                 cbv:ER ;
+        rdfs:comment      "The prior event is considered erroneous because some or all of the data in the event are incorrect. \nSubsequent events may provide a correct indication of what actually occurred when the prior event was captured. \nThese events may be linked using the corrective event IDs in the error declaration."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "incorrect data"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:er:incorrect_data> ;
+        sw:term_status    "stable" .
+
+#################### Source/Destination Type
+
+cbv:SDT  a                owl:Class , rdfs:Class ;
+        rdfs:comment      "These identifiers may be used to populate the type attribute of a source or destination element in an EPCIS event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Source/Destination Type"@en ;
+        rdfs:subClassOf   cbv:TypeCode ;
+        sw:term_status    "stable" .
+
+cbv:SDT-location  a       cbv:SDT ;
+        rdfs:comment      "The source or destination identifier denotes the physical location of the originating endpoint or terminating endpoint (respectively) of the business transfer of which this EPCIS event is a part. \nWhen a source of this type is specified on an EPCIS event at the originating endpoint of a business transfer, the source identifier SHOULD be consistent with the Read Point specified in that event. \nWhen a destination of this type is specified on an EPCIS event at the terminating endpoint of a business transfer, the destination identifier SHOULD be consistent with the Read Point specified in that event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "location"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:sdt:location> ;
+        sw:term_status    "stable" .
+
+cbv:SDT-owning_party  a   cbv:SDT ;
+        rdfs:comment      "The source or destination identifier denotes the party who owns (or is intended to own) the objects at the originating endpoint or terminating endpoint (respectively) of the business transfer of which this EPCIS event is a part."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "owning party"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:sdt:owning_party> ;
+        sw:term_status    "stable" .
+
+cbv:SDT-possessing_party
+        a                 cbv:SDT ;
+        rdfs:comment      "The source or destination identifier denotes the party who has (or is intended to have) physical possession of the objects at the originating endpoint or terminating endpoint (respectively) of the business transfer of which this EPCIS event is a part."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "possessing party"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:sdt:possessing_party> ;
+        sw:term_status    "stable" .
+
+#################### Component
+
+cbv:Comp  a                owl:Class , rdfs:Class ;
+        rdfs:comment      "These identifiers may be used to populate the type attribute of a component element in the SensorReport of an EPCIS event."@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "Component"@en ;
+        rdfs:subClassOf   cbv:TypeCode ;
+        sw:term_status    "stable" .
+
+cbv:Comp-x  a       cbv:Comp ;
+        rdfs:comment      "Component or projection along the x axis in Cartesian coordinates (x,y,z)"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "x coordinate"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:x> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-y  a       cbv:Comp ;
+        rdfs:comment      "Component or projection along the y axis in Cartesian coordinates (x,y,z)"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "y coordinate"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:y> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-z  a       cbv:Comp ;
+        rdfs:comment      "Component or projection along the z axis in Cartesian coordinates (x,y,z)"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "z coordinate"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:z> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-axial_distance  a       cbv:Comp ;
+        rdfs:comment      "Radial distance from the cylindrical axis in a cylindrical polar coordinate system; the magnitude of the projection of the vector in the plane perpendicular to the cylindrical axis"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "axial distance"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:axial_distance> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-azimuth  a       cbv:Comp ;
+        rdfs:comment      "Angle measured in the XY plane, anticlockwise from the X axis (in cylindrical or spherical polar coordinate systems) to the plane containing the vector and the Z axis"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "azimuth"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:azimuth> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-height  a       cbv:Comp ;
+        rdfs:comment      "Height parallel to the cylindrical axis in a cylindrical polar coordinate system, above a defined reference origin plane (typically the XY plane) "@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "height"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:height> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-spherical_radius  a       cbv:Comp ;
+        rdfs:comment      "Radial distance from the centre of a sphere in a spherical polar coordinate system; the magnitude of the vector"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "spherical radius"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:spherical_radius> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-polar_angle  a       cbv:Comp ;
+        rdfs:comment      "Angle measured from the Z axis to the vector in a spherical polar coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "polar angle"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:polar_angle> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-elevation_angle  a       cbv:Comp ;
+        rdfs:comment      "Angle measured from the XY plane to the vector in a spherical polar coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "elevation angle"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:elevation_angle> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-easting  a       cbv:Comp ;
+        rdfs:comment      "A component or projection along an east-pointing axis in a geographic Cartesian coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "easting"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:easting> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-northing  a       cbv:Comp ;
+        rdfs:comment      "A component or projection along a north-pointing axis in a geographic Cartesian coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "northing"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:northing> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-latitude  a       cbv:Comp ;
+        rdfs:comment      "The angle of elevation from the equatorial plane in a geographic coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "latitude"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:latitude> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-longitude  a       cbv:Comp ;
+        rdfs:comment      "The angle (measured within the equatorial plane) to the east of the prime meridian in a geographic coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "longitude"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:longitude> ;
+        sw:term_status    "stable" .
+
+cbv:Comp-altitude  a       cbv:Comp ;
+        rdfs:comment      "The height above a defined surface (such as mean sea level) in a geographic coordinate system"@en ;
+        rdfs:isDefinedBy  cbv: ;
+        rdfs:label        "altitude"@en ;
+        owl:sameAs        <urn:epcglobal:cbv:comp:altitude> ;
+        sw:term_status    "stable" .
+
+

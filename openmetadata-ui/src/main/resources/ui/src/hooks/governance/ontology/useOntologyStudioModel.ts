@@ -29,15 +29,18 @@ import {
   buildOntologyStudioGraph,
   getModelRelations,
   OntologyStudioModel,
+  withSuperClasses,
 } from '../../../utils/governance/ontology/OntologyStudioModel.utils';
 
 export const ONTOLOGY_STUDIO_MODEL_QUERY_KEY = 'ontology-studio-model';
 
 export const WORKING_CONCEPT_FIELDS =
   'conceptMappings,lifecycleStatus,owners,subClasses,superClasses';
+const LISTED_CONCEPT_FIELDS = 'conceptMappings,lifecycleStatus,owners';
 
 const PAGE_SIZE = 1000;
-const MAX_DEFINITIONS = 10000;
+/** Mirrors the server's release member cap (`OntologyReleaseManifest.MAX_MEMBERS`). */
+const MAX_DEFINITIONS = 50_000;
 const MAX_DEFINITION_PAGES = MAX_DEFINITIONS / PAGE_SIZE;
 
 class AggregateCapacityError extends Error {}
@@ -82,7 +85,7 @@ const loadWorkingModel = async (
           {
             ...params,
             after,
-            fields: WORKING_CONCEPT_FIELDS,
+            fields: LISTED_CONCEPT_FIELDS,
           },
           signal
         ),
@@ -99,7 +102,12 @@ const loadWorkingModel = async (
     ),
   ]);
 
-  return { ontology, axioms, concepts, properties };
+  return {
+    ontology,
+    axioms,
+    concepts: withSuperClasses(concepts, axioms),
+    properties,
+  };
 };
 
 /** Reads the definitions a sealed release froze, so a reader sees what was published. */

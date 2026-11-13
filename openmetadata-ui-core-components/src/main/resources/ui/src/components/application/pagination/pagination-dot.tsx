@@ -3,8 +3,8 @@ import type { PaginationRootProps } from './pagination-base';
 import { Pagination } from './pagination-base';
 
 interface PaginationDotProps extends Omit<PaginationRootProps, 'children'> {
-  /** The size of the pagination dot. */
-  size?: 'md' | 'lg';
+  /** The size of the pagination dot. `sm` suits a compact carousel indicator. */
+  size?: 'sm' | 'md' | 'lg';
   /** Whether the pagination uses brand colors. */
   isBrand?: boolean;
   /** Whether the pagination is displayed in a card. */
@@ -16,9 +16,18 @@ export const PaginationDot = ({
   className,
   size = 'md',
   isBrand,
+  siblingCount,
   ...props
 }: PaginationDotProps) => {
+  // A dot per page by default: the collapsed layout's ellipsis has no dot of
+  // its own, so past seven pages the dots would stop matching the pages.
+  const pageSiblings = siblingCount ?? props.total;
+
   const sizes = {
+    sm: {
+      root: cx('tw:gap-2', framed && 'tw:p-1.5'),
+      button: 'tw:h-1.5 tw:w-1.5 tw:after:-inset-x-1 tw:after:-inset-y-2',
+    },
     md: {
       root: cx('tw:gap-3', framed && 'tw:p-2'),
       button: 'tw:h-2 tw:w-2 tw:after:-inset-x-1.5 tw:after:-inset-y-2',
@@ -37,7 +46,8 @@ export const PaginationDot = ({
         sizes[size].root,
         framed && 'tw:rounded-full tw:bg-alpha-white/90 tw:backdrop-blur',
         className
-      )}>
+      )}
+      siblingCount={pageSiblings}>
       <Pagination.Context>
         {({ pages }) =>
           pages.map((page, index) =>
