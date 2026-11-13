@@ -418,6 +418,42 @@ describe('native OntologyTreeView', () => {
     ).toEqual([nativeTreePlacementKey(index, ['b', 'c'])]);
   });
 
+  it('mounts only the rows on screen once a window is large', () => {
+    const sizes = { clientHeight: 600, clientWidth: 800, scrollHeight: 600 };
+    Object.entries(sizes).forEach(([key, value]) =>
+      Object.defineProperty(HTMLElement.prototype, key, {
+        configurable: true,
+        get: () => value,
+      })
+    );
+    try {
+      const index = buildNativeTreeIndex(
+        {
+          nodes: Array.from({ length: 1000 }, (_, n) => ({
+            id: String(n),
+            label: String(n).padStart(4, '0'),
+            type: 'glossaryTerm',
+            glossaryId: 'owner',
+          })),
+          edges: [],
+        },
+        filters,
+        []
+      );
+      renderTree({ source: { kind: 'native', index } });
+
+      const mounted = screen.getAllByRole('row');
+
+      expect(screen.getByTestId('ontology-tree-term-0')).toBeInTheDocument();
+      expect(mounted.length).toBeGreaterThan(0);
+      expect(mounted.length).toBeLessThan(50);
+    } finally {
+      Object.keys(sizes).forEach((key) =>
+        Reflect.deleteProperty(HTMLElement.prototype, key)
+      );
+    }
+  });
+
   it('replaces bounded windows and retains focus on explicit navigation controls', async () => {
     const index = buildNativeTreeIndex(
       {

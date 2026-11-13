@@ -15,3 +15,13 @@ export const TREE_INDENT_PER_LEVEL = 22;
 
 /** Deeper levels share the last indent rather than pushing rows off the card. */
 export const TREE_MAX_INDENT_LEVEL = 15;
+
+/**
+ * Past this many rows only the rows on screen are mounted. A full window (2,048 rows, see
+ * ADR:2026-10-24-ontology-studio-bounds-tree-windows-and-count-workers) mounted every row and
+ * took seconds to open and to select a row in on FIBO.
+ */
+export const TREE_VIRTUALIZATION_THRESHOLD = 200;
+
+/** The handoff's row height, used to place rows before they are measured. */
+export const TREE_ROW_HEIGHT = 56;
