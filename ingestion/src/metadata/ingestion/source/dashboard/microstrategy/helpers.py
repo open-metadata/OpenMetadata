@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Dict  # noqa: UP035
 
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 
 
@@ -39,7 +39,7 @@ class MicroStrategyColumnParser:
         "nchar": DataType.CHAR,
         "numeric": DataType.NUMERIC,
         "nvarchar": DataType.VARCHAR,
-        "real": DataType.STRING,
+        "real": DataType.FLOAT,
         "time": DataType.TIME,
         "timestamp": DataType.TIMESTAMP,
         "unsigned": DataType.INT,
@@ -54,15 +54,12 @@ class MicroStrategyColumnParser:
         Parses a MicroStrategy table column into an OpenMetadata column.
         """
 
-        array_data_type = None
-        data_type = cls.datatype_mapping.get(field["dataType"].lower(), DataType.UNKNOWN)
+        raw_type = field.get("dataType")
+        data_type = cls.datatype_mapping.get(str(raw_type).lower(), DataType.UNKNOWN) if raw_type else DataType.UNKNOWN
 
-        column_def = {
-            "name": truncate_column_name(str(field["name"])),
-            "displayName": field["name"],
-            "dataTypeDisplay": field["dataType"],
-            "dataType": data_type,
-            "arrayDataType": array_data_type,
-        }
-
-        return Column(**column_def)
+        return Column(
+            name=ColumnName(truncate_column_name(str(field["name"]))),
+            displayName=field["name"],
+            dataTypeDisplay=raw_type,
+            dataType=data_type,
+        )

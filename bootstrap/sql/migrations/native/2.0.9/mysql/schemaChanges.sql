@@ -1,0 +1,2 @@
+-- No schema changes in 2.0.9: its Java migration renames MicroStrategy charts by dossier,
+-- see org.openmetadata.service.migration.utils.v209.MicroStrategyChartRename.
