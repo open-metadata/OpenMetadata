@@ -58,8 +58,9 @@ CACHE_SIZE = 512
 LOGIN_TIMEOUT = (10, 60)
 # The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
 # fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
-NOT_A_CUBE = "Only cube is supported to get SQL view"
 ENGINE_STEPS_TRAILER = re.compile(r"^\[Analytical engine calculation steps:.*", re.MULTILINE | re.DOTALL)
+# The sqlView endpoint's answer for a dataset that is a report rather than an Intelligent Cube
+NOT_A_CUBE = "Only cube is supported to get SQL view"
 
 T = TypeVar("T")
 K = TypeVar("K", bound=Hashable)

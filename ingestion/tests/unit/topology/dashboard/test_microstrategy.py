@@ -729,8 +729,26 @@ class TestSource:
         datamodel = next(iter(source.yield_datamodel(_details(source, OFFICE_ROYALE)))).right
 
         names = [column.name.root for column in datamodel.columns]
-        assert names == ["Revenue", "Revenue (2)", long_name, "M" * 252 + " (2)"]
+        # Suffixes follow the object ids, not the listing order: 4C05… sorts before 89C1….
+        assert names == ["Revenue (2)", "Revenue", long_name, "M" * 252 + " (2)"]
         assert [column.displayName for column in datamodel.columns] == ["Revenue", "Revenue", long_name, long_name]
+
+    def test_a_column_keeps_its_name_when_the_objects_are_listed_in_another_order(self, server, client):
+        attribute = {"id": "4C05177011D3E877C000B3B2D86C964F", "name": "Revenue", "type": "attribute", "forms": []}
+        definition = DEFINITIONS[OFFICE_ROYALE["id"]]
+        names_by_id = []
+        for objects in ([METRIC_REVENUE, attribute], [attribute, METRIC_REVENUE]):
+            server.definitions[OFFICE_ROYALE["id"]] = {
+                **definition,
+                "datasets": [{**definition["datasets"][0], "availableObjects": objects}],
+            }
+            source = _source(client)
+            datamodel = next(iter(source.yield_datamodel(_details(source, OFFICE_ROYALE)))).right
+            names_by_id.append(
+                {obj["id"]: column.name.root for obj, column in zip(objects, datamodel.columns, strict=True)}
+            )
+
+        assert names_by_id[0] == names_by_id[1] == {attribute["id"]: "Revenue", METRIC_REVENUE["id"]: "Revenue (2)"}
 
     def test_cube_sql_is_parsed_once_for_every_prefix_and_dossier(self, client):
         source = _source(client)

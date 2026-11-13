@@ -543,9 +543,16 @@ class MicrostrategySource(DashboardServiceSource):
     def _get_column_info(self, dataset: MstrDataset) -> list[Column]:
         """Attributes become columns with their forms as children; metrics are leaf columns"""
         datasource_columns = []
+        objects = dataset.availableObjects or []
+        # Suffixes go out in id order, so an object keeps its column name, and what users added
+        # to the column, when MicroStrategy lists the objects in another order.
+        taken: set[str] = set()
+        column_names: dict[str, str] = {}
+        for available_object in sorted(objects, key=lambda obj: (obj.name, obj.id)):
+            if available_object.id not in column_names:
+                column_names[available_object.id] = unique_column_name(available_object.name, taken)
         seen_ids: set[str] = set()
-        names: set[str] = set()
-        for available_object in dataset.availableObjects or []:
+        for available_object in objects:
             if available_object.id in seen_ids:
                 logger.debug("Data model [%s] lists [%s] twice; keeping one", dataset.name, available_object.name)
                 continue
@@ -554,7 +561,7 @@ class MicrostrategySource(DashboardServiceSource):
                 children = [MicroStrategyColumnParser.parse(form) for form in available_object.forms or []]
                 datasource_columns.append(
                     Column(
-                        name=ColumnName(unique_column_name(available_object.name, names)),
+                        name=ColumnName(column_names[available_object.id]),
                         displayName=available_object.name,
                         dataTypeDisplay=available_object.type.title(),
                         dataType=DataType.UNKNOWN,
