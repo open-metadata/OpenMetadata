@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit) · v3 2026-11-13 (every copy of an earlier credential is carried over; the step stops when the configured keys open none; a value that cannot be used is reported when read)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `IngestionPipelineMigrationEntryPointTest`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnAHaltUnderForceAndRecordsNothing`, `AlertDiagnosticsStatusTest`, `ProfileWebhookSecretsIT#aProfileWebhookThatCannotSendIsReportedWhenReadAndNeverStored`, `ProfileWebhookSecretsTest#aReadReportsEachWebhookThatDoesNotSendAndAWriteNeverStoresIt`
+- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `IngestionPipelineMigrationEntryPointTest`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnAHaltUnderForceAndRecordsNothing`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnALaterVersionsPreflightBeforeAnyVersionRuns`, `AlertDiagnosticsStatusTest`, `ProfileWebhookSecretsIT#aProfileWebhookThatCannotSendIsReportedWhenReadAndNeverStored`, `ProfileWebhookSecretsTest#aReadReportsEachWebhookThatDoesNotSendAndAWriteNeverStoresIt`
 - **Related:** ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored, ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids (owned vault keys, a different mechanism that shares `SecretOwner`)
 
 ## Context
@@ -91,14 +91,18 @@ looks, not only in the recent events of a send.
   save accepts an encrypted value only where it is the value the same destination already stores
   at that field.
 - Nothing opens a value in the format of releases before 2.1 (`fernet:`, not `fernet:bound:`) at
-  send time; only the data step reads it. So the keys are checked first: the 2.1.0 data migration
-  starts, on both engines, with a check that only reads the stored alerts
-  (`WebhookSecretsMigration.requireKeysThatOpenStoredCredentials`), before any step that writes
-  with the configured Fernet keys, such as the authentication secrets step and the webhook steps.
-  When those credentials are stored and not one of them decrypts with any of the configured keys,
-  it stops the upgrade before anything is written or recorded, so `migrate` runs it all again. It
-  throws a `MigrationHaltException`, which `migrate --force` does not skip either. Once the alert
-  step is recorded the check is not run again. The error names the alerts holding them and asks
+  send time; only the data step reads it. So the keys are checked first: the 2.1.0 migration's
+  preflight (`MigrationProcess.preflight`, overridden by 2.1.0 on both engines to call
+  `WebhookSecretsMigration.requireKeysThatOpenStoredCredentials`) only reads the stored alerts,
+  and the migration workflow runs the preflight of every pending version before it migrates any
+  of them. An upgrade from an earlier release therefore stops before any step writes with the
+  configured Fernet keys, whether of 2.1.0 (authentication secrets, webhooks) or of an earlier
+  version (the 2.0.8 connection secrets). When those credentials are stored and not one of them
+  decrypts with any of the configured keys, it stops before anything is written or recorded, so
+  `migrate` runs it all again. It throws a `MigrationHaltException`, which `migrate --force` does
+  not skip either. The check is not run on a database that has no alert table yet, nor once the
+  alert step is recorded; a credential that a run of the alert step which did not finish already
+  carried over counts as one that opens. The error names the alerts holding them and asks
   for the key the previous release used (a comma-separated list of keys is accepted). Values that
   could not be used before the upgrade either can be entered again or removed before upgrading, or
   the operator sets `MIGRATION_KEEP_UNREADABLE_WEBHOOK_CREDENTIALS=true`: the upgrade then goes
