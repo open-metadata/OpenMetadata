@@ -267,7 +267,7 @@ const KnowledgeCenterFilterPage = () => {
           style={{ ...getLayoutGutter(0, 24) }}>
           {!isEmpty(breadcrumbs) && (
             <Grid.Item className="layout-column d-flex items-center" span={24}>
-              <TitleBreadcrumb titleLinks={breadcrumbs} />
+              <TitleBreadcrumb singleLine titleLinks={breadcrumbs} />
             </Grid.Item>
           )}
           <Grid.Item className="layout-column" span={24}>

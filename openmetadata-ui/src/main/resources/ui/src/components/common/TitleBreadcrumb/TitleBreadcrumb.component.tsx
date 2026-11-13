@@ -33,6 +33,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   loading = false,
   widthDeductions,
   useCustomArrow = false,
+  singleLine = false,
 }: TitleBreadcrumbProps) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
@@ -105,16 +106,23 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   return (
     <TitleBreadcrumbSkeleton loading={loading}>
       <nav
-        className={classNames('breadcrumb-container', className)}
+        className={classNames('breadcrumb-container', className, {
+          'tw:min-w-0': singleLine,
+        })}
         data-testid="breadcrumb">
-        <ol className="rounded-4 text-sm font-regular d-flex flex-wrap">
+        <ol
+          className={classNames('rounded-4 text-sm font-regular d-flex', {
+            'flex-wrap': !singleLine,
+          })}>
           {titleLinks.map((link, index) => {
             const classes =
               'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
 
             return (
               <li
-                className="d-flex items-center breadcrumb-item"
+                className={classNames('d-flex items-center breadcrumb-item', {
+                  'tw:min-w-0': singleLine,
+                })}
                 data-testid="breadcrumb-link"
                 key={link.name}>
                 {link.imgSrc ? (

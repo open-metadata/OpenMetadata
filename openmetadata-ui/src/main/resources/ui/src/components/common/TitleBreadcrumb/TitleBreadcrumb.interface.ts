@@ -31,4 +31,6 @@ export type TitleBreadcrumbProps = {
   loading?: boolean;
   widthDeductions?: number;
   useCustomArrow?: boolean;
+  /** Keep every crumb on one line, truncating names, inside a container narrower than the window. */
+  singleLine?: boolean;
 };

@@ -373,5 +373,27 @@ describe('KnowledgePages', () => {
         [entityRef]
       );
     });
+
+    it('should keep the card mounted while it refreshes after saving', async () => {
+      (getListKnowledgePages as jest.Mock)
+        .mockResolvedValueOnce({
+          data: [...MOCK_KNOWLEDGE_PAGES],
+          paging: { total: 2 },
+        })
+        // The post-save refresh never settles, so the card must not be swapped for the loader.
+        .mockReturnValueOnce(new Promise(() => undefined));
+      (addKnowledgePageUsage as jest.Mock).mockResolvedValue({});
+      (removeKnowledgePageUsage as jest.Mock).mockResolvedValue({});
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('apply-article-picker'));
+      });
+
+      expect(getListKnowledgePages).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
+    });
   });
 });

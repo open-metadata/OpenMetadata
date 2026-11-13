@@ -73,6 +73,22 @@ describe('Test Breadcrumb Component', () => {
     );
   });
 
+  it('should wrap crumbs by default and keep them on one line when singleLine is set', () => {
+    const { rerender } = render(<TitleBreadcrumb titleLinks={links} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByRole('list')).toHaveClass('flex-wrap');
+
+    rerender(<TitleBreadcrumb singleLine titleLinks={links} />);
+
+    expect(screen.getByRole('list')).not.toHaveClass('flex-wrap');
+
+    screen
+      .getAllByTestId('breadcrumb-link')
+      .forEach((crumb) => expect(crumb).toHaveClass('tw:min-w-0'));
+  });
+
   it('Last value should not be link', () => {
     const { container } = render(<TitleBreadcrumb titleLinks={links} />, {
       wrapper: MemoryRouter,

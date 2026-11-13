@@ -34,7 +34,10 @@ import type { WidgetCommonProps } from '../../../pages/CustomizablePage/Customiz
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermPureUtils';
-import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import {
+  getCustomizableWidgetByPage,
+  getDummyDataByPage,
+} from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';
@@ -109,14 +112,22 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     }
   }, [props.widgetKey, props.isEditView, setGlossaryChildTerms]);
 
-  // The articles widget renders as "Context Center" on entity pages; its key reads otherwise.
-  const widgetName = props.widgetKey.startsWith(
-    DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
-  )
-    ? t('label.context-center')
-    : startCase(
+  // Same name the add-widget list shows; widgets missing from it fall back to their key.
+  const widgetName = useMemo(() => {
+    const widgets = getCustomizableWidgetByPage(currentPageType as PageType);
+    const key = resolveWidgetKey(
+      props.widgetKey,
+      widgets.map(({ fullyQualifiedName }) => fullyQualifiedName)
+    );
+
+    return (
+      widgets.find(({ fullyQualifiedName }) => fullyQualifiedName === key)
+        ?.name ??
+      startCase(
         props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
-      );
+      )
+    );
+  }, [currentPageType, props.widgetKey]);
 
   const cardContent = useMemo(() => {
     // Find the matching widget component based on prefix matching

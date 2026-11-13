@@ -82,8 +82,9 @@ const KnowledgePages: FC = () => {
     deleted,
   });
 
-  const fetchKnowledgePages = async () => {
-    setIsLoading(true);
+  // A refresh after linking updates the card in place instead of swapping it for the loader.
+  const fetchKnowledgePages = async (showLoader = true) => {
+    setIsLoading(showLoader);
     try {
       const { data, paging } = await getListKnowledgePages({
         entityId,
@@ -177,12 +178,26 @@ const KnowledgePages: FC = () => {
     const entityRef = { id: entityId, type: entityType };
 
     // Diff only against the listed pages: links beyond the first page are never touched.
-    const linkRequests = [...selectedIds]
-      .filter((id) => !currentIds.has(id))
-      .map((id) => addKnowledgePageUsage(id, [entityRef]));
-    const unlinkRequests = knowledgePages
-      .filter((p) => !selectedIds.has(p.id))
-      .map((p) => removeKnowledgePageUsage(p.id, [entityRef]));
+    const linkRequests = [...selectedIds].reduce<Promise<KnowledgePage>[]>(
+      (requests, id) => {
+        if (!currentIds.has(id)) {
+          requests.push(addKnowledgePageUsage(id, [entityRef]));
+        }
+
+        return requests;
+      },
+      []
+    );
+    const unlinkRequests = knowledgePages.reduce<Promise<KnowledgePage>[]>(
+      (requests, { id }) => {
+        if (!selectedIds.has(id)) {
+          requests.push(removeKnowledgePageUsage(id, [entityRef]));
+        }
+
+        return requests;
+      },
+      []
+    );
 
     const results = await Promise.allSettled([
       ...linkRequests,
@@ -193,7 +208,7 @@ const KnowledgePages: FC = () => {
         showErrorToast(result.reason);
       }
     });
-    await fetchKnowledgePages();
+    await fetchKnowledgePages(false);
   };
 
   const [editIcon, editTooltipKey] = isEmpty(knowledgePages)
