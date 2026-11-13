@@ -234,7 +234,8 @@ const findEnumValue = <T extends string>(
 
 // A domain or data product opens as its own card among its peers, through its
 // own lens, as it did in 2.0. Once the map writes a band to the URL the usual
-// rules apply, so the root breadcrumb still leaves the domain.
+// rules apply, so the root breadcrumb still leaves the domain
+// (ADR:2026-11-13-lineage-page-opens-containers-as-their-own-card).
 const getContainerLanding = (
   params: SceneSearchParams,
   defaultFocus: LineageSceneFocus,

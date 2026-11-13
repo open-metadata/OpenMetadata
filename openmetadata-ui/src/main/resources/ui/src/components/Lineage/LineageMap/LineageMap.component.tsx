@@ -179,7 +179,8 @@ const SCENE_MUTATION_RETRY_DELAY_MS = 500;
 const MAX_SCENE_DEPTH = 3;
 const CONTROL_INSET_PADDING = 0.2;
 // Off-screen cards are not mounted, so they cannot take keyboard focus; only
-// scenes large enough to need it skip rendering them.
+// scenes large enough to need it skip rendering them
+// (ADR:2026-11-13-lineage-scene-edges-weigh-the-asset-edges-they-stand-for).
 const VIRTUALIZE_NODE_THRESHOLD = 200;
 // The lowest zoom a scene still reads at; a scene that would fit only below it
 // opens there on its focus node instead (getSceneLandingViewport).

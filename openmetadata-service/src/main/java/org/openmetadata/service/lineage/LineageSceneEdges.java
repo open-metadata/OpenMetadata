@@ -404,8 +404,9 @@ final class LineageSceneEdges {
       }
     }
 
-    // A stored container edge carries the number of asset edges it stands for, so an admin
-    // root and a non-admin rollup of the same asset edges report the same weight.
+    // A stored container edge carries the number of asset edges it stands for, so a stored
+    // edge and a rollup of the same asset edges report the same weight
+    // (ADR:2026-11-13-lineage-scene-edges-weigh-the-asset-edges-they-stand-for).
     private static int assetEdgesOf(EsLineageData edge) {
       return Math.max(1, nullOrDefault(edge.getAssetEdges(), 1));
     }
