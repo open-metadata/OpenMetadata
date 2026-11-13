@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { castArray, isEmpty, uniq } from 'lodash';
+import { castArray, isEmpty, omit, uniq } from 'lodash';
 import {
   Dispatch,
   SetStateAction,
@@ -58,6 +58,16 @@ export interface UseTestCaseListProps {
   handlePagingChange: UsePagingInterface['handlePagingChange'];
   showPagination: boolean;
 }
+
+// usePaging keeps these in the query string that `params` is parsed from. A paging action sets
+// the page in state first and in the URL in a later (transition) render, so the fetch reads the
+// page from `currentPage` and `pageSize` and must not refetch again when the URL catches up.
+const PAGING_URL_PARAMS = [
+  'currentPage',
+  'pageSize',
+  'cursorType',
+  'cursorValue',
+];
 
 /**
  * Owns the DATA concern: the test-case rows, their loading flag, the sort
@@ -183,10 +193,15 @@ export const useTestCaseList = ({
 
   const handlePagingClick = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
-      handlePageChange(page);
-      fetchTestCases(page);
+      // Another page reaches the fetch effect through `currentPage`. The same page changes
+      // nothing the effect watches, so that refresh is fetched here.
+      if (page === currentPage) {
+        fetchTestCases(page);
+      } else {
+        handlePageChange(page);
+      }
     },
-    [handlePageChange, fetchTestCases]
+    [currentPage, handlePageChange, fetchTestCases]
   );
 
   const handleAfterDeleteAction = useCallback(() => {
@@ -222,6 +237,11 @@ export const useTestCaseList = ({
     }
   };
 
+  const filterParamsKey = useMemo(
+    () => JSON.stringify(omit(params, PAGING_URL_PARAMS)),
+    [params]
+  );
+
   useEffect(() => {
     if (
       getDerivedPermissionFlags(testCasePermission).canViewBasic &&
@@ -231,7 +251,7 @@ export const useTestCaseList = ({
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params, currentPage]);
+  }, [tab, testCasePermission, pageSize, filterParamsKey, currentPage]);
 
   const pagingData = useMemo(
     () => ({

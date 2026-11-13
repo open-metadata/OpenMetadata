@@ -228,8 +228,8 @@ describe('useTestCaseList', () => {
     });
   });
 
-  it('should change the page and refetch for the requested page when the paging handler is called', async () => {
-    const { result, props } = renderList();
+  it('should change the page and fetch the requested page once the paging hook reports it', async () => {
+    const { result, props, rerender } = renderList();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -241,11 +241,16 @@ describe('useTestCaseList', () => {
 
     expect(props.handlePageChange).toHaveBeenCalledWith(3);
 
+    props.currentPage = 3;
+    rerender();
+
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
         expect.objectContaining({ offset: 20 })
       )
     );
+
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
   });
 
   it('should move to the previous page after removing the last row on a later page', async () => {
@@ -253,7 +258,7 @@ describe('useTestCaseList', () => {
       data: [{ id: 'only-row' }],
       paging: { total: 21 },
     });
-    const { result, props } = renderList({ currentPage: 3 });
+    const { result, props, rerender } = renderList({ currentPage: 3 });
 
     await waitFor(() => expect(result.current.testCase).toHaveLength(1));
     (getListTestCaseBySearch as jest.Mock).mockClear();
@@ -264,6 +269,9 @@ describe('useTestCaseList', () => {
 
     expect(props.handlePageChange).toHaveBeenCalledWith(2);
 
+    props.currentPage = 2;
+    rerender();
+
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledWith(
         expect.objectContaining({ offset: 10 })
@@ -271,8 +279,32 @@ describe('useTestCaseList', () => {
     );
   });
 
+  it('should refetch the page it stays on after removing one of several rows', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'row-1' }, { id: 'row-2' }],
+      paging: { total: 22 },
+    });
+    const { result, props } = renderList({ currentPage: 3 });
+
+    await waitFor(() => expect(result.current.testCase).toHaveLength(2));
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleAfterDeleteAction();
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 20 })
+      )
+    );
+
+    expect(props.handlePageChange).not.toHaveBeenCalled();
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+  });
+
   it('should persist the sort options across later fetches after sortTestCase', async () => {
-    const { result } = renderList();
+    const { result, props, rerender } = renderList();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -292,6 +324,8 @@ describe('useTestCaseList', () => {
     act(() => {
       result.current.pagingData.pagingHandler({ currentPage: 2 });
     });
+    props.currentPage = 2;
+    rerender();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
