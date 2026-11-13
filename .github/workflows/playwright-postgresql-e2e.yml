@@ -14,6 +14,8 @@
 
 name: Postgresql PR Playwright E2E Tests
 on:
+  push:
+    branches: ["2.0"]
   merge_group:
   schedule:
     - cron: "30 7 * * *"
@@ -37,31 +39,27 @@ on:
         required: true
         type: boolean
         default: true
-  # Every eligible PR runs smoke, changed specs, impact-mapped suites, and
-  # canaries. Keep this unprivileged: these jobs build PR code, populate caches,
-  # and exchange artifacts. Merge queue, schedule, and full dispatch runs still
-  # execute the complete duration-balanced suite.
+  # This suite shares live-cloud credentials across shards, so its whole graph
+  # runs only after merge, on approved merge groups, or on trusted manual runs.
   pull_request:
     types:
-      - labeled
       - opened
       - synchronize
       - reopened
       - ready_for_review
 
 permissions:
-  actions: read
   contents: read
+  actions: read
   pull-requests: read
 
 concurrency:
-  # PR and manual runs for the same branch supersede stale commits. This also
-  # lets a manually dispatched full-suite run replace the automatic PR subset.
   group: playwright-ci-postgresql-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: true
 
 jobs:
   check-changes:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (true) }}
     runs-on: ubuntu-24.04
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
@@ -133,9 +131,7 @@ jobs:
   cache-keys:
     needs: check-changes
     runs-on: ubuntu-24.04
-    if: |
-      !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (!github.event.pull_request.draft ) }}
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
       distribution: ${{ steps.fingerprints.outputs.distribution }}
@@ -174,51 +170,12 @@ jobs:
   build:
     needs: [check-changes, cache-keys]
     runs-on: ubuntu-24.04
-    if: |
-      !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (!github.event.pull_request.draft ) }}
     env:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
       BUNDLE_MODE: ${{ needs.cache-keys.outputs.bundle_mode }}
       BUILD_TOOLCHAIN: ${{ needs.cache-keys.outputs.toolchain }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        # verify-pr-label-action refuses to run on `pull_request` events for
-        # cross-repository PRs (v1.4.0 exits 1 with "PRs from forks are only
-        # supported when trigger on pull_request_target"), so same-repo PRs go
-        # through the action and fork PRs get an equivalent read-only check.
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
-      - name: Verify safe-to-test label (fork PRs)
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-        # Reads labels via GET /repos/{repo}/issues/{n}/labels; for pull
-        # requests that endpoint accepts either the Issues or the Pull
-        # requests repo permission (read) — covered by pull-requests: read.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          if ! gh api "/repos/${REPO}/issues/${PR_NUMBER}/labels" --jq '.[].name' | grep -Fxq 'safe to test'; then
-            echo "::error::PR is missing the 'safe to test' label — a maintainer must add it to run CI (PRs from forks cannot be verified by verify-pr-label-action on pull_request events)."
-            exit 1
-          fi
 
       - name: Checkout
         uses: actions/checkout@v5
@@ -323,9 +280,7 @@ jobs:
   detect-changes:
     needs: check-changes
     runs-on: ubuntu-24.04
-    if: |
-      !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (!github.event.pull_request.draft ) }}
     outputs:
       mode: ${{ steps.select.outputs.mode }}
       selected_count: ${{ steps.select.outputs.selected_count }}
@@ -371,6 +326,7 @@ jobs:
           retention-days: 1
 
   plan-playwright:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (true) }}
     needs: [build, detect-changes]
     runs-on: ubuntu-24.04
     outputs:
@@ -488,6 +444,7 @@ jobs:
           retention-days: 1
 
   restore-playwright-fixture:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (true) }}
     needs: [cache-keys, plan-playwright]
     runs-on: ubuntu-24.04
     outputs:
@@ -572,6 +529,7 @@ jobs:
           retention-days: 1
 
   prepare-playwright-fixture:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (true) }}
     needs:
       [
         build,
@@ -757,7 +715,7 @@ jobs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (!cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success') }}
     environment: test
     permissions:
       contents: read
@@ -1186,8 +1144,7 @@ jobs:
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
   playwright-summary:
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
-    if: ${{ always() && !cancelled() }}
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && (always() && !cancelled()) }}
     needs:
       [
         check-changes,

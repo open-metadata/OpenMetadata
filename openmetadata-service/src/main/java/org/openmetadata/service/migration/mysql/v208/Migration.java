@@ -22,6 +22,7 @@ import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryption
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v208.McpConsentColumns;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
@@ -34,6 +35,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpConsentColumns.STEP_NAME,
+        () -> McpConsentColumns.addOnMySql(handle));
     runOnce(
         migrationDAO,
         getVersion(),

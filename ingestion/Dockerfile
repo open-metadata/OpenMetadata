@@ -74,7 +74,7 @@ RUN apt-get -qq update \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev zlib1g zlib1g-dev \
   # docker-ce-cli comes from the airflow base and nothing in this image runs it:
   # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
   # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go

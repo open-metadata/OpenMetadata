@@ -298,18 +298,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       ValidatedResponse validatedResponse = new ValidatedResponse();
       auth.setSamlMessageFactory(validatedResponse);
       auth.processResponse(expectedRequestId);
-
-      if (!auth.isAuthenticated()) {
-        throw new AuthenticationException("SAML authentication failed");
-      }
-
-      List<String> errors = auth.getErrors();
-      if (!errors.isEmpty()) {
-        String errorReason = auth.getLastErrorReason();
-        LOG.error("SAML authentication errors: {}", errorReason);
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, errorReason);
-        return;
-      }
+      requireAccepted(auth);
       if (!mcpCallback) {
         requireAnswerTo(validatedResponse.response, expectedRequestId);
       }
@@ -477,6 +466,19 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       LOG.error("Error completing SAML login", e);
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML login failed");
+    }
+  }
+
+  /**
+   * Fails the login with java-saml's own reason, such as "The Message of the Response is not signed
+   * and the SP requires it", so the person signing in learns what to fix, not only that SAML failed.
+   */
+  private static void requireAccepted(Auth auth) {
+    if (!auth.isAuthenticated() || !auth.getErrors().isEmpty()) {
+      String reason = auth.getLastErrorReason();
+      throw new AuthenticationException(
+          "SAML response rejected: "
+              + (nullOrEmpty(reason) ? String.join(", ", auth.getErrors()) : reason));
     }
   }
 

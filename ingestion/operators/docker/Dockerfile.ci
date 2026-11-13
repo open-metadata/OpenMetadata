@@ -59,8 +59,6 @@ RUN apt-get -qq update \
     # two in lockstep; trixie ships 2.3.12-2 for both, so the pins are dropped
     # rather than retargeted.
     odbcinst \
-    postgresql \
-    postgresql-contrib \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
@@ -86,7 +84,7 @@ RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
       | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
 RUN echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt/ trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
     apt-get -qq update; \
-    apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+    apt-get -qq install --no-install-recommends -y libpq-dev; \
     apt-get -qq autoremove -yqq --purge; \
     apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
@@ -211,15 +209,14 @@ RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_ge
 # DNS through it. apt-get needs root, so switch back briefly -- USER openmetadata
 # above has no sudo access -- then restore the non-root user for the runtime image.
 # The build fails if any src:mariadb binary survives the purge.
-# The Cyrus SASL plugins and librdkafka go for the same reason: Debian files CVEs
-# against them with no trixie fix, and nothing here loads them. Hive and Impala
-# authenticate through pure-sasl + kerberos rather than Cyrus SASL, and the
+# libxml2, the Cyrus SASL plugins and librdkafka go for the same reason: Debian
+# files CVEs against them with no trixie fix, and nothing here loads them. lxml
+# bundles its own libxml2 (shared-mime-info is its only Debian dependent), Hive and
+# Impala authenticate through pure-sasl + kerberos rather than Cyrus SASL, and the
 # confluent_kafka wheel bundles its own librdkafka. libsasl2-2 and its sasldb
 # plugin stay because libpq5 needs them through libldap2; the DIGEST-MD5 plugin
-# those CVEs are in lives in libsasl2-modules. libxml2 stays on this branch: the
-# postgresql server packages still installed above depend on it. dpkg --purge rather
-# than apt-get: apt-get would silently remove anything that still depends on these,
-# dpkg refuses.
+# those CVEs are in lives in libsasl2-modules. dpkg --purge rather than apt-get:
+# apt-get would silently remove anything that still depends on these, dpkg refuses.
 #
 # The OS security upgrades ride along in the same root layer. trixie's base ships
 # util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
@@ -285,10 +282,10 @@ RUN set -eu; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
+    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2|zlib)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libmariadb3 mariadb-common libunbound8; \
-    dpkg --purge libsasl2-dev libsasl2-modules libsasl2-modules-gssapi-mit \
+    dpkg --purge libxml2 shared-mime-info libsasl2-dev libsasl2-modules libsasl2-modules-gssapi-mit \
       librdkafka-dev librdkafka1 'librdkafka++1'; \
     apt-get -qq purge -y build-essential gcc; \
     apt-mark manual libgomp1 xz-utils bzip2; \
@@ -318,7 +315,7 @@ RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m
 # The import check only covers modules we name. This catches any native library, in a wheel
 # or a vendor driver, that links one of the libraries purged above.
 RUN missing="$(find /home/openmetadata/.local /usr/local/lib /opt /instantclient -name '*.so*' -type f -exec ldd {} + 2>/dev/null \
-      | grep -E '(libsasl2|librdkafka|libmariadb|libmysqlclient)[^ ]* => not found' | sort -u)"; \
+      | grep -E '(libxml2|libsasl2|librdkafka|libmariadb|libmysqlclient)[^ ]* => not found' | sort -u)"; \
     [ -z "$missing" ] || { echo "native libraries link a purged library: $missing" >&2; exit 1; }
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.

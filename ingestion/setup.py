@@ -44,7 +44,10 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas>=2.2.2,<3",
-    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
+    # pyarrow 26 needs Python >=3.11, so 3.10 stays on the 23.0.1+ range. Every consumer lists
+    # both entries: their markers are mutually exclusive.
+    "pyarrow": "pyarrow>=26.0.0,<27; python_version >= '3.11'",
+    "pyarrow-py310": "pyarrow>=23.0.1,<26; python_version < '3.11'",
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
@@ -105,6 +108,7 @@ COMMONS = {
     "storage-archive": {
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["rarfile"],
         VERSIONS["py7zr"],
         VERSIONS["brotli"],
@@ -117,6 +121,7 @@ COMMONS = {
         VERSIONS["ijson"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
@@ -258,6 +263,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["numpy"],
         VERSIONS["sqlalchemy-bigquery"],
     },
@@ -466,7 +472,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
-    "pyarrow": {VERSIONS["pyarrow"]},
+    "pyarrow": {VERSIONS["pyarrow"], VERSIONS["pyarrow-py310"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["preshed"],
@@ -541,6 +547,7 @@ test = {
     VERSIONS["databricks-sql-connector"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
+    VERSIONS["pyarrow-py310"],
     VERSIONS["trino"],
     VERSIONS["spacy"],
     VERSIONS["pydomo"],

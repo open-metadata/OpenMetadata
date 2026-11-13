@@ -84,21 +84,10 @@ export const mockEntitySearchConfig = {
   boostMode: 'multiply',
 };
 
-// A rail click farther than this from the handle cannot land on the handle
-// itself (which would start a drag instead of setting a value).
-const SLIDER_HANDLE_CLEARANCE_PX = 12;
+// A drag that lands within this many steps of the target is finished with
+// arrow keys; a larger miss means the drag was lost and is retried.
+const SLIDER_KEY_STEP_LIMIT = 10;
 
-/**
- * Sets an antd Slider to exactly `value`, then asserts it landed there.
- *
- * Pointer input alone cannot do this: a mouse drag often fires no onChange at
- * all (leaving the form pristine and Save disabled), and a rail click lands
- * within about a pixel of the target, which is several steps off. So a rail
- * click only closes a large gap, and the arrow keys, which move the handle
- * exactly one `step` per press, finish the job. Every attempt re-reads the
- * handle's value, so a missed click or a dropped key is retried from the
- * slider's real state.
- */
 export async function setSliderValue(
   page: Page,
   testId: string,
@@ -107,39 +96,40 @@ export async function setSliderValue(
   max = 100,
   step = 0.1
 ) {
-  const slider = page.getByTestId(testId).filter({ visible: true });
-  const rail = slider.locator('.ant-slider-rail');
-  const handle = slider.getByRole('slider');
+  const slider = page.getByTestId(testId);
+  const sliderHandle = slider.getByRole('slider');
+  const sliderTrack = slider.locator('.ant-slider-step');
 
   const toSteps = (v: number) => Math.round((v - min) / step);
   const target = toSteps(value);
   const currentSteps = async () =>
-    toSteps(Number(await handle.getAttribute('aria-valuenow')));
+    toSteps(Number(await sliderHandle.getAttribute('aria-valuenow')));
 
+  // The slider sits in a collapse panel that may still be expanding or
+  // scrolling, so coordinates are re-read on every attempt after hover() has
+  // scrolled it into view; stale ones send the drag off the handle and the
+  // value silently never changes.
   await expect(async () => {
-    const box = await rail.boundingBox();
-    if (!box) {
+    await sliderHandle.hover();
+    const trackBox = await sliderTrack.boundingBox();
+    const handleBox = await sliderHandle.boundingBox();
+    if (!trackBox || !handleBox) {
       throw new Error(`Slider ${testId} not found`);
     }
-    const pxPerStep = (box.width * step) / (max - min);
-    const gapPx = async () =>
-      Math.abs(target - (await currentSteps())) * pxPerStep;
 
-    if ((await gapPx()) > SLIDER_HANDLE_CLEARANCE_PX) {
-      await rail.click({
-        position: {
-          x: ((value - min) / (max - min)) * box.width,
-          y: box.height / 2,
-        },
-      });
-      // Only key-step from a settled, nearby value; a missed click retries.
-      await expect
-        .poll(gapPx, { timeout: 2_000 })
-        .toBeLessThanOrEqual(SLIDER_HANDLE_CLEARANCE_PX);
-    }
+    await page.mouse.down();
+    await page.mouse.move(
+      trackBox.x + ((value - min) / (max - min)) * trackBox.width,
+      handleBox.y + handleBox.height / 2
+    );
+    await page.mouse.up();
 
     const delta = target - (await currentSteps());
-    await handle.focus();
+    if (Math.abs(delta) > SLIDER_KEY_STEP_LIMIT) {
+      throw new Error(`Slider ${testId} drag missed the target ${value}`);
+    }
+
+    await sliderHandle.focus();
     for (let i = 0; i < Math.abs(delta); i++) {
       await page.keyboard.press(delta > 0 ? 'ArrowRight' : 'ArrowLeft');
     }

@@ -40,6 +40,7 @@ import {
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
+import { SamlSSOClientConfig } from '../../../generated/security/client/samlSSOClientConfig';
 import { AuthProvider, ClientType } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import authenticationConfigSchema from '../../../jsons/configuration/authenticationConfiguration.json';
@@ -112,6 +113,27 @@ interface SsoTestResult {
   status: 'success' | 'failed';
   errorCount: number;
 }
+
+const HIDDEN_FIELD = { 'ui:widget': 'hidden', 'ui:hideError': true };
+
+/**
+ * java-saml applies Want Messages Signed and Want Assertions Signed only in strict mode, so the
+ * form offers them only while Strict Mode is on.
+ */
+const withSamlSigningSwitchesForStrictMode = (
+  samlUiSchema: UISchemaObject,
+  isStrictMode: boolean
+): UISchemaObject =>
+  isStrictMode
+    ? samlUiSchema
+    : {
+        ...samlUiSchema,
+        security: {
+          ...(samlUiSchema.security as UISchemaObject),
+          wantAssertionsSigned: HIDDEN_FIELD,
+          wantMessagesSigned: HIDDEN_FIELD,
+        },
+      };
 
 const MetadataUploadStatusCard = ({
   status,
@@ -571,6 +593,12 @@ const SSOConfigurationFormRJSF = ({
     []
   );
 
+  const currentSamlConfiguration = internalData?.authenticationConfiguration
+    ?.samlConfiguration as SamlSSOClientConfig | undefined;
+  const isSamlStrictMode = Boolean(
+    currentSamlConfiguration?.security?.strictMode
+  );
+
   const uiSchema = useMemo(() => {
     if (!currentProvider) {
       return {};
@@ -648,6 +676,13 @@ const SSOConfigurationFormRJSF = ({
       }
     }
 
+    if (currentProvider === AuthProvider.Saml) {
+      authConfig.samlConfiguration = withSamlSigningSwitchesForStrictMode(
+        authConfig.samlConfiguration as UISchemaObject,
+        isSamlStrictMode
+      );
+    }
+
     const finalSchema = {
       ...baseSchema,
       authenticationConfiguration: {
@@ -668,6 +703,7 @@ const SSOConfigurationFormRJSF = ({
     hasExistingConfig,
     savedData,
     hideBorder,
+    isSamlStrictMode,
   ]);
 
   // Handle form data changes

@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v8.json",
+    "dbt_version": "1.3.0",
+    "generated_at": "2026-10-17T00:00:00.000000Z"
+  },
+  "sources": {
+    "source.jaffle_shop.raw.orders": {
+      "database": "RAW_DB",
+      "schema": "RAW",
+      "name": "orders",
+      "identifier": "raw_orders",
+      "resource_type": "source",
+      "package_name": "jaffle_shop",
+      "path": "models/sources.yml",
+      "original_file_path": "models/sources.yml",
+      "unique_id": "source.jaffle_shop.raw.orders",
+      "fqn": ["jaffle_shop", "raw", "orders"],
+      "source_name": "raw",
+      "source_description": "Raw order data",
+      "loader": "",
+      "description": "Orders from the warehouse source",
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "description": "Source order identifier",
+          "data_type": "BIGINT"
+        }
+      },
+      "freshness": {
+        "warn_after": {"count": 12, "period": "hour"},
+        "error_after": {"count": 24, "period": "hour"}
+      },
+      "meta": {
+        "openmetadata": {
+          "domain": "Finance"
+        }
+      }
+    }
+  },
+  "nodes": {
+    "model.jaffle_shop.orders": {
+      "database": "RAW_DB",
+      "schema": "RAW",
+      "name": "orders",
+      "alias": "stg_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop",
+      "path": "orders.sql",
+      "original_file_path": "models/orders.sql",
+      "unique_id": "model.jaffle_shop.orders",
+      "fqn": ["jaffle_shop", "orders"],
+      "checksum": {"name": "sha256", "checksum": "source-identifier-fixture"},
+      "config": {"materialized": "table"},
+      "depends_on": {
+        "macros": [],
+        "nodes": ["source.jaffle_shop.raw.orders"]
+      },
+      "raw_code": "select order_id from {{ source('raw', 'orders') }}",
+      "compiled_code": "select order_id from RAW_DB.RAW.raw_orders"
+    }
+  },
+  "exposures": {},
+  "metrics": {},
+  "macros": {},
+  "docs": {},
+  "selectors": {},
+  "disabled": {},
+  "parent_map": {},
+  "child_map": {}
+}

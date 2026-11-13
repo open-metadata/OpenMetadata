@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL_COLUMN;
 import static org.openmetadata.service.Entity.TABLE;
@@ -615,6 +616,9 @@ public class ColumnRepository {
           "Either columnName (for search-based updates) or columnUpdates (for explicit updates) must be provided");
     }
 
+    // The preview has no per-column error, so a term the update would reject fails it outright.
+    ApprovedGlossaryTermGuard.checkNewlyApplied(requestedTags(columnUpdatesToProcess), Map.of());
+
     BulkColumnUpdatePreview preview = new BulkColumnUpdatePreview();
     preview.setTotalColumns(columnUpdatesToProcess.size());
 
@@ -773,6 +777,64 @@ public class ColumnRepository {
     return columnUpdates;
   }
 
+  /**
+   * What a search-based update would do, without applying it. A glossary term the write would
+   * reject is reported as a failure here too, so the preview matches the apply.
+   */
+  private BulkOperationResult previewColumnUpdates(List<ColumnUpdate> columnUpdates) {
+    Map<String, String> rejections =
+        ApprovedGlossaryTermGuard.rejectionsByTarget(requestedTags(columnUpdates), Map.of());
+    List<BulkResponse> passed = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
+    for (ColumnUpdate update : columnUpdates) {
+      String rejection = rejections.get(update.getColumnFQN());
+      BulkResponse response = new BulkResponse().withRequest(update);
+      if (rejection != null) {
+        failed.add(
+            response.withMessage(
+                "Failed to update column %s: %s".formatted(update.getColumnFQN(), rejection)));
+      } else {
+        passed.add(
+            response.withMessage("Would update column: %s".formatted(update.getColumnFQN())));
+      }
+    }
+    return new BulkOperationResult()
+        .withNumberOfRowsProcessed(columnUpdates.size())
+        .withNumberOfRowsPassed(passed.size())
+        .withNumberOfRowsFailed(failed.size())
+        .withSuccessRequest(passed)
+        .withFailedRequest(failed)
+        .withStatus(bulkStatus(passed.size(), failed.size()));
+  }
+
+  private static Map<String, List<TagLabel>> requestedTags(List<ColumnUpdate> columnUpdates) {
+    Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
+    columnUpdates.forEach(
+        update -> tagsByColumn.put(update.getColumnFQN(), listOrEmpty(update.getTags())));
+    return tagsByColumn;
+  }
+
+  private static ApiStatus bulkStatus(int passed, int failed) {
+    ApiStatus status = ApiStatus.PARTIAL_SUCCESS;
+    if (failed == 0) {
+      status = ApiStatus.SUCCESS;
+    } else if (passed == 0) {
+      status = ApiStatus.FAILURE;
+    }
+    return status;
+  }
+
+  // The apply passes a row when any of its occurrences takes the update, so the preview does too.
+  private static boolean anyOccurrenceTakes(
+      List<ColumnOccurrence> occurrences, List<TagLabel> tags) {
+    Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
+    occurrences.forEach(occurrence -> tagsByColumn.put(occurrence.getColumnFQN(), tags));
+    Map<String, String> rejections =
+        ApprovedGlossaryTermGuard.rejectionsByTarget(tagsByColumn, Map.of());
+    return occurrences.stream()
+        .anyMatch(occurrence -> !rejections.containsKey(occurrence.getColumnFQN()));
+  }
+
   public BulkOperationResult bulkUpdateColumns(
       UriInfo uriInfo, SecurityContext securityContext, BulkColumnUpdateRequest request) {
     return bulkUpdateColumns(uriInfo, securityContext, request, null);
@@ -796,22 +858,8 @@ public class ColumnRepository {
     if (request.getColumnName() != null && !request.getColumnName().isEmpty()) {
       columnUpdatesToProcess = buildColumnUpdatesFromSearch(securityContext, request);
 
-      // If dry-run, just return the list of columns that would be updated
       if (Boolean.TRUE.equals(request.getDryRun())) {
-        result.setNumberOfRowsProcessed(columnUpdatesToProcess.size());
-        result.setNumberOfRowsPassed(columnUpdatesToProcess.size());
-        result.setNumberOfRowsFailed(0);
-        result.setStatus(ApiStatus.SUCCESS);
-
-        // Add all columns to success responses to show what would be updated
-        for (ColumnUpdate update : columnUpdatesToProcess) {
-          BulkResponse response = new BulkResponse();
-          response.setRequest(update);
-          response.setMessage(String.format("Would update column: %s", update.getColumnFQN()));
-          successResponses.add(response);
-        }
-        result.setSuccessRequest(successResponses);
-        return result;
+        return previewColumnUpdates(columnUpdatesToProcess);
       }
     }
     // Mode 2: Explicit column updates - use provided list
@@ -988,7 +1036,9 @@ public class ColumnRepository {
                   databaseName,
                   schemaName,
                   domainId);
-          if (matches.isEmpty() || matches.get(0).getOccurrences().isEmpty()) {
+          if (matches.isEmpty()
+              || matches.get(0).getOccurrences().isEmpty()
+              || !anyOccurrenceTakes(matches.get(0).getOccurrences(), tags)) {
             result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           } else {
             result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);

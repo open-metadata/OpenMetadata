@@ -13,10 +13,9 @@
 Validator for table column name to match set test case
 """
 
-from typing import List, cast  # noqa: UP035
+from typing import TYPE_CHECKING, List, cast  # noqa: UP035
 
 from sqlalchemy import inspect
-from sqlalchemy.sql.base import ColumnCollection
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -26,6 +25,9 @@ from metadata.data_quality.validations.table.base.tableColumnToMatchSet import (
 )
 from metadata.utils.logger import test_suite_logger
 
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import QueryRunner
+
 logger = test_suite_logger()
 
 
@@ -34,9 +36,7 @@ class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, SQAVali
 
     def _run_results(self) -> List[str]:  # noqa: UP006
         """compute result of the test case"""
-        names = inspect(self.runner.table).c
+        names = [col.name for col in inspect(cast("QueryRunner", self.runner).table).c]
         if not names:
             raise ValueError(f"Column names for test case {self.test_case.name} returned None")
-        names = cast(ColumnCollection, names)  # satisfy type checker for names.keys() access  # noqa: TC006
-        names = list(names.keys())
-        return names  # noqa: RET504
+        return names

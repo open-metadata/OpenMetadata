@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -42,6 +43,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -232,6 +234,12 @@ public class FileRepository extends EntityRepository<File> {
     if (file.getColumns() != null) {
       applyColumnTags(file.getColumns());
     }
+  }
+
+  // File columns are not in the ChildFieldResolver registry, yet their tags are stored.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(File file) {
+    return Map.of(COLUMN_FIELD, listOrEmpty(file.getColumns()));
   }
 
   @Override

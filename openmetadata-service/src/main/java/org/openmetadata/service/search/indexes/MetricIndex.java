@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,8 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.service.Entity;
 
 public class MetricIndex implements TaggableIndex, LineageIndex {
+  private static final String FIELD_RELATED_METRICS = "relatedMetrics";
+
   final Metric metric;
 
   public MetricIndex(Metric metric) {
@@ -25,6 +28,18 @@ public class MetricIndex implements TaggableIndex, LineageIndex {
   @Override
   public String getEntityTypeName() {
     return Entity.METRIC;
+  }
+
+  /**
+   * {@code relatedMetrics} is in the metric's embedding text, which a reindex reuses only while its
+   * fingerprint matches the one the live write path built, so the reindex has to load it too.
+   * ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
+   */
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add(FIELD_RELATED_METRICS);
+    return Collections.unmodifiableSet(fields);
   }
 
   @SuppressWarnings("unchecked")

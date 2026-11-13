@@ -41,6 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -821,5 +822,15 @@ public class TopicRepository extends EntityRepository<Topic> {
           origField.getDataTypeDisplay(),
           updatedField.getDataTypeDisplay());
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Topic topic) {
+    return Map.of(
+        "messageSchema.schemaFields",
+        topic.getMessageSchema() == null
+            ? List.of()
+            : listOrEmpty(topic.getMessageSchema().getSchemaFields()));
   }
 }
