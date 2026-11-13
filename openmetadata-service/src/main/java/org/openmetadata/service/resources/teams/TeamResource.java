@@ -497,7 +497,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return ProfileWebhookSecrets.maskForRead(
+    return ProfileWebhookSecrets.mask(
         getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
   }
 
@@ -535,7 +535,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return ProfileWebhookSecrets.maskForRead(
+    return ProfileWebhookSecrets.mask(
         getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
@@ -595,8 +595,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (team.getDefaultPersona() != null) {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
-    return withRedactedEntity(
-        create(uriInfo, securityContext, team), ProfileWebhookSecrets::maskForRead);
+    return withRedactedEntity(create(uriInfo, securityContext, team), ProfileWebhookSecrets::mask);
   }
 
   @PUT
@@ -625,7 +624,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
     return withRedactedEntity(
-        createOrUpdate(uriInfo, securityContext, team), ProfileWebhookSecrets::maskForRead);
+        createOrUpdate(uriInfo, securityContext, team), ProfileWebhookSecrets::mask);
   }
 
   @PUT
@@ -813,7 +812,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     rejectImpersonatedGrant(containerRequestContext, patch);
     authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return withRedactedEntity(
-        patchInternal(uriInfo, securityContext, id, patch), ProfileWebhookSecrets::maskForRead);
+        patchInternal(uriInfo, securityContext, id, patch), ProfileWebhookSecrets::mask);
   }
 
   @PATCH
@@ -846,7 +845,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     rejectImpersonatedGrant(containerRequestContext, patch);
     authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return withRedactedEntity(
-        patchInternal(uriInfo, securityContext, fqn, patch), ProfileWebhookSecrets::maskForRead);
+        patchInternal(uriInfo, securityContext, fqn, patch), ProfileWebhookSecrets::mask);
   }
 
   private static final String DEFAULT_PERSONA_FIELD = "defaultPersona";

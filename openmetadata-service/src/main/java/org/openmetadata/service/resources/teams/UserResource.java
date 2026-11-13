@@ -564,9 +564,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    User user =
-        ProfileWebhookSecrets.maskForRead(
-            getInternal(uriInfo, securityContext, id, fieldsParam, include));
+    User user = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }
@@ -605,9 +603,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    User user =
-        ProfileWebhookSecrets.maskForRead(
-            getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
+    User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     decryptOrNullify(securityContext, user);
     return user;
   }

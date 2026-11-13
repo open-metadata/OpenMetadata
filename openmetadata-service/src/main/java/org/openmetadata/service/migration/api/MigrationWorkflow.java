@@ -599,19 +599,20 @@ public class MigrationWorkflow {
     }
   }
 
-  // Every pending version checks first, before any version writes; --force does not skip a halt.
+  // Every pending version checks first, before any version writes, and outside the steps --force
+  // goes on past, so a halt stops the upgrade whether or not --force is set.
   private void runPreflights(Handle handle) {
     migrations.forEach(process -> process.preflight(handle));
   }
 
-  // --force goes on past a failed step, except one that says going on would lose data.
-  void runStepAndAddStatus(List<String> row, MigrationProcess.MigrationProcessCallback process) {
+  private void runStepAndAddStatus(
+      List<String> row, MigrationProcess.MigrationProcessCallback process) {
     try {
       process.call();
       row.add(SUCCESS_MSG);
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
-      if (!forceMigrations || e instanceof MigrationHaltException) {
+      if (!forceMigrations) {
         throw e;
       }
     }
