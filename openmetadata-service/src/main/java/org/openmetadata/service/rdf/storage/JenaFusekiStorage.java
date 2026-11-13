@@ -1663,23 +1663,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * is the wrong limit. It neither consults nor feeds the circuit breaker: a long maintenance
    * request says nothing about whether Fuseki can serve entity writes.
    *
-   * <p>A maintenance update is a {@code CLEAR}, which is safe to send twice, so one Fuseki drops
-   * before answering is sent once more. A reindex starts with it after minutes without RDF traffic,
-   * when the pooled connection may already be closed on Fuseki's side; the HTTP client retries
-   * only idempotent requests on such a connection, never this POST.
+   * <p>One that Fuseki drops before answering is sent once more, within what is left of the same
+   * budget (ADR:2026-11-13-a-dropped-rdf-maintenance-clear-is-resent-once-within-its-budget).
    */
   @Override
   public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
     final UpdateRequest request = UpdateFactory.create(sparqlUpdate);
     final long budgetMillis = Math.max(1, timeout.toMillis());
+    final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budgetMillis);
     try {
       runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", budgetMillis);
     } catch (RuntimeException failure) {
-      if (!isDroppedConnection(failure)) {
+      final long remainingMillis = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime());
+      if (!isDroppedConnection(failure) || remainingMillis <= 0) {
         throw failure;
       }
       LOG.warn("Fuseki closed the connection before answering a maintenance update; resending it");
-      runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", budgetMillis);
+      runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", remainingMillis);
     }
   }
 
