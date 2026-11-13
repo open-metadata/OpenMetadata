@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Sigma connector maintainers
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_sigma.py`
-  (`test_the_connection_path_is_read_only_when_the_display_path_finds_no_table`)
+  (`test_the_connection_path_is_read_only_when_the_display_path_finds_no_table`,
+  `test_the_connection_path_of_a_dataset_is_not_read`)
 - **Related:** —
 
 ## Context
