@@ -57,9 +57,10 @@ the last comparable run that passed and the first that failed. A single change i
 introducing commit, several are linked as one compare range per repository, and none means the CI
 environment changed. Alerts never copy error text or log lines.
 
-Limits: 100 runs per event listing, 40 comparable runs scanned, 12 with results read, 16 MiB per
-report archive, the first 2 MiB of a job log, and 150 seconds per alert. A limit leaves the
-affected failures Unknown.
+Limits: 100 runs per event listing, the 100 main commits before the dequeue, queue chains up to
+10 deep, 40 comparable runs scanned, 12 with results read, 16 MiB per report archive, the first
+2 MiB of a job log, 30 seconds per request and 150 seconds per alert. A limit only removes
+evidence, so the affected failures read Unknown.
 
 ## Consequences
 
