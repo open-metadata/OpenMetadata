@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -30,6 +32,7 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Profile;
@@ -45,6 +48,7 @@ import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
@@ -159,6 +163,85 @@ class ProfileWebhookSecretsIT {
             "/v1/users/" + user.getId() + "/versions/0.2")
         .forEach(path -> assertNoSecretOrCiphertext(rawGet(viewer, path), secrets));
     assertNoSecretOrCiphertext(rawGet(owner, "/v1/users/loggedInUser?fields=profile"), secrets);
+  }
+
+  /**
+   * A profile webhook holding a value that does not open reports it on every read, and on the
+   * team's write responses; a PUT or a PATCH that sends the status back never stores it, and no
+   * change event records it.
+   */
+  @Test
+  void aProfileWebhookThatCannotSendIsReportedWhenReadAndNeverStored(TestNamespace ns) {
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("unusable_team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withProfile(profileWith(oauth2Webhook("https://hooks.example.com/t", "s"))));
+    holdAValueThatDoesNotOpen(Entity.TEAM, team.getId());
+    String userName = "unusable" + ns.shortPrefix();
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@open-metadata.org")
+                    .withProfile(profileWith(oauth2Webhook("https://hooks.example.com/u", "s"))));
+    holdAValueThatDoesNotOpen(Entity.USER, user.getId());
+
+    Team readTeam = SdkClients.adminClient().teams().get(team.getId().toString(), "profile");
+    User readUser = SdkClients.adminClient().users().get(user.getId().toString(), "profile");
+    assertReportsTheHeader(readTeam.getProfile());
+    assertReportsTheHeader(readUser.getProfile());
+
+    JsonNode sendStatusBack =
+        JsonUtils.valueToTree(
+            List.of(
+                Map.of(
+                    "op",
+                    "add",
+                    "path",
+                    "/profile/subscriptionStatus",
+                    "value",
+                    readTeam.getProfile().getSubscriptionStatus()),
+                Map.of("op", "add", "path", "/description", "value", "patched")));
+    Team patchedTeam = SdkClients.adminClient().teams().patch(team.getId(), sendStatusBack);
+    SdkClients.adminClient().users().patch(user.getId(), sendStatusBack);
+    assertReportsTheHeader(patchedTeam.getProfile());
+    assertNoStatusStored(storedTeam(team.getId()));
+    assertNoStatusStored(storedUser(user.getId()));
+
+    Team putTeam =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/teams",
+                new CreateTeam()
+                    .withName(team.getName())
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDescription("put")
+                    .withProfile(readTeam.getProfile()),
+                Team.class);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@open-metadata.org")
+                .withDescription("put")
+                .withProfile(readUser.getProfile()),
+            User.class);
+    assertReportsTheHeader(putTeam.getProfile());
+    assertNoStatusStored(storedTeam(team.getId()));
+    assertNoStatusStored(storedUser(user.getId()));
+    assertFalse(changeEventsOf(team.getId()).contains("subscriptionStatus"));
+    assertFalse(changeEventsOf(user.getId()).contains("subscriptionStatus"));
   }
 
   @Test
@@ -294,6 +377,58 @@ class ProfileWebhookSecretsIT {
             .withDestinations(List.of(destination));
     UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
     return AlertFixtures.stored(id);
+  }
+
+  // A header value in the plain Fernet format: no profile webhook opens one.
+  private static void holdAValueThatDoesNotOpen(String entityType, UUID id) {
+    String table = Entity.TEAM.equals(entityType) ? "team_entity" : "user_entity";
+    String header = Fernet.getInstance().encrypt("a header value");
+    JsonNode row = Entity.TEAM.equals(entityType) ? storedTeam(id) : storedUser(id);
+    ((ObjectNode) row.at("/profile/subscription/generic"))
+        .set("headers", JsonUtils.valueToTree(Map.of("X-Api-Key", header)));
+    String json = isMySql() ? ":json" : ":json::jsonb";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate("UPDATE " + table + " SET json = " + json + " WHERE id = :id")
+                    .bind("id", id.toString())
+                    .bind("json", JsonUtils.pojoToJson(row))
+                    .execute());
+    EntityRepository.invalidateCacheForEntity(
+        entityType, id, row.path("fullyQualifiedName").asText());
+  }
+
+  private static void assertReportsTheHeader(Profile profile) {
+    SubscriptionStatus status = profile.getSubscriptionStatus().getGeneric();
+    assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
+    assertTrue(status.getConfigurationUnusable());
+    assertTrue(status.getLastFailedReason().contains("/headers/X-Api-Key"), status.toString());
+  }
+
+  private static void assertNoStatusStored(JsonNode row) {
+    assertTrue(row.at("/profile/subscriptionStatus").isMissingNode(), row.toString());
+  }
+
+  private static String changeEventsOf(UUID entityId) {
+    String sql =
+        isMySql()
+            ? "SELECT CAST(json AS CHAR) FROM change_event WHERE json ->> '$.entityId' = :id"
+            : "SELECT json::text FROM change_event WHERE json ->> 'entityId' = :id";
+    List<String> events =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(sql)
+                        .bind("id", entityId.toString())
+                        .mapTo(String.class)
+                        .list());
+    return String.join("\n", events);
+  }
+
+  private static boolean isMySql() {
+    return "mysql".equalsIgnoreCase(System.getProperty("databaseType", "postgres"));
   }
 
   private static JsonNode storedTeam(UUID id) {

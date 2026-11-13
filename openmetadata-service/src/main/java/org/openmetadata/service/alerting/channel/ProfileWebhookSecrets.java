@@ -223,8 +223,8 @@ public final class ProfileWebhookSecrets {
   /**
    * Masks, in place, the profile webhook secrets of a user as a read shows them, and reports in
    * {@code profile.subscriptionStatus} each webhook that does not send until a stored value is
-   * entered again. The status is computed on every read and never stored, and a write response
-   * leaves it out, so no change event records it either.
+   * entered again. The status is computed on every read and never stored, and the schema keeps it
+   * out of change events.
    */
   public static User maskForRead(User user) {
     user.setProfile(withStatus(new Holder(Entity.USER, user.getId()), user.getProfile()));
@@ -274,6 +274,7 @@ public final class ProfileWebhookSecrets {
     return new SubscriptionStatus()
         .withStatus(SubscriptionStatus.Status.FAILED)
         .withLastFailedReason(reason)
+        .withConfigurationUnusable(true)
         .withTimestamp(System.currentTimeMillis());
   }
 
