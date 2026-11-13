@@ -255,6 +255,9 @@ public class Migration extends MigrationProcessImpl {
         migrationDAO,
         getVersion(),
         ApprovalOutcomeRedeployMigration.STEP_NAME,
-        ApprovalOutcomeRedeployMigration::redeploy);
+        () -> {
+          initializeWorkflowHandler();
+          ApprovalOutcomeRedeployMigration.redeploy();
+        });
   }
 }

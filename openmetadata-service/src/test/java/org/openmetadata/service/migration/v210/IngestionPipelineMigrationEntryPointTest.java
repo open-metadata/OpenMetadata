@@ -17,6 +17,7 @@ import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -43,6 +44,7 @@ import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmen
 import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
+import org.openmetadata.service.migration.utils.v210.ApprovalOutcomeRedeployMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
@@ -128,6 +130,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DataProductDomainContainmentRepair.class);
         MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
             mockStatic(EntityExtensionCollationAlignment.class);
+        MockedStatic<ApprovalOutcomeRedeployMigration> approvalOutcomeRedeploy =
+            mockStatic(ApprovalOutcomeRedeployMigration.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -173,10 +177,11 @@ class IngestionPipelineMigrationEntryPointTest {
         // A database that recorded 2.0.8 before this step existed does not run it there.
         collationAlignment.verify(() -> EntityExtensionCollationAlignment.alignOnMySql(handle));
       }
-      // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
+      // `migrate` runs before Flowable starts, so each step that deploys a workflow starts it.
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), atLeastOnce());
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
+      approvalOutcomeRedeploy.verify(ApprovalOutcomeRedeployMigration::redeploy);
       lineageEdgeCleanup.verify(
           () ->
               LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
