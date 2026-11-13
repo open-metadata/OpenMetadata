@@ -13,6 +13,7 @@
 import {
   act,
   fireEvent,
+  render,
   screen,
   waitFor,
   within,
@@ -52,6 +53,7 @@ import {
   generateOntologyConceptQuery,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
+  softDeleteOntologyDefinition,
   validateOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
@@ -68,6 +70,7 @@ import {
 } from '../../../OntologyExplorer/RelationWarning.context';
 import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from './OntologyConceptInspector';
+import OntologyConceptRules from './OntologyConceptRules';
 
 /** The relationship type is a select in the inline form; this opens it and picks one. */
 const chooseRelationType = async (id: string) => {
@@ -190,7 +193,6 @@ const renderInspector = (
         model={{ ...model, properties }}
         relations={[]}
         onClose={jest.fn()}
-        onOpenData={jest.fn()}
         onSelectConcept={jest.fn()}
       />
     </MemoryRouter>
@@ -355,7 +357,7 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
         await within(assets).findByRole('link', { name: 'customers' })
       ).toBeVisible();
       expect(
-        within(assets).getByText(/label.ontology-column-binding-count/)
+        within(assets).getByText(/label.ontology-column-count/)
       ).toBeVisible();
       expect(
         await screen.findByText(/former_id.*label.unavailable/)
@@ -509,7 +511,6 @@ describe('OntologyConceptInspector relationships', () => {
           model={relationModel}
           relations={getModelRelations(relationModel)}
           onClose={jest.fn()}
-          onOpenData={jest.fn()}
           onSelectConcept={jest.fn()}
         />
       </MemoryRouter>
@@ -534,12 +535,16 @@ describe('OntologyConceptInspector relationships', () => {
     ).toHaveTextContent(/has part\s*Account/);
   });
 
-  it('reads an incoming relation backwards when no inverse is declared', () => {
+  it('marks an incoming relation as read backwards when no inverse is declared', () => {
     renderRelations([partOf]);
 
     expect(
       screen.getByTestId('ontology-concept-relationships')
-    ).toHaveTextContent(/Account\s*part of/);
+    ).toHaveTextContent(/part of\s*Account/);
+    expect(screen.getByTestId('ontology-concept-relation-row')).toHaveAttribute(
+      'data-direction',
+      'backward'
+    );
   });
 });
 
@@ -563,7 +568,6 @@ describe('OntologyConceptInspector header and empty sections', () => {
           model={{ ...model, concepts: [concept, parent] }}
           relations={relations}
           onClose={jest.fn()}
-          onOpenData={jest.fn()}
           onSelectConcept={onSelectConcept}
         />
       </MemoryRouter>
@@ -644,9 +648,8 @@ describe('OntologyConceptInspector view rail', () => {
     [OntologyDefinitionStatus.InReview, 'label.in-review'],
     [OntologyDefinitionStatus.Approved, 'label.approved'],
   ])(
-    'shows %s, owner and three assets with a Data handoff',
+    'shows %s, owner and three assets, and expands the rest in place',
     async (lifecycleStatus, label) => {
-      const onOpenData = jest.fn();
       renderWithQueryClient(
         <MemoryRouter>
           <OntologyConceptInspector
@@ -654,7 +657,6 @@ describe('OntologyConceptInspector view rail', () => {
             model={model}
             relations={[]}
             onClose={jest.fn()}
-            onOpenData={onOpenData}
             onSelectConcept={jest.fn()}
           />
         </MemoryRouter>
@@ -680,7 +682,11 @@ describe('OntologyConceptInspector view rail', () => {
 
       fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
 
-      expect(onOpenData).toHaveBeenCalledTimes(1);
+      expect(within(assets).getByText('Asset 3')).toBeInTheDocument();
+
+      fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
+
+      expect(within(assets).queryByText('Asset 3')).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('ontology-native-link-assets')
       ).not.toBeInTheDocument();
@@ -761,7 +767,6 @@ it('adds a relationship from the rail, changes its type and retries a refused sa
         relations={[]}
         onAddRelation={save}
         onClose={jest.fn()}
-        onOpenData={jest.fn()}
         onSelectConcept={jest.fn()}
       />
     </MemoryRouter>
@@ -845,7 +850,6 @@ describe('OntologyConceptInspector in AI mode', () => {
       onClose: jest.fn(),
       onEdit: jest.fn(),
       onEditMappings: jest.fn(),
-      onOpenData: jest.fn(),
       onSelectConcept: jest.fn(),
     };
     renderWithQueryClient(
@@ -890,7 +894,7 @@ describe('OntologyConceptInspector in AI mode', () => {
     ).parentElement;
 
     expect(header).not.toContainElement(description);
-    expect(description.closest('.tw\\:overflow-auto')).toContainElement(
+    expect(description.closest('.tw\\:overflow-y-auto')).toContainElement(
       screen.getByTestId(`ontology-concept-relation-${party.id}`)
     );
   });
@@ -1136,7 +1140,6 @@ describe('OntologyConceptInspector in AI mode', () => {
           model={relationModel}
           relations={getModelRelations(relationModel)}
           onClose={jest.fn()}
-          onOpenData={jest.fn()}
           onSelectConcept={jest.fn()}
         />
       </MemoryRouter>
@@ -1165,7 +1168,7 @@ describe('OntologyConceptInspector in AI mode', () => {
         },
       })),
     });
-    const handlers = renderAiInspector();
+    renderAiInspector();
     const assets = screen.getByTestId('ontology-native-assets');
     await within(assets).findByRole('link', { name: 'Asset 0' });
 
@@ -1177,7 +1180,7 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
 
-    expect(handlers.onOpenData).toHaveBeenCalledTimes(1);
+    expect(within(assets).getByText('Asset 3')).toBeInTheDocument();
   });
 
   it('retries a failed bindings read and removes an asset from the AI section', async () => {
@@ -1273,7 +1276,6 @@ describe('OntologyConceptInspector relationship authoring', () => {
             onClose={jest.fn()}
             onDeleteRelation={jest.fn().mockResolvedValue(true)}
             onEditRelation={jest.fn().mockResolvedValue(true)}
-            onOpenData={jest.fn()}
             onSelectConcept={jest.fn()}
             {...props}
           />
@@ -1420,7 +1422,6 @@ describe('OntologyConceptInspector relationship authoring', () => {
               onClose={jest.fn()}
               onDeleteRelation={jest.fn().mockResolvedValue(true)}
               onEditRelation={onEditRelation}
-              onOpenData={jest.fn()}
               onSelectConcept={jest.fn()}
             />
           </MemoryRouter>
@@ -1561,6 +1562,55 @@ describe('OntologyConceptInspector relationship authoring', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('greys the concept a rule is about, and deletes a rule while editing after confirming', async () => {
+    const rule: OntologyAxiom = {
+      ...customerIsParty,
+      axiomType: AxiomType.SubclassOf,
+      displayName: 'Customer must have exactly 1 name',
+      expressions: [],
+      id: 'axiom-rule',
+      name: 'CustomerMustHaveName',
+    };
+    const rulesModel = { ...authoringModel, axioms: [rule] };
+    const onCreated = jest.fn();
+    render(
+      <OntologyConceptRules
+        canAdd
+        isEditing
+        concept={concept}
+        model={rulesModel}
+        relations={[]}
+        onCreated={onCreated}
+      />
+    );
+    const row = screen.getByTestId('ontology-concept-rule-axiom-rule');
+
+    expect(within(row).getByText('Customer')).toHaveClass('tw:text-tertiary');
+
+    fireEvent.click(
+      screen.getByTestId('ontology-concept-rule-delete-axiom-rule')
+    );
+
+    // Nothing is deleted until the person confirms.
+    expect(await screen.findByTestId('delete-modal')).toBeInTheDocument();
+    expect(softDeleteOntologyDefinition).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(softDeleteOntologyDefinition).toHaveBeenCalledWith(
+        'axiom',
+        'axiom-rule'
+      )
+    );
+
+    expect(onCreated).toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument()
+    );
+  });
+
   it('flags a synonym that reads like a relationship, read-only in View', () => {
     renderAuthoring({
       concept: { ...concept, synonyms: ['Client', 'part of Order'] },
@@ -1605,7 +1655,6 @@ describe('OntologyConceptInspector relationship authoring', () => {
             onAddProperty={jest.fn().mockResolvedValue(true)}
             onAddRelation={jest.fn().mockResolvedValue(true)}
             onClose={jest.fn()}
-            onOpenData={jest.fn()}
             onRuleCreated={jest.fn()}
             onSelectConcept={jest.fn()}
             {...props}

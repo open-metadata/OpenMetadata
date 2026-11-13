@@ -31,6 +31,44 @@ import {
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyTasksDrawer from './OntologyTasksDrawer';
 
+// The shared composer wraps a Quill editor jsdom cannot type into; this stand-in keeps its
+// contract: send hands the text to onSave, and a rejected save leaves the draft in place.
+jest.mock('../../../common/CommentComposer/CommentComposer', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    __esModule: true,
+    default: function StubComposer({
+      onSave,
+    }: {
+      onSave: (message: string) => Promise<unknown>;
+    }) {
+      const [draft, setDraft] = useState('');
+
+      return (
+        <>
+          <textarea
+            aria-label="label.comment"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <button
+            disabled={!draft.trim()}
+            type="button"
+            onClick={() =>
+              onSave(draft).then(
+                () => setDraft(''),
+                () => undefined
+              )
+            }>
+            label.send
+          </button>
+        </>
+      );
+    },
+  };
+});
+
 jest.mock('../../../../utils/ToastUtils', () => ({
   ...jest.requireActual('../../../../utils/ToastUtils'),
   showSuccessToast: jest.fn(),
@@ -937,6 +975,18 @@ describe('the Studio review banner scope', () => {
       'Finance · In review · waiting on alice · TASK-2',
     ]);
   });
+
+  it('asks the viewer to review by name when the open review waits on them', async () => {
+    serveOpenReviews([{ ...reviewOf('Sales', 'TASK-1'), callerCanVote: true }]);
+    renderWithQueryClient(<Harness ontologyId={null} />);
+
+    const pill = await screen.findByTestId('ontology-open-review-asked');
+
+    expect(pill).toHaveTextContent('reviewer asked you to review Sales');
+    expect(
+      within(pill).getByRole('button', { name: 'Review' })
+    ).toBeInTheDocument();
+  });
 });
 
 it('titles each queue row with the task title that names the ontology and version', async () => {
@@ -1026,7 +1076,8 @@ it('shows tab counts, a pending group and requester cards that the search narrow
     screen.getByRole('tab', { name: /label.created-by-me/ })
   ).toHaveTextContent('5');
 
-  const panel = screen.getByRole('tabpanel');
+  // The queue column; the task detail beside it sits in the same tab panel.
+  const panel = screen.getByTestId('ontology-tasks-queue');
 
   expect(
     await within(panel).findByTestId('ontology-tasks-group')
@@ -1034,7 +1085,9 @@ it('shows tab counts, a pending group and requester cards that the search narrow
   expect(within(panel).getByText('Priya Raman')).toBeInTheDocument();
 
   expect(
-    within(panel).queryByRole('button', { name: 'label.next' })
+    within(screen.getByTestId('ontology-tasks-queue')).queryByRole('button', {
+      name: 'label.next',
+    })
   ).not.toBeInTheDocument();
 
   await screen.findByText('Review Commerce');

@@ -959,20 +959,25 @@ const OntologyNativeDataCanvas = ({
         </Box>
       ) : null}
       {onLinkData ? (
-        <Button
-          className="tw:absolute tw:border-dashed"
-          color="secondary"
-          data-testid="ontology-data-link-more"
-          iconLeading={Plus}
-          size="sm"
+        // The design's dashed drop slot under the last source group; the frame is layout, the
+        // action is a plain link-colour button inside it.
+        <div
+          className="tw:absolute tw:flex tw:h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:bg-surface"
           style={{
             left: layout.groupLeft,
             top: linkTop,
             width: layout.width - layout.groupLeft - 40,
-          }}
-          onPress={onLinkData}>
-          {t('label.link-data')}
-        </Button>
+          }}>
+          <Button
+            className="tw:w-full tw:justify-center"
+            color="link-color"
+            data-testid="ontology-data-link-more"
+            iconLeading={Plus}
+            size="sm"
+            onPress={onLinkData}>
+            {t('label.link-data')}
+          </Button>
+        </div>
       ) : null}
     </>
   );

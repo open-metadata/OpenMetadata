@@ -30,7 +30,6 @@ type Props = {
   onDismiss?: () => void;
   review: OntologyReleaseReview;
   release: OntologyRelease;
-  viewerName: string;
   viewerId?: string;
   onOpenTask: (taskId: string) => void;
 };
@@ -52,6 +51,7 @@ const DecisionBanner = ({
     <OntologyReviewPill
       action={
         <Button
+          pill
           color="secondary"
           size="sm"
           onPress={() => onOpenTask(review.task.id)}>
@@ -83,17 +83,33 @@ const isDecided = (review: Props['review']) =>
   (review.status === EntityStatus.Approved ||
     review.status === EntityStatus.Rejected);
 
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+const versionText = (release: Props['release'], t: Translate) =>
+  release.semanticVersion ? 'v' + release.semanticVersion : t('label.draft');
+
+const pendingDetail = (
+  review: Props['review'],
+  release: Props['release'],
+  t: Translate
+) =>
+  [
+    getEntityName(review.ontology),
+    versionText(release, t),
+    `${releaseChangeCount(release) ?? t('label.unavailable')} ${t(
+      'label.change-plural'
+    )}`,
+    getEntityName(review.requester),
+    review.taskId ?? review.task.id,
+  ].join(' · ');
+
 const PendingBanner = ({
   review,
   release,
-  viewerName,
   isRequester,
   onOpenTask,
   onDismiss,
-}: Pick<
-  Props,
-  'review' | 'release' | 'viewerName' | 'onOpenTask' | 'onDismiss'
-> & {
+}: Pick<Props, 'review' | 'release' | 'onOpenTask' | 'onDismiss'> & {
   isRequester: boolean;
 }) => {
   const { t } = useTranslation();
@@ -110,27 +126,26 @@ const PendingBanner = ({
     <OntologyReviewPill
       action={
         <Button
-          color="secondary"
+          pill
+          color={
+            review.callerCanVote ? 'secondary-warning-outline' : 'secondary'
+          }
           size="sm"
           onPress={() => onOpenTask(review.task.id)}>
-          {t(review.callerCanVote ? 'label.review-now' : 'label.view-task')}
+          {t(review.callerCanVote ? 'label.review' : 'label.view-task')}
         </Button>
       }
-      detail={[
-        getEntityName(review.ontology),
-        release.semanticVersion
-          ? 'v' + release.semanticVersion
-          : t('label.draft'),
-        `${releaseChangeCount(release) ?? t('label.unavailable')} ${t(
-          'label.change-plural'
-        )}`,
-        getEntityName(review.requester),
-        review.taskId ?? review.task.id,
-      ].join(' · ')}
+      // The design asks the reviewer in one line; the details stay for everyone else.
+      detail={
+        review.callerCanVote ? undefined : pendingDetail(review, release, t)
+      }
       testId="ontology-review-banner"
       title={
         review.callerCanVote
-          ? t('message.ontology-review-waiting-for-you', { name: viewerName })
+          ? t('message.ontology-review-asked-you', {
+              requester: getEntityName(review.requester),
+              version: versionText(release, t),
+            })
           : t(status.key, status.values)
       }
       tone={review.callerCanVote ? 'warning' : 'brand'}
@@ -150,7 +165,6 @@ const PendingBanner = ({
 const OntologyReviewBanner = ({
   review,
   release,
-  viewerName,
   viewerId,
   onOpenTask,
   onDismiss,
@@ -178,7 +192,6 @@ const OntologyReviewBanner = ({
       isRequester={isRequester}
       release={release}
       review={review}
-      viewerName={viewerName}
       onDismiss={onDismiss}
       onOpenTask={onOpenTask}
     />

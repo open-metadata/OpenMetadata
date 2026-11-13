@@ -241,6 +241,7 @@ const OntologyReleaseReviewers = ({
         items={options}
         label={t('label.add-reviewer')}
         selectedKey={null}
+        shortcut={false}
         tooltip={lockHint}
         onFocus={search.onFocus}
         onInputChange={(value) => {
@@ -300,7 +301,11 @@ const OntologyReleaseReviewers = ({
     <Card data-testid="ontology-release-reviewers" size="sm">
       <Card.Content>
         <Box direction="col" gap={3}>
-          <Typography as="h3" size="text-sm" weight="semibold">
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="semibold">
             {t('label.reviewers')}
           </Typography>
           <TagGroup

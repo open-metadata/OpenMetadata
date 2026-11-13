@@ -302,6 +302,61 @@ describe('native OntologyTreeView', () => {
     expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(2);
   });
 
+  it('marks every conflicting row with a red dot and its messages, and still opens it', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const onSelect = jest.fn();
+    render(
+      <OntologyTreeView
+        source={{
+          kind: 'native',
+          index,
+          conflicts: new Map([
+            ['a', ['A is disjoint with B', 'A has no label']],
+            ['b', ['A is disjoint with B']],
+          ]),
+        }}
+        onSelect={onSelect}
+      />
+    );
+
+    const rowA = screen.getByTestId('ontology-tree-term-a');
+    const rowB = screen.getByTestId('ontology-tree-term-b');
+
+    expect(
+      within(rowA)
+        .getAllByTestId('ontology-tree-conflict')
+        .map((line) => line.textContent)
+    ).toEqual(['A is disjoint with B', 'A has no label']);
+    expect(
+      within(rowB).getByTestId('ontology-tree-conflict')
+    ).toHaveTextContent('A is disjoint with B');
+    expect(within(rowA).getByTestId('ontology-tree-conflict-dot')).toHaveClass(
+      'tw:bg-fg-error-primary'
+    );
+    expect(screen.getAllByTestId('ontology-tree-conflict-dot')).toHaveLength(2);
+
+    fireEvent.click(rowA);
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+  });
+
+  it('shows no conflict marks without conflicts', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-tree-conflict-dot')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-tree-conflict')
+    ).not.toBeInTheDocument();
+  });
+
   it('opens a second concept after the first one is selected', () => {
     const index = buildNativeTreeIndex(graph, filters, []);
     const onSelect = jest.fn();

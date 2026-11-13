@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { buildConflictHighlight, conflictEdgeKey } from './conflictHighlight';
+import {
+  buildConflictHighlight,
+  conflictEdgeKey,
+  toReadableViolationMessage,
+} from './conflictHighlight';
 
 describe('conflict highlight', () => {
   const edges = [
@@ -76,5 +80,96 @@ describe('conflict highlight', () => {
         conflictEdgeKey({ from: 'Q', to: 'B' }),
       ].sort()
     );
+  });
+});
+
+describe('toReadableViolationMessage', () => {
+  it('names concepts by display name, longest internal name first', () => {
+    const concepts = [
+      { name: 'imported-Record-1', iri: 'urn:x#Record', label: 'Record' },
+      {
+        name: 'imported-Record-1-child',
+        iri: 'urn:x#Medication',
+        label: 'Medication Record',
+      },
+    ];
+
+    expect(
+      toReadableViolationMessage(
+        'imported-Record-1-child is disjoint with its ancestor imported-Record-1 (urn:x#Record)',
+        concepts
+      )
+    ).toBe('Medication Record is disjoint with its ancestor Record (Record)');
+  });
+
+  it('leaves a message about unknown concepts as it is', () => {
+    expect(toReadableViolationMessage('Something failed', [])).toBe(
+      'Something failed'
+    );
+  });
+});
+
+describe('the disjoint rule behind a clash', () => {
+  const zoo = [
+    { from: 'dog', to: 'mammal', relationType: 'is a' },
+    { from: 'mammal', to: 'animal', relationType: 'is a' },
+    { from: 'dog', to: 'plant', relationType: 'is a' },
+    { from: 'animal', to: 'plant', relationType: 'disjoint with' },
+    { from: 'cat', to: 'animal', relationType: 'disjoint with' },
+  ];
+
+  it('is part of a clash it causes between two inherited classes', () => {
+    const { edgeKeys } = buildConflictHighlight(
+      [{ conceptIds: ['dog', 'plant', 'animal'] }],
+      zoo
+    );
+
+    expect(edgeKeys.has(conflictEdgeKey({ from: 'animal', to: 'plant' }))).toBe(
+      true
+    );
+    expect(edgeKeys.has(conflictEdgeKey({ from: 'dog', to: 'mammal' }))).toBe(
+      true
+    );
+    // A disjoint rule elsewhere in the model is not part of this clash.
+    expect(edgeKeys.has(conflictEdgeKey({ from: 'cat', to: 'animal' }))).toBe(
+      false
+    );
+  });
+
+  it('is part of a clash when a class is disjoint with its own ancestor', () => {
+    const { edgeKeys } = buildConflictHighlight(
+      [{ conceptIds: ['medication', 'clinical'] }],
+      [
+        { from: 'medication', to: 'clinical', relationType: 'broader' },
+        { from: 'medication', to: 'clinical', relationType: 'DISJOINT_WITH' },
+      ]
+    );
+
+    expect([...edgeKeys]).toEqual([
+      conflictEdgeKey({ from: 'medication', to: 'clinical' }),
+    ]);
+  });
+});
+
+describe('readable names in a conflict message', () => {
+  it('replaces whole names only, so a name inside a longer one stays intact', () => {
+    expect(
+      toReadableViolationMessage(
+        'VipCustomer is disjoint with its ancestor Customer',
+        [
+          { name: 'Customer', label: 'Customer QA Edited' },
+          { name: 'VipCustomer', label: 'VIP customer' },
+        ]
+      )
+    ).toBe('VIP customer is disjoint with its ancestor Customer QA Edited');
+  });
+
+  it('does not rewrite a label it has just put in', () => {
+    expect(
+      toReadableViolationMessage('Order clashes with LineItem', [
+        { name: 'Order', label: 'LineItem order' },
+        { name: 'LineItem', label: 'Line item' },
+      ])
+    ).toBe('LineItem order clashes with Line item');
   });
 });

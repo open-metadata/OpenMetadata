@@ -132,6 +132,7 @@ import {
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import {
   buildConflictHighlight,
+  toReadableViolationMessage,
   conflictEdgeKey,
   ConflictHighlight,
 } from '../../../OntologyExplorer/utils/conflictHighlight';
@@ -148,6 +149,7 @@ import OntologyRelationDetail, {
   OntologyRelationStatus,
 } from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
+import { buildOntologyConflicts } from './OntologyConflicts.utils';
 import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
@@ -580,6 +582,22 @@ const OntologyGraphView = ({
       }),
     [guard, onSelectedConceptChange]
   );
+  // Link data in the Data view opens this concept's panel in Edit on its data-asset link form.
+  const [linkAssetsConceptId, setLinkAssetsConceptId] = useState<string>();
+  const [dataSelectedAssetId, setDataSelectedAssetId] = useState<string>();
+  const clearLinkAssetsRequest = useCallback(
+    () => setLinkAssetsConceptId(undefined),
+    []
+  );
+  const requestLinkAssets = (conceptId: string) => {
+    setLinkAssetsConceptId(conceptId);
+    if (selectedId !== conceptId) {
+      setSelectedId(conceptId);
+    }
+    if (!isEditing) {
+      onRequestEdit?.(conceptId);
+    }
+  };
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology, releaseId);
   // Edit mode edits the selected concept in place, so its working copy loads on selection.
@@ -599,6 +617,34 @@ const OntologyGraphView = ({
     () => conflictsQuery.data?.violations ?? NO_VIOLATIONS,
     [conflictsQuery.data]
   );
+  const readableViolations = useMemo(() => {
+    const concepts = (model?.concepts ?? []).map((concept) => ({
+      name: concept.name,
+      iri: concept.iri,
+      label: getEntityName(concept),
+    }));
+
+    return conflictViolations.map((violation) => ({
+      ...violation,
+      message: toReadableViolationMessage(violation.message, concepts),
+    }));
+  }, [conflictViolations, model?.concepts]);
+  const conflicts = useMemo(
+    () => buildOntologyConflicts(readableViolations, relations),
+    [readableViolations, relations]
+  );
+  // The concept whose drawer opens with its conflict box expanded, from the canvas Resolve link.
+  const [conflictReviewId, setConflictReviewId] = useState<string>();
+  const treeConflicts = useMemo(() => {
+    const byConcept = new Map<string, string[]>();
+    readableViolations.forEach(({ conceptIds = [], message }) =>
+      conceptIds.forEach((conceptId) =>
+        byConcept.set(conceptId, [...(byConcept.get(conceptId) ?? []), message])
+      )
+    );
+
+    return byConcept;
+  }, [readableViolations]);
   const treeIndex = useMemo(
     () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
@@ -743,6 +789,8 @@ const OntologyGraphView = ({
     model?.concepts,
     releaseId
   );
+  // Data shows the selected concept whenever one is selected, so its rights apply there too.
+  const canEditDataBindings = canEditOntology || canEditConcept;
   const selected = model?.concepts.find((concept) => concept.id === selectedId);
   const {
     data: relationTypes = NO_RELATIONSHIP_TYPES,
@@ -1245,6 +1293,7 @@ const OntologyGraphView = ({
     (relation) => relation.key === selectedEdgeKey
   );
   const selectNode = ({ id }: { id: string }) => {
+    setConflictReviewId(undefined);
     setSelectedEdgeKey(undefined);
     graphRef.current?.clearEdgeSelection();
     setSelectedId(id);
@@ -1255,6 +1304,18 @@ const OntologyGraphView = ({
     );
     setSelectedEdgeKey(undefined);
     setConceptEditor({ position });
+  };
+  const resolveConflict = (conceptId: string) => {
+    selectNode({ id: conceptId });
+    setConflictReviewId(conceptId);
+  };
+  const showConflictOnGraph = (conceptId: string) => {
+    setConflictReviewId(undefined);
+    setSelectedId(undefined);
+    if (surface !== 'graph') {
+      onRequestGraphSurface();
+    }
+    graphRef.current?.focusNode(conceptId);
   };
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
@@ -1487,25 +1548,35 @@ const OntologyGraphView = ({
         }
         concept={selected}
         confirmDialog={renderDeleteConceptDialog()}
+        conflicts={conflicts.filter(({ violation }) =>
+          violation.conceptIds?.includes(selected.id)
+        )}
         editable={getEditable(selected, workingConcept)}
         findRelationType={(phrase) =>
           findNativeRelationTypeByPhrase(catalog, phrase)?.id
         }
+        isConflictReviewOpen={conflictReviewId === selected.id}
         isEditable={Boolean(workingConcept)}
         isEditing={isEditing}
         isEditorUnavailable={
           [isEditing, !releaseId, canEditConcept].every(Boolean) &&
           draftConceptQuery.isError
         }
+        isLinkAssetsRequested={linkAssetsConceptId === selected.id}
         key={selected.id}
         model={model}
         relationTypeGroups={relationTypeGroups}
         relations={relations}
+        selectedAssetId={graphMode === 'data' ? dataSelectedAssetId : undefined}
         onAddProperty={(input) => createDataProperty(selected.id, input)}
         onAddRelation={(targetId, relationType) =>
           createRelation(selected.id, targetId, relationType)
         }
-        onClose={() => setSelectedId(undefined)}
+        onClose={() => {
+          clearLinkAssetsRequest();
+          setConflictReviewId(undefined);
+          setSelectedId(undefined);
+        }}
         onDelete={
           isEditing && canDeleteConcept ? deleteSelectedConcept : undefined
         }
@@ -1516,16 +1587,14 @@ const OntologyGraphView = ({
             : undefined
         }
         onEditRelation={changeRelationType}
-        onOpenData={() => {
-          onRequestGraphSurface();
-          changeGraphMode('data');
-        }}
+        onLinkAssetsRequestClosed={clearLinkAssetsRequest}
         onOpenRelation={(relation) => openRelationFrom(selected.id, relation)}
         onRuleCreated={() => {
           noteWorkingChange();
           void refetch();
         }}
         onSelectConcept={(concept) => setSelectedId(concept.id)}
+        onShowConflictOnGraph={() => showConflictOnGraph(selected.id)}
       />
     );
   };
@@ -1571,10 +1640,10 @@ const OntologyGraphView = ({
         {releaseId || surface === 'tree' ? null : (
           <OntologyConflictsPanel
             conceptLabel={conflictConceptLabel}
+            conflicts={conflicts}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
-            violations={conflictViolations}
-            onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+            onResolve={resolveConflict}
             onValidateAll={() => void conflictsQuery.refetch()}
           />
         )}
@@ -1597,14 +1666,17 @@ const OntologyGraphView = ({
         }
         hidden={graphMode !== 'data'}>
         <OntologyNativeDataMode
-          canEditBindings={canEditConcept}
+          linkWhenPickedEmpty
+          canEditBindings={canEditDataBindings}
           concepts={dataConcepts}
           getConceptProperties={getConceptProperties}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}
           revision={dataRevision}
           selectedConceptId={selectedId}
+          onLinkData={canEditDataBindings ? requestLinkAssets : undefined}
           onSelectConcept={setSelectedId}
+          onSelectedAssetChange={setDataSelectedAssetId}
         />
       </div>
     ) : null;
@@ -1670,20 +1742,10 @@ const OntologyGraphView = ({
     );
   };
 
-  // On Tree the conflicts sit inside the tree's card instead of a floating card.
+  // On Tree each conflict marks its concept rows; only a failed check gets a strip.
   const renderTreeConflicts = () =>
-    !releaseId && (conflictsQuery.isError || conflictViolations.length > 0) ? (
-      <OntologyTreeConflicts
-        conceptLabel={conflictConceptLabel}
-        isFailed={conflictsQuery.isError}
-        violations={conflictViolations}
-        onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
-        onRetry={() => void conflictsQuery.refetch()}
-        onShowOnGraph={(conceptId) => {
-          selectNode({ id: conceptId });
-          onRequestGraphSurface();
-        }}
-      />
+    !releaseId && conflictsQuery.isError ? (
+      <OntologyTreeConflicts onRetry={() => void conflictsQuery.refetch()} />
     ) : undefined;
 
   const renderSurface = () => {
@@ -1700,6 +1762,7 @@ const OntologyGraphView = ({
             selectedNodeId={selectedId}
             source={{
               kind: 'native',
+              conflicts: treeConflicts,
               index: treeIndex,
               title: getEntityName(ontology),
               notice: renderTreeConflicts(),

@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
@@ -80,6 +80,7 @@ import OntologyReleaseValidation, {
   useWorkingValidation,
 } from './OntologyReleaseValidation';
 import OntologyVersionEditor from './OntologyVersionEditor';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 
 export interface PublicationSummary {
   fromVersion?: string;
@@ -201,6 +202,17 @@ const OntologyReleasePanel = ({
   onSummaryChange,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
+  // Shared with the graph through the query cache; only used to name concepts in validation messages.
+  const { model: conceptModel } = useOntologyStudioModel(ontology);
+  const validationConcepts = useMemo(
+    () =>
+      (conceptModel?.concepts ?? []).map((concept) => ({
+        name: concept.name,
+        iri: concept.iri,
+        label: getEntityName(concept),
+      })),
+    [conceptModel?.concepts]
+  );
   const [editor, setEditor] = useState<VersionEditorState>();
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [cursorRevision, setCursorRevision] = useState<string>();
@@ -527,7 +539,7 @@ const OntologyReleasePanel = ({
 
     return (
       <Typography
-        color="secondary"
+        className="tw:text-tertiary"
         data-testid="ontology-publication-text"
         role="note"
         size="text-sm">
@@ -666,7 +678,7 @@ const OntologyReleasePanel = ({
     stage: NonNullable<typeof currentStage>,
     actions: PublicationActions | undefined
   ) => (
-    <Box align="center" gap={2} wrap="wrap">
+    <Box align="center" className="tw:gap-x-2 tw:gap-y-1" wrap="wrap">
       {baseVersion ? (
         <Badge color="success" size="sm" type="pill-color">
           {t('label.published-version', { version: versionTag(baseVersion) })}
@@ -677,7 +689,9 @@ const OntologyReleasePanel = ({
           {t(RELEASE_STAGE_LABELS[stage.stage])}
         </span>
       </Badge>
-      <Typography size="text-sm">{candidateLabel()}</Typography>
+      {candidateLabel() ? (
+        <Typography size="text-sm">{candidateLabel()}</Typography>
+      ) : null}
       {'task' in stage && stage.task ? renderTaskLink(stage.task) : null}
       {actions ? renderActionText(actions) : null}
     </Box>
@@ -706,7 +720,7 @@ const OntologyReleasePanel = ({
         {renderNotice()}
         {renderRejection(currentStage)}
         <Box align="center" gap={4} justify="between" wrap="wrap">
-          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+          <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
             {preview}
             {renderStageLine(currentStage, actions)}
           </Box>
@@ -837,6 +851,7 @@ const OntologyReleasePanel = ({
 
   const renderValidation = () => (
     <OntologyReleaseValidation
+      concepts={validationConcepts}
       release={
         view === 'releases' && selectedId
           ? release

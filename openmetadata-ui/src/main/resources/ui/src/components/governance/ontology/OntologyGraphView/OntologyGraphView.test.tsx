@@ -60,6 +60,7 @@ import {
   getOntologyConcept,
   getOntologyState,
   getOntologyWorkingValidation,
+  softDeleteOntologyDefinition,
   getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyAxiom,
@@ -123,6 +124,7 @@ const chooseRelationType = async (id: string) => {
 const mockGraphProps = jest.fn();
 const mockGraphControls = {
   clearEdgeSelection: jest.fn(),
+  focusNode: jest.fn(),
   getNodePositions: jest.fn(),
   fitView: jest.fn(),
   zoomIn: jest.fn(),
@@ -194,6 +196,8 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   listOntologyChangeSets: jest.fn(),
   releaseOntologyEditLock: jest.fn(),
   renewOntologyEditLock: jest.fn(),
+  restoreOntologyDefinition: jest.fn(),
+  softDeleteOntologyDefinition: jest.fn().mockResolvedValue(undefined),
   getOntologyConceptBindings: jest
     .fn()
     .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
@@ -994,7 +998,109 @@ describe('OntologyGraphView', () => {
     );
   });
 
-  it('marks the clashing concept and its link on the graph, lists the clash and clears both once the server finds none', async () => {
+  it('marks the clashing concept on the graph, lists the clash and, in Edit, resolves it from the concept drawer', async () => {
+    const customerNeverParty: OntologyAxiom = {
+      ...customerIsParty,
+      axiomType: AxiomType.DisjointWith,
+      displayName: 'Customer can never be a Party',
+      id: 'axiom-customer-never-party',
+      name: 'CustomerNeverParty',
+      updatedAt: Date.UTC(2026, 9, 20),
+      updatedBy: 'karthick',
+    };
+    const clashModel = {
+      ...model,
+      axioms: [customerIsParty, customerNeverParty],
+    };
+    const clashRelations = getModelRelations(clashModel);
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      graph: buildOntologyStudioGraph(clashModel, clashRelations),
+      model: clashModel,
+      relations: clashRelations,
+    });
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+
+    const row = await screen.findByTestId('ontology-conflict-row');
+
+    expect(row).toHaveTextContent(
+      'Customer is disjoint with its ancestor Party'
+    );
+    expect(within(row).getByText('Customer').tagName).toBe('STRONG');
+    expect(within(row).getByText('Party').tagName).toBe('STRONG');
+    expect(
+      within(row).getByTestId('ontology-conflict-provenance')
+    ).toHaveTextContent('message.ontology-saved-by-on');
+    expect(screen.getByTestId('ontology-conflicts-count')).toHaveTextContent(
+      '1'
+    );
+
+    await waitFor(() => {
+      const props = mockGraphProps.mock.calls.at(-1)?.[0];
+
+      expect(
+        props.nodes
+          .filter((node: { hasConflict?: boolean }) => node.hasConflict)
+          .map((node: { id: string }) => node.id)
+      ).toEqual(['concept-customer']);
+      expect([...props.conflictEdgeKeys]).toHaveLength(1);
+    });
+
+    fireEvent.click(within(row).getByTestId('ontology-conflict-resolve'));
+
+    const inspector = screen.getByTestId('ontology-concept-inspector');
+
+    expect(
+      within(inspector).getByRole('heading', { name: 'Customer' })
+    ).toBeVisible();
+    expect(
+      within(inspector).getByTestId('ontology-concept-conflicts-toggle')
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(inspector).getAllByTestId('ontology-concept-conflict-part')
+    ).toHaveLength(2);
+    expect(
+      within(inspector).getAllByTestId('ontology-concept-relation-conflict-dot')
+    ).toHaveLength(2);
+
+    const [, rulePart] = within(inspector).getAllByTestId(
+      'ontology-concept-conflict-part'
+    );
+
+    expect(rulePart).toHaveTextContent('message.ontology-conflict-never-be');
+
+    fireEvent.click(
+      within(rulePart).getByTestId('ontology-concept-conflict-remove')
+    );
+
+    await waitFor(() =>
+      expect(softDeleteOntologyDefinition).toHaveBeenCalledWith(
+        'axiom',
+        customerNeverParty.id
+      )
+    );
+  });
+
+  it('opens a clashing concept with its conflict box collapsed and shows the clash on the graph', async () => {
     (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
       valid: false,
       violations: [
@@ -1014,33 +1120,36 @@ describe('OntologyGraphView', () => {
         onRequestGraphSurface={jest.fn()}
       />
     );
+    await screen.findByTestId('ontology-conflict-row');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
 
-    const row = await screen.findByTestId('ontology-conflict-row');
-
-    expect(row).toHaveTextContent(
-      'Customer is disjoint with its ancestor Party'
+    const toggle = await screen.findByTestId(
+      'ontology-concept-conflicts-toggle'
     );
-    expect(screen.getAllByTestId('ontology-conflict-link')).toHaveLength(2);
 
-    await waitFor(() => {
-      const props = mockGraphProps.mock.calls.at(-1)?.[0];
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveTextContent('label.review');
+    expect(
+      screen.queryByTestId('ontology-concept-conflict-part')
+    ).not.toBeInTheDocument();
 
-      expect(
-        props.nodes
-          .filter((node: { hasConflict?: boolean }) => node.hasConflict)
-          .map((node: { id: string }) => node.id)
-      ).toEqual(['concept-customer']);
-      expect([...props.conflictEdgeKeys]).toHaveLength(1);
-    });
+    fireEvent.click(toggle);
 
-    fireEvent.click(screen.getAllByTestId('ontology-conflict-link')[1]);
+    expect(toggle).toHaveTextContent('label.hide');
+    expect(
+      screen.getByText('message.ontology-conflict-remove-one')
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-concept-conflict-show-on-graph')
+    );
 
     expect(
-      within(screen.getByTestId('ontology-concept-inspector')).getByRole(
-        'heading',
-        { name: 'Party' }
-      )
-    ).toBeVisible();
+      screen.queryByTestId('ontology-concept-inspector')
+    ).not.toBeInTheDocument();
+    expect(mockGraphControls.focusNode).toHaveBeenCalledWith(
+      'concept-customer'
+    );
   });
 
   it('clears the badge and the row after the fix when Validate all runs again', async () => {
@@ -2434,7 +2543,7 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows incoming relationships in subject-predicate order', async () => {
+  it('shows an incoming relationship badge first, read backwards', async () => {
     render(
       <OntologyGraphView
         ontology={ontology}
@@ -2448,7 +2557,11 @@ describe('OntologyGraphView', () => {
 
     expect(
       screen.getByTestId('ontology-concept-relationships')
-    ).toHaveTextContent('Customeris a');
+    ).toHaveTextContent('is aCustomer');
+    expect(screen.getByTestId('ontology-concept-relation-row')).toHaveAttribute(
+      'data-direction',
+      'backward'
+    );
   });
 
   it('hides writes when the corresponding definition permission is denied', async () => {
@@ -3081,10 +3194,11 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
 
-  it('stops offering Link data in Data once the concept drawer is closed', async () => {
+  it('keeps Link data in Data after the drawer closes, and reopens the concept in Edit to link', async () => {
     (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
       pageFixture({ clusters: [] })
     );
+    const onRequestEdit = jest.fn();
     const StudioSelection = () => {
       const [conceptId, setConceptId] = useState<string>();
 
@@ -3093,6 +3207,7 @@ describe('OntologyGraphView', () => {
           ontology={ontology}
           selectedConceptId={conceptId}
           surface="graph"
+          onRequestEdit={onRequestEdit}
           onRequestGraphSurface={jest.fn()}
           onSelectedConceptChange={setConceptId}
         />
@@ -3106,8 +3221,7 @@ describe('OntologyGraphView', () => {
     await screen.findByTestId('native-ontology-graph');
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
-
-    expect(await screen.findByTestId('ontology-data-link-asset')).toBeVisible();
+    await screen.findByTestId('ontology-data-link-asset');
 
     fireEvent.click(screen.getByTestId('ontology-concept-close'));
 
@@ -3117,10 +3231,12 @@ describe('OntologyGraphView', () => {
       ).not.toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('ontology-data-empty')).toBeVisible();
+    fireEvent.click(screen.getByTestId('ontology-data-link-asset'));
+
+    expect(onRequestEdit).toHaveBeenCalledWith('concept-customer');
     expect(
-      screen.queryByTestId('ontology-data-link-asset')
-    ).not.toBeInTheDocument();
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toBeVisible();
   });
 
   it('floats the conflicts and health cards over the canvas so the graph keeps its width', async () => {
@@ -3245,7 +3361,7 @@ describe('OntologyGraphView', () => {
     expect(title).not.toHaveTextContent('label.n-conflicts-to-resolve');
   });
 
-  it('shows conflicts inside the tree card on the Tree surface, not as a floating card', async () => {
+  it('marks each conflicting concept row on the Tree surface instead of a conflicts block', async () => {
     (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
       valid: false,
       violations: [
@@ -3258,52 +3374,57 @@ describe('OntologyGraphView', () => {
         },
       ],
     });
-    const onRequestGraphSurface = jest.fn();
     render(
       <MemoryRouter>
         <OntologyGraphView
           ontology={ontology}
           surface="tree"
-          onRequestGraphSurface={onRequestGraphSurface}
+          onRequestGraphSurface={jest.fn()}
         />
       </MemoryRouter>
     );
 
-    const conflict = await screen.findByTestId('ontology-tree-conflict');
-
-    expect(conflict).toHaveTextContent(
-      'Customer is disjoint with its ancestor Party'
+    const customerRow = await screen.findByTestId(
+      'ontology-tree-term-concept-customer'
     );
-    expect(conflict).toHaveTextContent('label.conflict');
+    await waitFor(() =>
+      expect(
+        within(customerRow).getByTestId('ontology-tree-conflict')
+      ).toHaveTextContent('Customer is disjoint with its ancestor Party')
+    );
+
+    expect(
+      within(customerRow).getByTestId('ontology-tree-conflict-dot')
+    ).toHaveClass('tw:bg-fg-error-primary');
+    expect(
+      screen.queryByTestId('ontology-tree-conflicts')
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-conflicts-panel')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
-    // As in the design, the tree takes the full width and the cards float on top.
-    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
-      'tw:pr-92'
+  });
+
+  it('shows a retry strip in the tree card when the conflict check fails', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockRejectedValue(
+      new Error('boom')
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="tree"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
     );
 
-    // Each toggle names the conflict it opens, not just "Expand".
     expect(
-      within(conflict).getByTestId('ontology-tree-conflict-toggle')
-    ).toHaveAccessibleName(
-      'label.expand: Customer is disjoint with its ancestor Party'
-    );
-
-    fireEvent.click(
-      within(conflict).getByTestId('ontology-tree-conflict-toggle')
-    );
-
+      await screen.findByTestId('ontology-tree-conflicts')
+    ).toHaveTextContent('message.ontology-conflicts-check-failed');
     expect(
-      within(conflict).getAllByTestId('ontology-tree-conflict-open')
-    ).toHaveLength(2);
-
-    fireEvent.click(
-      within(conflict).getByTestId('ontology-tree-conflict-show-on-graph')
-    );
-
-    expect(onRequestGraphSurface).toHaveBeenCalledTimes(1);
+      screen.queryByTestId('ontology-tree-conflict')
+    ).not.toBeInTheDocument();
   });
 
   it('shows no conflict rows in the tree card for a clean draft', async () => {
@@ -3322,6 +3443,9 @@ describe('OntologyGraphView', () => {
 
     expect(
       screen.queryByTestId('ontology-tree-conflicts')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-tree-conflict-dot')
     ).not.toBeInTheDocument();
   });
 

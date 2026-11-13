@@ -55,10 +55,32 @@ const OntologyOpenReviewsBanner = ({
         reviews.map((review) => {
           const status = getReviewStatusMessage(review);
 
-          return (
+          // A review waiting on the viewer reads as in one ontology: who asked, and Review.
+          return review.callerCanVote ? (
             <OntologyReviewPill
               action={
                 <Button
+                  pill
+                  color="secondary-warning-outline"
+                  size="sm"
+                  onPress={() => onOpenTask(review.task.id)}>
+                  {t('label.review')}
+                </Button>
+              }
+              key={review.task.id}
+              testId="ontology-open-review-asked"
+              title={t('message.ontology-review-asked-you', {
+                requester: getEntityName(review.requester),
+                version: getEntityName(review.ontology),
+              })}
+              tone="warning"
+              onDismiss={onDismiss}
+            />
+          ) : (
+            <OntologyReviewPill
+              action={
+                <Button
+                  pill
                   color="secondary"
                   size="sm"
                   onPress={() => onOpenTask(review.task.id)}>
@@ -78,7 +100,7 @@ const OntologyOpenReviewsBanner = ({
       ) : (
         <OntologyReviewPill
           action={
-            <Button color="secondary" size="sm" onPress={onOpenList}>
+            <Button pill color="secondary" size="sm" onPress={onOpenList}>
               {t('label.view-all')}
             </Button>
           }

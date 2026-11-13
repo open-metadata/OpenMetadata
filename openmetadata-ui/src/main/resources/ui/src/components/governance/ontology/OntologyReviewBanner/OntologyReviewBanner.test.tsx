@@ -32,18 +32,12 @@ import OntologyReviewBanner from './OntologyReviewBanner';
 it('shows an amber pending review and navigates using the UUID', () => {
   const open = jest.fn();
   render(
-    <OntologyReviewBanner
-      release={release}
-      review={review}
-      viewerName="Reviewer"
-      onOpenTask={open}
-    />
+    <OntologyReviewBanner release={release} review={review} onOpenTask={open} />
   );
 
   expect(screen.getByRole('status')).toHaveClass('tw:bg-utility-warning-50');
-  expect(screen.getByText(/TASK-00042/)).toHaveTextContent('Commerce');
 
-  fireEvent.click(screen.getByRole('button', { name: 'label.review-now' }));
+  fireEvent.click(screen.getByRole('button', { name: 'label.review' }));
 
   expect(open).toHaveBeenCalledWith('task');
 });
@@ -54,7 +48,6 @@ it('shows the blue requester variant and hides prior voters and decided tasks', 
       release={release}
       review={{ ...review, callerCanVote: false }}
       viewerId="author"
-      viewerName="Author"
       onOpenTask={jest.fn()}
     />
   );
@@ -69,7 +62,6 @@ it('shows the blue requester variant and hides prior voters and decided tasks', 
       release={release}
       review={{ ...review, callerCanVote: false }}
       viewerId="reviewer"
-      viewerName="Reviewer"
       onOpenTask={jest.fn()}
     />
   );
@@ -81,7 +73,6 @@ it('shows the blue requester variant and hides prior voters and decided tasks', 
       release={release}
       review={{ ...review, status: EntityStatus.Approved }}
       viewerId="author"
-      viewerName="Author"
       onOpenTask={jest.fn()}
     />
   );
@@ -119,7 +110,6 @@ describe('decision banner for the requester', () => {
         release={{ ...release, semanticVersion: '1.5.0' }}
         review={decided(EntityStatus.Approved)}
         viewerId="author"
-        viewerName="Author"
         onOpenTask={jest.fn()}
       />
     );
@@ -138,7 +128,6 @@ describe('decision banner for the requester', () => {
         release={{ ...release, semanticVersion: '1.5.0' }}
         review={decided(EntityStatus.Rejected, 'Missing owners')}
         viewerId="author"
-        viewerName="Author"
         onOpenTask={open}
       />
     );
@@ -158,7 +147,6 @@ describe('decision banner for the requester', () => {
         release={release}
         review={decided(EntityStatus.Approved)}
         viewerId="someone-else"
-        viewerName="Other"
         onOpenTask={jest.fn()}
       />
     );
@@ -192,7 +180,6 @@ describe('pending banner text', () => {
       }}
       review={{ ...review, callerCanVote: false, ...changes }}
       viewerId="author"
-      viewerName="Author"
       onOpenTask={jest.fn()}
     />
   );
@@ -255,7 +242,6 @@ describe('pending banner text', () => {
         release={{ ...release, reviewers: [bob] }}
         review={{ ...review, callerCanVote: false, assignees: [] }}
         viewerId="author"
-        viewerName="Author"
         onOpenTask={jest.fn()}
       />
     );
@@ -272,7 +258,6 @@ describe('pending banner text', () => {
         release={{ ...release, reviewers: [bob] }}
         review={{ ...review, callerCanVote: false, assignees: [] }}
         viewerId="author"
-        viewerName="Author"
         onOpenTask={jest.fn()}
       />
     );
@@ -296,19 +281,19 @@ describe('pending banner text', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the reviewer-facing title when the viewer can vote', () => {
+  it('asks the reviewer in one line, naming who asked and the version', () => {
     render(
       <OntologyReviewBanner
         release={release}
         review={review}
-        viewerName="Reviewer"
         onOpenTask={jest.fn()}
       />
     );
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Reviewer, a release is waiting for your review'
+      'Author asked you to review v1.4.0'
     );
+    expect(screen.queryByText(/TASK-00042/)).not.toBeInTheDocument();
   });
 });
 
@@ -326,6 +311,7 @@ describe('open reviews in All ontologies', () => {
     ontology: { id: name, name, type: 'ontology' },
     task: { id: 'uuid-' + taskId, type: 'task' },
     taskId,
+    callerCanVote: false,
     assignees: [
       {
         assignee: { id: 'alice', name: 'alice', type: 'user' },

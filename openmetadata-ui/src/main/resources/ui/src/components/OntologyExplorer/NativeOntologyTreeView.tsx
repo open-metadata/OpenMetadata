@@ -21,10 +21,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronRight, Share07 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import {
+  TREE_INDENT_PER_LEVEL,
+  TREE_MAX_INDENT_LEVEL,
+} from './NativeOntologyTreeView.constants';
 import { OntologyNode } from './OntologyExplorer.interface';
 import {
   getNativeTreePage,
@@ -50,6 +55,8 @@ interface NativeOntologyTreeViewProps {
   readonly title?: string;
   /** Shown inside the card above the rows, divided from them. */
   readonly notice?: ReactNode;
+  /** Readable conflict messages by concept id; those rows get a red dot and the messages. */
+  readonly conflicts?: ReadonlyMap<string, readonly string[]>;
 }
 
 const getTreeHeading = (title: string | undefined, t: TFunction) =>
@@ -58,11 +65,13 @@ const getTreeHeading = (title: string | undefined, t: TFunction) =>
 const NativeTreeRowContent = ({
   row,
   childCount,
+  conflictMessages = [],
   showGroup,
   onConnect,
 }: {
   row: NativeTreePlacement;
   childCount: number;
+  conflictMessages?: readonly string[];
   /** All ontologies names each root's ontology; one ontology names it once in the heading. */
   showGroup: boolean;
   onConnect?: (node: OntologyNode) => void;
@@ -74,7 +83,14 @@ const NativeTreeRowContent = ({
     <>
       <span
         aria-hidden="true"
-        className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-secondary"
+        className={`tw:size-2 tw:shrink-0 tw:rounded-full ${
+          conflictMessages.length
+            ? 'tw:bg-fg-error-primary'
+            : 'tw:bg-fg-brand-secondary'
+        }`}
+        data-testid={
+          conflictMessages.length ? 'ontology-tree-conflict-dot' : undefined
+        }
       />
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Box align="center" className="tw:min-w-0" gap={2}>
@@ -100,6 +116,15 @@ const NativeTreeRowContent = ({
             })}
           </Typography>
         ) : null}
+        {conflictMessages.map((message) => (
+          <Typography
+            color="danger"
+            data-testid="ontology-tree-conflict"
+            key={message}
+            size="text-xs">
+            {message}
+          </Typography>
+        ))}
         {[isRoot, row.node.group, showGroup].every(Boolean) ? (
           <Typography color="secondary" size="text-xs">
             {row.node.group}
@@ -154,6 +179,7 @@ const TreeNotice = ({ children }: { children?: ReactNode }) =>
 const NativeOntologyTreeView = ({
   index,
   notice,
+  conflicts,
   emptyMessage,
   selectedNodeId,
   onConnect,
@@ -233,16 +259,33 @@ const NativeOntologyTreeView = ({
           id={row.key}
           key={row.key}
           textValue={row.node.label}>
+          {/* The row indents its own content, not the item, so hover and selection fill the row. */}
           <Tree.ItemContent
             className="tw:min-h-14"
             hasChildItems={row.hasChildren}
-            maxIndentLevel={16}>
-            <NativeTreeRowContent
-              childCount={index.children.get(row.node.id)?.length ?? 0}
-              row={row}
-              showGroup={!title}
-              onConnect={onConnect}
-            />
+            maxIndentLevel={1}
+            showExpandIcon={false}>
+            <div
+              className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3"
+              style={{
+                paddingLeft: `${
+                  Math.min(row.path.length - 1, TREE_MAX_INDENT_LEVEL) *
+                  TREE_INDENT_PER_LEVEL
+                }px`,
+              }}>
+              <Tree.ExpandButton
+                className={classNames(
+                  !row.hasChildren && 'tw:pointer-events-none tw:invisible'
+                )}
+              />
+              <NativeTreeRowContent
+                childCount={index.children.get(row.node.id)?.length ?? 0}
+                conflictMessages={conflicts?.get(row.node.id)}
+                row={row}
+                showGroup={!title}
+                onConnect={onConnect}
+              />
+            </div>
           </Tree.ItemContent>
           {children.get(row.key)}
         </Tree.Item>
@@ -258,7 +301,7 @@ const NativeOntologyTreeView = ({
     }
 
     return roots;
-  }, [rows, index, onConnect, title]);
+  }, [rows, index, conflicts, onConnect, title]);
   // With a row selected, React Aria drops Enter and clicks on other rows in the
   // default toggle behaviour; replace behaviour reports clicks as selection changes.
   const openRow = (key: Key) => {

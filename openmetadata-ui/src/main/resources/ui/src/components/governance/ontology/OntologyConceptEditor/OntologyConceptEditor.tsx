@@ -59,6 +59,7 @@ import {
   OntologyConceptFormValues,
 } from './OntologyConceptEditor.utils';
 import { useMappingTargetOptions } from './useReadableConceptOptions';
+import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 
 interface OntologyConceptEditorProps {
   ontology: Ontology;
@@ -164,7 +165,7 @@ const useEditorParts = (editor: OntologyConceptEditorState) => {
       conceptIri: '',
       mappingType: {
         id: ConceptMappingType.ExactMatch,
-        label: ConceptMappingType.ExactMatch,
+        label: mappingTypeLabel(ConceptMappingType.ExactMatch),
       },
       schemeIri: '',
       source: '',

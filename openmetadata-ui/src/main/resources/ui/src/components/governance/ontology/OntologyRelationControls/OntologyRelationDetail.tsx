@@ -42,6 +42,7 @@ import {
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 
 export type OntologyRelationStatus = 'conflict' | 'clear' | 'unchecked';
@@ -183,6 +184,8 @@ const RelationDescription = ({
   const { t } = useTranslation();
   const [value, setValue] = useState(description);
   const [isSaving, setIsSaving] = useState(false);
+  // A typed description counts as unsaved, so closing the drawer asks before dropping it.
+  useOntologyDirtyForm(Boolean(onSave) && value.trim() !== description.trim());
 
   if (!onSave) {
     return (
@@ -369,7 +372,9 @@ const OntologyRelationDetail = ({
   );
 
   return (
-    <OntologyStudioDrawer testId="ontology-relation-detail">
+    <OntologyStudioDrawer
+      testId="ontology-relation-detail"
+      onInteractOutside={onClose}>
       <Box
         className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:pt-4 tw:pb-5"
         direction="col"

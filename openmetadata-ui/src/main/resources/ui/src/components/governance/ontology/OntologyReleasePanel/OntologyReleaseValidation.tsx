@@ -37,6 +37,7 @@ import {
   getOntologyWorkingValidation,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { toReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
 
 export const useReleaseValidation = (release?: OntologyRelease) => {
   const userId = useApplicationStore((store) => store.currentUser?.id);
@@ -201,14 +202,19 @@ const QueryNotice = ({
 };
 
 const OntologyReleaseValidation = ({
+  concepts = [],
   release,
   working,
 }: {
+  /** The ontology's concepts, so messages name them by display name rather than internal name. */
+  concepts?: ReadonlyArray<{ name: string; iri?: string; label: string }>;
   release?: OntologyRelease;
   /** When given, the structure section reports the working draft, not the capture. */
   working?: WorkingDraft;
 }) => {
   const { t } = useTranslation();
+  const readable = (message: string) =>
+    toReadableViolationMessage(message, concepts);
   const validation = useReleaseValidation(release);
   const report = settledReport(validation);
   const workingValidation = useWorkingValidation(working);
@@ -233,7 +239,7 @@ const OntologyReleaseValidation = ({
               <Typography
                 className="tw:whitespace-pre-wrap tw:break-words"
                 size="text-sm">
-                {issue.message}
+                {readable(issue.message)}
               </Typography>
               <Typography color="secondary" size="text-xs">
                 {issue.path}
@@ -263,7 +269,7 @@ const OntologyReleaseValidation = ({
                   <Typography
                     className="tw:whitespace-pre-wrap tw:break-words"
                     size="text-sm">
-                    {issue.violation.message}
+                    {readable(issue.violation.message)}
                   </Typography>
                   <Typography color="secondary" size="text-xs">
                     {issue.violation.path}
@@ -289,7 +295,11 @@ const OntologyReleaseValidation = ({
 
     return (
       <>
-        <Typography as="h3" size="text-sm" weight="semibold">
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-sm"
+          weight="semibold">
           {t('label.shacl-validation')}: {t(shaclStatus(report))}
         </Typography>
         <Typography data-testid="ontology-shacl-counts" size="text-sm">
@@ -315,7 +325,7 @@ const OntologyReleaseValidation = ({
                 <Typography
                   className="tw:whitespace-pre-wrap tw:break-words"
                   size="text-sm">
-                  {finding.message}
+                  {readable(finding.message)}
                 </Typography>
                 <Typography
                   className="tw:break-words"
@@ -342,7 +352,11 @@ const OntologyReleaseValidation = ({
 
     return (
       <>
-        <Typography as="h3" size="text-sm" weight="semibold">
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-sm"
+          weight="semibold">
           {t('label.deprecation-impact')}
         </Typography>
         <Typography color="secondary" size="text-xs">
@@ -413,9 +427,16 @@ const OntologyReleaseValidation = ({
 
   return (
     <Card data-testid="ontology-release-validation" size="sm">
-      <Card.Header title={t('label.validation')} />
       <Card.Content>
         <Box direction="col" gap={3}>
+          {/* An inline heading, as the Version and Reviewers cards have, not a bordered header row. */}
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {t('label.validation')}
+          </Typography>
           <Typography color="secondary" size="text-xs">
             {release
               ? t('message.ontology-captured-validation', {

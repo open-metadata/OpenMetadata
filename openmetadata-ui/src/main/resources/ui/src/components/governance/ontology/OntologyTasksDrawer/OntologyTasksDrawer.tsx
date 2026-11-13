@@ -744,7 +744,6 @@ const OntologyTasksDrawer = ({
         release={bannerRelease.data}
         review={bannerReview}
         viewerId={currentUser?.id}
-        viewerName={getEntityName(currentUser)}
         onDismiss={dismissBanner}
         onOpenTask={onTaskChange}
       />
@@ -939,6 +938,7 @@ const OntologyTasksDrawer = ({
             events={events.data?.data ?? []}
             review={selected.review}
             task={selected.task}
+            onCommentChanged={() => void detail.refetch()}
           />
           {hasMorePages(events.data?.paging?.after, eventCursors.length) && (
             <>
@@ -1055,12 +1055,14 @@ const OntologyTasksDrawer = ({
                   />
                 </Tabs.List>
               </Box>
-              <Box className="tw:min-h-0 tw:flex-1">
-                <Tabs.Panel
+              {/* The detail sits inside the panel too: a Tabs control in it (the change filters) would
+                  otherwise be collected into this dialog's own tab strip. */}
+              <Tabs.Panel className="tw:flex tw:min-h-0 tw:flex-1" id={view}>
+                <div
                   className="tw:w-105 tw:shrink-0 tw:overflow-y-auto tw:border-r tw:border-secondary tw:p-4"
-                  id={view}>
+                  data-testid="ontology-tasks-queue">
                   {renderQueue()}
-                </Tabs.Panel>
+                </div>
                 <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto">
                   {taskId ? (
                     renderDetail()
@@ -1075,7 +1077,7 @@ const OntologyTasksDrawer = ({
                     </div>
                   )}
                 </div>
-              </Box>
+              </Tabs.Panel>
             </Tabs>
           </Dialog>
         </Modal>

@@ -64,6 +64,7 @@ import {
   isValidUUID,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
+import { truncateMiddle } from '../governance/ontology/OntologyIriInput/OntologyIriInput.utils';
 import { getEffectiveRelationColor } from './utils/graphStyles';
 
 interface OntologyAuthoringInspectorProps {
@@ -361,7 +362,9 @@ const OntologyAuthoringInspector = ({
         .map((candidate) => ({
           id: candidate.id,
           label: candidate.originalLabel ?? candidate.label,
-          supportingText: candidate.fullyQualifiedName,
+          supportingText: candidate.fullyQualifiedName
+            ? truncateMiddle(candidate.fullyQualifiedName)
+            : undefined,
         })),
     [node.id, nodes]
   );
