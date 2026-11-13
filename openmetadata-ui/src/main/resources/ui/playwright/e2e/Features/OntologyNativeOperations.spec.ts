@@ -100,10 +100,10 @@ test.describe(
           'Read semantic state before operational bindings'
         );
         const bindingPath = `/api/v1/ontologyConcepts/${concept.id}/bindings`;
-        await page.goto(
-          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}`
-        );
-        await page.getByTestId('mode-tab-edit').click();
+        // Switching mode is a press outside the concept drawer, which closes it, so the URL opens
+        // the concept straight in Edit.
+        const editConceptUrl = `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}&mode=edit`;
+        await page.goto(editConceptUrl);
         const inspector = page.getByTestId('ontology-concept-inspector');
         await test.step('Link the authorized table from the native inspector', async () => {
           await inspector.getByTestId('ontology-native-link-assets').click();
@@ -172,7 +172,17 @@ test.describe(
           await expect(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('profile › customer_id');
+          // The open drawer covers the Model/Data switch.
+          await inspector.getByTestId('ontology-concept-close').click();
+          await expect(inspector).toHaveCount(0);
           await page.getByTestId('ontology-graph-mode-data').click();
+          // Data mounts on first open, so the concept closed in Model is picked again here.
+          await page
+            .getByTestId('ontology-data-concept-picker-trigger')
+            .click();
+          await page
+            .getByTestId(`ontology-data-concept-option-${concept.id}`)
+            .click();
           const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
             dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
@@ -188,8 +198,7 @@ test.describe(
           ).toHaveText('1 column');
         });
         await test.step('Remove the column binding and table link', async () => {
-          await page.getByTestId('ontology-graph-mode-model').click();
-          await page.getByTestId('mode-tab-edit').click();
+          await page.goto(editConceptUrl);
           const removed = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname === bindingPath &&
@@ -210,7 +219,12 @@ test.describe(
             `ontology-native-asset-remove-${table.entityResponseData.id}`
           );
           await clickIgnoringToasts(removeTable);
-          await page.getByTestId('ontology-unlink-cancel').click();
+          // The unlink confirm is a centred page modal (#37780); its Cancel has no test id.
+          const unlinkDialog = page.getByRole('dialog');
+          await unlinkDialog
+            .getByRole('button', { name: 'Cancel', exact: true })
+            .click();
+          await expect(unlinkDialog).toHaveCount(0);
           const retained = await okJson<OntologyConceptBindingsResponse>(
             await api.get(bindingPath),
             'Read cancelled unlink'

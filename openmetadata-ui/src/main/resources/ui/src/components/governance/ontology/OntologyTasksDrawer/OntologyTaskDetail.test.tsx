@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -27,6 +26,17 @@ import OntologyTaskDetail from './OntologyTaskDetail';
 import { release, review, task } from './OntologyTasksDrawer.mock';
 
 jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
+
+let composerSave: (message: string) => Promise<unknown>;
+
+jest.mock('../../../common/CommentComposer/CommentComposer', () => ({
+  __esModule: true,
+  default: ({ onSave }: { onSave: (message: string) => Promise<unknown> }) => {
+    composerSave = onSave;
+
+    return <div data-testid="inbox-comment-composer" />;
+  },
+}));
 runQueryNotificationsSynchronously();
 const props = {
   task,
@@ -125,22 +135,7 @@ it('shows final publication only with permission and supports approved activatio
   expect(props.onPublish).toHaveBeenCalledTimes(1);
 });
 
-it('keeps the comment multi-line: Enter adds a new line and only the send button posts', async () => {
-  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-  renderWithQueryClient(<OntologyTaskDetail {...props} />);
-  const input = screen.getByRole('textbox', { name: /label.comment/ });
-
-  await user.type(input, 'First line{Enter}Second line');
-
-  expect(input).toHaveValue('First line\nSecond line');
-  expect(props.onComment).not.toHaveBeenCalled();
-
-  await user.click(screen.getByRole('button', { name: 'label.send' }));
-
-  expect(props.onComment).toHaveBeenCalledWith('First line\nSecond line');
-});
-
-it('shows the requester explanation without actions and posts repeated comments deliberately', async () => {
+it('posts through the shared comment composer and hands a refused comment back as a rejection', async () => {
   renderWithQueryClient(
     <OntologyTaskDetail
       {...props}
@@ -156,14 +151,16 @@ it('shows the requester explanation without actions and posts repeated comments 
     screen.queryByRole('button', { name: 'label.approve' })
   ).not.toBeInTheDocument();
 
-  const input = screen.getByRole('textbox', { name: /label.comment/ });
-  for (let count = 1; count <= 2; count++) {
-    fireEvent.change(input, { target: { value: 'Same comment' } });
-    fireEvent.click(screen.getByRole('button', { name: 'label.send' }));
-    await waitFor(() => expect(input).toHaveValue(''));
+  props.onComment.mockResolvedValueOnce(true);
 
-    expect(props.onComment).toHaveBeenCalledTimes(count);
-  }
+  await expect(composerSave('First line\nSecond line')).resolves.toBe(
+    undefined
+  );
+  expect(props.onComment).toHaveBeenCalledWith('First line\nSecond line');
+
+  props.onComment.mockResolvedValueOnce(false);
+
+  await expect(composerSave('Refused')).rejects.toThrow();
 });
 
 it('tells a caller who cannot publish that only an author or owner can, instead of a disabled button', () => {

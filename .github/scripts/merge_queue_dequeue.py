@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Explain why a PR left the merge queue from the queue commit's GitHub data.
 
-Each workflow run is reported by its first failed job. Jobs that gate or summarise
-other jobs need them, so they finish later: they are listed after the cause, never
-as it. The script only reads GitHub; the workflow posts what it writes.
+Each failed workflow run that blocked the queue gets one verdict comparing its failures
+with runs that lack the PR. Known summary gates are listed after their upstream failure.
+The script only reads GitHub; the workflow posts what it writes.
 
-ADR:2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
+ADR:2026-11-13-dequeue-alerts-compare-runs-without-the-pr
 """
 
 from __future__ import annotations
@@ -16,33 +16,36 @@ import json
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 
+import merge_queue_diagnosis as diagnosis
 import merge_queue_metrics as mq
 
 MAX_LOG_BYTES = 2 * 1024 * 1024
 CAUSES = {"failure", "timed_out"}
 PASSING = {None, "success", "neutral", "skipped"}
-RUN_URL = re.compile(r"^(.*/actions/runs/\d+)/job/\d+$")
-# Test steps print application HTTP errors, so only other steps are read for symptoms.
-TEST_STEP = re.compile(r"\btests\b|pytest", re.IGNORECASE)
 NOT_REQUIRED = (
     "No required check failed — the entry may have timed out, or been dequeued "
     "while a required check was still pending."
 )
-
-
-def failed_steps(job: dict) -> list[str]:
-    return [
-        step["name"]
-        for step in job.get("steps", [])
-        if step.get("conclusion") == "failure"
-    ]
+RUN_URL = re.compile(r"^(.*/actions/runs/\d+)/job/\d+$")
+# These jobs report upstream outcomes rather than run tests, in Collate and OpenMetadata.
+SUMMARY_CHECKS = {
+    "caip-playwright-summary",
+    "integration-tests-mysql-elasticsearch",
+    "integration-tests-postgres-elasticsearch-redis",
+    "integration-tests-postgres-opensearch",
+    "openmetadata-service-unit-tests-status",
+    "playwright-summary",
+    "py-run-tests",
+    "py-tests-status",
+    "python / Verify Expected Jobs",
+    "python-tests / Verify Expected Jobs",
+}
 
 
 def failed_logs(repo: str, job: dict) -> str:
@@ -99,16 +102,21 @@ def network_failure(logs: str) -> str:
     return ""
 
 
-def describe(repo: str, job: dict) -> str:
-    steps = failed_steps(job)
-    verb = "timed out" if job["conclusion"] == "timed_out" else "failed"
-    text = f"{verb} at {', '.join(steps) or 'an unrecorded step'}"
-    if any(TEST_STEP.search(step) for step in steps):
-        return text
+def infrastructure(repo: str, job: dict) -> str:
+    """A download or network error in the job's failed non-test steps, if logged."""
+    # Test steps print application HTTP errors, so only other steps are read.
+    if any(diagnosis.TEST_STEP.search(step) for step in diagnosis.failed_steps(job)):
+        return ""
     try:
-        symptom = network_failure(failed_logs(repo, job))
+        return network_failure(failed_logs(repo, job))
     except (OSError, ValueError, subprocess.SubprocessError):
-        symptom = ""  # Logs can expire or lag the job conclusion.
+        return ""  # Logs can expire or lag the job conclusion.
+
+
+def describe(job: dict, symptom: str) -> str:
+    verb = "timed out" if job["conclusion"] == "timed_out" else "failed"
+    steps = ", ".join(diagnosis.failed_steps(job)) or "an unrecorded step"
+    text = f"{verb} at {steps}"
     return f"{text}; {symptom}" if symptom else text
 
 
@@ -119,37 +127,53 @@ def label(check: dict) -> str:
     )
 
 
-def run_line(repo: str, run_url: str, checks: list[dict], token: str) -> list:
-    """The run's first failed job and what failed after it, as text and links."""
+def run_block(
+    repo: str, run_url: str, checks: list[dict], evidence: diagnosis.Evidence
+) -> tuple[list, diagnosis.Verdict]:
+    """One line per failed job of a run that blocked the queue, and the run's verdict."""
+    run_id = int(run_url.rsplit("/", 1)[1])
     failed = [check for check in checks if check["conclusion"] in CAUSES]
-    first = (failed or checks)[0]
+    causes = [
+        check for check in failed if check["name"] not in SUMMARY_CHECKS
+    ] or failed
     try:
-        job = mq.rest(f"/repos/{repo}/actions/jobs/{first['id']}", token)
-        workflow = job["workflow_name"]
+        workflow = evidence.api(f"actions/runs/{run_id}")["name"]
+        jobs = evidence.jobs(run_id)
         if not isinstance(workflow, str):
             raise ValueError("Invalid workflow name")
-        line = [(workflow, run_url), ": "]
-        if not failed:
-            return line + [", ".join(map(label, checks)) + "."]
-        also = ", ".join(label(check) for check in checks if check is not first)
-        line += [(mq.shorten_check_name(first["name"]), first["html_url"])]
-        return line + [
-            f" {describe(repo, job)}" + (f". Also: {also}" if also else "") + "."
-        ]
     except Exception as exc:
         # Auxiliary API reads and payload decoding must not suppress the alert.
-        print(
-            f"::warning::Could not read job {first['id']}: {type(exc).__name__}",
-            file=sys.stderr,
-        )
+        diagnosis.warn(f"Could not read run {run_id}", exc)
         names = ", ".join(map(label, checks))
-        return [
-            (f"run {run_url.rsplit('/', 1)[1]}", run_url),
-            f": {names} (details unavailable).",
-        ]
+        return [[(f"run {run_id}", run_url), f": {names} (details unavailable)."]], (
+            diagnosis.Verdict("unknown", ("Unknown — the failed run is unreadable.",))
+        )
+    rows, symptoms = [], {}
+    for index, cause in enumerate(causes):
+        others = (
+            [check for check in checks if check not in causes] if index == 0 else []
+        )
+        also = ", ".join(map(label, others))
+        job = jobs.get(
+            cause["name"], {"id": cause["id"], "conclusion": cause["conclusion"]}
+        )
+        if symptom := infrastructure(repo, job):
+            symptoms[cause["name"]] = symptom
+        text = f" {describe(job, symptom)}" + (f". Also: {also}" if also else "") + "."
+        name = (mq.shorten_check_name(cause["name"]), cause["html_url"])
+        rows.append([(workflow, run_url), ": ", name, text])
+    # A summary gate also passes when its upstream jobs skip, so it is never evidence.
+    cause_jobs = [
+        jobs[cause["name"]]
+        for cause in causes
+        if cause["name"] in jobs and cause["name"] not in SUMMARY_CHECKS
+    ]
+    return rows, evidence.diagnose(run_id, cause_jobs, symptoms)
 
 
-def blocked(repo: str, branch: str, checks: list[dict], token: str) -> str:
+def blocked(
+    repo: str, branch: str, checks: list[dict], token: str
+) -> tuple[str, set[str]]:
     try:
         rules = mq.rest(f"/repos/{repo}/rules/branches/{branch}", token)
         required = {
@@ -161,17 +185,18 @@ def blocked(repo: str, branch: str, checks: list[dict], token: str) -> str:
         names = dict.fromkeys(
             label(check) for check in checks if check["name"] in required
         )
-        return f"Blocked the queue: {', '.join(names)}" if names else NOT_REQUIRED
+        return (
+            f"Required queue gate: {', '.join(names)}" if names else NOT_REQUIRED
+        ), required
     except Exception as exc:
-        print(
-            f"::warning::Could not read required checks: {type(exc).__name__}",
-            file=sys.stderr,
-        )
-        return "Required checks could not be read."
+        diagnosis.warn("Could not read required checks", exc)
+        return "Required queue checks could not be read.", set()
 
 
-def details(args: argparse.Namespace, token: str) -> tuple[str, list[list]]:
-    """A summary line, and one entry per workflow run or external check that failed."""
+def details(
+    args: argparse.Namespace, token: str
+) -> tuple[str, list[tuple[list, diagnosis.Verdict | None]]]:
+    """A summary line, and per failed run or external check its lines and verdict."""
     if not args.sha:
         return (
             "The entry left the queue before it was built, so no checks ran against it.",
@@ -190,22 +215,43 @@ def details(args: argparse.Namespace, token: str) -> tuple[str, list[list]]:
                 "entry ahead in the queue, or a required check timed out.",
                 [],
             )
-        runs, external = defaultdict(list), []
+        runs = defaultdict(list)
         for check in checks:
             # Checks API reports (e.g. "Unit Test Report") belong to no job.
             if match := RUN_URL.match(check["html_url"]):
                 runs[match[1]].append(check)
-            else:
-                external.append([(label(check), check["html_url"])])
-        entries = [
-            run_line(args.repo, url, group, token) for url, group in runs.items()
-        ]
-        return blocked(args.repo, args.branch, checks, token), entries + external
-    except Exception as exc:
-        print(
-            f"::warning::Could not read check runs: {type(exc).__name__}",
-            file=sys.stderr,
+        evidence = diagnosis.Evidence(
+            args.repo, args.branch, int(args.pr), args.created, token
         )
+        summary, required = blocked(args.repo, args.branch, checks, token)
+        blocks = []
+        for url, group in runs.items():
+            if any(
+                check["name"] in required and check["conclusion"] in CAUSES
+                for check in group
+            ):
+                blocks.append(run_block(args.repo, url, group, evidence))
+                continue
+            parts = ["Other checks: "]
+            for check in group:
+                parts += [", "] if len(parts) > 1 else []
+                parts.append((label(check), check["html_url"]))
+            blocks.append(([parts], None))
+        unknown = ("Unknown — this required check has no Actions job to compare.",)
+        blocks += [
+            (
+                [[(label(check), check["html_url"])]],
+                diagnosis.Verdict("unknown", unknown)
+                if check["name"] in required
+                else None,
+            )
+            for check in checks
+            if not RUN_URL.match(check["html_url"])
+        ]
+        blocks.sort(key=lambda block: block[1] is None)
+        return summary, blocks
+    except Exception as exc:
+        diagnosis.warn("Could not read check runs", exc)
         return f"Could not read the checks of merge-queue commit {args.sha[:7]}.", []
 
 
@@ -228,35 +274,42 @@ def render(parts: list, escape, link) -> str:
 def report(
     args: argparse.Namespace, token: str, tests: Sequence[str] = ()
 ) -> tuple[str, str]:
-    """The PR comment in Markdown and the same report in Slack mrkdwn.
-
-    `tests` are failed test names a workflow published elsewhere, listed as given.
-    """
-    summary, entries = details(args, token)
+    """The PR comment in Markdown and the same report in Slack mrkdwn."""
+    summary, blocks = details(args, token)
+    # A gate whose upstream jobs were cancelled says nothing about the PR or main.
+    kinds = {verdict.kind for _, verdict in blocks if verdict} - {"gate"}
+    icon = "🚨" if "main" in kinds else "🔵" if kinds == {"pr"} else "⚠️"
+    rows, shown = [], set()
+    for entries, verdict in blocks:
+        if verdict:
+            rows.append(["PR vs. main: ", *verdict.text])
+            for index, test in enumerate(verdict.failures[:5]):
+                tag = f" — {verdict.tags[index]}" if verdict.tags else ""
+                rows.append([f"Failed test: {test[:500]}{tag}"])
+            if len(verdict.failures) > 5:
+                extra = len(verdict.failures) - 5
+                rows.append([f"{extra} additional failed tests in the linked report."])
+            shown.update(verdict.failures)
+            rows += [list(row) for row in verdict.rca]
+        rows += entries
+    if summary:
+        rows.append([summary])
+    annotated = [test for test in dict.fromkeys(tests) if test not in shown]
+    rows += [[f"Failed test: {test[:500]}"] for test in annotated[:5]]
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
     title = f"the {args.queue} — `{args.reason}`"
     markdown = [
-        f"### 🚦 Removed from {title} ({args.created})",
-        "",
-        markdown_text(summary),
-    ]
-    if entries:
-        markdown.append("")
-    markdown += [
-        "- " + render(entry, markdown_text, lambda text, url: f"[{text}]({url})")
-        for entry in entries
+        f"### {icon} Removed from {title} ({args.created})",
+        *[
+            render(row, markdown_text, lambda text, url: f"[{text}]({url})")
+            for row in rows
+        ],
     ]
     slack = [
-        f":rotating_light: *<{server}/{args.repo}/pull/{args.pr}|PR #{args.pr}>* removed from {title}",
-        slack_text(summary),
-    ] + [
-        "• " + render(entry, slack_text, lambda text, url: f"<{url}|{text}>")
-        for entry in entries
+        f"{icon} *<{server}/{args.repo}/pull/{args.pr}|PR #{args.pr}>* removed from {title}",
+        *[render(row, slack_text, lambda text, url: f"<{url}|{text}>") for row in rows],
     ]
-    if tests:
-        markdown += ["", "Failed tests:"] + [f"- {markdown_text(t)}" for t in tests]
-        slack += ["Failed tests:"] + [f"• {slack_text(t)}" for t in tests]
-    return "\n".join(markdown), "\n".join(slack)
+    return "\n\n".join(markdown), "\n".join(slack)
 
 
 def main() -> None:

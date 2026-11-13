@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { ApprovalBasis } from '../../../../generated/type/ontologyReleaseEvent';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import Loader from '../../../common/Loader/Loader';
 
 const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
   const { t } = useTranslation();
@@ -55,9 +56,7 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
         weight="semibold">
         {t('label.release-events')}
       </Typography>
-      {events.isPending && (
-        <Typography role="status">{t('label.loading')}</Typography>
-      )}
+      {events.isPending && <Loader size="small" />}
       {events.isError && (
         <Alert variant="error">
           {t('message.ontology-review-unavailable')}

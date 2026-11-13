@@ -14,8 +14,6 @@
 import {
   Box,
   Button,
-  ButtonGroup,
-  ButtonGroupItem,
   Checkbox,
   Input,
   Select,
@@ -101,6 +99,12 @@ const draftToInput = (draft: PropertyDraft): ConceptPropertyInput =>
     ? objectInput(draft)
     : dataInput(draft);
 
+const PROPERTY_KINDS: ReadonlyArray<{ id: PropertyKind; label: string }> = [
+  { id: 'object', label: 'label.object' },
+  { id: 'data', label: 'label.data' },
+  { id: 'annotation', label: 'label.annotation' },
+];
+
 const KindPicker = ({
   isDisabled,
   kind,
@@ -111,49 +115,25 @@ const KindPicker = ({
   onSelect: (kind: PropertyKind) => void;
 }) => {
   const { t } = useTranslation();
-  // Annotation hides behind More, as in the design, until it is asked for or chosen.
-  const [showsAnnotation, setShowsAnnotation] = useState(kind === 'annotation');
 
   return (
-    <Box direction="col" gap={2}>
-      <Typography color="secondary" size="text-sm" weight="medium">
-        {t('label.type')}
-      </Typography>
-      <ButtonGroup
-        disallowEmptySelection
-        aria-label={t('label.type')}
-        isDisabled={isDisabled}
-        selectedKeys={[kind]}
-        size="sm"
-        onSelectionChange={(keys) => {
-          const [next] = [...keys];
-          if (next === 'more') {
-            setShowsAnnotation(true);
-          } else if (next) {
-            onSelect(next as PropertyKind);
-          }
-        }}>
-        <ButtonGroupItem
-          data-testid="ontology-property-kind-object"
-          id="object">
-          {t('label.object')}
-        </ButtonGroupItem>
-        <ButtonGroupItem data-testid="ontology-property-kind-data" id="data">
-          {t('label.data')}
-        </ButtonGroupItem>
-        {showsAnnotation ? (
-          <ButtonGroupItem
-            data-testid="ontology-property-kind-annotation"
-            id="annotation">
-            {t('label.annotation')}
-          </ButtonGroupItem>
-        ) : (
-          <ButtonGroupItem data-testid="ontology-property-kind-more" id="more">
-            {t('label.more')}
-          </ButtonGroupItem>
-        )}
-      </ButtonGroup>
-    </Box>
+    <Select
+      data-testid="ontology-property-kind"
+      isDisabled={isDisabled}
+      items={PROPERTY_KINDS.map(({ id, label }) => ({ id, label: t(label) }))}
+      label={t('label.type')}
+      size="sm"
+      value={kind}
+      onChange={(key) => key && onSelect(key as PropertyKind)}>
+      {(item) => (
+        <Select.Item
+          data-testid={`ontology-property-kind-${item.id}`}
+          id={item.id}
+          key={item.id}
+          label={item.label}
+        />
+      )}
+    </Select>
   );
 };
 

@@ -10,22 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import OntologyStudioDrawer from './OntologyStudioDrawer';
 import { OntologyStudioDrawerHostContext } from './OntologyStudioDrawer.context';
 
 const WIDTH_CLASSES = ['tw:w-[40vw]', 'tw:min-w-105'];
 
-const renderInShell = (placement?: 'beside' | 'overlay') => {
+const renderInShell = () => {
   const shell = document.createElement('main');
   document.body.appendChild(shell);
   render(
     <OntologyStudioDrawerHostContext.Provider value={shell}>
       <div data-testid="canvas-row">
-        <OntologyStudioDrawer placement={placement} testId="drawer">
-          content
-        </OntologyStudioDrawer>
+        <OntologyStudioDrawer testId="drawer">content</OntologyStudioDrawer>
       </div>
     </OntologyStudioDrawerHostContext.Provider>
   );
@@ -38,54 +35,25 @@ describe('OntologyStudioDrawer', () => {
     document.body.innerHTML = '';
   });
 
-  it('opens full height in the Studio shell and leaves a gap of the same width beside the canvas', () => {
+  it('opens edge to edge over the canvas without pushing it aside', () => {
     const shell = renderInShell();
     const drawer = screen.getByTestId('drawer');
-    const gap = screen.getByTestId('ontology-studio-drawer-gap');
 
     expect(shell).toContainElement(drawer);
-    expect(screen.getByTestId('canvas-row')).toContainElement(gap);
-    expect(drawer).toHaveClass('tw:top-2', 'tw:bottom-2', ...WIDTH_CLASSES);
-    expect(gap).toHaveClass(...WIDTH_CLASSES);
-  });
-
-  it('covers the area without a gap when it is an overlay', () => {
-    renderInShell('overlay');
-
-    expect(screen.getByTestId('drawer')).toHaveClass(...WIDTH_CLASSES);
-    expect(
-      screen.queryByTestId('ontology-studio-drawer-gap')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('canvas-row')).not.toContainElement(drawer);
+    expect(drawer).toHaveClass(
+      'tw:fixed',
+      'tw:inset-y-0',
+      'tw:right-0',
+      ...WIDTH_CLASSES
+    );
+    expect(screen.getByTestId('canvas-row')).toBeEmptyDOMElement();
   });
 
   it('marks itself so the canvas toolbar can stay clear of it', () => {
     renderInShell();
 
     expect(screen.getByTestId('drawer')).toHaveAttribute('data-studio-drawer');
-  });
-
-  it('opens its confirm modal inside the panel instead of over the page', () => {
-    const shell = document.createElement('main');
-    document.body.appendChild(shell);
-    render(
-      <OntologyStudioDrawerHostContext.Provider value={shell}>
-        <OntologyStudioDrawer
-          confirm={
-            <ModalOverlay isOpen>
-              <Modal>
-                <Dialog data-testid="confirm" title="Delete?" />
-              </Modal>
-            </ModalOverlay>
-          }
-          testId="drawer">
-          content
-        </OntologyStudioDrawer>
-      </OntologyStudioDrawerHostContext.Provider>
-    );
-
-    expect(screen.getByTestId('drawer')).toContainElement(
-      screen.getByTestId('confirm')
-    );
   });
 
   it('sits in the flow outside the Studio shell', () => {
@@ -98,5 +66,37 @@ describe('OntologyStudioDrawer', () => {
     expect(screen.getByTestId('canvas-row')).toContainElement(
       screen.getByTestId('drawer')
     );
+  });
+
+  it('closes on a press outside it, but not on one inside it or its own overlays', () => {
+    const onInteractOutside = jest.fn();
+    const shell = document.createElement('main');
+    document.body.appendChild(shell);
+    render(
+      <>
+        <button data-testid="outside-tab" type="button">
+          Tree
+        </button>
+        <div role="listbox">
+          <span data-testid="owned-option">Option</span>
+        </div>
+        <OntologyStudioDrawerHostContext.Provider value={shell}>
+          <OntologyStudioDrawer
+            testId="drawer"
+            onInteractOutside={onInteractOutside}>
+            <span data-testid="inside">content</span>
+          </OntologyStudioDrawer>
+        </OntologyStudioDrawerHostContext.Provider>
+      </>
+    );
+
+    fireEvent.pointerDown(screen.getByTestId('inside'));
+    fireEvent.pointerDown(screen.getByTestId('owned-option'));
+
+    expect(onInteractOutside).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(screen.getByTestId('outside-tab'));
+
+    expect(onInteractOutside).toHaveBeenCalledTimes(1);
   });
 });

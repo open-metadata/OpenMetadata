@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,6 +10,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.exception.BadRequestException;
 
 class SafeRdfModelParserTest {
@@ -135,6 +138,35 @@ class SafeRdfModelParserTest {
             parser.parse(
                 "<relative> <https://example.org/p> <https://example.org/o> .",
                 RdfSerializationFormat.TURTLE));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "  ", "\n\t"})
+  void reportsEmptyRdfAsEmptyNotAsTooLarge(final String empty) {
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class, () -> parser.parse(empty, RdfSerializationFormat.TURTLE));
+    assertEquals("Native ontology RDF is empty", exception.getMessage());
+  }
+
+  @Test
+  void measuresTheLimitInUtf8BytesAtEveryBound() {
+    // "é" is 2 bytes and the emoji 4 bytes (2 UTF-16 units), so characters and bytes differ.
+    assertDoesNotThrow(() -> SafeRdfModelParser.requireContent("ééé", 6, "empty", "large"));
+    assertEquals(
+        "large",
+        assertThrows(
+                BadRequestException.class,
+                () -> SafeRdfModelParser.requireContent("éééé", 6, "empty", "large"))
+            .getMessage());
+    assertDoesNotThrow(() -> SafeRdfModelParser.requireContent("😀😀", 8, "empty", "large"));
+    assertThrows(
+        BadRequestException.class,
+        () -> SafeRdfModelParser.requireContent("😀😀", 7, "empty", "large"));
+    assertThrows(
+        BadRequestException.class,
+        () -> SafeRdfModelParser.requireContent("abcdefg", 6, "empty", "large"));
+    assertDoesNotThrow(() -> SafeRdfModelParser.requireContent("ab", 6, "empty", "large"));
   }
 
   @Test

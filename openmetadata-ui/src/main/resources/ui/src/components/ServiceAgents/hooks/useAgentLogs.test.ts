@@ -62,6 +62,30 @@ describe('useAgentLogs', () => {
     });
   });
 
+  it('reads the pinned run log instead of the latest one', async () => {
+    renderHook(() =>
+      useAgentLogs(FQN, PipelineType.Metadata, true, false, RUN_ID, 'old-run')
+    );
+
+    await waitFor(() =>
+      expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, 'old-run')
+    );
+  });
+
+  it('never streams a pinned run even when told it is active', async () => {
+    renderHook(() =>
+      useAgentLogs(FQN, PipelineType.Metadata, true, true, RUN_ID, 'old-run')
+    );
+
+    await waitFor(() =>
+      expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, 'old-run')
+    );
+
+    expect(mockUseLogStream).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
+  });
+
   it('tails a live run over the stream and never polls the log endpoint', async () => {
     mockUseLogStream.mockReturnValue({
       ...IDLE_STREAM,
@@ -89,7 +113,7 @@ describe('useAgentLogs', () => {
     await waitFor(() => expect(result.current.rawText).toBe('polled line'));
 
     expect(result.current.isStreaming).toBe(false);
-    expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined);
+    expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, undefined);
     expect(mockUseLogStream).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: false })
     );

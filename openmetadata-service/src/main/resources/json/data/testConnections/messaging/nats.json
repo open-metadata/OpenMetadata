@@ -4,10 +4,19 @@
     "description": "This Test Connection validates the access against the NATS server and basic metadata extraction of JetStream streams as topics.",
     "steps": [
         {
+            "name": "CheckAccess",
+            "description": "Connect to the NATS server and authenticate with the configured credentials.",
+            "errorMessage": "Failed to connect to NATS. Please validate the server URLs and credentials.",
+            "category": "ConnectionGate",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
             "name": "GetTopics",
             "description": "List all the JetStream streams available on the NATS server.",
             "errorMessage": "Failed to fetch streams, please validate the NATS server URL and credentials, and ensure JetStream is enabled.",
             "shortCircuit": true,
+            "category": "ConnectionGate",
             "mandatory": true
         },
         {
