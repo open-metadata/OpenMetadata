@@ -1707,25 +1707,21 @@ def workbook_column_descriptions(source, routes) -> dict[str, str | None]:
     return {column.displayName: column.description and column.description.root for column in request.columns}
 
 
+TOTAL_FORMULA = {"Cost": None, "Total": "**Formula:** `[Cost] + [MRP]`", "Note": None}
+
+
 @pytest.mark.parametrize(
     "pages, descriptions",
     [
-        (
-            [MARGIN_COLUMNS],
-            {"Cost": "**Formula:** `[ORDERS/Cost]`", "Total": "**Formula:** `[Cost] + [MRP]`", "Note": None},
-        ),
-        (
-            [MARGIN_COLUMNS[:1], MARGIN_COLUMNS[1:]],
-            {"Cost": "**Formula:** `[ORDERS/Cost]`", "Total": "**Formula:** `[Cost] + [MRP]`", "Note": None},
-        ),
+        # Cost only names its source column, which its lineage already shows
+        ([MARGIN_COLUMNS], TOTAL_FORMULA),
+        ([MARGIN_COLUMNS[:1], MARGIN_COLUMNS[1:]], TOTAL_FORMULA),
+        ([[*MARGIN_COLUMNS, sigma_column("elOther", "Total", "[Cost] * 2")]], TOTAL_FORMULA),
         # A name an element holds twice cannot be told apart: neither gets the formula
-        (
-            [[*MARGIN_COLUMNS, sigma_column("el-wb-1", "Total", "[Cost] * 2")]],
-            {"Cost": "**Formula:** `[ORDERS/Cost]`", "Total": None, "Note": None},
-        ),
+        ([[*MARGIN_COLUMNS, sigma_column("el-wb-1", "Total", "[Cost] * 2")]], {**TOTAL_FORMULA, "Total": None}),
         (500, {"Cost": None, "Total": None, "Note": None}),
     ],
-    ids=["one-page", "two-pages", "repeated-name", "failed-read"],
+    ids=["one-page", "two-pages", "same-name-in-another-element", "repeated-name", "failed-read"],
 )
 def test_a_workbook_element_column_shows_its_sigma_formula(sigma_over_http, routes, pages, descriptions):
     source, _ = sigma_over_http
@@ -1755,7 +1751,8 @@ def test_column_formulas_are_not_read_when_data_models_are_off(sigma_over_http):
 def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigma_data_models):
     source, _ = sigma_over_http
     sigma_data_models["GET", "/v2/dataModels/dm-1/columns"]["entries"] = [
-        sigma_column("dmEl1", "Amount", "[ORDERS/Amount]"),
+        sigma_column("dmEl1", "Order Id", "[ORDERS/Order Id]"),
+        sigma_column("dmEl1", "Amount", "Round([ORDERS/Amount], 2)"),
         sigma_column("dmEl2", "Customer Id", ""),
     ]
 
@@ -1767,7 +1764,7 @@ def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigm
         for child in column.children
     } == {
         ("Orders", "Order Id"): None,
-        ("Orders", "Amount"): "**Formula:** `[ORDERS/Amount]`",
+        ("Orders", "Amount"): "**Formula:** `Round([ORDERS/Amount], 2)`",
         ("Customers", "Customer Id"): None,
     }
 
@@ -2377,6 +2374,23 @@ LABELED = {"Cost": ["COST"], "MRP": ["MRP"]}
 )
 def test_a_computed_column_without_sql_gets_the_sources_of_the_columns_it_reads(lineage_source, formulas, computed):
     assert formula_column_links(lineage_source, MARGIN_LABELS, formulas, [COSTS]) == {"COSTS": {**LABELED, **computed}}
+
+
+def test_a_computed_column_read_before_the_column_it_reads_still_gets_its_sources(lineage_source):
+    formulas = {"Margin": "[Total] - [Cost]", "Total": "[Cost] + [MRP]"}
+
+    links = formula_column_links(lineage_source, ["Cost", "MRP", "Margin", "Total"], formulas, [COSTS])
+
+    assert links == {"COSTS": {**LABELED, "Margin": ["COST", "MRP"], "Total": ["COST", "MRP"]}}
+
+
+def test_a_computed_column_named_like_a_warehouse_column_takes_its_sources_from_its_formula(lineage_source):
+    costs_with_total = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
+    formulas = {"Total": "[Cost] + [MRP]", "Margin": "[Total] - [Cost]"}
+
+    links = formula_column_links(lineage_source, MARGIN_LABELS, formulas, [costs_with_total])
+
+    assert links == {"COSTS": {**LABELED, "Total": ["COST", "MRP"], "Margin": ["COST", "MRP"]}}
 
 
 def test_a_computed_column_reading_two_tables_is_linked_from_each(lineage_source):

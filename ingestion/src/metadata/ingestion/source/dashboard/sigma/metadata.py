@@ -131,6 +131,8 @@ def _access_details(moment: datetime | None) -> AccessDetails | None:
 
 _BRACKET_REFERENCE = re.compile(r"\[([^\[\]]+)\]")
 _STRING_LITERAL = re.compile(r'"[^"]*"')
+# A formula that only names its source column, as every column read straight from a table has
+_SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]]+\]\s*")
 
 
 def _same_element_references(formula: str) -> list[str] | None:
@@ -145,20 +147,18 @@ def _same_element_references(formula: str) -> list[str] | None:
     return None if any("/" in reference for reference in references) else references
 
 
-def _inherit_formula_sources(
-    sources: dict[str, list[tuple[str, str]]], labels: list[str], formulas: dict[str, str]
-) -> None:
+def _columns_read(label: str, labels: list[str], formulas: dict[str, str]) -> list[str]:
+    """The other columns of its own element a column's formula reads; empty for a column not computed from them"""
+    references = _same_element_references(formulas.get(label, "")) or []
+    return [reference for reference in references if reference in labels and reference != label]
+
+
+def _inherit_formula_sources(sources: dict[str, list[tuple[str, str]]], columns_read: dict[str, list[str]]) -> None:
     """
-    Give each column that has no source of its own and is computed from columns of its own element the sources
-    of those columns, directly or through other computed columns (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-trace-only-same-element-columns).
-    A reference naming no column of the element, such as a control, adds nothing. Sources only grow, so a cycle
-    of references ends.
+    Give each column computed from other columns of its own element the sources of those columns, directly or
+    through other computed columns (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-trace-only-same-element-columns).
+    Sources only grow, so a cycle of references ends.
     """
-    columns_read = {
-        label: [reference for reference in references if reference in labels]
-        for label in labels
-        if label not in sources and (references := _same_element_references(formulas.get(label, "")))
-    }
     changed = True
     while changed:
         changed = False
@@ -516,8 +516,12 @@ class SigmaSource(DashboardServiceSource):
         A column computed from other columns of the element gets their sources, read from its formula.
         """
         labels = labels or []
+        # A computed column takes its sources from its formula, not from a warehouse column that shares its name
+        columns_read = {label: read for label in labels if (read := _columns_read(label, labels, formulas))}
         sources: dict[str, list[tuple[str, str]]] = {}
         for label in labels if all_sources_found else []:
+            if label in columns_read:
+                continue
             matches = [
                 (model_str(table.id), model_str(column_fqn))
                 for table in tables
@@ -527,7 +531,7 @@ class SigmaSource(DashboardServiceSource):
             ]
             if len(matches) == 1:
                 sources[label] = matches
-        _inherit_formula_sources(sources, labels, formulas)
+        _inherit_formula_sources(sources, columns_read)
         column_lineage: dict[str, list[ColumnLineage]] = {}
         for label in labels:
             to_column = self._get_data_model_column_fqn(data_model_entity=data_model_entity, column=label)
@@ -863,7 +867,7 @@ class SigmaSource(DashboardServiceSource):
         return True
 
     def get_column_info(self, element: Elements, formulas: dict[str, str] | None = None) -> list[Column]:
-        """Build data model columns, each showing its Sigma formula"""
+        """Build data model columns, each computed one showing its Sigma formula"""
         datamodel_columns = []
         for col in element.columns or []:
             try:
@@ -874,7 +878,7 @@ class SigmaSource(DashboardServiceSource):
                         dataType=DataType.UNKNOWN,
                         dataTypeDisplay="Sigma Field",
                         description=Markdown(f"**Formula:** `{formula}`")
-                        if (formula := (formulas or {}).get(col))
+                        if (formula := (formulas or {}).get(col)) and not _SOURCE_REFERENCE.fullmatch(formula)
                         else None,
                     )
                 )

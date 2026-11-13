@@ -23,20 +23,23 @@ names are case-sensitive.
 
 ## Decision
 
-- A column's non-empty Sigma formula is written to its description as ``**Formula:** `<formula>` `` (as the Tableau and
-  Superset connectors do), for workbook element columns and Sigma Data Model element columns. A column whose name its
-  element holds twice gets none, as the rows cannot be told apart; a failed `/columns` read writes none.
-- For an element without SQL, a column that has no warehouse column of its own takes the sources of the columns its
-  formula names as bare `[Name]` references, directly or through other computed columns (as the Looker connector
-  follows `${field}` within a view). A name must match a column of the element exactly; a reference naming none, such
-  as a control, adds nothing. Edges stay one per source table, each carrying that table's columns.
+- A column's Sigma formula is written to its description as ``**Formula:** `<formula>` ``, for workbook element columns
+  and Sigma Data Model element columns. A formula that only names a source column (`[ORDERS/Amount]`, as every column
+  read straight from a table has) is not written, as its lineage already shows it. A column whose name its element holds
+  twice gets none, as the rows cannot be told apart; a failed `/columns` read writes none.
+- For an element without SQL, a column whose formula names other columns of its element as bare `[Name]` references
+  takes the sources of those columns, directly or through other computed columns (as the Looker connector follows
+  `${field}` within a view), and not a warehouse column that shares its name. A name must match a column of the element
+  exactly; a reference naming none, such as a control, adds nothing. Edges stay one per source table, each carrying
+  that table's columns.
 - A formula that also names another element or source (`[Name/Column]`) or holds an escape is not traced. Only the
   existing rule's tables count, and only when every source of the element was found.
 
 ## Consequences
 
 - On a re-run the server keeps a stored column description against an ingestion bot update unless
-  `overrideMetadata` is on, so a description written by a user is kept, and so is a formula that later changed in Sigma.
+  `overrideMetadata` is on, so a description written by a user is kept, and so is a formula that later changed in Sigma
+  until `overrideMetadata` is turned on.
 - Cross-element and cross-source references stay without column lineage until Sigma documents how their first segment
   resolves; tracing them would mean guessing which of several same-named sources is meant.
 - One extra paged call per workbook (when data models are ingested) and per Sigma Data Model.
