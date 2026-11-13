@@ -13,12 +13,13 @@
 
 ## Context
 
-Until #32920, a PUT on an existing service with no `connection` failed with a NullPointerException
-in `ServiceEntityResource.unmask`. #32920 removed the NPE and stated that the stored connection is
-preserved, but `ServiceEntityRepository.updateConnection` skipped a null connection and the update
-stored the service with none. A PUT without `connection` therefore deleted the credentials: on the
-database secrets manager the encrypted values, on an external manager the vault entries too, through
-the post-commit secret cleanup. Nothing can recover them.
+Until #32920, a PUT on an existing service with no `connection` failed: `ServiceEntityResource.unmask`
+threw a NullPointerException, returned as a 400, and nothing was written. #32920 removed the NPE and
+stated that the stored connection is preserved, but `ServiceEntityRepository.updateConnection`
+skipped a null connection and the update stored the service with none. A PUT without `connection`
+therefore succeeded and removed the service's connection: on the database secrets manager its
+encrypted credentials are gone from the row; on an external manager the row loses its references, so
+the vault entries are left unreferenced and the service cannot connect until someone re-enters them.
 
 Clients send that PUT in ordinary operation. Ingestion with `storeServiceConnection: false` and
 `forceEntityOverwriting: true` PUTs the service without a connection on every run. SDK users upsert
