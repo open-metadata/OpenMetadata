@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-13T14:36:11Z",
+  "generatedAt": "2026-11-13T19:07:41Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "41567061381",
-      "sourceSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
-      "recordedAt": "2026-11-03T03:07:52Z"
-    },
     {
       "runId": "41761758946",
       "sourceSha": "357983e01551781e9889821ff9c095009a26dcee",
@@ -53,6 +48,11 @@
       "runId": "43437005879",
       "sourceSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "recordedAt": "2026-11-13T14:36:11Z"
+    },
+    {
+      "runId": "43482948785",
+      "sourceSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "recordedAt": "2026-11-13T19:07:41Z"
     }
   ],
   "entries": {
@@ -96,6 +96,16 @@
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
       "hardFailure": true
     },
+    "Basic :: Pages/BotsProfile.spec.ts :: Bots Panel in AI Profile Modal \u203a should restore a soft-deleted bot from the list": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "Basic",
+      "file": "Pages/BotsProfile.spec.ts",
+      "title": "Bots Panel in AI Profile Modal \u203a should restore a soft-deleted bot from the list",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": false
+    },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit": {
       "observations": [
         "43437005879"
@@ -109,12 +119,13 @@
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
       "observations": [
         "43197108715",
-        "43353296951"
+        "43353296951",
+        "43482948785"
       ],
       "project": "GlobalSettings",
       "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
       "title": "Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a an edit that needs two approvals is published only after the second": {
@@ -359,7 +370,6 @@
     },
     "Ontology RDF :: Features/OntologyDataExploreRdf.spec.ts :: Ontology data exploration \u203a renders cross-page relations while paging 100+ tagged assets": {
       "observations": [
-        "41567061381",
         "43197108715"
       ],
       "project": "Ontology RDF",
@@ -510,13 +520,14 @@
     },
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API": {
       "observations": [
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "chromium",
       "file": "Features/OntologyNativeDataMode.spec.ts",
       "title": "Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": false
     },
     "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL": {
       "observations": [
@@ -528,6 +539,16 @@
       "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
       "hardFailure": false
     },
+    "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a shows the generated SQL, one search-around hop and the not stored badge": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "chromium",
+      "file": "Features/OntologyNativeLiveData.spec.ts",
+      "title": "Native ontology Live data \u203a shows the generated SQL, one search-around hop and the not stored badge",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": false
+    },
     "chromium :: Features/OntologyNativeOperations.spec.ts :: Native ontology operations \u203a links a table, binds a nested column, reloads, and unlinks it without changing the semantic model": {
       "observations": [
         "43437005879"
@@ -537,6 +558,16 @@
       "title": "Native ontology operations \u203a links a table, binds a nested column, reloads, and unlinks it without changing the semantic model",
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
+    },
+    "chromium :: Features/OntologyNativeRelations.spec.ts :: Native ontology relations \u203a offers registry relation types with their inverses": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "chromium",
+      "file": "Features/OntologyNativeRelations.spec.ts",
+      "title": "Native ontology relations \u203a offers registry relation types with their inverses",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": false
     },
     "chromium :: Features/OntologyNativeTreeShell.spec.ts :: Native tree and Studio shell \u203a keeps both parent placements, one selection and all header controls at 924 pixels": {
       "observations": [
@@ -581,33 +612,46 @@
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed": {
       "observations": [
         "43353296951",
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "chromium",
       "file": "Features/OntologyReview.spec.ts",
       "title": "Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": false
+    },
+    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "chromium",
+      "file": "Features/OntologyReview.spec.ts",
+      "title": "Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself": {
       "observations": [
         "43353296951",
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "chromium",
       "file": "Features/OntologyReview.spec.ts",
       "title": "Release history and compare (G8) \u203a says there are no differences when a release is compared with itself",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases": {
       "observations": [
-        "43353296951"
+        "43353296951",
+        "43482948785"
       ],
       "project": "chromium",
       "file": "Features/OntologyReview.spec.ts",
       "title": "Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
     },
     "chromium :: Features/OntologyRules.spec.ts :: Ontology rules in plain language \u203a lane 7: shows a clash on the graph, lists it, opens its concept and clears after the fix in ai mode": {
@@ -658,6 +702,26 @@
       "file": "Features/OntologyStudioPermissions.spec.ts",
       "title": "Ontology Studio over the aggregate limit \u203a All ontologies shows only a message when the catalog passes the limit",
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "hardFailure": true
+    },
+    "chromium :: Features/OntologyStudioPermissions.spec.ts :: Ontology Studio shows only the actions a user can take \u203a a user with only OntologyReviewer cannot edit or connect but opens Tasks": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "chromium",
+      "file": "Features/OntologyStudioPermissions.spec.ts",
+      "title": "Ontology Studio shows only the actions a user can take \u203a a user with only OntologyReviewer cannot edit or connect but opens Tasks",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": true
+    },
+    "chromium :: Features/OntologyStudioPermissions.spec.ts :: Ontology Studio shows only the actions a user can take \u203a keyboard focus in the header reaches each visible control and skips what is hidden": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "chromium",
+      "file": "Features/OntologyStudioPermissions.spec.ts",
+      "title": "Ontology Studio shows only the actions a user can take \u203a keyboard focus in the header reaches each visible control and skips what is hidden",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
@@ -775,26 +839,6 @@
       "title": "Topic \u203a Level 1 Nested Columns \u203a should update nested column description immediately without page refresh",
       "lastSeenSha": "94e56a935f2bec5ec8d01c2440c499c88fb3746e",
       "hardFailure": true
-    },
-    "chromium :: Pages/AIProfile/ProfileMembers.spec.ts :: AI Profile Members - cross-surface navigation \u203a Should navigate from the users page to a role detail": {
-      "observations": [
-        "41567061381"
-      ],
-      "project": "chromium",
-      "file": "Pages/AIProfile/ProfileMembers.spec.ts",
-      "title": "AI Profile Members - cross-surface navigation \u203a Should navigate from the users page to a role detail",
-      "lastSeenSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
-      "hardFailure": false
-    },
-    "chromium :: Pages/AIProfile/ProfileTeam.spec.ts :: AI Profile Team Detail \u203a Should confirm a team move in a popover, not a modal": {
-      "observations": [
-        "41567061381"
-      ],
-      "project": "chromium",
-      "file": "Pages/AIProfile/ProfileTeam.spec.ts",
-      "title": "AI Profile Team Detail \u203a Should confirm a team move in a popover, not a modal",
-      "lastSeenSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
-      "hardFailure": false
     },
     "chromium :: Pages/AIProfile/ProfileTeam.spec.ts :: AI Profile Team Detail \u203a Should join and leave a public team": {
       "observations": [
@@ -4245,6 +4289,16 @@
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "visual-regression",
+      "file": "../utils/visualScenarios.ts",
+      "title": "Entity tabs light \u203a tab-spreadsheet-custom-properties",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": true
+    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage": {
       "observations": [
         "43353296951",
@@ -4385,6 +4439,16 @@
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs light \u203a tab-topic-activity-feeds---tasks",
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "hardFailure": true
+    },
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "visual-regression",
+      "file": "../utils/visualScenarios.ts",
+      "title": "Entity tabs light \u203a tab-topic-custom-properties",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage": {
@@ -4876,12 +4940,13 @@
         "42743759700",
         "43197108715",
         "43353296951",
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Governance states light \u203a ontology-publish-releases",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query": {
@@ -5550,6 +5615,16 @@
       "title": "Pages light \u203a page-sparql",
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
+    },
+    "visual-regression :: ../utils/visualScenarios.ts :: Settings dark \u203a settings-audit-logs": {
+      "observations": [
+        "43482948785"
+      ],
+      "project": "visual-regression",
+      "file": "../utils/visualScenarios.ts",
+      "title": "Settings dark \u203a settings-audit-logs",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "hardFailure": false
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Settings extensions dark \u203a settings-app-McpApplication": {
       "observations": [
@@ -7152,12 +7227,13 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices PowerBI configuration form": {
@@ -7188,12 +7264,13 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form": {
       "observations": [
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a dashboardServices Sigma configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form": {
@@ -7603,12 +7680,13 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a dashboardServices MicroStrategy configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices PowerBI configuration form": {
@@ -7639,12 +7717,13 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form": {
       "observations": [
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a dashboardServices Sigma configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form": {
@@ -8262,12 +8341,13 @@
       "observations": [
         "43197108715",
         "43353296951",
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/glossaryInteractions.spec.ts",
       "title": "Glossary interactions dark \u203a glossary-late-activity-count",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
@@ -8275,12 +8355,13 @@
         "42151309967",
         "43197108715",
         "43353296951",
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/glossaryInteractions.spec.ts",
       "title": "Glossary interactions light \u203a glossary-late-activity-count",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/homeInteractions.spec.ts :: Home interactions light \u203a announcement-all-dialog": {
@@ -8706,12 +8787,13 @@
         "42743759700",
         "43197108715",
         "43353296951",
-        "43437005879"
+        "43437005879",
+        "43482948785"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/staticPages.spec.ts",
       "title": "glossary matches baseline",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
+      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: landing page with expanded sidebar matches baseline": {
@@ -8790,9 +8872,10 @@
   },
   "stableIds": [
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
-    "Ontology RDF :: Features/OntologyDataExploreRdf.spec.ts :: Ontology data exploration \u203a renders cross-page relations while paging 100+ tagged assets",
+    "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself",
+    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
     "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 edit mode: start node description \u203a editing the workflow description on the start node persists it on save",
@@ -9196,8 +9279,10 @@
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches light \u203a connection-branch-storageServices-GCS-root-credentials-gcpConfig-d8c5082a96",
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches light \u203a connection-branch-storageServices-GCS-root-credentials-gcpConfig-projectId-71282bc42b",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a apiServices Rest configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices PowerBI configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices QlikCloud configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices BigQuery configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Cassandra configuration form",
@@ -9228,8 +9313,10 @@
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices GCS configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices S3 configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a apiServices Rest configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices PowerBI configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices QlikCloud configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices BigQuery configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Cassandra configuration form",
@@ -9717,8 +9804,10 @@
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches light \u203a connection-branch-storageServices-GCS-root-credentials-gcpConfig-d8c5082a96",
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches light \u203a connection-branch-storageServices-GCS-root-credentials-gcpConfig-projectId-71282bc42b",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a apiServices Rest configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices PowerBI configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices QlikCloud configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices BigQuery configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Cassandra configuration form",
@@ -9749,8 +9838,10 @@
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices GCS configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices S3 configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a apiServices Rest configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices PowerBI configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices QlikCloud configuration form",
+    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices BigQuery configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Cassandra configuration form",
