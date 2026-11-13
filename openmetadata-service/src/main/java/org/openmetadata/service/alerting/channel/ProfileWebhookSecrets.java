@@ -26,17 +26,21 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.profile.SubscriptionStatusConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretOwner;
 
@@ -101,16 +105,17 @@ public final class ProfileWebhookSecrets {
    * mask or ciphertext could stand for, so either is refused.
    */
   public static Profile ofANewEntity(Holder holder, Profile profile) {
-    return transformWebhooks(
-        profile,
-        (slot, config) -> {
-          List<JsonPointer> fields = WebhookSecrets.fieldsIn(config);
-          fields.forEach(
-              field ->
-                  requireEntered(
-                      slot, field, config.at(field).asText(), MissingNode.getInstance()));
-          ConfigSecrets.encrypt(holder.requireId().ownerOf(slot), config, fields);
-        });
+    return withoutStatus(
+        transformWebhooks(
+            profile,
+            (slot, config) -> {
+              List<JsonPointer> fields = WebhookSecrets.fieldsIn(config);
+              fields.forEach(
+                  field ->
+                      requireEntered(
+                          slot, field, config.at(field).asText(), MissingNode.getInstance()));
+              ConfigSecrets.encrypt(holder.requireId().ownerOf(slot), config, fields);
+            }));
   }
 
   /**
@@ -122,11 +127,15 @@ public final class ProfileWebhookSecrets {
    */
   public static Profile updated(Holder holder, Profile stored, Profile sent) {
     JsonNode storedSubscriptions = subscriptionsOf(stored);
-    return transformWebhooks(
-        sent,
-        (slot, config) ->
-            updateWebhook(
-                holder.requireId().ownerOf(slot), slot, storedSubscriptions.path(slot), config));
+    return withoutStatus(
+        transformWebhooks(
+            sent,
+            (slot, config) ->
+                updateWebhook(
+                    holder.requireId().ownerOf(slot),
+                    slot,
+                    storedSubscriptions.path(slot),
+                    config)));
   }
 
   /**
@@ -187,19 +196,90 @@ public final class ProfileWebhookSecrets {
   }
 
   private static boolean opened(Holder holder, String slot, JsonNode config) {
-    boolean opened = true;
+    Optional<String> unusable = decryptedOrUnusableBecause(holder, slot, config);
+    unusable.ifPresent(
+        reason ->
+            LOG.warn(
+                "The {} webhook of {} {} is left out of the send: {}",
+                slot,
+                holder.entityType(),
+                holder.id(),
+                reason));
+    return unusable.isEmpty();
+  }
+
+  /** Decrypts the webhook in place, or says why its stored values cannot be used to send. */
+  private static Optional<String> decryptedOrUnusableBecause(
+      Holder holder, String slot, JsonNode config) {
+    Optional<String> unusable = Optional.empty();
     try {
       ConfigSecrets.decrypt(holder.ownerOf(slot), config, WebhookSecrets.fieldsIn(config));
     } catch (BadRequestException e) {
-      LOG.warn(
-          "The {} webhook of {} {} is left out of the send: {}",
-          slot,
-          holder.entityType(),
-          holder.id(),
-          e.getMessage());
-      opened = false;
+      unusable = Optional.of(e.getMessage());
     }
-    return opened;
+    return unusable;
+  }
+
+  /**
+   * Masks, in place, the profile webhook secrets of a user as a read shows them, and reports in
+   * {@code profile.subscriptionStatus} each webhook that does not send until a stored value is
+   * entered again. The status is computed on every read and never stored, and a write response
+   * leaves it out, so no change event records it either.
+   */
+  public static User maskForRead(User user) {
+    user.setProfile(withStatus(new Holder(Entity.USER, user.getId()), user.getProfile()));
+    return mask(user);
+  }
+
+  /** As {@link #maskForRead(User)}, for a team. */
+  public static Team maskForRead(Team team) {
+    team.setProfile(withStatus(new Holder(Entity.TEAM, team.getId()), team.getProfile()));
+    return mask(team);
+  }
+
+  /**
+   * A copy of the profile whose status names each webhook a send would leave out ({@link
+   * #decrypted}), with the reason; no status when every webhook can send.
+   */
+  static Profile withStatus(Holder holder, Profile profile) {
+    Profile result = profile;
+    if (hasWebhooks(profile)) {
+      ObjectNode statuses = JsonUtils.getObjectNode();
+      subscriptionsOf(profile)
+          .properties()
+          .forEach(
+              webhook ->
+                  unusableBecause(holder, webhook.getKey(), webhook.getValue())
+                      .ifPresent(
+                          reason ->
+                              statuses.set(
+                                  webhook.getKey(), JsonUtils.valueToTree(failed(reason)))));
+      result =
+          JsonUtils.deepCopy(profile, Profile.class)
+              .withSubscriptionStatus(
+                  statuses.isEmpty()
+                      ? null
+                      : JsonUtils.treeToValue(statuses, SubscriptionStatusConfig.class));
+    }
+    return result;
+  }
+
+  private static Optional<String> unusableBecause(Holder holder, String slot, JsonNode config) {
+    return config.isObject()
+        ? decryptedOrUnusableBecause(holder, slot, config.deepCopy())
+        : Optional.empty();
+  }
+
+  private static SubscriptionStatus failed(String reason) {
+    return new SubscriptionStatus()
+        .withStatus(SubscriptionStatus.Status.FAILED)
+        .withLastFailedReason(reason)
+        .withTimestamp(System.currentTimeMillis());
+  }
+
+  // Computed on every read, so a status sent back by a client is never stored.
+  private static Profile withoutStatus(Profile profile) {
+    return profile == null ? null : profile.withSubscriptionStatus(null);
   }
 
   /** A copy of the profile with every webhook secret masked. */

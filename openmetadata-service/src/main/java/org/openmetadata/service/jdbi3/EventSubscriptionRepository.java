@@ -63,6 +63,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
   private static final String FIELD_ENABLED = "enabled";
+  private static final String FIELD_STATUS_DETAILS = "statusDetails";
 
   public EventSubscriptionRepository() {
     super(
@@ -72,15 +73,26 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         Entity.getCollectionDAO().eventSubscriptionDAO(),
         ALERT_PATCH_FIELDS,
         ALERT_UPDATE_FIELDS);
+    fieldFetchers.put(FIELD_STATUS_DETAILS, this::fetchAndSetStatusDetails);
   }
 
   @Override
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
-    if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      entity.withDestinations(new ArrayList<>(AlertDiagnostics.destinationsWithStatus(entity)));
-    }
+    fetchAndSetStatusDetails(List.of(entity), fields);
     entity.setNotificationTemplate(templateOf(entity.getId()));
+  }
+
+  // A list reads its fields in bulk, without setFields, so the status is read here for both.
+  private void fetchAndSetStatusDetails(List<EventSubscription> alerts, Fields fields) {
+    if (fields.contains(FIELD_STATUS_DETAILS)) {
+      alerts.stream()
+          .filter(alert -> !nullOrEmpty(alert.getDestinations()))
+          .forEach(
+              alert ->
+                  alert.withDestinations(
+                      new ArrayList<>(AlertDiagnostics.destinationsWithStatus(alert))));
+    }
   }
 
   @Override

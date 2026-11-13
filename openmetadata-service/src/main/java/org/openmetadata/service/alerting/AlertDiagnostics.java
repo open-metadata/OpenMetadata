@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.delivery.AlertFactory;
 import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.consumer.AlertRows;
 import org.openmetadata.service.events.consumer.ledger.AlertLedger;
@@ -138,8 +139,9 @@ public final class AlertDiagnostics {
     return listOrEmpty(alert.getDestinations());
   }
 
-  // Disabled is decided when read, from the alert and the destination as they are now, and never
-  // stored. Otherwise the last tick that reached the destination speaks, and Active before any has.
+  // Disabled and a stored configuration that cannot be used are decided when read, from the alert
+  // and the destination as they are now, and never stored, so they show before any event reaches
+  // the destination. Otherwise the last tick that reached it speaks, and Active before any has.
   private static SubscriptionStatus statusToShow(
       EventSubscription alert,
       SubscriptionDestination destination,
@@ -147,16 +149,24 @@ public final class AlertDiagnostics {
       long now) {
     boolean switchedOff =
         Boolean.FALSE.equals(alert.getEnabled()) || Boolean.FALSE.equals(destination.getEnabled());
-    SubscriptionStatus status;
-    if (switchedOff) {
-      status = new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
-    } else if (known != null) {
-      status = known.getStatus();
-    } else {
-      status =
-          new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
-    }
-    return status;
+    return switchedOff
+        ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
+        : AlertFactory.unusableBecause(alert, destination)
+            .map(reason -> failedBecause(reason, now))
+            .orElseGet(() -> knownOrActive(known, now));
+  }
+
+  private static SubscriptionStatus failedBecause(String reason, long now) {
+    return new SubscriptionStatus()
+        .withStatus(SubscriptionStatus.Status.FAILED)
+        .withLastFailedReason(reason)
+        .withTimestamp(now);
+  }
+
+  private static SubscriptionStatus knownOrActive(DestinationHealth known, long now) {
+    return known != null
+        ? known.getStatus()
+        : new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
   }
 
   /**

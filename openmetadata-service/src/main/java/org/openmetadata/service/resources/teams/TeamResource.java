@@ -497,7 +497,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return ProfileWebhookSecrets.mask(
+    return ProfileWebhookSecrets.maskForRead(
         getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
   }
 
@@ -535,7 +535,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return ProfileWebhookSecrets.mask(
+    return ProfileWebhookSecrets.maskForRead(
         getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
   }
 
