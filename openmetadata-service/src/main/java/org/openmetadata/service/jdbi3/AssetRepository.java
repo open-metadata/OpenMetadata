@@ -107,14 +107,9 @@ public class AssetRepository {
     return asset;
   }
 
-  public void markDeleted(String fqnPrefix) {
-    try {
-      dao.markDeletedByFqnPrefix(fqnPrefix);
-      LOG.info("Marked asset {} as deleted", fqnPrefix);
-    } catch (Exception e) {
-      LOG.error("Failed to mark asset {} as deleted: {}", fqnPrefix, e.getMessage(), e);
-      throw e;
-    }
+  /** Marks this attachment deleted; other attachments of its entity are left as they are. */
+  public Asset markDeleted(Asset asset) {
+    return update(asset.withDeleted(true));
   }
 
   public void delete(String id) {

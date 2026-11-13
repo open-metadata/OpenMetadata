@@ -145,18 +145,6 @@ public interface CollectionDAO
                 hash = true)
             String fqnPrefixHash);
 
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE asset_entity SET json = JSON_SET(json, '$.deleted', true) "
-                + "WHERE fqnHash LIKE :prefix",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE asset_entity SET json = jsonb_set(json, '{deleted}', 'true') "
-                + "WHERE fqnHash LIKE :prefix",
-        connectionType = POSTGRES)
-    void markDeletedByFqnPrefix(@BindFQN("prefix") String prefix);
-
     @SqlUpdate("DELETE FROM asset_entity WHERE fqnHash LIKE :prefix")
     void deleteByFqnPrefix(@BindFQN("prefix") String prefix);
 
