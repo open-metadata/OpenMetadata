@@ -3487,6 +3487,7 @@
     "show-log-plural": "Visa loggar",
     "show-meta-details": "Visa metadetaljer",
     "show-more": "Visa mer",
+    "show-more-count": "Visa mer {{shown}}/{{total}}",
     "show-more-entity": "Visa fler {{entity}}",
     "show-more-lowercase": "Visa mer",
     "show-nested": "Visa nästlade",

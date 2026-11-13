@@ -693,7 +693,8 @@ const OntologyDataAssetPicker = ({
 
     return (
       <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-        <span className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-blue-50 tw:text-utility-blue-600">
+        {/* Top-aligned per the redline, not centred on the text. */}
+        <span className="tw:mt-0.75 tw:flex tw:size-8 tw:shrink-0 tw:self-start tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-blue-50 tw:text-utility-blue-600">
           <TypeIcon aria-hidden="true" className="tw:size-4" />
         </span>
         <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
@@ -740,7 +741,7 @@ const OntologyDataAssetPicker = ({
         key={asset.id}>
         <Checkbox
           aria-label={asset.displayName ?? asset.name}
-          boxClassName={isDialog ? undefined : 'tw:mt-1.5'}
+          boxClassName={isDialog ? undefined : 'tw:mt-1'}
           className="tw:min-w-0"
           data-testid={`ontology-data-asset-option-${asset.id}`}
           isDisabled={isLinked}

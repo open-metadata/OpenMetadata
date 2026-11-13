@@ -3487,6 +3487,7 @@
     "show-log-plural": "顯示日誌",
     "show-meta-details": "顯示元數據詳情",
     "show-more": "顯示更多",
+    "show-more-count": "顯示更多 {{shown}}/{{total}}",
     "show-more-entity": "顯示更多 {{entity}}",
     "show-more-lowercase": "顯示更多",
     "show-nested": "顯示嵌套",

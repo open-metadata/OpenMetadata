@@ -3487,6 +3487,7 @@
     "show-log-plural": "Logs anzeigen",
     "show-meta-details": "Meta-Details einblenden",
     "show-more": "Mehr anzeigen",
+    "show-more-count": "Mehr anzeigen {{shown}}/{{total}}",
     "show-more-entity": "Mehr {{entity}} anzeigen",
     "show-more-lowercase": "Mehr anzeigen",
     "show-nested": "Verschachtelte anzeigen",

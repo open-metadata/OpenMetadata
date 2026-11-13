@@ -3487,6 +3487,7 @@
     "show-log-plural": "लॉग दाखवा",
     "show-meta-details": "मेटा तपशील दाखवा",
     "show-more": "अधिक दाखवा",
+    "show-more-count": "अधिक दाखवा {{shown}}/{{total}}",
     "show-more-entity": "अधिक {{entity}} दाखवा",
     "show-more-lowercase": "अधिक दर्शवा",
     "show-nested": "नेस्टेड दर्शवा",

@@ -3487,6 +3487,7 @@
     "show-log-plural": "نمایش لاگ‌ها",
     "show-meta-details": "نمایش جزئیات متا",
     "show-more": "نمایش بیشتر",
+    "show-more-count": "نمایش بیشتر {{shown}}/{{total}}",
     "show-more-entity": "نمایش بیشتر {{entity}}",
     "show-more-lowercase": "نمایش بیشتر",
     "show-nested": "نمایش تودرتو",

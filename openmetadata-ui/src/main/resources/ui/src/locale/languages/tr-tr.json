@@ -3487,6 +3487,7 @@
     "show-log-plural": "Günlükleri Göster",
     "show-meta-details": "Meta Detaylarını Göster",
     "show-more": "Daha Fazla Göster",
+    "show-more-count": "Daha Fazla Göster {{shown}}/{{total}}",
     "show-more-entity": "Daha Fazla {{entity}} Göster",
     "show-more-lowercase": "Daha fazla göster",
     "show-nested": "Yuvalanmışları Göster",

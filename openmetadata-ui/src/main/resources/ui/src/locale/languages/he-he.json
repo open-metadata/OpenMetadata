@@ -3487,6 +3487,7 @@
     "show-log-plural": "הצג יומנים",
     "show-meta-details": "הצג פרטי מטא",
     "show-more": "הצג עוד",
+    "show-more-count": "הצג עוד {{shown}}/{{total}}",
     "show-more-entity": "הצג עוד {{entity}}",
     "show-more-lowercase": "הצג יותר",
     "show-nested": "הצג מקוננים",

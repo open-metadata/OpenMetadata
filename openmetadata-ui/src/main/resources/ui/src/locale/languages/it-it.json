@@ -3487,6 +3487,7 @@
     "show-log-plural": "Mostra Log",
     "show-meta-details": "Mostra Meta Dettagli",
     "show-more": "Mostra Altro",
+    "show-more-count": "Mostra Altro {{shown}}/{{total}}",
     "show-more-entity": "Mostra Altri {{entity}}",
     "show-more-lowercase": "Mostra altro",
     "show-nested": "Mostra Annidati",
