@@ -265,7 +265,9 @@ ruleTester.run(
   uiPatternsPlugin.rules['no-undefined-controlled-prop'],
   {
     valid: [
-      { code: '<Select.ComboBox selectedKey={value ? String(value) : null} />' },
+      {
+        code: '<Select.ComboBox selectedKey={value ? String(value) : null} />',
+      },
       { code: '<Select selectedKey={value ?? null} />' },
       { code: '<Tabs selectedKey={tab} />' },
       // A literal undefined on every render is consistently uncontrolled, never a flip.

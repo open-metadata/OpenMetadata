@@ -395,7 +395,10 @@ const fallsBackToUndefined = (node) => {
       fallsBackToUndefined(node.alternate)
     );
   }
-  if (node?.type === 'LogicalExpression' && ['??', '||'].includes(node.operator)) {
+  if (
+    node?.type === 'LogicalExpression' &&
+    ['??', '||'].includes(node.operator)
+  ) {
     return isUndefinedLiteral(node.right);
   }
 
@@ -420,12 +423,23 @@ const noUndefinedControlledProp = {
         const isComponent =
           opening?.type === 'JSXOpeningElement' &&
           (opening.name.type === 'JSXMemberExpression' ||
-            (opening.name.type === 'JSXIdentifier' && /^[A-Z]/.test(opening.name.name)));
+            (opening.name.type === 'JSXIdentifier' &&
+              /^[A-Z]/.test(opening.name.name)));
         const expression =
-          node.value?.type === 'JSXExpressionContainer' ? node.value.expression : null;
+          node.value?.type === 'JSXExpressionContainer'
+            ? node.value.expression
+            : null;
 
-        if (isComponent && CONTROLLED_PROPS.has(prop) && fallsBackToUndefined(expression)) {
-          context.report({ data: { prop }, messageId: 'undefinedControlledProp', node });
+        if (
+          isComponent &&
+          CONTROLLED_PROPS.has(prop) &&
+          fallsBackToUndefined(expression)
+        ) {
+          context.report({
+            data: { prop },
+            messageId: 'undefinedControlledProp',
+            node,
+          });
         }
       },
     };
