@@ -603,14 +603,24 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   private void deleteAsset(String assetId) {
-    AssetService assetService = AssetServiceFactory.getService();
     Asset asset = null;
     try {
       asset = assetRepository.getById(assetId);
     } catch (Exception ignored) {
       // If the asset metadata is already gone, continue deleting any remaining references.
     }
-    if (asset != null && assetService != null) {
+    if (asset != null) {
+      deleteAsset(asset);
+    } else {
+      assetRepository.delete(assetId);
+    }
+  }
+
+  /** Collate overrides this to retain shared chat assets and select their original store. */
+  public void deleteAsset(Asset asset) {
+    AssetService assetService = AssetServiceFactory.getService();
+    String assetId = asset.getId();
+    if (assetService != null) {
       try {
         assetService
             .delete(asset)

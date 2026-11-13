@@ -296,6 +296,7 @@ const TestSuiteDetail = () => {
       return (
         <div className="tw:w-full">
           <TestSuitePipelineTab
+            deleted={testSuite?.deleted}
             testSuite={testSuite}
             onPipelinesChange={handlePipelinesChange}
           />
