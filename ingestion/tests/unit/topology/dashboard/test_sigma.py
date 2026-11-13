@@ -72,6 +72,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
+    EdgeSourceResponse,
     Elements,
     ElementsResponse,
     NodeDetails,
@@ -409,7 +410,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
-        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True)
+        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True, EdgeSourceResponse())
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -2326,6 +2327,7 @@ def test_fallback_lineage_links_labels_that_differ_from_the_column_in_case_and_s
             for table in (CUSTOMERS, ORDERS)
         ],
         True,
+        EdgeSourceResponse(),
     )
 
     results = list(
@@ -2370,9 +2372,28 @@ MARGIN_LABELS = ["Cost", "MRP", "Total", "Margin"]
 
 
 def formula_column_links(
-    lineage_source, labels: list[str], formulas: dict[str, str], tables: list[Table], all_sources_read: bool = True
+    lineage_source,
+    labels: list[str],
+    formulas: dict[str, str],
+    tables: list[Table],
+    all_sources_read: bool = True,
+    graph: dict | None = None,
+    other_elements: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, dict[str, list[str]]]:
-    """For each table edge of an element without SQL: each data model column it feeds, with the table columns"""
+    """
+    For each table edge of an element without SQL: each data model column it feeds, with the table columns. By
+    default the element's lineage reads each table directly.
+    """
+    graph = graph or {
+        "dependencies": {
+            "Margins": sheet("Margins", "amountByCustomer"),
+            **{
+                table.name.root: {"nodeId": table.name.root, "type": "table", "name": table.name.root}
+                for table in tables
+            },
+        },
+        "edges": [edge(table.name.root, "Margins") for table in tables],
+    }
     element = Elements(elementId="amountByCustomer", name="Margins", vizualizationType="bar", columns=labels)
     data_model = DashboardDataModel(
         id=uuid5(NAMESPACE_URL, AMOUNT_MODEL_FQN),
@@ -2400,8 +2421,11 @@ def formula_column_links(
             for table in tables
         ],
         all_sources_read,
+        EdgeSourceResponse.model_validate(graph),
     )
-    details = MOCK_DASHBOARD_DETAILS.model_copy(update={"formulas": {"amountByCustomer": formulas}})
+    details = MOCK_DASHBOARD_DETAILS.model_copy(
+        update={"formulas": {**(other_elements or {}), "amountByCustomer": formulas}}
+    )
     return {
         either.right.edge.fromEntity.fullyQualifiedName.rsplit(".", 1)[-1]: {
             column.toColumn.root.rsplit(".", 1)[-1]: sorted(
@@ -2428,8 +2452,9 @@ LABELED = {"Cost": ["COST"], "MRP": ["MRP"]}
         ({"Total": "[Margin] + [Cost]", "Margin": "[Total]"}, {"Total": ["COST"], "Margin": ["COST"]}),
         ({"Total": "[Cost] * [Rate-Control]"}, {"Total": ["COST"]}),
         ({"Total": 'If([Cost] > 0, "[MRP]", "none")'}, {"Total": ["COST"]}),
-        # Another element or source, an escape, or nothing of the element: not traced
-        ({"Total": "[COSTS/Cost] + [MRP]"}, {}),
+        ({"Total": "[COSTS/Cost] + [MRP]"}, {"Total": ["COST", "MRP"]}),
+        ({"Total": "[ORDERS/Cost] + [MRP]"}, {"Total": ["MRP"]}),
+        # An escape, or nothing of the element: not traced
         ({"Total": "[Co\\st] + [MRP]"}, {}),
         ({"Total": "[Rate-Control] * 2"}, {}),
         ({"Total": "[cost] + [MRP]"}, {"Total": ["MRP"]}),
@@ -2440,7 +2465,8 @@ LABELED = {"Cost": ["COST"], "MRP": ["MRP"]}
         "cycle",
         "control-adds-nothing",
         "string-literal-is-not-a-reference",
-        "other-element-reference",
+        "a-source-the-element-reads",
+        "a-source-the-element-does-not-read-adds-nothing",
         "escape",
         "no-column-of-the-element",
         "names-match-exactly",
@@ -2465,6 +2491,99 @@ def test_a_computed_column_named_like_a_warehouse_column_takes_its_sources_from_
     links = formula_column_links(lineage_source, MARGIN_LABELS, formulas, [costs_with_total])
 
     assert links == {"COSTS": {**LABELED, "Total": ["COST", "MRP"], "Margin": ["COST", "MRP"]}}
+
+
+COSTS_WITH_TOTAL = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
+
+
+@pytest.mark.parametrize(
+    "formula, total",
+    [
+        ("[COSTS/Cost] * 2", ["COST"]),
+        ("[COSTS/Cost] + [COSTS/Cost]", ["COST"]),
+        ("1", None),
+        ("[ORDERS/Cost] * 2", None),
+        # Three parts name a relationship, even when they read together as a column of the table
+        ("[COSTS/Co/st] * 2", None),
+        ("[COSTS/Cost]", ["COST"]),
+        # A plain copy of a source not found is matched by name, as before
+        ("[ORDERS/Total]", ["TOTAL"]),
+    ],
+    ids=[
+        "source-column",
+        "same-column-twice",
+        "constant",
+        "source-not-read",
+        "relationship",
+        "renamed-copy",
+        "copy-of-unknown-source",
+    ],
+)
+def test_a_calculated_column_never_takes_a_same_named_warehouse_column(lineage_source, formula, total):
+    links = formula_column_links(lineage_source, ["Cost", "MRP", "Total"], {"Total": formula}, [COSTS_WITH_TOTAL])
+
+    assert links["COSTS"].get("Total") == total
+
+
+COSTS_NODE = {"nodeId": "COSTS", "type": "table", "name": "COSTS"}
+# Margins reads the element Prep, which reads COSTS
+THROUGH_PREP = {
+    "dependencies": {
+        "Margins": sheet("Margins", "amountByCustomer"),
+        "Prep": sheet("Prep", "elPrep"),
+        "COSTS": COSTS_NODE,
+    },
+    "edges": [edge("COSTS", "Prep"), edge("Prep", "Margins")],
+}
+PREP = {"Cost": "[COSTS/Cost]", "MRP": "[COSTS/MRP]", "Margin": "[MRP] - [Cost]"}
+# Margins reads an element named like the table it is built on
+ELEMENT_NAMED_LIKE_ITS_TABLE = {
+    "dependencies": {
+        "Margins": sheet("Margins", "amountByCustomer"),
+        "sheetCosts": {**sheet("sheetCosts", "elCosts"), "name": "COSTS"},
+        "COSTS": COSTS_NODE,
+    },
+    "edges": [edge("COSTS", "sheetCosts"), edge("sheetCosts", "Margins")],
+}
+# Margins reads the table COSTS and an element named COSTS
+TWO_SOURCES_NAMED_COSTS = {
+    **ELEMENT_NAMED_LIKE_ITS_TABLE,
+    "edges": [edge("COSTS", "Margins"), edge("sheetCosts", "Margins")],
+}
+PREP_READS_MARGINS = {
+    **THROUGH_PREP,
+    "edges": [edge("Prep", "Margins"), edge("Margins", "Prep")],
+}
+
+
+@pytest.mark.parametrize(
+    "graph, formula, other_elements, total",
+    [
+        (THROUGH_PREP, "[Prep/Margin] * 2", {"elPrep": PREP}, ["COST", "MRP"]),
+        (THROUGH_PREP, "[Prep/Cost]", {"elPrep": PREP}, ["COST"]),
+        (ELEMENT_NAMED_LIKE_ITS_TABLE, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, ["COST"]),
+        (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
+        (PREP_READS_MARGINS, "[Prep/Margin] * 2", {"elPrep": {"Margin": "[Margins/Total]"}}, None),
+    ],
+    ids=[
+        "calculated-column-of-another-element",
+        "copy-in-another-element",
+        "element-named-like-its-table",
+        "two-sources-of-that-name",
+        "elements-reading-each-other",
+    ],
+)
+def test_a_calculated_column_follows_the_element_it_reads(lineage_source, graph, formula, other_elements, total):
+    links = formula_column_links(
+        lineage_source,
+        ["Total"],
+        {"Total": formula},
+        [COSTS_WITH_TOTAL],
+        graph=graph,
+        other_elements=other_elements,
+    )
+
+    assert links["COSTS"].get("Total") == total
 
 
 def test_a_computed_column_reading_two_tables_is_linked_from_each(lineage_source):

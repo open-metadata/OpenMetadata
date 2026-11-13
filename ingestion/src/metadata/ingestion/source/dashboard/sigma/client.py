@@ -394,10 +394,12 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch queries for workbook {workbook_id}: {exc}")
         return None
 
-    def get_lineage_details(self, workbook_id: str, element_id: str) -> tuple[list[NodeDetails], bool] | None:
+    def get_lineage_details(
+        self, workbook_id: str, element_id: str
+    ) -> tuple[list[NodeDetails], bool, EdgeSourceResponse] | None:
         """
-        Fetch an element's source tables, and whether every source was read as a table: a source that failed
-        to read, or is not a table, could hold columns the returned tables do not
+        Fetch an element's source tables, whether every source was read as a table (a source that failed to read, or
+        is not a table, could hold columns the returned tables do not), and the element's lineage graph
         """
         try:
             source_nodes = []
@@ -420,7 +422,7 @@ class SigmaApiClient:
                 else:
                     all_sources_read = False
 
-            return (source_nodes, all_sources_read) if source_nodes else None  # noqa: TRY300
+            return (source_nodes, all_sources_read, edges_response) if source_nodes else None  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch lineage details for workbook {workbook_id}, element {element_id}: {exc}")

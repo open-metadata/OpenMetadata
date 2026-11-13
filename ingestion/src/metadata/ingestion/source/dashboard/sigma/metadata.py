@@ -76,6 +76,9 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     DataModel,
+    Dependency,
+    EdgeSource,
+    EdgeSourceResponse,
     Elements,
     NodeDetails,
     Workbook,
@@ -135,28 +138,63 @@ _STRING_LITERAL = re.compile(r'"[^"]*"')
 _SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]/]+/[^\[\]]+\]\s*")
 
 
-def _same_element_references(formula: str) -> list[str] | None:
-    """
-    The names a formula reads as bare [Name] references, which name columns of its own element (or controls).
-    None when it also reads another element or source ([Name/Column]) or holds an escape: Sigma does not
-    document how those resolve.
-    """
-    if "\\" in formula:
-        return None
-    references = _BRACKET_REFERENCE.findall(_STRING_LITERAL.sub("", formula))
-    return None if any("/" in reference for reference in references) else references
+def _references(formula: str) -> list[str]:
+    """The [...] references a formula reads outside string literals; none when it holds an escape, which Sigma does not document"""
+    return [] if "\\" in formula else _BRACKET_REFERENCE.findall(_STRING_LITERAL.sub("", formula))
 
 
-def _columns_read(label: str, labels: list[str], formulas: dict[str, str]) -> list[str]:
-    """The other columns of its own element a column's formula reads; empty for a column not computed from them"""
-    references = _same_element_references(formulas.get(label, "")) or []
-    return [reference for reference in references if reference in labels]
+def _formula_sources(
+    element_id: str,
+    graph: EdgeSourceResponse,
+    formulas: dict[str, dict[str, str]],
+    tables: dict[str, Table],
+    visiting: frozenset[str] = frozenset(),
+) -> tuple[dict[str, list[tuple[str, str]]], dict[str, list[str]]]:
+    """
+    For each column of an element: the sources its [Source/Column] references name, and the columns of its own
+    element its [Column] references read (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-a-calculated-column-takes-its-lineage-only-from-its-formula).
+    A source is the one node of that exact name the element reads directly in its lineage graph: a table gives its
+    one column of that name, another element that element's column, traced the same way. A name matching no source
+    or several, a relationship ([Element/Relationship/Column]) or an escape adds nothing.
+    """
+    own = {key for key, node in graph.dependencies.items() if node.type == "sheet" and node.elementId == element_id}
+    direct: dict[str, dict[str, Dependency]] = {}
+    for edge in graph.edges or []:
+        if edge.target in own and (node := graph.dependencies.get(edge.source)) and node.name:
+            direct.setdefault(node.name, {})[edge.source] = node
+    sources: dict[str, list[tuple[str, str]]] = {}
+    read: dict[str, list[str]] = {}
+    for column, formula in formulas.get(element_id, {}).items():
+        for reference in _references(formula):
+            name, _, source_column = reference.partition("/")
+            nodes = list(direct.get(name, {}).values())
+            if not source_column:
+                read.setdefault(column, []).append(name)
+            elif "/" in source_column or len(nodes) != 1:
+                continue
+            elif nodes[0].type == "table" and (table := tables.get(EdgeSource(source=nodes[0].nodeId).node_id or "")):
+                matches = [
+                    found.fullyQualifiedName
+                    for found in table.columns or []
+                    if found.fullyQualifiedName
+                    and normalize_column_name(found.name.root) == normalize_column_name(source_column)
+                ]
+                if len(matches) == 1:
+                    sources.setdefault(column, []).append((model_str(table.id), model_str(matches[0])))
+            elif nodes[0].type == "sheet" and nodes[0].elementId and nodes[0].elementId not in visiting:
+                # ponytail: the element read is traced again per reference; memoize per element if chains get deep
+                found, found_read = _formula_sources(
+                    nodes[0].elementId, graph, formulas, tables, visiting | {element_id}
+                )
+                _inherit_formula_sources(found, found_read)
+                sources.setdefault(column, []).extend(found.get(source_column, []))
+    return {column: list(dict.fromkeys(found)) for column, found in sources.items()}, read
 
 
 def _inherit_formula_sources(sources: dict[str, list[tuple[str, str]]], columns_read: dict[str, list[str]]) -> None:
     """
     Give each column computed from other columns of its own element the sources of those columns, directly or
-    through other computed columns (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-trace-only-same-element-columns).
+    through other computed columns (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-a-calculated-column-takes-its-lineage-only-from-its-formula).
     Sources only grow, so a cycle of references ends.
     """
     changed = True
@@ -482,14 +520,19 @@ class SigmaSource(DashboardServiceSource):
             if not lineage:
                 return
 
-            nodes, all_sources_read = lineage
-            tables = [table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))]
+            nodes, all_sources_read, graph = lineage
+            resolved = [
+                (node.id, table)
+                for node in nodes
+                if (table := self._get_table_entity_from_node(node, db_service_prefix))
+            ]
             yield from self._yield_table_and_column_lineage(
-                tables,
+                [table for _, table in resolved],
                 data_model_entity,
                 data_model.columns,
                 dashboard_details.formulas.get(data_model.elementId, {}),
-                all_sources_found=all_sources_read and len(tables) == len(nodes),
+                _formula_sources(data_model.elementId, graph, dashboard_details.formulas, dict(resolved)),
+                all_sources_found=all_sources_read and len(resolved) == len(nodes),
             )
         except Exception as exc:
             yield Either(
@@ -506,21 +549,24 @@ class SigmaSource(DashboardServiceSource):
         data_model_entity: DashboardDataModel,
         labels: list[str] | None,
         formulas: dict[str, str],
+        formula_sources: tuple[dict[str, list[tuple[str, str]]], dict[str, list[str]]],
         all_sources_found: bool,
     ):
         """
-        One edge per source table of an element, carrying the columns it feeds. Sigma labels warehouse
-        columns for reading (CUSTOMER_NAME shows as "Customer Name"), so names are compared
-        normalized. Lineage must not guess, so a label is linked only when every source of the element was
-        found (a missing one could hold the column too) and exactly one column across its tables matches.
-        A column computed from other columns of the element gets their sources, read from its formula.
+        One edge per source table of an element, carrying the columns it feeds. A column takes the sources its
+        formula names. Otherwise its label is matched by name: Sigma labels warehouse columns for reading
+        (CUSTOMER_NAME shows as "Customer Name"), so names are compared normalized. Lineage must not guess, so a
+        column is linked only when every source of the element was found (a missing one could hold the column too),
+        a label only when exactly one column across its tables matches, and a calculated column never by its name.
         """
         labels = labels or []
-        # A computed column takes its sources from its formula, not from a warehouse column that shares its name
-        columns_read = {label: read for label in labels if (read := _columns_read(label, labels, formulas))}
-        sources: dict[str, list[tuple[str, str]]] = {}
+        traced, columns_read = formula_sources
+        calculated = {
+            label for label in labels if (formula := formulas.get(label)) and not _SOURCE_REFERENCE.fullmatch(formula)
+        }
+        sources = {label: found for label, found in traced.items() if found} if all_sources_found else {}
         for label in labels if all_sources_found else []:
-            if label in columns_read:
+            if label in calculated or label in sources:
                 continue
             matches = [
                 (model_str(table.id), model_str(column_fqn))
