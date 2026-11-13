@@ -79,7 +79,7 @@
             </goals>
             <configuration>
               <!-- Must match openmetadata-ui/src/main/resources/ui/.nvmrc (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin). -->
-              <nodeVersion>v22.23.4</nodeVersion>
+              <nodeVersion>v22.23.5</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
               <skip>${skip.ui.build}</skip>
             </configuration>
