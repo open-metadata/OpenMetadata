@@ -1041,45 +1041,69 @@ export const expectRunTestCaseDisabledWithReason = async (
 };
 
 /**
- * Creates a table-level test definition plus one test case that uses it, and
- * waits until the test case search index lists it under that definition — the
- * test definition details panel reads its linked test cases from that index.
+ * Creates a table-level test definition plus one test case that uses it, runs
+ * `check` once the test case search index lists it under that definition (the
+ * details panel reads its linked test cases from that index), and always cleans
+ * up whatever was created, even when a step fails part-way.
  */
-export const createTestDefinitionWithTestCase = async (
-  apiContext: APIRequestContext,
-  table: TableClass
+export const withTestDefinitionAndTestCase = async (
+  page: Page,
+  check: (data: {
+    definitionFqn: string;
+    testCaseName: string;
+  }) => Promise<void>
 ) => {
-  const definition = await okJson<{ id: string; fullyQualifiedName: string }>(
-    await apiContext.post('/api/v1/dataQuality/testDefinitions', {
-      data: {
-        name: `pwTestDefinitionDetails${uuid()}`,
-        description: 'Playwright test definition details',
-        entityType: 'TABLE',
-        testPlatforms: ['OpenMetadata'],
-      },
-    }),
-    'createTestDefinitionWithTestCase'
-  );
-  const testCase = await table.createTestCase(apiContext, {
-    testDefinition: definition.fullyQualifiedName,
-    parameterValues: [],
-  });
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  let definitionId: string | undefined;
 
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext.get(
-          '/api/v1/dataQuality/testCases/search/list',
-          { params: { testDefinition: definition.fullyQualifiedName } }
-        );
+  try {
+    const definition = await okJson<{ id: string; fullyQualifiedName: string }>(
+      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
+        data: {
+          name: `pwTestDefinitionDetails${uuid()}`,
+          description: 'Playwright test definition details',
+          entityType: 'TABLE',
+          testPlatforms: ['OpenMetadata'],
+        },
+      }),
+      'withTestDefinitionAndTestCase'
+    );
+    definitionId = definition.id;
+    const testCase = await table.createTestCase(apiContext, {
+      testDefinition: definition.fullyQualifiedName,
+      parameterValues: [],
+    });
 
-        return (await response.json()).paging?.total;
-      },
-      { timeout: 60_000 }
-    )
-    .toBe(1);
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/dataQuality/testCases/search/list',
+            { params: { testDefinition: definition.fullyQualifiedName } }
+          );
 
-  return { definition, testCase };
+          return (await response.json()).paging?.total;
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(1);
+
+    await check({
+      definitionFqn: definition.fullyQualifiedName,
+      testCaseName: testCase.name,
+    });
+  } finally {
+    if (table.entityResponseData?.id) {
+      await table.delete(apiContext);
+    }
+    if (definitionId) {
+      await apiContext.delete(
+        `/api/v1/dataQuality/testDefinitions/${definitionId}?hardDelete=true&recursive=true`
+      );
+    }
+    await afterAction();
+  }
 };
 
 /**

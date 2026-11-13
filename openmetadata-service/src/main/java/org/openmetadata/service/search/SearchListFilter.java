@@ -370,7 +370,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     }
 
     // ADR:2026-11-12-test-cases-filter-by-test-definition-through-search-list
-    if (!nullOrEmpty(testDefinition) && !testDefinition.isBlank()) {
+    if (testDefinition != null && !testDefinition.isBlank()) {
       conditions.add(
           String.format(
               "{\"term\": {\"testDefinition.fullyQualifiedName\": \"%s\"}}",

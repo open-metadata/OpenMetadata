@@ -13,7 +13,6 @@
 import test, { expect, Locator, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
-import { TableClass } from '../../../support/entity/TableClass';
 import {
   getApiContext,
   redirectToHomePage,
@@ -23,9 +22,9 @@ import {
 import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import {
-  createTestDefinitionWithTestCase,
   findSystemTestDefinition,
   openTestDefinitionDetailsFromLibrary,
+  withTestDefinitionAndTestCase,
 } from '../../../utils/testCases';
 import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
@@ -99,27 +98,16 @@ test.describe(
     test('should open a test definition from its name and list its test cases', async ({
       page,
     }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const table = new TableClass();
-      const { definition, testCase } = await createTestDefinitionWithTestCase(
-        apiContext,
-        table
+      await withTestDefinitionAndTestCase(
+        page,
+        ({ definitionFqn, testCaseName }) =>
+          openTestDefinitionDetailsFromLibrary(
+            page,
+            '/test-library',
+            definitionFqn,
+            testCaseName
+          )
       );
-
-      try {
-        await openTestDefinitionDetailsFromLibrary(
-          page,
-          '/test-library',
-          definition.fullyQualifiedName,
-          testCase.name
-        );
-      } finally {
-        await table.delete(apiContext);
-        await apiContext.delete(
-          `/api/v1/dataQuality/testDefinitions/${definition.id}?hardDelete=true&recursive=true`
-        );
-        await afterAction();
-      }
     });
 
     test('should display test definitions table with columns', async ({

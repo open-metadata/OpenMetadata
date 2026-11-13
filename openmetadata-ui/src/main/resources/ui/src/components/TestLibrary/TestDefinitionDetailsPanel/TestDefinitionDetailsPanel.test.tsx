@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
@@ -19,8 +19,6 @@ import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import TestDefinitionDetailsPanel, {
   TestDefinitionDetailsPanelProps,
 } from './TestDefinitionDetailsPanel';
-
-const mockShowErrorToast = jest.fn();
 
 const TEST_DEFINITION = {
   id: 'def-1',
@@ -48,10 +46,6 @@ const TEST_CASES = [
 
 jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
-}));
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: (error: unknown) => mockShowErrorToast(error),
 }));
 
 jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
@@ -142,11 +136,15 @@ describe('TestDefinitionDetailsPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should toast a failed test case load', async () => {
-    const error = { response: { status: 500 } };
-    (getListTestCaseBySearch as jest.Mock).mockRejectedValue(error);
+  it('should report a failed test case load instead of showing no test cases', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValue({
+      response: { status: 500 },
+    });
     renderPanel();
 
-    await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(error));
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('linked-test-cases')).not.toBeInTheDocument();
   });
 });

@@ -855,5 +855,24 @@ describe('useTestDefinitionListPage', () => {
         MOCK_TEST_DEFINITIONS[1]
       );
     });
+
+    it('should offer edit in the panel when the definition grants EditAll', async () => {
+      mockGetEntityPermissionByFqn.mockResolvedValue({
+        ...MOCK_PERMISSION_API_RESPONSE,
+        permissions: [
+          ...MOCK_PERMISSION_API_RESPONSE.permissions,
+          { operation: 'EditAll', access: Access.Allow },
+        ],
+      });
+      const { result } = await renderAndSettle();
+
+      act(() => {
+        result.current.openDetails(MOCK_TEST_DEFINITIONS[0]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.canEditViewedDefinition).toBe(true);
+      });
+    });
   });
 });

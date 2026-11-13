@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   INITIAL_PAGING_VALUE,
@@ -19,7 +18,6 @@ import {
 } from '../../../constants/constants';
 import { TEST_SUITE_TEST_CASE_FIELDS } from '../../../rest/queries/testSuiteQuery';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   NextPreviousProps,
   PagingHandlerParams,
@@ -40,7 +38,7 @@ export const useTestDefinitionTestCases = (fqn?: string) => {
     setCurrentPage(INITIAL_PAGING_VALUE);
   }, [fqn]);
 
-  const { data, error, isFetching, refetch } = useQuery({
+  const { data, isError, isFetching, refetch } = useQuery({
     queryKey: ['testDefinitionTestCases', fqn, currentPage, pageSize],
     queryFn: () =>
       getListTestCaseBySearch({
@@ -53,12 +51,6 @@ export const useTestDefinitionTestCases = (fqn?: string) => {
     enabled: Boolean(fqn),
     placeholderData: keepPreviousData,
   });
-
-  useEffect(() => {
-    if (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [error]);
 
   const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
@@ -85,6 +77,7 @@ export const useTestDefinitionTestCases = (fqn?: string) => {
   return {
     testCases: data?.data ?? [],
     entityPermissions: data?.entityPermissions,
+    isError,
     isLoading: isFetching,
     showPagination: (data?.paging.total ?? 0) > 0,
     pagingData,

@@ -105,13 +105,7 @@ export const useTestDefinitionListPage = () => {
     handleFormCancel,
   } = useTestDefinitionModals({ setTestDefinitions, resetPagingAndRefetch });
 
-  // Kept as an id and read back from the list, so an edit saved from the panel
-  // (which updates the row in place) shows up in the panel too.
-  const [viewedDefinitionId, setViewedDefinitionId] = useState<string>();
-  const viewedDefinition = useMemo(
-    () => testDefinitions.find(({ id }) => id === viewedDefinitionId),
-    [testDefinitions, viewedDefinitionId]
-  );
+  const [viewedDefinition, setViewedDefinition] = useState<TestDefinition>();
   const canEditViewedDefinition = viewedDefinition
     ? getDerivedPermissionFlags(
         testDefinitionPermissions[viewedDefinition.name] ??
@@ -119,13 +113,13 @@ export const useTestDefinitionListPage = () => {
       ).canEditAll
     : false;
   const openDetails = useCallback(
-    (record: TestDefinition) => setViewedDefinitionId(record.id),
+    (record: TestDefinition) => setViewedDefinition(record),
     []
   );
-  const closeDetails = useCallback(() => setViewedDefinitionId(undefined), []);
+  const closeDetails = useCallback(() => setViewedDefinition(undefined), []);
   const editFromDetails = useCallback(
     (record: TestDefinition) => {
-      setViewedDefinitionId(undefined);
+      setViewedDefinition(undefined);
       handleEdit(record);
     },
     [handleEdit]

@@ -24,8 +24,8 @@ import { expectFormHint } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
 import {
-  createTestDefinitionWithTestCase,
   openTestDefinitionDetailsFromLibrary,
+  withTestDefinitionAndTestCase,
 } from '../../../utils/testCases';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
@@ -54,27 +54,16 @@ test.describe('AI mode Observability', () => {
     page,
   }) => {
     await redirectToAiModeHomePage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
-    const { definition, testCase } = await createTestDefinitionWithTestCase(
-      apiContext,
-      table
+    await withTestDefinitionAndTestCase(
+      page,
+      ({ definitionFqn, testCaseName }) =>
+        openTestDefinitionDetailsFromLibrary(
+          page,
+          '/observability/test-library',
+          definitionFqn,
+          testCaseName
+        )
     );
-
-    try {
-      await openTestDefinitionDetailsFromLibrary(
-        page,
-        '/observability/test-library',
-        definition.fullyQualifiedName,
-        testCase.name
-      );
-    } finally {
-      await table.delete(apiContext);
-      await apiContext.delete(
-        `/api/v1/dataQuality/testDefinitions/${definition.id}?hardDelete=true&recursive=true`
-      );
-      await afterAction();
-    }
   });
 
   test.describe('Page Rendering', () => {

@@ -20,11 +20,13 @@ import {
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   TestCaseParameterDefinition,
   TestDefinition,
 } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { useTestDefinitionTestCases } from './useTestDefinitionTestCases';
@@ -51,7 +53,7 @@ const DetailItem = ({
       {label}
     </Typography>
     <Typography as="dd" className="tw:m-0" size="text-sm">
-      {value || '--'}
+      {value || NO_DATA_PLACEHOLDER}
     </Typography>
   </Box>
 );
@@ -150,6 +152,7 @@ const TestDefinitionDetailsPanel = ({
   const {
     testCases,
     entityPermissions,
+    isError,
     isLoading,
     showPagination,
     pagingData,
@@ -200,16 +203,22 @@ const TestDefinitionDetailsPanel = ({
                   <Typography as="h3" size="text-md" weight="semibold">
                     {t('label.test-case-plural')}
                   </Typography>
-                  <DataQualityTab
-                    afterDeleteAction={refetchTestCases}
-                    entityPermissions={entityPermissions}
-                    isLoading={isLoading}
-                    pagingData={pagingData}
-                    showPagination={showPagination}
-                    testCases={testCases}
-                    onTestCaseResultUpdate={refetchTestCases}
-                    onTestUpdate={refetchTestCases}
-                  />
+                  {isError ? (
+                    <div className="tw:relative tw:min-h-60 tw:w-full">
+                      <SomethingWentWrongPlaceholder />
+                    </div>
+                  ) : (
+                    <DataQualityTab
+                      afterDeleteAction={refetchTestCases}
+                      entityPermissions={entityPermissions}
+                      isLoading={isLoading}
+                      pagingData={pagingData}
+                      showPagination={showPagination}
+                      testCases={testCases}
+                      onTestCaseResultUpdate={refetchTestCases}
+                      onTestUpdate={refetchTestCases}
+                    />
+                  )}
                 </Box>
               </Box>
             </SlideoutMenu.Content>
