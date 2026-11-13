@@ -14,6 +14,7 @@ import org.openmetadata.service.security.listaccess.RowPredicate.InDomains;
 import org.openmetadata.service.security.listaccess.RowPredicate.NoDomain;
 import org.openmetadata.service.security.listaccess.RowPredicate.Not;
 import org.openmetadata.service.security.listaccess.RowPredicate.OwnedBy;
+import org.openmetadata.service.security.listaccess.RowPredicate.OwnerUnderTeams;
 import org.openmetadata.service.security.listaccess.ValueSource.Absent;
 import org.openmetadata.service.security.listaccess.ValueSource.Inherited;
 import org.openmetadata.service.security.listaccess.ValueSource.Own;
@@ -104,6 +105,19 @@ class SqlRowFilterRendererTest {
     assertEquals(
         "(ue.id IN ('00000000-0000-0000-0000-000000000001'))",
         sql(new OwnedBy(Set.of(USER)), USERS, "ue"));
+  }
+
+  @Test
+  void aUserRowIsUnderATeamOnlyWhileTheUserIsLive() {
+    UUID team = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+    assertEquals(
+        "(ue.id IN (SELECT la1.toId FROM entity_relationship la1"
+            + " WHERE la1.fromId IN ('00000000-0000-0000-0000-000000000002')"
+            + " AND la1.fromEntity = 'team' AND la1.toEntity = 'user' AND la1.relation = 10"
+            + " AND la1.deleted = FALSE AND EXISTS (SELECT 1 FROM user_entity la2"
+            + " WHERE la2.id = la1.toId AND la2.deleted = FALSE)))",
+        sql(new OwnerUnderTeams(Set.of(team)), USERS, "ue"));
   }
 
   @Test

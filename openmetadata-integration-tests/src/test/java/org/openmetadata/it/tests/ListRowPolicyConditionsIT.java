@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URLEncoder;
@@ -10,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -62,9 +64,10 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ListRowPolicyConditionsIT {
-  // A team's policies reach callers outside it through a snapshot that a policy change replaces
-  // and that otherwise expires after two minutes (SubjectCache.POLICIES_TTL).
-  private static final Duration TEAM_POLICY_REFRESH = Duration.ofMinutes(3);
+  // A policy change bumps the policy generation as the writing request returns, so the snapshot of
+  // team policies is replaced before the next listing; the bound only absorbs a read that races
+  // the change.
+  private static final Duration TEAM_POLICY_REFRESH = Duration.ofSeconds(30);
 
   private record Member(User user, OpenMetadataClient client) {
     EntityReference reference() {
@@ -176,7 +179,7 @@ public class ListRowPolicyConditionsIT {
     Team department = team(ns, "department", CreateTeam.TeamType.DEPARTMENT, null);
     Team group = team(ns, "group", CreateTeam.TeamType.GROUP, department.getId());
     Team sibling = team(ns, "sibling", CreateTeam.TeamType.GROUP, department.getId());
-    attachTeamOnlyPolicy(ns, department);
+    attachTeamOnlyPolicy(ns, department, Entity.TABLE);
     Member member = member(ns, "member", List.of(), List.of(group.getId()), List.of());
     Member colleague = member(ns, "colleague", List.of(), List.of(group.getId()), List.of());
     Member outsider = member(ns, "outsider", List.of(), List.of(), List.of());
@@ -224,7 +227,7 @@ public class ListRowPolicyConditionsIT {
     assertEquals(underDepartment, readable(member, tables));
     Awaitility.await()
         .atMost(TEAM_POLICY_REFRESH)
-        .pollInterval(Duration.ofSeconds(2))
+        .pollInterval(Duration.ofMillis(250))
         .untilAsserted(
             () -> {
               assertEquals(
@@ -258,6 +261,63 @@ public class ListRowPolicyConditionsIT {
     assertEquals(1, roots.total());
     assertEquals(List.of("a_owned_by_caller", "c_child_owned_by_caller"), everyContainer.names());
     assertEquals(2, everyContainer.total());
+  }
+
+  /**
+   * A deleted user keeps its membership rows, yet the item endpoint cannot resolve it, so it sits
+   * under no team there. The listing must leave it out as well.
+   */
+  @Test
+  void aTeamRuleLeavesOutSoftDeletedMembersOfItsTeamWhenListingUsers(TestNamespace ns)
+      throws Exception {
+    Team group = team(ns, "members", CreateTeam.TeamType.GROUP, null);
+    attachTeamOnlyPolicy(ns, group, Entity.USER);
+    Member caller = member(ns, "live", List.of(), List.of(group.getId()), List.of());
+    Member colleague = member(ns, "colleague", List.of(), List.of(group.getId()), List.of());
+    Member leaver = member(ns, "leaver", List.of(), List.of(group.getId()), List.of());
+    SdkClients.adminClient().users().delete(leaver.user().getId());
+    List<String> live = List.of(caller.user().getName(), colleague.user().getName());
+
+    Listing everyUser = list(caller, "/v1/users?include=all&limit=100", "fullyQualifiedName");
+    Listing deletedUsers =
+        list(caller, "/v1/users?include=deleted&limit=100", "fullyQualifiedName");
+
+    assertEquals(live.stream().sorted().toList(), everyUser.names().stream().sorted().toList());
+    assertEquals(2, everyUser.total());
+    assertEquals(List.of(), deletedUsers.names());
+    assertEquals(0, deletedUsers.total());
+    assertThrows(
+        ForbiddenException.class,
+        () -> caller.client().users().get(leaver.user().getId().toString(), null, "deleted"));
+  }
+
+  /**
+   * A policy keeps listing a deleted team, and the item endpoint never resolves a deleted team as an
+   * owner's parent. A group restored under a deleted department is therefore under no department.
+   */
+  @Test
+  void aRowOwnedByAGroupUnderADeletedDepartmentIsListedWhereItsItemEndpointReadsIt(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Team department = team(ns, "gone", CreateTeam.TeamType.DEPARTMENT, null);
+    Team group = team(ns, "kept", CreateTeam.TeamType.GROUP, department.getId());
+    attachTeamOnlyPolicy(ns, department, Entity.TABLE);
+    Member outsider = member(ns, "outsider", List.of(), List.of(), List.of());
+    DatabaseSchema schema = schema(database(ns, "goneDb", List.of()), "gone", List.of(), List.of());
+    Table owned = table(schema, "owned_by_group", List.of(group.getEntityReference()), List.of());
+    admin.teams().delete(department.getId().toString(), Map.of("recursive", "true"));
+    admin.teams().restore(group.getId());
+
+    Awaitility.await()
+        .atMost(TEAM_POLICY_REFRESH)
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              assertEquals(List.of("owned_by_group"), readable(outsider, List.of(owned)));
+              Listing listed = listTables(outsider, schema);
+              assertEquals(List.of("owned_by_group"), listed.names());
+              assertEquals(1, listed.total());
+            });
   }
 
   private static OwnedTables ownedTables(TestNamespace ns) {
@@ -307,7 +367,8 @@ public class ListRowPolicyConditionsIT {
    * Attaches a policy shaped like the seeded TeamOnlyPolicy to {@code team} through a team update,
    * which replaces the snapshot of team policies that callers outside the team are checked against.
    */
-  private static void attachTeamOnlyPolicy(TestNamespace ns, Team team) throws Exception {
+  private static void attachTeamOnlyPolicy(TestNamespace ns, Team team, String resource)
+      throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Policy policy =
         ns.trackRoot(
@@ -317,8 +378,8 @@ public class ListRowPolicyConditionsIT {
                 .create(
                     new CreatePolicy()
                         .withName(ns.prefix("teamOnly"))
-                        .withDescription("Hides tables owned outside the team")
-                        .withRules(List.of(deny(Entity.TABLE, "!matchTeam()")))));
+                        .withDescription("Hides rows owned outside the team")
+                        .withRules(List.of(deny(resource, "!matchTeam()")))));
     admin
         .teams()
         .patch(
@@ -450,11 +511,15 @@ public class ListRowPolicyConditionsIT {
   }
 
   private static Listing list(Member caller, String path) throws Exception {
+    return list(caller, path, "name");
+  }
+
+  private static Listing list(Member caller, String path, String nameField) throws Exception {
     JsonNode page =
         JsonUtils.readTree(
             caller.client().getHttpClient().executeForString(HttpMethod.GET, path, null));
     List<String> names = new ArrayList<>();
-    page.path("data").forEach(row -> names.add(row.path("name").asText()));
+    page.path("data").forEach(row -> names.add(row.path(nameField).asText()));
     JsonNode paging = page.path("paging");
     return new Listing(names, paging.path("total").asInt(-1), paging.path("after").asText(null));
   }

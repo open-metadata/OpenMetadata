@@ -11,10 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.listaccess.RowPredicate.And;
 import org.openmetadata.service.security.listaccess.RowPredicate.Approx;
 import org.openmetadata.service.security.listaccess.RowPredicate.ApproxReason;
 import org.openmetadata.service.security.listaccess.RowPredicate.InDomains;
 import org.openmetadata.service.security.listaccess.RowPredicate.NoDomain;
+import org.openmetadata.service.security.listaccess.RowPredicate.NoOwner;
 import org.openmetadata.service.security.listaccess.RowPredicate.Not;
 import org.openmetadata.service.security.listaccess.RowPredicate.Or;
 import org.openmetadata.service.security.listaccess.RowPredicate.OwnedBy;
@@ -25,6 +27,7 @@ import org.openmetadata.service.security.listaccess.TeamTree.TeamSubtree;
 import org.openmetadata.service.security.listaccess.ValueSource.Absent;
 import org.openmetadata.service.security.listaccess.ValueSource.Inherited;
 import org.openmetadata.service.security.listaccess.ValueSource.Own;
+import org.openmetadata.service.security.listaccess.ValueSource.Uncovered;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 
 /**
@@ -225,6 +228,79 @@ class RowFilterCompilerTest {
     RowFilter rows = compiler.compile(new ListTarget(Entity.ONTOLOGY_CONCEPT, VIEW, concepts));
 
     assertEquals(new RowFilter.Where(new OwnedBy(Set.of(USER, TEAM))), rows);
+  }
+
+  @Test
+  void aDenyJoinedWithAndLeavesTheRowsThatMeetEitherHalfOfItsNegation() {
+    RowFilter rows =
+        compile(member(VIEW_ALL, deny("both", "!isOwner() && !hasDomain()")), List.of());
+
+    assertEquals(
+        where(
+            REVIEWER,
+            new Not(
+                new And(
+                    List.of(
+                        new Not(new OwnedBy(Set.of(USER, TEAM))),
+                        new Not(RowPredicate.or(new NoDomain(), new InDomains(Set.of(DOMAIN)))))))),
+        rows);
+    assertTrue(rows.exact());
+  }
+
+  @Test
+  void aDenyJoinedWithOrLeavesOnlyTheRowsThatMeetBothHalvesOfItsNegation() {
+    RowFilter rows =
+        compile(member(VIEW_ALL, deny("either", "!isOwner() || !hasDomain()")), List.of());
+
+    assertEquals(
+        where(
+            REVIEWER,
+            new Not(
+                new Or(
+                    List.of(
+                        new Not(new OwnedBy(Set.of(USER, TEAM))),
+                        new Not(RowPredicate.or(new NoDomain(), new InDomains(Set.of(DOMAIN)))))))),
+        rows);
+    assertTrue(rows.exact());
+  }
+
+  @Test
+  void aDenyOutsideTheUnownedRowsLeavesOnlyTheUnownedRows() {
+    RowFilter rows = compile(member(VIEW_ALL, deny("owned", "!noOwner()")), List.of());
+
+    assertEquals(where(REVIEWER, new NoOwner()), rows);
+    assertTrue(rows.exact());
+  }
+
+  @Test
+  void aDenyOutsideTheUndomainedRowsLeavesOnlyTheUndomainedRows() {
+    RowFilter rows = compile(member(VIEW_ALL, deny("domained", "!noDomain()")), List.of());
+
+    assertEquals(where(REVIEWER, new NoDomain()), rows);
+    assertTrue(rows.exact());
+  }
+
+  @Test
+  void ownerAndDomainConditionsOnATypeWithoutStorageAreApproximatedAndCheckedPerRow() {
+    RowStorage uncovered =
+        new RowStorage(
+            Entity.DIRECTORY,
+            "directory_entity",
+            "fqnHash",
+            new Uncovered(),
+            new Uncovered(),
+            new Uncovered(),
+            false);
+    RowPredicate approximated = RowPredicate.unknown(ApproxReason.TYPE_NOT_COVERED);
+
+    for (String condition : List.of("!isOwner()", "!hasDomain()", "!noOwner()", "!noDomain()")) {
+      RowFilter rows =
+          new RowFilterCompiler(member(VIEW_ALL, deny("d", condition)), TEAMS, List.of())
+              .compile(new ListTarget(Entity.DIRECTORY, VIEW, uncovered));
+
+      assertEquals(new RowFilter.Where(approximated), rows, condition);
+      assertFalse(rows.exact(), condition);
+    }
   }
 
   private static RowFilter compile(Caller caller, List<TeamDenies> teamDenies) {

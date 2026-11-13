@@ -3,6 +3,7 @@ package org.openmetadata.service.security.listaccess;
 import static java.util.Map.entry;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -88,6 +89,11 @@ final class RowStorages {
         source(repository.isSupportsDomains(), declared.domains(), RowStorage::domains),
         reviewers(repository.isSupportsReviewers(), declared),
         repository.isSupportsTags());
+  }
+
+  /** The types whose owners and domains SQL computes. */
+  static Set<String> coveredTypes() {
+    return DECLARED.keySet();
   }
 
   /** Whether SQL computes the owners and domains of {@code entityType}, naming its table. */

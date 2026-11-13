@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.listaccess;
 
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -11,6 +12,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  */
 public final class ListAccess {
   private ListAccess() {}
+
+  /**
+   * The listed types {@code RowStorages} declares. On every other type, owner, domain and reviewer
+   * conditions are checked row by row after the query.
+   */
+  public static Set<String> coveredTypes() {
+    return RowStorages.coveredTypes();
+  }
 
   public static CallerScope forCaller(
       SubjectContext subject, String listedType, List<MetadataOperation> operations) {
