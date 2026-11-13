@@ -1342,8 +1342,14 @@ def table_row(inode_id: str, name: str) -> dict:
     return {"type": "table", "connectionId": "conn-1", "name": name, "inodeId": inode_id}
 
 
-def element_row(element_id: str, source_ids: list[str]) -> dict:
-    return {"type": "element", "elementId": element_id, "sourceIds": source_ids, "dataSourceIds": source_ids}
+def element_row(element_id: str, source_ids: list[str], data_source_ids: list[str] | None = None) -> dict:
+    """An element row; its root sources default to its direct ones"""
+    return {
+        "type": "element",
+        "elementId": element_id,
+        "sourceIds": source_ids,
+        "dataSourceIds": source_ids if data_source_ids is None else data_source_ids,
+    }
 
 
 def data_model_row(data_model_id: str, name: str) -> dict:
@@ -1449,7 +1455,8 @@ def test_a_table_no_element_reads_is_not_linked(sigma_over_http, sigma_data_mode
 
 def test_a_sigma_data_model_another_one_reads_is_linked_to_it(sigma_over_http, two_sigma_data_models):
     source, _ = sigma_over_http
-    # Sigma names the other data model's element as <its url id>/<element>; the table feeds dm-2, not dm-1
+    # The element names dm-2's element in the <id>/<suffix> form of Sigma's workbook lineage example; the table
+    # feeds dm-2, not dm-1
     two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
         data_model_row("dm-2", "Orders Model"),
         table_row("T1", "ORDERS"),
@@ -1467,6 +1474,27 @@ def test_a_sigma_data_model_named_by_its_id_is_linked(sigma_over_http, two_sigma
     ]
 
     assert data_model_lineage(source) == [("mock_sigma.model.dm-2", "mock_sigma.model.dm-1")]
+
+
+@pytest.mark.parametrize(
+    "source_ids, data_source_ids",
+    [([], ["dm-2", "inode-t1-url"]), (["dm-2", "inode-t1-url"], [])],
+    ids=["root-sources-only", "direct-sources-only"],
+)
+def test_a_source_named_in_either_list_of_an_element_is_linked(
+    sigma_over_http, two_sigma_data_models, source_ids, data_source_ids
+):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", source_ids, data_source_ids),
+    ]
+
+    assert sorted(data_model_lineage(source)) == [
+        ("mock_sigma.model.dm-2", "mock_sigma.model.dm-1"),
+        ORDERS_TO_SALES_MODEL,
+    ]
 
 
 def test_a_sigma_data_model_no_element_reads_is_not_linked(sigma_over_http, two_sigma_data_models):
