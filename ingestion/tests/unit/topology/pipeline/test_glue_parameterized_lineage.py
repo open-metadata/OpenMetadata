@@ -46,6 +46,7 @@ from metadata.ingestion.source.pipeline.gluepipeline.snowflake_parser import (
     MAX_LOOP_UNROLLS,
     parse_snowflake_refs,
 )
+from metadata.utils.logger import Loggers
 
 GLUE_CONFIG = {
     "source": {
@@ -771,7 +772,7 @@ df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema",
 
         with (
             _wire_table_catalog(glue_source, {"CONTRACT_IT": target_ref}),
-            caplog.at_level(logging.DEBUG),
+            caplog.at_level(logging.DEBUG, logger=Loggers.INGESTION.value),
         ):
             results = list(glue_source.yield_pipeline_lineage_details(workflow_details))
 
