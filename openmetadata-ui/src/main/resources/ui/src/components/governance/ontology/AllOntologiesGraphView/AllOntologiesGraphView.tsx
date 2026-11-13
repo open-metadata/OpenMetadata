@@ -43,6 +43,7 @@ import {
   OntologyNode,
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
+import OntologySearchClearButton from '../../../OntologyExplorer/OntologySearchClearButton';
 import {
   buildNativeTreeIndex,
   getOntologyHealthSummary,
@@ -309,6 +310,10 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  const clearSearchButton = (
+    <OntologySearchClearButton value={search} onClear={() => setSearch('')} />
+  );
+
   const renderSearch = () => {
     if (searchSlot) {
       return createPortal(
@@ -319,6 +324,7 @@ const AllOntologiesGraphView = ({
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />,
@@ -341,6 +347,7 @@ const AllOntologiesGraphView = ({
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />

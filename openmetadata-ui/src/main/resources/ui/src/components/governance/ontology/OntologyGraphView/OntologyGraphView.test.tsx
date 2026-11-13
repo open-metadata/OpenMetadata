@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Cube01 } from '@openmetadata/ui-core-components/icons';
 import {
   act,
   fireEvent,
@@ -20,7 +21,7 @@ import {
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
 import { useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useSearchParams } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import {
   Code,
@@ -69,6 +70,10 @@ import {
   releaseOntologyEditLock,
   softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
@@ -100,6 +105,7 @@ const renderEveryOption = () => {
 
 afterEach(() => {
   sizeSpies.splice(0).forEach((spy) => spy.mockRestore());
+  useKeyEchoTranslations();
 });
 
 const openRelationTypes = async () => {
@@ -750,6 +756,58 @@ describe('OntologyGraphView', () => {
       ).not.toBeInTheDocument();
     }
   );
+
+  it('opens an isolated concept from Connect when the selection lives in the URL', async () => {
+    // Mirrors the Studio page: selection and the edit request both write the URL, and
+    // react-router's functional setSearchParams does not queue, so a second write in the
+    // same tick would replace the first.
+    const writeParam =
+      (
+        setParams: ReturnType<typeof useSearchParams>[1],
+        key: string,
+        value?: string
+      ) =>
+      () =>
+        setParams((current) => {
+          const next = new URLSearchParams(current);
+          if (value) {
+            next.set(key, value);
+          } else {
+            next.delete(key);
+          }
+
+          return next;
+        });
+    const UrlStudio = () => {
+      const [params, setParams] = useSearchParams();
+
+      return (
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          selectedConceptId={params.get('concept') ?? undefined}
+          surface="graph"
+          onRequestEdit={writeParam(setParams, 'mode', 'edit')}
+          onRequestGraphSurface={jest.fn()}
+          onSelectedConceptChange={(id) =>
+            writeParam(setParams, 'concept', id)()
+          }
+        />
+      );
+    };
+    render(
+      <MemoryRouter>
+        <UrlStudio />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+    fireEvent.click(await screen.findByTestId(`ontology-connect-${orphan.id}`));
+
+    expect(
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toHaveTextContent('Orphan');
+  });
 
   it('renders the full native model, health, search, and concept inspector', async () => {
     const onStatsChange = jest.fn();
@@ -2494,6 +2552,37 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('closes the concept drawer once its edits are saved', async () => {
+    (patchOntologyConcept as jest.Mock).mockResolvedValue({
+      ...customer,
+      description: 'Saved wording',
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'label.description' }),
+      { target: { value: 'Saved wording' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(patchOntologyConcept).toHaveBeenCalledTimes(1);
+  });
+
   it('says the working copy failed to load instead of leaving Edit read-only without a reason', async () => {
     (getOntologyConcept as jest.Mock).mockRejectedValue(new Error('boom'));
     render(
@@ -2825,6 +2914,15 @@ describe('OntologyGraphView', () => {
         const state = await screen.findByTestId('ontology-graph-too-large');
 
         expect(state).toHaveTextContent('message.ontology-graph-too-large');
+        expect(within(state).getByTestId('empty-placeholder')).toBeVisible();
+
+        const cubePath = render(<Cube01 />)
+          .container.querySelector('path')
+          ?.getAttribute('d');
+
+        expect(
+          within(state).getByTestId('empty-placeholder').querySelector('path')
+        ).toHaveAttribute('d', cubePath);
         expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
         expect(
           screen.queryByTestId('ontology-graph-focused-notice')
@@ -2925,6 +3023,7 @@ describe('OntologyGraphView', () => {
       });
 
       it('pages the picker list and narrows it by search', async () => {
+        useEnUsTranslations();
         renderGraph();
         fireEvent.click(
           await screen.findByTestId('ontology-graph-concept-picker')
@@ -2932,16 +3031,22 @@ describe('OntologyGraphView', () => {
 
         const options = () =>
           within(
-            screen.getByRole('listbox', { name: 'label.concept-plural' })
+            screen.getByRole('listbox', { name: 'Concepts' })
           ).getAllByRole('option');
+
+        const more = () =>
+          screen.getByTestId('ontology-graph-concept-picker-more');
 
         expect(options()).toHaveLength(20);
 
-        fireEvent.click(
-          screen.getByTestId('ontology-graph-concept-picker-more')
-        );
+        const total = more().textContent?.match(/^Show More 20\/(\d+)$/)?.[1];
+
+        expect(Number(total)).toBeGreaterThan(40);
+
+        fireEvent.click(more());
 
         expect(options()).toHaveLength(40);
+        expect(more()).toHaveTextContent(`Show More 40/${total}`);
 
         fireEvent.change(
           screen.getByTestId('ontology-graph-concept-picker-search'),
@@ -3505,7 +3610,7 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
   });
 
-  it('asks to delete a concept inside its panel rather than over the page', async () => {
+  it('asks to delete a concept in a page modal rather than inside its panel', async () => {
     mockCanDeleteConcept = true;
     render(
       <MemoryRouter>
@@ -3524,7 +3629,7 @@ describe('OntologyGraphView', () => {
     fireEvent.click(within(inspector).getByTestId('ontology-concept-more'));
     fireEvent.click(await screen.findByTestId('ontology-concept-delete'));
 
-    expect(inspector).toContainElement(
+    expect(inspector).not.toContainElement(
       await screen.findByTestId('ontology-concept-delete-dialog')
     );
   });

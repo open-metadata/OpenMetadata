@@ -70,7 +70,9 @@ final class LineageSceneHierarchy {
       Ref focusRef,
       SelectionLevel selectionLevel) {
     if (band == LineageBand.LAYER) {
-      return lensRef(asset, lens).orElse(asset.self());
+      // At the root an asset outside every domain or data product has no card, as in the
+      // admin's stored domain lineage; a focused layer scene still shows it as itself.
+      return lensRef(asset, lens).orElse(focusRef == null ? null : asset.self());
     }
     if (band == LineageBand.FIELD || focusRef == null || isAssetKind(focusRef.kind())) {
       return refForLevel(asset, selectionLevel.kind()).orElse(asset.self());
@@ -149,7 +151,7 @@ final class LineageSceneHierarchy {
     };
   }
 
-  private static boolean isAssetKind(LineageLevelKind kind) {
+  static boolean isAssetKind(LineageLevelKind kind) {
     return switch (kind) {
       case TABLE,
           TOPIC,

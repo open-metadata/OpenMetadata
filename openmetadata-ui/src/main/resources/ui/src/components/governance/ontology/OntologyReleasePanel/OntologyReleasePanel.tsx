@@ -758,7 +758,7 @@ const OntologyReleasePanel = ({
 
     return (
       <Box
-        className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+        className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:mt-auto tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
         direction="col"
         gap={3}>
         {currentStage ? renderFooter(preview) : preview}
@@ -985,7 +985,7 @@ const OntologyReleasePanel = ({
 
     return (
       <Box
-        className={isChanges ? undefined : 'tw:pb-5'}
+        className={isChanges ? 'tw:flex-1' : 'tw:flex-1 tw:pb-5'}
         direction="col"
         gap={4}>
         {renderStateError()}
@@ -994,7 +994,10 @@ const OntologyReleasePanel = ({
         {renderStorageStatus()}
         {renderRecovery()}
         {currentStage || state.isError ? null : renderStageStatus()}
-        {isChanges ? renderAiFooter() : currentStage && renderFooter()}
+        {isChanges ? renderAiFooter() : null}
+        {!isChanges && currentStage ? (
+          <div className="tw:mt-auto">{renderFooter()}</div>
+        ) : null}
       </Box>
     );
   };

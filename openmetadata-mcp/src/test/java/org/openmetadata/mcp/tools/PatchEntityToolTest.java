@@ -172,6 +172,7 @@ class PatchEntityToolTest {
       entityMock
           .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
           .thenReturn(repository);
+      CitedQueries.stillExist(entityMock);
       entityMock
           .when(
               () ->

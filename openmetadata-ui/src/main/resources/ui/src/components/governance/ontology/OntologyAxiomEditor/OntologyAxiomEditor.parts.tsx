@@ -595,12 +595,15 @@ export const AxiomOutcome = ({
     ) : null;
   }
 
+  const listed = [...general, ...problems.warnings];
+  // A failure whose every error already sits under its field adds nothing.
+  if (!validation.report.valid && !listed.length) {
+    return null;
+  }
+
   return (
     <Box direction="col" gap={2}>
-      <ProfileResult
-        problems={[...general, ...problems.warnings]}
-        profile={validation.report}
-      />
+      <ProfileResult problems={listed} profile={validation.report} />
       <Typography color="secondary" size="text-xs">
         {t('message.ontology-profile-validation-help')}
       </Typography>

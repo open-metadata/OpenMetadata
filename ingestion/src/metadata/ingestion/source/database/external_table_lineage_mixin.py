@@ -37,8 +37,15 @@ logger = ingestion_logger()
 
 # Anchored, so a key that happens to contain "s3a://" further along is left alone.
 _SCHEME_PATTERN = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*)://")
-# Hadoop-era names for the bucket that the S3 storage connector always records as s3://.
-_SCHEME_ALIASES = {"s3a": "s3", "s3n": "s3"}
+# Catalogs may use different schemes from the storage connector's indexed path.
+_SCHEME_ALIASES = {
+    "s3a": "s3",
+    "s3n": "s3",
+    "gcs": "gs",
+    "abfs": "abfss",
+    "wasb": "abfss",
+    "wasbs": "abfss",
+}
 
 
 def container_lookup_paths(location: str | None) -> list[str]:
@@ -48,8 +55,9 @@ def container_lookup_paths(location: str | None) -> list[str]:
     The search matches a container's fullPath exactly, and the storage connectors record it with
     a lower case scheme and no trailing separator (s3://bucket/events), while catalogs report
     locations such as s3a://bucket/events/. Only the scheme and one trailing separator are
-    rewritten, since object keys are case sensitive and a//b is not a/b. The location as reported
-    comes last, so a container that matched it before still does.
+    rewritten, since object keys are case sensitive and a//b is not a/b. The location as reported,
+    with and without one trailing separator, follows the canonical form, and a gs:// location
+    also tries gcs://, so a container recorded with either scheme still matches.
     """
     if not location or not location.strip():
         return []
@@ -62,7 +70,12 @@ def container_lookup_paths(location: str | None) -> list[str]:
     if not path.strip("/"):
         return []
     canonical = canonical.removesuffix("/")
-    return list(dict.fromkeys((canonical, f"{canonical}/", location)))
+    original = location.removesuffix("/")
+    candidates = [canonical, f"{canonical}/", location, original, f"{original}/"]
+    if canonical.startswith("gs://"):
+        alias = f"gcs://{canonical[len('gs://') :]}"
+        candidates.extend((alias, f"{alias}/"))
+    return list(dict.fromkeys(candidates))
 
 
 class ExternalTableLineageMixin(ABC):  # noqa: B024

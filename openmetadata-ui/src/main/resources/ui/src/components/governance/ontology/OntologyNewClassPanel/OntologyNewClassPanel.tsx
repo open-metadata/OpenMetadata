@@ -569,8 +569,9 @@ const OntologyNewClassPanel = ({
     localName,
     propertyInput
   );
+  const canAddProperty = rowValid && !locked && canCreateProperty;
   const addProperty = () => {
-    if (!rowValid || locked || !canCreateProperty) {
+    if (!canAddProperty) {
       return;
     }
     setProperties((previous) => [...previous, ownPropertyDraft(propertyInput)]);
@@ -993,10 +994,9 @@ const OntologyNewClassPanel = ({
             onChange={setIdentifier}
           />
           <Button
-            color="secondary"
+            color={canAddProperty ? 'primary' : 'secondary'}
             data-testid="new-class-add-property"
-            iconLeading={Plus}
-            isDisabled={!rowValid || locked || !canCreateProperty}
+            isDisabled={!canAddProperty}
             size="sm"
             onPress={addProperty}>
             {t('label.add')}

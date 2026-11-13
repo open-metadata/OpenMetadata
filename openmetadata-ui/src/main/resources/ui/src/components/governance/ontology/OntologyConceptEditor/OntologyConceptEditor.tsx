@@ -316,7 +316,7 @@ const MappingRow = ({
         {mapping.mappingType.label}
       </Badge>
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography ellipsis className="tw:font-mono" size="text-xs">
+        <Typography ellipsis size="text-sm">
           {mapping.conceptIri}
         </Typography>
         {meta ? (

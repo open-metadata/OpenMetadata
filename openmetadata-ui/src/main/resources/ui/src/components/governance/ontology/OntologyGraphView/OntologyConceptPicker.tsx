@@ -188,7 +188,10 @@ const OntologyConceptPicker = ({
                 data-testid="ontology-graph-concept-picker-more"
                 size="sm"
                 onPress={() => setShown((count) => count + ROWS_PER_PAGE)}>
-                {t('label.show-more')}
+                {t('label.show-more-count', {
+                  shown: visible.length,
+                  total: matches.length,
+                })}
               </Button>
             </div>
           ) : null}

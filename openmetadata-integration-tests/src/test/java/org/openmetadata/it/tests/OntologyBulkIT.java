@@ -187,8 +187,8 @@ public class OntologyBulkIT {
   @Test
   void listJobsIsGlossaryScoped(final TestNamespace namespace) {
     final OpenMetadataClient client = SdkClients.adminClient();
-    final Glossary glossaryA = createGlossary(client, namespace);
-    final Glossary glossaryB = createGlossary(client, namespace);
+    final Glossary glossaryA = createGlossary(client, namespace, "BulkOntologyA");
+    final Glossary glossaryB = createGlossary(client, namespace, "BulkOntologyB");
     final long jobA = createBackgroundJob(client, glossaryA, namespace).getId();
     final long jobB = createBackgroundJob(client, glossaryB, namespace).getId();
 
@@ -227,7 +227,12 @@ public class OntologyBulkIT {
 
   private static Glossary createGlossary(
       final OpenMetadataClient client, final TestNamespace namespace) {
-    final String name = namespace.prefix("BulkOntology");
+    return createGlossary(client, namespace, "BulkOntology");
+  }
+
+  private static Glossary createGlossary(
+      final OpenMetadataClient client, final TestNamespace namespace, final String baseName) {
+    final String name = namespace.prefix(baseName);
     final Glossary glossary =
         client
             .glossaries()

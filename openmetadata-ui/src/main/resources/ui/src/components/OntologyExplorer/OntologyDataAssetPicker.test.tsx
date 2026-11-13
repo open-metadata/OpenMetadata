@@ -477,6 +477,39 @@ describe('OntologyDataAssetPicker', () => {
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
+  it('lines the checkbox up with the type tile and keeps the select-all bar on the card surface in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    render(
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: ['table'],
+          linkedIds: [],
+          isDisabled: false,
+          saveAssets: jest.fn(),
+        }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    const option = await screen.findByTestId('ontology-data-asset-option-t-2');
+
+    const box = Array.from(option.children).find(
+      (child) => child.tagName === 'DIV'
+    );
+    let selectAllBar = screen.getByRole('checkbox', {
+      name: 'label.select-all-lowercase',
+    }).parentElement;
+    while (selectAllBar && !selectAllBar.className.includes('tw:border-b')) {
+      selectAllBar = selectAllBar.parentElement;
+    }
+
+    expect(box).toHaveClass('tw:mt-1');
+    expect(selectAllBar).toHaveClass('tw:px-3.5');
+    expect(selectAllBar).not.toHaveClass('tw:bg-secondary_alt');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
   describe('linking assets to a concept', () => {
     const renderNative = (overrides: Partial<{ linkedIds: string[] }> = {}) =>
       render(

@@ -79,7 +79,9 @@ it('keeps edits on cancel and changes selection only after discard', () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
 
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('dialog').firstElementChild).toHaveStyle({
+    maxWidth: '400px',
+  });
 
   fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
