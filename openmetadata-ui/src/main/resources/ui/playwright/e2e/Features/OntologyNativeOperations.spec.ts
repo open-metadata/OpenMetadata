@@ -140,11 +140,11 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
-          const columnSelect = editor.getByRole('button', {
-            name: /profile › customer_id/,
+          const columnSelect = editor.getByRole('combobox', {
+            name: /Column/,
           });
           // The editor pre-selects the column whose name matches the property.
-          await expect(columnSelect).toBeVisible();
+          await expect(columnSelect).toHaveValue(/profile › customer_id/);
           await selectOptionWithRetry(
             columnSelect,
             page.getByRole('option', { name: /profile › customer_id/ })

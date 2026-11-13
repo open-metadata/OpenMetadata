@@ -1014,7 +1014,9 @@ const OntologyConceptInspector = ({
         <Button
           ellipsis
           noTextPadding
-          className="tw:min-w-0 tw:flex-1 tw:justify-start"
+          // The row owns the hover background; a button hover fill would stack a second one.
+          // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
+          className="tw:min-w-0 tw:flex-1 tw:justify-start tw:hover:bg-transparent"
           color="tertiary"
           data-testid={`ontology-concept-relation-${other.id}`}
           onPress={openRelation}>
