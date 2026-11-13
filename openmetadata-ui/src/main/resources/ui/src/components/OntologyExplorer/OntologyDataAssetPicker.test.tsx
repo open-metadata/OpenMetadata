@@ -503,7 +503,7 @@ describe('OntologyDataAssetPicker', () => {
       selectAllBar = selectAllBar.parentElement;
     }
 
-    expect(box).toHaveClass('tw:mt-1.5');
+    expect(box).toHaveClass('tw:mt-1');
     expect(selectAllBar).toHaveClass('tw:px-3.5');
     expect(selectAllBar).not.toHaveClass('tw:bg-secondary_alt');
 

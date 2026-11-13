@@ -3487,6 +3487,7 @@
     "show-log-plural": "Logboeken tonen",
     "show-meta-details": "Meta-details weergeven",
     "show-more": "Meer tonen",
+    "show-more-count": "Meer tonen {{shown}}/{{total}}",
     "show-more-entity": "Meer tonen {{entity}}",
     "show-more-lowercase": "Meer tonen",
     "show-nested": "Geneste weergeven",

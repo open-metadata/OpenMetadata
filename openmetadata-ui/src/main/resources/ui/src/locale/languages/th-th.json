@@ -3487,6 +3487,7 @@
     "show-log-plural": "แสดงบันทึก",
     "show-meta-details": "แสดงรายละเอียดเมตา",
     "show-more": "แสดงเพิ่มเติม",
+    "show-more-count": "แสดงเพิ่มเติม {{shown}}/{{total}}",
     "show-more-entity": "แสดงเพิ่มเติม {{entity}}",
     "show-more-lowercase": "แสดงเพิ่มเติม",
     "show-nested": "แสดงแบบซ้อน",
