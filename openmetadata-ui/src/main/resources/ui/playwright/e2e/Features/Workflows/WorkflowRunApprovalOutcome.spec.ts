@@ -395,6 +395,9 @@ test.describe(
             { waitUntil: 'domcontentloaded' }
           );
           await waitForAllLoadersToDisappear(page);
+          // The status explanation is a tooltip, which opens on hover only after React Aria has
+          // seen the pointer move.
+          await page.mouse.move(10, 10);
           await page.getByTestId('entity-status-badge-trigger').hover();
 
           await expect(

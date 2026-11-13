@@ -10,17 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider } from '@openmetadata/ui-core-components';
+import { Box, Divider, Tooltip } from '@openmetadata/ui-core-components';
 import { lazy } from 'react';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import HoverPopover from '../../common/HoverPopover/HoverPopover';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 
-const EntityStatusDecision = withSuspenseFallback(
-  lazy(() => import('./EntityStatusDecision'))
+// The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
+const EntityStatusDecisionTitle = withSuspenseFallback(
+  lazy(() =>
+    import('./EntityStatusDecision').then((module) => ({
+      default: module.EntityStatusDecisionTitle,
+    }))
+  )
+);
+const EntityStatusDecisionDescription = withSuspenseFallback(
+  lazy(() =>
+    import('./EntityStatusDecision').then((module) => ({
+      default: module.EntityStatusDecisionDescription,
+    }))
+  )
 );
 
 export interface EntityStatusBadgeProps {
@@ -47,6 +58,15 @@ export const EntityStatusBadge = ({
   const badge = (
     <StatusBadge label={status} status={getEntityStatusClass(status)} />
   );
+  const decision =
+    entityType && entityId && fqn
+      ? {
+          entityType,
+          entityId,
+          entityLink: getEntityFeedLink(entityType, fqn),
+          status,
+        }
+      : undefined;
 
   return (
     <Box
@@ -56,19 +76,14 @@ export const EntityStatusBadge = ({
       gap={2}
       itemClassName="layout-space-item">
       {showDivider && <Divider className="m-x-xs h-6" orientation="vertical" />}
-      {entityType && entityId && fqn ? (
-        <HoverPopover
-          contentClassName="tw:p-3"
-          data-testid="entity-status-badge-trigger"
+      {decision ? (
+        <Tooltip
+          description={<EntityStatusDecisionDescription {...decision} />}
           placement="bottom start"
-          trigger={badge}>
-          <EntityStatusDecision
-            entityId={entityId}
-            entityLink={getEntityFeedLink(entityType, fqn)}
-            entityType={entityType}
-            status={status}
-          />
-        </HoverPopover>
+          title={<EntityStatusDecisionTitle {...decision} />}
+          triggerClassName="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2">
+          <span data-testid="entity-status-badge-trigger">{badge}</span>
+        </Tooltip>
       ) : (
         badge
       )}

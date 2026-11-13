@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Decision } from '../../../generated/governance/workflows/approvalOutcome';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
@@ -37,11 +38,11 @@ const hoverableBadge = () => (
   />
 );
 
-const openPopover = async () => {
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('entity-status-badge-trigger'));
-  });
-};
+// Keyboard focus opens the tooltip at once; a hover opens it after its delay. The badge is the
+// only focusable element, so each Tab moves focus onto it or off it.
+// Jest runs on fake timers, so user-event advances them itself.
+const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+const toggleTooltip = () => user.tab();
 
 describe('EntityStatusBadge', () => {
   beforeEach(() => {
@@ -102,7 +103,7 @@ describe('EntityStatusBadge', () => {
 
     expect(getStatusChange).not.toHaveBeenCalled();
 
-    await openPopover();
+    await toggleTooltip();
 
     expect(getStatusChange).toHaveBeenCalledWith(
       'dataProduct',
@@ -126,7 +127,7 @@ describe('EntityStatusBadge', () => {
     });
     renderWithQueryClient(hoverableBadge());
 
-    await openPopover();
+    await toggleTooltip();
 
     expect(
       await screen.findByTestId('entity-status-decision-outcome')
@@ -144,7 +145,7 @@ describe('EntityStatusBadge', () => {
     });
     renderWithQueryClient(hoverableBadge());
 
-    await openPopover();
+    await toggleTooltip();
 
     expect(
       await screen.findByTestId('entity-status-decision-outcome')
@@ -161,7 +162,7 @@ describe('EntityStatusBadge', () => {
       changedBy: 'ana.lopez',
     });
     const { rerender } = renderWithQueryClient(hoverableBadge());
-    await openPopover();
+    await toggleTooltip();
     await screen.findByTestId('entity-status-decision-outcome');
 
     rerender(
@@ -173,14 +174,13 @@ describe('EntityStatusBadge', () => {
         status={EntityStatus.InReview}
       />
     );
-    await openPopover();
-    await openPopover();
     await screen.findByTestId('entity-status-decision-outcome');
 
+    // The tooltip stays open; the new status is a new lookup, made once for title and description.
     expect(getStatusChange).toHaveBeenCalledTimes(2);
   });
 
-  it('renders a plain badge without a popover when it does not know the entity', () => {
+  it('renders a plain badge without a tooltip when it does not know the entity', () => {
     render(
       <EntityStatusBadge showDivider={false} status={EntityStatus.Draft} />
     );
