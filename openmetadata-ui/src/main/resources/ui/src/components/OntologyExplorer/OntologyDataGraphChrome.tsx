@@ -159,7 +159,9 @@ export const DataGraphFootnote = ({
         size="sm"
         style={{ top }}
         onPress={onLoadMoreTerms}>
-        {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
+        {isLoadingMoreTerms
+          ? t('label.loading')
+          : t('label.load-more-lowercase')}
       </Button>
     );
   }

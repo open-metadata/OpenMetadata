@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
-import { toastNotification } from './common';
+import { clickIgnoringToasts, toastNotification } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
 export const navigateToContractTab = async (page: Page, table: TableClass) => {
@@ -41,6 +41,13 @@ export const openODCSImportDropdown = async (page: Page) => {
       timeout: 10000,
     });
   }
+};
+
+// ODCS export opens a version picker; the download starts only once it is confirmed.
+export const confirmODCSExport = async (page: Page) => {
+  const dialog = page.getByTestId('odcs-export-modal');
+  await expect(dialog).toBeVisible();
+  await clickIgnoringToasts(dialog.getByTestId('confirm-odcs-export'));
 };
 
 export const clickImportODCSButton = async (page: Page) => {

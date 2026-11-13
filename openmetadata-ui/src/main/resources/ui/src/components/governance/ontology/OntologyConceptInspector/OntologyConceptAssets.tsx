@@ -19,7 +19,7 @@ import {
   ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -34,7 +34,6 @@ import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/u
 import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -43,15 +42,12 @@ import {
   NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
-import {
-  InspectorEmptyText,
-  InspectorSectionHeading,
-} from '../../../OntologyExplorer/OntologyInspectorSection';
 import OntologyColumnMappingStep, {
   ColumnMappingProperty,
 } from './OntologyColumnMappingStep';
-import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
+import { ConceptSection } from './OntologyConceptSection';
 
 interface OntologyConceptAssetsProps {
   conceptId: string;
@@ -102,7 +98,6 @@ const OntologyConceptAssets = ({
   presentation,
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
   const unlink = useAnchoredConfirm<{
     binding: AssetBinding;
@@ -123,7 +118,7 @@ const OntologyConceptAssets = ({
   const canLink = canEdit && bindings.isSuccess;
 
   const renderPicker = () => {
-    if (!canEdit || (isAiMode && !isPickerOpen && !bindAssets)) {
+    if (!canEdit || (!isPickerOpen && !bindAssets)) {
       return null;
     }
     if (bindAssets) {
@@ -139,7 +134,7 @@ const OntologyConceptAssets = ({
       );
     }
 
-    return isPickerOpen ? (
+    return (
       <OntologyDataAssetPicker
         native={{
           assetTypes: NATIVE_BINDING_ASSET_TYPES,
@@ -162,16 +157,6 @@ const OntologyConceptAssets = ({
           }
         }}
       />
-    ) : (
-      <Button
-        color="secondary"
-        data-testid="ontology-native-link-assets"
-        iconLeading={Plus}
-        isDisabled={!bindings.editableSnapshot}
-        size="xs"
-        onPress={() => setIsPickerOpen(true)}>
-        {t('label.add-entity', { entity: t('label.data-asset-plural') })}
-      </Button>
     );
   };
 
@@ -325,22 +310,21 @@ const OntologyConceptAssets = ({
 
   const renderAiSection = () => (
     <ConceptSection
-      addLabel={t('label.link-entity', { entity: t('label.asset') })}
+      addLabel={t('label.ontology-link-asset')}
       addTestId="ontology-native-link-assets"
       count={assets.length}
       testId="ontology-native-assets"
-      title={t('label.data-asset-plural')}
+      title={t('label.ontology-data-assets')}
       onAdd={
         canLink && !isPickerOpen ? () => setIsPickerOpen(true) : undefined
       }>
       {renderPicker()}
       {renderStatus()}
       {assets.length === 0 && bindings.isSuccess ? (
-        <ConceptEmptyState
-          hint={t('message.ontology-current-catalog-links')}
-          title={t('label.no-entity', {
-            entity: t('label.data-asset-plural'),
-          })}
+        <InlineEmptyPlaceholder
+          data-testid="ontology-concept-empty"
+          description={t('message.ontology-data-assets-empty-hint')}
+          title={t('message.ontology-no-data-assets-yet')}
         />
       ) : (
         <Typography className="tw:text-tertiary" size="text-xs">
@@ -353,35 +337,7 @@ const OntologyConceptAssets = ({
     </ConceptSection>
   );
 
-  if (isAiMode) {
-    return renderAiSection();
-  }
-
-  return (
-    <Box
-      className="tw:py-1"
-      data-testid="ontology-native-assets"
-      direction="col"
-      gap={2}>
-      <InspectorSectionHeading
-        count={assets.length}
-        label={t('label.data-asset-plural')}
-      />
-      <Typography color="secondary" size="text-xs">
-        {t('message.ontology-current-catalog-links')}
-      </Typography>
-      {renderStatus()}
-      {renderAssetList()}
-      {assets.length === 0 && bindings.isSuccess ? (
-        <InspectorEmptyText>
-          {t('message.no-data-available')}
-        </InspectorEmptyText>
-      ) : null}
-      {renderMoreAssets()}
-      {renderPager()}
-      {renderPicker()}
-    </Box>
-  );
+  return renderAiSection();
 };
 
 export default OntologyConceptAssets;

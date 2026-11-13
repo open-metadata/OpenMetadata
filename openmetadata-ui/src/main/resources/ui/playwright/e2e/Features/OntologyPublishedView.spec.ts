@@ -275,7 +275,7 @@ test.describe(
         await expectSelected(owner.page, 'mode-tab-edit');
         await expect(owner.page).toHaveURL(/mode=edit/);
         await expect(owner.page).not.toHaveURL(/version=/);
-        const editor = owner.page.getByTestId('ontology-concept-authoring');
+        const editor = owner.page.getByTestId('ontology-concept-editor');
         await expect(editor).toBeVisible();
         await expect
           .poll(() =>

@@ -87,6 +87,7 @@ import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -655,7 +656,7 @@ const ContextCenterArticlesPage = () => {
             'tw:relative tw:flex tw:flex-col tw:min-h-0 tw:overflow-hidden tw:rounded-xl',
             pageLayoutClassNames.content
           )}
-          dir={i18n.dir()}
+          dir={getLanguageDirection(i18n)}
           id="knowledge-center-layout-container">
           <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
           {showArticlesEmptyState && renderArticlesEmptyState()}

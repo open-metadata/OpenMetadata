@@ -87,9 +87,9 @@ export const ONTOLOGY_WORKING_DIFF_QUERY_KEY = 'ontology-working-diff';
 // The server's page maximum: search, filters, per-kind counts and the version
 // suggestion read every change, so a 25-row first page would make them wrong.
 export const ONTOLOGY_WORKING_DIFF_LIMIT = 1000;
-const RELEASE_QUERY = 'ontology-release';
-const PROJECTION_QUERY = 'ontology-publication';
-const REVIEW_QUERY = 'ontology-release-review';
+export const RELEASE_QUERY = 'ontology-release';
+export const PROJECTION_QUERY = 'ontology-publication';
+export const REVIEW_QUERY = 'ontology-release-review';
 const releaseVersion = (
   release: Pick<OntologyRelease, 'semanticVersion' | 'fullyQualifiedName'>
 ) =>

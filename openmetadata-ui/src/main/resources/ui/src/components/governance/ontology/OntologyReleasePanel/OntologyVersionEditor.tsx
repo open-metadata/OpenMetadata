@@ -18,6 +18,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -33,6 +34,8 @@ interface OntologyVersionEditorProps {
   isDisabled: boolean;
   onBumpChange: (bump: VersionBump) => void;
   onNotesChange: (notes: string) => void;
+  /** Rendered between the version and release-notes cards, where the review dialog puts its reviewers. */
+  beforeNotes?: ReactNode;
 }
 
 const OntologyVersionEditor = ({
@@ -44,6 +47,7 @@ const OntologyVersionEditor = ({
   isDisabled,
   onBumpChange,
   onNotesChange,
+  beforeNotes,
 }: OntologyVersionEditorProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -65,15 +69,22 @@ const OntologyVersionEditor = ({
     </Typography>
   ) : (
     suggestion && (
-      <Typography
-        color="secondary"
-        data-testid="ontology-version-reason"
-        role="note"
-        size="text-xs">
-        {t(`message.ontology-version-reason-${suggestion.reason}`, {
-          version: nextSemanticVersion(baseVersion, suggestion.bump),
-        })}
-      </Typography>
+      <div
+        className={
+          isAiMode
+            ? 'tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2'
+            : undefined
+        }>
+        <Typography
+          color={isAiMode ? 'brand' : 'secondary'}
+          data-testid="ontology-version-reason"
+          role="note"
+          size={isAiMode ? 'text-sm' : 'text-xs'}>
+          {t(`message.ontology-version-reason-${suggestion.reason}`, {
+            version: nextSemanticVersion(baseVersion, suggestion.bump),
+          })}
+        </Typography>
+      </div>
     )
   );
   const bumpOptions = [VersionBump.Patch, VersionBump.Minor, VersionBump.Major];
@@ -82,7 +93,7 @@ const OntologyVersionEditor = ({
       hideRequiredIndicator
       data-testid="ontology-release-notes"
       isDisabled={isDisabled}
-      label={t('label.release-notes')}
+      label={t('label.release-notes-lowercase')}
       maxLength={16384}
       rows={4}
       value={notes}
@@ -96,7 +107,11 @@ const OntologyVersionEditor = ({
         <Card size="sm">
           <Card.Content>
             <Box direction="col" gap={3}>
-              <Typography as="h3" size="text-sm" weight="semibold">
+              <Typography
+                as="h3"
+                className="not-prose tw:m-0"
+                size="text-sm"
+                weight="semibold">
                 {t('label.version')}
               </Typography>
               {reason}
@@ -122,6 +137,7 @@ const OntologyVersionEditor = ({
             </Box>
           </Card.Content>
         </Card>
+        {beforeNotes}
         <Card size="sm">
           <Card.Content>{notesField}</Card.Content>
         </Card>
@@ -131,7 +147,11 @@ const OntologyVersionEditor = ({
 
   return (
     <Box direction="col" gap={4}>
-      <Typography as="h3" size="text-sm" weight="semibold">
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
         {t('label.version')}
       </Typography>
       {reason}
@@ -158,6 +178,7 @@ const OntologyVersionEditor = ({
           ))}
         </div>
       </RadioGroup>
+      {beforeNotes}
       {notesField}
     </Box>
   );
