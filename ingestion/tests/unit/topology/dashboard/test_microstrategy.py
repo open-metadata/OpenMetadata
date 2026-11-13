@@ -17,6 +17,7 @@ The payloads are trimmed from responses of the public MicroStrategy demo server.
 from __future__ import annotations
 
 import json
+from collections import OrderedDict
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
@@ -96,6 +97,12 @@ OFFICE_ROYALE = _search_row(
 )
 AIRLINE = _search_row("233AE5EF48F48E84B4626D8E0E8806DE", "Airline Flight Analysis", TUTORIAL["id"])
 BROKEN = _search_row("3A6A3B1E4A8F46E2B57F4E1C2A9D0B11", "Legacy Layout", TUTORIAL["id"])
+# Report Services documents, a document template and a theme: same type and subtype as a
+# dossier, told apart only by viewMedia. Their dossier definition answers HTTP 500.
+DOCUMENTS = [
+    {**_search_row("B6375786480EECC3D2B57CB081AE32E9", "Light Theme Document", TUTORIAL["id"]), "viewMedia": view_media}
+    for view_media in (805306485, 134217845, 402653188, 134217728, 268435711)
+]
 
 ATTRIBUTE_STORE = {
     "id": "4D03EE044D33671811F9ADA6B84668E9",
@@ -108,6 +115,7 @@ ATTRIBUTE_STORE = {
         {"id": "2FCF90264BCCA73839D2489007A90013", "name": "Image", "baseFormType": "url"},
     ],
 }
+OFFICE_ROYALE_CUBE = "F6C63ED59D41BF792A2C72B65070FE58"
 METRIC_REVENUE = {"id": "89C18AB411E63ED105690080EF7548DB", "name": "Revenue", "type": "metric"}
 
 # Both dossiers have a page K53 holding a visualization W63, as on the demo server.
@@ -134,7 +142,7 @@ DEFINITIONS = {
         ],
         "datasets": [
             {
-                "id": "F6C63ED59D41BF792A2C72B65070FE58",
+                "id": OFFICE_ROYALE_CUBE,
                 "name": "Store Sales",
                 "availableObjects": [ATTRIBUTE_STORE, METRIC_REVENUE],
                 "rows": [],
@@ -308,6 +316,9 @@ def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategyS
     source.listing_failed = False
     source.definition_failed = False
     source.charts_unknown = False
+    source._dialects = {}
+    source._service_databases = {}
+    source._source_tables = OrderedDict()
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(dashboard_service="mstr", charts=[])
     return source
@@ -418,6 +429,32 @@ class TestClient:
 
         assert len(server.requests_to("/v2/cubes/")) == 2
 
+    def test_an_error_body_without_a_message_raises_the_api_error(self, server, client):
+        # The body the demo server answers for a document's dossier definition.
+        server.overrides["/v2/dossiers/D1/definition"] = lambda: (
+            500,
+            {"code": "ERR001", "ticketId": "fdf739c16f914747a33e9040a72bbe88"},
+        )
+
+        with pytest.raises(MicroStrategyApiError, match="ERR001"):
+            client.get_dashboard_details(TUTORIAL["id"], "D1")
+
+    def test_a_report_used_as_a_dataset_has_no_sql_and_is_not_requested_again(self, server, client, caplog):
+        server.overrides["/v2/cubes/R1/sqlView"] = lambda: (
+            400,
+            {
+                "code": "ERR006",
+                "message": "Cannot get the SQL view of object 'R1'. Only cube is supported to get SQL view.",
+                "ticketId": "7f7c105f64bb4bc9b004791abfbb480f",
+            },
+        )
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+
+        assert len(server.requests_to("/v2/cubes/R1")) == 1
+        assert "Dataset R1 is a report, not an Intelligent Cube" in caplog.text
+
     @pytest.mark.parametrize(
         "sql, expected",
         [
@@ -476,6 +513,33 @@ class TestSource:
         source.source_config.dashboardFilterPattern = SimpleNamespace(includes=None, excludes=[".*"])
         assert list(source.get_dashboards_list()) == []
         assert source.dashboard_listing.confirms_nothing_to_ingest
+
+    def test_documents_are_skipped_without_reading_their_definition(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = [OFFICE_ROYALE, *DOCUMENTS]
+        source = _source(client)
+
+        listed = list(source.get_dashboards_list())
+
+        assert [d.id for d in listed] == [OFFICE_ROYALE["id"]]
+        assert server.requests_to("/v2/dossiers/") == []
+        assert source.status.filter.call_count == len(DOCUMENTS)
+        source.status.warning.assert_called_once()
+        assert f"Skipped {len(DOCUMENTS)} " in source.status.warning.call_args.args[1]
+        assert source.dashboard_listing.is_complete
+        assert not source.listing_failed
+
+    def test_a_project_holding_only_documents_confirms_nothing_to_ingest(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = DOCUMENTS
+        source = _source(client)
+
+        assert list(source.get_dashboards_list()) == []
+        assert source.dashboard_listing.confirms_nothing_to_ingest
+
+    def test_a_result_without_view_media_is_read_as_a_dossier(self, server, client):
+        row = {key: value for key, value in AIRLINE.items() if key != "viewMedia"}
+        server.dossiers[TUTORIAL["id"]] = [row]
+
+        assert [d.id for d in _source(client).get_dashboards_list()] == [AIRLINE["id"]]
 
     def test_no_visible_project_is_not_a_confirmation(self, server, client):
         server.projects = []
@@ -645,6 +709,141 @@ class TestSource:
         ]
         assert (revenue.name.root, revenue.dataTypeDisplay, revenue.children) == ("Revenue", "Metric", None)
         assert datamodel.project == TUTORIAL["name"]
+
+    def test_repeated_columns_get_unique_names(self, server, client):
+        long_name = "M" * 256
+        objects = [
+            METRIC_REVENUE,
+            METRIC_REVENUE,
+            {**METRIC_REVENUE, "id": "4C05177011D3E877C000B3B2D86C964F"},
+            {"id": "A1", "name": long_name, "type": "metric"},
+            {"id": "A2", "name": long_name, "type": "metric"},
+        ]
+        definition = DEFINITIONS[OFFICE_ROYALE["id"]]
+        server.definitions[OFFICE_ROYALE["id"]] = {
+            **definition,
+            "datasets": [{**definition["datasets"][0], "availableObjects": objects}],
+        }
+        source = _source(client)
+
+        datamodel = next(iter(source.yield_datamodel(_details(source, OFFICE_ROYALE)))).right
+
+        names = [column.name.root for column in datamodel.columns]
+        assert names == ["Revenue", "Revenue (2)", long_name, "M" * 252 + " (2)"]
+        assert [column.displayName for column in datamodel.columns] == ["Revenue", "Revenue", long_name, long_name]
+
+    def test_cube_sql_is_parsed_once_for_every_prefix_and_dossier(self, client):
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: (prefix, None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
+        source.metadata.get_by_name.side_effect = lambda entity, fqn: service if "." not in fqn else None
+        details = _details(source, OFFICE_ROYALE)
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.LineageParser", wraps=LineageParser
+        ) as parser:
+            for prefix in ("mysql_dev", "mysql_pro", "mysql_dev"):
+                list(source.yield_dashboard_lineage_details(details, prefix))
+
+        assert parser.call_count == 1
+
+    def test_a_table_of_another_database_is_not_searched_in_the_prefix(self, client):
+        source = _source(client)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        searched = []
+
+        def tables_for(table_name: str, **_: Any) -> list:
+            searched.append(table_name)
+            return []
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            tables = ("project-a.sales.orders", "project-b.sales.stores", "sales.items")
+            list(source._source_table_entities(tables, "bq_pro", "project-a", None, None))
+
+        assert searched == ["project-a.sales.orders", "sales.items"]
+
+    def test_a_bigquery_table_is_searched_only_under_the_prefix_naming_its_project(self, server, client):
+        server.overrides[f"/v2/cubes/{OFFICE_ROYALE_CUBE}/sqlView"] = lambda: (
+            200,
+            {
+                "sqlStatement": "select a11.ORDER_ID ORDER_ID, sum(a11.AMOUNT) WJXBFS1\n"
+                "from `project-x-pro`.`sales`.`orders` a11\n"
+                "join `project-y-pro.sales.stores` a12 on (a11.STORE_ID = a12.STORE_ID)\n"
+                "group by a11.ORDER_ID"
+            },
+        )
+        source = _source(client)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+            service if "." not in fqn else SimpleNamespace(id=SimpleNamespace(root=USER_ID))
+        )
+        details = _details(source, OFFICE_ROYALE)
+        searched = []
+
+        def tables_for(service_names: str, table_name: str, **_: Any) -> list:
+            searched.append((service_names, table_name))
+            return []
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            for prefix in ("bq_x.project-x-pro", "bq_y.project-y-pro"):
+                list(source.yield_dashboard_lineage_details(details, prefix))
+
+        assert searched == [("bq_x", "project-x-pro.sales.orders"), ("bq_y", "project-y-pro.sales.stores")]
+
+    def test_a_bare_service_prefix_is_searched_only_for_the_projects_it_holds(self, client):
+        source = _source(client)
+        projects = {"bq_x": ["Project-X-Pro"], "bq_y": ["project-y-pro", "project-y-dev"]}
+        source.metadata.list_all_entities.side_effect = lambda entity, params: [
+            SimpleNamespace(name=SimpleNamespace(root=name)) for name in projects[params["service"]]
+        ]
+        searched = []
+
+        def tables_for(service_names: str, table_name: str, **_: Any) -> list:
+            searched.append((service_names, table_name))
+            return []
+
+        tables = ("project-x-pro.sales.orders", "project-y-pro.sales.stores", "sales.items")
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            for service in ("bq_x", "bq_y", "bq_x"):
+                list(source._source_table_entities(tables, service, None, None, None))
+
+        assert searched == [
+            ("bq_x", "project-x-pro.sales.orders"),
+            ("bq_x", "sales.items"),
+            ("bq_y", "project-y-pro.sales.stores"),
+            ("bq_y", "sales.items"),
+            ("bq_x", "project-x-pro.sales.orders"),
+            ("bq_x", "sales.items"),
+        ]
+        assert source.metadata.list_all_entities.call_count == 2
+
+    def test_a_service_whose_databases_cannot_be_listed_is_searched_for_every_table(self, client):
+        source = _source(client)
+        source.metadata.list_all_entities.side_effect = APIError({"message": "timeout"})
+
+        assert source._may_hold("project-x-pro.sales.orders", "bq_x", None)
+        assert source._service_databases == {}
+
+    def test_a_failed_service_lookup_is_tried_again(self, client):
+        source = _source(client)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        source.metadata.get_by_name.side_effect = [APIError({"message": "timeout"}), service]
+
+        assert source._dialect_of("bq_pro") is None
+        assert source._dialect_of("bq_pro") is not None
+        assert source._dialect_of("bq_pro") is not None
+        assert source.metadata.get_by_name.call_count == 2
 
     def test_lineage_from_the_cube_sql(self, client):
         source = _source(client)

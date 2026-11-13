@@ -20,6 +20,7 @@ from __future__ import annotations
 import re
 import traceback
 from collections import OrderedDict
+from collections.abc import Hashable
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
@@ -57,14 +58,36 @@ CACHE_SIZE = 512
 LOGIN_TIMEOUT = (10, 60)
 # The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
 # fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
+NOT_A_CUBE = "Only cube is supported to get SQL view"
 ENGINE_STEPS_TRAILER = re.compile(r"^\[Analytical engine calculation steps:.*", re.MULTILINE | re.DOTALL)
 
 T = TypeVar("T")
+K = TypeVar("K", bound=Hashable)
 
 
 def strip_engine_steps(sql: str | None) -> str | None:
     """The cube SQL without the Analytical engine calculation steps that follow the statement"""
     return ENGINE_STEPS_TRAILER.sub("", sql).rstrip() if sql else sql
+
+
+def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None], what: str) -> T | None:
+    """
+    Read through a bounded LRU cache. A failure is logged and cached as None, so a value that
+    cannot be read is not requested again for every dossier that uses it.
+    """
+    if key in cache:
+        cache.move_to_end(key)
+        return cache[key]
+    try:
+        value = fetch()
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning("Could not read %s: %s", what, exc)
+        value = None
+    cache[key] = value
+    if len(cache) > CACHE_SIZE:
+        cache.popitem(last=False)
+    return value
 
 
 class MicroStrategyApiError(Exception):
@@ -242,14 +265,23 @@ class MicroStrategyClient:
         Get the SQL of a cube, cached for the dossiers that share it. A cube whose SQL cannot be
         read is cached as None too, so it is not requested again for every dossier using it.
         """
-        return self._cached(
-            self._cube_sql,
-            cube_id,
-            lambda: strip_engine_steps(
-                self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id).get("sqlStatement")
-            ),
-            f"the SQL of cube {cube_id}",
-        )
+
+        def fetch() -> str | None:
+            try:
+                response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
+            except MicroStrategyApiError as exc:
+                if NOT_A_CUBE not in str(exc):
+                    raise
+                # A dataset can be a report rather than an Intelligent Cube, and the SQL view
+                # serves cubes only.
+                logger.warning(
+                    "Dataset %s is a report, not an Intelligent Cube: its SQL cannot be read, so it has no lineage",
+                    cube_id,
+                )
+                return None
+            return strip_engine_steps(response.get("sqlStatement"))
+
+        return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
 
     def get_owner_email(self, owner_id: str) -> str | None:
         """The default email address of a user, when the session may read it"""
@@ -260,23 +292,7 @@ class MicroStrategyClient:
             default = next((a for a in emails if a.get("isDefault")), emails[0] if emails else None)
             return default["value"] if default else None
 
-        return self._cached(self._owner_emails, owner_id, fetch, f"the email of user {owner_id}")
-
-    @staticmethod
-    def _cached(cache: OrderedDict[str, T | None], key: str, fetch: Callable[[], T | None], what: str) -> T | None:
-        if key in cache:
-            cache.move_to_end(key)
-            return cache[key]
-        try:
-            value = fetch()
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning("Could not read %s: %s", what, exc)
-            value = None
-        cache[key] = value
-        if len(cache) > CACHE_SIZE:
-            cache.popitem(last=False)
-        return value
+        return cached(self._owner_emails, owner_id, fetch, f"the email of user {owner_id}")
 
     def _validate_each(self, items: list[Any], model: type[T], what: str) -> list[T]:
         """Validate items one by one, so one malformed object does not drop its siblings"""
