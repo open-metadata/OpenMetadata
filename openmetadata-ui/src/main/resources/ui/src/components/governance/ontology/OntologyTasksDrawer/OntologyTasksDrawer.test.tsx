@@ -1005,6 +1005,29 @@ describe('the Studio review banner scope', () => {
     );
   });
 
+  it('disables the tasks trigger when the viewer has no tasks', async () => {
+    serveOpenReviews([]);
+    renderWithQueryClient(<Harness />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-tasks-trigger')).toBeDisabled()
+    );
+  });
+
+  it('keeps the tasks trigger enabled when the viewer only created tasks', async () => {
+    serveOpenReviews([], [reviewOf('Finance', 'TASK-2')]);
+    renderWithQueryClient(<Harness />);
+
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith(
+        '/ontologies/reviews',
+        expect.objectContaining({ params: { view: 'created', limit: 1 } })
+      )
+    );
+
+    expect(screen.getByTestId('ontology-tasks-trigger')).toBeEnabled();
+  });
+
   it("does not announce the viewer's own open request", async () => {
     serveOpenReviews([], [reviewOf('Finance', 'TASK-2')]);
     renderWithQueryClient(<Harness ontologyId="Finance" />);

@@ -24,6 +24,7 @@ import {
   Modal,
   ModalOverlay,
   Tabs,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -161,16 +162,11 @@ const useDecidedReview = ({
 };
 
 /** A tab's open-review count; a missing total stays unknown rather than zero. */
-const useQueueTotal = (
-  queueKey: string[],
-  view: 'assigned' | 'created',
-  enabled: boolean
-) =>
+const useQueueTotal = (queueKey: string[], view: 'assigned' | 'created') =>
   useQuery({
     queryKey: [...queueKey, view + '-total'],
     gcTime: 0,
     retry: false,
-    enabled,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews({ view, limit: 1 }, signal),
   }).data?.paging?.total;
@@ -293,16 +289,8 @@ const OntologyTasksDrawer = ({
         signal
       ),
   });
-  const assignedTotal = useQueueTotal(
-    [...queuesKey, account],
-    'assigned',
-    isOpen
-  );
-  const createdTotal = useQueueTotal(
-    [...queuesKey, account],
-    'created',
-    isOpen
-  );
+  const assignedTotal = useQueueTotal([...queuesKey, account], 'assigned');
+  const createdTotal = useQueueTotal([...queuesKey, account], 'created');
   // The banner announces only reviews waiting on the viewer's vote.
   const openReviews = reviewsOf(pending.data);
   const openBannerReview = openReviews[0];
@@ -699,30 +687,42 @@ const OntologyTasksDrawer = ({
     );
   };
 
-  const renderTasksAction = () => (
-    <Button
-      aria-haspopup="dialog"
-      className="tw:shrink-0 tw:whitespace-nowrap"
-      color="secondary"
-      data-testid="ontology-tasks-trigger"
-      iconLeading={ClipboardCheck}
-      iconTrailing={
-        <Badge color="brand" size="sm" type="pill-color">
-          {pendingTotal.isError
-            ? t('label.unavailable')
-            : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
-        </Badge>
-      }
-      ref={taskButton}
-      size="sm"
-      onPress={() => {
-        setListOpen(true);
-        void pendingTotal.refetch();
-        void pending.refetch();
-      }}>
-      {t('label.task-plural')}
-    </Button>
-  );
+  const renderTasksAction = () => {
+    // Unknown totals (loading/error) keep the trigger enabled.
+    const hasNoTasks = [
+      pendingTotal.data?.paging?.total,
+      assignedTotal,
+      createdTotal,
+    ].every((total) => total === 0);
+
+    return (
+      <Tooltip isDisabled={!hasNoTasks} title={t('label.no-tasks-right-now')}>
+        <Button
+          aria-haspopup="dialog"
+          className="tw:shrink-0 tw:whitespace-nowrap"
+          color="secondary"
+          data-testid="ontology-tasks-trigger"
+          iconLeading={ClipboardCheck}
+          iconTrailing={
+            <Badge color="brand" size="sm" type="pill-color">
+              {pendingTotal.isError
+                ? t('label.unavailable')
+                : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
+            </Badge>
+          }
+          isDisabled={hasNoTasks}
+          ref={taskButton}
+          size="sm"
+          onPress={() => {
+            setListOpen(true);
+            void pendingTotal.refetch();
+            void pending.refetch();
+          }}>
+          {t('label.task-plural')}
+        </Button>
+      </Tooltip>
+    );
+  };
   const bannerKey = getBannerKey(ontologyId, bannerReview, openReviews);
   const dismissBanner = () => setDismissedBanner(bannerKey);
   const renderOpenReviews = () => (
