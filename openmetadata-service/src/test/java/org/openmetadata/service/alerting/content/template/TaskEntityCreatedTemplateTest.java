@@ -150,5 +150,44 @@ class TaskEntityCreatedTemplateTest {
     assertFalse(out.contains("Proposed changes"), out);
     assertFalse(out.contains("Assignees"), out);
     assertFalse(out.contains(" for <strong>"), out);
+    assertFalse(out.contains("Approving moves"), out);
+  }
+
+  @Test
+  void lifecycleApproval_namesTheStageMoveInsteadOfChanges() throws Exception {
+    Map<String, Object> task =
+        Map.of(
+            "taskId", "TASK-00900",
+            "fullyQualifiedName", "TASK-00900",
+            "type", "RequestApproval",
+            "payload",
+                Map.of("lifecycleMove", Map.of("stage", "In Review", "targetStage", "Approved")));
+
+    String out = render(templateBody, task);
+
+    assertTrue(
+        out.contains("Approving moves this asset from <strong>In Review</strong> to "),
+        () -> "the stage move the approval gates: " + out);
+    assertTrue(out.contains("<strong>Approved</strong>."), out);
+    assertFalse(out.contains("Proposed changes"), out);
+  }
+
+  @Test
+  void proposedChanges_skipsAFieldWithNothingAddedOrRemoved() throws Exception {
+    Map<String, Object> task =
+        Map.of(
+            "taskId", "TASK-00901",
+            "fullyQualifiedName", "TASK-00901",
+            "payload",
+                Map.of(
+                    "proposedChanges",
+                    Map.of(
+                        "description", Map.of("added", List.of(), "removed", List.of()),
+                        "tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of()))));
+
+    String out = render(templateBody, task);
+
+    assertTrue(out.contains("<strong>Tags</strong>: added PII.Sensitive"), out);
+    assertFalse(out.contains("<strong>Description</strong>"), out);
   }
 }
