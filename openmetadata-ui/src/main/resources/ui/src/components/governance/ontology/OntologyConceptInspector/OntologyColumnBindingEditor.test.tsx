@@ -489,3 +489,73 @@ it('holds the column that matches the property and saves it without a further ch
     },
   });
 });
+
+it('keeps the typed search and binds another column while a suggestion exists', async () => {
+  const patient = {
+    name: 'patient_id',
+    dataType: DataType.String,
+    fullyQualifiedName: 'service.db.schema.customers.patient_id',
+  };
+  const dosage = {
+    name: 'dosage',
+    dataType: DataType.Int,
+    fullyQualifiedName: 'service.db.schema.customers.dosage',
+  };
+  http.get.mockImplementation(async (url, config) => {
+    if (!url.includes('/columns/search')) {
+      return { data: response(0) };
+    }
+    const q = (config?.params as { q?: string } | undefined)?.q;
+    const data = q ? [patient] : [patient, dosage];
+
+    return { data: { data, paging: { total: data.length } } };
+  });
+  http.put.mockResolvedValue({ data: response(1) });
+  const { queryClient, rerender } = renderWithQueryClient(<div />);
+  queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+    kind: 'complete',
+    ...response(0),
+  });
+  rerender(
+    <OntologyColumnBindingEditor
+      conceptId="concept"
+      propertyId="dosage-property"
+      propertyLabel="dosage"
+      onClose={jest.fn()}
+    />
+  );
+  const editor = screen.getByTestId('ontology-column-binding-editor');
+  const input = columnInput(editor);
+  await waitFor(() => expect(input).toHaveValue('dosage'));
+
+  act(() => input.focus());
+  fireEvent.change(input, { target: { value: 'pat' } });
+  await waitFor(() =>
+    expect(http.get).toHaveBeenLastCalledWith('/tables/table/columns/search', {
+      params: expect.objectContaining({ q: 'pat' }),
+    })
+  );
+  await screen.findByRole('option', { name: /patient_id/ });
+  // Outlast the 250 ms search debounce so a reset of the typed text would land.
+  await act(async () => {
+    jest.advanceTimersByTime(400);
+  });
+
+  expect(input).toHaveValue('pat');
+  expect(http.get).toHaveBeenLastCalledWith('/tables/table/columns/search', {
+    params: expect.objectContaining({ q: 'pat' }),
+  });
+
+  fireEvent.click(await screen.findByRole('option', { name: /patient_id/ }));
+  fireEvent.click(screen.getByTestId('ontology-binding-save'));
+  await waitFor(() => expect(http.put).toHaveBeenCalledTimes(1));
+
+  expect(http.put.mock.calls[0][1]).toEqual({
+    expectedRevision: 0,
+    asset: {
+      assetId: 'table',
+      assetType: 'table',
+      columns: [{ propertyId: 'dosage-property', columnPath: ['patient_id'] }],
+    },
+  });
+});

@@ -68,7 +68,6 @@ const OntologyColumnBindingEditor = ({
     return () => controller.abort();
   }, [conceptId, propertyId]);
   const [search, setSearch] = useState('');
-  // Until the person chooses, the editor holds the suggested column.
   const [chosen, setChosen] = useState<ColumnOption>();
   const [activeLabel, setActiveLabel] = useState<string>();
   // Selecting fills the input with the column's label; that text is not a search.
@@ -115,6 +114,13 @@ const OntologyColumnBindingEditor = ({
         : undefined,
     [isIdentifier, options, propertyLabel]
   );
+  // The suggestion is fixed from the unfiltered list; recomputing it from a
+  // search would drop the selection and reset the text being typed.
+  useEffect(() => {
+    if (!chosen && !query && suggested) {
+      setChosen(suggested);
+    }
+  }, [chosen, query, suggested]);
   const selected = chosen ?? suggested;
   useEffect(() => setActiveLabel(selected?.label), [selected?.label]);
   const save = async () => {
