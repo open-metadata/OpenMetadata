@@ -109,9 +109,14 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     }
   }, [props.widgetKey, props.isEditView, setGlossaryChildTerms]);
 
-  const widgetName = startCase(
-    props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
-  );
+  // The articles widget renders as "Context Center" on entity pages; its key reads otherwise.
+  const widgetName = props.widgetKey.startsWith(
+    DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
+  )
+    ? t('label.context-center')
+    : startCase(
+        props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
+      );
 
   const cardContent = useMemo(() => {
     // Find the matching widget component based on prefix matching

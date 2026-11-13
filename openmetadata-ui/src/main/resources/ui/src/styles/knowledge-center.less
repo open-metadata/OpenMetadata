@@ -50,4 +50,18 @@
   margin: 0 auto;
   max-width: 850px;
   padding: var(--om-space-12) var(--om-space-16);
+
+  // TitleBreadcrumb sizes crumbs from the window, not this 850px column, so
+  // keep it on one line and let the crumbs truncate instead of wrapping.
+  .breadcrumb-container {
+    min-width: 0;
+
+    ol {
+      flex-wrap: nowrap;
+    }
+
+    .breadcrumb-item {
+      min-width: 0;
+    }
+  }
 }

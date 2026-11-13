@@ -179,7 +179,7 @@ const KnowledgeCenterFilterPage = () => {
           <Grid
             className="layout-row layout-grid"
             data-testid="knowledge-page-listing"
-            style={{ ...getLayoutGutter(0, 56) }}>
+            style={{ ...getLayoutGutter(0, 16) }}>
             {Array.from({ length: 4 }).map(() => (
               <Grid.Item
                 className="layout-column knowledge-card-col"
@@ -266,7 +266,7 @@ const KnowledgeCenterFilterPage = () => {
           className="layout-row layout-grid"
           style={{ ...getLayoutGutter(0, 24) }}>
           {!isEmpty(breadcrumbs) && (
-            <Grid.Item className="layout-column d-flex items-center" span={16}>
+            <Grid.Item className="layout-column d-flex items-center" span={24}>
               <TitleBreadcrumb titleLinks={breadcrumbs} />
             </Grid.Item>
           )}
@@ -274,7 +274,7 @@ const KnowledgeCenterFilterPage = () => {
             <Grid
               className="layout-row layout-grid"
               data-testid="knowledge-page-listing"
-              style={{ ...getLayoutGutter(0, 56) }}>
+              style={{ ...getLayoutGutter(0, 16) }}>
               {map(knowledgePages, (knowledgePage) => (
                 <Grid.Item
                   className="layout-column knowledge-card-col"
