@@ -106,7 +106,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const [logsFor, setLogsFor] = useState<Agent | null>(null);
   // Set when the user opened an older run's log; the modal then describes that run.
   const [logsRun, setLogsRun] = useState<AgentRun | undefined>();
-  const logsRunId = logsRun?.id;
+  const logsRunId = logsRun?.runId;
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 

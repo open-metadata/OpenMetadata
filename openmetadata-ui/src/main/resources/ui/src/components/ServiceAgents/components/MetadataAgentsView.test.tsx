@@ -19,8 +19,8 @@ import {
   getErrorPlaceHolder,
   getLogViewerStatusFromRunStatus,
 } from '../../../utils/IngestionUtils';
-import { Agent, AgentRun } from '../AgentsPage.interface';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
+import { Agent, AgentRun } from '../AgentsPage.interface';
 import MetadataAgentsView from './MetadataAgentsView.component';
 
 const mockRunAgent = jest.fn();
@@ -369,6 +369,7 @@ describe('MetadataAgentsView', () => {
   describe('logs of a selected older run', () => {
     const olderRun: AgentRun = {
       id: 'run-old',
+      runId: 'run-old',
       status: 'failed',
       startedAt: 'Nov 1 · 10:00',
       duration: 1,

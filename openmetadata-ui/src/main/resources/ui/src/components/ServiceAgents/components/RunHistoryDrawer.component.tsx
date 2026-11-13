@@ -394,7 +394,10 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() =>
-              onOpenLogs(agent, run?.id === latestRun?.id ? undefined : run)
+              onOpenLogs(
+                agent,
+                run?.runId && run.id !== latestRun?.id ? run : undefined
+              )
             }>
             {t('label.raw-logs')}
           </Button>
