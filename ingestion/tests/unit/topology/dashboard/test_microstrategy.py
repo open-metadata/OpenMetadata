@@ -1179,11 +1179,19 @@ class TestColumnLineage:
 
         assert client.get_physical_table("P", "T_LU") == "tutorial_wh.lu_category"
 
-    def test_another_modeling_failure_is_not_read_as_a_missing_privilege(self, server, client):
-        server.overrides["/model/attributes/A1"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+    def test_another_modeling_failure_is_not_read_as_a_missing_privilege(self, server, client, caplog):
+        for attribute in ("A1", "A2"):
+            server.overrides[f"/model/attributes/{attribute}"] = lambda: (
+                500,
+                {"code": "ERR001", "message": "Internal error"},
+            )
 
-        assert client.get_attribute_form_columns("P", "A1") is None
+        for attribute in ("A1", "A2", "A1"):
+            assert client.get_attribute_form_columns("P", attribute) is None
+
         assert not client.modeling_denied
+        assert len(server.requests_to("/model/attributes/")) == 2
+        assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
 
     def test_the_lineage_edge_carries_the_column_pairs(self, server, client):
         _model_routes(server, {IMPORT_CUBE: 779})

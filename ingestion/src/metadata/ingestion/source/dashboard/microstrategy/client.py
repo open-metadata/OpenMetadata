@@ -125,7 +125,8 @@ class MicroStrategyClient:
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
         self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
-        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]]] = OrderedDict()
+        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
+        self._attribute_failure_reported = False
         self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
         # Reading schema objects needs modeling privileges; their absence is reported once.
         self.modeling_denied = False
@@ -327,26 +328,38 @@ class MicroStrategyClient:
                 form["id"]: frozenset(self._form_expression_columns(project_id, form)) for form in attribute["forms"]
             }
         except MicroStrategyApiError as exc:
-            if exc.status_code != 403:
-                logger.debug(traceback.format_exc())
-                logger.warning("Could not read schema attribute %s: %s", attribute_id, exc)
+            if exc.status_code == 403:
+                # Without the privilege every attribute fails alike, so none is asked for again.
+                logger.warning(
+                    "Schema cubes get table-level lineage only: column-level lineage needs the service account "
+                    "to read schema objects (Architect privileges): %s",
+                    exc,
+                )
+                self.modeling_denied = True
                 return None
-            # Without the privilege every attribute fails alike, so none is asked for again.
-            logger.warning(
-                "Schema cubes get table-level lineage only: column-level lineage needs the service account to "
-                "read schema objects (Architect privileges): %s",
-                exc,
-            )
-            self.modeling_denied = True
-            return None
+            self._attribute_failed(attribute_id, exc)
+            forms = None
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning("Could not read schema attribute %s: %s", attribute_id, exc)
-            return None
+            self._attribute_failed(attribute_id, exc)
+            forms = None
         self._form_columns[attribute_id] = forms
         if len(self._form_columns) > CACHE_SIZE:
             self._form_columns.popitem(last=False)
         return forms
+
+    def _attribute_failed(self, attribute_id: str, exc: Exception) -> None:
+        """One warning for the run, so a server refusing many attributes does not flood the log"""
+        logger.debug(traceback.format_exc())
+        if self._attribute_failure_reported:
+            logger.debug("Could not read schema attribute %s: %s", attribute_id, exc)
+            return
+        self._attribute_failure_reported = True
+        logger.warning(
+            "Could not read schema attribute %s, so its columns get no column-level lineage; further attributes "
+            "that cannot be read are logged at debug level: %s",
+            attribute_id,
+            exc,
+        )
 
     def _form_expression_columns(self, project_id: str, form: dict[str, Any]) -> Iterable[tuple[str, str]]:
         for expression in form.get("expressions") or []:
