@@ -239,7 +239,16 @@ const openData = async (
 };
 
 const pickConcept = async (page: Page, concept: OntologyConcept) => {
-  await page.getByTestId('ontology-data-concept-picker-trigger').click();
+  const chip = page.getByTestId('ontology-data-concept-chip');
+  const trigger = page.getByTestId('ontology-data-concept-picker-trigger');
+  // Data remembers the last pick per ontology, so a reload can land on it already picked.
+  await expect(chip.or(trigger)).toBeVisible();
+  if (await chip.isVisible()) {
+    await expect(chip).toContainText(concept.name);
+
+    return;
+  }
+  await trigger.click();
   await page.getByTestId(`ontology-data-concept-option-${concept.id}`).click();
   await expect(page.getByTestId('ontology-data-concept-chip')).toContainText(
     concept.name

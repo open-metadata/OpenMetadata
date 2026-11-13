@@ -176,6 +176,13 @@ test.describe(
           await inspector.getByTestId('ontology-concept-close').click();
           await expect(inspector).toHaveCount(0);
           await page.getByTestId('ontology-graph-mode-data').click();
+          // Data mounts on first open, so the concept closed in Model is picked again here.
+          await page
+            .getByTestId('ontology-data-concept-picker-trigger')
+            .click();
+          await page
+            .getByTestId(`ontology-data-concept-option-${concept.id}`)
+            .click();
           const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
             dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
