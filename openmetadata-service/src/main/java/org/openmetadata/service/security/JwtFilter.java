@@ -25,6 +25,7 @@ import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAI
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithmFromPublicKey;
 
+import com.auth0.jwk.InvalidPublicKeyException;
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
@@ -48,6 +49,7 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URL;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
@@ -796,7 +798,7 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm = createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
+    Algorithm algorithm = verificationAlgorithm(jwt, jwk);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
@@ -806,6 +808,25 @@ public class JwtFilter implements ContainerRequestFilter {
     requireIssuedForThisDeployment(jwt);
 
     return jwt;
+  }
+
+  /**
+   * Our own tokens are checked with the algorithm we sign with, the provider's with the configured
+   * one: tokenValidationAlgorithm describes the identity provider's tokens only
+   * (ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256).
+   */
+  private Algorithm verificationAlgorithm(DecodedJWT jwt, Jwk jwk) {
+    return isSignedWithOpenMetadataKey(jwt)
+        ? JWTTokenGenerator.ownTokenVerificationAlgorithm(jwt.getAlgorithm(), publicKeyOf(jwk))
+        : createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
+  }
+
+  private static PublicKey publicKeyOf(Jwk jwk) {
+    try {
+      return jwk.getPublicKey();
+    } catch (InvalidPublicKeyException e) {
+      throw new IllegalStateException("Failed to read the public key of the signing key", e);
+    }
   }
 
   private void requireIssuedForThisDeployment(DecodedJWT jwt) {

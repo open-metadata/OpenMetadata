@@ -26,6 +26,7 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -448,6 +449,47 @@ class JWTTokenGeneratorTest {
         JWTTokenGenerator.getAlgorithm(
             AuthenticationConfiguration.TokenValidationAlgorithm.ES_512, ecPublicKey, ecPrivateKey);
     assertNotNull(es512);
+  }
+
+  @Test
+  void tokensAreSignedWithRs256WhateverAlgorithmTheProviderUses() {
+    jwtTokenGenerator.init(
+        new AuthenticationConfiguration()
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER)
+            .withTokenValidationAlgorithm(
+                AuthenticationConfiguration.TokenValidationAlgorithm.ES_256),
+        jwtTokenConfiguration);
+
+    String token =
+        jwtTokenGenerator
+            .generateJWTToken(
+                "mohit",
+                Set.of(),
+                false,
+                "mohit@getcollate.io",
+                60,
+                false,
+                ServiceTokenType.OM_USER)
+            .getJWTToken();
+
+    assertEquals("RS256", JWT.decode(token).getAlgorithm());
+    assertDoesNotThrow(() -> decodedJWT(token));
+  }
+
+  @Test
+  void ownTokensVerifyOnlyWithTheRsaAlgorithmsTheServerHasSignedWith() {
+    RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
+    for (String algorithm : List.of("RS256", "RS384", "RS512")) {
+      assertEquals(
+          algorithm,
+          JWTTokenGenerator.ownTokenVerificationAlgorithm(algorithm, publicKey).getName());
+    }
+    for (String algorithm : Arrays.asList("HS256", "none", "ES256", null)) {
+      assertThrows(
+          AuthenticationException.class,
+          () -> JWTTokenGenerator.ownTokenVerificationAlgorithm(algorithm, publicKey),
+          String.valueOf(algorithm));
+    }
   }
 
   private DecodedJWT decodedJWT(String token) {
