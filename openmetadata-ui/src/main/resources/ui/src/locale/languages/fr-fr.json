@@ -3487,6 +3487,7 @@
     "show-log-plural": "Afficher les Journaux",
     "show-meta-details": "Afficher les méta-détails",
     "show-more": "Afficher Plus",
+    "show-more-count": "Afficher Plus {{shown}}/{{total}}",
     "show-more-entity": "Afficher Plus de {{entity}}",
     "show-more-lowercase": "Voir plus",
     "show-nested": "Afficher imbriqué",

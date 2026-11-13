@@ -70,6 +70,10 @@ import {
   releaseOntologyEditLock,
   softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
@@ -101,6 +105,7 @@ const renderEveryOption = () => {
 
 afterEach(() => {
   sizeSpies.splice(0).forEach((spy) => spy.mockRestore());
+  useKeyEchoTranslations();
 });
 
 const openRelationTypes = async () => {
@@ -2966,6 +2971,7 @@ describe('OntologyGraphView', () => {
       });
 
       it('pages the picker list and narrows it by search', async () => {
+        useEnUsTranslations();
         renderGraph();
         fireEvent.click(
           await screen.findByTestId('ontology-graph-concept-picker')
@@ -2973,16 +2979,22 @@ describe('OntologyGraphView', () => {
 
         const options = () =>
           within(
-            screen.getByRole('listbox', { name: 'label.concept-plural' })
+            screen.getByRole('listbox', { name: 'Concepts' })
           ).getAllByRole('option');
+
+        const more = () =>
+          screen.getByTestId('ontology-graph-concept-picker-more');
 
         expect(options()).toHaveLength(20);
 
-        fireEvent.click(
-          screen.getByTestId('ontology-graph-concept-picker-more')
-        );
+        const total = more().textContent?.match(/^Show More 20\/(\d+)$/)?.[1];
+
+        expect(Number(total)).toBeGreaterThan(40);
+
+        fireEvent.click(more());
 
         expect(options()).toHaveLength(40);
+        expect(more()).toHaveTextContent(`Show More 40/${total}`);
 
         fireEvent.change(
           screen.getByTestId('ontology-graph-concept-picker-search'),

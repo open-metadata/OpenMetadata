@@ -485,10 +485,11 @@ test.describe(
         await page.goto('/governance/ontology');
         const message = page.getByTestId('all-ontologies-load-error');
         await expect(message).toBeVisible();
-        await expect(message).toContainText(
-          'Choose an ontology from the All ontologies menu in the header.'
-        );
-        await expect(message.getByRole('button')).toHaveCount(0);
+        await expect(message).toContainText('Choose an ontology to view');
+        await expect(message).toContainText('Select one to see its graph.');
+        await expect(
+          message.getByTestId('all-ontologies-capacity-select')
+        ).toBeVisible();
         await expect(page.getByTestId('ontology-shortcut-list')).toHaveCount(0);
         await expect(page.getByText(/0 concepts/)).toHaveCount(0);
         expect(await hasStudioHorizontalScroll(page)).toBe(false);

@@ -37,6 +37,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -45,14 +46,21 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.DriveServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceAutoClassificationPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceAutoClassificationPipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.security.ssl.VerifySSL;
+import org.openmetadata.schema.services.connections.drive.CustomDriveConnection;
+import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
+import org.openmetadata.schema.services.connections.drive.SftpConnection;
+import org.openmetadata.schema.services.connections.drive.SharePointConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.StorageConnection;
@@ -260,6 +268,91 @@ class CreateIngestionPipelineImplTest {
         DashboardServiceMetadataPipeline.class,
         deployedPipeline(dashboard).getSourceConfig().getConfig());
     assertNull(usage.getSourceConfig().getConfig());
+  }
+
+  @Test
+  void driveMetadataAgentPreservesAllDefaultFilters() {
+    final DriveService drive =
+        createDriveService(
+            new GoogleDriveConnection()
+                .withDirectoryFilterPattern(
+                    new FilterPattern().withIncludes(List.of("my_directory")))
+                .withFileFilterPattern(new FilterPattern().withExcludes(List.of("excluded_file")))
+                .withSpreadsheetFilterPattern(
+                    new FilterPattern().withIncludes(List.of("my_spreadsheet")))
+                .withWorksheetFilterPattern(
+                    new FilterPattern().withExcludes(List.of("excluded_worksheet"))));
+
+    assertTrue(createIngestionPipeline.execute(drive, PipelineType.METADATA, true).isSuccessful());
+
+    final IngestionPipeline agent = deployedPipeline(drive);
+    final DriveServiceMetadataPipeline sourceConfig =
+        assertInstanceOf(DriveServiceMetadataPipeline.class, agent.getSourceConfig().getConfig());
+    assertEquals(List.of("my_directory"), sourceConfig.getDirectoryFilterPattern().getIncludes());
+    assertEquals(List.of("excluded_file"), sourceConfig.getFileFilterPattern().getExcludes());
+    assertEquals(
+        List.of("my_spreadsheet"), sourceConfig.getSpreadsheetFilterPattern().getIncludes());
+    assertEquals(
+        List.of("excluded_worksheet"), sourceConfig.getWorksheetFilterPattern().getExcludes());
+    assertEquals(tokenOf(Entity.INGESTION_BOT_NAME), connectionToken(agent));
+  }
+
+  @Test
+  void sftpMetadataAgentPreservesDirectoryAndFileFilters() {
+    final DriveService drive =
+        createDriveService(
+            new SftpConnection()
+                .withDirectoryFilterPattern(
+                    new FilterPattern().withIncludes(List.of("my_directory")))
+                .withFileFilterPattern(new FilterPattern().withExcludes(List.of("excluded_file"))));
+
+    assertTrue(createIngestionPipeline.execute(drive, PipelineType.METADATA, true).isSuccessful());
+
+    final DriveServiceMetadataPipeline sourceConfig =
+        assertInstanceOf(
+            DriveServiceMetadataPipeline.class,
+            deployedPipeline(drive).getSourceConfig().getConfig());
+    assertEquals(List.of("my_directory"), sourceConfig.getDirectoryFilterPattern().getIncludes());
+    assertEquals(List.of("excluded_file"), sourceConfig.getFileFilterPattern().getExcludes());
+    assertNull(sourceConfig.getSpreadsheetFilterPattern());
+    assertNull(sourceConfig.getWorksheetFilterPattern());
+  }
+
+  static Stream<Object> driveConnections() {
+    return Stream.of(
+        new GoogleDriveConnection(),
+        new SharePointConnection(),
+        new SftpConnection(),
+        new CustomDriveConnection());
+  }
+
+  @ParameterizedTest
+  @MethodSource("driveConnections")
+  void driveMetadataAgentCanBeCreatedWithoutDefaultFilters(final Object connection) {
+    final DriveService drive = createDriveService(connection);
+
+    assertTrue(createIngestionPipeline.execute(drive, PipelineType.METADATA, true).isSuccessful());
+
+    final DriveServiceMetadataPipeline sourceConfig =
+        assertInstanceOf(
+            DriveServiceMetadataPipeline.class,
+            deployedPipeline(drive).getSourceConfig().getConfig());
+    assertNull(sourceConfig.getDirectoryFilterPattern());
+    assertNull(sourceConfig.getFileFilterPattern());
+    assertNull(sourceConfig.getSpreadsheetFilterPattern());
+    assertNull(sourceConfig.getWorksheetFilterPattern());
+  }
+
+  private DriveService createDriveService(final Object connection) {
+    final DriveService drive =
+        new DriveService()
+            .withId(UUID.randomUUID())
+            .withName("my_drive")
+            .withFullyQualifiedName("my_drive")
+            .withConnection(new DriveConnection().withConfig(connection));
+    stubServiceType(drive, Entity.DRIVE_SERVICE);
+    when(pipelineRepository.listAllByParentFqn(anyString())).thenReturn(List.of());
+    return drive;
   }
 
   // OpenMetadataConnectionBuilder resolves each bot and its user through Entity; every bot gets a
