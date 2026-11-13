@@ -33,4 +33,7 @@ The child list itself is unbounded.
 ADR:2026-10-31-metric-and-metric-group-responses-hide-relations-the-viewer-cannot-see removes a
 child the caller may not view from the metric response and recounts `childrenCount`, so such a
 child is no longer kept as a bare reference. Expressions are still added only to the first 25
-children the caller may `VIEW_ALL`.
+children the caller may `VIEW_ALL`. That check now only matters for a caller granted `VIEW_BASIC`
+on a child without `VIEW_ALL`; every user holds the Organization's default `DataConsumer` role,
+and a deny of `VIEW_ALL` also denies `VIEW_BASIC`, so the suite has no such caller and the guard
+above covers only the dropped child.

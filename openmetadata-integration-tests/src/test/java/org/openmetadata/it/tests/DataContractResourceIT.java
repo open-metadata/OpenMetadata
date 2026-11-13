@@ -4287,9 +4287,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   @Test
   void testIncompatibleStoredRuleBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns) {
     Table table = createTestTable(ns);
-    // Unknown imported fields now travel in a source-metadata annotation instead of blocking
-    // export (ADR:2026-11-09-odcs-imports-validate-declared-published-profiles). A native rule
-    // v3.1.0 cannot express, on a contract with no import metadata, still blocks every route.
+    // Unknown imported fields travel in a source-metadata annotation and never block export
+    // (ADR:2026-11-09-odcs-imports-validate-declared-published-profiles); a native rule v3.1.0
+    // cannot express, on a contract with no import metadata, blocks every route.
     OpenMetadataClient client = SdkClients.adminClient();
     DataContract contract =
         client
@@ -4316,6 +4316,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
               OpenMetadataException.class,
               () -> client.getHttpClient().executeForString(HttpMethod.GET, route, null));
       assertEquals(400, error.getStatusCode());
+      assertTrue(error.getMessage().contains("Cannot export ODCS"), error.getMessage());
       assertTrue(error.getMessage().contains("metric"), error.getMessage());
     }
     DataContract stored = client.dataContracts().get(contract.getId().toString());

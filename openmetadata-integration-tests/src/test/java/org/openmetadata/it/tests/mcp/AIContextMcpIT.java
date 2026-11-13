@@ -306,8 +306,7 @@ class AIContextMcpIT extends McpTestBase {
                 Map.of("entityType", "metric", "fqn", parent.getFullyQualifiedName())),
             restrictedMetricViewerToken());
 
-    // A child the caller cannot view is dropped from the response, not listed without its
-    // expression
+    // A child the caller cannot view is dropped from the response
     // (ADR:2026-10-31-metric-and-metric-group-responses-hide-relations-the-viewer-cannot-see).
     String text = response.get("result").get("content").get(0).get("text").asText();
     JsonNode children = OBJECT_MAPPER.readTree(text).path("children");

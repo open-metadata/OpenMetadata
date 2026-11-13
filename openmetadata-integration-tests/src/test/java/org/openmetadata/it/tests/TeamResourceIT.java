@@ -2681,7 +2681,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
   /**
    * Members hold a team's default roles and policies, so a bot impersonating the team's owner may
-   * not change them, though it may edit the team otherwise; the owner may, directly.
+   * not change them, though it may edit the team otherwise.
    */
   @Test
   void test_impersonatedOwner_cannotChangeDefaultRolesOrPolicies(TestNamespace ns) {
