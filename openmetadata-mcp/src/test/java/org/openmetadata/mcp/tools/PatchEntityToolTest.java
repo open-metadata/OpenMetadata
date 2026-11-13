@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -162,6 +163,11 @@ class PatchEntityToolTest {
     params.put("fqn", "salary-bands");
     params.put("patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"x\"}]");
     Map<String, Object> result;
+    // The cited Query still exists, so the caller's view permission decides how it shows.
+    EntityDAO<?> queries = mock(EntityDAO.class);
+    when(queries.exists(any(), any())).thenReturn(true);
+    EntityRepository<?> queryRepository = mock(EntityRepository.class);
+    doReturn(queries).when(queryRepository).getDao();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
@@ -169,6 +175,7 @@ class PatchEntityToolTest {
       entityMock
           .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
           .thenReturn(repository);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.QUERY)).thenReturn(queryRepository);
       entityMock
           .when(
               () ->

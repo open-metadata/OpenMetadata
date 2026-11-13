@@ -55,12 +55,14 @@ import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rules.RuleEngine;
@@ -68,6 +70,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 class CreateEntityToolTest {
 
@@ -534,12 +537,18 @@ class CreateEntityToolTest {
     params.put("entityType", Entity.CONTEXT_MEMORY);
     params.put("attributes", Map.of("question", "Q", "answer", "A"));
 
-    withRepository(
-        Entity.CONTEXT_MEMORY,
-        repository,
+    asNonAdmin(
         () ->
-            new CreateEntityTool()
-                .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
+            withRepository(
+                Entity.CONTEXT_MEMORY,
+                repository,
+                () ->
+                    new CreateEntityTool()
+                        .execute(
+                            mock(Authorizer.class),
+                            mock(Limits.class),
+                            securityContext(),
+                            params)));
 
     ArgumentCaptor<EntityInterface<?>> captor = ArgumentCaptor.forClass(EntityInterface.class);
     verify(repository).create(isNull(), captor.capture(), anyString(), any());
@@ -583,16 +592,28 @@ class CreateEntityToolTest {
     params.put("attributes", Map.of("question", "Q", "answer", "A"));
 
     Map<String, Object> result =
-        withRepository(
-            Entity.CONTEXT_MEMORY,
-            repository,
+        asNonAdmin(
             () ->
-                new CreateEntityTool()
-                    .execute(authorizer, mock(Limits.class), securityContext(), params));
+                withRepository(
+                    Entity.CONTEXT_MEMORY,
+                    repository,
+                    () ->
+                        new CreateEntityTool()
+                            .execute(authorizer, mock(Limits.class), securityContext(), params)));
 
     assertEquals(
         List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)),
         result.get("relatedEntities"));
+  }
+
+  /** A memory answer asks whether the caller is an admin; here the caller is not. */
+  private static <T> T asNonAdmin(Supplier<T> action) {
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects
+          .when(() -> SubjectCache.getUserContext(anyString()))
+          .thenReturn(new User().withName("admin"));
+      return action.get();
+    }
   }
 
   @Test
@@ -974,9 +995,11 @@ class CreateEntityToolTest {
       EntityRepository<?> repository,
       RuleEngine ruleEngine,
       Supplier<T> action) {
+    EntityRepository<?> queries = existingQueries();
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
         MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
         MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.QUERY)).thenReturn(queries);
       entities.when(() -> Entity.getEntityRepository(entityType)).thenReturn(repository);
       entities
           .when(() -> Entity.getEntityTypeFromClass(repository.getEntityClass()))
@@ -993,6 +1016,16 @@ class CreateEntityToolTest {
       rules.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       return action.get();
     }
+  }
+
+  /** A memory's cited Query still exists, so the caller's view permission decides how it shows. */
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static EntityRepository existingQueries() {
+    EntityDAO queries = mock(EntityDAO.class);
+    when(queries.exists(any(), any())).thenReturn(true);
+    EntityRepository repository = mock(EntityRepository.class);
+    when(repository.getDao()).thenReturn(queries);
+    return repository;
   }
 
   private static Map<String, Object> glossary() {
