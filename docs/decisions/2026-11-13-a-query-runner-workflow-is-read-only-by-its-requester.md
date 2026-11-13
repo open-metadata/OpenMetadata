@@ -23,8 +23,14 @@ queries, while their results and a re-run were already limited to the requester.
   refusing the page.
 - PATCH, PUT, DELETE and restore refuse another user's query runner workflow with 403 before the
   write: each returns the workflow it changed, and a PATCH or PUT could rewrite the requester.
+- The requester may delete their own query runner workflow by id or by name without Delete on
+  workflows. SQL Studio deletes a run as its requester once the results are read or the query is
+  stopped, and a non-admin holds no Delete, so without this their runs were never removed. Any
+  other caller still needs Delete, and the async delete still needs it from everyone. The
+  requester gets no PATCH or PUT: a requester who could rewrite `request.userConfigId` could
+  re-run their workflow with another user's credentials.
 
 ## Consequences
-A user sees only their own SQL Studio runs; admins and bots, which dispatch and clean up runs, see
+A user sees only their own SQL Studio runs and can remove them; admins and bots, which dispatch and clean up runs, see
 all of them. A policy cannot grant another user's queries, because the rule is not a policy. A new
 read path on workflows must apply the same check or it reopens the leak.

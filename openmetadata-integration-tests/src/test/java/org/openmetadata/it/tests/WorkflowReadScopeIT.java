@@ -123,20 +123,40 @@ public class WorkflowReadScopeIT {
         JsonUtils.readTree(stored.body()).path("request").path("userId").asText());
   }
 
+  /**
+   * SQL Studio deletes a run as the user who ran it. A plain user holds no Delete on workflows, so
+   * the requester's own run must be deletable without it, by id and by name.
+   */
   @Test
-  void theRequesterMayStillDeleteTheirOwnQuery(TestNamespace ns) throws Exception {
-    User requester = workflowEditor(ns);
-    Workflow workflow =
-        createQueryRunnerWorkflow(ns.prefix("qr-scope-own-delete"), requester.getId());
+  void aRequesterWithNoWorkflowPermissionDeletesTheirOwnQuery(TestNamespace ns) throws Exception {
+    User requester = plainUser(ns);
+    String requesterToken = tokenFor(requester.getEmail(), new String[] {});
+    Workflow byIdRun = createQueryRunnerWorkflow(ns.prefix("qr-scope-own-id"), requester.getId());
+    Workflow byNameRun =
+        createQueryRunnerWorkflow(ns.prefix("qr-scope-own-name"), requester.getId());
 
-    HttpResponse<String> deleted =
-        send(
-            "DELETE",
-            byId(workflow) + "?hardDelete=true",
-            tokenFor(requester.getEmail(), new String[] {}),
-            null,
-            null);
-    assertEquals(200, deleted.statusCode(), deleted.body());
+    HttpResponse<String> deletedById =
+        send("DELETE", byId(byIdRun) + "?hardDelete=true", requesterToken, null, null);
+    HttpResponse<String> deletedByName =
+        send("DELETE", byName(byNameRun) + "?hardDelete=true", requesterToken, null, null);
+
+    assertEquals(200, deletedById.statusCode(), deletedById.body());
+    assertEquals(200, deletedByName.statusCode(), deletedByName.body());
+    assertEquals(404, get(byId(byIdRun), SdkClients.getAdminToken()).statusCode());
+    assertEquals(404, get(byId(byNameRun), SdkClients.getAdminToken()).statusCode());
+  }
+
+  /** The requester's delete is for their own runs only: a plain user cannot delete another's. */
+  @Test
+  void aPlainUserCannotDeleteAnotherUsersQuery(TestNamespace ns) throws Exception {
+    Workflow workflow = createQueryRunnerWorkflow(ns.prefix("qr-scope-other-delete"));
+    String strangerToken = tokenFor(plainUser(ns).getEmail(), new String[] {});
+
+    assertEquals(
+        403,
+        send("DELETE", byId(workflow) + "?hardDelete=true", strangerToken, null, null)
+            .statusCode());
+    assertEquals(200, get(byId(workflow), SdkClients.getAdminToken()).statusCode());
   }
 
   @Test
@@ -194,6 +214,13 @@ public class WorkflowReadScopeIT {
         .withDescription(name)
         .withWorkflowType(WorkflowType.QUERY_RUNNER)
         .withRequest(request);
+  }
+
+  /** A user with no role, so no Delete or EditAll on workflows. */
+  private static User plainUser(TestNamespace ns) {
+    String name = "wfplain_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser user = new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org");
+    return ns.trackRoot(Entity.USER, SdkClients.adminClient().users().create(user));
   }
 
   /** A user whose role may edit and delete every workflow, as an admin-granted custom role can. */

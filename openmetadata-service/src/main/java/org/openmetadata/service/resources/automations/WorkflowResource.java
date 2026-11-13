@@ -83,6 +83,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 @Slf4j
 @Path("/v1/automations/workflows")
@@ -526,8 +527,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    requireReadableStored(securityContext, id);
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    final Workflow stored = requireReadable(securityContext, repository.find(id, Include.ALL));
+    Response response =
+        isRequester(securityContext, stored)
+            ? deleteOwnQueryRun(uriInfo, securityContext, stored, hardDelete)
+            : delete(uriInfo, securityContext, id, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -580,8 +584,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    requireReadable(securityContext, repository.findByName(name, Include.ALL));
-    Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    final Workflow stored =
+        requireReadable(securityContext, repository.findByName(name, Include.ALL));
+    Response response =
+        isRequester(securityContext, stored)
+            ? deleteOwnQueryRun(uriInfo, securityContext, stored, hardDelete)
+            : deleteByName(uriInfo, securityContext, name, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -693,6 +701,24 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               workflow.getId()));
     }
     return workflow;
+  }
+
+  /**
+   * SQL Studio deletes a query run once its results are read or the query is stopped, as the user
+   * who ran it. That user holds no Delete on workflows unless they are an admin, so every other
+   * user's runs used to stay stored. The requester may therefore delete their own run; anyone else
+   * still needs Delete.
+   */
+  private Response deleteOwnQueryRun(
+      UriInfo uriInfo, SecurityContext securityContext, Workflow workflow, boolean hardDelete) {
+    final DeleteResponse<Workflow> response =
+        repository.delete(
+            securityContext.getUserPrincipal().getName(), workflow.getId(), false, hardDelete);
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   /**
