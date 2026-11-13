@@ -14,6 +14,11 @@ package org.openmetadata.service.rdf;
 
 import io.dropwizard.lifecycle.Managed;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.util.component.LifeCycle;
 import org.jdbi.v3.core.Jdbi;
@@ -27,6 +32,8 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
  */
 @Slf4j
 public final class RdfDisabledMark {
+  private static final Duration STOP_BEGIN_WAIT = Duration.ofSeconds(5);
+
   private RdfDisabledMark() {}
 
   /** Never throws: a server with RDF off must still start when the mark cannot be written. */
@@ -37,21 +44,44 @@ public final class RdfDisabledMark {
   /**
    * Records the mark as soon as the server begins to stop, before Jetty waits for open requests. A
    * shutdown that outlasts the platform's grace period is killed before {@link #atStop} runs, and
-   * this mark is already written by then. It still follows any rebuild that began while the server
-   * was up, which is what keeps that rebuild from repairing the projection.
+   * this mark is already written by then. It follows any rebuild that began before the stop did,
+   * which is what keeps that rebuild from repairing the projection.
    */
   public static LifeCycle.Listener whenStopBegins(final RdfConfiguration config, final Jdbi jdbi) {
-    return whenStopBegins(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()));
+    return whenStopBegins(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()), STOP_BEGIN_WAIT);
   }
 
   static LifeCycle.Listener whenStopBegins(
-      final RdfConfiguration config, final RdfLiveWriteStore store) {
+      final RdfConfiguration config, final RdfLiveWriteStore store, final Duration wait) {
     return new LifeCycle.Listener() {
       @Override
       public void lifeCycleStopping(final LifeCycle server) {
-        recordIfDisabled(config, store);
+        if (isDisabled(config)) {
+          recordWithin(wait, () -> recordIfDisabled(config, store));
+        }
       }
     };
+  }
+
+  /**
+   * Nothing has stopped yet when the stop begins, so a database that does not answer must not hold
+   * the shutdown for its whole connection timeout: the platform would kill the server before any
+   * of its hooks ran.
+   */
+  private static void recordWithin(final Duration wait, final Runnable record) {
+    final FutureTask<Void> write = new FutureTask<>(record, null);
+    Thread.ofPlatform().daemon().name("rdf-disabled-mark").start(write);
+    try {
+      write.get(wait.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException | ExecutionException exception) {
+      LOG.warn(
+          "Could not record that RDF is disabled within {} of the stop beginning; the stop goes "
+              + "on and records it again at its end",
+          wait,
+          exception);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   /**

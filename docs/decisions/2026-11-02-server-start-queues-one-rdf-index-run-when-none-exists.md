@@ -82,8 +82,9 @@ after any off period.
   that read, so from the stop onwards the state is `DEGRADED`, whether or not the rebuild has
   completed. It is written when the stop begins (a Jetty lifecycle listener), because a
   shutdown that outlasts the platform's grace period is killed before any later hook runs: Jetty
-  waits up to 30 s for open requests and Kubernetes kills a pod after 30 s by default. It is
-  written once more by a lifecycle hook registered before `ManagedShutdown`, so after the hooks
+  waits up to 30 s for open requests and Kubernetes kills a pod after 30 s by default. That
+  write waits at most 5 s, because nothing has stopped yet and a database that does not answer
+  must not hold the whole shutdown. It is written once more by a lifecycle hook registered before `ManagedShutdown`, so after the hooks
   that stop the server's background writers; a scheduled job that is still running is not waited
   for. Recording on
   every skipped write was rejected: it adds a statement to every write of every install that does
@@ -120,6 +121,9 @@ trigger does not override the configuration an admin chose.
   that needs RDF-on servers to re-evaluate the trigger while running, which is not built.
 - Until the old server stops, a rebuild that has already completed leaves the state `READY`, and
   a write through the old server in that interval is missing from the graph.
+- A server with RDF off that is killed while it drains has only the mark from the beginning of
+  its stop. A rebuild that starts inside that interval repairs the projection although the
+  server's last writes are missing.
 - A server with RDF off that is killed without a stop signal writes no stop mark. Writes it took after a rebuild passed
   them are then missed while the state reads `READY`, until the next full rebuild.
 - The scheduler is shared, so a server with RDF off can pick up the queued run and complete it

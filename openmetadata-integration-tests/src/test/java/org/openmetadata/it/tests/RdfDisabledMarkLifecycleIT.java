@@ -41,9 +41,16 @@ class RdfDisabledMarkLifecycleIT {
     final long markBeforeStart = health.rdfDisabledAt();
 
     final ForkedServerNode server = ForkedServerNode.start(Settings.DEFAULT);
-    final long markAfterStart = health.rdfDisabledAt();
-    final long failureVersionAfterStart = health.failureVersion();
-    final boolean stoppedByItself = server.stopWithin(SHUTDOWN_GRACE);
+    final long markAfterStart;
+    final long failureVersionAfterStart;
+    final boolean stoppedByItself;
+    try {
+      markAfterStart = health.rdfDisabledAt();
+      failureVersionAfterStart = health.failureVersion();
+      stoppedByItself = server.stopWithin(SHUTDOWN_GRACE);
+    } finally {
+      server.close();
+    }
 
     assertTrue(markAfterStart > markBeforeStart, "the start was not recorded");
     assertTrue(stoppedByItself, "the server had to be killed, so its stop hooks may not have run");
