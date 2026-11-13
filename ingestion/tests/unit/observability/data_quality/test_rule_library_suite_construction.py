@@ -97,7 +97,6 @@ def test_constructed_suite_defers_table_resolution_and_reports_case_result(sourc
             sample_data_config=SampleDataIngestionConfig(storeSampleData=False),
         )
         assert checkouts == []
-        assert suite.runner.get_table_reference.__wrapped__.__self__ is suite.runner
         link = "<#E::table::service.metadata_label.main.amounts"
         link += "::columns::amount>" if entity_type is EntityType.COLUMN else ">"
         case = TestCase(

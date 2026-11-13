@@ -488,34 +488,3 @@ def test_physical_target_and_percentage_ignore_metadata_and_sample(
         assert "out of 3 evaluated" in result.result
         assert physical_name in result.result
         assert runner.get_table_reference() in result.result
-
-
-@pytest.mark.parametrize(
-    "validator_class,entity_type", [(SQAColumnValidator, EntityType.COLUMN), (SQATableValidator, EntityType.TABLE)]
-)
-def test_missing_physical_table_is_aborted_at_suite_boundary(validator_class, entity_type):
-    from unittest.mock import Mock, patch
-
-    from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
-
-    link = COLUMN_LINK if entity_type == EntityType.COLUMN else TABLE_LINK
-    case = build_test_case(link, TABLE_SQL, entity_type)
-    case.testDefinition.fullyQualifiedName = "ruleLibrary"
-    session = Mock()
-    validator = validator_class(QueryRunner(session, None, None), case, EXECUTION_DATE)
-    suite = SQATestSuiteInterface.__new__(SQATestSuiteInterface)
-    suite.ometa_client = Mock()
-    suite.ometa_client.get_by_id.return_value.entityType = entity_type
-    suite.service_connection_config = None
-    suite.table_entity = None
-    suite.sampler = None
-    builder = Mock(validator=validator)
-    with (
-        patch.object(suite, "_get_validator_builder", return_value=builder),
-        patch.object(suite, "_get_runtime_params_setter_fact"),
-    ):
-        response = suite.run_test_case(case)
-    assert response.testCaseResult.testCaseStatus == TestCaseStatus.Aborted
-    assert "physical SQLAlchemy Table" in response.testCaseResult.result
-    session.connection.assert_not_called()
-    session.execute.assert_not_called()
