@@ -377,12 +377,13 @@ const getStringValueRule = (
     : undefined;
 };
 
-// `like` rules are saved as `{ value: '*value*' }` and nothing else; reading a prefix or
-// case-insensitive wildcard would rewrite it as a contains match on the next save.
+// `like` rules are saved as `{ value: '*value*' }`, or its shorthand `'*value*'`, and nothing
+// else; reading a prefix or case-insensitive wildcard would rewrite it as a contains match on
+// the next save.
 const readWildcardValue = (body: unknown) => {
   const { value, ...rest } = isObject(body)
     ? (body as Record<string, unknown>)
-    : {};
+    : { value: body };
 
   return isString(value) && isEmpty(rest) && /^\*.*\*$/.test(value)
     ? stripWildcards(value)
@@ -1132,11 +1133,32 @@ const getRootClauses = (queryBody: QueryFieldInterface) => {
   return { ...grouping, clauses: innerMust ?? clauses, partial };
 };
 
-const isRenderedClause = (clause: QueryFieldInterface, fields?: Fields) =>
-  QUERY_FILTER_BRANCH_HANDLERS.some(
-    (handler) =>
-      !isEmpty(handler(clause, [], fields, getJsonTreePropertyFromQueryFilter))
+// A nested `must` group keeps whichever children it can read, so it renders only when every
+// child does; otherwise a clause the readers leave unread would drop without a warning.
+const isRenderedClause = (
+  clause: QueryFieldInterface,
+  fields?: Fields
+): boolean => {
+  const handler = QUERY_FILTER_BRANCH_HANDLERS.find(
+    (candidate) =>
+      !isEmpty(
+        candidate(clause, [], fields, getJsonTreePropertyFromQueryFilter)
+      )
   );
+  const children =
+    handler === matchBoolMust
+      ? toClauseArray(
+          (clause.bool as EsBoolQuery).must as QueryFieldInterface[]
+        )
+      : [];
+
+  return (
+    Boolean(handler) &&
+    withoutCustomPropertyScope(children ?? []).every((child) =>
+      isRenderedClause(child, fields)
+    )
+  );
+};
 
 // False when getJsonTreeFromQueryFilter would leave part of `queryFilter` out of
 // its tree, so an editor seeded from that tree drops those conditions on its

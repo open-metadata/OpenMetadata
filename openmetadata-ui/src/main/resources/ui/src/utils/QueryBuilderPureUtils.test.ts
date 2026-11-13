@@ -167,6 +167,12 @@ describe('getJsonTreePropertyFromQueryFilter – text rules', () => {
       ['orders'],
     ],
     [
+      'like',
+      'name.keyword',
+      { wildcard: { 'name.keyword': '*orders*' } },
+      ['orders'],
+    ],
+    [
       'not_like',
       'name.keyword',
       {
@@ -503,8 +509,21 @@ describe('isQueryFilterFullyRepresentable', () => {
       },
     ],
     [
-      'a shorthand wildcard clause',
-      { query: { bool: { filter: [{ wildcard: { name: '*orders*' } }] } } },
+      'a nested group with a clause the builder does not read',
+      {
+        query: {
+          bool: {
+            must: [
+              tier1,
+              {
+                bool: {
+                  must: [pii, { wildcard: { name: { value: 'orders*' } } }],
+                },
+              },
+            ],
+          },
+        },
+      },
     ],
     [
       'a prefix wildcard clause',
