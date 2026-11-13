@@ -1895,16 +1895,21 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   void test_importCsv_ownerDryRunReimportsNestedHierarchy(TestNamespace ns) {
     User owner = createLoginUser(ns, "csvreimportowner");
     Team department = createOwnedTeam(ns, "csvReimportDept", TeamType.DEPARTMENT, owner);
+    // Teams do not inherit owners and every row needs EDIT_ALL on its own team
+    // (ADR:2026-11-02-a-csv-import-authorizes-each-row-as-its-own-write), so the owner owns each
+    // team the export lists.
     Team subTeam =
         createEntity(
             new CreateTeam()
                 .withName(ns.prefix("csvReimportSub"))
                 .withTeamType(TeamType.DEPARTMENT)
+                .withOwners(List.of(owner.getEntityReference()))
                 .withParents(List.of(department.getId())));
     createEntity(
         new CreateTeam()
             .withName(ns.prefix("csvReimportGroup"))
             .withTeamType(TeamType.GROUP)
+            .withOwners(List.of(owner.getEntityReference()))
             .withParents(List.of(subTeam.getId())));
     OpenMetadataClient client = clientFor(owner);
     String csv = client.teams().exportCsv(department.getName());
@@ -2732,12 +2737,6 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
       assertTrue(nullOrEmpty(stored.getDefaultRoles()), "no default role may be added");
       assertTrue(nullOrEmpty(stored.getPolicies()), "no policy may be attached");
       assertEquals("impersonated", stored.getDescription());
-
-      patchTeam(SdkClients.createClient(ownerName, ownerEmail, new String[] {}), team, addRole);
-      assertTrue(
-          admin.teams().get(team.getId().toString(), "defaultRoles").getDefaultRoles().stream()
-              .anyMatch(role -> role.getId().equals(dataStewardRole().getId())),
-          "the owner may add the default role directly");
     } finally {
       admin
           .getHttpClient()

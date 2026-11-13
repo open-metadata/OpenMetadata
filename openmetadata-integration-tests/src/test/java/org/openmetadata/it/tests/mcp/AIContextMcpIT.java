@@ -279,14 +279,16 @@ class AIContextMcpIT extends McpTestBase {
                 .withName("aicontext_guarded_parent_" + suffix)
                 .withMetricExpression(new MetricExpression().withCode("COUNT(*)")),
             Metric.class);
-    post(
-        "metrics",
-        new CreateMetric()
-            .withName("aicontext_guarded_child_" + suffix)
-            .withParent(parent.getFullyQualifiedName())
-            .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
-            .withMetricExpression(new MetricExpression().withCode("SUM(salary) GROUP BY person")),
-        Metric.class);
+    Metric guarded =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
+                .withMetricExpression(
+                    new MetricExpression().withCode("SUM(salary) GROUP BY person")),
+            Metric.class);
     String openCode = "COUNT(*) GROUP BY team";
     Metric open =
         post(
@@ -304,17 +306,16 @@ class AIContextMcpIT extends McpTestBase {
                 Map.of("entityType", "metric", "fqn", parent.getFullyQualifiedName())),
             restrictedMetricViewerToken());
 
-    JsonNode children =
-        OBJECT_MAPPER
-            .readTree(response.get("result").get("content").get(0).get("text").asText())
-            .path("children");
-    assertThat(children.size()).isEqualTo(2);
-    for (JsonNode child : children) {
-      boolean isOpenChild =
-          open.getFullyQualifiedName().equals(child.path("fullyQualifiedName").asText());
-      assertThat(child.path("metricExpression").path("code").asText())
-          .isEqualTo(isOpenChild ? openCode : "");
-    }
+    // A child the caller cannot view is dropped from the response, not listed without its
+    // expression
+    // (ADR:2026-10-31-metric-and-metric-group-responses-hide-relations-the-viewer-cannot-see).
+    String text = response.get("result").get("content").get(0).get("text").asText();
+    JsonNode children = OBJECT_MAPPER.readTree(text).path("children");
+    assertThat(children.size()).isEqualTo(1);
+    assertThat(children.get(0).path("fullyQualifiedName").asText())
+        .isEqualTo(open.getFullyQualifiedName());
+    assertThat(children.get(0).path("metricExpression").path("code").asText()).isEqualTo(openCode);
+    assertThat(text).doesNotContain(guarded.getName());
   }
 
   private static String restrictedMetricViewerToken() throws Exception {
