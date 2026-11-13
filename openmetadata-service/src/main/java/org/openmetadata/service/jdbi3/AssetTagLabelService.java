@@ -75,6 +75,8 @@ public final class AssetTagLabelService {
 
   private static BulkOperationResult add(Request request, LabelEdit add) {
     TagLabelUtil.checkDisabledTags(List.of(request.label()));
+    TagLabelUtil.checkGlossaryTermsApproved(
+        TagLabelUtil.appliedGlossaryTermFqns(List.of(request.label())));
     return AssetEditService.apply(editRequest(request), labelEdit(request, add));
   }
 
