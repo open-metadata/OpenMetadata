@@ -541,21 +541,44 @@ describe('DestinationSelectItem', () => {
     );
   });
 
-  it('says nothing more in view mode about a send that waits for a retry', () => {
-    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
-      destinations: [
-        {
-          destinationType: SubscriptionType.Webhook,
-          statusDetails: {
-            status: Status.AwaitingRetry,
-            lastFailedReason: 'Webhook failed with status: 503',
+  it.each([Status.Failed, Status.AwaitingRetry, Status.RetryLimitReached])(
+    'tells, in view mode, why a %s send failed, under the failure reason',
+    (status) => {
+      renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
+        destinations: [
+          {
+            destinationType: SubscriptionType.Webhook,
+            statusDetails: {
+              status,
+              lastFailedReason: 'Webhook failed with status: 503',
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
-  });
+      expect(screen.getByTestId('alert-warning')).toHaveTextContent(
+        'label.failure-reasonWebhook failed with status: 503'
+      );
+      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    }
+  );
+
+  it.each([Status.Active, Status.Disabled])(
+    'says nothing in view mode about a destination that is %s',
+    (status) => {
+      renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
+        destinations: [
+          {
+            destinationType: SubscriptionType.Webhook,
+            statusDetails: { status },
+          },
+        ],
+      });
+
+      expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    }
+  );
 
   it('shows config field when external destination is selected', async () => {
     renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {

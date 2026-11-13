@@ -53,12 +53,43 @@ export const getNotSendingReason = (
     ? statusDetails.lastFailedReason
     : undefined;
 
-// Each distinct reason once, in the order the destinations give them.
-const reasonsOf = (statuses: ReportedStatus[]) => [
+/** Why a destination is not sending: a stored configuration to change, or a send that failed. */
+export interface DestinationProblem {
+  kind: 'unusable' | 'sendFailed';
+  reason: string;
+}
+
+const isNotSending = (statusDetails?: ReportedStatus) =>
+  NOT_SENDING.has(statusDetails?.status ?? '');
+
+/**
+ * Why a destination is not sending, as its stored status says: its configuration cannot be used,
+ * or its last send failed or waits for a retry. Nothing for a destination that sends or is off.
+ */
+export const getDestinationProblem = (
+  statusDetails?: ReportedStatus
+): DestinationProblem | undefined => {
+  const reason = isNotSending(statusDetails)
+    ? statusDetails?.lastFailedReason
+    : undefined;
+
+  return reason
+    ? {
+        kind: getNotSendingReason(statusDetails) ? 'unusable' : 'sendFailed',
+        reason,
+      }
+    : undefined;
+};
+
+// Each distinct reason of one kind once, in the order the destinations give them.
+const reasonsOf = (
+  problems: DestinationProblem[],
+  kind: DestinationProblem['kind']
+) => [
   ...new Set(
-    statuses
-      .map((statusDetails) => statusDetails.lastFailedReason)
-      .filter((reason): reason is string => Boolean(reason))
+    problems
+      .filter((problem) => problem.kind === kind)
+      .map((problem) => problem.reason)
   ),
 ];
 
@@ -70,13 +101,14 @@ const reasonsOf = (statuses: ReportedStatus[]) => [
 export const getAlertListStatus = (
   alert: EventSubscription
 ): AlertListStatusDetails => {
-  const notSending = (alert.destinations ?? [])
-    .map((destination) => destination.statusDetails ?? {})
-    .filter((statusDetails) => NOT_SENDING.has(statusDetails.status ?? ''));
-  const unusable = notSending.filter((it) => getNotSendingReason(it));
-  const failed = notSending.filter((it) => !getNotSendingReason(it));
+  const statuses = (alert.destinations ?? []).map(
+    (destination) => destination.statusDetails
+  );
+  const problems = statuses
+    .map(getDestinationProblem)
+    .filter((problem): problem is DestinationProblem => Boolean(problem));
   let status: AlertListStatus = Status.Active;
-  if (notSending.length > 0) {
+  if (statuses.some(isNotSending)) {
     status = Status.Failed;
   } else if (alert.enabled === false) {
     status = Status.Disabled;
@@ -84,8 +116,8 @@ export const getAlertListStatus = (
 
   return {
     status,
-    unusableReasons: reasonsOf(unusable),
-    failureReasons: reasonsOf(failed),
+    unusableReasons: reasonsOf(problems, 'unusable'),
+    failureReasons: reasonsOf(problems, 'sendFailed'),
   };
 };
 
