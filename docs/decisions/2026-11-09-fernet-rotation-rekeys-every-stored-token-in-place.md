@@ -26,11 +26,23 @@ back from copies they hold in memory.
   writing.
 - The command finds tokens by reading, not by a list of places. On every run it takes from
   `information_schema` each non-generated JSON, text, character or binary column of the current
-  schema that is at least 100 characters wide, and it reads every Redis key under the prefixes the
-  servers build from the configured keyspace. The only list of names is the large tables that
-  cannot hold a secret. A run leaves them out, and reads entity versions only for the entities of
-  the tables it reads, unless `--every-table` is given. The report names every table it left out,
-  and only a run that left nothing out says that an older key can be removed.
+  schema that is at least 100 characters wide, since the shortest token the server writes is 107
+  characters. It reads every Redis key under the prefixes the servers build from the configured
+  keyspace. The only list of names is the large tables that cannot hold a secret. A run leaves them
+  out, and reads entity versions only for the entities of the tables it reads, unless
+  `--every-table` is given. The report names every table it left out, and only a run that left
+  nothing out says that an older key can be removed.
+- A table with a primary key is paged by that key 1000 rows at a time. A page returns only the key
+  and whether each column holds `fernet:`, so one statement reads at most 1000 rows however rare
+  the tokens are. The flagged cells are then fetched 100 rows at a time, because one cell can hold
+  a whole entity document. A table without a primary key is read in one statement. Entity versions
+  are read for 500 entity ids per statement, a copy of the 2.1 migration's batch for the same read.
+  Redis keys, and the fields and members of hashes, sets and sorted sets, are scanned with
+  `COUNT 1000`, which Redis takes as a hint; a list is read whole. The report keeps at most 100
+  problems and 100 places that still need an older key, since a run before `--apply` can find such
+  a place in nearly every row, and prints at most 100 of them, problems first. The log lists every
+  problem, and at debug level every place that still needs an older key. None of these sizes
+  changes the exit code.
 - A token is replaced in the stored text by a token of the same length for the same plaintext under
   the primary key. Every other byte stays, and no version, change event or audit entry is written.
   Each write is a compare-and-set on the value read; a value that keeps changing is reported
@@ -39,7 +51,11 @@ back from copies they hold in memory.
   tie it to its owner and field by calling the owner kind's own functions, such as
   `DestinationSecrets.ownerOf` and `WebhookSecrets.fieldsIn`. A bound token that no rule ties to an
   owner, or that none of its candidate owners opens, is `UNBOUND` and blocks exit 0: a wrong key and
-  a wrong owner look the same. A new owner kind of bound tokens ships its anchor rule.
+  a wrong owner look the same. Anchor rules see the stored value and the JSON in each of its
+  strings that holds a bound token, to 4 levels below the stored value. A version's change
+  description records a destination list as a string, one level down; the other three levels are
+  headroom. A bound token found only deeper has no candidate owner, so it is `UNBOUND`. A new owner
+  kind of bound tokens ships its anchor rule.
 - Every Fernet token the server stores stays findable as text, as `fernet:` in a text, JSON or
   binary column or a Redis value. A storage format that compresses, encodes or encrypts a token
   again needs this record amended first.
