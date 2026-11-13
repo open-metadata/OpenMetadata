@@ -109,23 +109,29 @@ class AlertDiagnosticsStatusTest {
     assertNull(read.getConfigurationUnusable());
   }
 
-  // The last tick found the secret unusable; it was entered again since, so the alert reads Active.
+  // The last tick found the configuration unusable. It speaks until the alert is saved again; once
+  // it is, with secrets that open, the alert reads Active before the next tick.
   @Test
-  void aSecretEnteredAgainClearsTheUnusableStatusTheLastTickStored() {
-    SubscriptionDestination enteredAgain = signedWith("a key entered again");
-    EventSubscription alert = alertWith(enteredAgain);
+  void anUnusableStatusTheLastTickStoredSpeaksUntilTheAlertIsSavedAgain() {
+    SubscriptionDestination destination = signedWith("a key entered again");
+    EventSubscription alert = alertWith(destination).withUpdatedAt(1L);
     SubscriptionStatus storedByTheTick =
         DestinationStatuses.configurationUnusable(
-            "Not attempted: its stored configuration is not usable: enter it again", 1L);
+            "Not attempted: its stored configuration is not usable: URL scheme not allowed", 2L);
     health.put(
         alert.getId(),
         Map.of(
-            enteredAgain.getId().toString(), new DestinationHealth().withStatus(storedByTheTick)));
+            destination.getId().toString(), new DestinationHealth().withStatus(storedByTheTick)));
 
-    SubscriptionStatus read = statusOf(AlertDiagnostics.destinationsWithStatus(alert).getFirst());
+    SubscriptionStatus beforeTheSave =
+        statusOf(AlertDiagnostics.destinationsWithStatus(alert).getFirst());
+    SubscriptionStatus afterTheSave =
+        statusOf(AlertDiagnostics.destinationsWithStatus(alert.withUpdatedAt(3L)).getFirst());
 
-    assertEquals(SubscriptionStatus.Status.ACTIVE, read.getStatus());
-    assertNull(read.getLastFailedReason());
+    assertEquals(SubscriptionStatus.Status.FAILED, beforeTheSave.getStatus());
+    assertTrue(beforeTheSave.getConfigurationUnusable());
+    assertEquals(SubscriptionStatus.Status.ACTIVE, afterTheSave.getStatus());
+    assertNull(afterTheSave.getLastFailedReason());
   }
 
   @Test

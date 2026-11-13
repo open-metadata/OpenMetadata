@@ -118,9 +118,9 @@ looks, on the alert, not only in the recent events of a send.
   query, so it builds no publisher and resolves no address.
 - One status says that a stored configuration cannot be used, built in one place
   (`DestinationStatuses.configurationUnusable`): a send that finds the configuration unusable
-  stores it with the destination's health, and the read builds the same one. Once the
-  destination's secrets open again, a stored one no longer speaks and the destination reads
-  `active` until its next send, so entering the value again clears it at once. A send that failed
+  stores it with the destination's health, and the read builds the same one. A stored one speaks
+  until the alert is saved again, the only way to repair it: an alert saved since, whose secrets
+  open, reads `active` until its next send, so entering the value again clears it at once. A send that failed
   or waits for a retry keeps its own status and reason, without `configurationUnusable`. An alert
   list counts every one of them as not sending, except on a switched-off alert or destination,
   which reads disabled.

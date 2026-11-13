@@ -164,17 +164,26 @@ public final class AlertDiagnostics {
         ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
         : DestinationSecrets.unusableBecause(destination)
             .map(reason -> DestinationStatuses.configurationUnusable(reason, now))
-            .orElseGet(() -> lastSendOrActive(known, now));
+            .orElseGet(() -> lastSendOrActive(alert, known, now));
   }
 
-  // A tick that found the stored configuration unusable no longer speaks once its secrets open
-  // again: they were entered again since, so the destination reads Active until the next tick.
-  private static SubscriptionStatus lastSendOrActive(DestinationHealth known, long now) {
+  // A tick that found the stored configuration unusable speaks until the alert is changed, the
+  // only way to repair it: an alert saved since, whose secrets open, reads Active until the next
+  // tick, so a value entered again clears the failure at once.
+  private static SubscriptionStatus lastSendOrActive(
+      EventSubscription alert, DestinationHealth known, long now) {
     SubscriptionStatus last = known == null ? null : known.getStatus();
-    boolean stillSays = last != null && !Boolean.TRUE.equals(last.getConfigurationUnusable());
-    return stillSays
+    boolean changedSince =
+        last != null
+            && Boolean.TRUE.equals(last.getConfigurationUnusable())
+            && savedAfter(alert, last.getTimestamp());
+    return last != null && !changedSince
         ? last
         : new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
+  }
+
+  private static boolean savedAfter(EventSubscription alert, Long at) {
+    return alert.getUpdatedAt() != null && (at == null || alert.getUpdatedAt() > at);
   }
 
   /**
