@@ -55,7 +55,7 @@ import org.openmetadata.service.Entity;
 /**
  * A listing whose caller's policies decide rows by owner, domain or team returns the rows the item
  * endpoint lets that caller read, and counts only those
- * (ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope). Each test
+ * (ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies). Each test
  * builds its own users, teams, domains and policies, and its deny rules name only the type it
  * lists.
  */

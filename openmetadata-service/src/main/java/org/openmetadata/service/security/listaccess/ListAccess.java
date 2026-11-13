@@ -7,7 +7,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 /**
  * Compiles the caller's policies into the rows of one listed type they may read, deciding each row
  * as {@code DefaultAuthorizer.authorize} decides it
- * (ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope).
+ * (ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies).
  */
 public final class ListAccess {
   private ListAccess() {}

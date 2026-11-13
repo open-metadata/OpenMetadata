@@ -5,7 +5,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 
 /**
  * The rows of one listed type that a caller may read, as the condition every list query of the type
- * appends (ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope). An
+ * appends (ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies). An
  * inexact scope selects a superset, and the listing checks each returned row as before.
  */
 public final class CallerScope {

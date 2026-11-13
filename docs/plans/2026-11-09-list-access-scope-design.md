@@ -1,9 +1,14 @@
 # Filter list rows in SQL through one compiled access scope
 
-- **Status:** Proposed. Nothing is implemented.
+- **Status:** Partly implemented, in a different order from the
+  [migration plan](#migration-plan).
+  ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies records what
+  shipped: the compiler, the renderer and the `EntityResource` list paths for the 26 types
+  `RowStorages` declares, enforced with no shadow step. The required scope on `Filter<T>`, the
+  build-time guards, the custom endpoints and search are not implemented.
 - **Date:** 2026-11-09
 - **Baseline:** `65d1a07dcdd`. Line numbers in this doc are at that commit.
-- **Decision record:** ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope
+- **Decision record:** ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies
 - **Related:** #36952, #37072, open-metadata/openmetadata-collate#8018, and the records in
   [How this changes the existing records](#how-this-changes-the-existing-records)
 
@@ -671,10 +676,11 @@ Start with step 1. It changes no behavior, and the existing ITs show that it doe
 
 ## How this changes the existing records
 
-- **ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read.** Its rule stays, and accepting
-  the new record supersedes it. For an exact plan, no row is checked in the JVM, offset pages are
-  full, and `paging.total` counts only readable rows. Inexact plans keep its refill budget and
-  sealed cursors. Its rules for test cases, `AuthRequest` listings and `/history` carry over.
+- **ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read.** Its rule stays, and
+  ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies supersedes
+  it. For an exact plan, no row is checked in the JVM, offset pages are full, and `paging.total`
+  counts only readable rows. Inexact plans keep its refill budget and sealed cursors. Its rules for
+  test cases, `AuthRequest` listings and `/history` carry over.
 - **ADR:2026-11-03-a-reference-list-names-only-entities-the-caller-may-view.** Its decision names
   `RowDecisionGate`. Step 8 amends it to name `CallerScope.visibleIds`.
 - **ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads.** Its rule stays. Step 9

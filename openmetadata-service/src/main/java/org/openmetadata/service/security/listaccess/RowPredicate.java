@@ -12,7 +12,7 @@ import java.util.UUID;
  * A condition on the rows of one listed entity type. Each leaf reads a row's effective value, with
  * inheritance applied, as {@code authorize} reads it. {@link RowFilterCompiler} builds it from the
  * caller's policies and {@link SqlRowFilterRenderer} turns it into a WHERE fragment
- * (ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope).
+ * (ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies).
  */
 public sealed interface RowPredicate {
   RowPredicate TRUE = new Const(true);

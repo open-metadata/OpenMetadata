@@ -98,7 +98,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   /**
    * Limits the rows to those the caller may read
-   * (ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope).
+   * (ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies).
    */
   public ListFilter withAccessScope(CallerScope accessScope) {
     this.accessScope = accessScope;
