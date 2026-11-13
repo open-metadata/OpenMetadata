@@ -3175,7 +3175,7 @@ om:isShared a rdf:Property ;
 om:isUnique a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "isUnique" ;
-    rdfs:comment "True when the column alone is unique, from a column-level PRIMARY_KEY or UNIQUE constraint or a single-column table constraint. Composite keys use om:hasConstrainedColumn and do not imply individual uniqueness." .
+    rdfs:comment "True when the column alone is unique, from a column-level PRIMARY_KEY or UNIQUE constraint or a single-column PRIMARY_KEY or UNIQUE table constraint. Composite keys use om:hasConstrainedColumn and do not imply individual uniqueness." .
 
 om:joins a rdf:Property ;
     om:projectionStatus om:Stored ;

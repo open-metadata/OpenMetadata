@@ -15,7 +15,7 @@ A composite key permits duplicate values in each member column. Marking every me
 ## Decision
 
 `om:isUnique true` means the column alone is unique. A column-level PRIMARY_KEY or UNIQUE
-constraint, or a single-column table constraint, supplies this fact.
+constraint, or a single-column PRIMARY_KEY or UNIQUE table constraint, supplies this fact.
 
 Composite constraints express group uniqueness through `om:hasConstrainedColumn` on the
 constraint resource. Membership alone does not imply individual uniqueness. An independent
