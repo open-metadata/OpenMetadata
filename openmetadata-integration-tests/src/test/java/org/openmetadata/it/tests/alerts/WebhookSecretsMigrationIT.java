@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -152,19 +151,17 @@ class WebhookSecretsMigrationIT {
 
   /**
    * Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and OAuth2
-   * credentials, unless it is stored somewhere else too, such as another entity's version; the
-   * alert's own change events do not count. Anywhere else it stays as stored, is refused when the
-   * destination sends, and the destination stays enabled.
+   * credentials, wherever else the same value is stored: each copy for the destination that holds
+   * it. Anywhere else it stays as stored, is refused when the destination sends, and the
+   * destination stays enabled.
    */
   @Test
   void earlierCredentialsAreCarriedOverAndAnyOtherCiphertextIsEnteredAgain(TestNamespace ns) {
     String signingKey = ns.prefix("signing-key");
     String clientSecret = ns.prefix("client-secret");
-    String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
+    String twice = ns.prefix("a value stored twice");
+    String storedTwice = Fernet.getInstance().encrypt(twice);
     String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
-    String inAnotherVersion = Fernet.getInstance().encrypt(ns.prefix("a value in another version"));
-    String inAnUnnamedStore =
-        Fernet.getInstance().encrypt(ns.prefix("a value in an unnamed store"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -174,9 +171,7 @@ class WebhookSecretsMigrationIT {
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/signed"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/oauth"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/twice"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/event"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/unnamed")));
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header")));
     List<SubscriptionDestination> destinations = alert.getDestinations();
     destinations
         .get(0)
@@ -196,17 +191,8 @@ class WebhookSecretsMigrationIT {
                 "https://hooks.example.com/header",
                 "headers",
                 Map.of("Authorization", header)));
-    destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherVersion)));
-    destinations.get(5).withConfig(legacyConfig("unnamed", oauth2(inAnUnnamedStore)));
     AlertFixtures.writeBehindTheServer(alert);
     insertChangeEvent(Entity.EVENT_SUBSCRIPTION, alert.getId(), JsonUtils.pojoToJson(alert));
-    Entity.getCollectionDAO()
-        .entityExtensionDAO()
-        .insert(
-            DatabaseServiceTestFactory.createPostgres(ns).getId(),
-            "databaseService.version.0.1",
-            Entity.DATABASE_SERVICE,
-            JsonUtils.pojoToJson(Map.of("password", inAnotherVersion)));
     EventSubscription another =
         AlertFixtures.tableAlert(
             ns,
@@ -215,31 +201,24 @@ class WebhookSecretsMigrationIT {
             List.of(AlertFixtures.external(WEBHOOK, "https://hooks.example.com/another")));
     another.getDestinations().getFirst().withConfig(legacyConfig("another", oauth2(storedTwice)));
     AlertFixtures.writeBehindTheServer(another);
-    storeInATableTheStepDoesNotName(Map.of("apiKey", inAnUnnamedStore));
 
-    String rowAfterOneRun;
-    try {
-      runAlertStep();
-      rowAfterOneRun = JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()));
-      runAlertStep();
-    } finally {
-      dropTheTableTheStepDoesNotName();
-    }
+    runAlertStep();
+    String rowAfterOneRun = JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()));
+    runAlertStep();
 
     EventSubscription stored = AlertFixtures.stored(alert.getId());
     assertEquals(rowAfterOneRun, JsonUtils.pojoToJson(stored));
     List<SubscriptionDestination> bound = stored.getDestinations();
     assertEquals(signingKey, openedDestinationValue(bound.get(0), "/authType/secretKey"));
     assertEquals(clientSecret, openedDestinationValue(bound.get(1), "/authType/clientSecret"));
-    assertEquals(storedTwice, storedValue(bound.get(2), "/authType/clientSecret"));
+    assertEquals(twice, openedDestinationValue(bound.get(2), "/authType/clientSecret"));
+    SubscriptionDestination anotherCopy =
+        AlertFixtures.stored(another.getId()).getDestinations().getFirst();
+    assertEquals(twice, openedDestinationValue(anotherCopy, "/authType/clientSecret"));
     assertEquals(header, storedValue(bound.get(3), "/headers/Authorization"));
-    assertEquals(inAnotherVersion, storedValue(bound.get(4), "/authType/clientSecret"));
-    assertEquals(inAnUnnamedStore, storedValue(bound.get(5), "/authType/clientSecret"));
-    for (SubscriptionDestination toEnterAgain : bound.subList(2, 6)) {
-      BadRequestException refused =
-          assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
-      assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
-    }
+    BadRequestException refused =
+        assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(bound.get(3)));
+    assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
     assertTrue(bound.stream().allMatch(SubscriptionDestination::getEnabled));
   }
 
@@ -280,31 +259,6 @@ class WebhookSecretsMigrationIT {
             holder, JsonUtils.treeToValue(row.path("profile"), Profile.class));
     assertNull(sendable.getSubscription().getSlack(), "left out until it is entered again");
     assertNotNull(sendable.getSubscription().getGeneric());
-  }
-
-  // A store of secrets the step does not name, such as one a distribution adds.
-  private static void storeInATableTheStepDoesNotName(Map<String, Object> config) {
-    String jsonType = dialect() == ConnectionType.MYSQL ? "JSON" : "JSONB";
-    String json = dialect() == ConnectionType.MYSQL ? ":json" : ":json::jsonb";
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              handle.execute(
-                  "CREATE TABLE distribution_store_entity (id VARCHAR(36) PRIMARY KEY, json "
-                      + jsonType
-                      + " NOT NULL)");
-              handle
-                  .createUpdate(
-                      "INSERT INTO distribution_store_entity (id, json) VALUES (:id, " + json + ")")
-                  .bind("id", UUID.randomUUID().toString())
-                  .bind("json", JsonUtils.pojoToJson(Map.of("config", config)))
-                  .execute();
-            });
-  }
-
-  private static void dropTheTableTheStepDoesNotName() {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(handle -> handle.execute("DROP TABLE IF EXISTS distribution_store_entity"));
   }
 
   // A change event as releases before 2.1 stored it: written directly, since the event DAO of 2.1

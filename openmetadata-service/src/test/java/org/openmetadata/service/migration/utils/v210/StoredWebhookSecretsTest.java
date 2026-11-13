@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.List;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,22 +38,49 @@ class StoredWebhookSecretsTest {
     String header = legacy("a header value");
     JsonNode alert = alert(storedTwice, header);
 
-    assertTrue(secrets.bindAlert(alert, storedTwice::equals));
+    assertTrue(secrets.bindAlert(alert));
     String once = JsonUtils.pojoToJson(alert);
-    assertFalse(secrets.bindAlert(alert, storedTwice::equals));
+    assertFalse(secrets.bindAlert(alert));
     assertEquals(once, JsonUtils.pojoToJson(alert));
 
     assertEquals("https://hooks.slack.com/x", opened(alert, 0, SLACK, "/endpoint"));
     assertEquals("hmac-key", opened(alert, 1, SIGNED, "/authType/secretKey"));
     assertEquals("client", opened(alert, 2, OAUTH, "/authType/clientId"));
     assertEquals("oauth-secret", opened(alert, 2, OAUTH, "/authType/clientSecret"));
-    assertEquals(storedTwice, configAt(alert, 3, "/authType/clientSecret"));
     assertEquals(header, configAt(alert, 4, "/headers/Authorization"));
     assertEquals("a@example.com", configAt(alert, 5, "/receivers/0"));
     alert.path("destinations").forEach(d -> assertTrue(d.path("enabled").asBoolean()));
     String recorded = alert.at("/changeDescription/fieldsUpdated/0/newValue").asText();
     assertTrue(recorded.contains(StoredWebhookSecrets.MASK), recorded);
     assertFalse(recorded.contains(storedTwice), recorded);
+  }
+
+  @Test
+  void aCredentialStoredInSeveralPlacesIsCarriedOverForEachDestinationThatHoldsIt() {
+    String storedTwice = legacy("a value stored twice");
+    JsonNode alert = alert(storedTwice, legacy("a header value"));
+    JsonNode another = alert(storedTwice, legacy("another header value"));
+    UUID anotherDestination = UUID.randomUUID();
+    ((ObjectNode) another.path("destinations").get(3)).put("id", anotherDestination.toString());
+
+    assertTrue(secrets.bindAlert(alert));
+    assertTrue(secrets.bindAlert(another));
+
+    assertEquals("a value stored twice", opened(alert, 3, STORED_TWICE, "/authType/clientSecret"));
+    assertEquals(
+        "a value stored twice", opened(another, 3, anotherDestination, "/authType/clientSecret"));
+  }
+
+  @Test
+  void aCredentialThatDoesNotDecryptWithTheConfiguredKeysStaysAsStored() {
+    String underAnotherKey = legacy("a value under another key");
+    Fernet.getInstance().setFernetKey("ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ5x4uDcWn7mY=");
+    StoredWebhookSecrets otherKey = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
+    JsonNode alert = alert(underAnotherKey, legacy("a header value"));
+
+    otherKey.bindAlert(alert);
+
+    assertEquals(underAnotherKey, configAt(alert, 3, "/authType/clientSecret"));
   }
 
   @Test
@@ -115,41 +142,6 @@ class StoredWebhookSecretsTest {
 
     assertTrue(StoredWebhookSecrets.maskChangeEvent(event, StoredWebhookSecrets::maskAlert));
     assertFalse(event.path("entity").asText().contains(secret));
-  }
-
-  @Test
-  void theCopyCheckReadsEveryTableButTheLargeOnesThatCannotHoldASecret() {
-    List.of(
-            "dbservice_entity",
-            "llm_service_entity",
-            "ingestion_pipeline_entity",
-            "user_entity",
-            "team_entity",
-            "workflow_definition_entity",
-            "installed_apps",
-            "apps_marketplace",
-            "automations_workflow",
-            "openmetadata_settings",
-            "test_suite",
-            "user_session",
-            "user_tokens",
-            "context_plugin_entity",
-            "a_table_a_distribution_adds")
-        .forEach(table -> assertTrue(StoredCiphertextCopies.isRead(table), table));
-    List.of(
-            "table_entity",
-            "glossary_term_entity",
-            "event_subscription_entity",
-            "entity_extension",
-            "change_event",
-            "successful_sent_change_events",
-            "consumers_dlq",
-            "entity_relationship",
-            "agent_execution_entity",
-            "mcp_execution_entity",
-            "entity_extension_time_series",
-            "workflow_instance_state_time_series")
-        .forEach(table -> assertFalse(StoredCiphertextCopies.isRead(table), table));
   }
 
   private String opened(JsonNode alert, int index, UUID destination, String field) {
