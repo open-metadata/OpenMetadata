@@ -128,6 +128,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/iometeConnection.json'),
   [DatabaseServiceType.Neo4J]: () =>
     loadConnectionSchema('connections/database/neo4jConnection.json'),
+  [DatabaseServiceType.Neptune]: () =>
+    loadConnectionSchema('connections/database/neptuneConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

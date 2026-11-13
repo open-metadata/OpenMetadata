@@ -1,0 +1,33 @@
+source:
+  type: neptune
+  serviceName: local_neptune
+  serviceConnection:
+    config:
+      type: Neptune
+      # graphModel: propertyGraph  # default; use rdf for RDF graphs queried with SPARQL
+      hostPort: my-cluster.cluster-xxxx.us-east-1.neptune.amazonaws.com:8182
+      awsConfig:
+        awsRegion: us-east-1
+        # Credentials come from the standard AWS provider chain unless set here.
+        # profileName: my-profile
+      # databaseName: default
+      # includeRelationships: true
+      # computeSchemaIfMissing: true  # needs neptune-db:WriteDataViaQuery
+      # schemaComputeTimeoutSeconds: 900
+      # rdfMaxClasses: 100
+      # rdfMaxPredicatesPerClass: 100
+      # rdfSampleSize: 1000
+      # rdfQueryTimeoutSeconds: 30
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "<ingestion-bot-jwt>"
