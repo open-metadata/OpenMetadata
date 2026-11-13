@@ -276,9 +276,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     if (requestedDomainId != null) {
       String effectiveDomainId =
-          domainAccessControl && domainId != null
-              ? intersectDomainIds(requestedDomainId, domainId)
-              : requestedDomainId;
+          domainId != null ? intersectDomainIds(requestedDomainId, domainId) : requestedDomainId;
       filter.addQueryParam("domainId", effectiveDomainId);
       domainId = effectiveDomainId;
     }
