@@ -72,7 +72,7 @@ const PublicationClassicHeader = ({
       <Tabs.List
         aria-label={t('label.review-publish')}
         size="sm"
-        type="button-minimal">
+        type="button-border">
         <Tabs.Item
           data-testid="ontology-publication-tab-changes"
           id="changes"

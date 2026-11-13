@@ -12232,6 +12232,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyConceptInspector/OntologyConceptConflicts.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyConceptInspector/OntologyConceptInspector.tsx"
       ],
       "specs": [
@@ -12318,6 +12326,14 @@
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
         "playwright/e2e/Features/OntologyStudioFlows.spec.ts",
         "playwright/e2e/Features/OntologyStudioPermissions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyGraphView/OntologyConceptPicker.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyLargeGraph.spec.ts"
       ]
     },
     {
@@ -12617,14 +12633,6 @@
       "specs": [
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
-        "playwright/e2e/Features/OntologyReviewChanges.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReviewBanner/OntologyOpenReviewsBanner.tsx"
-      ],
-      "specs": [
         "playwright/e2e/Features/OntologyReviewChanges.spec.ts"
       ]
     },

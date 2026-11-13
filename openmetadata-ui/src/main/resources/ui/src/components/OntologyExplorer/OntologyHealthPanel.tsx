@@ -111,10 +111,13 @@ const OntologyHealthPanel = ({
     }
     setView(next);
   };
-  const { cardClass, isMinimized, isOpen, isSidebar, positionClass } =
-    getHealthPanelLayout(placement, isRaised, view);
   const isolatedCount = isolatedTermCount ?? health.isolatedTerms.length;
   const hasIsolated = isolatedCount > 0;
+  const layout = getHealthPanelLayout(placement, isRaised, view);
+  const { cardClass, isMinimized, isSidebar, positionClass } = layout;
+  // With every term connected the summary already says so; an empty list adds nothing.
+  const canExpand = isSidebar || hasIsolated;
+  const isOpen = layout.isOpen && canExpand;
   const isolatedLabel = `${isolatedCount} ${t(
     'label.isolated'
   ).toLocaleLowerCase()}`;
@@ -185,15 +188,13 @@ const OntologyHealthPanel = ({
         tooltip={t('label.minimize')}
         onClick={() => changeView('minimized')}
       />
-      {isSidebar ? null : (
-        <>
-          <ButtonUtility
-            icon={isOpen ? ChevronDown : ChevronUp}
-            size="lg"
-            tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
-            onClick={() => setView(isOpen ? 'summary' : 'open')}
-          />
-        </>
+      {isSidebar || !canExpand ? null : (
+        <ButtonUtility
+          icon={isOpen ? ChevronDown : ChevronUp}
+          size="lg"
+          tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
+          onClick={() => setView(isOpen ? 'summary' : 'open')}
+        />
       )}
     </div>
   );

@@ -730,7 +730,10 @@ test.describe(
           const panel = page.getByTestId('ontology-conflicts-panel');
 
           await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-            '1 conflict to resolve'
+            'Conflict to resolve'
+          );
+          await expect(page.getByTestId('ontology-conflicts-count')).toHaveText(
+            '1'
           );
           await expect(panel.getByTestId('ontology-conflict-row')).toHaveCount(
             1
@@ -740,13 +743,14 @@ test.describe(
             contentType: 'image/png',
           });
 
-          await panel
-            .getByTestId('ontology-conflict-link')
-            .filter({ hasText: 'Tonic' })
-            .click();
+          await panel.getByTestId('ontology-conflict-resolve').click();
+          const inspector = page.getByTestId('ontology-concept-inspector');
           await expect(
-            page.getByTestId('ontology-concept-inspector')
+            inspector.getByRole('heading', { name: 'Tonic' })
           ).toBeVisible();
+          await expect(
+            inspector.getByTestId('ontology-concept-conflicts-toggle')
+          ).toHaveAttribute('aria-expanded', 'true');
 
           expect(
             (
@@ -1046,7 +1050,10 @@ test.describe(
 
         await expect(panel.getByTestId('ontology-conflict-row')).toHaveCount(3);
         await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-          '3 conflicts to resolve'
+          'Conflicts to resolve'
+        );
+        await expect(page.getByTestId('ontology-conflicts-count')).toHaveText(
+          '3'
         );
         for (const child of [tonic, pill, syrup]) {
           await expect(panel).toContainText(child.name);

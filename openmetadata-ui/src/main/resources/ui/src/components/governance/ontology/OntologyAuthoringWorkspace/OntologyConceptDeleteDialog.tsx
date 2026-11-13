@@ -32,6 +32,7 @@ import {
   softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 
 interface DeletedConcept {
   /** Puts the concept back, then the references that went with it. */
@@ -185,7 +186,7 @@ const OntologyConceptDeleteDialog = ({
       );
     }
     if (impact.isPending || bindings.isPending) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (
