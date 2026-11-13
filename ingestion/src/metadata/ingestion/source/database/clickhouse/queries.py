@@ -69,6 +69,20 @@ from system.tables where engine in ['MaterializedView', 'View']
 """
 )
 
+CLICKHOUSE_KAFKA_ENGINE_TABLES = textwrap.dedent(
+    """
+    SELECT
+        database,
+        name,
+        engine_full,
+        create_table_query
+    FROM system.tables
+    WHERE engine = 'Kafka'
+      AND database NOT IN ('system', 'INFORMATION_SCHEMA', 'information_schema')
+      AND name NOT LIKE '.inner%'
+    """
+)
+
 CLICKHOUSE_SQL_STATEMENT_TEST = """
         Select
           query_start_time start_time,

@@ -576,6 +576,14 @@
                     "type": "string"
                   }
                 },
+                "messagingServiceNames": {
+                  "title": "Messaging Service Names",
+                  "description": "List of Messaging Service names to resolve Kafka/streaming topic lineage for streaming table engines (e.g., ClickHouse Kafka engine).",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "enableTempTableLineage": {
                   "title": "Enable Temp Table Lineage",
                   "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
