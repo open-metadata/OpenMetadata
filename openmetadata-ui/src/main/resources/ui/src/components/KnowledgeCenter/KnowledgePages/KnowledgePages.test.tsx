@@ -29,6 +29,13 @@ const mockProps = {
 
 const mockFilterWidgets = jest.fn();
 const mockPermissions = { EditAll: false };
+const mockArticlePermissions = { EditAll: true };
+
+jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    permissions: { page: mockArticlePermissions },
+  }),
+}));
 
 jest.mock('rest/knowledgeCenterAPI');
 
@@ -277,6 +284,52 @@ describe('KnowledgePages', () => {
 
     afterEach(() => {
       mockPermissions.EditAll = false;
+      mockArticlePermissions.EditAll = true;
+      mockProps.entityType = 'table';
+    });
+
+    it('should hide the empty widget when the user cannot edit articles', async () => {
+      mockArticlePermissions.EditAll = false;
+      (getListKnowledgePages as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(
+        screen.queryByTestId('edit-linked-articles')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not offer linking on a domain page', async () => {
+      mockProps.entityType = 'domain';
+      (getListKnowledgePages as jest.Mock).mockResolvedValueOnce({
+        data: [...MOCK_KNOWLEDGE_PAGES],
+        paging: { total: 2 },
+      });
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('edit-linked-articles')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should hide the widget when the article list fails to load', async () => {
+      (getListKnowledgePages as jest.Mock).mockRejectedValueOnce(
+        new Error('boom')
+      );
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(
+        screen.queryByTestId('edit-linked-articles')
+      ).not.toBeInTheDocument();
     });
 
     it('should render an add action instead of hiding when empty and editable', async () => {

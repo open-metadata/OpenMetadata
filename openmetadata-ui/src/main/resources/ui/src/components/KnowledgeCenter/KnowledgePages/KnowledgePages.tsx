@@ -37,6 +37,8 @@ import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { PAGE_SIZE, ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -53,28 +55,32 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   escapeESReservedCharacters,
   getSafeHttpUrl,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { canLinkArticlesToEntity } from './KnowledgePages.utils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [knowledgePages, setKnowledgePages] = useState<KnowledgePage[]>([]);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
+  const [hasLoadError, setHasLoadError] = useState(false);
   const {
     data: { id: entityId = '', deleted } = {},
     type: entityType,
     filterWidgets,
     permissions,
   } = useGenericContext<{ id: string; deleted?: boolean }>();
-  const { canEditAll: canLinkArticles } = getDerivedPermissionFlags(
-    permissions,
-    deleted
-  );
+  const { permissions: resourcePermissions } = usePermissionProvider();
+  const canLinkArticles = canLinkArticlesToEntity({
+    entityType,
+    entityPermissions: permissions,
+    articlePermissions: resourcePermissions?.[ResourceEntity.KNOWLEDGE_PAGE],
+    deleted,
+  });
 
   const fetchKnowledgePages = async () => {
     setIsLoading(true);
@@ -85,8 +91,10 @@ const KnowledgePages: FC = () => {
       });
       setKnowledgePages(data);
       setPaging(paging);
+      setHasLoadError(false);
     } catch {
-      // we will not throw error toast here
+      // No toast: the widget hides itself instead of offering links over an unknown list.
+      setHasLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +115,17 @@ const KnowledgePages: FC = () => {
       <Article size={16} />
     );
 
+  const toArticleNode = (
+    page: KnowledgePage
+  ): TreeSelectNode<KnowledgePage> => ({
+    id: page.id,
+    label: getEntityName(page),
+    value: page.id,
+    data: page,
+    isLeaf: true,
+    icon: getPageIcon(page.pageType),
+  });
+
   const fetchArticleOptions: TreeSelectDataFetcher<KnowledgePage> = useCallback(
     async ({ searchTerm, after }) => {
       // The search API pages by number, so the cursor is the next page number.
@@ -125,18 +144,7 @@ const KnowledgePages: FC = () => {
         const hasMore = (pageNumber - 1) * PAGE_SIZE + hits.length < total;
 
         return {
-          nodes: hits.map(({ _source }) => {
-            const page = _source as unknown as KnowledgePage;
-
-            return {
-              id: page.id,
-              label: getEntityName(page),
-              value: page.id,
-              data: page,
-              isLeaf: true,
-              icon: getPageIcon(page.pageType),
-            };
-          }),
+          nodes: hits.map(({ _source }) => toArticleNode(_source)),
           hasMore,
           total,
           nextCursor: hasMore ? String(pageNumber + 1) : undefined,
@@ -153,16 +161,8 @@ const KnowledgePages: FC = () => {
     []
   );
 
-  const selectedNodes: TreeSelectNode<KnowledgePage>[] = useMemo(
-    () =>
-      knowledgePages.map((page) => ({
-        id: page.id,
-        label: getEntityName(page),
-        value: page.id,
-        data: page,
-        isLeaf: true,
-        icon: getPageIcon(page.pageType),
-      })),
+  const selectedNodes = useMemo(
+    () => knowledgePages.map(toArticleNode),
     [knowledgePages]
   );
 
@@ -307,7 +307,8 @@ const KnowledgePages: FC = () => {
     </div>
   );
 
-  const hideWidget = isEmpty(knowledgePages) && !canLinkArticles;
+  const hideWidget =
+    hasLoadError || (isEmpty(knowledgePages) && !canLinkArticles);
 
   useEffect(() => {
     if (!isLoading && hideWidget) {
