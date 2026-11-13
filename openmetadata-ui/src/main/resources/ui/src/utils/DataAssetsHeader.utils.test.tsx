@@ -92,6 +92,7 @@ jest.mock('./EntityDataBreadcrumbUtils', () => ({
 jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
+  getSafeHttpUrl: jest.requireActual('./StringUtils').getSafeHttpUrl,
 }));
 
 jest.mock('./TablePureUtils', () => ({
@@ -433,6 +434,28 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       'getUsagePercentile'
     );
   });
+
+  it.each([
+    ['http://my-server.ai', 'http://my-server.ai'],
+    ['javascript:alert(document.cookie)', null],
+    ['s3://models/forecast', null],
+  ])(
+    'should link the MlModel server %s only when it is an http(s) URL',
+    (server, expectedHref) => {
+      const { extraInfo } = getDataAssetsHeaderInfo(
+        EntityType.MLMODEL,
+        { ...mockMlModelDetails, server, dashboard: undefined },
+        'forecast_sales',
+        []
+      );
+      const { container, getByText } = render(<>{extraInfo}</>);
+
+      expect(getByText(server)).toBeInTheDocument();
+      expect(container.querySelector('a')?.getAttribute('href') ?? null).toBe(
+        expectedHref
+      );
+    }
+  );
 
   // Test for Container entity
   it('Function getDataAssetsHeaderInfo should return data for Container entity', () => {

@@ -141,11 +141,13 @@ const SelectingMode = ({
   revision,
   initialConceptId = 'transfer',
   canEditBindings = false,
+  onLinkData,
   onSelectConcept,
 }: {
   revision: number;
   initialConceptId?: string;
   canEditBindings?: boolean;
+  onLinkData?: (conceptId: string) => void;
   onSelectConcept: (conceptId: string) => void;
 }) => {
   const [selectedConceptId, setSelectedConceptId] = useState(initialConceptId);
@@ -158,6 +160,7 @@ const SelectingMode = ({
       ontologyId="ontology-1"
       revision={revision}
       selectedConceptId={selectedConceptId}
+      onLinkData={onLinkData}
       onSelectConcept={(conceptId) => {
         setSelectedConceptId(conceptId);
         onSelectConcept(conceptId);
@@ -168,7 +171,11 @@ const SelectingMode = ({
 
 const renderMode = (
   onSelectConcept = jest.fn(),
-  options: { initialConceptId?: string; canEditBindings?: boolean } = {}
+  options: {
+    initialConceptId?: string;
+    canEditBindings?: boolean;
+    onLinkData?: (conceptId: string) => void;
+  } = {}
 ) => {
   const tree = (revision: number) => (
     <MemoryRouter>
@@ -299,7 +306,7 @@ it('selects the concept from its header, opens an asset in a panel that stays in
   ).toHaveTextContent('table_1');
   expect(
     within(panel).getByTestId('ontology-data-asset-panel-fqn')
-  ).toHaveTextContent('svc.db.schema.table_1');
+  ).toHaveTextContent('svc › db › schema');
   expect(
     await within(panel).findByTestId('ontology-data-asset-panel-no-columns')
   ).toHaveTextContent('message.ontology-asset-no-bound-columns');
@@ -385,7 +392,11 @@ it('names a stale context after the reload is stale too', async () => {
 
 it('explains that the picked concept has no data, offers Link Asset, and shows neither the graph nor a bound-property count', async () => {
   fetchPage.mockResolvedValueOnce(firstPage());
-  renderMode(jest.fn(), { initialConceptId: 'unused', canEditBindings: true });
+  renderMode(jest.fn(), {
+    initialConceptId: 'unused',
+    canEditBindings: true,
+    onLinkData: jest.fn(),
+  });
 
   const empty = await screen.findByTestId('ontology-data-empty');
 
@@ -456,7 +467,53 @@ it('shows only the picker, not the load error, before a concept is picked', asyn
   ).not.toBeInTheDocument();
 });
 
-it('offers Link data only while the concept drawer is open', async () => {
+// The mode never changes on a pick: a concept with nothing linked shows its empty state, in place.
+it('picking a concept with nothing linked shows its empty state without starting Link data', async () => {
+  fetchPage.mockResolvedValue(firstPage());
+  const onLinkData = jest.fn();
+  renderMode(jest.fn(), {
+    initialConceptId: NO_CONCEPT,
+    canEditBindings: true,
+    onLinkData,
+  });
+
+  fireEvent.click(
+    await screen.findByTestId('ontology-data-concept-picker-trigger')
+  );
+  fireEvent.click(
+    await screen.findByTestId('ontology-data-concept-option-unused')
+  );
+
+  expect(await screen.findByTestId('ontology-data-empty')).toBeVisible();
+  expect(onLinkData).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByTestId('ontology-data-link-asset'));
+
+  expect(onLinkData).toHaveBeenCalledWith('unused');
+});
+
+it('does not start Link data on picking a concept that has data', async () => {
+  fetchPage.mockResolvedValue(firstPage());
+  const onLinkData = jest.fn();
+  renderMode(jest.fn(), {
+    initialConceptId: NO_CONCEPT,
+    canEditBindings: true,
+    onLinkData,
+  });
+
+  fireEvent.click(
+    await screen.findByTestId('ontology-data-concept-picker-trigger')
+  );
+  fireEvent.click(
+    await screen.findByTestId('ontology-data-concept-option-transfer')
+  );
+
+  await screen.findByTestId('ontology-data-cluster-transfer');
+
+  expect(onLinkData).not.toHaveBeenCalled();
+});
+
+it('offers Link data with the concept drawer closed and asks for the shown concept', async () => {
   fetchPage.mockResolvedValue(firstPage());
   localStorage.setItem(
     'os-dataBy',
@@ -464,15 +521,18 @@ it('offers Link data only while the concept drawer is open', async () => {
       'ontology-1': { recentIds: ['unused'], selectedId: 'unused' },
     })
   );
+  const onLinkData = jest.fn();
   renderMode(jest.fn(), {
     initialConceptId: NO_CONCEPT,
     canEditBindings: true,
+    onLinkData,
   });
 
   expect(await screen.findByTestId('ontology-data-empty')).toBeVisible();
-  expect(
-    screen.queryByTestId('ontology-data-link-asset')
-  ).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('ontology-data-link-asset'));
+
+  expect(onLinkData).toHaveBeenCalledWith('unused');
 });
 
 it('keeps loading the remaining clusters, and says nothing is linked only after the last page', async () => {
@@ -505,7 +565,9 @@ describe('a graph that went stale', () => {
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
 
-    expect(screen.getByText('label.loading')).toHaveAttribute('role', 'status');
+    expect(
+      screen.getByRole('status', { name: 'label.loading' })
+    ).toBeInTheDocument();
     expect(clusterCount('transfer')).toHaveTextContent('· 6');
     expect(screen.getByTestId('ontology-data-root-transfer')).toHaveAttribute(
       'aria-pressed',
@@ -517,7 +579,9 @@ describe('a graph that went stale', () => {
     );
 
     expect(clusterCount('transfer')).toHaveTextContent('· 9');
-    expect(screen.queryByText('label.loading')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: 'label.loading' })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps an expanded cluster expanded through the reload', async () => {
@@ -594,7 +658,9 @@ describe('a graph that went stale', () => {
 
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(6));
-    await waitFor(() => expect(screen.queryByText('label.loading')).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('status', { name: 'label.loading' })).toBeNull()
+    );
 
     expect(rows('ledger')).toEqual([
       'ledger_1',
@@ -770,7 +836,8 @@ describe('the concept picker', () => {
     (searchQuery as jest.Mock).mockResolvedValue({
       hits: { total: { value: 0 }, hits: [] },
     });
-    renderMode(jest.fn(), { canEditBindings: true });
+    const onLinkData = jest.fn();
+    renderMode(jest.fn(), { canEditBindings: true, onLinkData });
     await screen.findByTestId('ontology-data-cluster-transfer');
 
     fireEvent.click(screen.getByTestId('ontology-data-concept-change'));
@@ -791,12 +858,13 @@ describe('the concept picker', () => {
 
     fireEvent.click(link);
 
-    expect(
-      await screen.findByTestId('ontology-data-link-dialog')
-    ).toBeVisible();
-    expect(
-      screen.queryByTestId('ontology-data-concept-picker')
-    ).not.toBeInTheDocument();
+    expect(onLinkData).toHaveBeenCalledWith('transfer');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-data-concept-picker')
+      ).not.toBeInTheDocument()
+    );
   });
 });
 
@@ -965,47 +1033,20 @@ describe('bound columns, unlinking and linking', () => {
     });
   });
 
-  it('links a table from the empty state through Link Asset', async () => {
+  it('sends Link Asset in the empty state to the concept panel instead of a dialog of its own', async () => {
     fetchPage.mockResolvedValue(firstPage());
-    (searchQuery as jest.Mock).mockResolvedValue({
-      hits: {
-        total: { value: 1 },
-        hits: [
-          {
-            _source: {
-              id: 'new-table',
-              name: 'new_table',
-              entityType: 'table',
-              fullyQualifiedName: 'svc.db.schema.new_table',
-            },
-          },
-        ],
-      },
-    });
+    const onLinkData = jest.fn();
     renderMode(jest.fn(), {
       initialConceptId: 'unused',
       canEditBindings: true,
+      onLinkData,
     });
-    const link = await screen.findByTestId('ontology-data-link-asset');
-    await waitFor(() => expect(link).toBeEnabled());
 
-    fireEvent.click(link);
-    const dialog = await screen.findByTestId('ontology-data-link-dialog');
-    fireEvent.click(
-      await within(dialog).findByRole('checkbox', { name: 'new_table' })
-    );
-    fireEvent.click(within(dialog).getByTestId('ontology-data-asset-save'));
+    fireEvent.click(await screen.findByTestId('ontology-data-link-asset'));
 
-    await waitFor(() =>
-      expect(putOntologyConceptBinding).toHaveBeenCalledWith('unused', {
-        expectedRevision: 0,
-        asset: { assetId: 'new-table', assetType: 'table', columns: [] },
-      })
-    );
-    await waitFor(() =>
-      expect(
-        screen.queryByTestId('ontology-data-link-dialog')
-      ).not.toBeInTheDocument()
-    );
+    expect(onLinkData).toHaveBeenCalledWith('unused');
+    expect(
+      screen.queryByTestId('ontology-data-link-dialog')
+    ).not.toBeInTheDocument();
   });
 });

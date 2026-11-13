@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -327,10 +329,13 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     final List<Task> reviewTasks =
         tasks.listAll(tasks.getFields(LISTED_REVIEW_TASK_FIELDS), filter);
     final Map<UUID, OntologyRelease> releases = releasesById(reviewTasks);
+    final Set<UUID> liveOntologies = liveOntologyIds(releases.values());
     final List<OpenReview> reviews = new ArrayList<>();
     for (final Task task : reviewTasks) {
       final OntologyRelease release = reviewedRelease(task, releases);
-      if (release != null && canView.test(release)) {
+      if (release != null
+          && liveOntologies.contains(release.getOntology().getId())
+          && canView.test(release)) {
         final OntologyReleaseReviewReader reader =
             new OntologyReleaseReviewReader(release, task, caller);
         if (reader.matches(view)) {
@@ -351,6 +356,18 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
             .toList();
     return dao.findEntitiesByIds(ids, Include.NON_DELETED).stream()
         .collect(Collectors.toMap(OntologyRelease::getId, release -> release));
+  }
+
+  /** Archiving an ontology keeps its releases and review task, so its review must not surface. */
+  private static Set<UUID> liveOntologyIds(final Collection<OntologyRelease> releases) {
+    final List<UUID> ids =
+        releases.stream().map(release -> release.getOntology().getId()).distinct().toList();
+    return Entity.getEntityRepository(Entity.ONTOLOGY)
+        .getDao()
+        .findEntitiesByIds(ids, Include.NON_DELETED)
+        .stream()
+        .map(EntityInterface::getId)
+        .collect(Collectors.toSet());
   }
 
   /** The release {@code task} reviews, when that release is in review under this very task. */

@@ -153,15 +153,15 @@ export const DataGraphFootnote = ({
   if (hasMoreTerms) {
     return (
       <Button
+        showTextWhileLoading
         className={FOOTNOTE_CLASS}
         color="secondary"
         isDisabled={isLoadingMoreTerms}
+        isLoading={isLoadingMoreTerms}
         size="sm"
         style={{ top }}
         onPress={onLoadMoreTerms}>
-        {isLoadingMoreTerms
-          ? t('label.loading')
-          : t('label.load-more-lowercase')}
+        {t('label.load-more-lowercase')}
       </Button>
     );
   }

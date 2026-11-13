@@ -232,7 +232,7 @@ class OntologySparqlQueryServiceTest {
 
     final var failure =
         assertThrows(
-            SparqlQueryLimits.QueryLimitExceededException.class,
+            SparqlQueryLimits.OntologyTooLargeException.class,
             () -> service(model).query(GLOSSARY_ID, request("ASK {}")));
 
     assertTrue(failure.getMessage().contains("input"), failure.getMessage());
