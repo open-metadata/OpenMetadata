@@ -129,4 +129,16 @@ describe('alertStatus.utils', () => {
       failureReasons: [REFUSED],
     });
   });
+
+  it('lists a reason that several destinations share once, in their order', () => {
+    expect(
+      getAlertListStatus(
+        alertWith([
+          { status: Status.AwaitingRetry, lastFailedReason: REFUSED },
+          { status: Status.Failed, lastFailedReason: 'Connection refused' },
+          { status: Status.RetryLimitReached, lastFailedReason: REFUSED },
+        ])
+      ).failureReasons
+    ).toEqual([REFUSED, 'Connection refused']);
+  });
 });

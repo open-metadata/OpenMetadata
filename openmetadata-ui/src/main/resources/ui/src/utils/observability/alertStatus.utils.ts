@@ -53,10 +53,14 @@ export const getNotSendingReason = (
     ? statusDetails.lastFailedReason
     : undefined;
 
-const reasonsOf = (statuses: ReportedStatus[]) =>
-  statuses
-    .map((statusDetails) => statusDetails.lastFailedReason)
-    .filter((reason): reason is string => Boolean(reason));
+// Each distinct reason once, in the order the destinations give them.
+const reasonsOf = (statuses: ReportedStatus[]) => [
+  ...new Set(
+    statuses
+      .map((statusDetails) => statusDetails.lastFailedReason)
+      .filter((reason): reason is string => Boolean(reason))
+  ),
+];
 
 /**
  * The status an alert shows in a list: failed while any of its destinations is not sending, with
