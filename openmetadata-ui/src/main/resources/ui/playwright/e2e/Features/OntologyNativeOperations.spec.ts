@@ -219,7 +219,12 @@ test.describe(
             `ontology-native-asset-remove-${table.entityResponseData.id}`
           );
           await clickIgnoringToasts(removeTable);
-          await page.getByTestId('ontology-unlink-cancel').click();
+          // The unlink confirm is a centred page modal (#37780); its Cancel has no test id.
+          const unlinkDialog = page.getByRole('dialog');
+          await unlinkDialog
+            .getByRole('button', { name: 'Cancel', exact: true })
+            .click();
+          await expect(unlinkDialog).toHaveCount(0);
           const retained = await okJson<OntologyConceptBindingsResponse>(
             await api.get(bindingPath),
             'Read cancelled unlink'
