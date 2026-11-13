@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +37,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -56,6 +58,8 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.tasks.TaskFormExecutionResolver.ActionType;
+import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -479,5 +483,168 @@ class TaskWorkflowHandlerTest {
             ChangeSource.class);
     saveChange.setAccessible(true);
     saveChange.invoke(TaskWorkflowHandler.getInstance(), table, repository, user, before, null);
+  }
+
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags, Map<String, Object> payload, List<TagLabel> newValue)
+      throws Exception {
+    return applyColumnTagUpdate(
+        columnTags,
+        payload,
+        newValue,
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, null, null, null, null, null, null));
+  }
+
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags,
+      Map<String, Object> payload,
+      List<TagLabel> newValue,
+      TaskExecutionAction action)
+      throws Exception {
+    Column email = new Column().withName("email").withTags(new ArrayList<>(columnTags));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("my_table")
+            .withFullyQualifiedName("svc.db.schema.my_table")
+            .withColumns(List.of(email));
+
+    Method applyMergeTagsAction =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applyMergeTagsAction",
+            Task.class,
+            EntityInterface.class,
+            EntityRepository.class,
+            String.class,
+            String.class,
+            Object.class,
+            TaskExecutionAction.class);
+    applyMergeTagsAction.setAccessible(true);
+    applyMergeTagsAction.invoke(
+        TaskWorkflowHandler.getInstance(),
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE)),
+        table,
+        mock(EntityRepository.class),
+        "admin",
+        JsonUtils.pojoToJson(newValue),
+        payload,
+        action);
+
+    return table.getColumns().getFirst().getTags().stream().map(TagLabel::getTagFQN).toList();
+  }
+
+  private static TagLabel tag(String fqn) {
+    return new TagLabel().withTagFQN(fqn).withSource(TagLabel.TagSource.CLASSIFICATION);
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_replacesTheColumnTags() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    assertEquals(
+        List.of("Tier.B"),
+        applyColumnTagUpdate(List.of(tag("Tier.A")), payload, List.of(tag("Tier.B"))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_keepsTagsAddedAfterTheTask() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // PII.Sensitive was added to the column after the task was created, so the task never saw it
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_dropsALiveTagFromTheSameExclusiveClassification()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // Tier.A was swapped for Tier.C after the task was created, and PII.Sensitive was added
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntityByName(Entity.CLASSIFICATION, "Tier", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(true));
+      entityMock
+          .when(() -> Entity.getEntityByName(Entity.CLASSIFICATION, "PII", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(false));
+
+      assertEquals(
+          Set.of("Tier.B", "PII.Sensitive"),
+          Set.copyOf(
+              applyColumnTagUpdate(
+                  List.of(tag("Tier.C"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+    }
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_readsTheSnapshotFromTheConfiguredField()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email.tags",
+            "operation",
+            "Replace",
+            "tagsToAdd",
+            List.of(tag("Tier.B")),
+            "seenTags",
+            List.of(tag("Tier.A")));
+    TaskExecutionAction action =
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, "seenTags", null, null, null, null, null);
+
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")),
+                payload,
+                List.of(tag("Tier.B")),
+                action)));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_removesWhatTheReviewerDropped() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email.tags",
+            "operation",
+            "Remove",
+            "tagsToRemove",
+            List.of(tag("PII.Sensitive")),
+            "currentTags",
+            List.of(tag("PII.Sensitive"), tag("Tier.A")));
+
+    assertEquals(
+        List.of("Tier.A"),
+        applyColumnTagUpdate(
+            List.of(tag("PII.Sensitive"), tag("Tier.A")), payload, List.of(tag("Tier.A"))));
   }
 }
