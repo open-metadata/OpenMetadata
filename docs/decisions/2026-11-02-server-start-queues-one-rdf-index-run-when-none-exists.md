@@ -100,9 +100,13 @@ changed it. Where it is not a full rebuild the state stays `DEGRADED` until one 
 trigger does not override the configuration an admin chose.
 
 **Known gaps, not closed here:**
-- An install that is upgraded and has RDF enabled in the same deploy never starts the new build
-  with RDF off, so it records no mark and behaves as before: no run is queued, and the state is
-  `DEGRADED` only when its newest record is an old failed one, until the weekly run.
+- A database already at 2.1.0 that gets this change and RDF enabled in the same deploy never
+  starts the new build with RDF off, so it records no mark and behaves as before: no run is
+  queued. Where the earlier build stored its RDF-off run as a `SUCCESS` (builds of `main` between
+  #37155 and this change) the state reads `READY` over a graph that was not built, until a full
+  rebuild runs; where it stored it as `FAILED` the state reads `DEGRADED` until then. An upgrade
+  from 2.0.x is not affected: the 2.1.0 migration deletes earlier `RdfIndexApp` run records, so
+  the first-install rule above queues the run.
 - A rolling restart that turns RDF on does not end `READY` by itself. The old server's stop mark
   follows the rebuild the new server queued, so the state is `DEGRADED` until another full rebuild
   runs: on demand, at the next RDF-on start, or by the weekly schedule. With several replicas each
