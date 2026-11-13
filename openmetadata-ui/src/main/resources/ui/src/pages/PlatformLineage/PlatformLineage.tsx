@@ -52,8 +52,10 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
-import { SearchIndex } from '../../enums/search.enum';
-import { LineageLens } from '../../generated/api/lineage/lineageScene';
+import {
+  LineageBand,
+  LineageLens,
+} from '../../generated/api/lineage/lineageScene';
 import { EntityReference } from '../../generated/entity/type';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -69,13 +71,11 @@ import { getEncodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
-import { ENTITY_LOAD_ERRORS } from './PlatformLineage.constants';
-
-const LINEAGE_SEARCH_INDEXES = [
-  SearchIndex.DATA_ASSET,
-  SearchIndex.DOMAIN,
-  SearchIndex.SERVICE,
-];
+import {
+  ENTITY_LOAD_ERRORS,
+  LAYER_SEARCH_BY_LENS,
+  LINEAGE_SEARCH_INDEXES,
+} from './PlatformLineage.constants';
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
@@ -126,7 +126,7 @@ const PlatformLineage = () => {
 
   // The header names the lens and focus the map is drawn through, read the
   // same way the map reads them.
-  const { lens, focusFqn } = getSceneRequestFromSearch(
+  const { lens, band, focusFqn } = getSceneRequestFromSearch(
     location.search,
     getSceneFocus(decodedFqn, entityType),
     true
@@ -212,17 +212,22 @@ const PlatformLineage = () => {
 
   // The header names what the map is focused on, which moves with breadcrumb
   // and lens changes while the URL path keeps the entity the page opened on.
+  // A Layer level lists services, domains or data products, so its search
+  // looks for those; deeper levels search the data assets.
+  const layerSearch =
+    band === LineageBand.Layer ? LAYER_SEARCH_BY_LENS[lens] : undefined;
+
   const searchPlaceholder = useMemo(() => {
     if (!focusFqn) {
       return t('label.search-entity-for-lineage', {
-        entity: t('label.entity-lowercase'),
+        entity: t(layerSearch?.labelKey ?? 'label.entity-lowercase'),
       });
     }
 
     return focusFqn === decodedFqn && selectedEntity
       ? getEntityName(selectedEntity)
       : getNameFromFQN(focusFqn);
-  }, [focusFqn, decodedFqn, selectedEntity, t]);
+  }, [focusFqn, decodedFqn, layerSearch, selectedEntity, t]);
 
   const searchSelect = useMemo(
     () => (
@@ -235,11 +240,13 @@ const PlatformLineage = () => {
         <DataAssetAsyncSelectList
           // eslint-disable-next-line jsx-a11y/no-autofocus -- disables the list's default autofocus
           autoFocus={false}
-          key={searchKey}
+          key={`${searchKey}-${layerSearch?.index ?? 'assets'}`}
           // What the map is focused on is the placeholder, not a chip.
           placeholder={searchPlaceholder}
-          queryFilter={getLineageEntityExclusionFilter()}
-          searchIndex={LINEAGE_SEARCH_INDEXES}
+          queryFilter={
+            layerSearch ? undefined : getLineageEntityExclusionFilter()
+          }
+          searchIndex={layerSearch?.index ?? LINEAGE_SEARCH_INDEXES}
           onChange={handleSearchSelect}
         />
         {focusFqn && (
@@ -260,6 +267,7 @@ const PlatformLineage = () => {
       handleSearchClear,
       handleSearchSelect,
       isAiMode,
+      layerSearch,
       searchKey,
       searchPlaceholder,
       t,

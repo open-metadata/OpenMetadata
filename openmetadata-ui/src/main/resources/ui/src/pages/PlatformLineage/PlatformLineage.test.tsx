@@ -996,6 +996,46 @@ describe('PlatformLineage Component Logic', () => {
       });
     });
 
+    it.each([
+      ['', SearchIndex.SERVICE, 'label.service-lowercase'],
+      ['?lineageLens=domain', SearchIndex.DOMAIN, 'label.domain-lowercase'],
+      [
+        '?lineageLens=dataProduct',
+        SearchIndex.DATA_PRODUCT,
+        'label.data-product-lowercase',
+      ],
+    ])(
+      'searches what the Layer level lists (%s)',
+      async (search, index, entityLabel) => {
+        mockFqn = '';
+        mockEntityType = '' as EntityType;
+        mockLocationSearch = search;
+        await selectFromSearch(undefined);
+
+        const props = mockDataAssetAsyncSelectList.mock.calls.at(-1)[0];
+
+        expect(props.searchIndex).toBe(index);
+        expect(props.queryFilter).toBeUndefined();
+        expect(mockT).toHaveBeenCalledWith('label.search-entity-for-lineage', {
+          entity: entityLabel,
+        });
+      }
+    );
+
+    it('searches data assets below the Layer level', async () => {
+      mockLocationSearch = '?lineageBand=ASSET';
+      await selectFromSearch(undefined);
+
+      const props = mockDataAssetAsyncSelectList.mock.calls.at(-1)[0];
+
+      expect(props.searchIndex).toEqual([
+        SearchIndex.DATA_ASSET,
+        SearchIndex.DOMAIN,
+        SearchIndex.SERVICE,
+      ]);
+      expect(props.queryFilter).toBeDefined();
+    });
+
     it('offers no clear while the whole platform is shown', async () => {
       mockFqn = '';
       mockEntityType = '' as EntityType;

@@ -10,6 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SearchIndex } from '../../enums/search.enum';
+import { LineageLens } from '../../generated/api/lineage/lineageScene';
+
+export const LINEAGE_SEARCH_INDEXES = [
+  SearchIndex.DATA_ASSET,
+  SearchIndex.DOMAIN,
+  SearchIndex.SERVICE,
+];
+
+// What a Layer level of each lens lists, and so what its search looks for.
+export const LAYER_SEARCH_BY_LENS: Record<
+  LineageLens,
+  { index: SearchIndex; labelKey: string }
+> = {
+  [LineageLens.Service]: {
+    index: SearchIndex.SERVICE,
+    labelKey: 'label.service-lowercase',
+  },
+  [LineageLens.Domain]: {
+    index: SearchIndex.DOMAIN,
+    labelKey: 'label.domain-lowercase',
+  },
+  [LineageLens.DataProduct]: {
+    index: SearchIndex.DATA_PRODUCT,
+    labelKey: 'label.data-product-lowercase',
+  },
+};
+
 // A 404 means the entity is gone and a 403 that it can't be viewed; any other
 // failed fetch can be retried.
 export const ENTITY_LOAD_ERRORS: Record<number, 'missing' | 'denied'> = {
