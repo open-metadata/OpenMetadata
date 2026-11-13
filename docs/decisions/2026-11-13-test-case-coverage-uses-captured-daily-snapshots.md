@@ -19,6 +19,12 @@ collection day, before it processes tables. The snapshot timestamp is the collec
 `updatedAt`. Table and column tests carry their parent `originEntityFQN`, service, suite and
 test-definition references. Definitions are still excluded from total-data-assets metrics.
 
+Snapshot templates map `fullyQualifiedName` as a normalized keyword across all entity types.
+Consumers sort across the snapshot streams, so a type must not inherit a text mapping for this
+field from its live search index. Existing experimental test-case streams with a text mapping
+need rebuilding with their captured documents preserved; rollover alone leaves incompatible
+historical backing indexes in the cross-stream search.
+
 Table snapshots carry `testCaseCount` and `hasTestCases` (0 or 1). Counts come from the test case
 snapshots for that table and day, matched by stable `originEntityId` so renames do not lose coverage. Lookups use batches of at most 128 tables, keeping aggregations
 bounded below the search engine's bucket limit across the existing 30-day backfill window.

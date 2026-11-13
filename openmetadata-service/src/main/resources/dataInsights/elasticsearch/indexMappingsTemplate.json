@@ -15,6 +15,7 @@
         }
       ],
       "properties": {
+        "fullyQualifiedName": { "type": "keyword", "normalizer": "lowercase_normalizer" },
         "originEntityId": { "type": "keyword" },
         "testCaseCount": { "type": "long" },
         "hasTestCases": { "type": "integer" },

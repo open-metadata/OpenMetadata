@@ -126,6 +126,46 @@ class DataInsightTestCaseCoverageIT {
   }
 
   @Test
+  void snapshotsSupportCompletenessSortingAcrossTablesAndTestCases(TestNamespace ns)
+      throws Exception {
+    final Table table = ShortStackFactory.table(ns);
+    final long day = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
+    testCase(ns, table, false);
+    run(table, day, Optional.empty());
+
+    final JsonNode response =
+        request(
+            "POST",
+            "/.ds-" + stream("*") + "/_search",
+            Map.of(
+                "query",
+                Map.of(
+                    "bool",
+                    Map.of(
+                        "filter",
+                        List.of(
+                            Map.of("term", Map.of("@timestamp", day)),
+                            Map.of(
+                                "term",
+                                Map.of("service.name.keyword", table.getService().getName()))))),
+                "sort",
+                List.of(
+                    Map.of(
+                        "fullyQualifiedName", Map.of("order", "asc", "unmapped_type", "keyword")),
+                    Map.of("name.keyword", Map.of("order", "asc", "unmapped_type", "keyword")),
+                    Map.of("id.keyword", Map.of("order", "asc", "unmapped_type", "keyword")))));
+
+    assertEquals(0, response.path("_shards").path("failed").asInt(), response.toString());
+    final JsonNode hits = response.path("hits").path("hits");
+    assertEquals(2, hits.size(), response.toString());
+    assertEquals(
+        Set.of(Entity.TABLE, Entity.TEST_CASE),
+        Set.of(
+            hits.get(0).path("_source").path("entityType").asText(),
+            hits.get(1).path("_source").path("entityType").asText()));
+  }
+
+  @Test
   void incompleteCaptureDoesNotTurnMissingHistoryIntoZeroCoverage(TestNamespace ns)
       throws Exception {
     final Table table = ShortStackFactory.table(ns);
