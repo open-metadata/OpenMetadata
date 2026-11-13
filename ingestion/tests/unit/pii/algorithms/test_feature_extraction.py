@@ -315,7 +315,17 @@ def test_extract_pii_from_column_names():
         PIITag.US_SSN: ["ssn", "social_security_number", "social_security"],
         PIITag.EMAIL_ADDRESS: ["email", "e-mail", "mail_address"],
         PIITag.PERSON: ["user_name", "client_name", "first_name", "last_name"],
-        PIITag.DATE_TIME: ["date_of_birth", "dob", "birthday"],
+        PIITag.DATE_TIME: [
+            "date_of_birth",
+            "dob",
+            "birthday",
+            "date of birth",
+            "birth date",
+            "death_date",
+            "date_of_death",
+            "date of death",
+            "hire date",
+        ],
     }
 
     patterns = get_pii_column_name_patterns()
