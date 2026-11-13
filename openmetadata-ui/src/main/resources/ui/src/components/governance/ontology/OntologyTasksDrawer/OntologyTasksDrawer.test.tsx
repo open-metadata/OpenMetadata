@@ -1017,13 +1017,13 @@ describe('the Studio review banner scope', () => {
   it('keeps the tasks trigger enabled when the viewer only created tasks', async () => {
     serveOpenReviews([], [reviewOf('Finance', 'TASK-2')]);
     renderWithQueryClient(<Harness />);
-
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith(
-        '/ontologies/reviews',
-        expect.objectContaining({ params: { view: 'created', limit: 1 } })
-      )
-    );
+    const trigger = await screen.findByTestId('ontology-tasks-trigger');
+    await waitFor(() => expect(trigger).toHaveTextContent('0'));
+    // While any total is unknown the trigger is enabled regardless, so let
+    // every review read settle before asserting.
+    await act(async () => {
+      await Promise.all(get.mock.results.map(({ value }) => value));
+    });
 
     expect(screen.getByTestId('ontology-tasks-trigger')).toBeEnabled();
   });

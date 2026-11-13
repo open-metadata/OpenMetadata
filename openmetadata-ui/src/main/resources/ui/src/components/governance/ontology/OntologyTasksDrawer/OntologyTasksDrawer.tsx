@@ -237,6 +237,11 @@ const OntologyTasksDrawer = ({
   }>();
   const [permissionSelection, setPermissionSelection] = useState<string>();
   const taskButton = useRef<HTMLButtonElement>(null);
+  // A disabled trigger can't take focus; its Tooltip wrapper (tabIndex 0) can.
+  const focusTrigger = () => {
+    const button = taskButton.current;
+    (button?.disabled ? button.parentElement : button)?.focus();
+  };
   useEffect(() => {
     setQueueHistory({ key: '', cursors: [undefined] });
     setEventHistory({ key: '', cursors: [undefined] });
@@ -248,7 +253,7 @@ const OntologyTasksDrawer = ({
   const wasOpen = useRef(isOpen);
   useEffect(() => {
     if (wasOpen.current && !isOpen) {
-      taskButton.current?.focus();
+      focusTrigger();
     }
     wasOpen.current = isOpen;
   }, [isOpen]);
@@ -442,7 +447,7 @@ const OntologyTasksDrawer = ({
     setSearch('');
     setQueueHistory({ key: '', cursors: [undefined] });
     onTaskChange(undefined);
-    taskButton.current?.focus();
+    focusTrigger();
   };
   const refresh = async () => {
     setReadyGeneration(undefined);
@@ -689,11 +694,12 @@ const OntologyTasksDrawer = ({
 
   const renderTasksAction = () => {
     // Unknown totals (loading/error) keep the trigger enabled.
-    const hasNoTasks = [
-      pendingTotal.data?.paging?.total,
-      assignedTotal,
-      createdTotal,
-    ].every((total) => total === 0);
+    // Stays enabled while open so acting on the last task doesn't remount it mid-modal.
+    const hasNoTasks =
+      !isOpen &&
+      [pendingTotal.data?.paging?.total, assignedTotal, createdTotal].every(
+        (total) => total === 0
+      );
 
     return (
       <Tooltip isDisabled={!hasNoTasks} title={t('label.no-tasks-right-now')}>
