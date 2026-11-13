@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.utils.v210;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,17 +28,22 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationHaltException;
 
 /**
- * The alert step stops, before it writes anything, when the credentials earlier releases stored
- * encrypted exist and none of them opens with the configured keys.
+ * The 2.1.0 data migration stops, before any step writes, when the credentials earlier releases
+ * stored encrypted exist and none of them opens with the configured keys; the alert step itself
+ * carries over what opens and leaves the rest as stored.
  */
 class WebhookSecretsMigrationTest {
   private static final String KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String PREVIOUS_KEY = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ5x4uDcWn7mY=";
+  private static final String VERSION = "2.1.0";
 
   private final Handle handle = mock(Handle.class);
+  private final MigrationDAO migrationDAO = mock(MigrationDAO.class);
   private final PreparedBatch batch = mock(PreparedBatch.class, RETURNS_SELF);
   private final List<Map<String, Object>> alertRows = new ArrayList<>();
 
@@ -63,16 +69,16 @@ class WebhookSecretsMigrationTest {
   }
 
   @Test
-  void stopsBeforeWritingWhenNoEarlierCredentialOpens() {
+  void stopsBeforeAnythingIsWrittenWhenNoEarlierCredentialOpens() {
     UUID alertId = UUID.randomUUID();
     alertRows.add(alertRow(alertId, "signed", writtenWithThePreviousKey("a signing key")));
 
-    IllegalStateException stopped =
+    MigrationHaltException stopped =
         assertThrows(
-            IllegalStateException.class,
+            MigrationHaltException.class,
             () ->
-                WebhookSecretsMigration.bindAlertDestinationSecrets(
-                    handle, ConnectionType.POSTGRES));
+                WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                    migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
 
     assertTrue(stopped.getMessage().contains("FERNET_KEY"), stopped.getMessage());
     assertTrue(
@@ -83,19 +89,50 @@ class WebhookSecretsMigrationTest {
   }
 
   @Test
-  void continuesWhenTheOperatorChoseToKeepCredentialsThatDoNotOpen() {
-    String notOpened = writtenWithThePreviousKey("a signing key");
-    alertRows.add(alertRow(UUID.randomUUID(), "kept", notOpened));
+  void goesOnWhenTheOperatorChoseToKeepCredentialsThatDoNotOpen() {
+    alertRows.add(alertRow(UUID.randomUUID(), "kept", writtenWithThePreviousKey("a key")));
 
-    WebhookSecretsMigration.bindAlertDestinationSecrets(handle, ConnectionType.POSTGRES, true);
-
-    List<String> written = writtenJson();
-    assertEquals(1, written.size());
-    assertTrue(written.getFirst().contains(notOpened), written.getFirst());
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                handle, ConnectionType.POSTGRES, true));
   }
 
   @Test
-  void continuesWhenSomeEarlierCredentialsOpen() {
+  void goesOnWhenSomeEarlierCredentialsOpen() {
+    alertRows.add(alertRow(UUID.randomUUID(), "opens", Fernet.getInstance().encrypt("a key")));
+    alertRows.add(alertRow(UUID.randomUUID(), "does_not_open", writtenWithThePreviousKey("k")));
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  @Test
+  void goesOnWhenNoEarlierCredentialIsStored() {
+    alertRows.add(alertRow(UUID.randomUUID(), "plain", "a key entered in the clear"));
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  // Once the alert step has run, the values left as stored are the ones that did not open.
+  @Test
+  void isNotRunAgainOnceTheAlertStepIsRecorded() {
+    alertRows.add(alertRow(UUID.randomUUID(), "left", writtenWithThePreviousKey("a key")));
+    when(migrationDAO.getSqlQuery(eq(VERSION), anyString())).thenReturn("-- recorded");
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  @Test
+  void theAlertStepCarriesOverWhatOpensAndKeepsTheRest() {
     String notOpened = writtenWithThePreviousKey("a signing key");
     alertRows.add(alertRow(UUID.randomUUID(), "opens", Fernet.getInstance().encrypt("a key")));
     alertRows.add(alertRow(UUID.randomUUID(), "does_not_open", notOpened));
@@ -106,17 +143,6 @@ class WebhookSecretsMigrationTest {
     assertEquals(2, written.size());
     assertTrue(written.get(0).contains(StoredWebhookSecrets.BOUND_PREFIX), written.get(0));
     assertTrue(written.get(1).contains(notOpened), written.get(1));
-  }
-
-  @Test
-  void continuesWhenNoEarlierCredentialIsStored() {
-    alertRows.add(alertRow(UUID.randomUUID(), "plain", "a key entered in the clear"));
-
-    WebhookSecretsMigration.bindAlertDestinationSecrets(handle, ConnectionType.POSTGRES);
-
-    List<String> written = writtenJson();
-    assertEquals(1, written.size());
-    assertTrue(written.getFirst().contains(StoredWebhookSecrets.BOUND_PREFIX), written.getFirst());
   }
 
   private List<String> writtenJson() {

@@ -38,9 +38,9 @@ class StoredWebhookSecretsTest {
     String header = legacy("a header value");
     JsonNode alert = alert(storedTwice, header);
 
-    assertTrue(secrets.bindAlert(alert, new StoredWebhookSecrets.CarriedCredentials()));
+    assertTrue(secrets.bindAlert(alert));
     String once = JsonUtils.pojoToJson(alert);
-    assertFalse(secrets.bindAlert(alert, new StoredWebhookSecrets.CarriedCredentials()));
+    assertFalse(secrets.bindAlert(alert));
     assertEquals(once, JsonUtils.pojoToJson(alert));
 
     assertEquals("https://hooks.slack.com/x", opened(alert, 0, SLACK, "/endpoint"));
@@ -63,8 +63,8 @@ class StoredWebhookSecretsTest {
     UUID anotherDestination = UUID.randomUUID();
     ((ObjectNode) another.path("destinations").get(3)).put("id", anotherDestination.toString());
 
-    assertTrue(secrets.bindAlert(alert, new StoredWebhookSecrets.CarriedCredentials()));
-    assertTrue(secrets.bindAlert(another, new StoredWebhookSecrets.CarriedCredentials()));
+    assertTrue(secrets.bindAlert(alert));
+    assertTrue(secrets.bindAlert(another));
 
     assertEquals("a value stored twice", opened(alert, 3, STORED_TWICE, "/authType/clientSecret"));
     assertEquals(
@@ -78,7 +78,7 @@ class StoredWebhookSecretsTest {
     StoredWebhookSecrets otherKey = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
     JsonNode alert = alert(underAnotherKey, legacy("a header value"));
 
-    otherKey.bindAlert(alert, new StoredWebhookSecrets.CarriedCredentials());
+    otherKey.bindAlert(alert);
 
     assertEquals(underAnotherKey, configAt(alert, 3, "/authType/clientSecret"));
   }

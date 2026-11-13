@@ -73,7 +73,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    // First, so no later step loads an entity still typed DeltaLake:
+    // Before every step that writes with the configured Fernet keys: stops the upgrade, --force
+    // included, when they open none of the webhook credentials earlier releases stored.
+    WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+        migrationDAO, getVersion(), handle, MYSQL);
+    // First of the steps that write, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
     ODCSCustomPropertiesMigration.migrate(handle, MYSQL);
@@ -176,9 +180,7 @@ public class Migration extends MigrationProcessImpl {
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
     // New writes encrypt each webhook secret for the alert destination or profile webhook that
     // holds it; this does the same for what is already stored. Each destination's id owns its
-    // secrets, so this runs after the destination id step. The alert step goes first: it stops
-    // the upgrade, before any webhook secret is written, when the configured Fernet keys open none
-    // of the credentials earlier releases stored. Idempotent.
+    // secrets, so this runs after the destination id step. Idempotent.
     runOnce(
         migrationDAO,
         getVersion(),

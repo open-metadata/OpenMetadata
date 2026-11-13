@@ -14,17 +14,19 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.Lists;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 
 /**
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
@@ -66,31 +68,49 @@ public final class WebhookSecretsMigration {
   }
 
   /**
-   * Binds the alert destinations. Every row is rewritten in memory first: when the credentials
-   * releases before 2.1 stored encrypted exist and none of them opens with the configured keys, it
-   * stops before anything is written ({@link StoredWebhookSecrets.CarriedCredentials}), unless the
-   * environment variable {@value #KEEP_UNOPENED_ENV} is {@code true}.
+   * Stops the upgrade, before any 2.1.0 step writes with the configured Fernet keys, when webhook
+   * credentials releases before 2.1 stored encrypted exist and none of them opens with those keys
+   * ({@link StoredWebhookSecrets.CarriedCredentials}). It only reads, it runs first in the 2.1.0
+   * data migration, and {@code migrate --force} does not skip it. It is not run again once the
+   * alert step is recorded, since that step has then carried over what opened. The environment
+   * variable {@value #KEEP_UNOPENED_ENV} set to {@code true} lets the upgrade go on, leaving those
+   * values as stored. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
    */
-  public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
-    bindAlertDestinationSecrets(
-        handle, connectionType, Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
+  public static void requireKeysThatOpenStoredCredentials(
+      MigrationDAO migrationDAO, String version, Handle handle, ConnectionType connectionType) {
+    boolean carriedOver = DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
+    if (!carriedOver && isKeyDefined()) {
+      requireKeysThatOpenStoredCredentials(
+          handle, connectionType, Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
+    }
+  }
+
+  static void requireKeysThatOpenStoredCredentials(
+      Handle handle, ConnectionType connectionType, boolean keepUnopened) {
+    StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
+    StoredWebhookSecrets.CarriedCredentials carried = new StoredWebhookSecrets.CarriedCredentials();
+    forEachPage(
+        handle,
+        new Sql(connectionType),
+        ALERT_TABLE,
+        rows ->
+            rows.forEach(
+                row ->
+                    secrets.countCarriedCredentials(
+                        JsonUtils.readTree(String.valueOf(row.get("json"))), carried)));
+    carried.requireAnyOpened(keepUnopened);
   }
 
   /**
-   * As {@link #bindAlertDestinationSecrets(Handle, ConnectionType)}; {@code keepUnopened} lets the
-   * step go on when none of those credentials opens, leaving them as stored.
+   * Binds the alert destinations. A credential stored before 2.1 that does not open stays as
+   * stored; whether the configured keys open any of them is checked first, by {@link
+   * #requireKeysThatOpenStoredCredentials}.
    */
-  static void bindAlertDestinationSecrets(
-      Handle handle, ConnectionType connectionType, boolean keepUnopened) {
+  public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
-      StoredWebhookSecrets.CarriedCredentials carried =
-          new StoredWebhookSecrets.CarriedCredentials();
-      List<Rewrite> alerts =
-          rewritesById(handle, sql, ALERT_TABLE, row -> secrets.bindAlert(row, carried));
-      carried.requireAnyOpened(keepUnopened);
-      write(handle, sql, ALERT_TABLE, alerts);
+      rewriteById(handle, sql, ALERT_TABLE, secrets::bindAlert);
       rewriteVersions(handle, sql, ALERT_TABLE, ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
     }
@@ -106,16 +126,28 @@ public final class WebhookSecretsMigration {
 
   private static void rewriteById(
       Handle handle, Sql sql, String table, Predicate<JsonNode> transform) {
-    write(handle, sql, table, rewritesById(handle, sql, table, transform));
+    AtomicInteger rewritten = new AtomicInteger();
+    forEachPage(
+        handle,
+        sql,
+        table,
+        rows -> {
+          PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
+          for (Map<String, Object> row : rows) {
+            String id = String.valueOf(row.get("id"));
+            String json = rewritten(row, transform, table + " row " + id);
+            if (json != null) {
+              batch.bind("id", id).bind("json", json).add();
+            }
+          }
+          rewritten.addAndGet(execute(batch));
+        });
+    LOG.info("Bound the webhook secrets of {} rows of {}", rewritten.get(), table);
   }
 
-  /** A row of a table, as the step writes it back. */
-  private record Rewrite(String id, String json) {}
-
-  /** The rows of {@code table} that {@code transform} changes, as they are to be written. */
-  private static List<Rewrite> rewritesById(
-      Handle handle, Sql sql, String table, Predicate<JsonNode> transform) {
-    List<Rewrite> rewrites = new ArrayList<>();
+  /** Every row of {@code table} that could hold a webhook, a page at a time, by id. */
+  private static void forEachPage(
+      Handle handle, Sql sql, String table, Consumer<List<Map<String, Object>>> page) {
     String cursor = "";
     List<Map<String, Object>> rows;
     do {
@@ -126,24 +158,9 @@ public final class WebhookSecretsMigration {
               .bind("pageSize", PAGE_SIZE)
               .mapToMap()
               .list();
-      for (Map<String, Object> row : rows) {
-        cursor = String.valueOf(row.get("id"));
-        String json = rewritten(row, transform, table + " row " + cursor);
-        if (json != null) {
-          rewrites.add(new Rewrite(cursor, json));
-        }
-      }
+      page.accept(rows);
+      cursor = rows.isEmpty() ? cursor : String.valueOf(rows.getLast().get("id"));
     } while (rows.size() == PAGE_SIZE);
-    return rewrites;
-  }
-
-  private static void write(Handle handle, Sql sql, String table, List<Rewrite> rewrites) {
-    for (List<Rewrite> page : Lists.partition(rewrites, PAGE_SIZE)) {
-      PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
-      page.forEach(rewrite -> batch.bind("id", rewrite.id()).bind("json", rewrite.json()).add());
-      execute(batch);
-    }
-    LOG.info("Bound the webhook secrets of {} rows of {}", rewrites.size(), table);
   }
 
   /**

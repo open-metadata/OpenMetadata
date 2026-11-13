@@ -648,6 +648,22 @@ class MigrationWorkflowTest {
         .upsertServerMigration(eq("1.13.0"), eq("/tmp/1.13.0"), anyString(), anyString());
   }
 
+  // Going on past this failure would leave data a later run could not bring back.
+  @Test
+  void runMigrationWorkflowsStopsOnAHaltUnderForceAndRecordsNothing() throws Exception {
+    MigrationProcess process = reprocessedJavaMigration("1.13.0");
+    doThrow(new MigrationHaltException("the configured keys open nothing"))
+        .when(process)
+        .runDataMigration();
+
+    assertThrows(MigrationHaltException.class, () -> runWorkflows(process, "1.13.0", true));
+
+    verify(process, never()).runPostDDLScripts(anyBoolean());
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+    verify(migrationDAO, never())
+        .upsertServerMigration(anyString(), anyString(), anyString(), anyString());
+  }
+
   @Test
   void runMigrationWorkflowsFailsWhenASucceededDataMigrationCannotBeRecorded() throws Exception {
     MigrationProcess process = reprocessedJavaMigration("1.13.0");
