@@ -25,6 +25,7 @@ interface EntityStatusDecisionProps {
   entityType: string;
   entityId: string;
   entityLink: string;
+  status: string;
 }
 
 // A status rarely changes while someone reads the page; hovering again reuses the answer.
@@ -35,9 +36,11 @@ const EntityStatusDecision = ({
   entityType,
   entityId,
   entityLink,
+  status,
 }: EntityStatusDecisionProps) => {
   const { data: change, isLoading } = useQuery({
-    queryKey: ['entityStatusChange', entityType, entityId],
+    // Keyed on the status too, so a status changed on this page is looked up again.
+    queryKey: ['entityStatusChange', entityType, entityId, status],
     queryFn: () => getStatusChange(entityType, entityId, entityLink),
     staleTime: STATUS_CHANGE_STALE_TIME_MS,
   });

@@ -67,6 +67,8 @@ const GOVERNANCE_BOT = 'governance-bot';
 const RUNS_AROUND_CHANGE = 10;
 // A workflow writes the status and ends its run within moments of each other.
 const RUN_WINDOW_SLACK_MS = 5_000;
+// How far a run's decision may be from the status change it caused.
+const DECISION_WINDOW_MS = 60_000;
 
 // The versions endpoint returns each version as a JSON string.
 const readVersion = (version: unknown): EntityVersion =>
@@ -88,13 +90,14 @@ const ranAt = (run: WorkflowInstance, at: number) =>
   (run.startedAt ?? 0) <= at + RUN_WINDOW_SLACK_MS &&
   (run.endedAt ?? Number.MAX_SAFE_INTEGER) >= at - RUN_WINDOW_SLACK_MS;
 
-const outcomeBefore = (run: WorkflowInstance, at: number) =>
+// The decision is written once its step commits, which is after the status write in the same
+// step, so it can land on either side of the status change: take the one decided closest to it.
+const outcomeAt = (run: WorkflowInstance, at: number) =>
   orderBy(
     getRunApprovals(run).filter(
-      ({ decidedAt }) => decidedAt <= at + RUN_WINDOW_SLACK_MS
+      ({ decidedAt }) => Math.abs(decidedAt - at) <= DECISION_WINDOW_MS
     ),
-    'decidedAt',
-    'desc'
+    ({ decidedAt }) => Math.abs(decidedAt - at)
   )[0];
 
 /**
@@ -120,11 +123,17 @@ const findRunAt = async (
     'desc'
   );
   const definitions = await getReadableDefinitions(active);
-  const run = active.find((candidate) => {
+  const settingRuns = active.filter((candidate) => {
     const definition = definitions[candidate.workflowDefinitionId ?? ''];
 
     return definition && setsEntityStage(definition);
   });
+  // The status write itself can start a short run of the same workflow just after the change, so
+  // the run that decided it comes first, then a run already going when the status changed.
+  const run =
+    settingRuns.find((candidate) => outcomeAt(candidate, at)) ??
+    settingRuns.find(({ startedAt }) => (startedAt ?? 0) <= at) ??
+    settingRuns[0];
 
   const definition = definitions[run?.workflowDefinitionId ?? ''];
   const trigger = definition?.trigger;
@@ -137,7 +146,7 @@ const findRunAt = async (
           typeof trigger === 'object' &&
           !Array.isArray(trigger) &&
           trigger?.type === TriggerType.PeriodicBatchEntity,
-        outcome: outcomeBefore(run, at),
+        outcome: outcomeAt(run, at),
       }
     : {};
 };
@@ -145,7 +154,8 @@ const findRunAt = async (
 /**
  * Who set the entity's current status: the version history says when and by whom it
  * changed, and the status-setting workflow run active at that moment, if any, says which
- * workflow changed it and how its approval was decided.
+ * workflow changed it and how its approval was decided
+ * (ADR:2026-11-13-the-status-badge-says-who-set-the-status-from-version-history).
  */
 export const getStatusChange = async (
   entityType: string,

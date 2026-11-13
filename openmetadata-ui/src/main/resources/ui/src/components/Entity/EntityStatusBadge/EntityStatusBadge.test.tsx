@@ -44,6 +44,10 @@ const openPopover = async () => {
 };
 
 describe('EntityStatusBadge', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render status badge with divider by default', () => {
     render(<EntityStatusBadge status={EntityStatus.Approved} />);
 
@@ -148,6 +152,32 @@ describe('EntityStatusBadge', () => {
     expect(
       screen.queryByTestId('entity-status-decision-detail')
     ).not.toBeInTheDocument();
+  });
+
+  it('looks the status up again once it changes on the page', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'In Review',
+      changedAt: 1,
+      changedBy: 'ana.lopez',
+    });
+    const { rerender } = renderWithQueryClient(hoverableBadge());
+    await openPopover();
+    await screen.findByTestId('entity-status-decision-outcome');
+
+    rerender(
+      <EntityStatusBadge
+        entityId="product-id"
+        entityType="dataProduct"
+        fqn="Finance.Invoices"
+        showDivider={false}
+        status={EntityStatus.InReview}
+      />
+    );
+    await openPopover();
+    await openPopover();
+    await screen.findByTestId('entity-status-decision-outcome');
+
+    expect(getStatusChange).toHaveBeenCalledTimes(2);
   });
 
   it('renders a plain badge without a popover when it does not know the entity', () => {

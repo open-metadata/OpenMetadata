@@ -64,7 +64,6 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import HoverPopover from '../../common/HoverPopover/HoverPopover';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   NO_DATA_PLACEHOLDER,
@@ -134,6 +133,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import HoverPopover from '../../common/HoverPopover/HoverPopover';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -481,15 +481,18 @@ const GlossaryTermStatusCell = ({
   children,
 }: GlossaryTermStatusCellProps) => (
   <HoverPopover
-    contentClassName="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
-    contentTestId="workflow-history-popover"
+    contentClassName="tw:flex tw:min-h-0 tw:flex-col"
+    data-testid={`${record.fullyQualifiedName ?? ''}-status`}
     trigger={
       children ?? (
         <StatusBadge label={status} status={EntityStatusClass[status]} />
       )
-    }
-    triggerTestId={`${record.fullyQualifiedName ?? ''}-status`}>
-    <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+    }>
+    <div
+      className="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
+      data-testid="workflow-history-popover">
+      <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+    </div>
   </HoverPopover>
 );
 

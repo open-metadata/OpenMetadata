@@ -29,8 +29,8 @@ const CLOSE_DELAY_MS = 120;
 export interface HoverPopoverProps {
   trigger: ReactNode;
   children: ReactNode;
-  triggerTestId?: string;
-  contentTestId?: string;
+  /** Set on the trigger. Callers pass a literal so the Playwright impact map can trace it. */
+  'data-testid'?: string;
   contentClassName?: string;
   placement?: ComponentProps<typeof Popover>['placement'];
 }
@@ -43,8 +43,7 @@ export interface HoverPopoverProps {
 const HoverPopover = ({
   trigger,
   children,
-  triggerTestId,
-  contentTestId,
+  'data-testid': dataTestId,
   contentClassName,
   placement = 'top start',
 }: HoverPopoverProps) => {
@@ -95,7 +94,7 @@ const HoverPopover = ({
     <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <AriaButton
         className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
-        data-testid={triggerTestId}
+        data-testid={dataTestId}
         ref={triggerRef}
         onHoverEnd={close}
         onHoverStart={open}
@@ -109,11 +108,7 @@ const HoverPopover = ({
         className="tw:flex tw:flex-col"
         containerClassName="tw:flex tw:min-h-0 tw:flex-col"
         placement={placement}>
-        <div
-          className={contentClassName}
-          data-testid={contentTestId}
-          ref={contentRef}
-          {...hoverProps}>
+        <div className={contentClassName} ref={contentRef} {...hoverProps}>
           {children}
         </div>
       </Popover>

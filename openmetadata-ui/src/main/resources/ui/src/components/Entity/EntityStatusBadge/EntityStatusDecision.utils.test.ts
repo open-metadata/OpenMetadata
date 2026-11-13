@@ -127,6 +127,58 @@ describe('getStatusChange', () => {
     expect(getWorkflowInstancesForApplication).toHaveBeenCalledTimes(1);
   });
 
+  it('takes the decision recorded closest to the change, even when it was recorded just after', async () => {
+    givenVersions(version('Approved', 'ana', 500_000));
+    givenRuns(
+      run('lifecycle', 10_000, 520_000, {
+        approvals: [
+          {
+            id: 'old',
+            node: 'Approve',
+            decision: 'Rejected',
+            decidedBy: ['ben'],
+            decidedAt: 100_000,
+          },
+          {
+            id: 'late',
+            node: 'Approve',
+            decision: 'Approved',
+            decidedBy: ['ana'],
+            decidedAt: 512_000,
+          },
+        ],
+      })
+    );
+
+    const change = await getStatusChange('dataProduct', 'id', LINK);
+
+    expect(change.outcome?.id).toBe('late');
+  });
+
+  it('names the run that decided the status, not the run its own status write started', async () => {
+    givenVersions(version('Approved', 'ana', 500_000));
+    givenRuns(
+      run('lifecycle', 500_100, 500_300),
+      run('lifecycle', 100_000, 500_050, {
+        global_updatedBy: 'admin',
+        approvals: [
+          {
+            id: 'decided',
+            node: 'Approve',
+            decision: 'Approved',
+            decidedBy: ['ana'],
+            decidedAt: 500_057,
+          },
+        ],
+      })
+    );
+
+    const change = await getStatusChange('dataProduct', 'id', LINK);
+
+    expect(change.outcome?.id).toBe('decided');
+    expect(change.triggeredBy).toBe('admin');
+  });
+
   it('names the workflow and whose change started it when it set the status without an approval', async () => {
     givenVersions(version('In Review', 'admin', 100_000));
     givenRuns(

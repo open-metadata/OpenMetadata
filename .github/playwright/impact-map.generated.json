@@ -887,6 +887,7 @@
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
@@ -1885,6 +1886,7 @@
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Features/TierDropdown.spec.ts",
         "playwright/e2e/Features/TierWidget.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -2666,6 +2668,7 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
@@ -2741,6 +2744,7 @@
         "playwright/e2e/Features/SearchSeparation/GlossaryRenamePrefixCascade.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -3527,6 +3531,7 @@
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
@@ -3920,6 +3925,7 @@
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
@@ -4497,6 +4503,7 @@
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
         "playwright/e2e/Flow/ApiDocs.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
@@ -7583,6 +7590,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/EntityStatusBadge.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/EntityStatusDecision.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component.tsx"
       ],
       "specs": [
@@ -9707,7 +9730,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
-        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
       ]
     },
     {
@@ -13149,6 +13173,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyProfileReport.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyReleaseDiff.ts"
       ],
       "specs": [
@@ -13513,6 +13545,7 @@
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
@@ -14096,6 +14129,7 @@
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/AlertRecipients.spec.ts",
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",

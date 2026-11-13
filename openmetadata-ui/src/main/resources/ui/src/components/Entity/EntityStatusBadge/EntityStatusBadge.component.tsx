@@ -59,14 +59,14 @@ export const EntityStatusBadge = ({
       {entityType && entityId && fqn ? (
         <HoverPopover
           contentClassName="tw:p-3"
-          contentTestId="entity-status-decision-popover"
+          data-testid="entity-status-badge-trigger"
           placement="bottom start"
-          trigger={badge}
-          triggerTestId="entity-status-badge-trigger">
+          trigger={badge}>
           <EntityStatusDecision
             entityId={entityId}
             entityLink={getEntityFeedLink(entityType, fqn)}
             entityType={entityType}
+            status={status}
           />
         </HoverPopover>
       ) : (

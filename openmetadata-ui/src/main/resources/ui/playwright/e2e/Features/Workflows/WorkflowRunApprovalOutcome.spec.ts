@@ -100,7 +100,46 @@ const createOwnerReview = async (
     'createOwnerReview'
   );
 
+// The runs of an entity, read once; a run's decided approval steps are in its variables.
+const runsOf = async (
+  apiContext: APIRequestContext,
+  entityLink: string,
+  name?: string
+) =>
+  (
+    await okJson<{ data: Run[] }>(
+      await apiContext.get('/api/v1/governance/workflowInstances', {
+        params: {
+          ...(name && { workflowDefinitionName: name }),
+          entityLink,
+          startTs: 0,
+          endTs: Date.now(),
+          limit: 50,
+        },
+      }),
+      'workflowInstances'
+    )
+  ).data;
+
 // The run of this table whose approval step has been decided and is not one of `known`.
+const decidedRunOf = async (
+  apiContext: APIRequestContext,
+  name: string,
+  table: TableClass,
+  known: string[]
+) =>
+  (
+    await runsOf(
+      apiContext,
+      `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
+      name
+    )
+  ).find(
+    ({ id, variables }) =>
+      !known.includes(id) &&
+      variables?.approvals?.some(({ node }) => node === APPROVAL_NODE)
+  )?.id ?? '';
+
 const awaitDecidedRun = async (
   apiContext: APIRequestContext,
   name: string,
@@ -111,24 +150,7 @@ const awaitDecidedRun = async (
   await expect
     .poll(
       async () => {
-        const { data } = await okJson<{ data: Run[] }>(
-          await apiContext.get('/api/v1/governance/workflowInstances', {
-            params: {
-              workflowDefinitionName: name,
-              entityLink: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
-              startTs: 0,
-              endTs: Date.now(),
-              limit: 50,
-            },
-          }),
-          'workflowInstances'
-        );
-        decidedRunId =
-          data.find(
-            ({ id, variables }) =>
-              !known.includes(id) &&
-              variables?.approvals?.some(({ node }) => node === APPROVAL_NODE)
-          )?.id ?? '';
+        decidedRunId = await decidedRunOf(apiContext, name, table, known);
 
         return decidedRunId;
       },
@@ -155,14 +177,19 @@ const expectOutcome = async (
   ).toHaveText(outcome);
 };
 
-const approveAsOwner = async (
-  ownerPage: Page,
-  table: TableClass,
-  ownerName: string
+// Approves the user's open task on the entity until `isDecided` holds. A workflow's own status
+// write can start a newer run that supersedes the task just created, and a task resolved in that
+// moment stays undecided, so a task is approved only once it is still the open one a poll later,
+// and whichever task is open for the user is approved again until a decision is recorded.
+const approveUntilDecided = async (
+  userPage: Page,
+  entityFqn: string,
+  userName: string,
+  isDecided: () => Promise<boolean>
 ) => {
-  const { apiContext, afterAction } = await getApiContext(ownerPage);
+  const { apiContext, afterAction } = await getApiContext(userPage);
+  let seenTaskId = '';
   try {
-    let taskId = '';
     await expect
       .poll(
         async () => {
@@ -171,7 +198,7 @@ const approveAsOwner = async (
           }>(
             await apiContext.get('/api/v1/tasks', {
               params: {
-                aboutEntity: table.entityResponseData.fullyQualifiedName,
+                aboutEntity: entityFqn,
                 status: 'Open',
                 limit: 20,
                 fields: 'assignees',
@@ -179,22 +206,21 @@ const approveAsOwner = async (
             }),
             'openTasks'
           );
-          taskId =
-            data.find((task) =>
-              task.assignees?.some(({ name }) => name === ownerName)
-            )?.id ?? '';
+          const task = data.find((open) =>
+            open.assignees?.some(({ name }) => name === userName)
+          );
+          if (task && task.id === seenTaskId) {
+            await apiContext.post(`/api/v1/tasks/${task.id}/resolve`, {
+              data: { transitionId: 'approve' },
+            });
+          }
+          seenTaskId = task?.id ?? '';
 
-          return taskId;
+          return isDecided();
         },
-        { timeout: 90_000 }
+        { timeout: 120_000, intervals: [2_000] }
       )
-      .toBeTruthy();
-    await okJson(
-      await apiContext.post(`/api/v1/tasks/${taskId}/resolve`, {
-        data: { transitionId: 'approve' },
-      }),
-      'resolveTask'
-    );
+      .toBe(true);
   } finally {
     await afterAction();
   }
@@ -271,7 +297,15 @@ test.describe(
             table,
             'Billing and shipping addresses of customers.'
           );
-          await approveAsOwner(dataConsumerPage, table, owner.name);
+          await approveUntilDecided(
+            dataConsumerPage,
+            table.entityResponseData.fullyQualifiedName,
+            owner.name,
+            async () =>
+              Boolean(
+                await decidedRunOf(apiContext, workflowName, table, [autoRun])
+              )
+          );
           const runId = await awaitDecidedRun(apiContext, workflowName, table, [
             autoRun,
           ]);
@@ -340,45 +374,16 @@ test.describe(
             'addReviewer'
           );
           await expect.poll(termStatus, { timeout: 60_000 }).toBe('In Review');
-          const reviewerContext = await getApiContext(dataConsumerPage);
-          try {
-            let taskId = '';
-            await expect
-              .poll(
-                async () => {
-                  const { data } = await okJson<{
-                    data: { id: string; assignees?: { name: string }[] }[];
-                  }>(
-                    await reviewerContext.apiContext.get('/api/v1/tasks', {
-                      params: {
-                        aboutEntity: term.responseData.fullyQualifiedName,
-                        status: 'Open',
-                        limit: 20,
-                        fields: 'assignees',
-                      },
-                    }),
-                    'openTasks'
-                  );
-                  taskId =
-                    data.find((task) =>
-                      task.assignees?.some(({ name }) => name === reviewer.name)
-                    )?.id ?? '';
-
-                  return taskId;
-                },
-                { timeout: 90_000 }
-              )
-              .toBeTruthy();
-            await okJson(
-              await reviewerContext.apiContext.post(
-                `/api/v1/tasks/${taskId}/resolve`,
-                { data: { transitionId: 'approve' } }
-              ),
-              'resolveTask'
-            );
-          } finally {
-            await reviewerContext.afterAction();
-          }
+          const termLink = `<#E::glossaryTerm::${term.responseData.fullyQualifiedName}>`;
+          await approveUntilDecided(
+            dataConsumerPage,
+            term.responseData.fullyQualifiedName,
+            reviewer.name,
+            async () =>
+              (
+                await runsOf(apiContext, termLink)
+              ).some(({ variables }) => variables?.approvals?.length)
+          );
           await expect.poll(termStatus, { timeout: 60_000 }).toBe('Approved');
         });
 
