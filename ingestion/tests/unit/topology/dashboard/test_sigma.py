@@ -1616,6 +1616,20 @@ def test_a_sigma_data_model_table_found_in_two_services_is_not_linked(sigma_over
     assert data_model_lineage(source, ["wh_a", "wh_b"], catalog) == []
 
 
+def test_a_sigma_data_model_table_is_found_through_its_connection_path(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    # The display path drops the database, and ORDERS is in two
+    sigma_data_models["GET", "/v2/files/T1"]["path"] = "Connection Root/ANALYTICS/PUBLIC"
+    sigma_data_models["GET", "/v2/connections/paths/T1"] = {"connectionId": "c1", "path": ["SALES", "PUBLIC", "ORDERS"]}
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source, catalog=TWO_ORDERS) == [("wh_a.SALES.PUBLIC.ORDERS", "mock_sigma.model.dm-1")]
+    assert calls["GET", "/v2/connections/paths/T1"] == 1
+
+
 def test_without_db_service_prefixes_only_sigma_data_models_are_linked(sigma_over_http, two_sigma_data_models):
     source, calls = sigma_over_http
     two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
