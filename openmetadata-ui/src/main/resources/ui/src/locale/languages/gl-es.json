@@ -6052,7 +6052,7 @@
     "ontology-graph-feature-description": "Explora conceptos e as súas relacións nunha vista conectada.",
     "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
     "ontology-graph-limit": "O grafo amosa ata {{count}} conceptos. Use o explorador do modelo para ontoloxías máis grandes.",
-    "ontology-graph-too-large": "This ontology has {{total}} concepts, too many to draw at once. Select a concept in Tree, or use Find, to see it with its neighbours.",
+    "ontology-graph-too-large": "Esta ontoloxía ten {{total}} conceptos, demasiados para debuxalos dunha vez. Escolle un concepto para velo cos seus veciños.",
     "ontology-history-limit": "Showing the first 1,000 history records.",
     "ontology-identifiers-locked": "Generated from the display name. These cannot be changed after the ontology is created.",
     "ontology-import-into-help": "Engade conceptos e propiedades desde un ficheiro. Entran nesta ontoloxía como borrador. A versión activa non cambia ata que publiques.",

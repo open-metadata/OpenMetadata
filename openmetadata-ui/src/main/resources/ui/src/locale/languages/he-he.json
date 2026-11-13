@@ -6052,7 +6052,7 @@
     "ontology-graph-feature-description": "חקרו מושגים ואת הקשרים ביניהם בתצוגה מחוברת אחת.",
     "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
     "ontology-graph-limit": "הגרף מציג עד {{count}} מושגים. עבור אונטולוגיות גדולות יותר, השתמשו בדפדפן המודל.",
-    "ontology-graph-too-large": "This ontology has {{total}} concepts, too many to draw at once. Select a concept in Tree, or use Find, to see it with its neighbours.",
+    "ontology-graph-too-large": "באונטולוגיה זו יש {{total}} מושגים, יותר מדי כדי לשרטט אותם בבת אחת. בחר מושג כדי לראות אותו עם שכניו.",
     "ontology-history-limit": "Showing the first 1,000 history records.",
     "ontology-identifiers-locked": "Generated from the display name. These cannot be changed after the ontology is created.",
     "ontology-import-into-help": "הוסף מושגים ומאפיינים מקובץ. הם נכנסים לאונטולוגיה זו כטיוטה. הגרסה הפעילה לא משתנה עד שתפרסם.",

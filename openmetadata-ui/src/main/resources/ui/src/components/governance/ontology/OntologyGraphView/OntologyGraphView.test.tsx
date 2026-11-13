@@ -2800,25 +2800,78 @@ describe('OntologyGraphView', () => {
         });
       });
 
-      it('draws no canvas, explains why and offers Tree until a concept is chosen', async () => {
-        const onRequestTreeSurface = jest.fn();
-        renderGraph({ onRequestTreeSurface });
+      it('draws no canvas and offers a concept picker until a concept is chosen', async () => {
+        renderGraph();
 
-        const notice = await screen.findByTestId(
-          'ontology-graph-focused-notice'
+        const state = await screen.findByTestId('ontology-graph-too-large');
+
+        expect(state).toHaveTextContent('message.ontology-graph-too-large');
+        expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
+        expect(
+          screen.queryByTestId('ontology-graph-focused-notice')
+        ).toBeNull();
+
+        fireEvent.click(screen.getByTestId('ontology-graph-concept-picker'));
+        fireEvent.change(
+          await screen.findByTestId('ontology-graph-concept-picker-search'),
+          { target: { value: 'Filler 300' } }
+        );
+        fireEvent.click(
+          screen.getByTestId('ontology-graph-concept-option-filler-300')
         );
 
-        expect(notice).toHaveTextContent('message.ontology-graph-too-large');
-        expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
+        await screen.findByTestId('native-ontology-graph');
 
-        fireEvent.click(screen.getByTestId('ontology-graph-open-tree'));
+        expect(
+          latestGraphProps().nodes.map(({ label }: { label: string }) => label)
+        ).toEqual(expect.arrayContaining(['Filler 300', 'Filler 299']));
+        expect(
+          screen.queryByTestId('ontology-graph-too-large')
+        ).not.toBeInTheDocument();
+      });
 
-        expect(onRequestTreeSurface).toHaveBeenCalledTimes(1);
+      it('pages the picker list and narrows it by search', async () => {
+        renderGraph();
+        fireEvent.click(
+          await screen.findByTestId('ontology-graph-concept-picker')
+        );
+
+        const options = () =>
+          within(
+            screen.getByRole('listbox', { name: 'label.concept-plural' })
+          ).getAllByRole('option');
+
+        expect(options()).toHaveLength(20);
+
+        fireEvent.click(
+          screen.getByTestId('ontology-graph-concept-picker-more')
+        );
+
+        expect(options()).toHaveLength(40);
+
+        fireEvent.change(
+          screen.getByTestId('ontology-graph-concept-picker-search'),
+          { target: { value: 'Filler 59' } }
+        );
+
+        expect(options().map((option) => option.textContent)).toEqual([
+          'Filler 59',
+          'Filler 590',
+          'Filler 591',
+          'Filler 592',
+          'Filler 593',
+          'Filler 594',
+          'Filler 595',
+          'Filler 596',
+          'Filler 597',
+          'Filler 598',
+          'Filler 599',
+        ]);
       });
 
       it('draws the neighbourhood of a concept found with Find', async () => {
         renderGraph();
-        await screen.findByTestId('ontology-graph-focused-notice');
+        await screen.findByTestId('ontology-graph-too-large');
 
         fireEvent.change(findBox(), { target: { value: 'Filler 300' } });
         fireEvent.keyDown(findBox(), { key: 'Enter' });

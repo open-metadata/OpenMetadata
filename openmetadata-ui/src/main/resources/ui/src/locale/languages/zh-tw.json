@@ -6052,7 +6052,7 @@
     "ontology-graph-feature-description": "在一個相互連結的檢視中探索概念及其關係。",
     "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
     "ontology-graph-limit": "圖譜最多顯示 {{count}} 個概念。對於更大的本體，請使用模型瀏覽器。",
-    "ontology-graph-too-large": "This ontology has {{total}} concepts, too many to draw at once. Select a concept in Tree, or use Find, to see it with its neighbours.",
+    "ontology-graph-too-large": "此本體包含 {{total}} 個概念，數量過多，無法一次繪製。選擇一個概念即可查看它及其相鄰概念。",
     "ontology-history-limit": "Showing the first 1,000 history records.",
     "ontology-identifiers-locked": "Generated from the display name. These cannot be changed after the ontology is created.",
     "ontology-import-into-help": "從檔案新增概念與屬性。它們會以草稿形式進入此本體。在發佈之前，目前的版本不會變更。",

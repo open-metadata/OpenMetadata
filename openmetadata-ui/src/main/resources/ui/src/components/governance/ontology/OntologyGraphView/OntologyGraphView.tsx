@@ -148,6 +148,7 @@ import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.ut
 import OntologyRelationDetail, {
   OntologyRelationStatus,
 } from '../OntologyRelationControls/OntologyRelationDetail';
+import OntologyConceptPicker from './OntologyConceptPicker';
 import OntologyConceptSearch from './OntologyConceptSearch';
 import { buildOntologyConflicts } from './OntologyConflicts.utils';
 import OntologyConflictsPanel from './OntologyConflictsPanel';
@@ -1263,6 +1264,17 @@ const OntologyGraphView = ({
       synonyms: concept.synonyms,
     }));
   }, [model?.concepts]);
+  const pickerConcepts = useMemo(() => {
+    const parentById = new Map(
+      dataConcepts.map((concept) => [concept.id, concept.parentName])
+    );
+
+    return (graph?.nodes ?? []).map((node) => ({
+      id: node.id,
+      name: node.label,
+      parentName: parentById.get(node.id),
+    }));
+  }, [dataConcepts, graph?.nodes]);
 
   const conceptGhost = useMemo(
     () =>
@@ -1683,7 +1695,7 @@ const OntologyGraphView = ({
         <OntologyNativeDataMode
           linkWhenPickedEmpty
           canEditBindings={canEditDataBindings}
-          concepts={dataConcepts}
+          concepts={pickerConcepts}
           getConceptProperties={getConceptProperties}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}
@@ -1727,22 +1739,38 @@ const OntologyGraphView = ({
     if (!scope.isFocused) {
       return null;
     }
-    const message = t(
-      scope.shownCount === 0
-        ? 'message.ontology-graph-too-large'
-        : 'message.ontology-graph-focused',
-      { shown: scope.shownCount, total: scope.totalCount }
-    );
+    // Nothing drawn yet: pick a concept here instead of hunting for Find or Tree.
+    if (scope.shownCount === 0) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-5 tw:flex tw:items-center tw:justify-center tw:p-6"
+          data-testid="ontology-graph-too-large">
+          <Box align="center" className="tw:max-w-md" direction="col" gap={3}>
+            <Typography
+              as="p"
+              className="tw:m-0 tw:text-center"
+              color="secondary"
+              size="text-sm">
+              {t('message.ontology-graph-too-large', {
+                total: scope.totalCount,
+              })}
+            </Typography>
+            <OntologyConceptPicker
+              concepts={pickerConcepts}
+              onPick={(id) => selectNode({ id })}
+            />
+          </Box>
+        </div>
+      );
+    }
 
     return (
-      <div
-        className={
-          scope.shownCount === 0
-            ? 'tw:absolute tw:inset-0 tw:z-5 tw:flex tw:items-center tw:justify-center tw:p-6'
-            : 'tw:absolute tw:top-16 tw:left-1/2 tw:z-6 tw:w-[min(32rem,calc(100%-2rem))] tw:-translate-x-1/2'
-        }>
+      <div className="tw:absolute tw:top-16 tw:left-1/2 tw:z-6 tw:w-[min(32rem,calc(100%-2rem))] tw:-translate-x-1/2">
         <Alert data-testid="ontology-graph-focused-notice" variant="brand">
-          {message}
+          {t('message.ontology-graph-focused', {
+            shown: scope.shownCount,
+            total: scope.totalCount,
+          })}
           {onRequestTreeSurface ? (
             <Button
               color="secondary"

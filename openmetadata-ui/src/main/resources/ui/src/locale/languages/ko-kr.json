@@ -6052,7 +6052,7 @@
     "ontology-graph-feature-description": "하나의 연결된 뷰에서 개념과 그 관계를 탐색하세요.",
     "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
     "ontology-graph-limit": "그래프는 최대 {{count}}개의 개념을 표시합니다. 더 큰 온톨로지는 모델 브라우저를 사용하세요.",
-    "ontology-graph-too-large": "This ontology has {{total}} concepts, too many to draw at once. Select a concept in Tree, or use Find, to see it with its neighbours.",
+    "ontology-graph-too-large": "이 온톨로지에는 개념이 {{total}}개 있어 한 번에 그리기에는 너무 많습니다. 개념을 선택하면 인접 개념과 함께 볼 수 있습니다.",
     "ontology-history-limit": "Showing the first 1,000 history records.",
     "ontology-identifiers-locked": "Generated from the display name. These cannot be changed after the ontology is created.",
     "ontology-import-into-help": "파일에서 개념과 속성을 추가합니다. 추가된 항목은 이 온톨로지에 초안으로 들어갑니다. 게시하기 전까지 활성 릴리스는 변경되지 않습니다.",

@@ -6052,7 +6052,7 @@
     "ontology-graph-feature-description": "Исследуйте понятия и их связи в едином связанном представлении.",
     "ontology-graph-focused": "Showing {{shown}} of {{total}} concepts around your selection. Open Tree to browse all of them, or use Find to look at another concept.",
     "ontology-graph-limit": "Граф отображает до {{count}} концептов. Для более крупных онтологий используйте браузер модели.",
-    "ontology-graph-too-large": "This ontology has {{total}} concepts, too many to draw at once. Select a concept in Tree, or use Find, to see it with its neighbours.",
+    "ontology-graph-too-large": "В этой онтологии {{total}} понятий — слишком много, чтобы нарисовать их сразу. Выберите понятие, чтобы увидеть его вместе с соседями.",
     "ontology-history-limit": "Showing the first 1,000 history records.",
     "ontology-identifiers-locked": "Generated from the display name. These cannot be changed after the ontology is created.",
     "ontology-import-into-help": "Добавьте понятия и свойства из файла. Они попадут в эту онтологию как черновик. Активный релиз не изменится, пока вы не опубликуете.",
