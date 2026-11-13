@@ -89,8 +89,9 @@ changes is that the state no longer trusts the graph after RDF was off.
   built and then rejected. It queued a full in-place rebuild at start-up on any enablement. On a
   rolling restart it still ended `DEGRADED`, because the old server's stop mark follows the
   rebuild, so a second rebuild was needed anyway. And the team handles reindexing as an explicit
-  step, like search: a deploy step, the application page, the API or `openmetadata-ops.sh
-  reindex-rdf`. The weekly schedule remains the fallback.
+  step, like search: a deploy step, the application page or the API. The weekly schedule
+  remains the fallback. `openmetadata-ops.sh reindex-rdf` cannot be that step today: it never
+  initializes the app scheduler, so it stops before it queues a run.
 - **A column for the time of the last RDF-off start was removed with it.** It existed only so the
   start-up run could ask whether a run had started since. With no such run, nothing reads it, and
   deciding the state by comparing it with a run's start time was rejected earlier: any successful

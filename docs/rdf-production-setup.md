@@ -408,11 +408,11 @@ until a full Recreate that started after the last of those writes completes. A r
 RDF off indexes nothing and does not count.
 
 Nothing queues that rebuild. After enabling RDF, run `RdfIndexApp` with Recreate once: from the
-application page, through the API (`POST /v1/apps/trigger/RdfIndexApp` with `recreateIndex: true`)
-or with `openmetadata-ops.sh reindex-rdf`; otherwise the weekly run does it. This is the way search
-reindexing is handled too. A server start queues one `RdfIndexApp` run only when no run record
-exists at all: a new install, or an upgrade from 2.0.x, whose 2.1.0 migration deletes the old
-records.
+application page or through the API (`POST /v1/apps/trigger/RdfIndexApp` with
+`recreateIndex: true`); otherwise the weekly run does it. `openmetadata-ops.sh reindex-rdf` cannot
+do it today: it stops before it queues a run. This is the way search reindexing is handled too. A
+server start queues one `RdfIndexApp` run only when no run record exists at all: a new install, or
+an upgrade from 2.0.x that starts with RDF on, whose 2.1.0 migration deletes the old records.
 
 When RDF is turned on with a rolling restart, a server with RDF off is still running while the new
 server starts, and can take writes the graph never receives. Until that server stops, the state
