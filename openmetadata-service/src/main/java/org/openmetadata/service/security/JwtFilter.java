@@ -1064,8 +1064,7 @@ public class JwtFilter implements ContainerRequestFilter {
         isBotUser,
         acting.impersonatedBy(),
         activePersona,
-        ActiveDomainContext.resolve(
-            acting.userName(), isBotUser || isPersonalAccessToken(claims)));
+        ActiveDomainContext.resolve(acting.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(

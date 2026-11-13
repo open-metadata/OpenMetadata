@@ -1052,6 +1052,18 @@ class CreateEntityToolTest {
                     .findFirst()
                     .orElseThrow(() -> new EntityNotFoundException("not found: " + asked));
               });
+      // A team's parents are loaded by id for the parent edit check, as on REST.
+      entities
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenAnswer(
+              lookup ->
+                  persisted.stream()
+                      .filter(candidate -> candidate.getType().equals(lookup.getArgument(0)))
+                      .filter(candidate -> candidate.getId().equals(lookup.getArgument(1)))
+                      .findFirst()
+                      .orElseThrow(
+                          () ->
+                              new EntityNotFoundException("not found: " + lookup.getArgument(1))));
       rules.when(RuleEngine::getInstance).thenReturn(mock(RuleEngine.class));
 
       new CreateEntityTool().execute(authorizer, mock(Limits.class), securityContext(), input);
