@@ -172,7 +172,16 @@ export const removeAssetsFromTag = async (
   assets: EntityClass[],
   tag: TagClass
 ) => {
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  // The bare `/api/v1/tags/name/*` glob also matches the classification
+  // sidebar fetches that `tag.visitPage()` navigates through, so it could
+  // resolve before the tag under test was loaded.
+  const tagFqn = tag.responseData.fullyQualifiedName ?? '';
+  const res = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/tags/name/') &&
+      decodeURIComponent(response.url()).includes(tagFqn)
+  );
   await tag.visitPage(page);
   await res;
 
@@ -183,7 +192,30 @@ export const removeAssetsFromTag = async (
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromTag: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Checking cards while the asset list is still loading or re-rendering
+    // loses selections, so only some assets were removed. Narrow the list to
+    // this asset and let it settle first; selections are kept by id across
+    // searches. The tab wraps the query as `*<name>*`, hence the loose match.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    await waitForAllLoadersToDisappear(page);
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
@@ -201,9 +233,10 @@ export const removeAssetsFromTag = async (
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
+  // After a reload the badge renders only once the assets search returns.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString());
+  ).toContainText(count.toString(), { timeout: 30_000 });
 };
 
 export const setupAssetsForTag = async (page: Page) => {
