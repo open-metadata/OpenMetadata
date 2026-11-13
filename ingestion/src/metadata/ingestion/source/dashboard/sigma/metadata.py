@@ -131,8 +131,8 @@ def _access_details(moment: datetime | None) -> AccessDetails | None:
 
 _BRACKET_REFERENCE = re.compile(r"\[([^\[\]]+)\]")
 _STRING_LITERAL = re.compile(r'"[^"]*"')
-# A formula that only names its source column, as every column read straight from a table has
-_SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]]+\]\s*")
+# A formula that only names the source column it is read from, as [ORDERS/Amount]
+_SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]/]+/[^\[\]]+\]\s*")
 
 
 def _same_element_references(formula: str) -> list[str] | None:
@@ -150,7 +150,7 @@ def _same_element_references(formula: str) -> list[str] | None:
 def _columns_read(label: str, labels: list[str], formulas: dict[str, str]) -> list[str]:
     """The other columns of its own element a column's formula reads; empty for a column not computed from them"""
     references = _same_element_references(formulas.get(label, "")) or []
-    return [reference for reference in references if reference in labels and reference != label]
+    return [reference for reference in references if reference in labels]
 
 
 def _inherit_formula_sources(sources: dict[str, list[tuple[str, str]]], columns_read: dict[str, list[str]]) -> None:

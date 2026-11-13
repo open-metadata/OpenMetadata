@@ -1753,7 +1753,7 @@ def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigm
     sigma_data_models["GET", "/v2/dataModels/dm-1/columns"]["entries"] = [
         sigma_column("dmEl1", "Order Id", "[ORDERS/Order Id]"),
         sigma_column("dmEl1", "Amount", "Round([ORDERS/Amount], 2)"),
-        sigma_column("dmEl2", "Customer Id", ""),
+        sigma_column("dmEl2", "Customer Id", "[Order Id]"),
     ]
 
     [data_model] = bulk_data_models(source)
@@ -1765,7 +1765,7 @@ def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigm
     } == {
         ("Orders", "Order Id"): None,
         ("Orders", "Amount"): "**Formula:** `Round([ORDERS/Amount], 2)`",
-        ("Customers", "Customer Id"): None,
+        ("Customers", "Customer Id"): "**Formula:** `[Order Id]`",
     }
 
 

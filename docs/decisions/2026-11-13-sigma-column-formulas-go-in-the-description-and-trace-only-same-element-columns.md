@@ -6,7 +6,9 @@
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_sigma.py` (`test_a_workbook_element_column_shows_its_sigma_formula`,
   `test_a_sigma_data_model_column_shows_its_sigma_formula`,
   `test_a_computed_column_without_sql_gets_the_sources_of_the_columns_it_reads`,
-  `test_a_computed_column_reading_two_tables_is_linked_from_each`)
+  `test_a_computed_column_reading_two_tables_is_linked_from_each`,
+  `test_a_computed_column_read_before_the_column_it_reads_still_gets_its_sources`,
+  `test_a_computed_column_named_like_a_warehouse_column_takes_its_sources_from_its_formula`)
 - **Related:** —
 
 ## Context
@@ -24,8 +26,8 @@ names are case-sensitive.
 ## Decision
 
 - A column's Sigma formula is written to its description as ``**Formula:** `<formula>` ``, for workbook element columns
-  and Sigma Data Model element columns. A formula that only names a source column (`[ORDERS/Amount]`, as every column
-  read straight from a table has) is not written, as its lineage already shows it. A column whose name its element holds
+  and Sigma Data Model element columns. A formula that only names the source column the column is read from
+  (`[ORDERS/Amount]`) is not written, as it holds no calculation. A column whose name its element holds
   twice gets none, as the rows cannot be told apart; a failed `/columns` read writes none.
 - For an element without SQL, a column whose formula names other columns of its element as bare `[Name]` references
   takes the sources of those columns, directly or through other computed columns (as the Looker connector follows
