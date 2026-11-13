@@ -29,7 +29,9 @@ representation example, such as `inode-4exq8bsACBpDyQUvKGGTO0/ORDER_NUMBER`).
 
 - A `table` row is linked when an element of the data model names it in `sourceIds` or `dataSourceIds` by its
   `inodeId` or by the `urlId` of its `/files` entry, with or without an `inode-` prefix. The table is resolved as for
-  workbook elements: from the `/files` path, linked only when exactly one table matches across `dbServicePrefixes`.
+  workbook elements: from the `/files` path, then the table's connection path when that finds no single table
+  (ADR:2026-11-12-sigma-connection-path-is-read-only-when-the-display-path-finds-no-table), linked only when exactly
+  one table matches across `dbServicePrefixes`.
 - A `data-model` row is linked when an element names it by its `dataModelId` or its `dataModelUrlId`, alone or as
   `<url id>/<element>`.
 - Rows of any other type are not linked.
