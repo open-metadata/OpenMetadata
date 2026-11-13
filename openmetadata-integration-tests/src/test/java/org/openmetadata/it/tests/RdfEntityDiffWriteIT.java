@@ -230,7 +230,7 @@ public class RdfEntityDiffWriteIT {
     nested.getProfile().setNullCount(0.0);
     assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, writeBoth(TABLE, table).outcome());
     assertSameGraph();
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
     assertEquals(
         RdfEntityWriteResult.UNCHANGED, diff.storeEntity(TABLE, TABLE_ID, translator.toRdf(table)));
 
@@ -238,18 +238,18 @@ public class RdfEntityDiffWriteIT {
     nested.getProfile().setTimestamp(2000L);
     writeBoth(TABLE, table);
     assertSameGraph();
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
 
     table.setProfile(null);
     nested.setProfile(null);
     writeBoth(TABLE, table);
     assertSameGraph();
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
 
     table.setColumns(List.of());
     writeBoth(TABLE, table);
     assertSameGraph();
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
   }
 
   @Test
@@ -274,18 +274,18 @@ public class RdfEntityDiffWriteIT {
     assertEquals(
         1,
         composite.listObjectsOfProperty(composite.createProperty(OM + "isUnique")).toList().size());
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
 
     primaryKey.setColumns(List.of("tenant_id"));
     table.setTableConstraints(List.of(primaryKey));
     writeBoth(TABLE, table);
     assertSameGraph();
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
 
     table.setTableConstraints(List.of());
     writeBoth(TABLE, table);
     assertSameGraph();
-    assertTrue(graph(diff).isIsomorphicWith(translator.toRdf(table)));
+    assertCurrentProjection(translator.toRdf(table));
   }
 
   @Test
@@ -308,7 +308,7 @@ public class RdfEntityDiffWriteIT {
     table.setTableConstraints(null);
     final Model current = translator.toRdf(table);
     diff.bulkStoreEntities(List.of(new EntityWriteRequest(TABLE, TABLE_ID, current)));
-    assertTrue(graph(diff).isIsomorphicWith(current));
+    assertCurrentProjection(current);
 
     diff.storeEntity(TABLE, TABLE_ID, original);
     diff.deleteEntity(TABLE, TABLE_ID);
@@ -319,6 +319,13 @@ public class RdfEntityDiffWriteIT {
     replace.storeEntity(
         type, entity.getId(), translator.toRdf(entity), RdfEntityWriteStrategy.REPLACE);
     return diff.storeEntity(type, entity.getId(), translator.toRdf(entity));
+  }
+
+  private static void assertCurrentProjection(final Model projection) {
+    // TDB2 canonicalizes typed literals, so read the expected projection from a cleared dataset.
+    replace.clearGraph(GRAPH);
+    replace.storeEntity(TABLE, TABLE_ID, projection, RdfEntityWriteStrategy.REPLACE);
+    assertSameGraph();
   }
 
   private static void assertSameGraph() {
