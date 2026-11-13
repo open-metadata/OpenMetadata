@@ -22,6 +22,7 @@ import {
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import {
+  ArrowUpRight,
   Article,
   Edit01,
   Plus,
@@ -245,18 +246,15 @@ const KnowledgePages: FC = () => {
     />
   );
 
-  // only show view all if length is greater than PAGE_SIZE i.e 10
-  const headerExtra = (
-    <>
-      {paging?.total > PAGE_SIZE && (
-        <Link
-          data-testid="view-all-data-asset-related-articles"
-          to={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
-          {t('label.view-all')}
-        </Link>
-      )}
-      {articlePicker}
-    </>
+  // Same right-aligned icon action the Custom Properties widget uses, so the title keeps its room.
+  const viewAllAction = paging?.total > PAGE_SIZE && (
+    <ButtonUtility
+      data-testid="view-all-data-asset-related-articles"
+      href={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}
+      icon={ArrowUpRight}
+      size="sm"
+      tooltip={t('label.view-all')}
+    />
   );
 
   const content = (
@@ -342,7 +340,8 @@ const KnowledgePages: FC = () => {
   return (
     <WidgetCard
       dataTestId="knowledge-center"
-      headerExtra={headerExtra}
+      headerActions={viewAllAction}
+      headerExtra={articlePicker}
       isExpandDisabled={isEmpty(knowledgePages)}
       title={t('label.context-center')}>
       {content}
