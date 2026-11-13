@@ -1680,17 +1680,6 @@
       ]
     },
     {
-      "_comment": "TitleBreadcrumb renders on every entity page header and the Context Center related-articles page.",
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/TitleBreadcrumb/**"
-      ],
-      "projects": ["chromium"],
-      "specs": [
-        "playwright/e2e/Pages/Entity.spec.ts",
-        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts"
-      ]
-    },
-    {
       "_comment": "TopicClassBase supplies the Topic page's customizable widget list.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/TopicClassBase.ts"
