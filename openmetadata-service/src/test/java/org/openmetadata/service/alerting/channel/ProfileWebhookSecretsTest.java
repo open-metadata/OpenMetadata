@@ -326,6 +326,7 @@ class ProfileWebhookSecretsTest {
 
     SubscriptionStatusConfig status = user.getProfile().getSubscriptionStatus();
     assertEquals(SubscriptionStatus.Status.FAILED, status.getSlack().getStatus());
+    assertTrue(status.getSlack().getConfigurationUnusable());
     assertTrue(
         status.getSlack().getLastFailedReason().contains("/headers/X-Api-Key"),
         status.getSlack().getLastFailedReason());
@@ -334,6 +335,21 @@ class ProfileWebhookSecretsTest {
     assertNull(saved.getSubscriptionStatus());
     Profile sentWithAStatus = profileWith(oauth2("s")).withSubscriptionStatus(status);
     assertNull(ProfileWebhookSecrets.ofANewEntity(HOLDER, sentWithAStatus).getSubscriptionStatus());
+  }
+
+  @Test
+  void aChangeEventNeverRecordsTheReadStatus() {
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("x")));
+    stored
+        .getSubscription()
+        .getGeneric()
+        .withHeaders(Map.of("X-Api-Key", Fernet.getInstance().encrypt("never decrypted")));
+    Team team = new Team().withId(UUID.randomUUID()).withName("t").withProfile(stored);
+    ProfileWebhookSecrets.Holder holder = new ProfileWebhookSecrets.Holder("team", team.getId());
+    team.withProfile(ProfileWebhookSecrets.withStatus(holder, stored));
+
+    assertTrue(JsonUtils.pojoToJson(team).contains("subscriptionStatus"));
+    assertFalse(JsonUtils.pojoToMaskedJson(team).contains("subscriptionStatus"));
   }
 
   @Test

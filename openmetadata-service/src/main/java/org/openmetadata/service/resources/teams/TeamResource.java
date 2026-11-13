@@ -595,7 +595,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (team.getDefaultPersona() != null) {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
-    return withRedactedEntity(create(uriInfo, securityContext, team), ProfileWebhookSecrets::mask);
+    return withRedactedEntity(
+        create(uriInfo, securityContext, team), ProfileWebhookSecrets::maskForRead);
   }
 
   @PUT
@@ -624,7 +625,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       authorizeDefaultPersonaChange(securityContext, containerRequestContext);
     }
     return withRedactedEntity(
-        createOrUpdate(uriInfo, securityContext, team), ProfileWebhookSecrets::mask);
+        createOrUpdate(uriInfo, securityContext, team), ProfileWebhookSecrets::maskForRead);
   }
 
   @PUT
@@ -812,7 +813,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     rejectImpersonatedGrant(containerRequestContext, patch);
     authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return withRedactedEntity(
-        patchInternal(uriInfo, securityContext, id, patch), ProfileWebhookSecrets::mask);
+        patchInternal(uriInfo, securityContext, id, patch), ProfileWebhookSecrets::maskForRead);
   }
 
   @PATCH
@@ -845,7 +846,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     rejectImpersonatedGrant(containerRequestContext, patch);
     authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return withRedactedEntity(
-        patchInternal(uriInfo, securityContext, fqn, patch), ProfileWebhookSecrets::mask);
+        patchInternal(uriInfo, securityContext, fqn, patch), ProfileWebhookSecrets::maskForRead);
   }
 
   private static final String DEFAULT_PERSONA_FIELD = "defaultPersona";
