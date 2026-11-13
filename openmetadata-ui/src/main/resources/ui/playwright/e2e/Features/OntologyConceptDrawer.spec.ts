@@ -177,7 +177,7 @@ for (const mode of ['classic', 'ai'] as const) {
           });
           await page.getByTestId('ontology-new-class-close').click();
 
-          await page.getByTestId('ontology-canvas-add-concept').click();
+          await page.getByTestId('ontology-add-concept').click();
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toBeVisible();
@@ -186,6 +186,9 @@ for (const mode of ['classic', 'ai'] as const) {
 
           await page.getByTestId('ontology-new-class-close').click();
           await page.getByTestId('submode-tab-definitions').click();
+          await page
+            .getByRole('tab', { name: 'Concepts', exact: true })
+            .click();
           await page.getByTestId('ontology-add-concept').click();
           await expect(
             page.getByTestId('ontology-new-class-panel')
@@ -226,6 +229,10 @@ for (const mode of ['classic', 'ai'] as const) {
         for (const [index, [label, type]] of types.entries()) {
           await page.getByTestId('new-class-label').fill(label);
           if (type !== 'OWL_CLASS') {
+            await page
+              .getByTestId('new-class-type')
+              .getByRole('button')
+              .click();
             await page.getByTestId('new-class-type-' + type).click();
           }
           await submitDrawer(
@@ -659,22 +666,22 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.goto('/governance/ontology?ontology=' + owner.id);
         await page.getByTestId('mode-tab-edit').click();
         await page.getByTestId('submode-tab-definitions').click();
+        await page.getByRole('tab', { name: 'Concepts', exact: true }).click();
+        // A Concepts row opens the concept's panel on the graph, where Delete sits in the ⋯ menu.
         await page.getByRole('button', { name: 'Removable' }).click();
-        await page.getByRole('button', { name: 'Delete', exact: true }).click();
+        await page.getByTestId('ontology-concept-more').click();
+        await page.getByTestId('ontology-concept-delete').click();
         await page.getByTestId('ontology-concept-delete-confirm').click();
         await expect(page.getByTestId('ontology-undo')).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Removable' })
-        ).toHaveCount(0);
+        await expect
+          .poll(async () => (await listConcepts(api, owner)).map((c) => c.name))
+          .not.toContain('Removable');
 
         await page.getByTestId('ontology-undo').click();
 
-        await expect(
-          page.getByRole('button', { name: 'Removable' })
-        ).toBeVisible();
-        expect((await listConcepts(api, owner)).map((c) => c.name)).toContain(
-          'Removable'
-        );
+        await expect
+          .poll(async () => (await listConcepts(api, owner)).map((c) => c.name))
+          .toContain('Removable');
       });
 
       test('Add concept in All ontologies opens the drawer with a required Ontology field', async ({
@@ -795,6 +802,8 @@ for (const mode of ['classic', 'ai'] as const) {
         });
 
         await test.step('switching mode', async () => {
+          // Second's drawer covers the header's Add concept.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-add-concept').click();
           await page.getByTestId('new-class-label').fill('Unsaved again');
           await page.getByTestId('mode-tab-view').click();

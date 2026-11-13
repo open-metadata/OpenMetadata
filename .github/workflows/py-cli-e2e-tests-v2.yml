@@ -33,7 +33,21 @@ permissions:
   contents: read
 
 jobs:
+  prepare-spacy-model:
+    permissions:
+      contents: read
+    cache-mode: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-classification-models
+
   py-cli-e2e-tests-v2:
+    needs: prepare-spacy-model
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -76,6 +90,7 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: '3.10'
+          classification-models: 'true'
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test

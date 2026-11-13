@@ -98,7 +98,8 @@ public class MathHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{math }}")
-                    .withExample("{{math @index '+' 1}}"),
+                    .withExample(
+                        "{{#each entity.owners}}{{math @index '+' 1}}. {{name}} {{/each}}"),
                 new HandlebarsHelperUsage()
                     .withSyntax("{{math }}")
                     .withExample("{{math 3.14159 'round' 2}}")));

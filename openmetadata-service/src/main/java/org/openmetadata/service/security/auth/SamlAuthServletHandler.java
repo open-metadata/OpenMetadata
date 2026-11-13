@@ -300,18 +300,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       ValidatedResponse validatedResponse = new ValidatedResponse();
       auth.setSamlMessageFactory(validatedResponse);
       auth.processResponse(expectedRequestId);
-
-      if (!auth.isAuthenticated()) {
-        throw new AuthenticationException("SAML authentication failed");
-      }
-
-      List<String> errors = auth.getErrors();
-      if (!errors.isEmpty()) {
-        String errorReason = auth.getLastErrorReason();
-        LOG.error("SAML authentication errors: {}", errorReason);
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, errorReason);
-        return;
-      }
+      SamlResponseValidator.requireAccepted(auth);
       SamlResponseValidator.validate(samlSettings, wrappedRequest);
       if (!mcpCallback) {
         requireAnswerTo(validatedResponse.response, expectedRequestId);

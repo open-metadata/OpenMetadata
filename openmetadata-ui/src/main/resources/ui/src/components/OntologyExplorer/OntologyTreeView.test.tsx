@@ -249,6 +249,21 @@ describe('native OntologyTreeView', () => {
     expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(1);
   });
 
+  it('keeps the rows above in view when a lower root is expanded', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    renderTree({ source: { kind: 'native', index }, metrics: [] });
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+    const rootB = screen.getByTestId('ontology-tree-term-b');
+    fireEvent.click(within(rootB).getByTestId('tree-expand-btn'));
+
+    expect(screen.getByTestId('ontology-tree-term-a')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-tree-term-b')).toBeInTheDocument();
+    expect(screen.getAllByTestId('ontology-tree-term-c')).toHaveLength(1);
+    expect(
+      screen.queryByTestId('ontology-tree-previous')
+    ).not.toBeInTheDocument();
+  });
+
   it('reveals an external concept selection after collapse and selects only one placement', async () => {
     const index = buildNativeTreeIndex(graph, filters, []);
     const { rerender } = render(
@@ -393,6 +408,47 @@ describe('native OntologyTreeView', () => {
     fireEvent.click(screen.getByTestId('ontology-tree-previous'));
 
     expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+  });
+
+  it('keeps the rows above in view when a row is expanded after paging back', () => {
+    const index = buildNativeTreeIndex(
+      {
+        nodes: [
+          ...Array.from({ length: 2050 }, (_, n) => ({
+            id: String(n),
+            label: String(n).padStart(4, '0'),
+            type: 'glossaryTerm',
+            glossaryId: 'owner',
+          })),
+          {
+            id: 'kid',
+            label: 'kid',
+            type: 'glossaryTerm',
+            glossaryId: 'owner',
+          },
+        ],
+        edges: [
+          { from: '1', to: 'kid', label: 'Parent', relationType: 'parentOf' },
+        ],
+      },
+      filters,
+      []
+    );
+    renderTree({ source: { kind: 'native', index } });
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+    fireEvent.click(screen.getByTestId('ontology-tree-next'));
+    fireEvent.click(screen.getByTestId('ontology-tree-previous'));
+
+    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+
+    fireEvent.click(
+      within(screen.getByTestId('ontology-tree-term-1')).getByTestId(
+        'tree-expand-btn'
+      )
+    );
+
+    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+    expect(screen.getByTestId('ontology-tree-term-kid')).toBeVisible();
   });
 
   it('connects an isolated native concept and resets disclosure for a replaced model', () => {

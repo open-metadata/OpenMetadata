@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
@@ -85,29 +90,48 @@ const getChipParts = (
 
 const VersionSwitch = ({
   isDisabled,
+  status,
   version,
   onVersionChange,
 }: Required<Pick<OntologyVersionChipProps, 'version' | 'onVersionChange'>> &
-  Pick<OntologyVersionChipProps, 'isDisabled'>) => {
+  Pick<OntologyVersionChipProps, 'isDisabled' | 'status'>) => {
   const { t } = useTranslation();
+  const unpublished = getUnpublishedCount(status);
+  const publishedVersion = status?.active ? getVersionLabel(status, t) : '';
 
   return (
     <Box
+      align="center"
       aria-label={t('label.ontology-version-switch')}
-      className="tw:rounded-lg tw:border tw:border-secondary tw:p-0.5"
+      className="tw:gap-0.5 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-0.5"
       data-testid="ontology-version-switch"
-      gap={1}
       role="group">
       {(['draft', 'published'] as const).map((option) => (
         <Button
           aria-pressed={version === option}
-          color={version === option ? 'primary' : 'tertiary'}
+          color={version === option ? 'secondary' : 'tertiary'}
           data-testid={`ontology-version-${option}`}
           isDisabled={isDisabled}
           key={option}
-          size="xs"
+          size="sm"
           onPress={() => onVersionChange(option)}>
-          {t(`label.${option}`)}
+          <span className="tw:flex tw:items-center tw:gap-1.5 tw:whitespace-nowrap">
+            {t(`label.${option}`)}
+            {option === 'draft' && unpublished > 0 ? (
+              <Badge
+                color="warning"
+                data-testid="ontology-version-draft-count"
+                size="sm"
+                type="pill-color">
+                {unpublished}
+              </Badge>
+            ) : null}
+            {option === 'published' && publishedVersion ? (
+              <Typography as="span" color="secondary" size="text-xs">
+                {publishedVersion}
+              </Typography>
+            ) : null}
+          </span>
         </Button>
       ))}
     </Box>
@@ -138,15 +162,15 @@ const OntologyVersionChip = ({
     return releases;
   }
 
+  // Editors read the version from the switch itself, as in the design; release
+  // history stays one step away under Review & publish → Releases.
   return (
-    <>
-      <VersionSwitch
-        isDisabled={isDisabled}
-        version={version}
-        onVersionChange={onVersionChange}
-      />
-      {releases}
-    </>
+    <VersionSwitch
+      isDisabled={isDisabled}
+      status={status}
+      version={version}
+      onVersionChange={onVersionChange}
+    />
   );
 };
 

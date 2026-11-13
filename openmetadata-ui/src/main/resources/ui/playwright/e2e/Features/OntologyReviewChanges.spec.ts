@@ -641,8 +641,8 @@ test.describe(
         await expect(author.getByTestId('ontology-studio-shell')).toBeVisible();
 
         await expect(
-          author.getByTestId('ontology-release-history-trigger')
-        ).toHaveText('Draft · 1 unpublished');
+          author.getByTestId('ontology-version-draft-count')
+        ).toHaveText('1');
         await expect(author.getByTestId('ontology-explorer-stats')).toHaveText(
           '1 concept · 0 relations'
         );
@@ -651,7 +651,7 @@ test.describe(
 
         await openDialog(author, ontology);
         await expect(author.getByTestId('ontology-change-counts')).toHaveText(
-          '1 change · 1 concept'
+          '1 change: 1 concept'
         );
       } finally {
         await cleanUp(api, [ontology]);

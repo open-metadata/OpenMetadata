@@ -1,9 +1,9 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped) · v14 2026-11-10 (a deadlocked install slice is retried)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
+- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
 - **Related:** Ontology Studio publication and release contracts
 
 ## Context
@@ -90,3 +90,80 @@ Determinism is the constraint behind every choice below, because the pack instal
 - A plan the importer returns must apply. After classification the importer checks every new or changed property and axiom as apply will, against the target as the surviving plan would leave it, and refuses what fails (a property whose domain or range names a class nothing declares, an axiom or property that names a refused or undeclared property). Refusing one definition can strand another, so the check repeats until nothing more is refused. A refused definition appears in the preview as a skipped definition or relation with the reason apply would give; it is not part of the statement report. Concepts are never refused, so a stored concept a file touches keeps what it holds.
 
 The size and time limits of this record are unchanged. The SKOS, OWL, RDF, and RDFS vocabularies stay reserved, so importing `skos.rdf` itself reads no definitions.
+
+Library installation is a background job, so packs larger than one import can install. `POST /v1/ontologies/{id}/library/{packId}/install` takes module ids, checks the same `EDIT_ALL` permission as the old install, and queues one `ONTOLOGY_PACK_INSTALL` row on `background_jobs`. `GET /v1/ontologies/{id}/library/jobs/{jobId}` reads its status and `PUT .../cancel` asks it to stop after the current slice. A job is readable only through its own ontology. The row stores the pack id, version, module ids, target ontology id and a pack digest. It never stores the pack body. The review endpoint stays as the dry run.
+
+The handler loads the bundled modules, checks each module checksum, and parses them once with `SafeRdfModelParser.parseTrusted`. Trusted content keeps the absolute-IRI, no-named-graph and no-DOCTYPE checks but runs under a 64 MiB, 2,000,000 triple and 120 second backstop. User uploads keep the 10 MiB, 100,000 triple and 30 second limits above. The handler reconciles once against the target's working snapshot, orders the operations concepts, then properties, then axioms, and cuts them into slices of at most 1,000 members. Each slice is validated alone, and a property that names an undeclared inverse, replacement, chain member or disjoint property is refused, so inside the concepts and inside the properties a definition follows the definitions it names (`replacedBy`, `inverse`, `propertyChain`, `disjointWith`), parents before children. Definitions that name each other, such as an inverse pair, are one unit that is never split across slices, and a unit larger than a slice fails the plan before anything applies. Ties break by IRI, so the order and the plan digest do not depend on how the importer lists its output. Subclass links are axioms, which come after every declaration. Superproperty links (`superProperties`, ADR:2026-11-07-ontology-property-hierarchies-are-superproperty-fields) order a property after the properties it specializes, the same way. Each slice is applied as its own change set through the regular `OntologyChangeApplicationService` path, stamped with `sourcePack.slice` (job id, index, count, plan digest). `MAX_MEMBERS` stays 1,000. The write-closure bounds that used to reuse it are named in `OntologyWriteClosureLimits` with unchanged values.
+
+The plan digest is the SHA-256 of the pack digest and the ordered slice digests. A slice digest is the SHA-256 of its sorted canonical operations without generated ids. The job records the plan digest and slice digests in its result column. Applying a stamped slice checks the stamp against that record instead of parsing and reconciling the whole pack again. Only the recorded slice, with its recorded digest, can apply.
+
+Job states are QUEUED, RUNNING, COMPLETED, FAILED and CANCELLED. `installedPacks` is written only after the final slice. A failed or cancelled job is terminal. Installing again starts a new job, which reconciles again; the importer skips definitions that already match, so the new plan holds only what is missing and a finished pack yields zero slices. Starting an install that is identical to the running one for the same ontology returns that job, so a lost response is safe to repeat. The check and the insert run in one transaction that holds a lock on the ontology row, so two concurrent starts cannot both queue a job. A different install while one runs returns 409. The UI starts the job, polls it every second and shows slices and definitions applied. Resuming against an ontology above the 10,000 definition snapshot cap waits for a separate bulk-snapshot design.
+
+## Amendment
+
+v11, 2026-11-06: a preview lists at most 5,000 items and reports the rest in `omittedItems`.
+`counts` still covers every parsed definition. When the budget is short, ALREADY_EXISTS items are
+left out first, since nothing can be done with them, and the selection logic in the import panel
+only follows NEW concepts; a user upload cannot change more than 1,000 definitions, so the listing
+holds every NEW, UPDATE, DUPLICATE and SKIPPED item in practice and only a re-import of an
+installed standard trims. The panel says how many were left unlisted. The user upload limits of
+this record (10 MiB, 100,000 statements, 1,000 changed definitions, 30 s) are unchanged.
+
+The working snapshot that reconcile, preview, working diff and validation read now allows 50,000
+definitions and pages 1,000 per query, and those readers no longer hold the `ontology_state` row
+lock (ADR:2026-10-14-ontology-releases-seal-canonical-sql-members). On MySQL,
+`NativeOntologyCapacityPerfIT` installed a FHIR-shaped synthetic ontology of 10,000 members in
+76 s as 10 slices of 6.9 s to 8.6 s with the old reads and in 60 s with the new ones;
+35,000 members installed in 223 s as 35 slices with a median of
+6.5 s. The slice time is flat in the ontology size, so an install is linear in its
+members. The per-write closure bounds in `OntologyWriteClosureLimits` stay at 10,000: a synthetic
+hub of 20,000 members, one class with 9,999 direct subclasses, installed, diffed, captured and
+activated, and only deleting its hub concept exceeded the deletion-impact bound. No shipped
+standard has a class with that many direct dependents, so that bound was not raised. The import preview of the 10,000-member file took 6.1 s and 1.0 s.
+
+The upstream files themselves do not install yet, for reasons outside the size limits: the FHIR
+R5 vocabulary fails the OWL 2 profile check on a data range (`OwlProfileGuard`, "A data range
+requires supported OWL 2 datatypes or their intersection/union") after its first slice applies,
+and the FIBO production quickstart plans a slice whose operation needs
+`https://www.omg.org/spec/Commons/TextDatatype/Text`, a datatype the plan does not declare as a
+concept (`OntologyChangePreflight`). Both are importer defects to fix in the library install
+change, not capacity limits.
+
+## Amendment
+
+v12, 2026-11-07: `rdfs:subPropertyOf` between declared properties of the same kind imports as
+`superProperties` instead of being skipped. A link to a property that neither the file nor the
+target declares is dropped and counted under the new skip reason `UNDECLARED_REFERENCE`; a link
+to a property of another kind, or to the property itself, is `UNSUPPORTED_STRUCTURE`. The
+property itself still imports. The refusal loop prunes links after each pass, so a link to a
+refused superproperty never refuses the subproperty. Of the upstream fixtures, DCAT keeps 3 of its
+18 links (15 name `dcterms:` and `prov:` properties the file does not declare), PROV-O 41 of 41,
+ORG 6 of 9 (2 name undeclared properties, 1 sits on a property the import refuses), OWL-Time 13
+of 13, ODRL 22 of 22 and FOAF 12 of 13. The rules, their OWL 2 DL consequences and the FIBO,
+FHIR, GS1 and schema.org counts are in
+ADR:2026-11-07-ontology-property-hierarchies-are-superproperty-fields.
+
+## Amendment
+
+v13, 2026-11-07: a `skos:definition` or `rdfs:comment` whose value is a resource (an IRI or a
+blank node) or an `rdf:HTML` or `rdf:XMLLiteral` literal is skipped as `UNSUPPORTED_STRUCTURE`
+instead of failing the preview with "Expected a plain RDF literal". The concept still imports
+and keeps its other description, so a resource `skos:definition` falls back to a plain
+`rdfs:comment`. Blank-node structure under the skipped value is removed with it and not counted
+again, as for every skipped statement. Rendering markup to text or following a definition node
+would guess at what the source means. English ESCO states its 13 `skos:definition` values that
+are not literals as `esco:NodeLiteral` resources, and 76 of its node literals carry HTML. Any
+other literal of the wrong shape, such as `skos:definition 17`, still fails the preview, and the
+rule for labels is unchanged.
+
+## Amendment
+
+v14, 2026-11-10: a library install slice that the database rolls back as a deadlock or
+serialization victim (`SQLTransactionRollbackException`, or any SQLState in class `40`) is
+applied again, at most 3 attempts per slice, with a cancellation check between attempts and no
+wait. Any other failure ends the job as FAILED. Concurrent writes to the reference index of other
+ontologies can pick a slice as the victim. The retry is safe because the apply of a slice is one
+transaction, so the rollback undoes every operation in it. Creating the slice's change set is a
+separate, earlier commit, so each attempt creates its own stamped `pack-install-<job>-<index>-<random>`
+change set, and an earlier attempt's change set stays behind as APPLY_FAILED, or as a draft when
+the rollback happened outside an operation.

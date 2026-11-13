@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.vocabulary.RDF;
@@ -24,6 +25,31 @@ final class RdfSkipLedger {
   private static final String BLANK_SUBJECT = "(blank node)";
 
   private final Map<Key, Group> groups = new HashMap<>();
+  private long unlistedCount;
+  private int unlistedGroups;
+
+  RdfSkipLedger() {}
+
+  /**
+   * Continues a report the reader finished, so the importer can add what it drops against its
+   * target. Groups the report left unlisted stay counted in the total and the omitted-group count.
+   */
+  static RdfSkipLedger continuing(final NativeOntologyImportSkipped report) {
+    final RdfSkipLedger ledger = new RdfSkipLedger();
+    long listed = 0;
+    for (final NativeOntologyImportSkipGroup group : report.getGroups()) {
+      ledger
+          .groups
+          .computeIfAbsent(
+              new Key(group.getReason(), group.getPredicate(), group.getObject()),
+              ignored -> new Group())
+          .seed(group.getSubjects(), group.getCount());
+      listed += group.getCount();
+    }
+    ledger.unlistedCount = report.getTotal() - listed;
+    ledger.unlistedGroups = report.getOmittedGroups();
+    return ledger;
+  }
 
   void skip(final NativeOntologyImportSkipReason reason, final Statement statement) {
     skip(reason, statement, 1);
@@ -34,6 +60,14 @@ final class RdfSkipLedger {
     groups
         .computeIfAbsent(Key.of(reason, statement), ignored -> new Group())
         .add(subjectLabel(statement), count);
+  }
+
+  /** A link the importer drops from a parsed definition, by the subject's and predicate's IRIs. */
+  void skip(
+      final NativeOntologyImportSkipReason reason, final String subject, final Property predicate) {
+    groups
+        .computeIfAbsent(new Key(reason, predicate.getURI(), null), ignored -> new Group())
+        .add(subject, 1);
   }
 
   /** Statements about an individual are grouped by reason alone, whatever their predicates. */
@@ -56,11 +90,12 @@ final class RdfSkipLedger {
             .limit(MAX_GROUPS)
             .map(entry -> entry.getKey().toGroup(entry.getValue()))
             .toList();
-    final long total = groups.values().stream().mapToLong(group -> group.count).sum();
+    final long total =
+        groups.values().stream().mapToLong(group -> group.count).sum() + unlistedCount;
     return new NativeOntologyImportSkipped()
         .withTotal(Math.toIntExact(total))
         .withGroups(listed)
-        .withOmittedGroups(Math.max(0, ordered.size() - MAX_GROUPS));
+        .withOmittedGroups(Math.max(0, ordered.size() - MAX_GROUPS) + unlistedGroups);
   }
 
   private static String subjectLabel(final Statement statement) {
@@ -93,6 +128,14 @@ final class RdfSkipLedger {
       count += added;
       samples.add(subject);
       if (samples.size() > SAMPLE_SIZE) {
+        samples.pollLast();
+      }
+    }
+
+    void seed(final List<String> subjects, final int added) {
+      count += added;
+      samples.addAll(subjects);
+      while (samples.size() > SAMPLE_SIZE) {
         samples.pollLast();
       }
     }

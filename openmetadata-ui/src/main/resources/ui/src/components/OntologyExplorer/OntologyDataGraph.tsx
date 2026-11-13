@@ -1655,7 +1655,7 @@ const OntologyDataGraph = ({
       return null;
     }
     const isShowingMore = hiddenAssetCount > 0 || term.isLoadingAssets;
-    let label = t('label.show-less');
+    let label = t('label.show-less-lowercase');
     if (term.isLoadingAssets) {
       label = t('label.loading');
     } else if (hiddenAssetCount > 0) {
@@ -1711,7 +1711,7 @@ const OntologyDataGraph = ({
               iconLeading={ChevronUp}
               size="sm"
               onClick={() => showLess(term)}>
-              {t('label.show-less')}
+              {t('label.show-less-lowercase')}
             </Button>
           ) : null}
         </Box>
@@ -1872,7 +1872,7 @@ const OntologyDataGraph = ({
           onPress={() => toggleAllColumns(slot.assetId)}>
           {slot.kind === 'more'
             ? t('label.show-count-more', { count: slot.hiddenCount })
-            : t('label.show-less')}
+            : t('label.show-less-lowercase')}
         </Button>
       );
     }

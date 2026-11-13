@@ -250,10 +250,57 @@ describe('Releases tab', () => {
     ).toHaveTextContent(
       'message.ontology-release-approved-by {"reviewers":"qa.reviewer1"}'
     );
-    expect(screen.getByTestId('ontology-release-count-ai')).toHaveTextContent(
-      '3 label.added-lowercase · 2 label.changed-lowercase · 2 label.removed-lowercase'
+    expect(screen.getByTestId('ontology-release-count-ai').textContent).toBe(
+      '+3 ~2 −2'
     );
     expect(screen.getByText('author.one')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-release-filter-published')
+    ).toHaveTextContent('label.published · 1');
+    expect(
+      screen.getByTestId('ontology-release-filter-draft')
+    ).toHaveTextContent('label.draft · 0');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('opens Compare versions from the AI toolbar and returns to all releases', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <OntologyReleaseHistory
+          history={history([release('one', '1.0.0', EntityStatus.Approved)])}
+          ontologyId="ontology"
+          onSelect={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(
+      screen.queryByTestId('ontology-release-compare-back')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-release-compare-open'));
+
+    expect(screen.getByTestId('ontology-release-compare-back')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-release-row')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-release-compare-back'));
+
+    expect(screen.getAllByTestId('ontology-release-row')).toHaveLength(1);
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('says no releases yet in AI mode before the first release', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderHistory([]);
+
+    expect(
+      screen.getByTestId('ontology-release-history-empty')
+    ).toHaveTextContent('message.ontology-no-releases-yet');
 
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });

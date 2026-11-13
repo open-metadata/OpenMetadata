@@ -153,9 +153,9 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
   }
 
   @Override
-  public void replaceGraph(final String graph, final Model model) {
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
     try {
-      delegate.replaceGraph(graph, model);
+      delegate.replaceGraph(graph, releaseId, model);
     } finally {
       assertedOnlyQueries.graphsWritten(Set.of(graph));
     }

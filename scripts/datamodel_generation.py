@@ -20,6 +20,7 @@ import subprocess
 import sys
 import warnings
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from datamodel_code_generator import DataModelType, InputFileType, generate
 from datamodel_code_generator.imports import Import
@@ -34,7 +35,6 @@ pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
 
 current_directory = str(Path.cwd())
 ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
-directory_root = "../" if current_directory.endswith("/ingestion") else "./"
 
 UTF_8 = "UTF-8"
 UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
@@ -69,30 +69,37 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-schema_root = Path(f"{directory_root}openmetadata-spec/src/main/resources/json/schema").resolve()
 output_root = Path(f"{ingestion_path}src/metadata/generated/schema").resolve()
-# The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
-schema_files = sorted(
-    (path for path in schema_root.rglob("*") if path.is_file()),
-    key=lambda path: (path.name, path.relative_to(schema_root).as_posix()),
-)
-os.chdir(schema_root)
-try:
-    generate(
-        schema_files,
-        input_file_type=InputFileType.JsonSchema,
-        output_model_type=DataModelType.PydanticV2BaseModel,
-        output=output_root,
-        use_annotated=True,
-        field_constraints=True,
-        base_class="metadata.ingestion.models.custom_pydantic.BaseModel",
-        set_default_enum_member=True,
-        disable_timestamp=True,
-        # Formatted below with ruff rather than black, so black stays out of the lock.
-        formatters=[],
+with TemporaryDirectory(prefix="openmetadata-model-schemas-") as schema_directory:
+    schema_root = Path(schema_directory)
+    preparation_script = Path(__file__).resolve().parents[1] / "openmetadata-spec/scripts/prepare_model_schemas.py"
+    subprocess.run(
+        [sys.executable, str(preparation_script), "--output-dir", str(schema_root)],
+        check=True,
+        stdout=subprocess.DEVNULL,
     )
-finally:
-    os.chdir(current_directory)
+    # The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
+    schema_files = sorted(
+        (path for path in schema_root.rglob("*.json") if path.is_file()),
+        key=lambda path: (path.name, path.relative_to(schema_root).as_posix()),
+    )
+    os.chdir(schema_root)
+    try:
+        generate(
+            schema_files,
+            input_file_type=InputFileType.JsonSchema,
+            output_model_type=DataModelType.PydanticV2BaseModel,
+            output=output_root,
+            use_annotated=True,
+            field_constraints=True,
+            base_class="metadata.ingestion.models.custom_pydantic.BaseModel",
+            set_default_enum_member=True,
+            disable_timestamp=True,
+            # Formatted below with ruff rather than black, so black stays out of the lock.
+            formatters=[],
+        )
+    finally:
+        os.chdir(current_directory)
 
 # --isolated --no-respect-gitignore: the generated tree is ruff-excluded and gitignored. The post-processing below
 # matches black's layout (88 columns), which ruff's defaults reproduce.

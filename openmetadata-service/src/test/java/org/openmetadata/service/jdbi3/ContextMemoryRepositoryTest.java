@@ -20,12 +20,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
@@ -33,9 +38,11 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +60,7 @@ import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
@@ -68,6 +76,7 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -386,7 +395,7 @@ class ContextMemoryRepositoryTest {
         .thenReturn(new PatchResponse<>(Response.Status.OK, pill, EventType.ENTITY_UPDATED));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
-      new ExtractedMemoryApprover(listing)
+      new ExtractedMemoryApprover(listing, pending -> false)
           .approve(
               file,
               List.of(new ComparedMemory().withId(pill.getId()).withContentUpdatedAt(101L)),
@@ -790,6 +799,204 @@ class ContextMemoryRepositoryTest {
           bulk.get(memoryId).getId(),
           "list (bulk) and detail (single) must agree on sourceEntity id");
     }
+  }
+
+  /** A memory a restricted copy also states shows its anchor, on the detail and the list alike. */
+  @Test
+  void bothReadPathsShowTheAnchorBeforeARestrictedCopy() throws ReflectiveOperationException {
+    ContextMemory memory = new ContextMemory().withId(UUID.randomUUID()).withName("shared-memory");
+    EntityReference copy = file("a-private-copy");
+    EntityReference original = file("b-original");
+    when(relationshipDAO.findFrom(
+            eq(memory.getId()), eq(Entity.CONTEXT_MEMORY), eq(Relationship.MENTIONED_IN.ordinal())))
+        .thenReturn(List.of(record(copy), record(original)));
+    when(relationshipDAO.findFrom(
+            eq(memory.getId()), eq(Entity.CONTEXT_MEMORY), eq(Relationship.APPLIED_TO.ordinal())))
+        .thenReturn(List.of(record(original)));
+    when(relationshipDAO.findFromBatch(
+            anyList(), eq(Relationship.MENTIONED_IN.ordinal()), eq(Include.NON_DELETED)))
+        .thenReturn(
+            List.of(
+                link(copy, memory, Relationship.MENTIONED_IN),
+                link(original, memory, Relationship.MENTIONED_IN)));
+    when(relationshipDAO.findFromBatchWithRelations(
+            anyList(), eq(Entity.CONTEXT_MEMORY), anyList(), eq(Include.NON_DELETED)))
+        .thenReturn(List.of(link(original, memory, Relationship.APPLIED_TO)));
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolving(entities, copy, original);
+
+      assertEquals(original.getId(), singleSource(memory).getId(), "the detail shows the anchor");
+      assertEquals(
+          original.getId(),
+          listedSources(memory).get(memory.getId()).getId(),
+          "the list shows the anchor");
+    }
+  }
+
+  /** A review decided while a document is linked is read again: the link never reverts it. */
+  @Test
+  void linkingADocumentEveryoneMayReadKeepsADecisionWrittenMeanwhile() {
+    ContextMemory read = pendingRow();
+    ContextMemory decided =
+        JsonUtils.deepCopy(read, ContextMemory.class)
+            .withEntityStatus(ContextMemoryStatus.REJECTED)
+            .withVersion(0.2)
+            .withUpdatedAt(200L);
+    AtomicReference<ContextMemory> row = new AtomicReference<>(read);
+    EntityReference copy = file("org-wide-copy");
+    ContextMemoryRepository links = storedIn(row, decided);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entities
+          .when(() -> Entity.getEntity(copy, "", Include.NON_DELETED))
+          .thenReturn(new ContextFile());
+      links.linkExtractedMemory(read.getId(), copy);
+    }
+
+    assertEquals(ContextMemoryStatus.REJECTED, row.get().getEntityStatus());
+    assertEquals(
+        List.of(copy.getId()),
+        row.get().getRelatedEntities().stream().map(EntityReference::getId).toList());
+  }
+
+  /** A copy shared with only some people is linked by its source edge alone, never named. */
+  @Test
+  void linkingARestrictedCopyLeavesTheMemoryAsItWas() {
+    ContextMemory read = pendingRow();
+    AtomicReference<ContextMemory> row = new AtomicReference<>(read);
+    EntityReference copy = file("private-copy");
+    ContextMemoryRepository links = storedIn(row, read);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entities
+          .when(() -> Entity.getEntity(copy, "", Include.NON_DELETED))
+          .thenReturn(
+              new ContextFile()
+                  .withShareConfig(
+                      new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+      links.linkExtractedMemory(read.getId(), copy);
+    }
+
+    assertEquals(read, row.get(), "nothing names the copy on the memory or in its history");
+    verify(links)
+        .addRelationship(
+            copy.getId(),
+            read.getId(),
+            Entity.CONTEXT_FILE,
+            Entity.CONTEXT_MEMORY,
+            Relationship.MENTIONED_IN);
+  }
+
+  private ContextMemory pendingRow() {
+    return memory(MemoryVisibility.ENTITY)
+        .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+        .withVersion(0.1)
+        .withUpdatedAt(100L);
+  }
+
+  /**
+   * The repository over one stored row: the first read returns it as it was and lands {@code
+   * meanwhile}, as a review decided between the link's read and its write; a conditional write
+   * succeeds only against the version it read.
+   */
+  private ContextMemoryRepository storedIn(
+      AtomicReference<ContextMemory> row, ContextMemory meanwhile) {
+    ContextMemoryRepository links = spy(repository);
+    UUID id = row.get().getId();
+    doReturn(List.of())
+        .when(links)
+        .findFrom(id, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, Entity.CONTEXT_FILE);
+    doAnswer(
+            read -> {
+              ContextMemory current = JsonUtils.deepCopy(row.get(), ContextMemory.class);
+              row.set(meanwhile);
+              return current;
+            })
+        .doAnswer(read -> JsonUtils.deepCopy(row.get(), ContextMemory.class))
+        .when(links)
+        .get(isNull(), eq(id), any(), eq(Include.NON_DELETED), eq(false));
+    doAnswer(write -> writeIfCurrent(row, write.getArgument(1), write.getArgument(2)))
+        .when(links)
+        .updateIfCurrent(isNull(), any(), any(), any());
+    doAnswer(write -> overwrite(row, write.getArgument(2)))
+        .when(links)
+        .update(isNull(), any(), any(), any());
+    doNothing()
+        .when(links)
+        .addRelationship(
+            any(UUID.class), any(UUID.class), anyString(), anyString(), any(Relationship.class));
+    return links;
+  }
+
+  private static PutResponse<ContextMemory> writeIfCurrent(
+      AtomicReference<ContextMemory> row, ContextMemory original, ContextMemory updated) {
+    if (!row.get().getVersion().equals(original.getVersion())) {
+      throw new PreconditionFailedException("The memory changed since it was read");
+    }
+    return overwrite(row, updated);
+  }
+
+  private static PutResponse<ContextMemory> overwrite(
+      AtomicReference<ContextMemory> row, ContextMemory updated) {
+    row.set(updated);
+    return new PutResponse<>(Response.Status.OK, updated, EventType.ENTITY_UPDATED);
+  }
+
+  private static EntityReference file(String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.CONTEXT_FILE)
+        .withName(name);
+  }
+
+  private static CollectionDAO.EntityRelationshipRecord record(EntityReference from) {
+    return CollectionDAO.EntityRelationshipRecord.builder()
+        .id(from.getId())
+        .type(from.getType())
+        .build();
+  }
+
+  private static CollectionDAO.EntityRelationshipObject link(
+      EntityReference from, ContextMemory memory, Relationship relation) {
+    return CollectionDAO.EntityRelationshipObject.builder()
+        .fromId(from.getId().toString())
+        .toId(memory.getId().toString())
+        .fromEntity(from.getType())
+        .toEntity(Entity.CONTEXT_MEMORY)
+        .relation(relation.ordinal())
+        .build();
+  }
+
+  /** Resolves only the files a lookup names, as the database does. */
+  private static void resolving(MockedStatic<Entity> entities, EntityReference... files) {
+    entities.when(() -> Entity.hasEntityRepository(Entity.CONTEXT_FILE)).thenReturn(true);
+    entities
+        .when(
+            () ->
+                Entity.getEntityReferencesByIds(
+                    eq(Entity.CONTEXT_FILE), anyList(), any(Include.class)))
+        .thenAnswer(
+            lookup -> {
+              List<UUID> ids = lookup.getArgument(1);
+              return Arrays.stream(files).filter(file -> ids.contains(file.getId())).toList();
+            });
+  }
+
+  private EntityReference singleSource(ContextMemory memory) throws ReflectiveOperationException {
+    Method getSourceEntity =
+        ContextMemoryRepository.class.getDeclaredMethod("getSourceEntity", ContextMemory.class);
+    getSourceEntity.setAccessible(true);
+    return (EntityReference) getSourceEntity.invoke(repository, memory);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<UUID, EntityReference> listedSources(ContextMemory memory)
+      throws ReflectiveOperationException {
+    Method batchFetchSources =
+        ContextMemoryRepository.class.getDeclaredMethod("batchFetchSources", List.class);
+    batchFetchSources.setAccessible(true);
+    return (Map<UUID, EntityReference>) batchFetchSources.invoke(repository, List.of(memory));
   }
 
   private ContextMemory memory(MemoryVisibility visibility) {
