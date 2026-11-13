@@ -18,6 +18,7 @@ import {
   Page,
   Request,
   Response,
+  test,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
@@ -222,8 +223,10 @@ export const expectMemoryExtractionOffTooltip = async (page: Page) => {
 };
 
 /**
- * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
- * leaves an upload or a new article Not processed. A spec that relies on that says so first.
+ * The OpenMetadata e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which
+ * is what leaves an upload or a new article Not processed. A spec that relies on that says so first.
+ * The spec cannot turn extraction off, so on a server that runs with it on (the Collate nightly) the
+ * spec is skipped; off for any reason other than ExtractionDisabled still fails.
  */
 export const expectMemoryExtractionOff = async (
   apiContext: APIRequestContext
@@ -231,6 +234,12 @@ export const expectMemoryExtractionOff = async (
   const availability = await okJson<{ available: boolean; reason?: string }>(
     await apiContext.get(MEMORY_EXTRACTION_AVAILABILITY_API),
     'Read whether memory extraction is available'
+  );
+
+  // eslint-disable-next-line playwright/no-skipped-test -- skips only when the server config cannot satisfy the spec
+  test.skip(
+    availability.available,
+    'Needs a server with memory extraction off (LLM_ENABLED=false)'
   );
 
   expect(

@@ -2029,11 +2029,13 @@ test.describe('Context Center Articles', () => {
       );
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
+        // The rename refetches the hierarchy from its first page, dropping a node paginated in
+        // before it lands, so let it land before scrolling to B.
+        await updateDisplayNameResponse;
         const node = await scrollHierarchyToNode(
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
-        await updateDisplayNameResponse;
         const articleLoaded = page.waitForResponse((resp) =>
           resp.url().includes('/api/v1/contextCenter/pages/name/')
         );
