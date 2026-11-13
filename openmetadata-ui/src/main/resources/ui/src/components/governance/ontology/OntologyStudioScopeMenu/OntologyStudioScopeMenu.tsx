@@ -48,6 +48,7 @@ import {
   OntologyStudioScope,
 } from '../../../../utils/governance/ontology/OntologyStudioScope.utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyDeleteDialog from '../OntologyDeleteDialog/OntologyDeleteDialog';
 import { ONTOLOGY_REVIEW_QUEUES_QUERY_KEY } from '../OntologyTasksDrawer/OntologyTasksDrawer.constants';
 import { filterOntologies } from './OntologyStudioScopeMenu.utils';
@@ -337,8 +338,8 @@ const OntologyStudioScopeMenu = ({
   const renderStatus = () => (
     <>
       {isLoading ? (
-        <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-          {t('label.loading')}
+        <div className="tw:px-4 tw:py-2">
+          <Loader size="small" />
         </div>
       ) : null}
       {isError ? (

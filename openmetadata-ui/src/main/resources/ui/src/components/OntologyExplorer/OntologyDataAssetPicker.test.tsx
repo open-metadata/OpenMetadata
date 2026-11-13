@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import {
@@ -541,6 +547,52 @@ describe('OntologyDataAssetPicker', () => {
       );
     });
 
+    it('keeps an already linked asset out of Suggested', async () => {
+      renderNative({ linkedIds: ['t-3'] });
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-reason-t-4')
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-data-asset-reason-t-3')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('checkbox', { name: 'medication_events' })
+      ).toBeChecked();
+    });
+
+    it('shows the list once, after suggestions arrive, instead of reordering it', async () => {
+      let release: () => void = () => undefined;
+      const arrival = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const base = mockSearch.getMockImplementation();
+      mockSearch.mockImplementation(async (request) => {
+        if (String(request.query).includes(' OR ')) {
+          await arrival;
+        }
+
+        return base?.(request) as never;
+      });
+      renderNative();
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-loading')
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('checkbox', { name: 'customers' })
+      ).not.toBeInTheDocument();
+
+      await act(async () => release());
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-suggested-heading')
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-data-asset-loading')
+      ).not.toBeInTheDocument();
+    });
+
     it('stops suggesting once a search narrows the list', async () => {
       renderNative();
       await screen.findByTestId('ontology-data-asset-reason-t-3');
@@ -576,6 +628,7 @@ describe('OntologyDataAssetPicker', () => {
       const box = await screen.findByRole('checkbox', { name: 'customers' });
 
       expect(box).toBeDisabled();
+      expect(box).toBeChecked();
       expect(
         screen.getByTestId('ontology-data-asset-linked-t-1')
       ).toHaveTextContent('message.ontology-asset-already-linked');

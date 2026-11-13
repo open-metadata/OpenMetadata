@@ -594,6 +594,8 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextFileIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryVisibilityTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/security/ContextMemorySearchVisibilityTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/MemoryExtractionAccessTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/llm/LLMClientHolder.java",
         "openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/EntityCreationSpec.java",

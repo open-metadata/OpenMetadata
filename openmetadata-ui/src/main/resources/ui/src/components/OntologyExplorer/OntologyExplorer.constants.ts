@@ -594,3 +594,5 @@ export const ONTOLOGY_DRAWER_WIDTH = 'max(420px, 40vw)';
 export const STUDIO_GRAPH_NODE_LIMIT = 500;
 export const STUDIO_FOCUS_NODE_CAP = 120;
 export const STUDIO_FOCUS_DEPTH = 2;
+/** Past the first hop, a concept with more links than this is drawn but not expanded. */
+export const STUDIO_FOCUS_HUB_DEGREE = 12;

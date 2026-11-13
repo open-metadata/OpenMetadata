@@ -149,7 +149,6 @@ const OntologyQueryPicker = ({
           className="tw:w-full"
           data-testid="ontology-query-picker-select"
           items={items}
-          label={isOntologyView ? undefined : t('label.ontology')}
           placeholder={
             isOntologyView
               ? t('label.search-entity', {
