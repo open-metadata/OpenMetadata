@@ -14,6 +14,8 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Lists;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -44,6 +46,7 @@ public final class WebhookSecretsMigration {
   private static final String USER = "user";
   private static final String TEAM = "team";
   private static final String ALERT = "eventsubscription";
+  private static final String ALERT_TABLE = "event_subscription_entity";
 
   private WebhookSecretsMigration() {}
 
@@ -60,13 +63,22 @@ public final class WebhookSecretsMigration {
     }
   }
 
+  /**
+   * Binds the alert destinations. Every row is rewritten in memory first: when the credentials
+   * releases before 2.1 stored encrypted exist and none of them opens with the configured keys, it
+   * stops before anything is written ({@link StoredWebhookSecrets.CarriedCredentials}).
+   */
   public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
-      rewriteById(handle, sql, "event_subscription_entity", secrets::bindAlert);
-      rewriteVersions(
-          handle, sql, "event_subscription_entity", ALERT, StoredWebhookSecrets::maskAlert);
+      StoredWebhookSecrets.CarriedCredentials carried =
+          new StoredWebhookSecrets.CarriedCredentials();
+      List<Rewrite> alerts =
+          rewritesById(handle, sql, ALERT_TABLE, row -> secrets.bindAlert(row, carried));
+      carried.requireAnyOpened();
+      write(handle, sql, ALERT_TABLE, alerts);
+      rewriteVersions(handle, sql, ALERT_TABLE, ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
     }
   }
@@ -81,8 +93,17 @@ public final class WebhookSecretsMigration {
 
   private static void rewriteById(
       Handle handle, Sql sql, String table, Predicate<JsonNode> transform) {
+    write(handle, sql, table, rewritesById(handle, sql, table, transform));
+  }
+
+  /** A row of a table, as the step writes it back. */
+  private record Rewrite(String id, String json) {}
+
+  /** The rows of {@code table} that {@code transform} changes, as they are to be written. */
+  private static List<Rewrite> rewritesById(
+      Handle handle, Sql sql, String table, Predicate<JsonNode> transform) {
+    List<Rewrite> rewrites = new ArrayList<>();
     String cursor = "";
-    int rewritten = 0;
     List<Map<String, Object>> rows;
     do {
       rows =
@@ -92,17 +113,24 @@ public final class WebhookSecretsMigration {
               .bind("pageSize", PAGE_SIZE)
               .mapToMap()
               .list();
-      PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
       for (Map<String, Object> row : rows) {
         cursor = String.valueOf(row.get("id"));
         String json = rewritten(row, transform, table + " row " + cursor);
         if (json != null) {
-          batch.bind("id", cursor).bind("json", json).add();
+          rewrites.add(new Rewrite(cursor, json));
         }
       }
-      rewritten += execute(batch);
     } while (rows.size() == PAGE_SIZE);
-    LOG.info("Bound the webhook secrets of {} rows of {}", rewritten, table);
+    return rewrites;
+  }
+
+  private static void write(Handle handle, Sql sql, String table, List<Rewrite> rewrites) {
+    for (List<Rewrite> page : Lists.partition(rewrites, PAGE_SIZE)) {
+      PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
+      page.forEach(rewrite -> batch.bind("id", rewrite.id()).bind("json", rewrite.json()).add());
+      execute(batch);
+    }
+    LOG.info("Bound the webhook secrets of {} rows of {}", rewrites.size(), table);
   }
 
   /**

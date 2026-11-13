@@ -33,13 +33,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
@@ -137,10 +140,11 @@ final class StoredWebhookSecrets {
    * Binds, in place, the destinations of a stored alert and masks its change descriptions. Legacy
    * ciphertext is carried over at the fields releases before 2.1 encrypted, wherever else the same
    * value is stored: each copy is bound to the destination that holds it. Any other value stays as
-   * stored, opens for no destination, and is entered again before the destination sends. Returns
-   * whether it changed.
+   * stored, opens for no destination, and is entered again before the destination sends. What it
+   * finds to carry over is counted in {@code carried}. Returns whether it changed.
    */
-  boolean bindAlert(JsonNode alert) {
+  boolean bindAlert(JsonNode alert, CarriedCredentials carried) {
+    countCarriedCredentials(alert, carried);
     JsonNode before = alert.deepCopy();
     for (JsonNode destination : alert.path(DESTINATIONS)) {
       if (destination instanceof ObjectNode stored) {
@@ -166,6 +170,18 @@ final class StoredWebhookSecrets {
     }
     CHANGE_DESCRIPTIONS.forEach(name -> maskRecordedProfile(entity.path(name)));
     return !entity.equals(before);
+  }
+
+  private void countCarriedCredentials(JsonNode alert, CarriedCredentials carried) {
+    String label = "'" + alert.path("name").asText() + "' (" + alert.path("id").asText() + ")";
+    for (JsonNode destination : alert.path(DESTINATIONS)) {
+      JsonNode config = destination.path("config");
+      destinationFields(destination).stream()
+          .filter(ENCRYPTED_BEFORE_2_1::contains)
+          .map(field -> config.at(field).asText())
+          .filter(StoredWebhookSecrets::isLegacyCiphertext)
+          .forEach(value -> carried.count(label, decryptLegacy(value).isPresent()));
+    }
   }
 
   /** Masks, in place, an alert version: its destinations and its change descriptions. */
@@ -297,6 +313,46 @@ final class StoredWebhookSecrets {
     ByteBuffer bytes = ByteBuffer.allocate(Long.BYTES * 2);
     bytes.putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits());
     return BASE32.encode(bytes.array());
+  }
+
+  /**
+   * The credentials releases before 2.1 stored encrypted that the step found, and whether they open
+   * with the configured Fernet keys. When some exist and none opens, the server runs with keys other
+   * than the ones that wrote them, and binding the rest with those keys would be a step the right
+   * keys could not undo, so the step stops before it writes anything.
+   */
+  static final class CarriedCredentials {
+    private static final int ALERTS_NAMED = 20;
+    private static final String NONE_OPENS =
+        "The configured Fernet key (FERNET_KEY) cannot decrypt any of the webhook credentials stored"
+            + " before 2.1, held by the alerts %s. Set FERNET_KEY to the key the previous release"
+            + " used (a comma-separated list of keys is accepted) and run migrate again. If these"
+            + " values could not be used before the upgrade either, enter them again or remove them"
+            + " before upgrading, and this check passes.";
+
+    private final Set<String> alertsNotOpened = new LinkedHashSet<>();
+    private int opened;
+
+    void count(String alertLabel, boolean opens) {
+      if (opens) {
+        opened++;
+      } else {
+        alertsNotOpened.add(alertLabel);
+      }
+    }
+
+    /** Throws when credentials were found and none of them opens. */
+    void requireAnyOpened() {
+      if (opened == 0 && !alertsNotOpened.isEmpty()) {
+        throw new IllegalStateException(NONE_OPENS.formatted(namedAlerts()));
+      }
+    }
+
+    private String namedAlerts() {
+      String named = alertsNotOpened.stream().limit(ALERTS_NAMED).collect(Collectors.joining(", "));
+      int more = alertsNotOpened.size() - ALERTS_NAMED;
+      return more > 0 ? named + " and " + more + " more" : named;
+    }
   }
 
   private static boolean maskDestinations(JsonNode destinations) {
