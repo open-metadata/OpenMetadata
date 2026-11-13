@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.macasaet.fernet.Key;
 import jakarta.ws.rs.BadRequestException;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationHaltException;
 import org.openmetadata.service.migration.api.MigrationProcess;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
@@ -232,9 +234,10 @@ class WebhookSecretsMigrationIT {
   }
 
   /**
-   * Run with Fernet keys that open none of the credentials earlier releases stored, the 2.1.0 data
-   * migration stops before any of its steps writes: alert, profile and authentication settings
-   * rows are left as they were and no step is recorded. With the right keys the webhook steps go
+   * Run with Fernet keys that open none of the credentials earlier releases stored, an upgrade from
+   * 2.0.8 stops on the 2.1.0 preflight before either version is migrated: the 2.0.8 data step that
+   * encrypts connection secrets does not run, alert, profile and authentication settings rows are
+   * left as they were, and no step or version is recorded. With the right keys the webhook steps go
    * through.
    */
   @Test
@@ -272,6 +275,7 @@ class WebhookSecretsMigrationIT {
     String teamRow = teamDAO.findById(teamDAO.getTableName(), team.getId(), "");
     String authenticationRow = authenticationSettings();
     String version = "2.1.0-webhookit" + ns.shortPrefix();
+    String earlierVersion = "2.0.8-webhookit" + ns.shortPrefix();
     String configuredKeys =
         Fernet.getInstance().getCachedKeys().stream()
             .map(Key::serialise)
@@ -279,13 +283,16 @@ class WebhookSecretsMigrationIT {
 
     try {
       Fernet.getInstance().setFernetKey(Key.generateKey().serialise());
-      assertThrows(MigrationHaltException.class, () -> runTheDataMigration(version));
+      assertThrows(
+          MigrationHaltException.class, () -> runTheUpgrade(List.of(earlierVersion, version)));
       Fernet.getInstance().setFernetKey(configuredKeys);
 
       assertEquals(alertRow, alertRow(alert.getId()), "the alert row is left as it was");
       assertEquals(teamRow, teamDAO.findById(teamDAO.getTableName(), team.getId(), ""));
       assertEquals(authenticationRow, authenticationSettings());
       assertEquals(0, markersOf(version), "no step is recorded as applied");
+      assertEquals(0, markersOf(earlierVersion), "no step of the earlier version ran");
+      assertEquals(0, versionsRecorded(List.of(earlierVersion, version)));
 
       runWebhookSteps(version);
 
@@ -294,6 +301,7 @@ class WebhookSecretsMigrationIT {
     } finally {
       Fernet.getInstance().setFernetKey(configuredKeys);
       deleteMarkersOf(version);
+      deleteMarkersOf(earlierVersion);
     }
   }
 
@@ -377,22 +385,39 @@ class WebhookSecretsMigrationIT {
     return Map.of("endpoint", "https://hooks.example.com/" + path, "authType", authType);
   }
 
-  // The 2.1.0 data migration of this engine, as `migrate` runs it, under a version of its own.
-  private static void runTheDataMigration(String version) {
+  // `migrate --force` over these versions of this engine, each under a version of its own.
+  private static void runTheUpgrade(List<String> versions) throws ReflectiveOperationException {
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
-    MigrationFile file =
-        new MigrationFile(
-            new File(System.getProperty("java.io.tmpdir"), version),
-            jdbi.onDemand(MigrationDAO.class),
-            dialect(),
-            null,
-            false);
-    jdbi.useHandle(
-        handle -> {
-          MigrationProcess migration = migrationOf(file);
-          migration.initialize(handle, jdbi);
-          migration.runDataMigration();
-        });
+    MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
+    List<MigrationProcess> processes =
+        versions.stream()
+            .map(
+                version ->
+                    migrationOf(
+                        new MigrationFile(
+                            new File(System.getProperty("java.io.tmpdir"), version),
+                            migrationDAO,
+                            dialect(),
+                            null,
+                            false)))
+            .toList();
+    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, "", dialect(), "", "", null, true);
+    Field migrations = MigrationWorkflow.class.getDeclaredField("migrations");
+    migrations.setAccessible(true);
+    migrations.set(workflow, processes);
+    workflow.runMigrationWorkflows(false);
+  }
+
+  private static int versionsRecorded(List<String> versions) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM SERVER_CHANGE_LOG WHERE version IN (<versions>)")
+                    .bindList("versions", versions)
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private static MigrationProcess migrationOf(MigrationFile file) {

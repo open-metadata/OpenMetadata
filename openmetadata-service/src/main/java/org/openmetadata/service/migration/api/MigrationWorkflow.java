@@ -423,6 +423,7 @@ public class MigrationWorkflow {
             "Context");
     List<List<String>> allRows = new ArrayList<>();
     try (Handle transactionHandler = jdbi.open()) {
+      runPreflights(transactionHandler);
       MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
       String currentVersion = currentMaxMigrationVersion.orElse(CURRENT);
       LOG.debug("Current Max version {}", currentVersion);
@@ -596,6 +597,11 @@ public class MigrationWorkflow {
         throw e;
       }
     }
+  }
+
+  // Every pending version checks first, before any version writes; --force does not skip a halt.
+  private void runPreflights(Handle handle) {
+    migrations.forEach(process -> process.preflight(handle));
   }
 
   // --force goes on past a failed step, except one that says going on would lose data.
