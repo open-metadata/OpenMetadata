@@ -19,7 +19,10 @@ import type {
 import { isBoolean, isEmpty, isObject, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
-import type { EsRegexp } from '../interface/queryFilter.interface';
+import type {
+  EsMatchPhrase,
+  EsRegexp,
+} from '../interface/queryFilter.interface';
 import type {
   EsBoolQuery,
   EsExistsQuery,
@@ -396,6 +399,32 @@ const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) => {
     Object.keys((curr as EsRegexp).regexp)[0],
     'regexp',
     Object.values((curr as EsRegexp).regexp)[0]?.value
+  );
+};
+
+const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined((curr as EsMatchPhrase).match_phrase)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    Object.keys((curr as EsMatchPhrase).match_phrase)[0],
+    'match_phrase',
+    Object.values((curr as EsMatchPhrase).match_phrase)[0]
+  );
+};
+
+const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined((curr.bool?.must_not as EsMatchPhrase)?.match_phrase)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    Object.keys((curr.bool?.must_not as EsMatchPhrase)?.match_phrase)[0],
+    'not_match_phrase',
+    Object.values((curr.bool?.must_not as EsMatchPhrase)?.match_phrase)[0]
   );
 };
 
@@ -880,6 +909,8 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchWildcard,
   matchMustNotWildcard,
   matchRegexp,
+  matchPhrase,
+  matchMustNotPhrase,
   matchBoolMust,
 ];
 

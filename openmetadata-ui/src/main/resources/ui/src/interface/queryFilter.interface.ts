@@ -38,6 +38,12 @@ export interface EsRegexp {
   };
 }
 
+export interface EsMatchPhrase {
+  match_phrase: {
+    [key: string]: string;
+  };
+}
+
 export interface EsBoolQuery {
   filter?: QueryFieldInterface | QueryFieldInterface[];
   must?: QueryFieldInterface | QueryFieldInterface[];
