@@ -920,20 +920,20 @@ export const scrollUntilResponse = async (
 /**
  * Saving an article reloads the hierarchy from its first page, which drops any node scrolled in
  * from a later page. Start this before the action that saves, and await it before scrolling.
+ * The reload is awaited only after the save, so the hierarchy's own load on mount cannot match.
  */
 export const waitForArticleSavedAndHierarchyReloaded = (
   page: Page,
   articleId: string
 ) =>
-  Promise.all([
-    waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        new URL(response.url()).pathname ===
-          `/api/v1/contextCenter/pages/${articleId}`,
-      200
-    ),
+  waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/contextCenter/pages/${articleId}`,
+    200
+  ).then(() =>
     waitForResponseWithStatus(
       page,
       (response) => {
@@ -946,8 +946,8 @@ export const waitForArticleSavedAndHierarchyReloaded = (
         );
       },
       200
-    ),
-  ]);
+    )
+  );
 
 export const scrollHierarchyToNode = async (
   page: Page,

@@ -1953,16 +1953,15 @@ test.describe('Context Center Articles', () => {
       test.slow();
 
       const newDescription = `New description ${uuid()}`;
+      let unblockAutoSave: () => Promise<void>;
 
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
-        const contentSaved = waitForArticleSavedAndHierarchyReloaded(
-          page,
-          draftArticleA.id
-        );
+        // Keep A unsaved until the test returns to it. A save also reloads the
+        // hierarchy from its first page, dropping article B while it is scrolled to.
+        unblockAutoSave = await blockArticleAutoSave(page, draftArticleA.id);
         await page.fill('.om-block-editor', newDescription);
         await waitForDraftPersisted(page, draftArticleA.id, newDescription);
-        await contentSaved;
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
@@ -1992,6 +1991,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Navigate back to Article A — should show updated description', async () => {
+        await unblockAutoSave();
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
         await waitForDraftSyncedIntoEditor(page, newDescription);
