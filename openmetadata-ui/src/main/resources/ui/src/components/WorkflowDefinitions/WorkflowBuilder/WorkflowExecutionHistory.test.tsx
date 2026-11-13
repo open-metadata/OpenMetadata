@@ -158,6 +158,56 @@ describe('WorkflowExecutionHistory', () => {
     expect(screen.getAllByRole('row')).toHaveLength(mockInstances.length + 1);
   });
 
+  it("keeps the lines of the page shown when an earlier page's steps answer late", async () => {
+    const approvedStep = (id: string) => ({
+      data: [
+        {
+          stage: {
+            name: 'Approve',
+            endedAt: 2,
+            variables: {
+              hasAssignees: true,
+              Approve_result: 'approve',
+              Approve_updatedBy: `reviewer-of-${id}`,
+            },
+          },
+        },
+      ],
+    });
+    const secondPage = [{ ...mockInstances[0], id: 'page-2-run' }];
+    const firstPageAnswers: (() => void)[] = [];
+    (getWorkflowInstancesByFQN as jest.Mock)
+      .mockResolvedValueOnce({
+        data: mockInstances,
+        paging: { total: 30, after: 'cursor-2' },
+      })
+      .mockResolvedValueOnce({ data: secondPage, paging: { total: 30 } });
+    (getWorkflowInstanceStateById as jest.Mock).mockImplementation(
+      (_workflow: string, runId: string) =>
+        runId === 'page-2-run'
+          ? Promise.resolve(approvedStep(runId))
+          : new Promise((resolve) => {
+              firstPageAnswers.push(() => resolve(approvedStep(runId)));
+            })
+    );
+
+    await act(async () => {
+      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    await act(async () => {
+      firstPageAnswers.forEach((answer) => answer());
+    });
+
+    expect(
+      screen.getByTestId('workflow-approval-outcome-page-2-run')
+    ).toHaveTextContent('message.workflow-run-approved-by');
+  });
+
   it('renders a row per workflow instance', async () => {
     await renderHistory();
 

@@ -20,10 +20,14 @@ import { expect, test } from '../../fixtures/pages';
 /**
  * A workflow's execution history says how each run's approval step was decided: by the workflow
  * itself when the table had no owner to ask, or by the owner who approved the task. The workflow
- * watches description edits on one table, so no other spec's edits start a run.
+ * runs on every table edit (a filtered-out edit still records a run, without steps), so the spec
+ * follows its own runs by their decided approval step and checks each one right after it lands.
  */
 
-type Run = { id: string; status: string };
+const APPROVAL_NODE = 'ReviewDescription';
+
+type Run = { id: string };
+type Step = { stage?: { name?: string; endedAt?: number } };
 
 const loggedInUserName = async (page: Page) => {
   await redirectToHomePage(page);
@@ -68,7 +72,7 @@ const createOwnerReview = async (
           {
             type: 'userTask',
             subType: 'userApprovalTask',
-            name: 'ReviewDescription',
+            name: APPROVAL_NODE,
             displayName: 'Review description',
             config: {
               assignees: {
@@ -85,49 +89,133 @@ const createOwnerReview = async (
           { type: 'endEvent', subType: 'endEvent', name: 'RejectedEnd' },
         ],
         edges: [
-          { from: 'Start', to: 'ReviewDescription' },
-          {
-            from: 'ReviewDescription',
-            to: 'ApprovedEnd',
-            condition: 'approve',
-          },
-          {
-            from: 'ReviewDescription',
-            to: 'RejectedEnd',
-            condition: 'reject',
-          },
+          { from: 'Start', to: APPROVAL_NODE },
+          { from: APPROVAL_NODE, to: 'ApprovedEnd', condition: 'approve' },
+          { from: APPROVAL_NODE, to: 'RejectedEnd', condition: 'reject' },
         ],
       },
     }),
     'createOwnerReview'
   );
 
-const finishedRuns = async (apiContext: APIRequestContext, name: string) => {
-  const { data } = await okJson<{ data: Run[] }>(
-    await apiContext.get('/api/v1/governance/workflowInstances', {
-      params: {
-        workflowDefinitionName: name,
-        startTs: 0,
-        endTs: Date.now(),
-        limit: 20,
-      },
-    }),
-    'workflowInstances'
-  );
-
-  return data.filter((run) => run.status === 'FINISHED');
-};
-
-const awaitFinishedRuns = (
+const isDecided = async (
   apiContext: APIRequestContext,
   name: string,
-  count: number
-) =>
-  expect
-    .poll(async () => (await finishedRuns(apiContext, name)).length, {
-      timeout: 90_000,
-    })
-    .toBeGreaterThanOrEqual(count);
+  runId: string
+) => {
+  const { data } = await okJson<{ data: Step[] }>(
+    await apiContext.get(
+      `/api/v1/governance/workflowInstanceStates/${name}/${runId}`,
+      { params: { startTs: 0, endTs: Date.now(), limit: 50 } }
+    ),
+    'workflowInstanceStates'
+  );
+
+  return data.some(
+    ({ stage }) => stage?.name === APPROVAL_NODE && stage.endedAt
+  );
+};
+
+// The run of this table whose approval step has been decided and is not one of `known`.
+const awaitDecidedRun = async (
+  apiContext: APIRequestContext,
+  name: string,
+  table: TableClass,
+  known: string[]
+) => {
+  let decidedRunId = '';
+  await expect
+    .poll(
+      async () => {
+        const { data } = await okJson<{ data: Run[] }>(
+          await apiContext.get('/api/v1/governance/workflowInstances', {
+            params: {
+              workflowDefinitionName: name,
+              entityLink: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
+              startTs: 0,
+              endTs: Date.now(),
+              limit: 50,
+            },
+          }),
+          'workflowInstances'
+        );
+        const fresh = data.filter(({ id }) => !known.includes(id));
+        const decided = await Promise.all(
+          fresh.map(async ({ id }) =>
+            (await isDecided(apiContext, name, id)) ? id : ''
+          )
+        );
+        decidedRunId = decided.find(Boolean) ?? '';
+
+        return decidedRunId;
+      },
+      { timeout: 90_000 }
+    )
+    .toBeTruthy();
+
+  return decidedRunId;
+};
+
+const expectOutcome = async (
+  page: Page,
+  name: string,
+  runId: string,
+  outcome: string
+) => {
+  await page.goto(`/workflows/${encodeURIComponent(name)}/workflow`, {
+    waitUntil: 'domcontentloaded',
+  });
+  await waitForAllLoadersToDisappear(page);
+  await page.getByTestId('workflow-execution-history').click();
+  await expect(
+    page.getByTestId(`workflow-approval-outcome-${runId}`)
+  ).toHaveText(outcome);
+};
+
+const approveAsOwner = async (
+  ownerPage: Page,
+  table: TableClass,
+  ownerName: string
+) => {
+  const { apiContext, afterAction } = await getApiContext(ownerPage);
+  try {
+    let taskId = '';
+    await expect
+      .poll(
+        async () => {
+          const { data } = await okJson<{
+            data: { id: string; assignees?: { name: string }[] }[];
+          }>(
+            await apiContext.get('/api/v1/tasks', {
+              params: {
+                aboutEntity: table.entityResponseData.fullyQualifiedName,
+                status: 'Open',
+                limit: 20,
+                fields: 'assignees',
+              },
+            }),
+            'openTasks'
+          );
+          taskId =
+            data.find((task) =>
+              task.assignees?.some(({ name }) => name === ownerName)
+            )?.id ?? '';
+
+          return taskId;
+        },
+        { timeout: 90_000 }
+      )
+      .toBeTruthy();
+    await okJson(
+      await apiContext.post(`/api/v1/tasks/${taskId}/resolve`, {
+        data: { transitionId: 'approve' },
+      }),
+      'resolveTask'
+    );
+  } finally {
+    await afterAction();
+  }
+};
 
 const setDescription = (
   apiContext: APIRequestContext,
@@ -152,19 +240,37 @@ test.describe(
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       const table = new TableClass();
-      await table.create(apiContext);
       const workflowName = `PwOwnerReview${uuid()}`;
-      const workflow = await createOwnerReview(
-        apiContext,
-        workflowName,
-        table.entityResponseData.id
-      );
+      let workflowId = '';
 
       try {
-        await test.step('a run with no owner to ask approves itself', async () => {
-          await setDescription(apiContext, table, 'Addresses of customers.');
-          await awaitFinishedRuns(apiContext, workflowName, 1);
-        });
+        await table.create(apiContext);
+        workflowId = (
+          await createOwnerReview(
+            apiContext,
+            workflowName,
+            table.entityResponseData.id
+          )
+        ).id;
+
+        const autoRun =
+          await test.step('a run with no owner to ask approves itself', async () => {
+            await setDescription(apiContext, table, 'Addresses of customers.');
+            const runId = await awaitDecidedRun(
+              apiContext,
+              workflowName,
+              table,
+              []
+            );
+            await expectOutcome(
+              page,
+              workflowName,
+              runId,
+              'Auto-approved: no one to assign'
+            );
+
+            return runId;
+          });
 
         await test.step('a run the owner approves names the owner', async () => {
           await table.patch({
@@ -182,68 +288,27 @@ test.describe(
             table,
             'Billing and shipping addresses of customers.'
           );
-          const ownerContext = await getApiContext(dataConsumerPage);
-          let taskId: string | undefined;
-          await expect
-            .poll(
-              async () => {
-                const { data } = await okJson<{
-                  data: { id: string; assignees?: { name: string }[] }[];
-                }>(
-                  await ownerContext.apiContext.get('/api/v1/tasks', {
-                    params: {
-                      aboutEntity: table.entityResponseData.fullyQualifiedName,
-                      status: 'Open',
-                      limit: 20,
-                      fields: 'assignees',
-                    },
-                  }),
-                  'openTasks'
-                );
-                taskId = data.find((task) =>
-                  task.assignees?.some(({ name }) => name === owner.name)
-                )?.id;
-
-                return taskId;
-              },
-              { timeout: 90_000 }
-            )
-            .toBeTruthy();
-          await okJson(
-            await ownerContext.apiContext.post(
-              `/api/v1/tasks/${taskId}/resolve`,
-              { data: { transitionId: 'approve' } }
-            ),
-            'resolveTask'
-          );
-          await ownerContext.afterAction();
-          await awaitFinishedRuns(apiContext, workflowName, 2);
-        });
-
-        await test.step('the execution history shows both decisions', async () => {
-          await page.goto(
-            `/workflows/${encodeURIComponent(workflowName)}/workflow`,
-            { waitUntil: 'domcontentloaded' }
-          );
-          await waitForAllLoadersToDisappear(page);
-          await page.getByTestId('workflow-execution-history').click();
-          const history = page.getByTestId('workflow-execution-history-table');
-          await expect(history).toBeVisible();
-
-          const outcomes = history.locator(
-            '[data-testid^="workflow-approval-outcome-"]'
-          );
-          await expect(outcomes).toHaveText(
-            [`Approved by ${owner.name}`, 'Auto-approved: no one to assign'],
-            { timeout: 30_000 }
+          await approveAsOwner(dataConsumerPage, table, owner.name);
+          const runId = await awaitDecidedRun(apiContext, workflowName, table, [
+            autoRun,
+          ]);
+          await expectOutcome(
+            page,
+            workflowName,
+            runId,
+            `Approved by ${owner.name}`
           );
         });
       } finally {
-        await apiContext.delete(
-          `/api/v1/governance/workflowDefinitions/${workflow.id}`,
-          { params: { hardDelete: true } }
-        );
-        await table.delete(apiContext);
+        if (workflowId) {
+          await apiContext.delete(
+            `/api/v1/governance/workflowDefinitions/${workflowId}`,
+            { params: { hardDelete: true } }
+          );
+        }
+        if (table.entityResponseData.id) {
+          await table.delete(apiContext);
+        }
         await afterAction();
       }
     });

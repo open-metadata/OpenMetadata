@@ -35,9 +35,6 @@ export const APPROVAL_OUTCOME_LABELS: Record<ApprovalOutcomeKind, string> = {
   [ApprovalOutcomeKind.Rejected]: 'message.workflow-run-rejected-by',
 };
 
-// The reason the server's auto-approve step records when the requester is the one reviewer.
-const SUBMITTER_IS_REVIEWER_REASON = 'Submitter is a reviewer';
-
 const APPROVED_RESULTS = new Set(['true', 'approve', 'approved']);
 const REJECTED_RESULTS = new Set(['false', 'reject', 'rejected']);
 
@@ -56,41 +53,37 @@ const readDecision = (result: unknown): boolean | undefined => {
   return approved;
 };
 
-/**
- * How one recorded step was decided, when it is an approval step: the auto-approve step records
- * `<node>_autoApprovalReason`, and a person resolving the task records `<node>_updatedBy` with the
- * `<node>_result` they chose. Any other step, or one that has not been decided, reads as undefined.
- * A run that loops back to the same step keeps the earlier pass's variables, so an automatic pass
- * is told by `hasAssignees` (or `submitterIsReviewer`), which every pass sets afresh.
- */
-export const getApprovalOutcome = (
-  state: WorkflowInstanceState
-): ApprovalOutcome | undefined => {
-  const node = state.stage?.name;
-  const decidedAt = state.stage?.endedAt;
-  const variables = state.stage?.variables ?? {};
-  if (!node) {
-    return undefined;
+type StepVariables = Record<string, unknown>;
+
+/** Who decided a step the workflow approved itself, read from the pass's own variables. */
+const readAutomaticKind = (
+  variables: StepVariables
+): ApprovalOutcomeKind | undefined => {
+  const submitterIsReviewer = variables.submitterIsReviewer === true;
+  let kind: ApprovalOutcomeKind | undefined;
+  if (submitterIsReviewer) {
+    kind = ApprovalOutcomeKind.AutoApprovedSubmitterIsReviewer;
+  } else if (variables.hasAssignees === false) {
+    kind = ApprovalOutcomeKind.AutoApproved;
   }
+
+  return kind;
+};
+
+const readDecidedStep = (
+  node: string,
+  variables: StepVariables
+): Pick<ApprovalOutcome, 'kind' | 'decidedBy'> | undefined => {
   const approved = readDecision(variables[`${node}_result`]);
-  const autoApprovalReason = variables[`${node}_autoApprovalReason`];
+  const automaticKind = variables[`${node}_autoApprovalReason`]
+    ? readAutomaticKind(variables)
+    : undefined;
   const decidedBy = variables[`${node}_updatedBy`];
-  const decidedAutomatically =
-    variables.hasAssignees === false || variables.submitterIsReviewer === true;
-  let outcome: ApprovalOutcome | undefined;
-  if (autoApprovalReason && decidedAutomatically && approved) {
-    outcome = {
-      node,
-      decidedAt,
-      kind:
-        autoApprovalReason === SUBMITTER_IS_REVIEWER_REASON
-          ? ApprovalOutcomeKind.AutoApprovedSubmitterIsReviewer
-          : ApprovalOutcomeKind.AutoApproved,
-    };
+  let decided: Pick<ApprovalOutcome, 'kind' | 'decidedBy'> | undefined;
+  if (automaticKind && approved) {
+    decided = { kind: automaticKind };
   } else if (typeof decidedBy === 'string' && approved !== undefined) {
-    outcome = {
-      node,
-      decidedAt,
+    decided = {
       kind: approved
         ? ApprovalOutcomeKind.Approved
         : ApprovalOutcomeKind.Rejected,
@@ -98,7 +91,29 @@ export const getApprovalOutcome = (
     };
   }
 
-  return outcome;
+  return decided;
+};
+
+/**
+ * How one recorded step was decided, when it is an approval step: the auto-approve step records
+ * `<node>_autoApprovalReason`, and a person resolving the task records `<node>_updatedBy` with the
+ * `<node>_result` they chose. Any other step, or one that has not been decided, reads as undefined.
+ * A run that loops back to the same step keeps the earlier pass's variables, so an automatic pass,
+ * and why it was automatic, is told by `hasAssignees` or `submitterIsReviewer`, which every pass
+ * sets afresh. The variable names are the contract in
+ * ADR:2026-11-13-the-ui-reads-an-approval-steps-outcome-from-its-recorded-variables.
+ */
+export const getApprovalOutcome = (
+  state: WorkflowInstanceState
+): ApprovalOutcome | undefined => {
+  const node = state.stage?.name;
+  const decided = node
+    ? readDecidedStep(node, state.stage?.variables ?? {})
+    : undefined;
+
+  return node && decided
+    ? { node, decidedAt: state.stage?.endedAt, ...decided }
+    : undefined;
 };
 
 /** The approval steps of one run, in the order they were decided. */
