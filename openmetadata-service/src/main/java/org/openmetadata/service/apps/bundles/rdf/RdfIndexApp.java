@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.SuccessContext;
@@ -753,7 +754,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
               });
     } catch (RuntimeException e) {
       LOG.error("Failed to clear RDF data", e);
-      throw new IllegalStateException("Failed to clear RDF data", e);
+      // The run's failure message is all CI keeps, so it names the underlying cause.
+      throw new IllegalStateException(
+          "Failed to clear RDF data: " + ExceptionUtils.getRootCauseMessage(e), e);
     }
   }
 

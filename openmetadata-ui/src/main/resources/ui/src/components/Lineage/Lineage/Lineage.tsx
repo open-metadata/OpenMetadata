@@ -497,7 +497,7 @@ export const Lineage = ({
 
   const {
     lineageConfig,
-    setLineageConfig,
+    setSavedLineageConfig,
     tracedColumns,
     setTracedColumns,
     addTracedColumns,
@@ -2096,7 +2096,7 @@ export const Lineage = ({
 
   useEffect(() => {
     if (defaultLineageConfig) {
-      setLineageConfig({
+      setSavedLineageConfig({
         upstreamDepth: defaultLineageConfig.upstreamDepth,
         downstreamDepth: defaultLineageConfig.downstreamDepth,
         pipelineViewMode: defaultLineageConfig.pipelineViewMode,
@@ -2108,7 +2108,7 @@ export const Lineage = ({
           : [defaultLineageConfig.lineageLayer]
       );
     }
-  }, [defaultLineageConfig, setActiveLayer, setLineageConfig]);
+  }, [defaultLineageConfig, setActiveLayer, setSavedLineageConfig]);
 
   useEffect(() => {
     if (updatedEntityLineage !== null) {

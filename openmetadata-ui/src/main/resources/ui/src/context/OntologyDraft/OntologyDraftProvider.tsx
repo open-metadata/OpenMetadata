@@ -118,6 +118,7 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
           <Dialog
             dividers="scroll"
             title={t('message.discard-your-changes')}
+            width={400}
             onClose={cancel}>
             <Dialog.Content>
               {t(

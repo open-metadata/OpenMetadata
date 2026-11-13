@@ -24,7 +24,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import { Cube01, XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
@@ -110,6 +110,7 @@ import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUnd
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
@@ -1553,6 +1554,12 @@ const OntologyGraphView = ({
       ? draftConceptQuery.data
       : undefined;
 
+  const closeInspector = () => {
+    clearLinkAssetsRequest();
+    setConflictReviewId(undefined);
+    setSelectedId(undefined);
+  };
+
   const getEditable = (
     selected: OntologyConcept,
     workingConcept: OntologyConcept | undefined
@@ -1560,11 +1567,12 @@ const OntologyGraphView = ({
     canEdit: [Boolean(workingConcept), canEditConcept].every(Boolean),
     concept: workingConcept ?? selected,
     ontology,
-    onSaved: (saved: OntologyConcept) => {
+    // Save is the drawer's closing action, like its Cancel and close button.
+    onSaved: () => {
       noteWorkingChange();
       void refetch();
       void draftConceptQuery.refetch();
-      setSelectedId(saved.id);
+      closeInspector();
     },
   });
 
@@ -1593,7 +1601,6 @@ const OntologyGraphView = ({
           )
         }
         concept={selected}
-        confirmDialog={renderDeleteConceptDialog()}
         conflicts={conflicts.filter(({ violation }) =>
           violation.conceptIds?.includes(selected.id)
         )}
@@ -1618,11 +1625,7 @@ const OntologyGraphView = ({
         onAddRelation={(targetId, relationType) =>
           createRelation(selected.id, targetId, relationType)
         }
-        onClose={() => {
-          clearLinkAssetsRequest();
-          setConflictReviewId(undefined);
-          setSelectedId(undefined);
-        }}
+        onClose={closeInspector}
         onDelete={
           isEditing && canDeleteConcept ? deleteSelectedConcept : undefined
         }
@@ -1655,7 +1658,13 @@ const OntologyGraphView = ({
     }
 
     if (selected) {
-      return renderInspector(selected);
+      // The delete confirm is a regular page modal, not one scoped to the drawer.
+      return (
+        <>
+          {renderInspector(selected)}
+          {renderDeleteConceptDialog()}
+        </>
+      );
     }
 
     return null;
@@ -1773,21 +1782,18 @@ const OntologyGraphView = ({
         <div
           className="tw:absolute tw:inset-0 tw:z-5 tw:flex tw:items-center tw:justify-center tw:p-6"
           data-testid="ontology-graph-too-large">
-          <Box align="center" className="tw:max-w-md" direction="col" gap={3}>
-            <Typography
-              as="p"
-              className="tw:m-0 tw:text-center"
-              color="secondary"
-              size="text-sm">
-              {t('message.ontology-graph-too-large', {
-                total: scope.totalCount,
-              })}
-            </Typography>
-            <OntologyConceptPicker
-              concepts={pickerConcepts}
-              onPick={pickConcept}
-            />
-          </Box>
+          <NoDataPlaceholder
+            description={t('message.ontology-graph-too-large', {
+              total: scope.totalCount,
+            })}
+            footer={
+              <OntologyConceptPicker
+                concepts={pickerConcepts}
+                onPick={pickConcept}
+              />
+            }
+            icon={Cube01}
+          />
         </div>
       );
     }

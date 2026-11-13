@@ -42,7 +42,7 @@ const AppContainer = () => {
   const { isAuthenticated } = useApplicationStore();
 
   const { setConfig, bannerDetails } = useLimitStore();
-  const { setLineageConfig } = useLineageStore();
+  const { setSavedLineageConfig } = useLineageStore();
 
   const renderNavBar = () => {
     if (isNewLayoutRoute(location.pathname)) {
@@ -61,7 +61,7 @@ const AppContainer = () => {
 
       const defaultLineageConfig = lineageConfig as LineageSettings;
 
-      setLineageConfig({
+      setSavedLineageConfig({
         upstreamDepth: defaultLineageConfig.upstreamDepth,
         downstreamDepth: defaultLineageConfig.downstreamDepth,
         pipelineViewMode: defaultLineageConfig.pipelineViewMode,

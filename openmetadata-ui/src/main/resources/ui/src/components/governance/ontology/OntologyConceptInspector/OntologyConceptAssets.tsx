@@ -18,7 +18,9 @@ import {
   Button,
   ButtonUtility,
   Card,
-  ConfirmPopover,
+  Dialog,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -31,7 +33,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { upperFirst } from 'lodash';
-import { FC, MouseEvent, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -44,7 +46,6 @@ import {
 import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/useOntologyAssetLinking';
 import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
-import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -92,7 +93,14 @@ const ASSET_BADGE_COLORS: Partial<Record<string, BadgeColors>> = {
   [AssetType.Topic]: 'orange',
 };
 
-const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
+const OntologyAssetLinks = ({
+  asset,
+  action,
+}: {
+  asset: EntityReference;
+  /** Leads the links line, ahead of Sample Data, e.g. Bind columns. */
+  action?: ReactNode;
+}) => {
   const { t } = useTranslation();
   const path = getOntologyAssetPath(asset);
   const { canViewSampleData } = useEntityPermissions(
@@ -101,35 +109,44 @@ const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
     { enabled: asset.type === EntityType.TABLE, deleted: asset.deleted }
   );
 
+  const sampleDataLink =
+    asset.type === EntityType.TABLE &&
+    asset.fullyQualifiedName &&
+    canViewSampleData ? (
+      <Link
+        className="tw:shrink-0 tw:text-sm"
+        to={getEntityDetailsPath(
+          EntityType.TABLE,
+          asset.fullyQualifiedName,
+          EntityTabs.SAMPLE_DATA
+        )}>
+        {t('label.sample-data')}
+      </Link>
+    ) : null;
+
   return (
     <Box className="tw:min-w-0 tw:flex-1" direction="col">
       {path ? (
-        <Link className="tw:truncate tw:text-md tw:text-primary" to={path}>
+        <Link
+          className="tw:truncate tw:text-sm tw:font-medium tw:text-primary"
+          to={path}>
           {getEntityName(asset)}
         </Link>
       ) : (
-        <Typography ellipsis size="text-md">
+        <Typography ellipsis size="text-sm" weight="medium">
           {getEntityName(asset)}
         </Typography>
       )}
-      <Box align="center" className="tw:min-w-0" gap={2}>
-        <Typography ellipsis className="tw:text-tertiary" size="text-sm">
-          {getAssetPath(asset.fullyQualifiedName)}
-        </Typography>
-        {asset.type === EntityType.TABLE &&
-        asset.fullyQualifiedName &&
-        canViewSampleData ? (
-          <Link
-            className="tw:shrink-0 tw:text-sm"
-            to={getEntityDetailsPath(
-              EntityType.TABLE,
-              asset.fullyQualifiedName,
-              EntityTabs.SAMPLE_DATA
-            )}>
-            {t('label.sample-data')}
-          </Link>
-        ) : null}
-      </Box>
+      <Typography ellipsis className="tw:text-tertiary" size="text-sm">
+        {getAssetPath(asset.fullyQualifiedName)}
+      </Typography>
+      {/* Links get their own line, so the path keeps the row's full width. */}
+      {sampleDataLink || action ? (
+        <Box align="center" className="tw:mt-0.5" gap={3}>
+          {action}
+          {sampleDataLink}
+        </Box>
+      ) : null}
     </Box>
   );
 };
@@ -146,11 +163,12 @@ const OntologyConceptAssets = ({
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
   const bindings = useOntologyConceptBindings(conceptId);
-  const unlink = useAnchoredConfirm<{
+  const [unlinkTarget, setUnlinkTarget] = useState<{
     binding: AssetBinding;
     conceptId: string;
     name: string;
   }>();
+  const [isUnlinking, setIsUnlinking] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [bindAssets, setBindAssets] = useState<EntityReference[]>();
   const [page, setPage] = useState(0);
@@ -221,38 +239,74 @@ const OntologyConceptAssets = ({
     );
   };
 
+  const canUnlink = (target: typeof unlinkTarget) =>
+    canEdit &&
+    Boolean(bindings.editableSnapshot) &&
+    target?.conceptId === conceptId;
+
+  const confirmUnlink = async () => {
+    if (isUnlinking || !unlinkTarget || !canUnlink(unlinkTarget)) {
+      return;
+    }
+    setIsUnlinking(true);
+    try {
+      // false or a rejection keeps the dialog open so the user can retry.
+      if ((await unlinkAsset(unlinkTarget.binding)) !== false) {
+        setUnlinkTarget(undefined);
+      }
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
+  // A page modal, centred like the delete confirm, rather than a popover on the row's trash button.
+  const renderUnlinkModal = () =>
+    unlinkTarget ? (
+      <ModalOverlay
+        isOpen
+        isDismissable={!isUnlinking}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !isUnlinking) {
+            setUnlinkTarget(undefined);
+          }
+        }}>
+        <Modal>
+          <Dialog
+            data-testid="ontology-unlink"
+            dividers="scroll"
+            title={t('message.ontology-unlink-asset-title', {
+              asset: unlinkTarget.name,
+              concept: conceptName,
+            })}
+            width={400}
+            onClose={() => setUnlinkTarget(undefined)}>
+            <Dialog.Content>
+              {getUnlinkDescription(unlinkTarget.binding, t)}
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button
+                color="secondary"
+                isDisabled={isUnlinking}
+                onPress={() => setUnlinkTarget(undefined)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary-destructive"
+                data-testid="ontology-unlink-confirm"
+                isDisabled={isUnlinking || !canUnlink(unlinkTarget)}
+                isLoading={isUnlinking}
+                onPress={() => void confirmUnlink()}>
+                {t('label.unlink')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
+    ) : null;
+
   const renderStatus = () => (
     <>
-      {unlink.target && (
-        <ConfirmPopover
-          {...unlink.popoverProps}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.unlink')}
-          data-testid="ontology-unlink"
-          description={getUnlinkDescription(unlink.target.binding, t)}
-          isConfirmDisabled={
-            !canEdit ||
-            !bindings.editableSnapshot ||
-            unlink.target.conceptId !== conceptId
-          }
-          title={t('message.ontology-unlink-asset-title', {
-            asset: unlink.target.name,
-            concept: conceptName,
-          })}
-          onConfirm={async () => {
-            if (
-              !canEdit ||
-              !bindings.editableSnapshot ||
-              !unlink.target ||
-              unlink.target.conceptId !== conceptId
-            ) {
-              return false;
-            }
-
-            return unlinkAsset(unlink.target.binding);
-          }}
-        />
-      )}
+      {renderUnlinkModal()}
       {bindings.isPending ? <Loader size="small" /> : null}
       {bindings.readState === 'unavailable' ? (
         <Alert
@@ -286,7 +340,7 @@ const OntologyConceptAssets = ({
 
           return (
             <Box
-              align="center"
+              align="start"
               aria-current={isSelected || undefined}
               className={classNames(
                 'tw:min-h-16 tw:px-4 tw:py-3',
@@ -302,7 +356,24 @@ const OntologyConceptAssets = ({
                   className="tw:size-4 tw:text-fg-brand-primary"
                 />
               </span>
-              <OntologyAssetLinks asset={binding.asset} />
+              <OntologyAssetLinks
+                action={
+                  canEdit &&
+                  properties.length > 0 &&
+                  binding.assetType === AssetType.Table ? (
+                    <Button
+                      className="tw:shrink-0 tw:font-normal"
+                      color="link-color"
+                      data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
+                      isDisabled={!bindings.editableSnapshot}
+                      size="sm"
+                      onPress={() => setBindAssets([binding.asset])}>
+                      {t('label.ontology-bind-columns')}
+                    </Button>
+                  ) : undefined
+                }
+                asset={binding.asset}
+              />
               <Badge
                 className="tw:shrink-0"
                 color={ASSET_BADGE_COLORS[binding.assetType] ?? 'gray'}
@@ -315,18 +386,6 @@ const OntologyConceptAssets = ({
                     )}`
                   : upperFirst(humanizeName(binding.assetType))}
               </Badge>
-              {canEdit &&
-              properties.length > 0 &&
-              binding.assetType === AssetType.Table ? (
-                <Button
-                  color="link-color"
-                  data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
-                  isDisabled={!bindings.editableSnapshot}
-                  size="xs"
-                  onPress={() => setBindAssets([binding.asset])}>
-                  {t('label.ontology-bind-columns')}
-                </Button>
-              ) : null}
               {canEdit ? (
                 <ButtonUtility
                   data-testid={`ontology-native-asset-remove-${binding.assetId}`}
@@ -336,16 +395,13 @@ const OntologyConceptAssets = ({
                   tooltip={t('label.remove-entity', {
                     entity: getEntityName(binding.asset),
                   })}
-                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                  onClick={() => {
                     if (bindings.editableSnapshot) {
-                      unlink.open(
-                        {
-                          binding,
-                          conceptId,
-                          name: getEntityName(binding.asset),
-                        },
-                        event.currentTarget
-                      );
+                      setUnlinkTarget({
+                        binding,
+                        conceptId,
+                        name: getEntityName(binding.asset),
+                      });
                     }
                   }}
                 />
@@ -414,7 +470,7 @@ const OntologyConceptAssets = ({
           title={t('message.ontology-no-data-assets-yet')}
         />
       ) : (
-        <Typography className="tw:text-tertiary" size="text-xs">
+        <Typography className="tw:-mt-2.5 tw:text-tertiary" size="text-xs">
           {t('message.ontology-current-catalog-links')}
         </Typography>
       )}

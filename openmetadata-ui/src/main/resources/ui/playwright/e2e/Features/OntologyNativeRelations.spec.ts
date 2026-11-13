@@ -587,10 +587,10 @@ test.describe(
             'aria-selected',
             'true'
           );
-          await page
-            .getByTestId('ontology-concept-inspector')
-            .getByRole('button', { name: 'Close' })
-            .click();
+          // Pressing the mode tab, outside the drawer, closed Alpha's drawer.
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
           const empty = await findEmptyCanvasPoint(page, 160, {
             besideDrawer: true,
           });

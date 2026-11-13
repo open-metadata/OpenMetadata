@@ -85,6 +85,7 @@ import OntologyGraph from './OntologyGraphG6';
 import OntologyHealthPanel from './OntologyHealthPanel';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import { OntologyRelationDetailsPanel } from './OntologyRelationDetailsPanel';
+import OntologySearchClearButton from './OntologySearchClearButton';
 import {
   buildOntologyTreeGroups,
   buildOntologyTreeMetrics,
@@ -1214,6 +1215,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     </Card>
   );
 
+  const clearSearchButton = (
+    <OntologySearchClearButton
+      value={searchInput}
+      onClear={() => setSearchInput('')}
+    />
+  );
+
   const renderConceptSearch = () => {
     const search = (
       <Input
@@ -1223,6 +1231,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         inputDataTestId="ontology-graph-search"
         placeholder={`${t('label.find-concept')}…`}
         size="sm"
+        trailingSlot={clearSearchButton}
         value={searchInput}
         wrapperClassName={
           searchSlot
@@ -1300,6 +1309,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               data-testid="ontology-graph-search"
               inputClassName="tw:pl-10"
               placeholder={t('label.search-in-graph')}
+              trailingSlot={clearSearchButton}
               value={searchInput}
               onChange={setSearchInput}
             />

@@ -709,3 +709,61 @@ describe('unlinking an asset', () => {
     ).toBeVisible();
   });
 });
+
+it('puts Bind columns on its own links line under the asset path', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? { data: stored() }
+      : { data: { resource: 'table', permissions: [] } }
+  );
+  renderWithQueryClient(
+    <MemoryRouter>
+      <OntologyConceptAssets
+        canEdit
+        conceptId="customer"
+        conceptName="Customer"
+        presentation={{ kind: 'edit' }}
+        properties={[{ id: 'name', label: 'name' }]}
+      />
+    </MemoryRouter>
+  );
+  const bind = await screen.findByTestId(
+    'ontology-native-asset-bind-columns-old-table'
+  );
+  const path = screen.getByText('service › db › schema › old-table');
+  const linksLine = bind.parentElement;
+
+  expect(linksLine).not.toContainElement(path);
+  expect(linksLine?.previousElementSibling).toContainElement(path);
+  expect(linksLine?.firstElementChild).toBe(bind);
+  expect(bind).toHaveClass('tw:font-normal');
+  expect(bind).not.toHaveClass('tw:font-medium');
+});
+
+it('confirms an unlink in a centred page dialog rather than a popover on the row', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? { data: stored() }
+      : { data: { resource: 'table', permissions: [] } }
+  );
+  renderAssets();
+  const remove = await screen.findByTestId(
+    'ontology-native-asset-remove-old-table'
+  );
+  await waitFor(() => expect(remove).toBeEnabled());
+  fireEvent.click(remove);
+  const dialog = await screen.findByTestId('ontology-unlink');
+
+  expect(dialog.firstElementChild).toHaveStyle({ maxWidth: '400px' });
+  expect(
+    screen.getByTestId('ontology-native-asset-row-old-table')
+  ).not.toContainElement(dialog);
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'label.cancel' }));
+
+  await waitFor(() =>
+    expect(screen.queryByTestId('ontology-unlink')).not.toBeInTheDocument()
+  );
+
+  expect(http.delete).not.toHaveBeenCalled();
+});
