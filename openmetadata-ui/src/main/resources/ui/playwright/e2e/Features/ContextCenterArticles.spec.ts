@@ -60,7 +60,6 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
-  waitForArticleSavedAndHierarchyReloaded,
   waitForArticleSearchResponse,
   waitForArticleSettled,
   waitForDraftPersisted,
@@ -2019,21 +2018,32 @@ test.describe('Context Center Articles', () => {
     }) => {
       test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
+      let unblockAutoSave: () => Promise<void>;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
-        const titleSaved = waitForArticleSavedAndHierarchyReloaded(
-          page,
-          draftArticleA.id
-        );
+        // Keep A unsaved until the test returns to it. A save also reloads the
+        // hierarchy from its first page, dropping article B while it is scrolled to.
+        unblockAutoSave = await blockArticleAutoSave(page, draftArticleA.id);
         await page
           .getByTestId('entity-header-display-name')
           .fill(newDisplayName);
         // The 'Unsaved' badge is the editor's own signal that the edit has been
         // registered, so it is the thing to wait on before navigating away.
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.getByRole('link', { name: 'Articles' }).click();
-        await titleSaved;
+        await expect
+          .poll(async () => {
+            const drafts = await readDraftStore(page);
+
+            return (
+              drafts[draftArticleA.id] as { displayName?: string } | undefined
+            )?.displayName;
+          })
+          .toBe(newDisplayName);
+        await page
+          .getByTestId('breadcrumb')
+          .getByRole('link', { name: 'Articles' })
+          .click();
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
@@ -2061,6 +2071,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Navigate back to Article A — should show updated display name', async () => {
+        await unblockAutoSave();
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 

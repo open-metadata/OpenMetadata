@@ -28,7 +28,6 @@ import { deleteFixtureEntity, okJson } from './apiResponse';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
-import { waitForResponseWithStatus } from './waitHelpers';
 
 // ─── Document types ───────────────────────────────────────────────────────────
 
@@ -910,38 +909,6 @@ export const scrollUntilResponse = async (
 
   await expect(targetLocator).toBeVisible();
 };
-
-/**
- * Saving an article reloads the hierarchy from its first page, which drops any node scrolled in
- * from a later page. Start this before the action that saves, and await it before scrolling.
- * The reload is awaited only after the save, so the hierarchy's own load on mount cannot match.
- */
-export const waitForArticleSavedAndHierarchyReloaded = (
-  page: Page,
-  articleId: string
-) =>
-  waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.request().method() === 'PATCH' &&
-      new URL(response.url()).pathname ===
-        `/api/v1/contextCenter/pages/${articleId}`,
-    200
-  ).then(() =>
-    waitForResponseWithStatus(
-      page,
-      (response) => {
-        const url = new URL(response.url());
-
-        return (
-          url.pathname === '/api/v1/contextCenter/pages/search/hierarchy' &&
-          !url.searchParams.has('parent') &&
-          url.searchParams.get('offset') === '0'
-        );
-      },
-      200
-    )
-  );
 
 export const scrollHierarchyToNode = async (
   page: Page,
