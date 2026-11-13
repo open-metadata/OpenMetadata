@@ -6,9 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.AlertHealth;
 import org.openmetadata.schema.entity.events.AlertMetrics;
@@ -59,14 +57,20 @@ public final class AlertRecord {
               .listAlertsExtensions(
                   chunk.stream().map(UUID::toString).toList(),
                   List.of(LedgerKeys.POSITION, LedgerKeys.HEALTH));
-      Set<String> scheduled =
-          rows.stream()
-              .filter(row -> LedgerKeys.POSITION.equals(row.extension()))
-              .map(AlertExtension::id)
-              .collect(Collectors.toSet());
-      rows.stream()
-          .filter(row -> LedgerKeys.HEALTH.equals(row.extension()) && scheduled.contains(row.id()))
-          .forEach(row -> health.put(UUID.fromString(row.id()), destinationsOf(row.json())));
+      Map<String, Map<String, String>> byAlert = new HashMap<>();
+      rows.forEach(
+          row ->
+              byAlert
+                  .computeIfAbsent(row.id(), id -> new HashMap<>())
+                  .put(row.extension(), row.json()));
+      byAlert.entrySet().stream()
+          .filter(alert -> isScheduled(alert.getValue()))
+          .filter(alert -> alert.getValue().containsKey(LedgerKeys.HEALTH))
+          .forEach(
+              alert ->
+                  health.put(
+                      UUID.fromString(alert.getKey()),
+                      destinationsOf(alert.getValue().get(LedgerKeys.HEALTH))));
     }
     return health;
   }
@@ -83,9 +87,12 @@ public final class AlertRecord {
     for (SubscriberExtension row : dao().listSubscriberExtensions(alert.getId().toString())) {
       rows.put(row.extension(), row.json());
     }
-    return rows.containsKey(LedgerKeys.POSITION)
-        ? Optional.of(new AlertLedger(alert, rows))
-        : Optional.empty();
+    return isScheduled(rows) ? Optional.of(new AlertLedger(alert, rows)) : Optional.empty();
+  }
+
+  // An alert with no position row was never scheduled, or is gone: nothing it holds speaks.
+  private static boolean isScheduled(Map<String, String> rows) {
+    return rows.containsKey(LedgerKeys.POSITION);
   }
 
   /**

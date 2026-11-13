@@ -14,6 +14,7 @@
 package org.openmetadata.service.alerting.delivery;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -55,6 +56,7 @@ class TickChannelsTest {
     assertEquals(
         "Not attempted: The channel not.registered.here is not registered on this server",
         status.getLastFailedReason());
+    assertNull(status.getConfigurationUnusable());
   }
 
   // A configuration saved under older rules must cost this destination only, never the tick.
@@ -76,6 +78,7 @@ class TickChannelsTest {
         statusOf(unusable)
             .getLastFailedReason()
             .startsWith("Not attempted: its stored configuration is not usable"));
+    assertTrue(statusOf(unusable).getConfigurationUnusable(), "stored as the read reports it");
   }
 
   // Before, the first destination of a channel answered for all of them: an unusable one first

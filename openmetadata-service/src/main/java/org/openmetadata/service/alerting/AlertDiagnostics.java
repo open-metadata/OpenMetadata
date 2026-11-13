@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.consumer.AlertRows;
 import org.openmetadata.service.events.consumer.ledger.AlertProgress;
@@ -162,21 +163,17 @@ public final class AlertDiagnostics {
     return switchedOff
         ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
         : DestinationSecrets.unusableBecause(destination)
-            .map(reason -> failedBecause(reason, now))
-            .orElseGet(() -> knownOrActive(known, now));
+            .map(reason -> DestinationStatuses.configurationUnusable(reason, now))
+            .orElseGet(() -> lastSendOrActive(known, now));
   }
 
-  private static SubscriptionStatus failedBecause(String reason, long now) {
-    return new SubscriptionStatus()
-        .withStatus(SubscriptionStatus.Status.FAILED)
-        .withLastFailedReason(reason)
-        .withConfigurationUnusable(true)
-        .withTimestamp(now);
-  }
-
-  private static SubscriptionStatus knownOrActive(DestinationHealth known, long now) {
-    return known != null
-        ? known.getStatus()
+  // A tick that found the stored configuration unusable no longer speaks once its secrets open
+  // again: they were entered again since, so the destination reads Active until the next tick.
+  private static SubscriptionStatus lastSendOrActive(DestinationHealth known, long now) {
+    SubscriptionStatus last = known == null ? null : known.getStatus();
+    boolean stillSays = last != null && !Boolean.TRUE.equals(last.getConfigurationUnusable());
+    return stillSays
+        ? last
         : new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
   }
 

@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,11 +28,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationHaltException;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 
 /**
  * The 2.1.0 data migration stops, before any step writes, when the credentials earlier releases
@@ -50,7 +53,7 @@ class WebhookSecretsMigrationTest {
   private final List<Map<String, Object>> alertRows = new ArrayList<>();
   private boolean hasAlertTable = true;
   private boolean hasMigrationLog = true;
-  private String tableAsked;
+  private MockedStatic<MigrationTableUtil> tableUtil;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -59,19 +62,13 @@ class WebhookSecretsMigrationTest {
     Query query = mock(Query.class, RETURNS_SELF);
     ResultIterable<Map<String, Object>> rows = mock(ResultIterable.class);
     ResultIterable<String> ids = mock(ResultIterable.class);
-    ResultIterable<Integer> tables = mock(ResultIterable.class);
     when(handle.createQuery(anyString())).thenReturn(query);
-    when(query.mapTo(Integer.class)).thenReturn(tables);
-    when(query.bind(eq("table"), anyString()))
-        .thenAnswer(
-            invocation -> {
-              tableAsked = invocation.getArgument(1);
-              return query;
-            });
-    when(tables.one())
+    tableUtil = mockStatic(MigrationTableUtil.class);
+    tableUtil
+        .when(() -> MigrationTableUtil.tableExists(eq(handle), anyString()))
         .thenAnswer(
             invocation ->
-                (ALERT_TABLE.equals(tableAsked) ? hasAlertTable : hasMigrationLog) ? 1 : 0);
+                ALERT_TABLE.equals(invocation.getArgument(1)) ? hasAlertTable : hasMigrationLog);
     when(query.mapToMap()).thenReturn(rows);
     when(rows.list()).thenReturn(alertRows, List.of());
     when(query.mapTo(String.class)).thenReturn(ids);
@@ -82,6 +79,7 @@ class WebhookSecretsMigrationTest {
 
   @AfterEach
   void tearDown() {
+    tableUtil.close();
     Fernet.getInstance().setFernetKey((String) null);
   }
 
@@ -161,6 +159,9 @@ class WebhookSecretsMigrationTest {
         .thenThrow(new IllegalStateException("SERVER_MIGRATION_SQL_LOGS does not exist"));
     when(handle.createQuery(anyString()))
         .thenThrow(new IllegalStateException("event_subscription_entity does not exist"));
+    tableUtil
+        .when(() -> MigrationTableUtil.tableExists(eq(handle), anyString()))
+        .thenThrow(new IllegalStateException("no table is read"));
 
     assertDoesNotThrow(
         () ->
