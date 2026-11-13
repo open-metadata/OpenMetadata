@@ -1191,6 +1191,15 @@ describe('getLineageMapEmptyState', () => {
 });
 
 describe('scene status helpers', () => {
+  it('keeps a lone service, domain or data product card on screen', () => {
+    const loneDomain = createScene(LineageBand.Layer, [
+      LineageLevelKind.Domain,
+    ]);
+    loneDomain.nodes[0].isFocus = true;
+
+    expect(isSceneEmpty(loneDomain)).toBe(false);
+  });
+
   it('treats a scene holding only its focus card as empty', () => {
     const focusOnly = createScene(LineageBand.Asset, [LineageLevelKind.Table]);
     focusOnly.nodes[0].isFocus = true;
@@ -1228,5 +1237,61 @@ describe('scene status helpers', () => {
         2
       )
     ).toBe('assets');
+  });
+});
+
+describe('getSceneRequestFromSearch', () => {
+  const domain = { focusFqn: 'Sales', entityType: 'domain' };
+
+  it('opens a domain page as the domain card on the Domain lens', () => {
+    expect(getSceneRequestFromSearch('', domain, true)).toEqual({
+      lens: LineageLens.Domain,
+      band: LineageBand.Layer,
+      focusFqn: 'Sales',
+      entityType: 'domain',
+    });
+  });
+
+  it('opens a data product page on the Data Product lens', () => {
+    expect(
+      getSceneRequestFromSearch(
+        '',
+        { focusFqn: 'Sales.orders', entityType: 'dataProduct' },
+        true
+      )
+    ).toMatchObject({ lens: LineageLens.DataProduct, band: LineageBand.Layer });
+  });
+
+  it('leaves a domain page for the root once the map writes a band', () => {
+    expect(
+      getSceneRequestFromSearch(
+        '?lineageLens=domain&lineageBand=LAYER',
+        domain,
+        true
+      )
+    ).toEqual({ lens: LineageLens.Domain, band: LineageBand.Layer });
+  });
+
+  it('still opens a table page on its Data Assets', () => {
+    expect(
+      getSceneRequestFromSearch(
+        '',
+        { focusFqn: 'svc.db.schema.orders', entityType: 'table' },
+        true
+      )
+    ).toEqual({
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      focusFqn: 'svc.db.schema.orders',
+      entityType: 'table',
+    });
+  });
+
+  it('keeps an asset tab on its own focus, whatever the entity', () => {
+    expect(getSceneRequestFromSearch('', domain, false)).toMatchObject({
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      focusFqn: 'Sales',
+    });
   });
 });

@@ -10,16 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../enums/entity.enum';
-import { LineageLens } from '../../generated/api/lineage/lineageScene';
-
-// Picking a domain or data product opens it through its own lens, not the
-// Service lens, whose breadcrumb would name one of its assets instead.
-export const LENS_BY_ENTITY_TYPE: Partial<Record<EntityType, LineageLens>> = {
-  [EntityType.DOMAIN]: LineageLens.Domain,
-  [EntityType.DATA_PRODUCT]: LineageLens.DataProduct,
-};
-
 // A 404 means the entity is gone and a 403 that it can't be viewed; any other
 // failed fetch can be retried.
 export const ENTITY_LOAD_ERRORS: Record<number, 'missing' | 'denied'> = {

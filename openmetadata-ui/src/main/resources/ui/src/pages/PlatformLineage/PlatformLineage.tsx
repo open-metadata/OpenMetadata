@@ -20,8 +20,10 @@ import {
 import {
   PlatformLineage as PlatformLineageIcon,
   Settings01,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -40,6 +42,7 @@ import { Lineage } from '../../components/Lineage/Lineage/Lineage';
 import LineageExportButton from '../../components/Lineage/LineageExportButton/LineageExportButton';
 import {
   getLensLabelKey,
+  getSceneFocus,
   getSceneRequestFromSearch,
 } from '../../components/Lineage/LineageMap/LineageMap.utils';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -50,6 +53,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { LineageLens } from '../../generated/api/lineage/lineageScene';
 import { EntityReference } from '../../generated/entity/type';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -65,10 +69,7 @@ import { getEncodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
-import {
-  ENTITY_LOAD_ERRORS,
-  LENS_BY_ENTITY_TYPE,
-} from './PlatformLineage.constants';
+import { ENTITY_LOAD_ERRORS } from './PlatformLineage.constants';
 
 const LINEAGE_SEARCH_INDEXES = [
   SearchIndex.DATA_ASSET,
@@ -123,31 +124,32 @@ const PlatformLineage = () => {
   // permission-gated).
   const loading = isEntityLoading || isPermissionsLoading;
 
-  // The header names the lens the map is drawn through, read the same way
-  // the map reads it.
+  // The header names the lens and focus the map is drawn through, read the
+  // same way the map reads them.
   const { lens, focusFqn } = getSceneRequestFromSearch(
     location.search,
-    {},
+    getSceneFocus(decodedFqn, entityType),
     true
   );
+  // Remounting the search after a pick drops its chip: a single-select chip
+  // hides the input, so a second search could not be typed.
+  const [searchKey, setSearchKey] = useState(0);
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
       const selectedType = (value as SourceType).entityType as EntityType;
-      const lineageLens = LENS_BY_ENTITY_TYPE[selectedType];
-      void navigate({
-        pathname: `/lineage/${selectedType}/${getEncodedFqn(
+      void navigate(
+        `/lineage/${selectedType}/${getEncodedFqn(
           value.fullyQualifiedName ?? ''
-        )}`,
-        search: lineageLens ? `?lineageLens=${lineageLens}` : '',
-      });
+        )}`
+      );
     },
     [navigate]
   );
   const handleSearchSelect = useCallback(
     (option?: DataAssetOption | DataAssetOption[]) => {
-      // Clearing the chip leaves the current lineage on screen.
       if (option && !Array.isArray(option)) {
+        setSearchKey((key) => key + 1);
         handleEntitySelect({
           ...option.reference,
           entityType: option.reference.type,
@@ -156,6 +158,14 @@ const PlatformLineage = () => {
     },
     [handleEntitySelect]
   );
+  // Clearing the search returns to the whole platform, in the current lens.
+  const handleSearchClear = useCallback(() => {
+    setSearchKey((key) => key + 1);
+    void navigate({
+      pathname: '/lineage',
+      search: lens === LineageLens.Service ? '' : `?lineageLens=${lens}`,
+    });
+  }, [lens, navigate]);
 
   const init = useCallback(async () => {
     // A stale entity would keep the previous map and title on screen.
@@ -203,35 +213,57 @@ const PlatformLineage = () => {
   // The header names what the map is focused on, which moves with breadcrumb
   // and lens changes while the URL path keeps the entity the page opened on.
   const searchPlaceholder = useMemo(() => {
-    if (focusFqn && focusFqn !== decodedFqn) {
-      return getNameFromFQN(focusFqn);
+    if (!focusFqn) {
+      return t('label.search-entity-for-lineage', {
+        entity: t('label.entity-lowercase'),
+      });
     }
 
-    return selectedEntity
+    return focusFqn === decodedFqn && selectedEntity
       ? getEntityName(selectedEntity)
-      : t('label.search-entity-for-lineage', {
-          entity: t('label.entity-lowercase'),
-        });
+      : getNameFromFQN(focusFqn);
   }, [focusFqn, decodedFqn, selectedEntity, t]);
 
   const searchSelect = useMemo(
     () => (
       <div
-        className={isAiMode ? 'tw:w-90' : 'tw:w-1/2 tw:max-w-[500px]'}
+        className={classNames(
+          'tw:relative',
+          isAiMode ? 'tw:w-90' : 'tw:w-1/2 tw:max-w-[500px]'
+        )}
         data-testid="search-entity-select">
         <DataAssetAsyncSelectList
           // eslint-disable-next-line jsx-a11y/no-autofocus -- disables the list's default autofocus
           autoFocus={false}
-          // The current entity is the placeholder, not a chip: a single-select
-          // chip hides the input, so the list could not open on first click.
+          key={searchKey}
+          // What the map is focused on is the placeholder, not a chip.
           placeholder={searchPlaceholder}
           queryFilter={getLineageEntityExclusionFilter()}
           searchIndex={LINEAGE_SEARCH_INDEXES}
           onChange={handleSearchSelect}
         />
+        {focusFqn && (
+          <ButtonUtility
+            aria-label={t('label.clear')}
+            className="tw:absolute tw:top-1/2 tw:right-2 tw:-translate-y-1/2"
+            data-testid="clear-lineage-search"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.clear')}
+            onClick={handleSearchClear}
+          />
+        )}
       </div>
     ),
-    [isAiMode, searchPlaceholder, handleSearchSelect]
+    [
+      focusFqn,
+      handleSearchClear,
+      handleSearchSelect,
+      isAiMode,
+      searchKey,
+      searchPlaceholder,
+      t,
+    ]
   );
 
   // Matches the height of the search box beside them in the AI header.

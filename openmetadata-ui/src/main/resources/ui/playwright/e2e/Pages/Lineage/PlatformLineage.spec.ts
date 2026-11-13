@@ -456,6 +456,35 @@ test.describe('Platform Lineage page (/lineage)', () => {
     }
   });
 
+  test('A domain opens as its own card on the Domain lens, and clearing the search returns to all domains', async ({
+    page,
+  }) => {
+    // Regression: a domain opened on its Data Assets instead of as its own
+    // card (2.0 behaviour), and clearing the search did nothing.
+    const domainFqn = EntityDataClass.domain1.responseData.fullyQualifiedName;
+    const domainScene = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+        new URL(response.url()).searchParams.get('focusFqn') === domainFqn
+    );
+    await redirectToHomePage(page);
+    await page.goto(`/lineage/domain/${encodeURIComponent(domainFqn)}`);
+    const sceneRequest = new URL((await domainScene).url()).searchParams;
+    await dismissLineageMapOnboarding(page);
+
+    expect(sceneRequest.get('lens')).toBe('domain');
+    expect(sceneRequest.get('band')).toBe('LAYER');
+    await expect(
+      page.getByTestId('page-header-container').getByTestId('heading')
+    ).toHaveText('Domain Lineage');
+    await expect(page.getByTestId(`lineage-node-${domainFqn}`)).toBeVisible();
+
+    await page.getByTestId('clear-lineage-search').click();
+
+    await expect(page).toHaveURL(/\/lineage\?lineageLens=domain$/);
+    await expect(page.getByTestId('clear-lineage-search')).toHaveCount(0);
+  });
+
   test('A failed scene request offers a reload that refetches', async ({
     page,
   }) => {

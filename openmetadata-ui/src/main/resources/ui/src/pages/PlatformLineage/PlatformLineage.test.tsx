@@ -963,15 +963,12 @@ describe('PlatformLineage Component Logic', () => {
         },
       });
 
-      expect(mockNavigate).toHaveBeenCalledWith({
-        pathname: `/lineage/table/${encodeURIComponent(
-          'svc.db."orders & returns"'
-        )}`,
-        search: '',
-      });
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/lineage/table/${encodeURIComponent('svc.db."orders & returns"')}`
+      );
     });
 
-    it('opens a picked domain on the domain lens', async () => {
+    it('opens a picked domain on its own page, where the map opens its lens', async () => {
       await selectFromSearch({
         displayName: 'Sales',
         value: 'Sales',
@@ -982,16 +979,31 @@ describe('PlatformLineage Component Logic', () => {
         },
       });
 
+      expect(mockNavigate).toHaveBeenCalledWith('/lineage/domain/Sales');
+    });
+
+    it('returns to the whole platform, in the current lens, when the search is cleared', async () => {
+      mockLocationSearch = '?lineageLens=domain&lineageBand=ASSET';
+      await selectFromSearch(undefined);
+
+      act(() => {
+        screen.getByTestId('clear-lineage-search').click();
+      });
+
       expect(mockNavigate).toHaveBeenCalledWith({
-        pathname: '/lineage/domain/Sales',
+        pathname: '/lineage',
         search: '?lineageLens=domain',
       });
     });
 
-    it('stays on the current lineage when the selection is cleared', async () => {
+    it('offers no clear while the whole platform is shown', async () => {
+      mockFqn = '';
+      mockEntityType = '' as EntityType;
       await selectFromSearch(undefined);
 
-      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('clear-lineage-search')
+      ).not.toBeInTheDocument();
     });
   });
 

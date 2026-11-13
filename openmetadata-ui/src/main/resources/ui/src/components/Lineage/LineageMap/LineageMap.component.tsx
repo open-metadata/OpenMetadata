@@ -49,6 +49,7 @@ import ReactFlow, {
   applyNodeChanges,
   Background,
   Edge,
+  getViewportForBounds,
   MiniMap,
   Node,
   NodeChange,
@@ -493,19 +494,27 @@ const prefetchSceneBands = (
   }
 };
 
+// React Flow's fitBounds caps at the canvas maxZoom and ignores the option's,
+// so a lone small card would fill the canvas at 250%; fit with the scene cap.
 const fitSceneBounds = (
   instance: ReactFlowInstance,
   bounds: SceneNodeBounds,
+  canvas: { width: number; height: number },
   landing?: Viewport
 ) => {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
-      if (landing) {
-        instance.setViewport(landing);
-
-        return;
-      }
-      instance.fitBounds(bounds, getSceneFitViewOptions());
+      instance.setViewport(
+        landing ??
+          getViewportForBounds(
+            bounds,
+            canvas.width,
+            canvas.height,
+            MIN_ZOOM_VALUE,
+            SCENE_FIT_VIEW_MAX_ZOOM,
+            CONTROL_INSET_PADDING
+          )
+      );
     });
   });
 };
@@ -1498,15 +1507,17 @@ const LineageMapCanvas = ({
         return;
       }
       suppressSemanticZoom();
+      const canvas = {
+        width: wrapperRef.current?.clientWidth ?? 0,
+        height: wrapperRef.current?.clientHeight ?? 0,
+      };
       fitSceneBounds(
         reactFlowInstance,
         nodeBounds,
+        canvas,
         getSceneLandingViewport(
           getSceneLayoutBoxes(nodes, nodeIds),
-          {
-            width: wrapperRef.current?.clientWidth ?? 0,
-            height: wrapperRef.current?.clientHeight ?? 0,
-          },
+          canvas,
           getSceneFitViewMinZoom(scene?.band),
           CONTROL_INSET_PADDING
         )

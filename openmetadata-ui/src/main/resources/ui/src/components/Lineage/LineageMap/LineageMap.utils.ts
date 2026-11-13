@@ -14,6 +14,7 @@
 import type { TFunction } from 'i18next';
 import Qs from 'qs';
 import type { Viewport } from 'reactflow';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
   LineageLens,
@@ -48,6 +49,11 @@ const LENS_CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Domain,
   LineageLevelKind.DataProduct,
 ]);
+
+const LENS_BY_CONTAINER_ENTITY_TYPE: Record<string, LineageLens | undefined> = {
+  [EntityType.DOMAIN]: LineageLens.Domain,
+  [EntityType.DATA_PRODUCT]: LineageLens.DataProduct,
+};
 
 const CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Service,
@@ -216,38 +222,79 @@ export const getSceneOriginFocus = (
     ? routeFocus
     : getSceneFocus(scene?.originFqn, scene?.originEntityType);
 
+type SceneSearchParams = ReturnType<typeof Qs.parse>;
+
+const getStringParam = (params: SceneSearchParams, key: string) =>
+  typeof params[key] === 'string' ? (params[key] as string) : undefined;
+
+const findEnumValue = <T extends string>(
+  values: Record<string, T>,
+  value?: string
+) => Object.values(values).find((candidate) => candidate === value);
+
+// A domain or data product opens as its own card among its peers, through its
+// own lens, as it did in 2.0. Once the map writes a band to the URL the usual
+// rules apply, so the root breadcrumb still leaves the domain.
+const getContainerLanding = (
+  params: SceneSearchParams,
+  defaultFocus: LineageSceneFocus,
+  isPlatformLineage: boolean
+) => {
+  const lens = isPlatformLineage
+    ? LENS_BY_CONTAINER_ENTITY_TYPE[defaultFocus.entityType ?? '']
+    : undefined;
+
+  return {
+    lens,
+    isLanding: lens !== undefined && params.lineageBand === undefined,
+  };
+};
+
+const getRequestLens = (
+  params: SceneSearchParams,
+  containerLens?: LineageLens
+) =>
+  findEnumValue(LineageLens, getStringParam(params, 'lineageLens')) ??
+  containerLens ??
+  LineageLens.Service;
+
+const getRequestBand = (params: SceneSearchParams, showsPlatform: boolean) =>
+  findEnumValue(LineageBand, getStringParam(params, 'lineageBand')) ??
+  (showsPlatform ? LineageBand.Layer : LineageBand.Asset);
+
+const getRequestFocus = (
+  params: SceneSearchParams,
+  fallbackFocus: LineageSceneFocus
+) =>
+  getSceneFocus(
+    getStringParam(params, 'lineageFocus') ?? fallbackFocus.focusFqn,
+    getStringParam(params, 'lineageEntityType') ?? fallbackFocus.entityType
+  );
+
 export const getSceneRequestFromSearch = (
   search: string,
   defaultFocus: LineageSceneFocus,
   isPlatformLineage = false
 ): LineageSceneRequest => {
   const params = Qs.parse(search, { ignoreQueryPrefix: true });
-  const lens =
-    Object.values(LineageLens).find((value) => value === params.lineageLens) ??
-    LineageLens.Service;
-  const defaultBand =
-    isPlatformLineage && !defaultFocus.focusFqn
-      ? LineageBand.Layer
-      : LineageBand.Asset;
-  const band =
-    Object.values(LineageBand).find((value) => value === params.lineageBand) ??
-    defaultBand;
+  const container = getContainerLanding(
+    params,
+    defaultFocus,
+    isPlatformLineage
+  );
+  const band = getRequestBand(
+    params,
+    isPlatformLineage && (!defaultFocus.focusFqn || container.isLanding)
+  );
   // An asset page's Layer band (its Service / Domain / Data Product view) stays
   // focused on that asset; only the main Lineage page shows the whole hierarchy.
-  const fallbackFocus: LineageSceneFocus =
-    band === LineageBand.Layer && isPlatformLineage ? {} : defaultFocus;
+  const isRootLayer =
+    band === LineageBand.Layer && isPlatformLineage && !container.isLanding;
 
   return {
-    lens,
+    lens: getRequestLens(params, container.lens),
     band,
-    ...getSceneFocus(
-      typeof params.lineageFocus === 'string'
-        ? params.lineageFocus
-        : fallbackFocus.focusFqn,
-      typeof params.lineageEntityType === 'string'
-        ? params.lineageEntityType
-        : fallbackFocus.entityType
-    ),
+    ...getRequestFocus(params, isRootLayer ? {} : defaultFocus),
   };
 };
 
@@ -640,10 +687,16 @@ export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
  * A scene holding only the focused entity, with no edges, has no lineage to
  * show; the focus is always returned, so the node count alone cannot tell.
  */
+// A lone service, domain or data product card is not empty: its lineage is
+// inside it, one drill away.
 export const isSceneEmpty = (scene: LineageScene): boolean =>
   scene.nodes.length === 0 ||
   (scene.edges.length === 0 &&
-    scene.nodes.every((node) => node.isFocus || node.isOrigin));
+    scene.nodes.every(
+      (node) =>
+        (node.isFocus || node.isOrigin) &&
+        !LENS_CONTAINER_LEVEL_KINDS.has(node.levelKind)
+    ));
 
 /** Which placeholder the map shows while it has no nodes to draw. */
 export const getLineageMapEmptyState = ({
