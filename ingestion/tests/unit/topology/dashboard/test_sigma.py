@@ -919,7 +919,11 @@ def hidden_documents(routes):
     }
     routes["GET", "/v2/dataModels"] = {"entries": [sigma_data_model("dm-1", "Sales Model")], "nextPage": None}
     routes["GET", "/v2/dataModels", ORG_WIDE_DATA_MODELS] = {
-        "entries": [sigma_data_model("dm-1", "Sales Model"), sigma_data_model("dm-hidden", "Ops Model")],
+        "entries": [sigma_data_model("dm-1", "Sales Model")],
+        "nextPage": "2",
+    }
+    routes["GET", "/v2/dataModels", "2", ORG_WIDE_DATA_MODELS] = {
+        "entries": [sigma_data_model("dm-hidden", "Ops Model")],
         "nextPage": None,
     }
     return routes
