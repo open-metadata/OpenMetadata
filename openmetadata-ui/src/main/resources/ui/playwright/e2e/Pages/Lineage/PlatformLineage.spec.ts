@@ -485,6 +485,37 @@ test.describe('Platform Lineage page (/lineage)', () => {
     await expect(page.getByTestId('clear-lineage-search')).toHaveCount(0);
   });
 
+  test('Switching lens from a domain opens the new lens root, not the domain', async ({
+    page,
+  }) => {
+    // Regression: the Data Product lens kept the domain as its focus, and the
+    // search still named the domain.
+    const domainFqn = EntityDataClass.domain1.responseData.fullyQualifiedName;
+    await redirectToHomePage(page);
+    await page.goto(`/lineage/domain/${encodeURIComponent(domainFqn)}`);
+    await dismissLineageMapOnboarding(page);
+    await expect(page.getByTestId(`lineage-node-${domainFqn}`)).toBeVisible();
+
+    const dataProductScene = page.waitForRequest(
+      (request) =>
+        new URL(request.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+        new URL(request.url()).searchParams.get('lens') === 'dataProduct'
+    );
+    await page.getByTestId('lineage-layer-btn').click();
+    await page.getByTestId('lineage-layer-lens-dataProduct').click();
+    const params = new URL((await dataProductScene).url()).searchParams;
+
+    expect(params.get('focusFqn')).toBeNull();
+    expect(params.get('band')).toBe('LAYER');
+    await expect(
+      page.getByTestId('page-header-container').getByTestId('heading')
+    ).toHaveText('Data Product Lineage');
+    await expect(
+      page.getByTestId('search-entity-select').getByRole('combobox')
+    ).toHaveAttribute('placeholder', 'Search data product to view lineage');
+    await expect(page.getByTestId('clear-lineage-search')).toHaveCount(0);
+  });
+
   test('A failed scene request offers a reload that refetches', async ({
     page,
   }) => {

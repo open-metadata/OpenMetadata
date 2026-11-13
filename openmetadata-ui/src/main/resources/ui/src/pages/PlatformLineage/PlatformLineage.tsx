@@ -212,8 +212,8 @@ const PlatformLineage = () => {
 
   // The header names what the map is focused on, which moves with breadcrumb
   // and lens changes while the URL path keeps the entity the page opened on.
-  // A Layer level lists services, domains or data products, so its search
-  // looks for those; deeper levels search the data assets.
+  // The Domain and Data Product levels search what they list; every other
+  // level searches the data assets.
   const layerSearch =
     band === LineageBand.Layer ? LAYER_SEARCH_BY_LENS[lens] : undefined;
 

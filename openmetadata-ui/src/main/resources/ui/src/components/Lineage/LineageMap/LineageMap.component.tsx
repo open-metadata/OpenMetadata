@@ -125,6 +125,7 @@ import {
   getConnectedLineagePathHighlight,
   getDrillBand,
   getDrilledRootBreadcrumb,
+  getLensChangeRequest,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
@@ -1972,11 +1973,7 @@ const LineageMapCanvas = ({
 
   const handleLensChange = useCallback(
     (lens: LineageLens, band = request.band) => {
-      updateRequest({
-        ...request,
-        lens,
-        band,
-      });
+      updateRequest(getLensChangeRequest(request, lens, band));
     },
     [request, updateRequest]
   );

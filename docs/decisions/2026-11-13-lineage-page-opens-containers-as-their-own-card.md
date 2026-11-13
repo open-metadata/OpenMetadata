@@ -19,9 +19,11 @@ could not be cleared back to the whole platform.
   band, focused on it, when the URL carries no band. Once the map writes a band, the usual rules
   apply, so the root breadcrumb still leaves the domain.
 - A lone service, domain or data product card is not an empty scene: its lineage is one drill away.
-- At a Layer level the search looks only for what that level lists: services, domains or data
-  products, without the data-asset exclusion filter. Data Assets and Field levels search data
-  assets.
+- At the Domain and Data Product levels the search looks only for domains or data products,
+  without the data-asset exclusion filter. The Service level and the Data Assets and Field levels
+  search data assets, so a table can still be found from the Lineage page.
+- Switching lens keeps an asset in focus, seen through the new lens; a service, domain or data
+  product exists only in its own lens, so switching from one opens the new lens's root.
 - A pick leaves no chip; the placeholder names what the map is focused on, and a clear button
   returns to the whole platform in the current lens.
 

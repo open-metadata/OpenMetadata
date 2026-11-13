@@ -19,15 +19,12 @@ export const LINEAGE_SEARCH_INDEXES = [
   SearchIndex.SERVICE,
 ];
 
-// What a Layer level of each lens lists, and so what its search looks for.
-export const LAYER_SEARCH_BY_LENS: Record<
-  LineageLens,
-  { index: SearchIndex; labelKey: string }
+// The Domain and Data Product levels list domains and data products, so their
+// search looks for those. The Service level keeps the data asset search, so a
+// table can still be found from the Lineage page.
+export const LAYER_SEARCH_BY_LENS: Partial<
+  Record<LineageLens, { index: SearchIndex; labelKey: string }>
 > = {
-  [LineageLens.Service]: {
-    index: SearchIndex.SERVICE,
-    labelKey: 'label.service-lowercase',
-  },
   [LineageLens.Domain]: {
     index: SearchIndex.DOMAIN,
     labelKey: 'label.domain-lowercase',

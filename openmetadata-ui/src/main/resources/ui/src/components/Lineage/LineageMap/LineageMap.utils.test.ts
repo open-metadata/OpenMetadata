@@ -45,6 +45,7 @@ import {
   getSceneNodeCount,
   getSceneNodeTypeSubtitle,
   getSceneOriginFocus,
+  getLensChangeRequest,
   getSceneRequestFromSearch,
   getSceneSearch,
   getScreenFill,
@@ -1292,6 +1293,50 @@ describe('getSceneRequestFromSearch', () => {
       lens: LineageLens.Service,
       band: LineageBand.Asset,
       focusFqn: 'Sales',
+    });
+  });
+});
+
+describe('getLensChangeRequest', () => {
+  it('opens the new lens root when the focus is a domain', () => {
+    expect(
+      getLensChangeRequest(
+        {
+          lens: LineageLens.Domain,
+          band: LineageBand.Layer,
+          focusFqn: 'Sales',
+          entityType: 'domain',
+        },
+        LineageLens.DataProduct
+      )
+    ).toEqual({ lens: LineageLens.DataProduct, band: LineageBand.Layer });
+  });
+
+  it('opens the new lens root when the focus is a service', () => {
+    expect(
+      getLensChangeRequest(
+        {
+          lens: LineageLens.Service,
+          band: LineageBand.Asset,
+          focusFqn: 'sample_data',
+          entityType: 'databaseService',
+        },
+        LineageLens.Domain
+      )
+    ).toEqual({ lens: LineageLens.Domain, band: LineageBand.Layer });
+  });
+
+  it('keeps an asset in focus, seen through the new lens', () => {
+    const request = {
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      focusFqn: 'svc.db.schema.orders',
+      entityType: 'table',
+    };
+
+    expect(getLensChangeRequest(request, LineageLens.Domain)).toEqual({
+      ...request,
+      lens: LineageLens.Domain,
     });
   });
 });

@@ -997,7 +997,6 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it.each([
-      ['', SearchIndex.SERVICE, 'label.service-lowercase'],
       ['?lineageLens=domain', SearchIndex.DOMAIN, 'label.domain-lowercase'],
       [
         '?lineageLens=dataProduct',
@@ -1022,8 +1021,13 @@ describe('PlatformLineage Component Logic', () => {
       }
     );
 
-    it('searches data assets below the Layer level', async () => {
-      mockLocationSearch = '?lineageBand=ASSET';
+    it.each([
+      ['the Service level', ''],
+      ['the Data Assets level', '?lineageBand=ASSET'],
+    ])('searches data assets at %s', async (_level, search) => {
+      mockFqn = '';
+      mockEntityType = '' as EntityType;
+      mockLocationSearch = search;
       await selectFromSearch(undefined);
 
       const props = mockDataAssetAsyncSelectList.mock.calls.at(-1)[0];

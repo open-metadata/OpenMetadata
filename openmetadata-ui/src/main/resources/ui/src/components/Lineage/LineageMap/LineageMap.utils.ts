@@ -299,6 +299,41 @@ export const getSceneRequestFromSearch = (
   };
 };
 
+// Services, domains and data products exist only in their own lens.
+const LENS_CONTAINER_ENTITY_TYPES = new Set<string>([
+  EntityType.DOMAIN,
+  EntityType.DATA_PRODUCT,
+  EntityType.SERVICE,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.LLM_SERVICE,
+  EntityType.MCP_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.DRIVE_SERVICE,
+  EntityType.API_SERVICE,
+]);
+
+/**
+ * The request a lens switch makes. An asset stays in focus, seen through the
+ * new lens; a service, domain or data product does not exist in another lens,
+ * so the switch opens the new lens's root instead of keeping a focus it cannot
+ * show (ADR:2026-11-13-lineage-page-opens-containers-as-their-own-card).
+ */
+export const getLensChangeRequest = (
+  request: LineageSceneRequest,
+  lens: LineageLens,
+  band: LineageBand = request.band
+): LineageSceneRequest =>
+  LENS_CONTAINER_ENTITY_TYPES.has(request.entityType ?? '')
+    ? { lens, band: LineageBand.Layer }
+    : { ...request, lens, band };
+
 export const getSceneSearch = (
   search: string,
   request: LineageSceneRequest
