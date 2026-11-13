@@ -48,9 +48,16 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableConstraint.ConstraintType;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfUtils;
+import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
 
@@ -280,6 +287,118 @@ class RdfEntityWritePlannerTest {
 
     assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, result.outcome());
     assertEquals(2, diff.updates.size(), "only the first write and the difference were sent");
+  }
+
+  @Test
+  void correctedProfilesReplaceValuesOnTheTableAndNestedColumns() {
+    final Column nested =
+        child("customer.address", "zip")
+            .withProfile(new ColumnProfile().withTimestamp(1000L).withNullCount(12.0));
+    final Table table =
+        table(
+                List.of(
+                    column("customer")
+                        .withChildren(
+                            List.of(child("customer", "address").withChildren(List.of(nested))))))
+            .withProfile(new TableProfile().withTimestamp(1000L).withRowCount(100.0));
+    writeBoth(TABLE_URI, table);
+
+    table.getProfile().setRowCount(101.0);
+    nested.getProfile().setNullCount(0.0);
+    final RdfEntityWriteResult result = writeBoth(TABLE_URI, table);
+
+    assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, result.outcome());
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+
+    table.getProfile().setTimestamp(2000L);
+    nested.getProfile().setTimestamp(2000L);
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+
+    table.setColumns(List.of());
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+  }
+
+  @Test
+  void removingProfilesRemovesTheirLinksAndMeasurements() {
+    final Column column = column("id").withProfile(new ColumnProfile().withNullCount(2.0));
+    final Table table = table(List.of(column)).withProfile(new TableProfile().withRowCount(100.0));
+    writeBoth(TABLE_URI, table);
+
+    table.setProfile(null);
+    column.setProfile(null);
+    writeBoth(TABLE_URI, table);
+
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+  }
+
+  @Test
+  void changingAndRemovingConstraintsLeavesOnlyCurrentMembersAndReferences() {
+    final TableConstraint constraint =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("id", "tenant_id"))
+            .withReferredColumns(
+                List.of("service.db.schema.customers.id", "service.db.schema.customers.tenant_id"));
+    final Table table =
+        table(List.of(column("id"), column("tenant_id"))).withTableConstraints(List.of(constraint));
+    writeBoth(TABLE_URI, table);
+    final Model shared = ModelFactory.createDefaultModel();
+    for (String fqn : constraint.getReferredColumns()) {
+      shared
+          .createResource(RdfUtils.columnUri(BASE, fqn))
+          .addProperty(RDF.type, shared.createResource(OM + "Column"))
+          .addProperty(shared.createProperty(OM + "fullyQualifiedName"), fqn);
+    }
+    shared
+        .createResource(RdfUtils.columnUri(BASE, "service.db.schema.customers.tenant_id"))
+        .addProperty(RDFS.label, "Customer tenant");
+    diff.graph().add(shared);
+    replace.graph().add(shared);
+
+    constraint.setColumns(List.of("id"));
+    constraint.setReferredColumns(List.of("service.db.schema.customers.id"));
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table).add(shared)));
+
+    table.setTableConstraints(List.of());
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table).add(shared)));
+  }
+
+  @Test
+  void bulkReindexAndDeletionCleanUpConstraintsAndProfiles() {
+    final Table table =
+        table(List.of(column("id").withProfile(new ColumnProfile().withNullCount(2.0))))
+            .withProfile(new TableProfile().withRowCount(100.0))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(ConstraintType.UNIQUE)
+                        .withColumns(List.of("id"))));
+    final Model original = translator.toRdf(table);
+    diff.graph().add(original);
+    table.setProfile(null);
+    table.getColumns().getFirst().setProfile(null);
+    table.setTableConstraints(null);
+    final Model current = translator.toRdf(table);
+
+    UpdateAction.parseExecute(
+        JenaFusekiStorage.buildBulkReconcileUpdate(
+            BASE, List.of(new EntityWriteRequest("table", TABLE_ID, current))),
+        diff.dataset);
+    assertTrue(diff.graph().isIsomorphicWith(current));
+
+    diff.graph().add(original);
+    UpdateAction.parseExecute(RdfRepository.buildEntityDeleteUpdate(TABLE_URI), diff.dataset);
+    assertTrue(diff.graph().isEmpty());
   }
 
   private List<Table> versionsOf(final Table table) {
