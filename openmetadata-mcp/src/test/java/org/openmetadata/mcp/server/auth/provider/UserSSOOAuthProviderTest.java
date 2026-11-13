@@ -684,6 +684,29 @@ class UserSSOOAuthProviderTest {
   }
 
   @Test
+  void consentResponseIsNotWrittenBeforeTransactionCommits() throws Exception {
+    var pending = repositoryAwaitingConsent();
+    var provider = newProvider(pending, clientRepositoryWithRegisteredClient(), ISSUER);
+    var response = mock(HttpServletResponse.class);
+    setField(
+        provider,
+        "grantTransaction",
+        new McpGrantTransaction() {
+          @Override
+          public <T, E extends Exception> T execute(String clientId, Operation<T, E> operation)
+              throws E {
+            operation.get();
+            verifyNoInteractions(response);
+            throw new IllegalStateException("Simulated commit failure");
+          }
+        });
+    assertThrows(
+        IllegalStateException.class,
+        () -> provider.handleConsentDecision(consentRequest(CONSENT_TOKEN, "deny"), response));
+    verifyNoInteractions(response);
+  }
+
+  @Test
   void changedPolicyStopsPendingConsentAndBasicCodeIssuance() throws Exception {
     var pending = repositoryAwaitingConsent();
     var codes = mock(OAuthAuthorizationCodeRepository.class);

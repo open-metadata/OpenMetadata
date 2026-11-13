@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -216,6 +217,15 @@ class McpGrantRevocationSqlTest {
     assertTrue(clients.listClients("", 100).getFirst().getIssuedAt() > 0);
     assertEquals(1, clients.deleteWithGrants(CLIENT));
     assertNull(clients.findByClientId(CLIENT));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new McpGrantTransaction(() -> jdbi.onDemand(CollectionDAO.class))
+                .execute(
+                    CLIENT,
+                    () -> {
+                      throw new AssertionError("Deleted client must not issue grants");
+                    }));
     assertNotNull(clients.findByClientId("unrelated"));
     for (String table :
         List.of(

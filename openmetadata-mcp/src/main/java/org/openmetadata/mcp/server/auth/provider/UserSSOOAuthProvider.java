@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -668,58 +667,43 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "This approval is no longer valid. Please restart the authorization flow.");
       return;
     }
-    try {
-      grantTransaction.execute(
-          pending.clientId(),
-          () -> {
-            try {
-              handleConsentDecisionLocked(request, response);
-              return null;
-            } catch (IOException exception) {
-              throw new UncheckedIOException(exception);
-            }
-          });
-    } catch (UncheckedIOException exception) {
-      throw exception.getCause();
+    final ConsentOutcome outcome =
+        grantTransaction.execute(pending.clientId(), () -> completeConsent(request));
+    if (outcome.redirectUrl() == null) {
+      response.sendError(outcome.status(), outcome.error());
+    } else {
+      serveConsentOutcome(response, outcome.redirectUrl(), outcome.approved(), pending.clientId());
     }
   }
 
-  private void handleConsentDecisionLocked(HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
+  private record ConsentOutcome(String redirectUrl, boolean approved, int status, String error) {}
+
+  private ConsentOutcome completeConsent(HttpServletRequest request) {
     final String authRequestId = request.getParameter(AUTH_REQUEST_ID_PARAM);
     final String userName =
         pendingAuthRepository.takeConsent(authRequestId, request.getParameter(CONSENT_TOKEN_PARAM));
     if (userName == null) {
-      LOG.warn("No waiting MCP client approval matches the submitted consent");
-      response.sendError(
+      return new ConsentOutcome(
+          null,
+          false,
           HttpServletResponse.SC_FORBIDDEN,
           "This approval is no longer valid. Please restart the authorization flow.");
-    } else {
-      final boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
-      relayConsentDecision(authRequestId, userName, approved, response);
     }
-  }
-
-  private void relayConsentDecision(
-      String authRequestId, String userName, boolean approved, HttpServletResponse response)
-      throws IOException {
-    final McpPendingAuthRequest pendingRequest =
-        pendingAuthRepository.findByAuthRequestId(authRequestId);
-    if (pendingRequest == null) {
-      response.sendError(
+    final McpPendingAuthRequest pending = pendingAuthRepository.findByAuthRequestId(authRequestId);
+    if (pending == null) {
+      return new ConsentOutcome(
+          null,
+          false,
           HttpServletResponse.SC_BAD_REQUEST,
           "Authorization request expired. Please restart the flow.");
-    } else {
-      // The client may have been removed or changed since the consent page was served.
-      requireRegisteredRedirect(pendingRequest);
-      final String redirectUrl =
-          UriUtils.constructAuthorizationResponseUri(
-              pendingRequest.redirectUri(),
-              consentResponseParams(userName, pendingRequest, approved),
-              issuer);
-      serveConsentOutcome(response, redirectUrl, approved, pendingRequest.clientId());
-      deletePendingRequest(authRequestId);
     }
+    requireRegisteredRedirect(pending);
+    final boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
+    final String redirectUrl =
+        UriUtils.constructAuthorizationResponseUri(
+            pending.redirectUri(), consentResponseParams(userName, pending, approved), issuer);
+    pendingAuthRepository.delete(authRequestId);
+    return new ConsentOutcome(redirectUrl, approved, HttpServletResponse.SC_OK, null);
   }
 
   /** The client callback's query: a code on approval, {@code access_denied} otherwise. */
@@ -759,18 +743,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           redirectUrl,
           "Access Denied",
           "You did not approve access for the application.");
-    }
-  }
-
-  private void deletePendingRequest(String authRequestId) {
-    // Best-effort cleanup — failure here doesn't affect the user
-    try {
-      pendingAuthRepository.delete(authRequestId);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
-          authRequestId,
-          e.getMessage());
     }
   }
 

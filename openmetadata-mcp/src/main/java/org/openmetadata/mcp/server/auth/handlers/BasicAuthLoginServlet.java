@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.Serializable;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -63,10 +62,16 @@ public class BasicAuthLoginServlet extends HttpServlet {
   record LoginForm(String csrfToken, String authRequestId) implements Serializable {}
 
   private final UserSSOOAuthProvider authProvider;
+  private final McpGrantTransaction grantTransaction;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final OAuthClientRepository clientRepository;
 
   public BasicAuthLoginServlet(UserSSOOAuthProvider authProvider) {
+    this(authProvider, new McpGrantTransaction());
+  }
+
+  BasicAuthLoginServlet(UserSSOOAuthProvider authProvider, McpGrantTransaction grantTransaction) {
+    this.grantTransaction = grantTransaction;
     this.authProvider = authProvider;
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
     this.clientRepository = new OAuthClientRepository();
@@ -99,34 +104,6 @@ public class BasicAuthLoginServlet extends HttpServlet {
 
   @Override
   public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    final HttpSession session = request.getSession(false);
-    final LoginForm form =
-        session == null ? null : (LoginForm) session.getAttribute(SESSION_LOGIN_FORM);
-    final McpPendingAuthRequest pending =
-        form == null ? null : pendingAuthRepository.findByAuthRequestId(form.authRequestId());
-    if (pending == null) {
-      doPostLocked(request, response);
-      return;
-    }
-    try {
-      new McpGrantTransaction()
-          .execute(
-              pending.clientId(),
-              () -> {
-                try {
-                  doPostLocked(request, response);
-                  return null;
-                } catch (IOException exception) {
-                  throw new UncheckedIOException(exception);
-                }
-              });
-    } catch (UncheckedIOException exception) {
-      throw exception.getCause();
-    }
-  }
-
-  private void doPostLocked(HttpServletRequest request, HttpServletResponse response)
-      throws IOException {
     String password = null;
     try {
       HttpSession session = request.getSession(false);
@@ -227,44 +204,10 @@ public class BasicAuthLoginServlet extends HttpServlet {
         // Regenerate session to prevent fixation
         request.changeSessionId();
 
-        // Generate authorization code
-        List<String> scopes = pending.scopes();
-        if (scopes == null || scopes.isEmpty()) {
-          scopes = List.of("openid", "profile", "email");
-        }
-
-        String authCode =
-            authProvider.createAuthorizationCode(
-                user.getName(),
-                pending.clientId(),
-                pending.codeChallenge(),
-                URI.create(pending.redirectUri()),
-                scopes);
-
-        // Redirect to client callback with code + state
-        // Redirect BEFORE deleting pending request — if delete throws, the user still
-        // gets their auth code. The pending request will be cleaned up by the cleanup job.
-        Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("code", authCode);
-        if (pending.mcpState() != null) {
-          queryParams.put("state", pending.mcpState());
-        }
-        String redirectUrl =
-            UriUtils.constructAuthorizationResponseUri(
-                pending.redirectUri(), queryParams, authProvider.getIssuer());
-
-        LOG.info("Basic Auth login successful, redirecting to client callback");
+        final String redirectUrl =
+            grantTransaction.execute(
+                pending.clientId(), () -> completeLogin(authRequestId, user.getName()));
         response.sendRedirect(redirectUrl);
-
-        // Best-effort cleanup — failure here doesn't affect the user
-        try {
-          pendingAuthRepository.delete(authRequestId);
-        } catch (Exception deleteEx) {
-          LOG.warn(
-              "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
-              authRequestId,
-              deleteEx.getMessage());
-        }
 
       } catch (AuthenticationException e) {
         // Wrong password for an existing account. A rejected credential is an expected outcome of
@@ -283,12 +226,42 @@ public class BasicAuthLoginServlet extends HttpServlet {
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       }
 
+    } catch (IllegalStateException e) {
+      response.sendError(
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This application or authorization request is no longer valid. Please restart the flow.");
     } catch (Exception e) {
       LOG.error("Basic Auth login processing failed", e);
       response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Login processing failed");
     } finally {
       password = null;
     }
+  }
+
+  private String completeLogin(String authRequestId, String userName) {
+    final McpPendingAuthRequest pending = pendingAuthRepository.findByAuthRequestId(authRequestId);
+    if (pending == null) {
+      throw new IllegalStateException("Authorization request expired");
+    }
+    final List<String> scopes =
+        pending.scopes() == null || pending.scopes().isEmpty()
+            ? List.of("openid", "profile", "email")
+            : pending.scopes();
+    final String code =
+        authProvider.createAuthorizationCode(
+            userName,
+            pending.clientId(),
+            pending.codeChallenge(),
+            URI.create(pending.redirectUri()),
+            scopes);
+    final Map<String, String> params = new HashMap<>();
+    params.put("code", code);
+    if (pending.mcpState() != null) {
+      params.put("state", pending.mcpState());
+    }
+    pendingAuthRepository.delete(authRequestId);
+    return UriUtils.constructAuthorizationResponseUri(
+        pending.redirectUri(), params, authProvider.getIssuer());
   }
 
   private void renderLoginFormWithError(

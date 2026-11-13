@@ -74,3 +74,8 @@ performs all grant writes on the same connection. Repositories resolve the trans
 DAO, cleared in a finally block. An exchange that wins the lock completes before revocation
 removes its tokens; an exchange that loses finds its old grant gone. Protocol errors still commit
 single-use authorization-code consumption, so an incorrect PKCE verifier cannot retry the code.
+
+Password verification and LDAP calls finish before acquiring the client lock. Login and consent
+responses are written only after the grant transaction commits, so slow external services or
+browser sockets cannot hold the shared client lock. The pending request is re-read under the lock
+to reject revocation during authentication; a client removed before locking produces a 400 response.

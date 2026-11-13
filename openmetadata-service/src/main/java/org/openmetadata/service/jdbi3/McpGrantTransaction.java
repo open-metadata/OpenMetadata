@@ -42,7 +42,7 @@ public class McpGrantTransaction {
         .inTransaction(
             dao -> {
               if (dao.oauthClientDAO().lockClient(clientId) == null) {
-                throw new IllegalArgumentException("MCP OAuth client no longer exists");
+                throw new IllegalStateException("MCP OAuth client no longer exists");
               }
               CURRENT.set(dao);
               try {
