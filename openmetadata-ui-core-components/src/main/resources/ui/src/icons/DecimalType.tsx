@@ -24,9 +24,9 @@ export const DecimalType: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -37,13 +37,7 @@ export const DecimalType: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle
-      cx={9.999}
-      cy={17.271}
-      fill="currentColor"
-      r={0.728}
-      stroke="none"
-    />
+    <circle cx={9.999} cy={17.271} fill="currentColor" r={0.728} />
   </svg>
 );
 DecimalType.displayName = 'DecimalType';

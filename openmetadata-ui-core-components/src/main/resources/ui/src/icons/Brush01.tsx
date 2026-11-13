@@ -24,9 +24,9 @@ export const Brush01: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -45,7 +45,6 @@ export const Brush01: FC<Props> = ({
     <path
       d="M4.666 5.25a.707.707 0 0 0 .711-.703.707.707 0 0 0-.71-.703.707.707 0 0 0-.712.703c0 .388.318.703.711.703"
       fill="currentColor"
-      stroke="none"
     />
   </svg>
 );

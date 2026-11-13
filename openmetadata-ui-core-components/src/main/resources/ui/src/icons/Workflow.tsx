@@ -24,9 +24,9 @@ export const Workflow: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -51,7 +51,6 @@ export const Workflow: FC<Props> = ({
       <path
         d="M5.8 2.535H3.533a1 1 0 0 0-1 1v2.267a1 1 0 0 0 1 1H5.8a1 1 0 0 0 1-1V3.535a1 1 0 0 0-1-1"
         fill="#fff"
-        stroke="none"
       />
     </mask>
     <g mask="url(#a)">
@@ -65,7 +64,6 @@ export const Workflow: FC<Props> = ({
       <path
         d="M16.466 13.203h-2.267a1 1 0 0 0-1 1v2.267a1 1 0 0 0 1 1h2.267a1 1 0 0 0 1-1v-2.267a1 1 0 0 0-1-1"
         fill="#fff"
-        stroke="none"
       />
     </mask>
     <g mask="url(#b)">

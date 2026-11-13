@@ -24,9 +24,9 @@ export const TimeoutButton: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -40,7 +40,6 @@ export const TimeoutButton: FC<Props> = ({
     <path
       d="M13.093 10.23a.4.4 0 0 1 0 .692l-4.339 2.505a.4.4 0 0 1-.6-.346V8.07a.4.4 0 0 1 .6-.347z"
       fill="currentColor"
-      stroke="none"
     />
   </svg>
 );

@@ -24,9 +24,9 @@ export const SecurityService: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -38,7 +38,7 @@ export const SecurityService: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="a">
-        <path d="M0 0h20v20H0z" fill="currentColor" stroke="none" />
+        <path d="M0 0h20v20H0z" fill="currentColor" />
       </clipPath>
     </defs>
   </svg>

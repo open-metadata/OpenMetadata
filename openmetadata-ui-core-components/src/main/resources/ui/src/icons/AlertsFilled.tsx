@@ -24,19 +24,15 @@ export const AlertsFilled: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M16.402 18v-4.8a6.4 6.4 0 1 0-12.8 0V18"
-      fill="currentColor"
-      stroke="none"
-    />
+    <path d="M16.402 18v-4.8a6.4 6.4 0 1 0-12.8 0V18" fill="currentColor" />
     <path
       d="M16.402 18v-4.8a6.4 6.4 0 1 0-12.8 0V18M2 18h16M10 2v2.4m7.2.8L16 6.4M2.8 5.2 4 6.4"
       stroke="currentColor"

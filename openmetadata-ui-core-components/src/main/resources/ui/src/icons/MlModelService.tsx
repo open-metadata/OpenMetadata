@@ -24,9 +24,9 @@ export const MlModelService: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -40,7 +40,6 @@ export const MlModelService: FC<Props> = ({
     <path
       d="M5.48 17.999a1.005 1.005 0 1 0 0-2.01 1.005 1.005 0 0 0 0 2.01m4.52 0a1.005 1.005 0 1 0 0-2.01 1.005 1.005 0 0 0 0 2.01m4.52 0a1.005 1.005 0 1 0 0-2.01 1.005 1.005 0 0 0 0 2.01"
       fill="currentColor"
-      stroke="none"
     />
   </svg>
 );

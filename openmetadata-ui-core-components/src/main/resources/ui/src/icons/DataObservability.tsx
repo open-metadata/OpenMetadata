@@ -24,9 +24,9 @@ export const DataObservability: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -42,7 +42,7 @@ export const DataObservability: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle cx={13.202} cy={7.999} fill="currentColor" r={0.8} stroke="none" />
+    <circle cx={13.202} cy={7.999} fill="currentColor" r={0.8} />
     <path
       d="M5.605 12 7.6 13.995l-3.192 3.192a1.41 1.41 0 1 1-1.995-1.995zm1.195.8.8-.8"
       stroke="currentColor"

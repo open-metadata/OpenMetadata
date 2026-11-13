@@ -24,9 +24,9 @@ export const ArrayType: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -37,21 +37,9 @@ export const ArrayType: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle
-      cx={7.551}
-      cy={10.084}
-      fill="currentColor"
-      r={0.752}
-      stroke="none"
-    />
-    <circle cx={9.84} cy={10.084} fill="currentColor" r={0.752} stroke="none" />
-    <circle
-      cx={12.129}
-      cy={10.084}
-      fill="currentColor"
-      r={0.752}
-      stroke="none"
-    />
+    <circle cx={7.551} cy={10.084} fill="currentColor" r={0.752} />
+    <circle cx={9.84} cy={10.084} fill="currentColor" r={0.752} />
+    <circle cx={12.129} cy={10.084} fill="currentColor" r={0.752} />
   </svg>
 );
 ArrayType.displayName = 'ArrayType';

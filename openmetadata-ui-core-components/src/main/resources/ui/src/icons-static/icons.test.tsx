@@ -14,40 +14,28 @@ import { render } from '@testing-library/react';
 import type { FC, SVGProps } from 'react';
 import { describe, expect, it } from 'vitest';
 import * as Icons from '../icons';
-
-const SHAPES = 'path, circle, rect, ellipse, polygon, polyline, line';
-
-const getShapesInheritingRootStroke = (svg: SVGSVGElement) =>
-  Array.from(svg.querySelectorAll(SHAPES)).filter((shape) => {
-    for (
-      let node: Element | null = shape;
-      node && node !== svg;
-      node = node.parentElement
-    ) {
-      if (node.hasAttribute('stroke')) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+import { SortAscending } from '../icons';
 
 describe('generated icons', () => {
-  it('should not stroke shapes that the source SVG leaves unstroked', () => {
+  it('should not put a stroke on the root svg for shapes to inherit', () => {
     const offenders = Object.entries(
       Icons as Record<string, FC<SVGProps<SVGSVGElement>>>
     ).flatMap(([name, Icon]) => {
       const { container, unmount } = render(<Icon />);
-      const svg = container.querySelector('svg');
-      const count =
-        svg?.hasAttribute('stroke') === true
-          ? getShapesInheritingRootStroke(svg).length
-          : 0;
+      const hasRootStroke = container
+        .querySelector('svg')
+        ?.hasAttribute('stroke');
       unmount();
 
-      return count ? [name] : [];
+      return hasRootStroke ? [name] : [];
     });
 
     expect(offenders).toEqual([]);
+  });
+
+  it('should apply the color prop as the root color', () => {
+    const { container } = render(<SortAscending color="red" />);
+
+    expect(container.querySelector('svg')).toHaveAttribute('color', 'red');
   });
 });

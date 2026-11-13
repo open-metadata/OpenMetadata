@@ -24,9 +24,9 @@ export const Successful: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -36,7 +36,6 @@ export const Successful: FC<Props> = ({
       className="tw:fill-bg-primary"
       d="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16"
       fill="#fff"
-      stroke="none"
     />
     <path
       d="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z"
@@ -44,7 +43,7 @@ export const Successful: FC<Props> = ({
       strokeWidth={1.3}
     />
     <mask height={8} id="a" maskUnits="userSpaceOnUse" width={8} x={6} y={6}>
-      <path d="M14 6H6v8h8z" fill="#fff" stroke="none" />
+      <path d="M14 6H6v8h8z" fill="#fff" />
     </mask>
     <g mask="url(#a)">
       <path

@@ -24,9 +24,9 @@ export const Fail: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -36,7 +36,6 @@ export const Fail: FC<Props> = ({
       className="tw:fill-bg-primary"
       d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0"
       fill="#fff"
-      stroke="none"
     />
     <path
       d="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z"

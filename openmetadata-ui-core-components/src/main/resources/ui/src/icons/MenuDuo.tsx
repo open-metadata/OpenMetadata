@@ -24,9 +24,9 @@ export const MenuDuo: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -35,7 +35,6 @@ export const MenuDuo: FC<Props> = ({
     <path
       d="M18 5.333a3.333 3.333 0 1 0-6.666 0 3.333 3.333 0 0 0 6.667 0m-9.334 0a3.333 3.333 0 1 0-6.667 0 3.333 3.333 0 0 0 6.667 0M18 14.665a3.333 3.333 0 1 0-6.666 0 3.333 3.333 0 0 0 6.667 0m-9.334 0a3.333 3.333 0 1 0-6.667 0 3.333 3.333 0 0 0 6.667 0"
       fill="currentColor"
-      stroke="none"
     />
   </svg>
 );

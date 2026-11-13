@@ -24,9 +24,9 @@ export const SparkleFilled: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -35,7 +35,6 @@ export const SparkleFilled: FC<Props> = ({
     <path
       d="m10 2 1.041 4.165c.203.812.305 1.219.516 1.55.188.292.436.54.729.727.33.212.737.314 1.55.517L18 10l-4.165 1.041c-.812.203-1.219.305-1.55.516-.292.188-.54.436-.728.729-.211.33-.313.737-.516 1.55L10 18l-1.041-4.165c-.203-.812-.305-1.219-.517-1.55a2.4 2.4 0 0 0-.728-.728c-.33-.211-.737-.313-1.55-.516L2 10l4.165-1.041c.812-.203 1.219-.305 1.55-.517a2.4 2.4 0 0 0 .727-.728c.212-.33.314-.737.517-1.55z"
       fill="currentColor"
-      stroke="none"
     />
   </svg>
 );

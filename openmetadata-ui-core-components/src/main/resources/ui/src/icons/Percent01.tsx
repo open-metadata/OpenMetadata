@@ -24,9 +24,9 @@ export const Percent01: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -35,7 +35,6 @@ export const Percent01: FC<Props> = ({
     <path
       d="M4.808 3.654a1.154 1.154 0 1 1-2.308 0 1.154 1.154 0 0 1 2.308 0M17.5 16.346a1.154 1.154 0 1 1-2.308 0 1.154 1.154 0 0 1 2.308 0"
       fill="currentColor"
-      stroke="none"
     />
     <path
       d="M16.966 3.034 3.034 16.966M4.808 3.654a1.154 1.154 0 1 1-2.308 0 1.154 1.154 0 0 1 2.308 0M17.5 16.346a1.154 1.154 0 1 1-2.308 0 1.154 1.154 0 0 1 2.308 0"

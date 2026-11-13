@@ -24,9 +24,9 @@ export const ObservabilityFilled: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 21 21"
@@ -43,11 +43,7 @@ export const ObservabilityFilled: FC<Props> = ({
         stroke="currentColor"
         strokeWidth={1.5}
       />
-      <path
-        d="M14.75 8.75a1 1 0 1 0 0-2 1 1 0 0 0 0 2"
-        fill="currentColor"
-        stroke="none"
-      />
+      <path d="M14.75 8.75a1 1 0 1 0 0-2 1 1 0 0 0 0 2" fill="currentColor" />
       <path
         d="M7.75 15.244 5.256 12.75l-3.99 3.99a1.763 1.763 0 0 0 2.494 2.494z"
         fill="currentColor"
@@ -58,7 +54,7 @@ export const ObservabilityFilled: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="a">
-        <path d="M0 0h21v21H0z" fill="#fff" stroke="none" />
+        <path d="M0 0h21v21H0z" fill="#fff" />
       </clipPath>
     </defs>
   </svg>

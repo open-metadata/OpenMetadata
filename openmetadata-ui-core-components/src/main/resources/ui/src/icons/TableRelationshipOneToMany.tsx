@@ -24,9 +24,9 @@ export const TableRelationshipOneToMany: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -37,7 +37,7 @@ export const TableRelationshipOneToMany: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="a">
-        <path d="M0 0h20v20H0z" fill="#fff" stroke="none" />
+        <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>
   </svg>

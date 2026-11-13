@@ -170,52 +170,12 @@ const removeLinecapLinejoin = {
   params: { attrs: ['stroke-linecap', 'stroke-linejoin'] },
 };
 
-const SHAPES = new Set([
-  'path',
-  'circle',
-  'rect',
-  'ellipse',
-  'polygon',
-  'polyline',
-  'line',
-]);
-
-/** Regular icons only: svgProps adds stroke={color} to the root <svg>, which a
- *  shape with no stroke of its own (or from a <g>) would inherit at the default
- *  1px width. Figma exports stroked text and glyphs as filled outlines, so that
- *  inherited stroke draws them ~1px bolder than designed. Pin stroke="none" on
- *  them so they render exactly as in the source SVG. */
-const keepUnstrokedShapesUnstroked = {
-  name: 'keepUnstrokedShapesUnstroked',
-  fn: () => {
-    const strokeStack = [];
-    return {
-      element: {
-        enter: (node) => {
-          const hasStroke =
-            node.name !== 'svg' &&
-            (node.attributes.stroke !== undefined ||
-              strokeStack.at(-1) === true);
-          strokeStack.push(hasStroke);
-          if (SHAPES.has(node.name) && !hasStroke) {
-            node.attributes.stroke = 'none';
-          }
-        },
-        exit: () => {
-          strokeStack.pop();
-        },
-      },
-    };
-  },
-};
-
 /** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
 const svgoRegularConfig = {
   multipass: true,
   plugins: [
     ...sharedPlugins,
     removeLinecapLinejoin,
-    keepUnstrokedShapesUnstroked,
     // Replace hardcoded hex colors so icons are fully themeable via the color prop.
     // fill="none", fill="white", and fill="url(...)" are preserved as-is.
     {
@@ -263,8 +223,11 @@ const svgoCustomConfig = (iconBaseName) => ({
 });
 
 /** SVGR config, parameterized by pipeline.
- *  Regular icons: outline-style — forced to a single themeable stroke via the
- *  color prop, with fill/linecap/linejoin normalized.
+ *  Regular icons: hex colors become currentColor (see replaceHardcodedColors)
+ *  and the color prop is set as the root's CSS `color`, so it themes every
+ *  stroke and fill; fill/linecap/linejoin are normalized. The root carries no
+ *  stroke: a shape without its own (e.g. a glyph Figma outlined into a fill)
+ *  would inherit it and render bolder than designed.
  *  Custom icons: full-color/gradient/brand art — only size control is
  *  injected; stroke/fill/linecap/linejoin are left exactly as authored
  *  (post-SVGO) so hardcoded brand colors survive. */
@@ -285,7 +248,7 @@ function buildSvgrConfig(isCustom) {
       : {
           width: '{size}',
           height: '{size}',
-          stroke: '{color}',
+          color: '{color}',
           fill: 'none',
           strokeLinecap: 'round',
           strokeLinejoin: 'round',
