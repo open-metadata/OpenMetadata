@@ -1046,12 +1046,12 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-property'));
 
-    expect(
-      screen.queryByTestId('ontology-property-kind-annotation')
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('ontology-property-kind-more'));
-    fireEvent.click(screen.getByTestId('ontology-property-kind-annotation'));
+    fireEvent.click(
+      within(screen.getByTestId('ontology-property-kind')).getByRole('button')
+    );
+    fireEvent.click(
+      await screen.findByTestId('ontology-property-kind-annotation')
+    );
 
     expect(
       screen.queryByRole('button', { name: /label.range/ })
@@ -1534,6 +1534,81 @@ describe('OntologyConceptInspector relationship authoring', () => {
     );
   });
 
+  it('opens the relationship from anywhere on its card, but not from its edit and delete controls', () => {
+    const onOpenRelation = jest.fn();
+    const onDeleteRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onDeleteRelation, onOpenRelation });
+    const card = screen.getByTestId('ontology-concept-relation-row');
+
+    fireEvent.click(card);
+
+    expect(onOpenRelation).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    );
+
+    expect(onOpenRelation).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(within(card).getByTestId('ontology-relation-delete'));
+
+    expect(onDeleteRelation).toHaveBeenCalledTimes(1);
+    expect(onOpenRelation).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(within(card).getByTestId('ontology-relation-edit'));
+
+    expect(onOpenRelation).toHaveBeenCalledTimes(2);
+  });
+
+  it('lists ten relationships at a time and loads the next ten on demand', () => {
+    const parents = Array.from({ length: 23 }, (_, index) => ({
+      ...concept,
+      id: `parent-${index}`,
+      iri: `urn:sales:Parent${index}`,
+      name: `Parent ${index}`,
+    }));
+    const manyRelationsModel: OntologyStudioModel = {
+      ...model,
+      axioms: parents.map((parent) => ({
+        ...customerIsParty,
+        expressions: [
+          { classIri: parent.iri, kind: ExpressionKind.NamedClass },
+        ],
+        id: `axiom-${parent.id}`,
+        name: `CustomerIs${parent.id}`,
+      })),
+      concepts: [concept, ...parents],
+    };
+    renderAuthoring({
+      model: manyRelationsModel,
+      relations: getModelRelations(manyRelationsModel),
+    });
+    const rows = () => screen.getAllByTestId('ontology-concept-relation-row');
+    const loadMore = 'ontology-concept-relations-load-more';
+
+    expect(rows()).toHaveLength(10);
+
+    fireEvent.click(screen.getByTestId(loadMore));
+
+    expect(rows()).toHaveLength(20);
+
+    fireEvent.click(screen.getByTestId(loadMore));
+
+    expect(rows()).toHaveLength(23);
+    expect(screen.queryByTestId(loadMore)).not.toBeInTheDocument();
+  });
+
+  it('truncates a long related concept name instead of running under its controls', () => {
+    renderAuthoring();
+    const target = screen.getByTestId(`ontology-concept-relation-${party.id}`);
+
+    expect(target.querySelector('[data-text]')).toHaveClass(
+      'tw:truncate',
+      'tw:min-w-0'
+    );
+    expect(target).toHaveTextContent('Party');
+  });
+
   it('lists the rules about the concept apart from its relationships', () => {
     const rule: OntologyAxiom = {
       ...customerIsParty,
@@ -1777,7 +1852,12 @@ describe('OntologyConceptInspector relationship authoring', () => {
       renderEditable({ onAddProperty });
 
       fireEvent.click(await screen.findByTestId('ontology-add-property'));
-      fireEvent.click(screen.getByTestId('ontology-property-kind-object'));
+      fireEvent.click(
+        within(screen.getByTestId('ontology-property-kind')).getByRole('button')
+      );
+      fireEvent.click(
+        await screen.findByTestId('ontology-property-kind-object')
+      );
       fireEvent.change(screen.getByTestId('ontology-property-name'), {
         target: { value: 'servedBy' },
       });

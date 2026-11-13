@@ -36,8 +36,9 @@ import {
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { uniqBy, upperFirst } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   OntologyConcept,
@@ -86,7 +87,10 @@ import OntologyRelationControls from '../OntologyRelationControls/OntologyRelati
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import OntologyConceptConflicts from './OntologyConceptConflicts';
-import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
+import {
+  CONCEPT_STATUS_LABELS,
+  RELATION_PAGE_SIZE,
+} from './OntologyConceptInspector.constants';
 import {
   countFilledSections,
   getCompletenessCounts,
@@ -155,8 +159,6 @@ interface OntologyConceptInspectorProps {
   readonly editor?: OntologyConceptEditorState;
   /** Edit mode could not load the concept's working copy, so it stays read-only. */
   readonly isEditorUnavailable?: boolean;
-  /** A confirm (e.g. delete concept) shown over this panel only. */
-  readonly confirmDialog?: ReactNode;
   /** Validation clashes this concept is part of. */
   readonly conflicts?: OntologyConflict[];
   readonly isConflictReviewOpen?: boolean;
@@ -738,7 +740,6 @@ const OntologyConceptInspector = ({
   onSelectConcept,
   editor,
   isEditorUnavailable,
-  confirmDialog,
   conflicts = [],
   isConflictReviewOpen,
   onShowConflictOnGraph,
@@ -763,6 +764,10 @@ const OntologyConceptInspector = ({
     }
   }, [canEditRelations]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [relationLimit, setRelationLimit] = useState(RELATION_PAGE_SIZE);
+  useEffect(() => {
+    setRelationLimit(RELATION_PAGE_SIZE);
+  }, [concept.id]);
   const bindings = useOntologyConceptBindings(concept.id);
   const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
     concept.iri
@@ -860,7 +865,10 @@ const OntologyConceptInspector = ({
     <InspectorRow key={property.id}>
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
         <Box align="center" gap={2}>
-          <Typography className="tw:text-primary" size="text-md">
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
             {getPropertyLabel(property)}
           </Typography>
           {property.isIdentifier ? (
@@ -965,12 +973,27 @@ const OntologyConceptInspector = ({
       </Badge>
     );
 
+    const openRelation = () =>
+      onOpenRelation ? onOpenRelation(relation) : onSelectConcept(other);
+
     return (
+      // The whole card is a pointer target; keyboard users act through the
+      // target Button, so the row adds no second tab stop. Clicks on any
+      // button inside (target, edit, delete) are left to that button.
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
       <li
-        className="tw:flex tw:min-h-11 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5"
+        className={classNames(
+          'tw:flex tw:min-h-11 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5',
+          'tw:cursor-pointer tw:transition-colors tw:hover:bg-primary_hover'
+        )}
         data-direction={readsForward ? 'forward' : 'backward'}
         data-testid="ontology-concept-relation-row"
-        key={`${direction}:${relation.key}`}>
+        key={`${direction}:${relation.key}`}
+        onClick={(event) => {
+          if (!(event.target as HTMLElement).closest('button')) {
+            openRelation();
+          }
+        }}>
         <RelationConflictDot
           isShown={conflictRelationKeys.has(relation.key)}
           label={t('label.conflict')}
@@ -989,14 +1012,13 @@ const OntologyConceptInspector = ({
           />
         )}
         <Button
+          ellipsis
           noTextPadding
           className="tw:min-w-0 tw:flex-1 tw:justify-start"
           color="tertiary"
           data-testid={`ontology-concept-relation-${other.id}`}
-          onPress={() =>
-            onOpenRelation ? onOpenRelation(relation) : onSelectConcept(other)
-          }>
-          <span className="tw:truncate">{other.displayName ?? other.name}</span>
+          onPress={openRelation}>
+          {other.displayName ?? other.name}
         </Button>
         {isRelationEditable(relation) && onEditRelation && onDeleteRelation ? (
           <OntologyRelationControls
@@ -1057,10 +1079,7 @@ const OntologyConceptInspector = ({
       <Badge color="success" size="sm" type="pill-color">
         {humanizeName(mapping.mappingType)}
       </Badge>
-      <Typography
-        ellipsis
-        className="tw:min-w-0 tw:flex-1 tw:font-mono"
-        size="text-xs">
+      <Typography ellipsis className="tw:min-w-0 tw:flex-1" size="text-sm">
         {mapping.conceptIri}
       </Typography>
     </InspectorRow>
@@ -1405,6 +1424,32 @@ const OntologyConceptInspector = ({
     />
   );
 
+  const renderRelationList = () => (
+    <>
+      <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
+        {conceptRelations
+          .slice(0, relationLimit)
+          .map((row) =>
+            canEditRelations && row.relation.key === editingRelationKey
+              ? renderRelationEdit(row)
+              : renderRelationRow(row)
+          )}
+      </ul>
+      {conceptRelations.length > relationLimit ? (
+        <Button
+          className="tw:self-start"
+          color="link-color"
+          data-testid="ontology-concept-relations-load-more"
+          size="sm"
+          onPress={() =>
+            setRelationLimit((limit) => limit + RELATION_PAGE_SIZE)
+          }>
+          {t('label.load-more')}
+        </Button>
+      ) : null}
+    </>
+  );
+
   const renderBody = () => (
     <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-x-hidden tw:overflow-y-auto tw:px-6">
       {conflicts.length > 0 && onShowConflictOnGraph ? (
@@ -1427,13 +1472,7 @@ const OntologyConceptInspector = ({
         )}>
         {renderRelationAuthoring()}
         {conceptRelations.length > 0 ? (
-          <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
-            {conceptRelations.map((row) =>
-              canEditRelations && row.relation.key === editingRelationKey
-                ? renderRelationEdit(row)
-                : renderRelationRow(row)
-            )}
-          </ul>
+          renderRelationList()
         ) : (
           <InlineEmptyPlaceholder
             data-testid="ontology-concept-empty"
@@ -1511,7 +1550,6 @@ const OntologyConceptInspector = ({
 
   return (
     <OntologyStudioDrawer
-      confirm={confirmDialog}
       testId="ontology-concept-inspector"
       // Unsaved work in the drawer (registered dirty forms) goes through the discard prompt first.
       onInteractOutside={onClose}>

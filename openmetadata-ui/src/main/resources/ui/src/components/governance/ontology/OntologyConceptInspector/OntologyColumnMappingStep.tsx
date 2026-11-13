@@ -305,7 +305,7 @@ const OntologyColumnMappingStep = ({
           className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
           gap={3}
           justify="between">
-          <Typography ellipsis as="span" size="text-sm" weight="semibold">
+          <Typography ellipsis as="span" size="text-sm" weight="medium">
             {getEntityName(asset)}
           </Typography>
           <Typography
@@ -363,12 +363,7 @@ const OntologyColumnMappingStep = ({
                   }
                 />
                 <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-                  <Typography
-                    ellipsis
-                    as="span"
-                    className="tw:font-mono"
-                    size="text-sm"
-                    weight="medium">
+                  <Typography ellipsis as="span" size="text-sm" weight="medium">
                     {name}
                   </Typography>
                   <Typography
@@ -438,7 +433,7 @@ const OntologyColumnMappingStep = ({
           as="h3"
           className="not-prose tw:m-0 tw:text-primary"
           size="text-sm"
-          weight="semibold">
+          weight="medium">
           {t('message.ontology-bind-columns-title', {
             concept: conceptName,
           })}

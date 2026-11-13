@@ -17,6 +17,7 @@ import {
   Button,
   ButtonUtility,
   Divider,
+  Select,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -2410,6 +2411,33 @@ const OntologyExplorerContent: React.FC = () => {
         {allModels.isTooLarge ? (
           <NoDataPlaceholder
             description={t('message.ontology-aggregate-capacity')}
+            footer={
+              <Select
+                aria-label={t('label.select-entity', {
+                  entity: t('label.ontology'),
+                })}
+                className="tw:w-64"
+                data-testid="all-ontologies-capacity-select"
+                items={availableOntologies.map((ontology) => ({
+                  id: ontology.id,
+                  label: getEntityName(ontology),
+                }))}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.ontology'),
+                })}
+                size="sm"
+                onSelectionChange={(ontologyId) =>
+                  guard(() =>
+                    handleScopeChange({
+                      kind: 'ontology',
+                      ontologyId: String(ontologyId),
+                    })
+                  )
+                }>
+                {(item) => <Select.Item id={item.id} label={item.label} />}
+              </Select>
+            }
+            title={t('label.choose-an-ontology-to-view')}
           />
         ) : (
           <SomethingWentWrongPlaceholder

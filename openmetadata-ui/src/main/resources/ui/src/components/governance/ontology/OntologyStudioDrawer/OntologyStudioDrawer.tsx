@@ -12,7 +12,6 @@
  */
 import classNames from 'classnames';
 import { ReactNode, useEffect, useState } from 'react';
-import { UNSAFE_PortalProvider as PortalProvider } from 'react-aria';
 import { createPortal } from 'react-dom';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useOntologyStudioDrawerHost } from './OntologyStudioDrawer.context';
@@ -21,8 +20,6 @@ interface OntologyStudioDrawerProps {
   readonly ariaLabel?: string;
   readonly children: ReactNode;
   readonly className?: string;
-  /** A confirm dialog scoped to this drawer: its scrim and card cover only the panel, per the design. */
-  readonly confirm?: ReactNode;
   readonly testId?: string;
   /**
    * A press anywhere outside the panel closes it, as on the app's other drawers, after the
@@ -59,14 +56,13 @@ const OntologyStudioDrawer = ({
   ariaLabel,
   children,
   className,
-  confirm,
   testId,
   onInteractOutside,
 }: OntologyStudioDrawerProps) => {
   const host = useOntologyStudioDrawerHost();
   // A drawer with unsaved edits asks to discard them rather than closing on a stray click.
   const guard = useOntologyDraftGuard();
-  // State, not a ref: the confirm needs the panel mounted before it can portal into it.
+  // State, not a ref: the outside-press listener needs the mounted panel.
   const [panelElement, setPanelElement] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (!onInteractOutside || !panelElement) {
@@ -97,11 +93,6 @@ const OntologyStudioDrawer = ({
       data-testid={testId}
       ref={setPanelElement}>
       {children}
-      {confirm && panelElement ? (
-        <PortalProvider getContainer={() => panelElement}>
-          {confirm}
-        </PortalProvider>
-      ) : null}
     </aside>
   );
 

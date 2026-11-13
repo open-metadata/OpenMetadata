@@ -213,6 +213,9 @@ it('commits synonyms on comma and Enter and requires two distinct enum chips', a
   fill('new-class-enum-values', 'Pending,');
 
   expect(screen.getByTestId('new-class-add-property')).toBeDisabled();
+  expect(screen.getByTestId('new-class-add-property')).not.toHaveClass(
+    'tw:bg-brand-solid'
+  );
 
   fill('new-class-enum-values', 'Pending,');
 
@@ -224,6 +227,12 @@ it('commits synonyms on comma and Enter and requires two distinct enum chips', a
   });
 
   expect(screen.getByTestId('new-class-add-property')).toBeEnabled();
+  expect(screen.getByTestId('new-class-add-property')).toHaveClass(
+    'tw:bg-brand-solid'
+  );
+  expect(
+    screen.getByTestId('new-class-add-property').querySelector('[data-icon]')
+  ).toBeNull();
 
   fireEvent.click(screen.getByTestId('new-class-add-property'));
 

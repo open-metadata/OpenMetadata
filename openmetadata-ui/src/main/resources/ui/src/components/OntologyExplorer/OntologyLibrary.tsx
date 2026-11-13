@@ -430,7 +430,13 @@ const OntologyLibrary = ({
             </Box>
           </Dialog.Header>
           <OntologyLibraryHeaderDivider />
-          <Dialog.Content>
+          {/* A fixed pane keeps the dialog one height while the category filter changes the list. */}
+          <Dialog.Content
+            className={
+              getLibraryPresentation(Boolean(native), isAiMode) === 'dialog'
+                ? 'tw:h-[60vh]'
+                : undefined
+            }>
             <Box
               className={
                 native
