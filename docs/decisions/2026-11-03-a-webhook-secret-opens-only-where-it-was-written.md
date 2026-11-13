@@ -1,9 +1,9 @@
 # A webhook secret is encrypted for the destination or profile webhook that holds it, and opens only there
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit) · v3 2026-11-13 (every copy of an earlier credential is carried over; the step stops when the configured keys open none; a value that cannot be used is reported when read)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit) · v3 2026-11-13 (every copy of an earlier credential is carried over; the step stops when the configured keys open none; a value that cannot be used is reported on its alert)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `IngestionPipelineMigrationEntryPointTest`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnAHaltUnderForceAndRecordsNothing`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnALaterVersionsPreflightBeforeAnyVersionRuns`, `AlertDiagnosticsStatusTest`, `ProfileWebhookSecretsIT#aProfileWebhookThatCannotSendIsReportedWhenReadAndNeverStored`, `ProfileWebhookSecretsTest#aReadReportsEachWebhookThatDoesNotSendAndAWriteNeverStoresIt`
+- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `IngestionPipelineMigrationEntryPointTest`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnALaterVersionsPreflightBeforeAnyVersionRuns`, `AlertDiagnosticsStatusTest`, `TickChannelsTest#destinationWhoseStoredConfigurationIsUnusableIsNotAttempted`, `ChannelDispatchTest#aTeamWhoseSavedWebhookCannotBeUsedFailsAsOneRecipient`, `WebhookAddressesTest`, `ProfileWebhookSecretsIT#aTeamWhoseWebhookCannotBeUsedIsReportedOnTheAlert`
 - **Related:** ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored, ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids (owned vault keys, a different mechanism that shares `SecretOwner`)
 
 ## Context
@@ -27,8 +27,8 @@ so they can have keys of their own and open only there.
 - `ConfigSecrets` is the only place webhook secrets are encrypted or decrypted, at the fields
   `WebhookSecrets.fieldsIn` names. A stored value that does not open is refused with a 400 that
   names the field to enter again: a test send answers 400, a real send records the destination as
-  not usable with that reason, and a profile webhook whose value does not open is left out of the
-  send while the profile's other webhooks still send.
+  not usable with that reason, and a profile webhook whose value does not open is not sent to and
+  is reported on the alert that targets it, while the profile's other webhooks still send.
   `WebhookRequests` and `OAuth2TokenManager` use the configuration they are given and decrypt
   nothing.
 - The 2.1.0 data step (`WebhookSecretsMigration`) binds what is stored. Its rules are frozen in
@@ -83,7 +83,7 @@ refused with a 400 that names the field, and the same value is still never sent.
 
 Credentials stored before 2.1 keep working after the upgrade, an upgrade run with the wrong Fernet
 keys stops instead of leaving them unusable, and a value that cannot be used is shown where the user
-looks, not only in the recent events of a send.
+looks, on the alert, not only in the recent events of a send.
 
 - A credential stored encrypted before 2.1 at an alert destination's credential fields (the
   bearer signing key, the OAuth2 client id and secret) is carried over to that destination,
@@ -99,8 +99,8 @@ looks, not only in the recent events of a send.
   configured Fernet keys, whether of 2.1.0 (authentication secrets, webhooks) or of an earlier
   version (the 2.0.8 connection secrets). When those credentials are stored and not one of them
   decrypts with any of the configured keys, it stops before anything is written or recorded, so
-  `migrate` runs it all again. It throws a `MigrationHaltException`, which `migrate --force` does
-  not skip either. The check is not run on a database that has no alert table yet, nor once the
+  `migrate` runs it all again. It throws a `MigrationHaltException`; the preflight runs outside
+  the steps `migrate --force` goes on past, so `--force` does not skip it either. The check is not run on a database that has no alert table yet, nor once the
   alert step is recorded (a database without the migration log yet has nothing recorded), nor when
   the operator chose to keep unreadable values, in which case it reads nothing; a credential that a run of the alert step which did not finish already
   carried over counts as one that opens. The error names the alerts holding them and asks
@@ -115,9 +115,20 @@ looks, not only in the recent events of a send.
   `configurationUnusable` set and the field to enter again in `lastFailedReason`, whenever the
   alert is read with `fields=statusDetails`, one alert or a list, before any event reaches it. The
   read only decrypts, the way a send does, and reads the health of every listed alert in one
-  query, so it builds no publisher and resolves no address. A send that failed or waits for a
-  retry keeps its own status and reason, without `configurationUnusable`, so only a stored
-  configuration is shown as one to change; an alert list counts all of them as not sending. A user or team read by id or name, and a team's write responses, report
-  each profile webhook that would be left out of a send in the profile's read-only
-  `subscriptionStatus`, the same way. Both are computed when read: neither is stored, a value sent
-  back is dropped on write, and the schema keeps the profile status out of change events.
+  query, so it builds no publisher and resolves no address.
+- One status says that a stored configuration cannot be used, built in one place
+  (`DestinationStatuses.configurationUnusable`): a send that finds the configuration unusable
+  stores it with the destination's health, and the read builds the same one. Once the
+  destination's secrets open again, a stored one no longer speaks and the destination reads
+  `active` until its next send, so entering the value again clears it at once. A send that failed
+  or waits for a retry keeps its own status and reason, without `configurationUnusable`. An alert
+  list counts every one of them as not sending, except on a switched-off alert or destination,
+  which reads disabled.
+- The status is the server's. `statusDetails` sent with an alert, on a create, a PUT, a PATCH or a
+  batch, is dropped before the alert is compared or stored.
+- A user's or team's profile webhook is reported only on the alerts that send to it. When an alert
+  targets a user or team whose webhook for the channel does not open, nothing is sent to it and
+  the destination reports it as a recipient that failed (`N of M recipients failed. <name>: the
+  saved webhook value cannot be used; enter it again on the team`), beside the recipients that
+  were sent to; a user or team without a webhook is no recipient. The profile has no status of
+  its own, so reading a user or team decrypts nothing.
