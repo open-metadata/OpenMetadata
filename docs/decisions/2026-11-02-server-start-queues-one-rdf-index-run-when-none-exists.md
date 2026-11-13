@@ -74,15 +74,18 @@ after any off period.
   trigger's key only. Deciding the state by comparing it with a run's start time was rejected: any
   successful run after the mark, a partial or non-recreate one included, would read as `READY`
   over a graph that still misses the changes, and two servers' clocks would decide the state.
-- **The mark is written again when the server stops.** A server with RDF off drops its writes for
+- **The mark is written again when the server stops, twice.** A server with RDF off drops its writes for
   as long as it runs. A rebuild that began while it was still up (the new server of a rolling
   restart queues one at its own start) read `failureVersion` after the start mark, so on
   completion it would repair the projection and report `READY` over a graph that misses whatever
   the old server wrote after the rebuild passed it. The stop mark raises `failureVersion` after
   that read, so from the stop onwards the state is `DEGRADED`, whether or not the rebuild has
-  completed. It is a lifecycle hook registered before `ManagedShutdown`, so it runs after the
-  hooks that stop the server's background writers; a scheduled job that is still running is not
-  waited for. Recording on
+  completed. It is written when the stop begins (a Jetty lifecycle listener), because a
+  shutdown that outlasts the platform's grace period is killed before any later hook runs: Jetty
+  waits up to 30 s for open requests and Kubernetes kills a pod after 30 s by default. It is
+  written once more by a lifecycle hook registered before `ManagedShutdown`, so after the hooks
+  that stop the server's background writers; a scheduled job that is still running is not waited
+  for. Recording on
   every skipped write was rejected: it adds a statement to every write of every install that does
   not use RDF.
 - **Only a running server writes the mark, after migration validation, decided from
@@ -117,7 +120,7 @@ trigger does not override the configuration an admin chose.
   that needs RDF-on servers to re-evaluate the trigger while running, which is not built.
 - Until the old server stops, a rebuild that has already completed leaves the state `READY`, and
   a write through the old server in that interval is missing from the graph.
-- A server with RDF off that is killed writes no stop mark. Writes it took after a rebuild passed
+- A server with RDF off that is killed without a stop signal writes no stop mark. Writes it took after a rebuild passed
   them are then missed while the state reads `READY`, until the next full rebuild.
 - The scheduler is shared, so a server with RDF off can pick up the queued run and complete it
   with nothing indexed. The run is flagged and does not count; the state stays `DEGRADED` until

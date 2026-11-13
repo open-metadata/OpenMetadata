@@ -415,8 +415,8 @@ while that server is still up, the state reads `READY` until it stops, and a cha
 in that interval is missing from the graph. Its stop is recorded after the rebuild started, so from
 then on the state is `DEGRADED`. Run a full Recreate once every server has restarted; otherwise the
 weekly run repairs it. Stopping every server before
-starting the new ones avoids the second rebuild. A server that is killed records nothing when it
-stops. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+starting the new ones avoids the second rebuild. A server that is killed without a stop signal
+records nothing. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 
 ## Blue/green rebuilds

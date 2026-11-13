@@ -504,8 +504,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
-    // Registered before ManagedShutdown so it stops after it: hooks stop in reverse order, and the
-    // mark has to follow the hooks that stop this server's background writers.
+    // The mark is written twice at stop. When the stop begins, because a shutdown that outlasts
+    // the platform's grace period is killed before any hook below runs. And after ManagedShutdown
+    // (registered before it; hooks stop in reverse order), to follow the hooks that stop this
+    // server's background writers.
+    environment
+        .lifecycle()
+        .addEventListener(
+            RdfDisabledMark.whenStopBegins(catalogConfig.getRdfConfiguration(), jdbi));
     environment
         .lifecycle()
         .manage(RdfDisabledMark.atStop(catalogConfig.getRdfConfiguration(), jdbi));

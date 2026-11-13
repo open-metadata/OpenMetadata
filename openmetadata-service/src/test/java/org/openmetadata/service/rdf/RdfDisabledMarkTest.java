@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import io.dropwizard.lifecycle.Managed;
+import org.eclipse.jetty.util.component.LifeCycle;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 
@@ -37,6 +38,27 @@ class RdfDisabledMarkTest {
   @Test
   void recordsNothingWhenRdfIsEnabled() {
     RdfDisabledMark.recordIfDisabled(new RdfConfiguration().withEnabled(true), store);
+
+    verify(store, never()).recordRdfDisabled();
+  }
+
+  @Test
+  void aServerWithRdfOffRecordsItWhenItsStopBegins() {
+    final LifeCycle.Listener whenStopBegins =
+        RdfDisabledMark.whenStopBegins(new RdfConfiguration().withEnabled(false), store);
+
+    whenStopBegins.lifeCycleStarting(null);
+    whenStopBegins.lifeCycleStarted(null);
+    verify(store, never()).recordRdfDisabled();
+
+    whenStopBegins.lifeCycleStopping(null);
+    verify(store).recordRdfDisabled();
+  }
+
+  @Test
+  void aServerWithRdfOnRecordsNothingWhenItsStopBegins() {
+    RdfDisabledMark.whenStopBegins(new RdfConfiguration().withEnabled(true), store)
+        .lifeCycleStopping(null);
 
     verify(store, never()).recordRdfDisabled();
   }

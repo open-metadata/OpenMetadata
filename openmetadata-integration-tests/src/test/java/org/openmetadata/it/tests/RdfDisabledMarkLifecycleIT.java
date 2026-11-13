@@ -26,16 +26,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 
 /**
- * A server with RDF off records it in {@code rdf_projection_health} when it starts and again when it
- * stops (#36440). The server here is a second process on the suite's database, so both marks come
- * from its real lifecycle: nothing in this class writes them.
+ * A server with RDF off records it in {@code rdf_projection_health} when it starts, when its stop
+ * begins and at the end of its stop (#36440). The server here is a second process on the suite's
+ * database, so every mark comes from its real lifecycle: nothing in this class writes them.
  */
 @Tag("multi-node")
 class RdfDisabledMarkLifecycleIT {
   private static final Duration SHUTDOWN_GRACE = Duration.ofSeconds(60);
 
   @Test
-  void aServerWithRdfOffRecordsItWhenItStartsAndAgainWhenItStops() {
+  void aServerWithRdfOffRecordsItWhenItStartsAndTwiceWhenItStops() {
     assumeFalse(RdfTestUtils.isRdfEnabled(), "The forked server copies the suite's RDF setting");
     final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
     final long markBeforeStart = health.rdfDisabledAt();
@@ -48,6 +48,8 @@ class RdfDisabledMarkLifecycleIT {
     assertTrue(markAfterStart > markBeforeStart, "the start was not recorded");
     assertTrue(stoppedByItself, "the server had to be killed, so its stop hooks may not have run");
     assertTrue(health.rdfDisabledAt() > markAfterStart, "the stop was not recorded");
-    assertTrue(health.failureVersion() > failureVersionAfterStart, "the stop did not degrade");
+    assertTrue(
+        health.failureVersion() >= failureVersionAfterStart + 2,
+        "the stop was not recorded both when it began and at its end");
   }
 }

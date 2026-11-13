@@ -15,12 +15,13 @@ package org.openmetadata.service.rdf;
 import io.dropwizard.lifecycle.Managed;
 import java.time.Clock;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jetty.util.component.LifeCycle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 
 /**
- * Records, from the configuration, that this server runs with RDF off: once when it starts and
- * again when it stops. The configuration is the source because the tools that load seed data
+ * Records, from the configuration, that this server runs with RDF off: when it starts, when it
+ * begins to stop, and once more at the end of its stop. The configuration is the source because the tools that load seed data
  * without starting a server (the ops CLI) never initialize RDF, and would otherwise report a server
  * that is not running as having it off.
  */
@@ -34,7 +35,28 @@ public final class RdfDisabledMark {
   }
 
   /**
-   * Records the mark again when the server stops. A server with RDF off drops its writes for as
+   * Records the mark as soon as the server begins to stop, before Jetty waits for open requests. A
+   * shutdown that outlasts the platform's grace period is killed before {@link #atStop} runs, and
+   * this mark is already written by then. It still follows any rebuild that began while the server
+   * was up, which is what keeps that rebuild from repairing the projection.
+   */
+  public static LifeCycle.Listener whenStopBegins(final RdfConfiguration config, final Jdbi jdbi) {
+    return whenStopBegins(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()));
+  }
+
+  static LifeCycle.Listener whenStopBegins(
+      final RdfConfiguration config, final RdfLiveWriteStore store) {
+    return new LifeCycle.Listener() {
+      @Override
+      public void lifeCycleStopping(final LifeCycle server) {
+        recordIfDisabled(config, store);
+      }
+    };
+  }
+
+  /**
+   * Records the mark again at the end of the stop, after the writes the server made while it
+   * drained. A server with RDF off drops its writes for as
    * long as it runs, so a rebuild that began while it was still up must not repair the projection:
    * the mark written at start is older than that rebuild, and this one is not.
    */
