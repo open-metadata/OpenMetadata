@@ -12,9 +12,9 @@
  */
 
 import { Box, Button } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { TestCaseFailureReasonType } from '../../../../../generated/tests/testCaseResolutionStatus';
-import { WhiteCheckIcon } from './IncidentStatusIcons';
 
 type FailureReasonChipGroupProps = {
   selectedReason: TestCaseFailureReasonType | null;
@@ -34,7 +34,7 @@ export const FailureReasonChipGroup = ({
           className="tw:rounded-md tw:text-xs"
           color={isSel ? 'primary' : 'secondary'}
           data-testid={`reason-chip-${reason}`}
-          iconLeading={isSel ? WhiteCheckIcon : undefined}
+          iconLeading={isSel ? Check : undefined}
           key={reason}
           size="sm"
           onPress={() => onSelect(reason)}>

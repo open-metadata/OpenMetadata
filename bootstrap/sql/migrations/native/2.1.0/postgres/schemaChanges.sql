@@ -547,6 +547,28 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
 
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, bots and apps, and to teams and users that
+-- are in no domain.
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyAdministrationRule",
+     "description": "Deny changing policies, roles, bots and apps, which control access, whatever their domain",
+     "effect": "deny", "resources": ["app", "bot", "policy", "role"],
+     "operations": ["Create", "Delete", "Deploy", "EditAll"]}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyAdministrationRule"}]'::jsonb);
+
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyTeamAndUserRule",
+     "description": "Deny changing teams and users that are in no domain, and bot users",
+     "effect": "deny", "resources": ["team", "user"],
+     "operations": ["Create", "Delete", "EditAll"], "condition": "noDomain() || isBotUser()"}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyTeamAndUserRule"}]'::jsonb);
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -681,6 +703,16 @@ ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
 ALTER TABLE rdf_projection_health
   ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;
 
+-- When storage maintenance last compacted the serving dataset, so a compaction that stops
+-- happening, for any reason, shows as a degraded projection instead of going unnoticed.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS lastCompactedAt BIGINT NOT NULL DEFAULT 0;
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT INTO rdf_live_write_guard (id) VALUES ('drain-v2') ON CONFLICT (id) DO NOTHING;
+
 -- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
 -- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The existing fromId/relation index
 -- does not cover toEntity, so a pinned domain or team reads all its HAS edges before filtering.
@@ -805,7 +837,6 @@ CREATE TABLE IF NOT EXISTS ontology_release_member (
   PRIMARY KEY (releaseId, memberKind, memberId)
 );
 
-
 CREATE TABLE IF NOT EXISTS ontology_release_event (
   id VARCHAR(36) NOT NULL,
   ontologyId VARCHAR(36) NOT NULL,
@@ -890,3 +921,12 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId)
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
+
+-- MCP SSO sign-in waits for the user to approve the client on a consent page, and the pending
+-- approval lives on the pending request row. The consent feature ships in 2.1.0, so its columns are
+-- added here, where every database upgrading to 2.1 runs them. 2.0.7 shipped without them, and a
+-- database that has run a later 2.0.x never reads the 2.0.7 folder again.
+-- ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ALTER TABLE mcp_pending_auth_requests
+    ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);

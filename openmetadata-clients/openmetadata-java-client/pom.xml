@@ -104,6 +104,12 @@
             <artifactId>oauth2-oidc-sdk</artifactId>
             <version>11.38.1</version>
         </dependency>
+        <!-- oauth2-oidc-sdk declares json-smart 2.6.0; 2.6.1 clears CVE-2026-113602. -->
+        <dependency>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+            <version>2.6.1</version>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

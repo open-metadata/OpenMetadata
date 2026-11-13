@@ -27,14 +27,15 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Expand01,
   Link01,
+  Maximize01,
   Minus,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { OntologyHealthSummary } from './OntologyStudio.utils';
@@ -53,7 +54,8 @@ interface OntologyHealthPanelProps {
   readonly health: OntologyHealthSummary;
   readonly isolatedTermCount?: number;
   readonly placement?: 'floating' | 'sidebar';
-  readonly onConnect: (node: OntologyNode) => void;
+  /** Omitted for viewers: connecting a term opens the editor, which they cannot use. */
+  readonly onConnect?: (node: OntologyNode) => void;
 }
 
 type HealthPanelView = 'minimized' | 'summary' | 'open';
@@ -68,9 +70,11 @@ function getHealthPanelLayout(
   view: HealthPanelView
 ) {
   const isSidebar = placement === 'sidebar';
-  const positionClass = isSidebar
-    ? 'tw:relative tw:h-full tw:shrink-0'
-    : classNames(PANEL_POSITION_CLASS, isRaised && RAISED_PANEL_CLASS);
+  const isMinimized = view === 'minimized';
+  const positionClass =
+    isSidebar && !isMinimized
+      ? 'tw:relative tw:h-full tw:shrink-0'
+      : classNames(PANEL_POSITION_CLASS, isRaised && RAISED_PANEL_CLASS);
 
   return {
     cardClass: classNames(
@@ -80,7 +84,7 @@ function getHealthPanelLayout(
         ? 'tw:max-h-full tw:max-w-none tw:rounded-none tw:border-y-0 tw:border-r-0 tw:shadow-none!'
         : 'tw:max-h-[calc(100%-2rem)] tw:max-w-[calc(100%-2rem)]'
     ),
-    isMinimized: !isSidebar && view === 'minimized',
+    isMinimized,
     isOpen: isSidebar || view === 'open',
     isSidebar,
     positionClass,
@@ -97,11 +101,23 @@ const OntologyHealthPanel = ({
 }: OntologyHealthPanelProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const [view, setView] = useState<HealthPanelView>('summary');
-  const { cardClass, isMinimized, isOpen, isSidebar, positionClass } =
-    getHealthPanelLayout(placement, isRaised, view);
+  const { preferences, setPreference } = useCurrentUserPreferences();
+  const [view, setView] = useState<HealthPanelView>(
+    preferences.isOntologyHealthMinimized ? 'minimized' : 'summary'
+  );
+  const changeView = (next: HealthPanelView) => {
+    if ((next === 'minimized') !== (view === 'minimized')) {
+      setPreference({ isOntologyHealthMinimized: next === 'minimized' });
+    }
+    setView(next);
+  };
   const isolatedCount = isolatedTermCount ?? health.isolatedTerms.length;
   const hasIsolated = isolatedCount > 0;
+  const layout = getHealthPanelLayout(placement, isRaised, view);
+  const { cardClass, isMinimized, isSidebar, positionClass } = layout;
+  // With every term connected the summary already says so; an empty list adds nothing.
+  const canExpand = isSidebar || hasIsolated;
+  const isOpen = layout.isOpen && canExpand;
   const isolatedLabel = `${isolatedCount} ${t(
     'label.isolated'
   ).toLocaleLowerCase()}`;
@@ -123,9 +139,9 @@ const OntologyHealthPanel = ({
         aria-label={`${t('label.expand')} ${t('label.ontology-health')}`}
         color="tertiary"
         data-testid="ontology-health-restore"
-        iconTrailing={Expand01}
+        iconTrailing={Maximize01}
         size="sm"
-        onPress={() => setView('summary')}>
+        onPress={() => changeView('summary')}>
         <span className="tw:flex tw:items-center tw:gap-2.5">
           {t('label.health')}
           {connectedBar('tw:h-1.5 tw:w-11')}
@@ -153,7 +169,10 @@ const OntologyHealthPanel = ({
 
   const renderTitleRow = () => (
     <div className="tw:flex tw:items-center tw:gap-2">
-      <Typography className="tw:text-primary" size="text-sm" weight="semibold">
+      <Typography
+        className="tw:whitespace-nowrap tw:text-primary"
+        size="text-sm"
+        weight="semibold">
         {t('label.ontology-health')}
       </Typography>
       <Badge
@@ -162,56 +181,66 @@ const OntologyHealthPanel = ({
         type="pill-color">
         {t(hasIsolated ? 'label.attention' : 'label.healthy')}
       </Badge>
-      {isSidebar ? null : (
-        <>
-          <span className="tw:flex-1" />
-          <ButtonUtility
-            color="tertiary"
-            icon={Minus}
-            size="xs"
-            tooltip={t('label.minimize')}
-            onClick={() => setView('minimized')}
-          />
-          <ButtonUtility
-            color="tertiary"
-            icon={isOpen ? ChevronDown : ChevronUp}
-            size="xs"
-            tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
-            onClick={() => setView(isOpen ? 'summary' : 'open')}
-          />
-        </>
+      <span className="tw:flex-1" />
+      <ButtonUtility
+        icon={Minus}
+        size="lg"
+        tooltip={t('label.minimize')}
+        onClick={() => changeView('minimized')}
+      />
+      {isSidebar || !canExpand ? null : (
+        <ButtonUtility
+          icon={isOpen ? ChevronDown : ChevronUp}
+          size="lg"
+          tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
+          onClick={() => setView(isOpen ? 'summary' : 'open')}
+        />
       )}
     </div>
   );
 
-  const renderIsolatedSummary = () => (
-    <div className="tw:flex tw:items-center tw:gap-2">
-      {isAiMode && hasIsolated ? (
-        <span
-          aria-hidden="true"
-          className="tw:size-2 tw:shrink-0 tw:rounded-xs tw:bg-utility-warning-300"
-        />
-      ) : null}
-      <Typography className="tw:flex-1" size="text-xs">
-        <span
-          className="tw:font-semibold tw:text-primary"
-          data-testid="ontology-isolated-count">
-          {isolatedCount}
-        </span>{' '}
-        {t('label.isolated-term-plural').toLocaleLowerCase()}
-      </Typography>
-      {hasIsolated ? (
-        <Button
-          color="link-color"
-          data-testid="ontology-health-review"
-          iconTrailing={ChevronRight}
-          size="xs"
-          onPress={() => setView('open')}>
-          {t('label.review')}
-        </Button>
-      ) : null}
-    </div>
-  );
+  const renderIsolatedSummary = () => {
+    if (!hasIsolated) {
+      // Expanded, the list already says every term is connected.
+      return isOpen ? null : (
+        <Typography
+          className="tw:text-success-primary"
+          data-testid="ontology-health-all-connected"
+          size="text-sm">
+          {t('message.all-ontology-terms-connected')}
+        </Typography>
+      );
+    }
+
+    return (
+      <div className="tw:flex tw:items-center tw:gap-2">
+        {isAiMode && hasIsolated ? (
+          <span
+            aria-hidden="true"
+            className="tw:size-2 tw:shrink-0 tw:rounded-xs tw:bg-utility-warning-300"
+          />
+        ) : null}
+        <Typography className="tw:flex-1" size="text-xs">
+          <span
+            className="tw:font-semibold tw:text-primary"
+            data-testid="ontology-isolated-count">
+            {isolatedCount}
+          </span>{' '}
+          {t('label.isolated-term-plural').toLocaleLowerCase()}
+        </Typography>
+        {hasIsolated ? (
+          <Button
+            color="link-color"
+            data-testid="ontology-health-review"
+            iconTrailing={ChevronRight}
+            size="xs"
+            onPress={() => setView('open')}>
+            {t('label.review')}
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
 
   const renderIsolatedTerm = (term: OntologyNode) => (
     <li
@@ -232,15 +261,17 @@ const OntologyHealthPanel = ({
           {t('message.no-relations-yet')}
         </Typography>
       </div>
-      <Button
-        aria-label={`${t('label.connect')} ${term.label}`}
-        color="secondary"
-        data-testid={`ontology-connect-${term.id}`}
-        iconLeading={isAiMode ? Plus : Link01}
-        size="xs"
-        onPress={() => onConnect(term)}>
-        {t('label.connect')}
-      </Button>
+      {onConnect ? (
+        <Button
+          aria-label={`${t('label.connect')} ${term.label}`}
+          color="secondary"
+          data-testid={`ontology-connect-${term.id}`}
+          iconLeading={isAiMode ? Plus : Link01}
+          size="xs"
+          onPress={() => onConnect(term)}>
+          {t('label.connect')}
+        </Button>
+      ) : null}
     </li>
   );
 

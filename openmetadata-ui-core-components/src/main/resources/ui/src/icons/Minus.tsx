@@ -24,15 +24,15 @@ export const Minus: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M4.167 10h11.667" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M16 10H4" stroke="currentColor" strokeWidth={1.8} />
   </svg>
 );
 Minus.displayName = 'Minus';

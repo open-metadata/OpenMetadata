@@ -20,7 +20,8 @@ import { redirectToHomePage } from '../../../utils/common';
 import { searchDomainInDropdownTree } from '../../../utils/domainIsolationUtils';
 
 // Issue #24180 — a user holding the seeded DomainOnlyAccessRole must only see their own
-// domains in the navbar domain dropdown; admins see every domain plus the "All Domains" option.
+// domains in the navbar domain dropdown; admins see every domain. Both get "All Domains" (#36483),
+// which only clears the filter: what a restricted user can see stays with their role.
 const adminUser = new UserClass();
 const restrictedUser = new UserClass();
 const ownedDomainA = new Domain();
@@ -131,7 +132,7 @@ test('Restricted user sees only their own domains in the navbar dropdown', async
 
   await expect(
     restrictedUserPage.getByTestId('tree-node-All Domains')
-  ).toHaveCount(0);
+  ).toBeVisible();
   await expect(
     restrictedUserPage.getByTestId(
       `tree-node-${ownedDomainA.responseData.fullyQualifiedName}`

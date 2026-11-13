@@ -18,15 +18,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  FailedTests,
+  Inherit,
   MinusCircle,
   SuccessfulTests,
+  TotalOccurrences,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
@@ -188,14 +188,7 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return (
-        <DefaultIcon
-          className="sla-icon"
-          fill="currentColor"
-          height="1em"
-          width="1em"
-        />
-      );
+      return <TotalOccurrences className="sla-icon" size={SLA_ICON_SIZE} />;
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {
@@ -212,7 +205,7 @@ const ContractSLA: React.FC<{
     }
 
     return met === false ? (
-      <FailedTests
+      <XCircle
         aria-hidden={false}
         aria-label={t('label.failed')}
         className="sla-icon tw:text-fg-error-primary"
@@ -244,7 +237,10 @@ const ContractSLA: React.FC<{
         entity: t('label.service-level-agreement'),
       })}
       triggerClassName="tw:inline-flex">
-      <InheritIcon className="inherit-icon tw:cursor-pointer" width={14} />
+      <Inherit
+        className="inherit-icon tw:cursor-pointer tw:text-utility-blue-700"
+        size={14}
+      />
     </Tooltip>
   ) : null;
 

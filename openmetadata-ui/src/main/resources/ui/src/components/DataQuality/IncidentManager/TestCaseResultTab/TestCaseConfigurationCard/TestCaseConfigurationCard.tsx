@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Suggestions } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
-import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import {
   ConfigurationParameterRow,
   TestCaseConfigurationCardProps,
@@ -146,9 +150,10 @@ function DynamicAssertionCallout() {
       className="tw:gap-2.5 tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2.5"
       data-testid="dynamic-assertion">
       {/* The sparkle matches the title colour; the asset draws in currentColor. */}
-      <StarIcon
+      <Suggestions
         aria-hidden
-        className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-utility-blue-700"
+        className="tw:shrink-0 tw:text-utility-blue-700"
+        size={18}
       />
       <div>
         <Typography
@@ -247,9 +252,10 @@ const TestCaseConfigurationCard = ({
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-parameter-icon"
-            title={t('label.edit-entity', { entity: t('label.parameter') })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: t('label.parameter') })}
             onClick={onEditParameter}
           />
         )}

@@ -27,12 +27,15 @@ import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.WebhookRecipient;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 
 /**
  * Webhook addresses of one channel: the webhook a user or a team keeps on their profile for it,
@@ -48,12 +51,24 @@ public final class WebhookAddresses implements AddressDirectory {
 
   @Override
   public Recipient ofUser(User user) {
-    return WebhookRecipient.ofProfile(user.getName(), user.getProfile(), onProfile);
+    return ofProfile(
+        user.getName(),
+        new ProfileWebhookSecrets.Holder(Entity.USER, user.getId()),
+        user.getProfile());
   }
 
   @Override
   public Recipient ofTeam(Team team) {
-    return WebhookRecipient.ofProfile(team.getName(), team.getProfile(), onProfile);
+    return ofProfile(
+        team.getName(),
+        new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId()),
+        team.getProfile());
+  }
+
+  // A profile webhook whose secrets do not open is left out, as one without an address.
+  private Recipient ofProfile(String name, ProfileWebhookSecrets.Holder holder, Profile profile) {
+    return WebhookRecipient.ofProfile(
+        name, ProfileWebhookSecrets.decrypted(holder, profile), onProfile);
   }
 
   @Override

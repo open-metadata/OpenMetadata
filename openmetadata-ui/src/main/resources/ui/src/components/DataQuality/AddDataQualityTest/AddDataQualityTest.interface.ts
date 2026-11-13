@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { Table } from '../../../generated/entity/data/table';
-import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
-import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
 export interface AddDataQualityTestProps {
   table: Table;
@@ -30,13 +27,6 @@ export interface TestCaseFormProps {
   table: Table;
 }
 
-export interface TestSuiteIngestionProps {
-  testSuite: TestSuite;
-  ingestionPipeline?: IngestionPipeline;
-  onCancel?: () => void;
-  onViewServiceClick?: () => void;
-}
-
 export type TestSuiteIngestionDataType = {
   cron?: string;
   enableDebugLog?: boolean;
@@ -45,23 +35,6 @@ export type TestSuiteIngestionDataType = {
   selectAllTestCases?: boolean;
   raiseOnError?: boolean;
 };
-
-export interface AddTestSuitePipelineProps {
-  initialData?: Partial<TestSuiteIngestionDataType>;
-  isLoading: boolean;
-  testSuite?: TestSuite;
-  onSubmit: (data: TestSuiteIngestionDataType) => void;
-  includePeriodOptions?: string[];
-  onCancel?: () => void;
-  testCaseParams?: ListTestCaseParamsBySearch;
-}
-
-export interface RightPanelProps {
-  data: {
-    title: string;
-    body: string | ReactNode;
-  };
-}
 
 export type SelectTestSuiteType = {
   name?: string;

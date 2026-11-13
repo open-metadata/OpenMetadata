@@ -55,7 +55,7 @@ const PlatformSettingsLanding = ({
                 open();
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"

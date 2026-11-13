@@ -39,26 +39,25 @@ import { ODPSImportModalProps } from './ODPSImportModal.interface';
 
 const DEFAULT_STRATEGY: ODPSImportStrategy = 'merge';
 
-// The ODPS product name lives at product.details.<lang>.name. Parse the
-// document and read that path instead of regex-matching the first `name:`
-// key (which can hit an SLA dimension, a tag, etc.). The backend selects the
-// `en` details by default, falling back to the first declared language.
-const extractOdpsProductName = (yamlContent: string): string | undefined => {
-  let name: string | undefined;
+// The import identifies the target product by product.details.<lang>.productID
+// (the backend selects the `en` details, falling back to the first declared
+// language). Parse the document and read that path rather than regex-matching.
+const extractOdpsProductId = (yamlContent: string): string | undefined => {
+  let productId: string | undefined;
   try {
     const doc = yamlLoad(yamlContent) as {
-      product?: { details?: Record<string, { name?: string }> };
+      product?: { details?: Record<string, { productID?: string }> };
     };
     const details = doc?.product?.details;
     if (details) {
       const detail = details.en ?? Object.values(details)[0];
-      name = detail?.name;
+      productId = detail?.productID;
     }
   } catch {
-    name = undefined;
+    productId = undefined;
   }
 
-  return typeof name === 'string' ? name.trim() : undefined;
+  return typeof productId === 'string' ? productId.trim() : undefined;
 };
 
 const ODPSImportModal = ({
@@ -141,34 +140,34 @@ const ODPSImportModal = ({
       return;
     }
     // The ODPS update endpoint identifies the target data product by the
-    // `name` field inside the YAML body. When this modal is opened from a
-    // specific data product page, a YAML whose name doesn't match would
-    // silently overwrite a sibling product. Guard against that here.
+    // productID inside the YAML body. When this modal is opened from a specific
+    // data product page, a YAML whose productID points elsewhere would update a
+    // different product (or create a new one). Guard against that here.
     if (existingDataProduct?.name) {
-      const yamlName = extractOdpsProductName(yamlContent);
-      // The backend exports the ODPS `name` from displayName ?? name
-      // (ODPSConverter.buildProductDetails), so an exported YAML round-trips
-      // with the product's displayName, while a hand-written YAML may use the
-      // internal name. Accept either; block otherwise.
-      const expectedNames = [
-        existingDataProduct.displayName,
-        existingDataProduct.name,
-      ].filter(Boolean);
+      const yamlProductId = extractOdpsProductId(yamlContent);
+      // Export writes the product's FQN as productID; a hand-written YAML may use
+      // the name. Only an exact match is accepted.
       const existingName =
-        existingDataProduct.displayName ?? existingDataProduct.name;
-      // A YAML with no readable product.details.<lang>.name can't be verified
-      // against this product, yet the backend would still resolve — and
-      // overwrite — whichever product the document maps to. Treat an
-      // unreadable name as a mismatch rather than letting an undefined result
-      // bypass the guard.
-      if (!yamlName) {
+        existingDataProduct.fullyQualifiedName ?? existingDataProduct.name;
+      // An unreadable productID can't be verified against this product, so treat
+      // it as a mismatch rather than letting it bypass the guard.
+      if (!yamlProductId) {
         showErrorToast(t('message.odps-yaml-name-missing', { existingName }));
 
         return;
       }
-      if (!expectedNames.includes(yamlName)) {
+      const matchesCurrentProduct = [
+        existingDataProduct.fullyQualifiedName,
+        existingDataProduct.name,
+      ]
+        .filter(Boolean)
+        .includes(yamlProductId);
+      if (!matchesCurrentProduct) {
         showErrorToast(
-          t('message.odps-yaml-name-mismatch', { yamlName, existingName })
+          t('message.odps-yaml-name-mismatch', {
+            yamlName: yamlProductId,
+            existingName,
+          })
         );
 
         return;

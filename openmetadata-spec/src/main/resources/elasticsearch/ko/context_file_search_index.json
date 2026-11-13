@@ -328,6 +328,9 @@
       "processingStatus": {
         "type": "keyword"
       },
+      "neverExtracted": {
+        "type": "boolean"
+      },
       "sourceType": {
         "type": "keyword"
       },
@@ -644,15 +647,69 @@
       },
       "descriptionSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Ingested": {
+            "type": "integer"
+          },
+          "Suggested": {
+            "type": "integer"
+          }
+        }
       },
       "tagSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "tierSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "upstreamLineage": {
         "properties": {

@@ -10,8 +10,10 @@ import static org.openmetadata.service.security.SecurityUtil.validateEmailVerifi
 import com.auth0.jwt.interfaces.Claim;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
 public class JwtIdentityResolver {
@@ -71,12 +73,23 @@ public class JwtIdentityResolver {
       }
     }
 
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    String userName = resolveLegacyUserName(claims, internallyIssued);
     String email = resolveLegacyEmail(claims, internallyIssued);
     // The legacy path resolves identity from the claims too, so it needs the same guard: a
     // provider that says the address is unverified must not reach an account through it either.
     validateEmailVerifiedClaim(claims, email);
     return new ResolvedIdentity(userName, email, false);
+  }
+
+  /**
+   * The principal claims describe the provider's tokens. Ours name the account they were minted
+   * for, and an email's local part can belong to another account.
+   */
+  private String resolveLegacyUserName(Map<String, Claim> claims, boolean internallyIssued) {
+    Optional<String> mintedUserName =
+        internallyIssued ? JWTTokenGenerator.mintedUserName(claims) : Optional.empty();
+    return mintedUserName.orElseGet(
+        () -> findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims));
   }
 
   private String resolveLegacyEmail(Map<String, Claim> claims, boolean internallyIssued) {

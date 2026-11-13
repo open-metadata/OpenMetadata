@@ -2255,10 +2255,6 @@ om:attachments a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "attachments" .
 
-om:authenticationMechanism a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "authenticationMechanism" .
-
 om:autoApply a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "autoApply" .
@@ -2402,10 +2398,6 @@ om:conceptType a rdf:Property ;
 om:concurrency a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "concurrency" .
-
-om:connection a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "connection" .
 
 om:connectionConfig a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -2827,10 +2819,6 @@ om:hasColumnLineage a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "hasColumnLineage" .
 
-om:hasConnection a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "hasConnection" .
-
 om:hasConstrainedColumn a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "hasConstrainedColumn" .
@@ -3032,17 +3020,9 @@ om:hasServer a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "hasServer" .
 
-om:hasServerConnection a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "hasServerConnection" .
-
 om:hasServiceType a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "hasServiceType" .
-
-om:hasSourceConfig a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "hasSourceConfig" .
 
 om:hasStartDate a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3369,6 +3349,10 @@ om:namespaces a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "namespaces" .
 
+om:neverExtracted a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "neverExtracted" .
+
 om:nextDeadline a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "nextDeadline" .
@@ -3385,6 +3369,10 @@ om:odcsElementExtensions a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "odcsElementExtensions" .
 
+om:odcsPreservedFields a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "odcsPreservedFields" .
+
 om:odcsQualityRules a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "odcsQualityRules" .
@@ -3392,10 +3380,6 @@ om:odcsQualityRules a rdf:Property ;
 om:ontology a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ontology" .
-
-om:openMetadataServerConnection a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "openMetadataServerConnection" .
 
 om:operations a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3873,6 +3857,10 @@ om:superClassOf a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "superClassOf" .
 
+om:superProperties a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "superProperties" .
+
 om:supersededBy a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "supersededBy" .
@@ -4138,6 +4126,10 @@ om:ontologyIri a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ontologyIri" .
 
+om:approvalBasis a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "approvalBasis" .
+
 om:releaseRevision a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "releaseRevision" .
@@ -4205,3 +4197,9 @@ om:unitAnnotation a owl:AnnotationProperty ;
 om:identifierIntent a owl:AnnotationProperty ;
     rdfs:label "identifier intent" ;
     rdfs:comment "Authored identifier intent, without asserting functionality, an OWL key or source-data uniqueness." .
+
+om:tableSharding a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
+    rdfs:domain om:Table ;
+    rdfs:range xsd:string ;
+    rdfs:label "tableSharding" .

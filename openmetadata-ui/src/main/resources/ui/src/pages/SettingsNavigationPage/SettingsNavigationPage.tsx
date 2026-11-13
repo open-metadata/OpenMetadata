@@ -103,31 +103,47 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
     );
   };
 
-  const renderNode = (node: NavigationTreeNode): React.ReactNode => (
-    <Tree.Item id={node.key} key={node.key} textValue={t(node.title)}>
-      <Tree.ItemContent className="tw:min-h-12" icon={node.icon}>
-        <Box align="center" className="tw:flex-1" gap={2} justify="between">
-          <ButtonUtility
-            aria-label={t('label.move')}
-            className="tw:invisible tw:group-hover/tree-item:visible tw:group-focus-within/tree-item:visible"
-            color="tertiary"
-            icon={DotsGrid}
-            size="xs"
-            slot="drag"
-          />
-          <span className="tw:flex-1">{t(node.title)}</span>
-          <Toggle
-            data-testid={`navigation-switch-${node.key}`}
-            isSelected={!hiddenKeys.includes(node.key as string)}
-            onChange={(isSelected) =>
-              handleRemoveToggle(isSelected, node.key as string)
-            }
-          />
-        </Box>
-      </Tree.ItemContent>
-      {node.children?.map(renderNode)}
-    </Tree.Item>
-  );
+  const renderNode = (node: NavigationTreeNode): React.ReactNode => {
+    const Icon = node.icon;
+
+    return (
+      <Tree.Item id={node.key} key={node.key} textValue={t(node.title)}>
+        <Tree.ItemContent className="tw:min-h-12">
+          {/* The icon and the hover group live on our own row content, not on core Tree internals. */}
+          <Box
+            align="center"
+            className="tw:group/nav-row tw:flex-1"
+            gap={3}
+            justify="between">
+            <ButtonUtility
+              aria-label={t('label.move')}
+              // Ahead of the icon so the hidden handle never sits between icon and label.
+              className="tw:invisible tw:group-hover/nav-row:visible tw:group-focus-within/nav-row:visible"
+              color="tertiary"
+              icon={DotsGrid}
+              size="xs"
+              slot="drag"
+            />
+            {Icon && (
+              <Icon
+                aria-hidden="true"
+                className="tw:size-6 tw:shrink-0 tw:text-fg-secondary"
+              />
+            )}
+            <span className="tw:flex-1">{t(node.title)}</span>
+            <Toggle
+              data-testid={`navigation-switch-${node.key}`}
+              isSelected={!hiddenKeys.includes(node.key as string)}
+              onChange={(isSelected) =>
+                handleRemoveToggle(isSelected, node.key as string)
+              }
+            />
+          </Box>
+        </Tree.ItemContent>
+        {node.children?.map(renderNode)}
+      </Tree.Item>
+    );
+  };
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
@@ -149,8 +165,8 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
           </Grid.Item>
 
           <Grid.Item className="layout-column" span={24}>
-            <Card className="custom-navigation-tree-container" variant="ghost">
-              <Card.Header title={t('label.navigation')} />
+            <Card className="custom-navigation-tree-container">
+              <Card.Header title={t('label.navigation-menu-plural')} />
               <Card.Content>
                 <Tree
                   aria-label={t('label.navigation')}

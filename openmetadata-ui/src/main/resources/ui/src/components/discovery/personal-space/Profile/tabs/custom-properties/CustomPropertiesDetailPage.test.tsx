@@ -14,23 +14,31 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { useState } from 'react';
+import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import type { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
 
-// The add button is pushed up to the modal header, so render it alongside.
+// The add button is pushed up to the modal header and the entity type is
+// owned by the panel, so stand in for both.
 const DetailPageWithHeader = (
-  props: Omit<CustomPropertiesDetailPageProps, 'onSetHeaderActions'>
+  props: Omit<
+    CustomPropertiesDetailPageProps,
+    'onSetHeaderActions' | 'onEntityTypeChange'
+  >
 ) => {
   const [headerActions, setHeaderActions] = useState<ReactNode>();
+  const [entityType, setEntityType] = useState(props.entityType);
 
   return (
     <>
       {headerActions}
       <CustomPropertiesDetailPage
         {...props}
+        entityType={entityType}
+        onEntityTypeChange={setEntityType}
         onSetHeaderActions={setHeaderActions}
       />
     </>
@@ -63,15 +71,14 @@ const mockEntityType = {
   customProperties: [mockProperty1, mockProperty2],
 };
 
-const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockEntityType);
 const mockDeleteCustomPropertyByName = jest
   .fn()
   .mockResolvedValue(mockEntityType);
-const mockGetEntityPermission = jest.fn().mockResolvedValue({
+const fullPermission = {
   Create: true,
   EditAll: true,
   Delete: true,
-});
+} as unknown as OperationPermission;
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -79,19 +86,9 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
   deleteCustomPropertyByName: (fqn: string, name: string) =>
     mockDeleteCustomPropertyByName(fqn, name),
 }));
-
-jest.mock(
-  '../../../../../../context/PermissionProvider/PermissionProvider',
-  () => ({
-    usePermissionProvider: () => ({
-      getEntityPermission: mockGetEntityPermission,
-    }),
-  })
-);
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
   ...jest.requireActual('../../../../../../utils/PermissionsUtils'),
@@ -312,16 +309,11 @@ describe('CustomPropertiesDetailPage', () => {
     entityType: mockEntityType as unknown as Type,
     onAddProperty: mockOnAddProperty,
     onEditProperty: mockOnEditProperty,
+    permission: fullPermission,
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetTypeByFQN.mockResolvedValue(mockEntityType);
-    mockGetEntityPermission.mockResolvedValue({
-      Create: true,
-      EditAll: true,
-      Delete: true,
-    });
   });
 
   it('renders the component with table', async () => {
@@ -359,9 +351,12 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('hides Add Property button when user lacks EditAll permission', async () => {
-    mockGetEntityPermission.mockResolvedValueOnce({ EditAll: false });
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={{ EditAll: false } as unknown as OperationPermission}
+      />
+    );
 
     await waitFor(() => {
       expect(
@@ -455,17 +450,6 @@ describe('CustomPropertiesDetailPage', () => {
     expect(mockDeleteCustomPropertyByName).not.toHaveBeenCalled();
   });
 
-  it('shows error toast when getTypeByFQN fails', async () => {
-    const mockError = new Error('API Error');
-    mockGetTypeByFQN.mockRejectedValueOnce(mockError);
-
-    render(<DetailPageWithHeader {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(mockError);
-    });
-  });
-
   it('drops the property locally when it was already removed elsewhere', async () => {
     mockDeleteCustomPropertyByName.mockResolvedValueOnce(undefined);
 
@@ -515,11 +499,11 @@ describe('CustomPropertiesDetailPage', () => {
 
   it('shows empty placeholder when entity has no custom properties', async () => {
     const emptyEntityType = { ...mockEntityType, customProperties: [] };
-    mockGetTypeByFQN.mockResolvedValueOnce(emptyEntityType);
 
     render(
       <DetailPageWithHeader
         entityType={emptyEntityType as unknown as Type}
+        permission={fullPermission}
         onAddProperty={mockOnAddProperty}
         onEditProperty={mockOnEditProperty}
       />
@@ -531,13 +515,18 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('passes the edit and delete permissions to the table', async () => {
-    mockGetEntityPermission.mockResolvedValueOnce({
-      Create: false,
-      EditAll: false,
-      Delete: true,
-    });
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={
+          {
+            Create: false,
+            EditAll: false,
+            Delete: true,
+          } as unknown as OperationPermission
+        }
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();

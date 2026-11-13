@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   Category,
   PaletteKey,
@@ -215,6 +216,60 @@ describe('RelationshipTypePicker', () => {
     ).not.toBeInTheDocument();
   });
 
+  describe('server clash warning', () => {
+    const GROUPS = [
+      {
+        id: 'core',
+        title: 'Core',
+        options: [
+          { id: 'subClassOf', label: 'is a', paletteKey: PaletteKey.Blue },
+        ],
+      },
+    ];
+    const CLASH = 'Customer would also be a Supplier, which are disjoint.';
+
+    it('shows the clash beside the choice and writes only after Add anyway', async () => {
+      const onSelect = jest.fn();
+      render(
+        <RelationshipTypePicker
+          groups={GROUPS}
+          sourceLabel="Customer"
+          targetLabel="Supplier"
+          warnRelation={async () => CLASH}
+          onSelect={onSelect}
+        />
+      );
+      fireEvent.click(screen.getByTestId('relation-type-subClassOf'));
+
+      expect(
+        await screen.findByTestId('relation-clash-warning')
+      ).toHaveTextContent(CLASH);
+      expect(onSelect).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('relation-clash-continue'));
+
+      expect(onSelect).toHaveBeenCalledWith('subClassOf');
+    });
+
+    it('selects at once when the server finds no clash', async () => {
+      const onSelect = jest.fn();
+      render(
+        <RelationshipTypePicker
+          groups={GROUPS}
+          sourceLabel="Customer"
+          targetLabel="Party"
+          warnRelation={async () => undefined}
+          onSelect={onSelect}
+        />
+      );
+      fireEvent.click(screen.getByTestId('relation-type-subClassOf'));
+
+      await waitFor(() => expect(onSelect).toHaveBeenCalledWith('subClassOf'));
+
+      expect(screen.queryByTestId('relation-clash-warning')).toBeNull();
+    });
+  });
+
   it('offers the given groups without loading glossary relationship types', () => {
     const onSelect = jest.fn();
     render(
@@ -263,15 +318,15 @@ describe('RelationshipTypePicker', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers unmatched search text as a new relationship type', () => {
+  it('always offers a new link, named by the search text when there is one', () => {
     const onSelect = jest.fn();
     render(
       <RelationshipTypePicker
         canCreateType
         groups={[
           {
-            id: 'core',
-            title: 'Core',
+            id: 'hierarchy',
+            title: 'Hierarchy',
             options: [
               { id: 'subClassOf', label: 'is a', paletteKey: PaletteKey.Blue },
             ],
@@ -283,20 +338,142 @@ describe('RelationshipTypePicker', () => {
       />
     );
 
-    fireEvent.change(screen.getByTestId('relation-type-search'), {
-      target: { value: 'is a' },
-    });
+    expect(screen.getByTestId('relation-type-create')).toHaveTextContent(
+      'label.new-link'
+    );
 
-    expect(
-      screen.queryByTestId('relation-type-create')
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('relation-type-create'));
+
+    expect(onSelect).toHaveBeenLastCalledWith('new:');
 
     fireEvent.change(screen.getByTestId('relation-type-search'), {
       target: { value: ' ships to ' },
     });
     fireEvent.click(screen.getByTestId('relation-type-create'));
 
-    expect(onSelect).toHaveBeenCalledWith('new:ships to');
+    expect(onSelect).toHaveBeenLastCalledWith('new:ships to');
+  });
+
+  it('hides the new link without the right to create one', () => {
+    renderPicker();
+
+    expect(
+      screen.queryByTestId('relation-type-create')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the inverse with every option, and a description as a truncated gloss with its full text on hover', async () => {
+    render(
+      <RelationshipTypePicker
+        groups={[
+          {
+            id: 'relationships',
+            title: 'Relationships',
+            options: [
+              {
+                description: 'a part or component',
+                id: 'partOf',
+                inverseLabel: 'has part',
+                label: 'part of',
+                paletteKey: PaletteKey.Blue,
+              },
+              {
+                description: 'governs',
+                id: 'governs',
+                inverseLabel: 'governed by',
+                label: 'governs',
+                paletteKey: PaletteKey.Blue,
+              },
+            ],
+          },
+        ]}
+        sourceLabel="Order"
+        targetLabel="Customer"
+        onSelect={jest.fn()}
+      />
+    );
+
+    const gloss = screen.getByTestId('relation-type-gloss-partOf');
+
+    expect(gloss).toHaveTextContent('a part or component');
+    expect(gloss).toHaveClass('tw:truncate');
+
+    // react-aria opens hover tooltips only after it has seen a pointer move.
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByTestId('relation-type-partOf'));
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'a part or component'
+    );
+    expect(screen.getByTestId('relation-type-partOf')).toHaveTextContent(
+      'label.inverse: has part'
+    );
+    // A description that only repeats the label is not a gloss.
+    expect(
+      screen.queryByTestId('relation-type-gloss-governs')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('relation-type-governs')).toHaveTextContent(
+      'label.inverse: governed by'
+    );
+  });
+
+  it('flags relations whose domain or range leaves out the ends as other links that can still be chosen', () => {
+    const onSelect = jest.fn();
+    render(
+      <RelationshipTypePicker
+        groups={[
+          {
+            id: 'relationships',
+            title: 'Relationships',
+            options: [
+              {
+                domain: ['order'],
+                id: 'placedBy',
+                label: 'placed by',
+                paletteKey: PaletteKey.Blue,
+                range: ['customer'],
+              },
+              {
+                domain: ['resource'],
+                id: 'hasIdentifier',
+                label: 'has identifier',
+                paletteKey: PaletteKey.Blue,
+                range: ['identifier'],
+                scopeLabel: 'Resource → Identifier',
+              },
+            ],
+          },
+        ]}
+        sourceId="order"
+        sourceLabel="Order"
+        targetId="customer"
+        targetLabel="Customer"
+        onSelect={onSelect}
+      />
+    );
+
+    expect(screen.getByTestId('group-relationships')).toContainElement(
+      screen.getByTestId('relation-type-placedBy')
+    );
+
+    const other = screen.getByTestId('group-other');
+
+    expect(other).toHaveTextContent('label.other-links-doesnt-fit');
+    expect(other).toContainElement(
+      screen.getByTestId('relation-type-hasIdentifier')
+    );
+    expect(
+      screen.getByTestId('relation-type-unfit-hasIdentifier')
+    ).toHaveTextContent('Resource → Identifier');
+    expect(
+      screen.queryByTestId('relation-type-unfit-placedBy')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('relation-type-hasIdentifier')).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('relation-type-hasIdentifier'));
+
+    expect(onSelect).toHaveBeenCalledWith('hasIdentifier');
   });
 
   it('invokes onCancel when the cancel button is clicked', async () => {

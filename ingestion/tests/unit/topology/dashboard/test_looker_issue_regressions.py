@@ -13,6 +13,7 @@
 import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
+from fnmatch import fnmatchcase
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -24,6 +25,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DataModelType,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
@@ -59,25 +61,58 @@ def _view_lineage_source() -> LookerSource:
     source._views_cache = {}
     source._parsed_views = {}
     source._lookml_constants_map = {}
-    source._view_data_model = SimpleNamespace(name="table_details_view")
+    source._view_data_model = _view_data_model(LookMlView(name="table_details"))
+    source._added_lineage = {}
     return source
+
+
+class Catalog:
+    def __init__(self, prefixes, available):
+        self.services = {name: DatabaseService(id=uuid.uuid4(), name=name, serviceType="Trino") for name in prefixes}
+        self.tables = (
+            {
+                name: Table(
+                    id=uuid.uuid4(),
+                    name="table_name",
+                    columns=[],
+                    fullyQualifiedName=f"{name}.demo_db.schema_prod.table_name",
+                )
+                for name in prefixes
+            }
+            if available
+            else {}
+        )
+        self.searches = []
+
+    def es_search_from_fqn(self, entity_type, fqn_search_string, **kwargs):
+        if entity_type == DatabaseService:
+            service = self.services.get(fqn_search_string)
+            return [service] if service else []
+        self.searches.append(fqn_search_string)
+        return [
+            table
+            for table in self.tables.values()
+            if fnmatchcase(model_str(table.fullyQualifiedName), fqn_search_string)
+        ]
+
+    def get_by_name(self, entity, fqn, **kwargs):
+        if entity == DatabaseService:
+            return self.services.get(fqn)
+        return next((table for table in self.tables.values() if model_str(table.fullyQualifiedName) == fqn), None)
 
 
 @contextmanager
 def _stubbed_db_services(
     source: LookerSource,
-    lineage_request: object,
+    available: bool = True,
     prefixes: Sequence[str] = ("trino_service",),
-) -> Iterator[MagicMock]:
-    """Stub out everything that needs a live OpenMetadata server and hand back the
-    ``build_lineage_request`` mock so tests can assert on the resolved source table."""
+) -> Iterator[Catalog]:
+    source.metadata = Catalog(prefixes, available)
     with (
         patch.object(source, "get_db_service_prefixes", return_value=list(prefixes)),
-        patch.object(source, "parse_db_service_prefix", side_effect=lambda prefix: (prefix,)),
         patch.object(source, "_get_db_dialect", return_value=Dialect.ANSI),
-        patch.object(source, "build_lineage_request", return_value=lineage_request) as build_lineage_request,
     ):
-        yield build_lineage_request
+        yield source.metadata
 
 
 def test_project_filter_excludes_lookml_models_and_explores() -> None:
@@ -141,17 +176,13 @@ def test_liquid_scopes_select_source_table_for_view_lineage(sql_table_name: str)
     source = _view_lineage_source()
     view = LookMlView(name="table_details", sql_table_name=sql_table_name)
     explore = SimpleNamespace(model_name="finance_reports", name="table_details_explore")
-    lineage_request = MagicMock()
-
-    with _stubbed_db_services(source, lineage_request) as build_lineage_request:
-        assert list(source.add_view_lineage(view, explore)) == [lineage_request]
-
-    build_lineage_request.assert_called_once_with(
-        source="schema_prod.table_name",
-        db_service_prefix="trino_service",
-        to_entity=source._view_data_model,
-        column_lineage=[],
-    )
+    with _stubbed_db_services(source) as catalog:
+        results = list(source.add_view_lineage(view, explore))
+    assert len(results) == 1 and results[0].left is None
+    edge = results[0].right.edge
+    assert edge.fromEntity.id == catalog.tables["trino_service"].id
+    assert edge.toEntity.id == source._view_data_model.id
+    assert not edge.lineageDetails.columnsLineage
 
 
 def test_view_lineage_skips_unresolved_lineage_request() -> None:
@@ -159,55 +190,38 @@ def test_view_lineage_skips_unresolved_lineage_request() -> None:
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
     explore = SimpleNamespace(model_name="finance_reports", name="table_details_explore")
 
-    with _stubbed_db_services(source, lineage_request=None) as build_lineage_request:
+    with _stubbed_db_services(source, available=False) as catalog:
         assert list(source.add_view_lineage(view, explore)) == []
-
-    build_lineage_request.assert_called_once()
+    assert catalog.searches
 
 
 def test_column_lineage_is_extracted_once_per_view() -> None:
     source = _view_lineage_source()
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
     explore = SimpleNamespace(model_name="finance_reports", name="table_details_explore")
-    lineage_request = MagicMock()
-
     with (
-        patch.object(source, "_extract_column_lineage", return_value=[]) as extract_column_lineage,
-        _stubbed_db_services(
-            source,
-            lineage_request,
-            prefixes=("trino_service", "snowflake_service"),
-        ) as build_lineage_request,
+        patch.object(source, "_extract_column_lineage", wraps=source._extract_column_lineage) as extract_column_lineage,
+        _stubbed_db_services(source, prefixes=("trino_service", "snowflake_service")) as catalog,
     ):
-        assert list(source.add_view_lineage(view, explore)) == [lineage_request, lineage_request]
-
-    assert build_lineage_request.call_count == 2
+        results = list(source.add_view_lineage(view, explore))
+    assert all(result.left is None for result in results)
+    assert {result.right.edge.fromEntity.id.root for result in results} == {
+        table.id.root for table in catalog.tables.values()
+    }
+    assert all(result.right.edge.toEntity.id == source._view_data_model.id for result in results)
     extract_column_lineage.assert_called_once_with(view)
 
 
 def test_model_liquid_context_selects_source_table_for_standalone_view_lineage() -> None:
-    source = object.__new__(LookerSource)
-    source._views_cache = {}
-    source._parsed_views = {}
-    source._lookml_constants_map = {}
+    source = _view_lineage_source()
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
-    # `_yield_bulk_datamodel_lineage` resolves this after the Barrier flush; the
-    # standalone path only reads it.
-    view_data_model = SimpleNamespace(name="finance_reports_table_details_view")
-    source._view_data_model = view_data_model
-    lineage_request = MagicMock()
-
-    with _stubbed_db_services(source, lineage_request) as build_lineage_request:
-        assert list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports")) == [
-            lineage_request
-        ]
-
-    build_lineage_request.assert_called_once_with(
-        source="schema_prod.table_name",
-        db_service_prefix="trino_service",
-        to_entity=view_data_model,
-        column_lineage=[],
-    )
+    with _stubbed_db_services(source) as catalog:
+        results = list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports"))
+    assert len(results) == 1 and results[0].left is None
+    edge = results[0].right.edge
+    assert edge.fromEntity.id == catalog.tables["trino_service"].id
+    assert edge.toEntity.id == source._view_data_model.id
+    assert not edge.lineageDetails.columnsLineage
 
 
 def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -> None:
@@ -220,10 +234,10 @@ def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -
     source._view_data_model = None
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
 
-    with _stubbed_db_services(source, MagicMock()) as build_lineage_request:
+    with _stubbed_db_services(source) as catalog:
         assert list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports")) == []
 
-    build_lineage_request.assert_not_called()
+    assert catalog.searches == []
 
 
 VIEW_WITH_DIMENSION_GROUP = """

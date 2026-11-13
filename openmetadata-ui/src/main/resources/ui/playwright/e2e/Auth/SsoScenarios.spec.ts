@@ -54,6 +54,18 @@ const APP_BAR_HOME_TESTID = 'app-bar-item-my-data';
 const SILENT_REAUTH_DEEP_LINK = '/explore/tables?sortOrder=asc';
 const SILENT_REAUTH_DEEP_LINK_URL = /\/explore\/tables\?(.*&)?sortOrder=asc/;
 
+// With silent renewal broken and the token expired, the still-running app may
+// start its own acquireTokenRedirect before the reload commits, which aborts
+// the reload. Both navigations load the same page, so the abort is harmless;
+// the assertions after it check where the page ended up.
+const reloadUnlessAppNavigates = async (page: Page): Promise<void> => {
+  await page.reload({ waitUntil: 'domcontentloaded' }).catch((error: Error) => {
+    if (!error.message.includes('net::ERR_ABORTED')) {
+      throw error;
+    }
+  });
+};
+
 // Every main-frame path the page visits from here on, including client-side
 // (history API) navigations, so a scenario can prove /signin never showed.
 const trackVisitedPaths = (page: Page): string[] => {
@@ -819,7 +831,7 @@ for (const fixture of FIXTURES) {
           await breakSilentRenewal(page);
           await fixture.forceTokenExpiry(page);
 
-          await page.reload({ waitUntil: 'domcontentloaded' });
+          await reloadUnlessAppNavigates(page);
 
           // The reload itself lands on the deep link, so wait for the round
           // trip to the IdP before checking where it ended up.
@@ -865,7 +877,7 @@ for (const fixture of FIXTURES) {
           await killIdpSession(page);
           await fixture.forceTokenExpiry(page);
 
-          await page.reload({ waitUntil: 'domcontentloaded' });
+          await reloadUnlessAppNavigates(page);
 
           await expect(page).toHaveURL(/\/signin$/, { timeout: 60_000 });
 

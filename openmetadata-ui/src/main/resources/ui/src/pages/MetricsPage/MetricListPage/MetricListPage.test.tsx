@@ -20,6 +20,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -32,6 +33,7 @@ import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
+  getMetricParentIds,
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
@@ -125,6 +127,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick={onPress as React.MouseEventHandler<HTMLButtonElement>}>
       {children as React.ReactNode}
     </button>
+  );
+  const ButtonUtility = ({
+    isDisabled,
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: Record<string, unknown>) => (
+    <button
+      aria-label={tooltip as string | undefined}
+      {...props}
+      disabled={Boolean(isDisabled)}
+    />
   );
   const Card = ({
     children,
@@ -317,6 +332,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <nav>{items.map(({ label }) => label).join(' / ')}</nav>
     ),
     Button,
+    ButtonUtility,
     PageLayout: Object.assign(
       ({
         children,
@@ -483,6 +499,7 @@ jest.mock('../../../rest/searchAPI');
 jest.mock('../../../rest/metricsAPI', () => ({
   deleteMetricAsync: jest.fn(),
   exportMetricDetailsInCSV: jest.fn(),
+  getMetricParentIds: jest.fn(),
 }));
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
@@ -546,7 +563,7 @@ const setHierarchy = ({
   mockUseMetricHierarchy.mockImplementation(() => ({
     topLevelNodes,
     buildRows: () => rows,
-    paging: { total, offset: 0, limit: 20 },
+    paging: { total, offset: 0, limit: PAGE_SIZE_BASE },
     isPending,
     isFetching: isPending,
     error,
@@ -1058,7 +1075,7 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('expands group banners once by default without expanding metric variants or overriding collapse', async () => {
+  it('expands group banners once per page scope without expanding metric variants or overriding collapse', async () => {
     const groupRow = {
       id: 'group:group-1',
       isGroupRow: true,
@@ -1080,7 +1097,7 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
-    renderPage();
+    const { rerender } = renderPage();
 
     await waitFor(() =>
       expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1)
@@ -1106,12 +1123,20 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
-    fireEvent.click(cardViewButton);
+    rerender();
 
     expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('metric-group-profitability')).toHaveAttribute(
       'aria-expanded',
       'false'
+    );
+
+    // Card view pages at a different size, and useMetricHierarchy clears expansion when the size
+    // changes, so the default expansion is applied again for the new scope.
+    fireEvent.click(cardViewButton);
+
+    await waitFor(() =>
+      expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(2)
     );
   });
 
@@ -1177,7 +1202,11 @@ describe('MetricListPage', () => {
 
     await waitFor(() =>
       expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
-        expect.objectContaining({ page: 2, pageSize: 20, query: '' })
+        expect.objectContaining({
+          page: 2,
+          pageSize: PAGE_SIZE_BASE,
+          query: '',
+        })
       )
     );
 
@@ -1288,6 +1317,55 @@ describe('MetricListPage', () => {
     await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
 
     expect(mockShowSuccessToast).toHaveBeenCalled();
+  });
+
+  it('skips a selected variant whose parent is also selected, since the recursive delete covers it', async () => {
+    const child = {
+      id: 'child-1',
+      name: 'net_sales_emea',
+      fullyQualifiedName: 'net_sales.net_sales_emea',
+    };
+    const parent = { ...rootMetric, children: [child] };
+    setHierarchy({ rows: [parent], topLevelNodes: [{ row: parent }] });
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-child-1'));
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
+  });
+
+  it('looks up a parent that is not on the page before skipping its selected descendant', async () => {
+    const grandchild = {
+      id: 'grandchild-1',
+      name: 'net_sales_emea_uk',
+      fullyQualifiedName: 'net_sales_emea_uk',
+      parent: { id: 'hidden-parent', type: 'metric' },
+    };
+    setHierarchy({
+      rows: [rootMetric, grandchild],
+      topLevelNodes: [{ row: rootMetric }, { row: grandchild }],
+    });
+    (getMetricParentIds as jest.Mock).mockResolvedValueOnce(
+      new Map([['hidden-parent', 'metric-1']])
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-grandchild-1'));
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(getMetricParentIds).toHaveBeenCalledWith(['hidden-parent']);
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
   });
 
   it('refreshes the list when its own delete job completes, not for jobs started elsewhere', async () => {

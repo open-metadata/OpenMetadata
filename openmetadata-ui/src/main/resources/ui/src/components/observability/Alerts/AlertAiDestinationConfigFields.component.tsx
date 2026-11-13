@@ -18,10 +18,12 @@ import {
   AccordionPanel,
   BadgeWithButton,
   Button,
+  ButtonUtility,
   Checkbox,
   Input,
   Label,
   PasswordInput,
+  Popover,
   RadioButton,
   RadioGroup,
   Select,
@@ -34,8 +36,9 @@ import {
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { debounce, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../constants/Alerts.constants';
 import { EMAIL_REG_EX } from '../../../constants/regex.constants';
@@ -45,16 +48,23 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import {
+  clearMaskedSecrets,
+  withAuthType,
+} from '../../../utils/Alerts/AlertsUtilPure';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
 } from './AlertAiFormFields.constants';
-import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
+import {
+  AlertAiDestinationItemProps,
+  AlertAiFormValue,
+} from './AlertAiFormFields.interface';
 import {
   getStringArrayValue,
   getValidationPath,
   isWebhookDestination,
+  setValueAtPath,
   updateAlertAiValue,
   WebhookDestinationType,
 } from './AlertAiFormFieldsPureUtils';
@@ -186,9 +196,8 @@ const TeamUserSelectInput = ({
   value: selectedOptions,
 }: TeamUserSelectInputProps) => {
   const { t } = useTranslation();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -233,30 +242,62 @@ const TeamUserSelectInput = ({
     debouncedSearch(searchText);
   }, [searchText, debouncedSearch]);
 
-  // Move focus to the search field when the dropdown opens (replaces autoFocus).
-  useEffect(() => {
-    if (isDropdownOpen) {
-      searchInputRef.current?.focus();
-    }
-  }, [isDropdownOpen]);
+  const focusDropdown = useCallback((element: HTMLDivElement | null) => {
+    dropdownRef.current = element;
+    // The portal can mount after the open-state change; focusing without scrolling keeps
+    // the drawer from jumping when the picker opens.
+    element?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const clickedOutsideDropdown = !dropdownRef.current?.contains(
-        e.target as Node
-      );
-      const clickedInsideTrigger = triggerRef.current?.contains(
-        e.target as Node
-      );
-      if (clickedOutsideDropdown && !clickedInsideTrigger) {
-        setIsDropdownOpen(false);
-        setSearchText('');
+    if (!isDropdownOpen) {
+      return undefined;
+    }
+    const closeDropdown = () => {
+      setIsDropdownOpen(false);
+      setSearchText('');
+    };
+    // Capture phase: a parent stopping propagation must not keep the picker open.
+    // Also used for focus moving elsewhere, which react-aria's blur close handled.
+    const handleOutsideInteraction = (e: Event) => {
+      const target = e.target as Node;
+      if (
+        !dropdownRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
+        closeDropdown();
       }
     };
-    document.addEventListener('click', handleOutsideClick);
+    // react-aria's close-on-scroll is ignored below, so close on a scroll the user
+    // starts outside the picker; otherwise the portalled popover would stay put
+    // while the form moves under it. Programmatic settling scrolls fire neither event.
+    const handleOutsideUserScroll = (e: Event) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        closeDropdown();
+      }
+    };
+    // On the document so Escape works from the search box, options or trigger.
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) {
+        closeDropdown();
+      }
+    };
+    const listeners: [string, EventListener][] = [
+      ['pointerdown', handleOutsideInteraction],
+      ['focusin', handleOutsideInteraction],
+      ['wheel', handleOutsideUserScroll],
+      ['touchmove', handleOutsideUserScroll],
+      ['keydown', handleEscape as EventListener],
+    ];
+    listeners.forEach(([type, listener]) =>
+      document.addEventListener(type, listener, true)
+    );
 
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, []);
+    return () =>
+      listeners.forEach(([type, listener]) =>
+        document.removeEventListener(type, listener, true)
+      );
+  }, [isDropdownOpen]);
 
   const optionsContent = isEmpty(options) ? (
     <Typography
@@ -274,16 +315,19 @@ const TeamUserSelectInput = ({
         data-testid={`team-user-option-${value}`}
         key={value}
         onPress={() => handleOptionClick(value)}>
-        <Checkbox
-          data-testid={`${label}-option-checkbox`}
-          isSelected={selectedOptions.includes(value)}
-        />
-        <Typography
-          as="span"
-          className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel}
-          data-testid={`${label}-option-label`}>
-          {label}
-        </Typography>
+        {/* Button wraps children in an inline span; the flex Checkbox would otherwise stack above the label. */}
+        <span className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionRow}>
+          <Checkbox
+            data-testid={`${label}-option-checkbox`}
+            isSelected={selectedOptions.includes(value)}
+          />
+          <Typography
+            as="span"
+            className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel}
+            data-testid={`${label}-option-label`}>
+            {label}
+          </Typography>
+        </span>
       </Button>
     ))
   );
@@ -333,15 +377,27 @@ const TeamUserSelectInput = ({
         )}
       </div>
 
-      {isDropdownOpen && (
+      {/* Portalled so the modal's scroll area cannot clip the options. */}
+      <Popover
+        isNonModal
+        className="tw:w-(--trigger-width)"
+        containerClassName="tw:p-2"
+        data-react-aria-top-layer="true"
+        isOpen={isDropdownOpen}
+        placement="bottom left"
+        triggerRef={triggerRef}
+        // `isNonModal` makes react-aria close the popover on any ancestor scroll,
+        // so a drawer still settling after a destination is added closed the
+        // picker right after it opened. The listeners above own dismissal, so
+        // like core TreeSelect only react-aria's open request is honoured.
+        onOpenChange={(isOpen) => isOpen && setIsDropdownOpen(true)}>
         <div
-          className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectDropdown}
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
-          ref={dropdownRef}>
+          ref={focusDropdown}>
           <Input
+            autoComplete="off"
             data-testid={`team-user-search-input-${destinationNumber}`}
             placeholder={t('label.search-by-type', { type: entityType })}
-            ref={searchInputRef}
             size="sm"
             value={searchText}
             onChange={(val) => setSearchText(val)}
@@ -361,7 +417,7 @@ const TeamUserSelectInput = ({
             )}
           </div>
         </div>
-      )}
+      </Popover>
       {hint && (
         <Typography
           as="p"
@@ -458,7 +514,7 @@ interface KeyValueListProps {
   isViewOnly?: boolean;
   name: number;
   onChange: (entries: { key: string; value: string }[]) => void;
-  type: keyof Pick<ModifiedWebhookConfig, 'headers' | 'queryParams'>;
+  type: 'headers' | 'queryParams';
   value: { key: string; value: string }[];
 }
 
@@ -490,13 +546,11 @@ const KeyValueList = ({
             : t('label.query-parameter-plural')}
         </Typography>
         {!isViewOnly && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
+          <ButtonUtility
             data-testid={`add-${testIdPrefix}-button-${name}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => onChange([...entries, { key: '', value: '' }])}
+            icon={Plus}
+            tooltip={t('label.add')}
+            onClick={() => onChange([...entries, { key: '', value: '' }])}
           />
         )}
       </div>
@@ -521,13 +575,12 @@ const KeyValueList = ({
             ))}
           </div>
           {!isViewOnly && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
+            <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => onChange(entries.filter((_, i) => i !== index))}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => onChange(entries.filter((_, i) => i !== index))}
             />
           )}
         </div>
@@ -590,6 +643,25 @@ const WebhookDestinationFields = ({
 }) => {
   const { t } = useTranslation();
 
+  const advancedConfigId = `advanced-config-${name}`;
+  const [advancedConfigKeys, setAdvancedConfigKeys] = useState<Set<Key>>(
+    () => new Set()
+  );
+
+  // A new URL or token URL sends the secrets somewhere else, so the hidden ones are emptied
+  // and the advanced configuration opens on them, where the form asks for each one again.
+  const changeWhereItSends = (path: string[], nextValue: string) => {
+    const config = destination?.config ?? {};
+    const cleared = clearMaskedSecrets(config) ?? {};
+    updateDestinationConfig(
+      [],
+      setValueAtPath(cleared as AlertAiFormValue, path, nextValue)
+    );
+    if (!isEqual(cleared, config)) {
+      setAdvancedConfigKeys(new Set([advancedConfigId]));
+    }
+  };
+
   return (
     <>
       <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
@@ -602,9 +674,7 @@ const WebhookDestinationFields = ({
           placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[destinationType]}
           size="sm"
           value={destination?.config?.endpoint ?? ''}
-          onChange={(nextValue) =>
-            updateDestinationConfig(['endpoint'], nextValue)
-          }
+          onChange={(nextValue) => changeWhereItSends(['endpoint'], nextValue)}
         />
       </div>
       <div
@@ -612,8 +682,10 @@ const WebhookDestinationFields = ({
           ALERT_AI_FORM_CLASS_NAMES.field,
           ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
         )}>
-        <Accordion>
-          <AccordionItem id={`advanced-config-${name}`}>
+        <Accordion
+          expandedKeys={advancedConfigKeys}
+          onExpandedChange={setAdvancedConfigKeys}>
+          <AccordionItem id={advancedConfigId}>
             <AccordionHeader>
               <Typography
                 as="span"
@@ -635,8 +707,11 @@ const WebhookDestinationFields = ({
                   size="sm"
                   onSelectionChange={(key) =>
                     updateDestinationConfig(
-                      ['authType', 'type'],
-                      key ? String(key) : Type.None
+                      [],
+                      withAuthType(
+                        destination?.config,
+                        (key ? String(key) : Type.None) as Type
+                      ) as AlertAiFormValue
                     )
                   }>
                   {renderSelectItem}
@@ -673,10 +748,7 @@ const WebhookDestinationFields = ({
                       size="sm"
                       value={destination?.config?.authType?.tokenUrl ?? ''}
                       onChange={(nextValue) =>
-                        updateDestinationConfig(
-                          ['authType', 'tokenUrl'],
-                          nextValue
-                        )
+                        changeWhereItSends(['authType', 'tokenUrl'], nextValue)
                       }
                     />
                     <PasswordInput

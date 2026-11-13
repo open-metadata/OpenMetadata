@@ -86,6 +86,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -108,6 +109,7 @@ import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.run.EntityPipelineRunner;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
@@ -116,7 +118,9 @@ import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 
 // TODO merge with workflows
@@ -140,6 +144,7 @@ public class IngestionPipelineResource
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private IngestionLogStreamFactory logStreamFactory;
   static final String FIELDS = "owners,followers";
+  private static final String SOURCE_CONFIG_FIELD = "sourceConfig";
   private static final String NO_LOG_BACKEND =
       "No log backend is configured on this deployment, so ingestion logs cannot be streamed.";
   private static final String LOG_STREAM_FIELDS = "pipelineStatuses,ingestionRunner";
@@ -736,7 +741,7 @@ public class IngestionPipelineResource
       @Valid CreateIngestionPipeline update) {
     IngestionPipeline ingestionPipeline =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    unmask(ingestionPipeline);
+    unmask(securityContext, ingestionPipeline);
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
@@ -912,6 +917,7 @@ public class IngestionPipelineResource
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
+    repository.assertOwnsRunnerName(pipeline);
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
     Response response =
@@ -955,6 +961,7 @@ public class IngestionPipelineResource
           .withCode(200)
           .withReason("Pipeline Client Disabled");
     }
+    repository.assertOwnsRunnerName(ingestionPipeline);
     return pipelineServiceClient.killIngestion(ingestionPipeline);
   }
 
@@ -1558,12 +1565,76 @@ public class IngestionPipelineResource
     return addHref(uriInfo, ingestionPipeline);
   }
 
-  private void unmask(IngestionPipeline ingestionPipeline) {
+  /**
+   * Restores the stored secrets a write sends back masked. A caller who sees them masked keeps them
+   * only while the source they belong to points where it did; see {@link ConnectionSecretsGuard}.
+   */
+  private void unmask(SecurityContext securityContext, IngestionPipeline ingestionPipeline) {
     repository.setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
         repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
+    if (originalIngestionPipeline != null
+        && !ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
+      ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+          ingestionPipeline, originalIngestionPipeline);
+    }
     EntityMaskerFactory.getEntityMasker()
         .unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (mayRetargetSecrets(securityContext, patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, patch),
+          getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+      requireSecretsReenteredOnRetarget(repository.find(id, Include.NON_DELETED), patch);
+    }
+    return super.patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader);
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (mayRetargetSecrets(securityContext, patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, patch),
+          getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+      requireSecretsReenteredOnRetarget(repository.findByName(fqn, Include.NON_DELETED), patch);
+    }
+    return super.patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader);
+  }
+
+  /** Only a patch that can rewrite the source config can carry a stored secret elsewhere. */
+  private static boolean mayRetargetSecrets(SecurityContext securityContext, JsonPatch patch) {
+    return (JsonPatchUtils.replacesWholeDocument(patch)
+            || JsonUtils.extractPatchedFields(patch).contains(SOURCE_CONFIG_FIELD)
+            || JsonPatchUtils.readsFrom(patch, "/" + SOURCE_CONFIG_FIELD))
+        && !ConnectionSecretsGuard.readsStoredSecrets(securityContext);
+  }
+
+  private void requireSecretsReenteredOnRetarget(IngestionPipeline original, JsonPatch patch) {
+    // The caller reads the source's secrets masked; a copy or move out of it would place a stored
+    // one where it is served as stored.
+    if (JsonPatchUtils.readsFrom(patch, "/" + SOURCE_CONFIG_FIELD)) {
+      throw new BadRequestException(
+          "A patch cannot copy or move a value out of the source config.");
+    }
+    ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+        JsonUtils.applyPatch(original, patch, IngestionPipeline.class), original);
   }
 
   private PipelineServiceClientResponse deployPipelineInternal(
@@ -2003,6 +2074,9 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "Service progress stream",
             content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS)),
+        @ApiResponse(responseCode = "400", description = "Invalid service entity type"),
+        @ApiResponse(responseCode = "403", description = "Service access denied"),
+        @ApiResponse(responseCode = "404", description = "Service not found"),
         @ApiResponse(responseCode = "503", description = "Progress tracking is not configured")
       })
   public void streamServiceProgress(
@@ -2017,14 +2091,23 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @PathParam("serviceFqn")
           String serviceFqn) {
+    if (!Entity.getServiceEntityTypes().contains(serviceType)) {
+      throw new BadRequestException("Invalid service entity type: " + serviceType);
+    }
     OperationContext operationContext =
         new OperationContext(serviceType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(
         securityContext, operationContext, new ResourceContext<>(serviceType, null, serviceFqn));
+    ServiceProgressSubscriber subscriber =
+        new ServiceProgressSubscriber(
+            authorizer,
+            securityContext,
+            openMetadataApplicationConfig,
+            Entity.getEntityReferenceByName(serviceType, serviceFqn, Include.NON_DELETED));
     if (!repository.isProgressTrackingEnabled()) {
       throw new ServiceUnavailableException("Progress tracking is not configured");
     }
-    repository.streamServiceProgress(serviceFqn, eventSink, sse);
+    repository.streamServiceProgress(serviceFqn, eventSink, sse, subscriber);
   }
 
   @PUT

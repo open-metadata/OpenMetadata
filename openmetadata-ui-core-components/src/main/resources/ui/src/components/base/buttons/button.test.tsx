@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { Dialog, DialogTrigger, Popover } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
 import { Edit01 } from '@/icons';
 import { Button } from './button';
@@ -274,6 +275,24 @@ describe('Button — icon size and color', () => {
   });
 });
 
+describe('Button — numeric label', () => {
+  it('treats a count of 0 as a label', () => {
+    render(<Button iconLeading={Edit01}>{0}</Button>);
+    const button = screen.getByRole('button');
+
+    expect(button).not.toHaveAttribute('data-icon-only');
+    expect(button.querySelector('[data-text]')).toHaveTextContent('0');
+  });
+
+  it('lets the label follow the root colour transition instead of running its own', () => {
+    render(<Button>Add</Button>);
+    const label = screen.getByRole('button').querySelector('[data-text]');
+
+    expect(label).not.toHaveClass('tw:transition-inherit-all');
+    expect(label).toHaveClass('tw:transition-[text-decoration-color]');
+  });
+});
+
 describe('ButtonUtility — icon size and color', () => {
   it.each([
     ['xs', 'tw:p-0.5', 'tw:*:data-icon:size-4', 'tw:*:data-icon:p-[0.5px]'],
@@ -373,6 +392,118 @@ describe('ButtonUtility — icon size and color', () => {
       'tw:text-error-primary',
       'tw:*:data-icon:text-fg-error-secondary'
     );
+  });
+
+  it('defaults to the borderless tertiary color', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveClass(
+      'tw:after:outline-primary'
+    );
+  });
+
+  it('forwards its ref to the button', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<ButtonUtility icon={Edit01} ref={ref} tooltip="Edit" />);
+
+    expect(ref.current).toBe(screen.getByRole('button', { name: 'Edit' }));
+  });
+
+  it('disables a button with a tooltip natively and keeps the tooltip reachable', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isDisabled
+        icon={Edit01}
+        tooltip="Needs an owner first"
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Needs an owner first' });
+
+    expect(button).toBeDisabled();
+
+    // Tooltip wraps the disabled button in one focusable span, so the tooltip
+    // that explains why it is disabled still opens on hover.
+    const wrapper = button.parentElement as HTMLElement;
+
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).toHaveAttribute('tabindex', '0');
+
+    fireEvent.mouseMove(document);
+    await user.hover(wrapper);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Needs an owner first'
+      )
+    );
+
+    await user.click(wrapper);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not open a parent trigger while disabled with a tooltip', async () => {
+    render(
+      <DialogTrigger>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Edit" />
+        <Popover>
+          <Dialog>Menu body</Dialog>
+        </Popover>
+      </DialogTrigger>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+  });
+
+  it('does not submit its form while disabled with a tooltip', async () => {
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => onSubmit(event.nativeEvent as SubmitEvent)}>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Save" type="submit" />
+      </form>
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    await userEvent.click(button);
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('disables a button without a tooltip natively', () => {
+    render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+  });
+
+  it('swaps its icon for a spinner and ignores presses while loading', () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isLoading
+        aria-label="Save"
+        icon={Edit01}
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(button.querySelector('[data-icon="loading"]')).not.toBeNull();
+    expect(button.querySelector('[data-icon="true"]')).toBeNull();
+    expect(onClick).not.toHaveBeenCalled();
   });
 });
 

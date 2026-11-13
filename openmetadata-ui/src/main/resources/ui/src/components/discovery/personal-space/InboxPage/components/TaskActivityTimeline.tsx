@@ -13,7 +13,7 @@
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   Check,
   Plus,
   UserPlus01,
@@ -53,7 +53,7 @@ const EVENT_ICON: Record<TaskTimelineIcon, typeof Check> = {
   approved: Check,
   assigned: UserPlus01,
   created: Plus,
-  incident: AlertTriangle,
+  incident: Alert,
   rejected: XClose,
   resolved: Check,
 };
@@ -89,7 +89,7 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
             'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border',
             TONE_ICON_CLASS[event.tone]
           )}>
-          <Icon height={14} width={14} />
+          <Icon size={14} />
         </span>
         <Typography
           className={classNames('tw:pt-0.5', TONE_TEXT_CLASS[event.tone])}

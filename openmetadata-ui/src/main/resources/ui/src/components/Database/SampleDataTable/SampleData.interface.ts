@@ -34,6 +34,7 @@ export type SampleDataColumn = ColumnsType<RecordProps>[number] & {
 };
 
 export interface SampleData {
+  executionSource?: import('../../../generated/type/tableExecutionSource').TableExecutionSource;
   columns?: SampleDataColumn[];
   rows?: RecordProps[];
 }

@@ -18,7 +18,16 @@ import {
   Divider,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { FilterLines } from '@openmetadata/ui-core-components/icons';
+import {
+  All,
+  CheckCircle02,
+  FilterLines,
+  ListConversation,
+  SuccessfulTests,
+  Task as TaskIcon,
+  TotalOccurrences,
+  UserSquare,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -33,20 +42,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
-import { ReactComponent as NoConversationsIcon } from '../../../assets/svg/no-conversations.svg';
-import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 import {
   COMMON_ICON_STYLES,
   DEFAULT_DOMAIN_VALUE,
   ICON_DIMENSION,
-  ICON_DIMENSION_USER_PAGE,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -200,7 +199,7 @@ const ActivityFeedTabLeftPanel = ({
   const items = [
     {
       key: ActivityFeedTabs.ALL,
-      icon: AllActivityIcon,
+      icon: All,
       label: t('label.all'),
       countTestId: 'left-panel-all-count',
       count: isUserEntity
@@ -215,7 +214,7 @@ const ActivityFeedTabLeftPanel = ({
     },
     {
       key: ActivityFeedTabs.TASKS,
-      icon: TaskListIcon,
+      icon: TaskIcon,
       label: t('label.task-plural'),
       countTestId: 'left-panel-task-count',
       count: getCountBadge(
@@ -465,7 +464,12 @@ const ActivityFeedTabRightPanel = ({
                   <NoDataPlaceholder
                     data-testid="no-data-placeholder"
                     description={placeholderDescription}
-                    icon={<NoConversationsIcon />}
+                    icon={
+                      <ListConversation
+                        className="tw:text-utility-gray-500"
+                        size={140}
+                      />
+                    }
                     title={placeholder}
                   />
                 </div>
@@ -885,12 +889,12 @@ export const ActivityFeedTab = ({
             data-testid="open-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === TaskStatusGroup.Open ? (
-                <TaskOpenIcon
-                  className="m-r-xs"
-                  {...ICON_DIMENSION_USER_PAGE}
+                <TotalOccurrences
+                  className="m-r-xs tw:text-utility-success-600"
+                  size={16}
                 />
               ) : (
-                <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+                <TotalOccurrences className="m-r-xs" size={16} />
               )}
               <span
                 className={classNames('task-tab-filter-item', {
@@ -926,15 +930,12 @@ export const ActivityFeedTab = ({
             data-testid="closed-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === TaskStatusGroup.Closed ? (
-                <TaskCloseIconBlue
-                  className="m-r-xs"
-                  {...ICON_DIMENSION_USER_PAGE}
+                <SuccessfulTests
+                  className="m-r-xs tw:text-utility-blue-700"
+                  size={16}
                 />
               ) : (
-                <TaskCloseIcon
-                  className="m-r-xs"
-                  {...ICON_DIMENSION_USER_PAGE}
-                />
+                <CheckCircle02 className="m-r-xs" size={16} />
               )}
               <span
                 className={classNames('task-tab-filter-item', {
@@ -976,14 +977,24 @@ export const ActivityFeedTab = ({
         }}>
         <ButtonGroupItem
           data-testid="my-tasks-toggle"
-          iconLeading={<MyTaskIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />}
+          iconLeading={
+            <TaskIcon
+              aria-hidden
+              className="tw:text-utility-gray-500"
+              size={16}
+            />
+          }
           id={ActivityFeedTabs.TASKS}>
           {t('label.my-task-plural')}
         </ButtonGroupItem>
         <ButtonGroupItem
           data-testid="mentions-toggle"
           iconLeading={
-            <MentionIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />
+            <UserSquare
+              aria-hidden
+              className="tw:text-utility-gray-500"
+              size={16}
+            />
           }
           id={ActivityFeedTabs.MENTIONS}>
           {t('label.mention-plural')}

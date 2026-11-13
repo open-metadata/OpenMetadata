@@ -12,6 +12,7 @@
  */
 import { Edge, Node, Viewport } from 'reactflow';
 import { EntityType } from '../enums/entity.enum';
+import { useLineageStore } from '../hooks/useLineageStore';
 import {
   BoundingBox,
   boundsIntersect,
@@ -21,6 +22,7 @@ import {
   getEdgeAngle,
   getEdgeBounds,
   getEdgeCoordinates,
+  getLineagePngExportOptions,
   getNodeHeight,
   getViewportBounds,
   hasSignificantViewportChange,
@@ -1063,6 +1065,141 @@ describe('CanvasUtils', () => {
 
       expect(result).toBe(mockCanvas);
       expect(result).toBeInstanceOf(Object);
+    });
+  });
+
+  describe('getLineagePngExportOptions', () => {
+    const nodes = [
+      {
+        id: 'a',
+        position: { x: 0, y: 0 },
+        data: { node: { columns: [] }, isRootNode: false },
+        width: 400,
+        height: 100,
+      },
+      {
+        id: 'b',
+        position: { x: 1600, y: 900 },
+        data: { node: { columns: [] }, isRootNode: false },
+        width: 400,
+        height: 100,
+      },
+    ] as Node[];
+    const edges = [
+      { id: 'a->b', source: 'a', target: 'b', data: {} },
+    ] as Edge[];
+    const setRenderAllNodes = jest.fn();
+    const mockCtx = {
+      save: jest.fn(),
+      restore: jest.fn(),
+      scale: jest.fn(),
+      translate: jest.fn(),
+      rotate: jest.fn(),
+      stroke: jest.fn(),
+      fill: jest.fn(),
+      beginPath: jest.fn(),
+      moveTo: jest.fn(),
+      lineTo: jest.fn(),
+      closePath: jest.fn(),
+      setLineDash: jest.fn(),
+    };
+    const mockCanvas = {
+      getContext: () => mockCtx,
+    } as unknown as HTMLCanvasElement;
+    const createElement = document.createElement.bind(document);
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      global.Path2D = jest.fn() as unknown as typeof Path2D;
+      jest
+        .spyOn(document, 'createElement')
+        .mockImplementation((tag: string) =>
+          tag === 'canvas' ? mockCanvas : createElement(tag)
+        );
+      (useLineageStore.getState as jest.Mock).mockReturnValue({
+        nodeFilterState: new Map(),
+        columnsInCurrentPages: new Map(),
+        setRenderAllNodes,
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      (useLineageStore.getState as jest.Mock).mockReturnValue({
+        nodeFilterState: new Map(),
+      });
+    });
+
+    it('fits every node into the image the capture renders', () => {
+      const imageWidth = 2000;
+      const imageHeight = 1000;
+
+      const { x, y, zoom } = getLineagePngExportOptions(
+        nodes,
+        edges
+      ).getViewport(imageWidth, imageHeight);
+
+      nodes.forEach(({ position, width, height }) => {
+        expect(x + position.x * zoom).toBeGreaterThanOrEqual(0);
+        expect(y + position.y * zoom).toBeGreaterThanOrEqual(0);
+        expect(x + (position.x + (width ?? 0)) * zoom).toBeLessThanOrEqual(
+          imageWidth
+        );
+        expect(y + (position.y + (height ?? 0)) * zoom).toBeLessThanOrEqual(
+          imageHeight
+        );
+      });
+    });
+
+    it('draws no edge overlay without a frame', () => {
+      expect(
+        getLineagePngExportOptions(nodes, edges).renderEdgesOverlay(
+          800,
+          600,
+          20,
+          2,
+          undefined
+        )
+      ).toBeNull();
+    });
+
+    it("draws the graph's edges in the frame it is given", () => {
+      const viewport = { x: 10, y: 20, zoom: 0.5 };
+
+      const overlay = getLineagePngExportOptions(
+        nodes,
+        edges
+      ).renderEdgesOverlay(800, 600, 20, 2, viewport);
+
+      expect(overlay).toBe(mockCanvas);
+      expect(mockCtx.translate).toHaveBeenCalledWith(
+        viewport.x + 20,
+        viewport.y + 20
+      );
+      // One path per drawn edge; the arrow heads are drawn without one.
+      expect(global.Path2D).toHaveBeenCalledTimes(edges.length);
+    });
+
+    it('mounts every node for the capture and unmounts them after', async () => {
+      jest
+        .spyOn(window, 'requestAnimationFrame')
+        .mockImplementation((callback: FrameRequestCallback) => {
+          callback(0);
+
+          return 0;
+        });
+      const { beforeCapture, afterCapture } = getLineagePngExportOptions(
+        nodes,
+        edges
+      );
+
+      await beforeCapture();
+
+      expect(setRenderAllNodes).toHaveBeenLastCalledWith(true);
+
+      afterCapture();
+
+      expect(setRenderAllNodes).toHaveBeenLastCalledWith(false);
     });
   });
 });

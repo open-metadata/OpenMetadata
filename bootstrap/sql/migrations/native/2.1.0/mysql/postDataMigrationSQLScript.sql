@@ -1,6 +1,7 @@
 -- Backfill test_case_incident from existing history: fold each stateId chain to its
 -- first/last timestamps, pick the latest record (MAX(id) tie-break, matching the read
 -- query this table replaces), and upsert one summary row per incident. Idempotent.
+-- Incidents whose test case was hard-deleted lost their parentOf row (relation 9) and are skipped.
 INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, assignee, severity, createdAt, updatedAt, latestRecordId)
 WITH chain AS (
   SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
@@ -19,6 +20,11 @@ SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
 FROM latestRecord l
 INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
 WHERE t.entityFQNHash IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM entity_relationship er
+    WHERE er.toId = t.id AND er.relation = 9
+      AND er.fromEntity = 'testCase' AND er.toEntity = 'testCaseResolutionStatus'
+  )
 ON DUPLICATE KEY UPDATE
   testCaseResolutionStatusType = VALUES(testCaseResolutionStatusType),
   assignee = VALUES(assignee),
@@ -82,9 +88,11 @@ WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
   AND relation = 15;
 
+-- relationType takes the database character set, which can be utf8mb3 or latin1, where
+-- COLLATE utf8mb4_bin is invalid. Convert it to utf8mb4 before comparing.
 UPDATE entity_relationship relationship
 JOIN relationship_type_entity relationship_type
-  ON relationship_type.name COLLATE utf8mb4_bin = relationship.relationType COLLATE utf8mb4_bin
+  ON relationship_type.name COLLATE utf8mb4_bin = CONVERT(relationship.relationType USING utf8mb4) COLLATE utf8mb4_bin
 SET relationship.relationshipTypeId = relationship_type.id,
     relationship.json = JSON_SET(
       COALESCE(relationship.json, JSON_OBJECT()),
@@ -973,3 +981,60 @@ WHERE entity_type IN ('user')
 UPDATE entity_extension SET json = JSON_REMOVE(json, '$.authenticationMechanism')
 WHERE extension LIKE 'user.version.%'
   AND JSON_CONTAINS_PATH(json, 'one', '$.authenticationMechanism');
+
+-- Data Insights: keep test case definitions out of the data-asset charts.
+--
+-- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test
+-- cases and group them by table, suite or definition. Its documents carry entityType "testCase",
+-- so the data-asset filter and the entityType breakdown must exclude it, or total_data_assets
+-- and the breakdown beneath it stop reconciling the way they did in #31478. The test case mapping
+-- lowercase-normalizes entityType.keyword, and a terms aggregation exclude matches the stored
+-- bucket key, so the breakdown excludes the lowercase forms as well.
+--
+-- Both statements are guarded on the stored value, so a deployment that already holds the
+-- corrected definitions is left untouched.
+
+-- Scope every data-asset metric to documents that actually carry an entityType.
+UPDATE di_chart_entity
+SET json = JSON_SET(json, '$.chartDetails.metrics[0].filter', '{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}')
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.chartDetails.metrics')) = 'ARRAY'
+  AND JSON_LENGTH(json, '$.chartDetails.metrics') = 1
+  AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.chartDetails.metrics[0].filter')), '') <> '{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}';
+
+-- Drop the same governance types from the breakdown that the filter above drops from the card.
+UPDATE di_chart_entity
+SET json = JSON_SET(json, '$.chartDetails.excludeGroups', CAST('["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]' AS JSON))
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.chartDetails.groupBy')) = 'entityType.keyword'
+  AND COALESCE(JSON_EXTRACT(json, '$.chartDetails.excludeGroups'), CAST('null' AS JSON)) <> CAST('["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]' AS JSON);

@@ -161,6 +161,7 @@ const RolesRow: React.FC<RolesRowProps> = ({
           data-testid="roles-multiselect"
           filterOption={() => true}
           items={options}
+          maxVisibleItems={3}
           placeholder={t('label.select-entity', {
             entity: t('label.role-plural'),
           })}

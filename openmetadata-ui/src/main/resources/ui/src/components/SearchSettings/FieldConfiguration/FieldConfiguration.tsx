@@ -17,7 +17,7 @@ import {
   AccordionPanel,
   Badge,
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   Select,
   Slider,
@@ -26,10 +26,12 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  SettingsSliders,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
 import { SearchFieldMatchType as MatchType } from '../../../generated/configuration/searchSettings';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
@@ -144,7 +146,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                     <span
                       className="p-x-xs font-semibold d-flex items-center field-weightage"
                       data-testid="field-weight">
-                      <FilterIcon className="tw:size-3.5 tw:shrink-0" />
+                      <SettingsSliders
+                        className="tw:shrink-0 tw:text-utility-blue-700"
+                        size={14}
+                      />
                       {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
                     </span>
                   </div>
@@ -153,11 +158,11 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </AccordionHeader>
           </div>
           <Box className="tw:absolute tw:end-3 tw:top-3">
-            <Button
-              aria-label={t('label.delete')}
-              color="secondary"
+            <ButtonUtility
               data-testid="delete-search-field"
-              iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
                 onDeleteSearchField(field.fieldName);

@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
+import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
 import NotificationAlertForm from './NotificationAlertForm';
 
 const mockT = (key: string) => key;
@@ -83,11 +90,12 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 const mockSetInlineAlertDetails = jest.fn();
+let mockInlineAlertDetails: Record<string, unknown> | undefined;
 
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
     setInlineAlertDetails: mockSetInlineAlertDetails,
-    inlineAlertDetails: null,
+    inlineAlertDetails: mockInlineAlertDetails,
     currentUser: { id: 'user-1' },
   }),
 }));
@@ -159,6 +167,7 @@ describe('NotificationAlertForm', () => {
   });
 
   afterEach(() => {
+    mockInlineAlertDetails = undefined;
     jest.clearAllMocks();
   });
 
@@ -186,6 +195,25 @@ describe('NotificationAlertForm', () => {
     });
   });
 
+  it('shows a failed save with the reason the server gave', async () => {
+    mockInlineAlertDetails = {
+      type: 'error',
+      heading: 'Error',
+      description: 'Error while updating alert',
+      subDescription: 'The reason the server gave',
+    };
+
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    await waitFor(() => {
+      const props = (AlertAiForm as jest.Mock).mock.calls.at(-1)?.[0];
+
+      expect(props?.inlineAlert).toEqual(mockInlineAlertDetails);
+    });
+  });
+
   it('should render cancel and save buttons', async () => {
     await act(async () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
@@ -202,11 +230,25 @@ describe('NotificationAlertForm', () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
 
-    await waitFor(async () => {
-      const cancelBtn = screen.getByTestId('cancel-btn');
-      cancelBtn.click();
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
 
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('returns to the alert detail when cancel is clicked in edit mode', async () => {
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
     });
+
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
+
+    expect(mockOnNavigate).toHaveBeenCalledWith({
+      type: 'detail',
+      fqn: 'test-alert',
+      name: 'Test Alert',
+    });
+    expect(mockOnNavigate).not.toHaveBeenCalledWith({ type: 'list' });
   });
 });

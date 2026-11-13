@@ -342,14 +342,17 @@ export interface SlotContribution {
 }
 
 /**
- * Props for a `SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` contribution: the page
- * context plus the test's raw log (the same text "Copy log" copies) and a
- * callback that closes the test connection dialog.
+ * Props for a `SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` contribution: the
+ * service under test (unsaved while it is being created), the test's raw log
+ * (the same text "Copy log" copies) and a callback that closes the test
+ * connection dialog.
  */
-export type TestConnectionActionProps = PluginEntityDetailsContext & {
+export interface TestConnectionActionProps {
+  serviceType: string;
+  serviceName?: string;
   failure: string;
   onClose: () => void;
-};
+}
 
 export interface TestConnectionActionContribution {
   key: string;

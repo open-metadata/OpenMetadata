@@ -43,6 +43,11 @@
     }
   },
   "properties": {
+    "shardedTables": {
+      "$ref": "bigQueryShardedTables.json",
+      "title": "Sharded Tables",
+      "description": "BigQuery daily shard grouping. Omitted configuration remains disabled."
+    },
     "type": {
       "description": "Pipeline type",
       "$ref": "#/definitions/databaseMetadataConfigType",

@@ -378,7 +378,13 @@ class AlertStateIT {
   @Test
   void testSendLeavesLiveHealthUnchanged(TestNamespace ns) throws Exception {
     EventSubscription alert = create(ns, "test_send_health", true);
-    SubscriptionDestination destination = alert.getDestinations().getFirst();
+    // Sent as a client reads it: the stored copy holds encrypted secrets a caller may not send.
+    SubscriptionDestination destination =
+        SdkClients.adminClient()
+            .eventSubscriptions()
+            .get(alert.getId().toString())
+            .getDestinations()
+            .getFirst();
     String before = health(alert);
     String storedBefore =
         JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()).getDestinations());

@@ -14,12 +14,14 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
+  Query as QueryIcon,
   SortAscending,
   SortDescending,
 } from '@openmetadata/ui-core-components/icons';
@@ -31,10 +33,7 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
@@ -148,7 +147,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const { getEntityPermission, permissions } = usePermissionProvider();
 
@@ -510,6 +509,7 @@ const TableQueries: FC<TableQueriesProp> = ({
           )}`}
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
+          icon={<QueryIcon />}
           permission={permissions?.query.Create}
           permissionValue={t('label.create-entity', {
             entity: t('label.query'),
@@ -659,26 +659,17 @@ const TableQueries: FC<TableQueriesProp> = ({
                         handleFieldDropDown={handleSortFieldChange}
                         sortField={sortQuery.field}
                       />
-                      <Button
-                        color="tertiary"
+                      <ButtonUtility
                         data-testid="sort-order-button"
+                        icon={isAscSortOrder ? SortAscending : SortDescending}
+                        size="lg"
+                        tooltip={t('label.sort-order')}
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                        }>
-                        {isAscSortOrder ? (
-                          <SortAscending
-                            className="tw:text-quaternary tw:shrink-0"
-                            size={14}
-                          />
-                        ) : (
-                          <SortDescending
-                            className="tw:text-quaternary tw:shrink-0"
-                            size={14}
-                          />
-                        )}
-                      </Button>
+                        }
+                      />
                       {addButton}
                     </Box>
                   </Box>
@@ -692,7 +683,6 @@ const TableQueries: FC<TableQueriesProp> = ({
                     {showPagination && (
                       <Grid.Item className="layout-column" span={24}>
                         <PaginationComponent
-                          hideOnSinglePage
                           showSizeChanger
                           className="text-center m-b-sm"
                           current={currentPage}

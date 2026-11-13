@@ -335,7 +335,6 @@ const NotificationListPage = () => {
             <div className="d-flex items-center">
               {alertPermission.edit && (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`alert-edit-${record.name}`}
                   href={getNotificationAlertsEditPath(fullyQualifiedName)}
                   icon={Edit01}
@@ -347,7 +346,6 @@ const NotificationListPage = () => {
               )}
               {alertPermission.delete && (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`alert-delete-${record.name}`}
                   icon={Trash01}
                   isDisabled={record.provider === ProviderType.System}

@@ -15,8 +15,6 @@ import { AnnouncementStatus } from '../../generated/entity/feed/announcement';
 /** Every list query's key starts with this, so one invalidation refreshes them all. */
 export const SYSTEM_ANNOUNCEMENTS_QUERY_KEY = ['system-announcements'] as const;
 
-export const SYSTEM_ANNOUNCEMENT_PAGE_SIZES = [10, 25, 50];
-
 /**
  * The list fetches every matching system announcement in one request and
  * searches and pages them in the browser. Only admins write them, so this is a

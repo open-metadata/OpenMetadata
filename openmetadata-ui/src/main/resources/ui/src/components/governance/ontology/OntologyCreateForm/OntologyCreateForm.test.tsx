@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dialog } from '@openmetadata/ui-core-components';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
+import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -20,6 +22,11 @@ import {
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import OntologyCreateForm from './OntologyCreateForm';
+import {
+  deriveOntologyId,
+  derivePrefix,
+  validateOntologyName,
+} from './OntologyCreateForm.utils';
 
 jest.mock('../../../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../../../hooks/useAppMode'),
@@ -72,10 +79,19 @@ describe('OntologyCreateForm', () => {
       <OntologyCreateForm canEdit ontology={ontology} onSaved={saved} />
     );
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
+    // Identifiers are read-only values with a copy button, not inputs.
+    expect(screen.getByTestId('ontology-settings-name')).toHaveTextContent(
       'Sales'
     );
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toBeDisabled();
+    expect(screen.getByTestId('ontology-settings-namespace')).toHaveTextContent(
+      'urn:sales:'
+    );
+    expect(
+      screen.queryByRole('textbox', { name: 'label.name' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.ontology-settings-owners-hint')
+    ).toBeInTheDocument();
 
     await user.type(
       screen.getByRole('textbox', { name: 'label.display-name' }),
@@ -110,6 +126,61 @@ describe('OntologyCreateForm', () => {
     );
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+  });
+
+  it('in the dialog layout saves through "Save changes", cancels, and keeps identifiers under Advanced', async () => {
+    const user = userEvent.setup();
+    const saved = jest.fn();
+    const cancel = jest.fn();
+    const patch = APIClient.patch as jest.MockedFunction<
+      typeof APIClient.patch
+    >;
+    patch.mockResolvedValue({
+      data: { ...ontology, description: 'Orders' },
+    });
+    renderWithQueryClient(
+      <Dialog>
+        <OntologyCreateForm
+          canEdit
+          layout="dialog"
+          ontology={ontology}
+          onCancel={cancel}
+          onSaved={saved}
+        />
+      </Dialog>
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'label.ontology-iri' })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('ontology-settings-advanced-toggle'));
+
+    expect(
+      screen.getByRole('textbox', { name: 'label.ontology-iri' })
+    ).toBeDisabled();
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'label.description' }),
+      'Orders'
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'label.save-changes' })
+    );
+
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+
+    expect(patch).toHaveBeenCalledWith(
+      '/ontologies/sales',
+      expect.arrayContaining([
+        { op: 'add', path: '/description', value: 'Orders' },
+      ]),
+      expect.anything()
+    );
+
+    await user.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+    expect(cancel).toHaveBeenCalled();
   });
 
   describe('AI mode', () => {
@@ -163,17 +234,85 @@ describe('OntologyCreateForm', () => {
       );
 
       expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+      expect(screen.getByTestId('ontology-settings-iri')).toHaveTextContent(
+        'urn:sales'
+      );
       expect(
-        screen.getByRole('textbox', { name: 'label.name' })
-      ).toBeDisabled();
-      expect(
-        screen.getByRole('textbox', { name: 'label.ontology-iri' })
-      ).toBeDisabled();
+        screen.queryByRole('textbox', { name: 'label.ontology-iri' })
+      ).not.toBeInTheDocument();
       expect(screen.getByRole('tab', { name: Layer.L2 })).toHaveAttribute(
         'aria-selected',
         'true'
       );
       expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+    });
+  });
+});
+
+describe('create helpers', () => {
+  const taken =
+    (...prefixes: string[]) =>
+    (prefix: string) =>
+      prefixes.includes(prefix);
+
+  it('keeps digits so names that differ only in a number get their own prefix', () => {
+    expect(derivePrefix('VF Guard 1')).toBe('vfguard1');
+    expect(derivePrefix('VF Guard 2')).toBe('vfguard2');
+  });
+
+  it('appends a number until the prefix is free', () => {
+    expect(derivePrefix('VF Guard 37973', taken('vfguard3'))).toBe('vfguard32');
+    expect(derivePrefix('VF Guard 37973', taken('vfguard3', 'vfguard32'))).toBe(
+      'vfguard33'
+    );
+  });
+
+  it('falls back to onto for a name with no letters or digits', () => {
+    expect(derivePrefix('--!')).toBe('onto');
+    expect(derivePrefix('--!', taken('onto'))).toBe('onto2');
+  });
+
+  it('derives a kebab-cased ID from the display name', () => {
+    expect(deriveOntologyId('  LA ClassicMade 2 ')).toBe('la-classicmade-2');
+    expect(deriveOntologyId('Café & Bar')).toBe('caf-bar');
+  });
+
+  describe('validateOntologyName', () => {
+    const existing = [
+      { id: '1', name: 'finance-core', displayName: 'Finance Core' },
+    ] as Ontology[];
+
+    it('refuses a name another ontology has, ignoring case', () => {
+      expect(
+        validateOntologyName('FINANCE CORE', 'finance-core-2', existing)
+      ).toEqual({ kind: 'duplicate', name: 'FINANCE CORE' });
+      expect(validateOntologyName('Other', 'FINANCE-CORE', existing)).toEqual({
+        kind: 'duplicate',
+        name: 'Other',
+      });
+    });
+
+    it.each(['say "hi"', 'a>b', 'a::b', 'tab\there'])(
+      'refuses %j as a forbidden character',
+      (name) => {
+        expect(validateOntologyName(name, 'ok', existing)).toEqual({
+          kind: 'forbidden-character',
+        });
+      }
+    );
+
+    it('allows 256 characters and refuses 257', () => {
+      expect(
+        validateOntologyName('a'.repeat(256), 'ok', existing)
+      ).toBeUndefined();
+      expect(validateOntologyName('a'.repeat(257), 'ok', existing)).toEqual({
+        kind: 'too-long',
+        length: 257,
+      });
+    });
+
+    it('accepts a fresh name', () => {
+      expect(validateOntologyName('Sales', 'sales', existing)).toBeUndefined();
     });
   });
 });

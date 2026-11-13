@@ -22,6 +22,7 @@ import {
 import {
   Dataflow01,
   Table as TableIcon,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -35,7 +36,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import {
@@ -219,7 +219,7 @@ const EntityLabel = ({
         {showDeletedIcon && (
           <div className="flex-center p-xss custom-node-deleted-icon">
             <div className="d-flex text-danger" data-testid="node-deleted-icon">
-              <DeleteIcon height={16} width={16} />
+              <Trash01 size={16} />
             </div>
           </div>
         )}
@@ -294,16 +294,15 @@ const EntityFooter = ({
   isOnlyShowColumnsWithLineageFilterActive,
 }: Omit<LineageNodeLabelProps, 'actions' | 'onEntityClick'>) => {
   const { t } = useTranslation();
-  const { childrenHeading } = useMemo(
+  const { childHeading, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
   );
   const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
-  const childrenInfoDropdownLabel = useMemo(
-    () => `${childrenCount} ${childrenHeading}`,
-    [childrenCount, childrenHeading]
-  );
+  const childrenInfoDropdownLabel = `${childrenCount} ${
+    childrenCount === 1 ? childHeading : childrenHeading
+  }`;
 
   const handleClickColumnInfoDropdown = useCallback(
     (e: React.MouseEvent) => {
@@ -368,9 +367,9 @@ const EntityFooter = ({
             'only-show-columns-with-lineage-filter-button',
             isOnlyShowColumnsWithLineageFilterActive && 'active'
           )}
-          color="tertiary"
           data-testid="lineage-filter-button"
           icon={Dataflow01}
+          size="sm"
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}

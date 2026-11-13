@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Database01, Search } from '@openmetadata/ui-core-components/icons';
-import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -31,9 +31,11 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  getBindableConceptProperties,
   getModelRelations,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
   OntologyGraphData,
@@ -41,6 +43,7 @@ import {
   OntologyNode,
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
+import OntologySearchClearButton from '../../../OntologyExplorer/OntologySearchClearButton';
 import {
   buildNativeTreeIndex,
   getOntologyHealthSummary,
@@ -70,7 +73,6 @@ interface AllOntologiesGraphViewProps {
   readonly models: OntologyStudioModel[];
   readonly selectedConceptId?: string;
   readonly surface: 'graph' | 'tree';
-  readonly onRequestGraphSurface: () => void;
   readonly isFetching: boolean;
   readonly onRefresh: () => void;
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
@@ -104,7 +106,11 @@ const ConceptPickerEmptyState = ({
         direction="col"
         gap={2}>
         <FeaturedIcon color="gray" icon={Database01} size="lg" theme="modern" />
-        <Typography as="h3" size="text-lg" weight="semibold">
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0"
+          size="text-lg"
+          weight="semibold">
           {t('label.select-entity', { entity: t('label.concept') })}
         </Typography>
         <Typography color="secondary" size="text-sm">
@@ -143,7 +149,6 @@ const AllOntologiesGraphView = ({
   models,
   selectedConceptId,
   surface,
-  onRequestGraphSurface,
   isFetching,
   onRefresh,
   onEditConcept,
@@ -158,12 +163,35 @@ const AllOntologiesGraphView = ({
   const model = models.find((candidate) =>
     candidate.concepts.some((concept) => concept.id === selectedConceptId)
   );
+  const dataConcepts = useMemo(() => {
+    const concepts = model?.concepts ?? [];
+    const nameByIri = new Map(
+      concepts.map((concept) => [concept.iri, getEntityName(concept)])
+    );
+
+    return concepts.map((concept) => ({
+      id: concept.id,
+      name: getEntityName(concept),
+      parentName: nameByIri.get(concept.superClasses?.[0] ?? ''),
+    }));
+  }, [model?.concepts]);
   const selected = model?.concepts.find(
     (concept) => concept.id === selectedConceptId
   );
   const relations = useMemo(
     () => (model ? getModelRelations(model) : []),
     [model]
+  );
+
+  const getConceptProperties = useCallback(
+    (conceptId: string) => {
+      const concept = model?.concepts.find((item) => item.id === conceptId);
+
+      return model && concept
+        ? getBindableConceptProperties(model, relations, concept)
+        : [];
+    },
+    [model, relations]
   );
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY_CONCEPT,
@@ -218,21 +246,29 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  // Data mode lives on Graph only, so Tree keeps the card even when Graph was left in Data.
+  const showsHealth = !selected && (surface === 'tree' || graphMode !== 'data');
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <OntologyTreeView
-          density="compact"
-          selectedNodeId={selectedConceptId}
-          source={{ kind: 'native', index: treeIndex }}
-          onSelect={selectNode}
-        />
+        // The tree takes the full width; the health card sits on top, as in the design.
+        <div className="tw:h-full" data-testid="ontology-tree-surface">
+          <OntologyTreeView
+            density="compact"
+            selectedNodeId={selectedConceptId}
+            source={{ kind: 'native', index: treeIndex }}
+            onSelect={selectNode}
+          />
+        </div>
       );
     }
     if (graphMode === 'data') {
       if (model) {
         return (
           <OntologyNativeDataMode
+            concepts={dataConcepts}
+            getConceptProperties={getConceptProperties}
             key={model.ontology.id}
             ontologyId={model.ontology.id}
             selectedConceptId={selectedConceptId}
@@ -254,8 +290,7 @@ const AllOntologiesGraphView = ({
     }
 
     return (
-      <Suspense
-        fallback={<Typography role="status">{t('label.loading')}</Typography>}>
+      <Suspense fallback={<Loader />}>
         <OntologyGraphG6
           studioMode
           edges={graph.edges}
@@ -275,15 +310,21 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  const clearSearchButton = (
+    <OntologySearchClearButton value={search} onClear={() => setSearch('')} />
+  );
+
   const renderSearch = () => {
-    if (isAiMode && searchSlot) {
+    if (searchSlot) {
       return createPortal(
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           icon={Search}
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />,
@@ -300,11 +341,13 @@ const AllOntologiesGraphView = ({
         }>
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           className="tw:w-54"
           icon={Search}
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />
@@ -370,6 +413,9 @@ const AllOntologiesGraphView = ({
         {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
+        {showsHealth ? (
+          <OntologyHealthPanel isRaised health={health} onConnect={openOwner} />
+        ) : null}
       </div>
       {selected && model ? (
         <OntologyConceptInspector
@@ -382,19 +428,9 @@ const AllOntologiesGraphView = ({
               ? () => onEditConcept(model.ontology, selected.id)
               : undefined
           }
-          onOpenData={() => {
-            onRequestGraphSurface();
-            setGraphMode('data');
-          }}
           onSelectConcept={selectNode}
         />
-      ) : (
-        <OntologyHealthPanel
-          health={health}
-          placement="sidebar"
-          onConnect={openOwner}
-        />
-      )}
+      ) : null}
     </Box>
   );
 };

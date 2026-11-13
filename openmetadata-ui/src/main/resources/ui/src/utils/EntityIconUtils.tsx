@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
+import { Governance, Location } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CSSProperties, ElementType } from 'react';
-import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
-import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -94,7 +93,7 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.API_SERVICE]: ENTITY_ICON_MAPPER[EntityType.API_SERVICE].icon,
   [EntityType.API_COLLECTION]:
     ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon,
-  location: LocationIcon,
+  location: Location,
   [EntityType.QUERY]: ENTITY_ICON_MAPPER[EntityType.QUERY].icon,
   [EntityType.DIRECTORY]: ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon,
   [EntityType.FILE]: ENTITY_ICON_MAPPER[EntityType.FILE].icon,
@@ -110,7 +109,7 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.SEARCH_INDEX]: ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
   [EntityType.SEARCH_SERVICE]:
     ENTITY_ICON_MAPPER[EntityType.SEARCH_SERVICE].icon,
-  Governance: GovernanceIcon,
+  Governance: Governance,
   contextFile: ENTITY_ICON_MAPPER.contextFile.icon,
   contextMemory: ENTITY_ICON_MAPPER.contextMemory.icon,
   aiAutomation: ENTITY_ICON_MAPPER.aiAutomation.icon,

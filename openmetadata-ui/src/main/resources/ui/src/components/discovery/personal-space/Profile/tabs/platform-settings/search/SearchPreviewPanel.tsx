@@ -15,6 +15,7 @@ import {
   Box,
   Input,
   PaginationCardWithControls,
+  TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
@@ -22,9 +23,9 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_BASE } from '../../../../../../../constants/constants';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../../../../../constants/SearchSettings.constant';
 import { SearchSettings } from '../../../../../../../generated/configuration/searchSettings';
+import { usePageSizeState } from '../../../../../../../hooks/paging/usePageSizeState';
 import { searchPreview } from '../../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -51,7 +52,7 @@ const SearchPreviewPanel = ({
   const [query, setQuery] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize, setPageSize] = usePageSizeState();
   const [showRankingDetails, setShowRankingDetails] = useState(false);
   const [hits, setHits] = useState<SearchedDataProps['data']>([]);
   const [total, setTotal] = useState(0);
@@ -180,6 +181,7 @@ const SearchPreviewPanel = ({
       </Box>
       <Input
         aria-label={t('label.search')}
+        autoComplete="off"
         icon={Search}
         inputDataTestId="search-preview-input"
         placeholder={t('message.search-for-data-assets-placeholder')}
@@ -192,17 +194,21 @@ const SearchPreviewPanel = ({
       <Box direction="col" gap={2}>
         {renderResults()}
       </Box>
-      {total > pageSize && (
-        <PaginationCardWithControls
-          page={page}
-          pageSize={pageSize}
-          total={Math.ceil(total / pageSize)}
-          onPageChange={setPage}
-          onPageSizeChange={(next) => {
-            setPageSize(next);
-            setPage(1);
-          }}
-        />
+      {total > 0 && (
+        // The pager is a card footer with no top edge; with no table above it,
+        // the card frame supplies the full outline.
+        <TableCard.Root variant="muted">
+          <PaginationCardWithControls
+            page={page}
+            pageSize={pageSize}
+            total={Math.ceil(total / pageSize)}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              setPage(1);
+            }}
+          />
+        </TableCard.Root>
       )}
     </Box>
   );

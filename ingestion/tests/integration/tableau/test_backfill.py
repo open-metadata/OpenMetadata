@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.ingestion.api.step import WorkflowFatalError
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.workflow.metadata import MetadataWorkflow
 
 from .conftest import FakeTableauSite, _workflow_config  # noqa: TID252
@@ -64,16 +63,10 @@ def _ops_dashboard_data_models(metadata) -> list[str]:
 
 
 @pytest.fixture
-def run_ingestion(run_workflow, monkeypatch) -> Callable[..., MetadataWorkflow]:
-    """
-    Runs the workflow as a scheduled run does, in a process of its own. The dashboard source
-    keeps the entities it saw on the class, so a second run in this process would also count
-    the ones the first run saw, and never find a data model stale.
-    """
+def run_ingestion(run_workflow) -> Callable[..., MetadataWorkflow]:
+    """Runs the workflow as a scheduled run does, with a fresh source each time."""
 
     def _run(**source_config) -> MetadataWorkflow:
-        for seen in ("dashboard_source_state", "datamodel_source_state", "chart_source_state"):
-            monkeypatch.setattr(DashboardServiceSource, seen, set())
         # The broken view fails every run, so the status is asserted instead of raised.
         return run_workflow(MetadataWorkflow, _config(**source_config), raise_from_status=False)
 

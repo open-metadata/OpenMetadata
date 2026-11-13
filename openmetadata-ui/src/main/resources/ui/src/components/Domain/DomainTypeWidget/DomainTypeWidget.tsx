@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, FilterSelect } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  FilterSelect,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,10 +23,6 @@ import { DOMAIN_TYPE_DISPLAY } from '../../../constants/Domain.constants';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
@@ -71,14 +72,16 @@ export const DomainTypeWidget = () => {
   };
 
   const domainTypeActionButton = domain.domainType ? (
-    <WidgetEditButton
+    <ButtonUtility
       data-testid="edit-domainType-button"
-      title={t('label.edit-entity', { entity: t('label.domain-type') })}
+      icon={Edit01}
+      tooltip={t('label.edit-entity', { entity: t('label.domain-type') })}
     />
   ) : (
-    <WidgetPlusButton
+    <ButtonUtility
       data-testid="add-domainType-button"
-      title={t('label.add-entity', { entity: t('label.domain-type') })}
+      icon={Plus}
+      tooltip={t('label.add-entity', { entity: t('label.domain-type') })}
     />
   );
 

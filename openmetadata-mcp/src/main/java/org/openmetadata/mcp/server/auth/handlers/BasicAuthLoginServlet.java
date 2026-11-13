@@ -239,12 +239,8 @@ public class BasicAuthLoginServlet extends HttpServlet {
       } catch (AuthenticationException e) {
         // Wrong password for an existing account. A rejected credential is an expected outcome of
         // this endpoint, so it is logged as an event and never as a stack trace.
+        // validatePassword already counted the failed attempt, as for the REST login.
         LOG.warn("Basic Auth login failed: invalid credentials");
-        try {
-          authenticator.recordFailedLoginAttempt(email, email);
-        } catch (Exception recordEx) {
-          LOG.error("Failed to record login attempt for security tracking", recordEx);
-        }
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       } catch (CustomExceptionMessage e) {
         // Both authenticators report an unknown account as CustomExceptionMessage, and LDAP uses
@@ -283,9 +279,13 @@ public class BasicAuthLoginServlet extends HttpServlet {
       clientName = client.getClientName();
     }
 
-    String html = HtmlTemplates.generateLoginForm(clientName, errorMessage, csrfToken);
+    // The host comes from the pending request, the same redirect URI the code is sent to.
+    String redirectTarget = UriUtils.describeRedirectTarget(URI.create(pending.redirectUri()));
+    String html =
+        HtmlTemplates.generateLoginForm(clientName, redirectTarget, errorMessage, csrfToken);
     response.setContentType("text/html; charset=UTF-8");
     response.setStatus(HttpServletResponse.SC_OK);
+    HtmlTemplates.setSignInPageHeaders(response);
     response.getWriter().write(html);
   }
 

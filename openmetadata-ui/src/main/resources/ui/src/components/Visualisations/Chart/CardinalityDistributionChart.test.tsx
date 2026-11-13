@@ -22,8 +22,7 @@ import CardinalityDistributionChart, {
 } from './CardinalityDistributionChart.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
-    .EmptyPlaceholder,
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Badge: ({
     children,
     ...props
@@ -820,3 +819,65 @@ describe('CardinalityDistributionChart', () => {
     });
   });
 });
+
+it.each([false, true])(
+  'keeps snapshot sources separate (sharded: %s)',
+  (isSharded) => {
+    const firstDayData = {
+      ...mockColumnProfileWithCardinality,
+      executionSource: {
+        databaseName: 'demo_db',
+        schemaName: 'demo_schema',
+        tableName: 'events_20260101',
+      },
+    };
+    const currentDayData = {
+      ...mockColumnProfileWithCardinality,
+      executionSource: {
+        databaseName: 'demo_db',
+        schemaName: 'demo_schema',
+        tableName: 'events_20260102',
+      },
+    };
+    const { rerender } = render(
+      <CardinalityDistributionChart
+        data={{ firstDayData, currentDayData }}
+        isSharded={isSharded}
+      />
+    );
+
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260101')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+
+    rerender(
+      <CardinalityDistributionChart
+        data={{
+          firstDayData: mockColumnProfileWithCardinality,
+          currentDayData,
+        }}
+        isSharded={isSharded}
+      />
+    );
+
+    expect(
+      screen.queryByText('demo_db.demo_schema.events_20260101')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+
+    if (isSharded) {
+      expect(
+        screen.getByText('message.execution-source-unavailable')
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
+    }
+  }
+);

@@ -21,7 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,16 +42,19 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
@@ -66,8 +72,39 @@ class CreateTaskTest {
     assertEquals(3, CreateTask.resolveApprovalThreshold("allAssignees", 1, users(3)));
     assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, List.of(team())));
     assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, List.of(team())));
-    assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
     assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, null));
+  }
+
+  @Test
+  void approvalThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.resolveApprovalThreshold(null, 2, users(1)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 3, users(2)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of()));
+  }
+
+  @Test
+  void rejectionThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, users(1)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, users(2)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of()));
+    assertEquals(1, CreateTask.reviewPolicy(2, 2, true, users(1)).getRejectionThreshold());
+  }
+
+  @Test
+  void changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote() {
+    ReviewPolicy oneReviewerLeft = CreateTask.reviewPolicy(2, 1, true, users(1));
+    assertEquals(1, oneReviewerLeft.getApprovalThreshold());
+    assertEquals(1, oneReviewerLeft.getRejectionThreshold());
+    assertTrue(oneReviewerLeft.getPartialDecisions());
+
+    assertEquals(2, CreateTask.reviewPolicy(2, 1, true, users(3)).getApprovalThreshold());
+    assertEquals(
+        2,
+        CreateTask.reviewPolicy(2, 1, false, List.of(users(1).get(0), team()))
+            .getApprovalThreshold());
   }
 
   private static List<EntityReference> users(int count) {
@@ -995,6 +1032,72 @@ class CreateTaskTest {
     assertTrue(
         CreateTask.isSupersedablePriorApprovalTask(
             priorByKaran, workflowDefinitionId, UUID.randomUUID(), "karan"));
+  }
+
+  // ---- reviewsStaleRevision ----
+
+  @Test
+  void testRunOfAReplacedRevisionReviewsAStaleRevision() {
+    // Revision 2's run created its task first; revision 1's run finishes last and must not
+    // supersede it.
+    DelegateTask delegateTask = changeRequestRun();
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(false);
+
+      assertTrue(CreateTask.reviewsStaleRevision(delegateTask));
+    }
+  }
+
+  @Test
+  void testRunOfTheActiveRevisionIsNotStale() {
+    DelegateTask delegateTask = changeRequestRun();
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(true);
+
+      assertFalse(CreateTask.reviewsStaleRevision(delegateTask));
+    }
+  }
+
+  @Test
+  void testRunOfAReplacedRevisionLeavesTheLiveReviewAlone() {
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(false);
+
+      supersedeFor(changeRequestRun(), taskRepository);
+    }
+
+    verify(taskRepository, never()).listNonTerminalTasksByEntityAndCategory(any(), any());
+  }
+
+  @Test
+  void testRunOfTheActiveRevisionSupersedesTheRequestersPriorReview() {
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(true);
+
+      supersedeFor(changeRequestRun(), taskRepository);
+    }
+
+    verify(taskRepository)
+        .listNonTerminalTasksByEntityAndCategory("glossary", TaskCategory.Approval);
+  }
+
+  private static void supersedeFor(DelegateTask delegateTask, TaskRepository taskRepository) {
+    new CreateTask()
+        .supersedePriorApprovalTask(
+            delegateTask,
+            taskRepository,
+            new Glossary().withFullyQualifiedName("glossary"),
+            TaskCategory.Approval,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "karan");
+  }
+
+  @Test
+  void testRunWithoutAChangeRequestIsNeverStale() {
+    assertFalse(CreateTask.reviewsStaleRevision(Mockito.mock(DelegateTask.class)));
   }
 
   // ---- resolveRequester ----

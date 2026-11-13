@@ -133,16 +133,18 @@ class SSLManager:
     @setup_ssl.register(DorisConnection)
     @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
-        # Use the temporary file paths for SSL configuration
+        # PyMySQL's ``ssl`` dict takes ``ca``/``cert``/``key``. The ``ssl_``-prefixed names only
+        # exist as URL query params and top-level kwargs; inside the dict they are ignored, which
+        # leaves TLS on but the server certificate unverified.
         connection = cast(MysqlConnection | DorisConnection | StarRocksConnection, connection)  # noqa: TC006
         connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         ssl_args = connection.connectionArguments.root.get("ssl", {})
         if connection.sslConfig.root.caCertificate:
-            ssl_args["ssl_ca"] = self.ca_file_path
+            ssl_args["ca"] = self.ca_file_path
         if connection.sslConfig.root.sslCertificate:
-            ssl_args["ssl_cert"] = self.cert_file_path
+            ssl_args["cert"] = self.cert_file_path
         if connection.sslConfig.root.sslKey:
-            ssl_args["ssl_key"] = self.key_file_path
+            ssl_args["key"] = self.key_file_path
         connection.connectionArguments.root["ssl"] = ssl_args
         return connection
 
@@ -231,18 +233,20 @@ class SSLManager:
     @setup_ssl.register(KafkaConnection)
     def _(self, connection) -> KafkaConnection:
         connection = cast(KafkaConnection, connection)  # noqa: TC006
+        # Both configs are models whose undeclared keys are extras, so the file locations are
+        # set as extras under their librdkafka names.
         if connection.consumerConfigSSL:
-            connection.consumerConfig = {
-                **connection.consumerConfig,
-                "ssl.ca.location": getattr(self, "ca_consumer_config", None),
-                "ssl.key.location": getattr(self, "key_consumer_config", None),
-                "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
-            }
+            setattr(connection.consumerConfig, "ssl.ca.location", getattr(self, "ca_consumer_config", None))
+            setattr(connection.consumerConfig, "ssl.key.location", getattr(self, "key_consumer_config", None))
+            setattr(connection.consumerConfig, "ssl.certificate.location", getattr(self, "cert_consumer_config", None))
         if connection.schemaRegistrySSL:
-            connection.schemaRegistryConfig["ssl.ca.location"] = getattr(self, "ca_schema_registry", None)
-
-            connection.schemaRegistryConfig["ssl.key.location"] = getattr(self, "key_schema_registry", None)
-            connection.schemaRegistryConfig["ssl.certificate.location"] = getattr(self, "cert_schema_registry", None)
+            setattr(connection.schemaRegistryConfig, "ssl.ca.location", getattr(self, "ca_schema_registry", None))
+            setattr(connection.schemaRegistryConfig, "ssl.key.location", getattr(self, "key_schema_registry", None))
+            setattr(
+                connection.schemaRegistryConfig,
+                "ssl.certificate.location",
+                getattr(self, "cert_schema_registry", None),
+            )
         return connection
 
     @setup_ssl.register(CassandraConnection)

@@ -138,9 +138,6 @@ const UserAssetCard: React.FC<UserAssetCardProps> = ({
               avatarSize={24}
               isCompactView={false}
               owners={owners}
-              placeHolder={t('label.no-entity', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </Box>

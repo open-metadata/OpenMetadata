@@ -1,0 +1,13 @@
+{
+  "name": "OntologyAuthor",
+  "displayName": "Ontology Author",
+  "description": "Users with the Ontology Author role create and edit ontologies, concepts, properties and axioms, capture releases, and request their review.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies": [
+    {
+      "type": "policy",
+      "name": "OntologyAuthorPolicy"
+    }
+  ]
+}

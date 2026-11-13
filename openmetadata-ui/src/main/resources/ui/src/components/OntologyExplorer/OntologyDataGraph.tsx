@@ -22,6 +22,7 @@ import {
   BarChart01,
   ChevronDown,
   ChevronUp,
+  Columns03,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -52,10 +53,16 @@ import {
 } from './OntologyDataGraphChrome';
 import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
 import {
+  BoundColumn,
   OntologyEdge,
   OntologyGraphData,
   OntologyNode,
 } from './OntologyExplorer.interface';
+import {
+  columnNodeKey,
+  ColumnSlot,
+  layoutColumnNodes,
+} from './utils/dataColumnLayout';
 import {
   buildClusterEdgeGeometry,
   buildRowLinkGeometry,
@@ -66,6 +73,10 @@ import {
   layoutDataClusters,
   Point,
 } from './utils/dataGraphLayout';
+import {
+  DATA_PANEL_RESERVED_WIDTH,
+  panXClearOfPanel,
+} from './utils/dataPanelView';
 import {
   ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
@@ -82,13 +93,20 @@ interface OntologyDataGraphProps {
   data: OntologyGraphData;
   glossaryColorMap: Record<string, string>;
   hasMoreTerms: boolean;
+  /** One concept is drawn, so the multi-concept heading and inferred-edge legend do not apply. */
+  isSingleConcept?: boolean;
   isLoadingMoreTerms: boolean;
   limitMessage?: string;
   relationTypes: RelationshipType[];
+  /** The asset node the open side panel describes; the graph pans its card and column lane left of the panel. */
+  selectedAssetNodeId?: string;
+  /** `columnNodeKey` of the selected column node. */
+  selectedColumnKey?: string;
   selectedNodeId?: string;
   variant?: 'glossary' | 'native';
   onLoadMore: (term: OntologyNode) => void;
   onPaneClick: () => void;
+  onSelectColumn?: (asset: OntologyNode, column: BoundColumn) => void;
   onSelectNode: (node: OntologyNode) => void;
   onLoadMoreTerms: () => void;
 }
@@ -135,6 +153,9 @@ const CARD_HEADER_HEIGHT = 50;
 // Card border + header and one asset row; used until the rendered card is measured.
 const CARD_CHROME_HEIGHT = 50;
 const ASSET_ROW_HEIGHT = 64;
+// The host pins the concept chip over the canvas top-left (top-16, one row
+// tall); the single card must start below its bottom edge.
+const SINGLE_CONCEPT_CARD_TOP = 112;
 const SHOW_MORE_HEIGHT = 41;
 // A collapsed card previews this many assets; the rest sit behind "Show N more".
 const COLLAPSED_ASSET_COUNT = 3;
@@ -308,76 +329,151 @@ function AssetTypeBadge({ entityType }: { entityType: string }) {
 
 interface AssetRowsProps {
   assets: OntologyNode[];
+  expandedColumnIds?: ReadonlySet<string>;
+  isNative: boolean;
+  onSelectNode: (node: OntologyNode) => void;
+  onToggleColumns?: (asset: OntologyNode) => void;
+}
+
+function BoundColumnToggle({
+  asset,
+  isOpen,
+  onToggle,
+}: {
+  asset: OntologyNode;
+  isOpen: boolean;
+  onToggle: (asset: OntologyNode) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-1 tw:pr-5 tw:pb-3 tw:pl-16">
+      <Button
+        aria-expanded={isOpen}
+        className="tw:self-start"
+        color="link-gray"
+        data-testid={`ontology-data-asset-columns-toggle-${asset.id}`}
+        size="xs"
+        onPress={() => onToggle(asset)}>
+        {t('label.bound-column-count', {
+          count: asset.boundColumns?.length ?? 0,
+        })}
+      </Button>
+    </div>
+  );
+}
+
+interface AssetRowButtonProps {
+  asset: OntologyNode;
+  index: number;
   isNative: boolean;
   onSelectNode: (node: OntologyNode) => void;
 }
 
-function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
+function AssetRowButton({
+  asset,
+  index,
+  isNative,
+  onSelectNode,
+}: AssetRowButtonProps) {
   const { t } = useTranslation();
+  const entityType = getAssetEntityType(asset);
+  const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
+  const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
 
+  return (
+    // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
+    <Button
+      noTextPadding
+      aria-describedby={lineageNotes.length > 0 ? descriptionId : undefined}
+      className={classNames(
+        'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
+        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
+        index > 0 && 'tw:border-t tw:border-secondary'
+      )}
+      color="tertiary"
+      data-testid={`ontology-data-asset-${asset.id}`}
+      onClick={() => onSelectNode(asset)}>
+      <AssetLogo asset={asset} entityType={entityType} />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography
+          ellipsis
+          className="tw:text-primary"
+          data-testid="ontology-data-asset-name"
+          size="text-sm"
+          weight="medium">
+          {asset.originalLabel ?? asset.label}
+        </Typography>
+        <Typography ellipsis color="secondary" size="text-xs">
+          {isNative
+            ? getNativeAssetSummary(asset, lineageNotes, t)
+            : getAssetPath(asset)}
+        </Typography>
+      </Box>
+      {isNative && entityType === 'table' ? null : (
+        <AssetTypeBadge entityType={entityType} />
+      )}
+      {lineageNotes.length > 0 ? (
+        <span hidden id={descriptionId}>
+          {lineageNotes.join(' · ')}
+        </span>
+      ) : null}
+    </Button>
+  );
+}
+
+function AssetRowList({
+  assets,
+  expandedColumnIds,
+  isNative,
+  onSelectNode,
+  onToggleColumns,
+}: AssetRowsProps) {
   return (
     <>
       {assets.map((asset, index) => {
-        const entityType = getAssetEntityType(asset);
-        const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
-        const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
-
-        return (
-          // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
-          <Button
-            noTextPadding
-            aria-describedby={
-              lineageNotes.length > 0 ? descriptionId : undefined
-            }
-            className={classNames(
-              'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
-              'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
-              index > 0 && 'tw:border-t tw:border-secondary'
-            )}
-            color="tertiary"
-            data-testid={`ontology-data-asset-${asset.id}`}
+        const row = (
+          <AssetRowButton
+            asset={asset}
+            index={index}
+            isNative={isNative}
             key={asset.id}
-            onClick={() => onSelectNode(asset)}>
-            <AssetLogo asset={asset} entityType={entityType} />
-            <Box className="tw:min-w-0 tw:flex-1" direction="col">
-              <Typography
-                ellipsis
-                className="tw:text-primary"
-                data-testid="ontology-data-asset-name"
-                size="text-sm"
-                weight="medium">
-                {asset.originalLabel ?? asset.label}
-              </Typography>
-              <Typography ellipsis color="secondary" size="text-xs">
-                {isNative
-                  ? getNativeAssetSummary(asset, lineageNotes, t)
-                  : getAssetPath(asset)}
-              </Typography>
-            </Box>
-            {isNative && entityType === 'table' ? null : (
-              <AssetTypeBadge entityType={entityType} />
-            )}
-            {lineageNotes.length > 0 ? (
-              <span hidden id={descriptionId}>
-                {lineageNotes.join(' · ')}
-              </span>
-            ) : null}
-          </Button>
+            onSelectNode={onSelectNode}
+          />
+        );
+        const hasColumns = isNative && (asset.boundColumns?.length ?? 0) > 0;
+
+        return hasColumns && onToggleColumns ? (
+          <div key={asset.id}>
+            {row}
+            <BoundColumnToggle
+              asset={asset}
+              isOpen={expandedColumnIds?.has(asset.id) ?? false}
+              onToggle={onToggleColumns}
+            />
+          </div>
+        ) : (
+          row
         );
       })}
     </>
   );
 }
 
+const hasSameAssets = (previous: OntologyNode[], next: OntologyNode[]) =>
+  previous.length === next.length &&
+  previous.every((asset, index) => asset === next[index]);
+
+const areSameRowProps = (previous: AssetRowsProps, next: AssetRowsProps) =>
+  [
+    previous.isNative === next.isNative,
+    previous.onSelectNode === next.onSelectNode,
+    previous.expandedColumnIds === next.expandedColumnIds,
+    previous.onToggleColumns === next.onToggleColumns,
+  ].every(Boolean) && hasSameAssets(previous.assets, next.assets);
+
 // Rows keep their render while the graph re-renders for a scroll or a drag.
-const AssetRows = memo(
-  AssetRowList,
-  (previous, next) =>
-    previous.isNative === next.isNative &&
-    previous.onSelectNode === next.onSelectNode &&
-    previous.assets.length === next.assets.length &&
-    previous.assets.every((asset, index) => asset === next.assets[index])
-);
+const AssetRows = memo(AssetRowList, areSameRowProps);
 
 // jsdom and a card that is not laid out read 0, so the CSS sizes stand in.
 function measureRows(container: HTMLElement): RowMetrics | undefined {
@@ -721,13 +817,17 @@ const OntologyDataGraph = ({
   data,
   glossaryColorMap,
   hasMoreTerms,
+  isSingleConcept = false,
   isLoadingMoreTerms,
   limitMessage,
   relationTypes,
+  selectedAssetNodeId,
+  selectedColumnKey,
   selectedNodeId,
   variant = 'glossary',
   onLoadMore,
   onPaneClick,
+  onSelectColumn,
   onSelectNode,
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
@@ -756,6 +856,32 @@ const OntologyDataGraph = ({
     () => new Set()
   );
   const [rowWindows, setRowWindows] = useState<Record<string, RowWindow>>({});
+  const [expandedColumnIds, setExpandedColumnIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const toggleColumns = useCallback((asset: OntologyNode) => {
+    setExpandedColumnIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(asset.id)) {
+        next.add(asset.id);
+      }
+
+      return next;
+    });
+  }, []);
+  const [fullColumnIds, setFullColumnIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const toggleAllColumns = useCallback((assetId: string) => {
+    setFullColumnIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(assetId)) {
+        next.add(assetId);
+      }
+
+      return next;
+    });
+  }, []);
   const cardHeightOf = useCallback(
     (term: OntologyNode) =>
       measuredHeights[term.id] ??
@@ -856,6 +982,35 @@ const OntologyDataGraph = ({
     rowWindows,
     visibleTerms,
   ]);
+  const columnNodes = useMemo(() => {
+    const columnsByKey = new Map<
+      string,
+      { asset: OntologyNode; column: BoundColumn }
+    >();
+    const layoutAssets = [...assetsByTerm.values()].flat().flatMap((asset) => {
+      const row = rowsInView.get(asset.id);
+      if (!row || !expandedColumnIds.has(asset.id)) {
+        return [];
+      }
+      const columnKeys = (asset.boundColumns ?? []).map((column) => {
+        const key = columnNodeKey(asset.id, column.path);
+        columnsByKey.set(key, { asset, column });
+
+        return key;
+      });
+
+      return [
+        {
+          assetId: asset.id,
+          columnKeys,
+          isShowingAll: fullColumnIds.has(asset.id),
+          row,
+        },
+      ];
+    });
+
+    return { ...layoutColumnNodes(layoutAssets), columnsByKey };
+  }, [assetsByTerm, expandedColumnIds, fullColumnIds, rowsInView]);
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
     [relationTypes]
@@ -901,21 +1056,42 @@ const OntologyDataGraph = ({
     rowsInView,
     t,
   ]);
+  const hasBoundColumns = useMemo(
+    () =>
+      data.nodes.some(
+        (node) => node.type === 'dataAsset' && node.boundColumns?.length
+      ),
+    [data.nodes]
+  );
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
       return [
-        {
-          color: INFERRED_EDGE_COLOR,
-          isSolid: false,
-          key: 'inferred',
-          label: t('label.ontology-inferred-relation'),
-        },
+        ...(isSingleConcept
+          ? []
+          : [
+              {
+                color: INFERRED_EDGE_COLOR,
+                isSolid: false,
+                key: 'inferred',
+                label: t('label.ontology-inferred-relation'),
+              },
+            ]),
         {
           color: LINEAGE_EDGE_COLOR,
           isSolid: true,
           key: 'lineage',
           label: t('label.observed-lineage'),
         },
+        ...(hasBoundColumns
+          ? [
+              {
+                color: INFERRED_EDGE_COLOR,
+                isSolid: false,
+                key: 'column-binding',
+                label: t('label.ontology-column-binding'),
+              },
+            ]
+          : []),
       ];
     }
 
@@ -932,7 +1108,7 @@ const OntologyDataGraph = ({
         ])
       ).values(),
     ];
-  }, [isNative, renderedSemanticEdges, t]);
+  }, [hasBoundColumns, isNative, isSingleConcept, renderedSemanticEdges, t]);
   const linkedAssetTotal = useMemo(
     () =>
       visibleTerms.reduce(
@@ -969,6 +1145,11 @@ const OntologyDataGraph = ({
         box.left + box.width + CLUSTER_LAYOUT_MARGIN
       );
     });
+    nextHeight = Math.max(
+      nextHeight,
+      columnNodes.bottom + CLUSTER_LAYOUT_MARGIN
+    );
+    nextWidth = Math.max(nextWidth, columnNodes.right + CLUSTER_LAYOUT_MARGIN);
     if (hasFooter) {
       nextHeight = Math.max(
         nextHeight,
@@ -977,7 +1158,14 @@ const OntologyDataGraph = ({
     }
 
     return { canvasHeight: nextHeight, canvasWidth: nextWidth };
-  }, [cardBoxes, clusterLayout, contentBottom, hasFooter]);
+  }, [
+    cardBoxes,
+    clusterLayout,
+    columnNodes.bottom,
+    columnNodes.right,
+    contentBottom,
+    hasFooter,
+  ]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -1127,11 +1315,24 @@ const OntologyDataGraph = ({
         ? current
         : { ...current, ...Object.fromEntries(changed) };
     });
-  }, [assetsByTerm, expandedCardIds, isNative, measuredHeights]);
+  }, [
+    assetsByTerm,
+    expandedCardIds,
+    expandedColumnIds,
+    isNative,
+    measuredHeights,
+  ]);
 
   const layoutKey = useMemo(
     () => visibleTerms.map((term) => term.id).join('|'),
     [visibleTerms]
+  );
+  const getTopInset = useCallback(
+    (zoom: number) =>
+      isSingleConcept
+        ? Math.max(0, SINGLE_CONCEPT_CARD_TOP - CLUSTER_LAYOUT_MARGIN * zoom)
+        : 0,
+    [isSingleConcept]
   );
   // Frame each new set of clusters once; later pans and zooms are the user's.
   useEffect(() => {
@@ -1146,15 +1347,82 @@ const OntologyDataGraph = ({
     fittedLayoutKeyRef.current = layoutKey;
     const fitZoom = Math.min(
       element.clientWidth / canvasWidth,
-      element.clientHeight / canvasHeight
+      (element.clientHeight - getTopInset(1)) / canvasHeight
     );
     const zoom = clampZoom(Math.min(1, fitZoom));
     setView({
       x: Math.max(0, (element.clientWidth - canvasWidth * zoom) / 2),
-      y: Math.max(0, (element.clientHeight - canvasHeight * zoom) / 2),
+      y: Math.max(
+        getTopInset(zoom),
+        (element.clientHeight - canvasHeight * zoom) / 2
+      ),
       zoom,
     });
-  }, [canvasHeight, canvasWidth, layoutKey]);
+  }, [canvasHeight, canvasWidth, getTopInset, layoutKey]);
+
+  const panelExtent = useMemo(() => {
+    const card = selectedAssetNodeId
+      ? rowsInView.get(selectedAssetNodeId)
+      : undefined;
+    if (!card) {
+      return undefined;
+    }
+    const lane = columnNodes.slots.filter(
+      ({ assetId }) => assetId === selectedAssetNodeId
+    );
+
+    return {
+      left:
+        lane.length > 0 ? Math.min(...lane.map(({ left }) => left)) : card.left,
+      right: Math.max(
+        card.left + card.width,
+        ...lane.map(({ left, width }) => left + width)
+      ),
+    };
+  }, [columnNodes.slots, rowsInView, selectedAssetNodeId]);
+  const panelExtentLeft = panelExtent?.left;
+  const panelExtentRight = panelExtent?.right;
+  const panelInset = selectedAssetNodeId ? DATA_PANEL_RESERVED_WIDTH : 0;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const panShiftRef = useRef<{ from: number; to: number }>();
+  // Pans on each selection so a panel opened over a lane never hides it, and
+  // puts the canvas back when the panel closes unless the person moved it since.
+  useEffect(() => {
+    const element = containerRef.current;
+    const shift = panShiftRef.current;
+    const current = viewRef.current;
+    if (panelInset === 0) {
+      panShiftRef.current = undefined;
+      if (shift && shift.to === current.x) {
+        setView({ ...current, x: shift.from });
+      }
+
+      return;
+    }
+    if (
+      !element ||
+      panelExtentLeft === undefined ||
+      panelExtentRight === undefined
+    ) {
+      return;
+    }
+    const x = panXClearOfPanel({
+      containerWidth: element.clientWidth,
+      extentLeft: panelExtentLeft,
+      extentRight: panelExtentRight,
+      panelWidth: panelInset,
+      x: current.x,
+      zoom: current.zoom,
+    });
+    if (x !== current.x) {
+      panShiftRef.current = {
+        from: shift?.to === current.x ? shift.from : current.x,
+        to: x,
+      };
+      setView({ ...current, x });
+    }
+  }, [panelExtentLeft, panelExtentRight, panelInset, selectedColumnKey]);
 
   const zoomAtCenter = (factor: number) => {
     const element = containerRef.current;
@@ -1183,17 +1451,20 @@ const OntologyDataGraph = ({
     const fitZoom = clampZoom(
       Math.min(
         element.clientWidth / canvasWidth,
-        element.clientHeight / canvasHeight
+        (element.clientHeight - getTopInset(1)) / canvasHeight
       )
     );
     setView({
       x: (element.clientWidth - canvasWidth * fitZoom) / 2,
-      y: (element.clientHeight - canvasHeight * fitZoom) / 2,
+      y: Math.max(
+        getTopInset(fitZoom),
+        (element.clientHeight - canvasHeight * fitZoom) / 2
+      ),
       zoom: fitZoom,
     });
   };
 
-  const resetView = () => setView({ x: 0, y: 0, zoom: 1 });
+  const resetView = () => setView({ x: 0, y: getTopInset(1), zoom: 1 });
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (
@@ -1384,20 +1655,20 @@ const OntologyDataGraph = ({
       return null;
     }
     const isShowingMore = hiddenAssetCount > 0 || term.isLoadingAssets;
-    let label = t('label.show-less');
-    if (term.isLoadingAssets) {
-      label = t('label.loading');
-    } else if (hiddenAssetCount > 0) {
-      label = t('label.show-count-more', { count: hiddenAssetCount });
-    }
+    const label =
+      hiddenAssetCount > 0
+        ? t('label.show-count-more', { count: hiddenAssetCount })
+        : t('label.show-less-lowercase');
 
     return (
       <Box className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5">
         <Button
+          showTextWhileLoading
           color="link-color"
           data-testid={`ontology-load-more-assets-${term.id}`}
           iconLeading={isShowingMore ? ChevronDown : ChevronUp}
           isDisabled={term.isLoadingAssets}
+          isLoading={term.isLoadingAssets}
           size="sm"
           onClick={() => toggleCard(term, unloadedAssetCount)}>
           {label}
@@ -1422,15 +1693,15 @@ const OntologyDataGraph = ({
         <Box gap={4}>
           {hiddenAssetCount > 0 || term.isLoadingAssets ? (
             <Button
+              showTextWhileLoading
               color="link-color"
               data-testid={`ontology-load-more-assets-${term.id}`}
               iconLeading={ChevronDown}
               isDisabled={term.isLoadingAssets}
+              isLoading={term.isLoadingAssets}
               size="sm"
               onClick={() => toggleCard(term, unloadedAssetCount)}>
-              {term.isLoadingAssets
-                ? t('label.loading')
-                : t('label.load-more-count', { count: hiddenAssetCount })}
+              {t('label.load-more-count', { count: hiddenAssetCount })}
             </Button>
           ) : null}
           {canShowLess ? (
@@ -1440,7 +1711,7 @@ const OntologyDataGraph = ({
               iconLeading={ChevronUp}
               size="sm"
               onClick={() => showLess(term)}>
-              {t('label.show-less')}
+              {t('label.show-less-lowercase')}
             </Button>
           ) : null}
         </Box>
@@ -1558,7 +1829,9 @@ const OntologyDataGraph = ({
             <AssetRows
               isNative
               assets={assetState.shownAssets}
+              expandedColumnIds={expandedColumnIds}
               onSelectNode={onSelectNode}
+              onToggleColumns={toggleColumns}
             />
           </div>
         ) : (
@@ -1577,6 +1850,81 @@ const OntologyDataGraph = ({
             )
           : renderGlossaryToggle(term, assetState)}
       </Card>
+    );
+  };
+
+  const renderColumnSlot = (slot: ColumnSlot) => {
+    const style = {
+      height: slot.height,
+      left: slot.left,
+      top: slot.top,
+      width: slot.width,
+    };
+    if (slot.kind === 'more' || slot.kind === 'fewer') {
+      return (
+        <Button
+          className="tw:absolute tw:border-dashed"
+          color="secondary"
+          data-testid={`ontology-data-column-${slot.kind}-${slot.assetId}`}
+          key={`${slot.kind}-${slot.assetId}`}
+          size="xs"
+          style={style}
+          onPress={() => toggleAllColumns(slot.assetId)}>
+          {slot.kind === 'more'
+            ? t('label.show-count-more', { count: slot.hiddenCount })
+            : t('label.show-less-lowercase')}
+        </Button>
+      );
+    }
+    const entry = columnNodes.columnsByKey.get(slot.columnKey);
+    if (!entry) {
+      return null;
+    }
+    const { asset, column } = entry;
+    const isSelected = slot.columnKey === selectedColumnKey;
+
+    return (
+      // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
+      <Button
+        noTextPadding
+        aria-label={t('label.ontology-column-node-aria', {
+          asset: asset.label,
+          column: column.path.join('.'),
+          property: column.propertyLabel,
+          type: column.type ?? '',
+        })}
+        aria-pressed={isSelected}
+        className={classNames(
+          'tw:absolute tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:bg-surface tw:px-2.5 tw:text-left',
+          'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:min-w-0 tw:*:data-text:items-center tw:*:data-text:gap-2',
+          isSelected ? 'tw:border-brand' : 'tw:border-secondary'
+        )}
+        color="tertiary"
+        data-testid="ontology-data-column"
+        key={slot.columnKey}
+        style={style}
+        onPress={() => onSelectColumn?.(asset, column)}>
+        <Columns03
+          aria-hidden="true"
+          className="tw:size-3.5 tw:shrink-0 tw:text-quaternary"
+        />
+        <Typography
+          ellipsis
+          className="tw:min-w-0 tw:flex-1 tw:text-primary"
+          size="text-xs"
+          title={column.path.join('.')}
+          weight="medium">
+          {column.path.join('.')}
+        </Typography>
+        {column.type ? (
+          <Typography
+            className="tw:shrink-0"
+            color={column.isResolved ? 'secondary' : 'danger'}
+            size="text-xs">
+            {column.type}
+          </Typography>
+        ) : null}
+      </Button>
     );
   };
 
@@ -1681,9 +2029,25 @@ const OntologyDataGraph = ({
               </Fragment>
             )
           )}
+          {columnNodes.edges.map(({ columnKey, path }) => (
+            <path
+              d={path}
+              data-column={columnNodes.columnsByKey
+                .get(columnKey)
+                ?.column.path.join('.')}
+              data-testid="ontology-data-column-edge"
+              fill="none"
+              key={columnKey}
+              stroke={INFERRED_EDGE_COLOR}
+              strokeDasharray="4 3"
+              strokeWidth="1.5"
+            />
+          ))}
         </svg>
 
         {visibleTerms.map(renderCard)}
+
+        {columnNodes.slots.map(renderColumnSlot)}
 
         {renderedSemanticEdges.map(
           ({ color, labelLeft, labelText, labelTop, renderKey }) => (
@@ -1714,11 +2078,13 @@ const OntologyDataGraph = ({
         />
       </div>
 
-      <DataLayerHeading
-        assetCount={linkedAssetTotal}
-        conceptCount={visibleTerms.length}
-        isNative={isNative}
-      />
+      {isSingleConcept ? null : (
+        <DataLayerHeading
+          assetCount={linkedAssetTotal}
+          conceptCount={visibleTerms.length}
+          isNative={isNative}
+        />
+      )}
 
       {renderControls()}
     </div>

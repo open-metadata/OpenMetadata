@@ -11,82 +11,20 @@
  *  limitations under the License.
  */
 import { expect, test } from '../../support/fixtures/base';
+import { installVisualData } from '../../utils/visualData';
 import {
+  expectVisualScreenshot,
   gotoForScreenshot,
-  SCREENSHOT_OPTS,
+  prepareVisualTheme,
+  VISUAL_THEMES,
 } from '../../utils/visualRegression';
-import { enableAiAppMode } from '../Utils/appMode';
 
-/**
- * AI-mode counterparts of the classic baselines. The antd → core migration
- * (open-metadata/openmetadata-collate#6884) targets the AI shell, which the
- * classic static-page suite never renders, so layout changes there landed with
- * no visual gate at all.
- *
- * Masks follow the classic suite: anything that counts or names seeded data
- * varies per run, while the shell, headers and layout stay under test.
- */
-const PAGES: {
-  name: string;
-  route: string;
-  /** An element the page always renders once its content has mounted. */
-  readyTestId: string;
-  mask?: string[];
-}[] = [
-  {
-    name: 'ai-home',
-    route: '/my-data',
-    readyTestId: 'my-data-page',
-    mask: [
-      '[data-testid^="stat-card-"][data-testid$="-value"]',
-      '[data-testid^="stat-card-"][data-testid$="-subtitle"]',
-      '[data-testid^="stat-card-"][data-testid$="-breakdown"]',
-      '[data-testid="user-assets-list"]',
-      '[data-testid="user-assets-summary"]',
-      // Unread count: other specs' activity lands in the admin's inbox.
-      '[data-testid="ai-inbox-badge"]',
-    ],
-  },
-  {
-    name: 'ai-explore',
-    route: '/explore',
-    readyTestId: 'explore-tree',
-    mask: [
-      '[data-testid="explore-search-card-stats"]',
-      '[data-testid="search-results-count"]',
-      '[data-testid="explore-tree"]',
-    ],
-  },
-  // Settings live in the settings modal in AI mode; the /settings pages are
-  // classic-only (ADR:2026-10-21-settings-pages-are-classic-only).
-  {
-    name: 'ai-roles',
-    route: '/my-data#access-control/roles',
-    readyTestId: 'roles-list-table',
-    mask: [
-      '[data-testid="roles-list-table"] tbody',
-      '[data-testid="roles-list-container"] [data-testid="pagination"]',
-    ],
-  },
-  {
-    name: 'ai-bots',
-    route: '/my-data#bots',
-    readyTestId: 'bots-list-table',
-    mask: ['[data-testid="bots-list-table"] tbody'],
-  },
-];
-
-test.beforeEach(async ({ page }) => {
-  await enableAiAppMode(page);
-});
-
-for (const { name, route, readyTestId, mask } of PAGES) {
-  test(`${name} matches baseline`, async ({ page }) => {
-    await gotoForScreenshot(page, route, { readyTestId });
-    await expect(page.getByTestId('app-shell')).toBeVisible();
-    await expect(page).toHaveScreenshot(`${name}.png`, {
-      ...SCREENSHOT_OPTS,
-      mask: (mask ?? []).map((selector) => page.locator(selector)),
-    });
+for (const theme of VISUAL_THEMES) {
+  test(`My Data dashboard ${theme}`, async ({ page }) => {
+    await prepareVisualTheme(page, theme);
+    await installVisualData(page);
+    await gotoForScreenshot(page, '/my-data', { readyTestId: 'my-data-page' });
+    await expect(page.getByTestId('user-assets-list')).toBeVisible();
+    await expectVisualScreenshot(page, 'ai-my-data', theme);
   });
 }

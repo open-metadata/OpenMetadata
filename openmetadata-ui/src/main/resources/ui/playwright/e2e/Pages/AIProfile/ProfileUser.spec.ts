@@ -326,3 +326,11 @@ isolatedTest(
     expect(saved.displayName).toBe(newName);
   }
 );
+
+test('Escape closes the settings modal', async ({ page }) => {
+  await openAiProfile(page);
+
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByTestId('ai-profile-page')).toBeHidden();
+});

@@ -39,6 +39,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+  ButtonUtility: jest.fn(
+    ({
+      'aria-label': ariaLabel,
+      icon: Icon,
+      tooltip,
+      onClick,
+    }: {
+      'aria-label'?: string;
+      icon?: React.ElementType;
+      tooltip?: string;
+      onClick?: (e: React.MouseEvent) => void;
+    }) => (
+      <button aria-label={ariaLabel ?? tooltip} onClick={onClick}>
+        {Icon && <Icon />}
+      </button>
+    )
+  ),
   HintText: jest.fn(
     ({
       children,

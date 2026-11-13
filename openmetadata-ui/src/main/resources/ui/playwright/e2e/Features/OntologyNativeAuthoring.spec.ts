@@ -28,6 +28,7 @@ import {
 } from '../../utils/common';
 import {
   clickGraphNode,
+  readGraphPoints,
   readGraphZoom,
   readNodePositions,
 } from '../../utils/ontologyStudio';
@@ -36,9 +37,13 @@ const pick = async (page: Page, label: string, name: string) => {
   const input = page.getByRole('combobox', { name: label, exact: true });
   await scrollIntoViewAndSettle(input);
   await input.fill(name);
-  await page.getByRole('option', { name, exact: true }).click();
+  const listboxId = await input.getAttribute('aria-controls');
+  await page
+    .locator(`[id="${listboxId}"]`)
+    .getByRole('option', { name, exact: true })
+    .click();
   await input.press('Escape');
-  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
 };
 test.use({ isolatedUserOptions: { isAdmin: true } });
 test.describe(
@@ -94,12 +99,8 @@ test.describe(
         await test.step('Open both scope-bound Add concept entry points', async () => {
           await page.goto('/governance/ontology?ontology=' + owner.id);
           await page.getByTestId('mode-tab-edit').click();
-          await expect(
-            page.getByTestId('ontology-canvas-add-concept')
-          ).toBeVisible();
-          await clickIgnoringToasts(
-            page.getByTestId('ontology-canvas-add-concept')
-          );
+          await expect(page.getByTestId('ontology-add-concept')).toBeVisible();
+          await clickIgnoringToasts(page.getByTestId('ontology-add-concept'));
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toBeVisible();
@@ -121,6 +122,7 @@ test.describe(
           await page
             .getByTestId('new-class-description')
             .fill('Transfers funds between accounts.');
+          await page.getByTestId('new-class-advanced-toggle').click();
           await page
             .getByTestId('new-class-source')
             .fill('https://example.org/standard');
@@ -142,7 +144,10 @@ test.describe(
           ).toBeChecked();
           await page.getByTestId('new-class-property-name').press('Enter');
           await page.getByTestId('new-class-property-name').fill('status');
-          await page.getByRole('button', { name: /Type/ }).click();
+          await page
+            .getByTestId('new-class-advanced')
+            .getByRole('button', { name: /Type/ })
+            .click();
           await page.getByRole('option', { name: 'Enum', exact: true }).click();
           await page.getByTestId('new-class-enum-values').fill('Pending,');
           await expect(
@@ -152,7 +157,10 @@ test.describe(
           await page.getByTestId('new-class-enum-values').press('Enter');
           await clickIgnoringToasts(page.getByTestId('new-class-add-property'));
           await page.getByTestId('new-class-property-name').fill('customer');
-          await page.getByRole('button', { name: /Type/ }).click();
+          await page
+            .getByTestId('new-class-advanced')
+            .getByRole('button', { name: /Type/ })
+            .click();
           await page
             .getByRole('option', { name: 'Object', exact: true })
             .click();
@@ -271,39 +279,59 @@ test.describe(
                 Math.abs(added.y - existing.y) > 38 * zoom
             ).toBe(true);
           }
+          // The concept drawer covers the header's right, publication trigger included.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page
               .getByTestId('ontology-working-concept-group')
-              .filter({ hasText: 'FundsTransfer' })
+              .filter({ hasText: 'Funds Transfer' })
               .getByTestId('ontology-working-concept-summary')
           ).toHaveText(
-            'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+            'Class Funds Transfer ⊑ Payment, Transaction · 3 properties'
           );
           await page.keyboard.press('Escape');
         });
         await test.step('Cancel drawing from source and from the picker close control without persistence', async () => {
           const before = axioms.length;
           await clickGraphNode(page, concepts[0].id);
-          const positions = await readNodePositions(page);
-          const zoom = await readGraphZoom(page);
-          const source = positions[concepts[0].id];
-          await page.mouse.click(source.x + 75 * zoom, source.y);
+          // Opening the inspector re-fits the graph, so wait for the handle to stop moving.
+          const stablePoint = async (kind: 'node' | 'port', id: string) => {
+            let last = '';
+            let point: { x: number; y: number } | undefined;
+            await expect
+              .poll(
+                async () => {
+                  point = (await readGraphPoints(page, kind))[id];
+                  const key = JSON.stringify(point);
+                  const isStable = point !== undefined && key === last;
+                  last = key;
+
+                  return isStable;
+                },
+                { intervals: [300] }
+              )
+              .toBe(true);
+
+            return point as { x: number; y: number };
+          };
+          const port = await stablePoint('port', concepts[0].id);
+          await page.mouse.click(port.x, port.y);
           await expect(
             page.getByTestId('ontology-connect-instruction')
           ).toBeVisible();
-          await page.mouse.click(source.x, source.y);
+          // Clicking the armed source's own handle cancels; its body would pick the concept as the target.
+          await page.mouse.click(port.x, port.y);
           await expect(
             page.getByTestId('ontology-connect-instruction')
           ).toHaveCount(0);
-          await page.mouse.click(source.x + 75 * zoom, source.y);
+          const secondPort = await stablePoint('port', concepts[0].id);
+          await page.mouse.click(secondPort.x, secondPort.y);
           await expect(
             page.getByTestId('ontology-connect-instruction')
           ).toBeVisible();
-          await page.mouse.click(
-            positions[concepts[1].id].x,
-            positions[concepts[1].id].y
-          );
+          const target = await stablePoint('node', concepts[1].id);
+          await page.mouse.click(target.x, target.y);
           await expect(
             page.getByTestId('relationship-type-picker')
           ).toBeVisible();
@@ -446,6 +474,79 @@ test.describe(
             { params: { sessionId: held.sessionId } }
           );
         }
+        await deleteFixtureEntity(
+          api,
+          '/api/v1/ontologies/' +
+            ontology.id +
+            '?recursive=true&hardDelete=true'
+        );
+      }
+    });
+    test('a SKOS concept refuses parents, and switching to OWL class lets the class be created', async ({
+      isolatedUserPage: page,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = 'pw_class_skos_' + uuid();
+      const skosError =
+        'A SKOS concept cannot have parents, equivalent or disjoint classes, or properties. Remove them, or choose OWL class or Both.';
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: {
+            name,
+            iri: 'urn:' + name,
+            namespace: 'https://example.org/' + name + '#',
+          },
+        }),
+        'Create SKOS rule ontology'
+      );
+      try {
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Payment',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+              iri: ontology.namespace + 'Payment',
+            },
+          }),
+          'Create parent class'
+        );
+        await page.goto('/governance/ontology?ontology=' + ontology.id);
+        await page.getByTestId('mode-tab-edit').click();
+        await page.getByTestId('ontology-add-concept').click();
+        await page.getByTestId('new-class-label').fill('Remittance');
+        await page.getByTestId('new-class-advanced-toggle').click();
+        await page.getByTestId('new-class-type').getByRole('button').click();
+        await page.getByTestId('new-class-type-SKOS_CONCEPT').click();
+        await expect(page.getByText(skosError)).toHaveCount(0);
+        await pick(page, 'Subclass of', 'Payment');
+        await expect(page.getByText(skosError)).toBeVisible();
+        await expect(page.getByTestId('new-class-create')).toBeDisabled();
+        await page.getByTestId('new-class-type').getByRole('button').click();
+        await page.getByTestId('new-class-type-OWL_CLASS').click();
+        await expect(page.getByText(skosError)).toHaveCount(0);
+        await expect(page.getByTestId('new-class-create')).toBeEnabled();
+        await clickIgnoringToasts(page.getByTestId('new-class-create'));
+        await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
+          0
+        );
+        const response = await okJson<{ data: OntologyConcept[] }>(
+          await api.get('/api/v1/ontologyConcepts', {
+            params: { ontology: ontology.fullyQualifiedName },
+          }),
+          'Read class created after the type change'
+        );
+        const created = response.data.find(
+          (c) => c.iri === ontology.namespace + 'Remittance'
+        );
+        expect(created).toMatchObject({ conceptType: 'OWL_CLASS' });
+        if (created) {
+          await page.getByTestId('submode-tab-tree').click();
+          await expect(
+            page.getByTestId(`ontology-tree-term-${created.id}`)
+          ).toBeVisible();
+        }
+      } finally {
         await deleteFixtureEntity(
           api,
           '/api/v1/ontologies/' +

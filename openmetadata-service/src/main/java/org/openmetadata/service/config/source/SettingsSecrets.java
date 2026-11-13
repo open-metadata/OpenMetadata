@@ -91,6 +91,20 @@ public final class SettingsSecrets {
     }
   }
 
+  /** The pointers of the secrets in {@code value} that hold the mask rather than a secret. */
+  public static Set<String> maskedSecrets(SettingsType settingsType, Object value) {
+    Set<String> masked = new TreeSet<>();
+    for (String pointer : pointersOf(settingsType)) {
+      BeanPath.parentOf(value, pointer)
+          .filter(
+              parent ->
+                  PasswordEntityMasker.PASSWORD_MASK.equals(
+                      BeanPath.get(parent, BeanPath.lastSegment(pointer))))
+          .ifPresent(parent -> masked.add(pointer));
+    }
+    return masked;
+  }
+
   /**
    * Gives every secret of {@code updated} that the client sent back masked, or left out, the value
    * it has in {@code original}, in place. Clients only ever see masked secrets.

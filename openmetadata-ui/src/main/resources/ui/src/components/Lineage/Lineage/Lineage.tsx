@@ -46,7 +46,10 @@ import {
   ExportTypes,
   LINEAGE_EXPORT_SELECTOR,
 } from '../../../constants/Export.constants';
-import { ELEMENT_DELETE_STATE } from '../../../constants/Lineage.constants';
+import {
+  ELEMENT_DELETE_STATE,
+  ZOOM_TRANSITION_DURATION,
+} from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -91,8 +94,7 @@ import {
   getLineageDataByFQN,
   updateLineageEdge,
 } from '../../../rest/lineageAPI';
-import { drawEdgesForExport } from '../../../utils/CanvasUtils';
-import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
+import { getLineagePngExportOptions } from '../../../utils/CanvasUtils';
 import {
   createColumnEdges,
   createEdgesAndEdgeMaps,
@@ -107,10 +109,7 @@ import {
   getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
 } from '../../../utils/EntityLineageEdgeUtils';
-import {
-  centerNodePosition,
-  getViewportForLineageExport,
-} from '../../../utils/EntityLineageLayoutUtils';
+import { centerNodePosition } from '../../../utils/EntityLineageLayoutUtils';
 import {
   createNodes,
   getConnectedNodesEdges,
@@ -258,23 +257,36 @@ const computeLineageNodesAndEdges = (
 };
 
 // Centers the viewport on the requested node (by fqn) or falls back to the
-// root node / first visible node.
+// first visible node.
 const focusRecenterNode = (
-  recenter: string | boolean,
+  fqn: string,
   visibleNodes: Node[],
   activeReactFlowInstance: ReactFlowInstance | undefined,
   zoomValue: number
 ): void => {
   const nodeToFocus =
-    typeof recenter === 'string'
-      ? visibleNodes.find((n) => n.data.node.fullyQualifiedName === recenter)
-      : visibleNodes.find((n) => n.data.isRootNode);
+    visibleNodes.find((n) => n.data.node.fullyQualifiedName === fqn) ??
+    visibleNodes[0];
 
   if (nodeToFocus) {
     centerNodePosition(nodeToFocus, activeReactFlowInstance, zoomValue);
-  } else if (visibleNodes.length > 0) {
-    centerNodePosition(visibleNodes[0], activeReactFlowInstance, zoomValue);
   }
+};
+
+// Fits the whole graph once React Flow has the new positions, capped at the
+// default zoom so a small graph is not blown up.
+const fitLineageIntoView = async (
+  activeReactFlowInstance: ReactFlowInstance | undefined,
+  maxZoom: number
+): Promise<void> => {
+  await new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  );
+  activeReactFlowInstance?.fitView({
+    padding: 0.2,
+    maxZoom,
+    duration: ZOOM_TRANSITION_DURATION,
+  });
 };
 
 // Only the depth in the requested direction is fetched; the opposite
@@ -485,7 +497,7 @@ export const Lineage = ({
 
   const {
     lineageConfig,
-    setLineageConfig,
+    setSavedLineageConfig,
     tracedColumns,
     setTracedColumns,
     addTracedColumns,
@@ -868,9 +880,7 @@ export const Lineage = ({
         ...(isFirstTime && { hidden: undefined }),
       }));
 
-      if (recenter) {
-        // If recenter is a string, find the node with the matching fullyQualifiedName
-        // else fallback to rootNode
+      if (typeof recenter === 'string') {
         focusRecenterNode(
           recenter,
           visibleNodes,
@@ -882,6 +892,10 @@ export const Lineage = ({
       setNodes(visibleNodes);
       setEdges(visibleEdges);
       setColumnsHavingLineage(columnsLineageSet);
+
+      if (recenter === true) {
+        await fitLineageIntoView(activeReactFlowInstance, zoomValue);
+      }
     },
     [
       entityLineage,
@@ -1065,74 +1079,23 @@ export const Lineage = ({
       exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG],
       onExportCallback?: (_: string) => Promise<CSVExportResponse>
     ) => {
-      if (!entityFqn && !isPlatformLineage) {
+      // The Lineage page exports the lineage map from its own header button
+      // (LineageExportButton), so this serves the asset Lineage tab only.
+      if (!entityFqn) {
         return;
       }
 
-      const effectiveExportTypes = isPlatformLineage
-        ? [ExportTypes.PNG]
-        : exportTypes;
-      const includePNG = effectiveExportTypes.includes(ExportTypes.PNG);
-      const exportViewport = includePNG
-        ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
-        : undefined;
-
       showModal({
-        ...(isPlatformLineage
-          ? {
-              name: `${t('label.lineage')}_${getCurrentISODate()}`,
-              exportTypes: [ExportTypes.PNG],
-            }
-          : {
-              name: entityFqn,
-              exportTypes,
-            }),
+        name: entityFqn,
+        exportTypes,
         title: t('label.lineage'),
         documentSelector: LINEAGE_EXPORT_SELECTOR,
-        viewport: exportViewport,
-        renderEdgesOverlay:
-          includePNG && exportViewport
-            ? (imageWidth, imageHeight, padding, pixelRatio) => {
-                const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-                const { columnsInCurrentPages } = useLineageStore.getState();
-
-                return drawEdgesForExport(
-                  edges,
-                  nodeMap,
-                  exportViewport,
-                  imageWidth,
-                  imageHeight,
-                  padding,
-                  pixelRatio,
-                  columnsInCurrentPages
-                );
-              }
-            : undefined,
-        ...(includePNG && {
-          // The canvases leave off-screen nodes out of the DOM. Mount them
-          // for the capture, which clones the DOM, so the image holds every
-          // node and not only the ones in view.
-          beforeCapture: async () => {
-            useLineageStore.getState().setRenderAllNodes(true);
-            await new Promise((resolve) =>
-              requestAnimationFrame(() => requestAnimationFrame(resolve))
-            );
-          },
-          afterCapture: () =>
-            useLineageStore.getState().setRenderAllNodes(false),
-        }),
+        ...(exportTypes.includes(ExportTypes.PNG) &&
+          getLineagePngExportOptions(nodes, edges)),
         onExport: onExportCallback ?? exportLineageData,
       });
     },
-    [
-      entityFqn,
-      isPlatformLineage,
-      nodes,
-      showModal,
-      t,
-      exportLineageData,
-      edges,
-    ]
+    [entityFqn, nodes, edges, showModal, t, exportLineageData]
   );
 
   const loadChildNodesHandler = useCallback(
@@ -2133,7 +2096,7 @@ export const Lineage = ({
 
   useEffect(() => {
     if (defaultLineageConfig) {
-      setLineageConfig({
+      setSavedLineageConfig({
         upstreamDepth: defaultLineageConfig.upstreamDepth,
         downstreamDepth: defaultLineageConfig.downstreamDepth,
         pipelineViewMode: defaultLineageConfig.pipelineViewMode,
@@ -2145,7 +2108,7 @@ export const Lineage = ({
           : [defaultLineageConfig.lineageLayer]
       );
     }
-  }, [defaultLineageConfig, setActiveLayer, setLineageConfig]);
+  }, [defaultLineageConfig, setActiveLayer, setSavedLineageConfig]);
 
   useEffect(() => {
     if (updatedEntityLineage !== null) {
@@ -2169,6 +2132,7 @@ export const Lineage = ({
     lineageConfig,
     queryFilter,
     entityType,
+    entityFqn,
     isLineageSettingsLoaded,
     lineageMode,
     timeFilter.startTime,
@@ -2212,12 +2176,17 @@ export const Lineage = ({
   // Mirror the still-local graph state (`useMapBasedNodesEdges`) to the store
   // so store-only consumers (LineageOverlays, Phase-D-migrated components)
   // read the same nodes/edges `<Lineage />` is rendering instead of defaults.
+  // On the Lineage page the lineage map renders the graph and publishes it
+  // itself; the classic graph here stays empty and would overwrite it.
   useEffect(() => {
+    if (isPlatformLineageProp) {
+      return;
+    }
     const store = useLineageStore.getState();
     store.setNodes(nodes);
     store.setEdges(edges);
     store.setColumnEdges(columnEdges);
-  }, [nodes, edges, columnEdges]);
+  }, [isPlatformLineageProp, nodes, edges, columnEdges]);
 
   // Mirror the still-local fetch-lifecycle state to the store for the same
   // reason.

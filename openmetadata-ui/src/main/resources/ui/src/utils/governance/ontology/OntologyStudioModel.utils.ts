@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare, Operation } from 'fast-json-patch';
 import type {
   OntologyEdge,
   OntologyGraphData,
@@ -194,6 +195,35 @@ const namedClassesOf = (axiom: OntologyAxiom): string[] =>
       ? [expression.classIri]
       : []
   );
+
+/**
+ * Sets each concept's named superclasses from the SubClassOf axioms, as the server's
+ * `superClasses` field would. The server caps that lookup at 10,000 axioms per page and counts
+ * restrictions too, so a large ontology (HL7 FHIR) fails it while its axioms load fine.
+ */
+export const withSuperClasses = (
+  concepts: readonly OntologyConcept[],
+  axioms: readonly OntologyAxiom[]
+): OntologyConcept[] => {
+  const parents = new Map<string, Set<string>>();
+  axioms
+    .filter(
+      (axiom) => axiom.axiomType === AxiomType.SubclassOf && !axiom.deleted
+    )
+    .forEach((axiom) =>
+      namedClassesOf(axiom).forEach((iri) =>
+        parents.set(
+          axiom.subjectIri,
+          (parents.get(axiom.subjectIri) ?? new Set()).add(iri)
+        )
+      )
+    );
+
+  return concepts.map((concept) => ({
+    ...concept,
+    superClasses: [...(parents.get(concept.iri) ?? [])].sort(),
+  }));
+};
 
 const NAMED_AXIOM_KINDS: Partial<Record<AxiomType, OntologyRelationKind>> = {
   [AxiomType.SubclassOf]: 'subClassOf',
@@ -415,11 +445,17 @@ export const getConceptPropertyRows = (
   concept: OntologyConcept
 ): OntologyConceptPropertyRow[] => {
   const dataProperties = model.properties.filter(
-    (property) => property.kind === Kind.Data && !property.deleted
+    (property) =>
+      (property.kind === Kind.Data || property.kind === Kind.Annotation) &&
+      !property.deleted
   );
+  const rowDatatype = (property: OntologyProperty) =>
+    property.kind === Kind.Annotation
+      ? 'annotation'
+      : getDatatypeLabel(property);
   const own = dataProperties
     .filter((property) => property.domain?.includes(concept.iri))
-    .map((property) => ({ datatype: getDatatypeLabel(property), property }));
+    .map((property) => ({ datatype: rowDatatype(property), property }));
   const listed = new Set(own.map((row) => row.property.id));
   const inherited = getConceptAncestors(relations, concept.id).flatMap(
     (ancestor) =>
@@ -432,7 +468,7 @@ export const getConceptPropertyRows = (
           listed.add(property.id);
 
           return {
-            datatype: getDatatypeLabel(property),
+            datatype: rowDatatype(property),
             inheritedFrom: ancestor,
             property,
           };
@@ -441,6 +477,20 @@ export const getConceptPropertyRows = (
 
   return [...own, ...inherited];
 };
+
+/** The properties a column can be bound to: data properties, own and inherited; annotations hold no data. */
+export const getBindableConceptProperties = (
+  model: OntologyStudioModel,
+  relations: OntologyModelRelation[],
+  concept: OntologyConcept
+) =>
+  getConceptPropertyRows(model, relations, concept)
+    .filter(({ property }) => property.kind !== Kind.Annotation)
+    .map(({ property }) => ({
+      id: property.id,
+      label: getPropertyLabel(property),
+      isIdentifier: property.isIdentifier,
+    }));
 
 /** Object properties the Studio can offer as relationship types between two concepts. */
 export const getObjectProperties = (
@@ -516,7 +566,37 @@ export interface DataPropertyInput {
   readonly datatype: StudioDatatype;
   readonly isIdentifier: boolean;
   readonly enumValues?: string[];
+  readonly kind?: 'data' | 'annotation';
+  /** Attach this declared property to the concept instead of declaring a new one. */
+  readonly reusePropertyIri?: string;
 }
+
+/**
+ * A property declared once is reused by adding the concept to its domain, so
+ * the ontology never holds two declarations of one property. Nothing to patch
+ * when the concept already belongs to the domain.
+ */
+export const buildReusePropertyPatch = (
+  property: OntologyProperty,
+  concept: OntologyConcept
+): Operation[] =>
+  (property.domain ?? []).includes(concept.iri)
+    ? []
+    : [
+        ...(property.version === undefined
+          ? []
+          : [
+              {
+                op: 'test' as const,
+                path: '/version',
+                value: property.version,
+              },
+            ]),
+        ...compare(
+          { domain: property.domain ?? [] },
+          { domain: [...(property.domain ?? []), concept.iri] }
+        ),
+      ];
 
 export const buildDataPropertyRequest = (
   model: OntologyStudioModel,
@@ -532,8 +612,11 @@ export const buildDataPropertyRequest = (
         }))
       : undefined,
   isIdentifier: input.isIdentifier || undefined,
-  kind: CreatePropertyKind.Data,
+  kind:
+    input.kind === 'annotation'
+      ? CreatePropertyKind.Annotation
+      : CreatePropertyKind.Data,
   name: input.name.trim(),
   ontology: model.ontology.fullyQualifiedName,
-  range: [getDatatypeIri(input.datatype)],
+  range: input.kind === 'annotation' ? [] : [getDatatypeIri(input.datatype)],
 });

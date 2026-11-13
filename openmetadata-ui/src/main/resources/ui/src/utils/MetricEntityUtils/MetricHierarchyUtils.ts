@@ -143,6 +143,88 @@ export const flattenMetricRows = (rows: MetricTableRow[]): MetricTreeNode[] => {
   return flat;
 };
 
+const getLoadedParentIds = (metrics: MetricTreeNode[]) => {
+  const parentIdById = new Map<string, string>();
+
+  metrics.forEach((metric) => {
+    if (metric.parent?.id) {
+      parentIdById.set(metric.id, metric.parent.id);
+    }
+    metric.children?.forEach((child) => parentIdById.set(child.id, metric.id));
+  });
+
+  return parentIdById;
+};
+
+/**
+ * Ancestors of the selected metrics that are not loaded on the page, so the walk up their chain
+ * stops there. A status filter can hide a middle metric while its parent and child both show.
+ */
+export const getUnloadedMetricAncestorIds = (
+  rows: MetricTableRow[],
+  selectedIds: string[]
+): string[] => {
+  const selected = new Set(selectedIds);
+  const metrics = flattenMetricRows(rows);
+  const loadedIds = new Set(metrics.map(({ id }) => id));
+  const parentIdById = getLoadedParentIds(metrics);
+  const unloaded = new Set<string>();
+
+  selectedIds.forEach((id) => {
+    const visited = new Set<string>();
+    let parentId = parentIdById.get(id);
+    while (parentId && !selected.has(parentId) && !visited.has(parentId)) {
+      if (!loadedIds.has(parentId)) {
+        unloaded.add(parentId);
+
+        return;
+      }
+      visited.add(parentId);
+      parentId = parentIdById.get(parentId);
+    }
+  });
+
+  return [...unloaded];
+};
+
+/**
+ * The selected metrics that have no selected ancestor. A recursive delete of a parent already removes
+ * its variants, so a separate job for a selected child races it and fails once the child is gone.
+ * Ancestry comes from the tree nesting and, for flat (status-filtered) search rows, from `parent` —
+ * variant FQNs do not nest under their parent's FQN. `extraParentIds` links ancestors that are not
+ * loaded on the page.
+ */
+export const getTopmostSelectedMetrics = (
+  rows: MetricTableRow[],
+  selectedIds: string[],
+  extraParentIds?: Map<string, string>
+): MetricTreeNode[] => {
+  const selected = new Set(selectedIds);
+  const metrics = flattenMetricRows(rows);
+  const parentIdById = new Map([
+    ...(extraParentIds ?? []),
+    ...getLoadedParentIds(metrics),
+  ]);
+
+  const hasSelectedAncestor = (id: string) => {
+    const visited = new Set<string>();
+    let parentId = parentIdById.get(id);
+    while (parentId && !visited.has(parentId)) {
+      if (selected.has(parentId)) {
+        return true;
+      }
+      visited.add(parentId);
+      parentId = parentIdById.get(parentId);
+    }
+
+    return false;
+  };
+
+  return metrics.filter(
+    ({ id }) => selected.has(id) && !hasSelectedAncestor(id)
+  );
+};
+
 /**
  * Flattens the currently expanded hierarchy for renderers that do not support nested rows.
  * Group members start one level below their banner; recursively loaded variants retain their

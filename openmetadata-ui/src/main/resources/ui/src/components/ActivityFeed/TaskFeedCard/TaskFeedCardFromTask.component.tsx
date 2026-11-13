@@ -24,6 +24,8 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
   Comment,
+  SuccessfulTests,
+  TotalOccurrences,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -35,8 +37,6 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { EntityType } from '../../../enums/entity.enum';
@@ -56,7 +56,6 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -65,17 +64,22 @@ import {
   isRecognizerFeedbackTask,
   isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
+import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
+  hasVotedInCurrentStage,
+  isAllowedDecider,
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import {
   getTaskResolveBody,
+  getTaskStatusIconClassName,
   isOntologyReviewTask,
 } from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useCurrentUserIds } from '../../discovery/personal-space/InboxPage/useCurrentUserIds';
 import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   CARD_CONTAINER_CLASS_NAME,
@@ -97,7 +101,7 @@ const getTaskRowGapClassName = (
 };
 
 const getTaskStatusIcon = (status?: TaskEntityStatus) =>
-  status === TaskEntityStatus.Open ? TaskOpenIcon : TaskCloseIcon;
+  status === TaskEntityStatus.Open ? TotalOccurrences : SuccessfulTests;
 
 const getReplyCountLabelKey = (commentsCount: number) =>
   commentsCount === 1 ? 'label.one-reply' : 'label.number-reply-plural';
@@ -108,20 +112,26 @@ const getHasTaskEditAccess = ({
   isAssignee,
   isPartOfAssigneeTeam,
   isCreator,
+  hasVoted,
+  isDecider,
 }: {
   isAdminUser?: boolean;
   isTaskApprovalRequest: boolean;
   isAssignee?: boolean;
   isPartOfAssigneeTeam?: boolean;
   isCreator: boolean;
+  hasVoted: boolean;
+  isDecider: boolean;
 }): boolean => {
   const isAdminNonApproval = isAdminUser && !isTaskApprovalRequest;
-
-  return (
+  const canAct =
     isAdminNonApproval ||
     Boolean(isAssignee) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator)
-  );
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+  // A voter waits for the other approvers; the server ignores a second vote in the same stage.
+  // A workflow approval is decided only by its assignees, admins included.
+  return canAct && isDecider && !hasVoted;
 };
 
 interface TaskFeedCardFromTaskProps {
@@ -147,6 +157,7 @@ const TaskFeedCardFromTask = ({
   const { t } = useTranslation();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
+  const currentUserIds = useCurrentUserIds();
   const { isAdminUser } = useAuth();
   const isTaskTags = isTagsTaskType(task.type);
   const isTaskDescription = isDescriptionTaskType(task.type);
@@ -177,11 +188,7 @@ const TaskFeedCardFromTask = ({
   );
 
   const taskColumnName = useMemo(() => {
-    const columnName = fieldPath
-      ? EntityLink.getTableColumnName(
-          `<#E::${entityType}::${entityFQN}::${fieldPath}>`
-        ) ?? ''
-      : '';
+    const columnName = getTaskFieldName(fieldPath);
 
     if (columnName) {
       return (
@@ -192,7 +199,7 @@ const TaskFeedCardFromTask = ({
     }
 
     return null;
-  }, [entityFQN, entityType, fieldPath, t]);
+  }, [fieldPath, t]);
 
   const handleTaskLinkClick = () => {
     navigate(getTaskDetailPathFromTask(task));
@@ -347,6 +354,8 @@ const TaskFeedCardFromTask = ({
     isAssignee,
     isPartOfAssigneeTeam,
     isCreator,
+    hasVoted: hasVotedInCurrentStage(task, currentUser),
+    isDecider: isAllowedDecider(task, currentUserIds),
   });
 
   const showReplies = useCallback(() => {
@@ -378,7 +387,6 @@ const TaskFeedCardFromTask = ({
         <Box align="center" gap={2} justify="center">
           <ButtonUtility
             aria-label={t('label.reply')}
-            color="tertiary"
             data-testid="task-reply-button"
             icon={Comment}
             size="sm"
@@ -409,15 +417,10 @@ const TaskFeedCardFromTask = ({
         <Box gap={4}>
           {canQuickResolve() && (
             <Button
-              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary"
+              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary tw:*:data-icon:text-fg-success-primary"
               color="link-gray"
               data-testid="approve-button"
-              iconLeading={
-                <CheckCircleFilled
-                  className="tw:shrink-0 tw:text-fg-success-primary"
-                  size={14}
-                />
-              }
+              iconLeading={CheckCircleFilled}
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
@@ -428,9 +431,7 @@ const TaskFeedCardFromTask = ({
               className="tw:gap-1.5"
               color="link-destructive"
               data-testid="reject-button"
-              iconLeading={
-                <CloseCircleFilled className="tw:shrink-0" size={14} />
-              }
+              iconLeading={CloseCircleFilled}
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}
@@ -475,8 +476,14 @@ const TaskFeedCardFromTask = ({
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
           <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center">
             <TaskStatusIcon
-              className="tw:mr-1 tw:size-3.5 tw:shrink-0"
+              className={classNames(
+                'tw:mr-1 tw:shrink-0',
+                getTaskStatusIconClassName(
+                  task.status === TaskEntityStatus.Open
+                )
+              )}
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
+              size={14}
             />
             <div className="tw:flex tw:min-w-0 tw:flex-1">
               {taskLinkTitleElement}

@@ -27,8 +27,9 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+let mockIsAdminUser = true;
 jest.mock('../../../../hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: true }),
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
 }));
 
 let mockCurrentUser: { id: string; teams?: { id: string }[] } = {
@@ -441,7 +442,46 @@ describe('TeamDetailsV1 rolesTabRender/policiesTabRender permission gate (ungate
 describe('TeamDetailsV1 leave team', () => {
   afterEach(() => {
     mockCurrentUser = { id: 'admin-id' };
+    mockIsAdminUser = true;
   });
+
+  it('offers a member who is not an admin to leave a joinable team', async () => {
+    const openTeam = {
+      ...NON_ORG_TEAM,
+      teamType: TeamType.Group,
+      isJoinable: true,
+    } as unknown as Team;
+    mockIsAdminUser = false;
+    mockCurrentUser = { id: 'member-id', teams: [{ id: openTeam.id }] };
+
+    renderComponent({ currentTeam: openTeam });
+
+    expect(await screen.findByTestId('leave-team-button')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a member', [{ id: NON_ORG_TEAM.id }]],
+    ['someone outside it', []],
+  ])(
+    'offers %s who is not an admin neither join nor leave on a team that is not joinable',
+    async (_, teams) => {
+      const closedTeam = {
+        ...NON_ORG_TEAM,
+        teamType: TeamType.Group,
+        isJoinable: false,
+      } as unknown as Team;
+      mockIsAdminUser = false;
+      mockCurrentUser = { id: 'member-id', teams };
+
+      renderComponent({ currentTeam: closedTeam });
+
+      expect(
+        await screen.findByTestId('team-details-collapse')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('leave-team-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('join-teams')).not.toBeInTheDocument();
+    }
+  );
 
   it('opens the leave confirmation before the team users have loaded', async () => {
     const groupTeam = {

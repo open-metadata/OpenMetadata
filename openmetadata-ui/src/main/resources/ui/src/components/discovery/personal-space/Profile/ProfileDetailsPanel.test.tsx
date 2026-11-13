@@ -133,6 +133,7 @@ const user: User = {
   name: 'harsh',
   displayName: 'harsh vador',
   email: 'harsh@example.com',
+  isEmailVerified: true,
 };
 
 const renderPanel = (
@@ -240,12 +241,13 @@ describe('ProfileDetailsPanel', () => {
       'data-can-edit',
       'true'
     );
+    // Personas and domains get no override: only admins may change them, which
+    // is each row's own default (ADR:2026-11-03-only-admins-assign-personas,
+    // ADR:2026-10-21-only-admins-change-a-users-domains).
     expect(screen.getByTestId('persona-row')).toHaveAttribute(
       'data-can-edit',
-      'true'
+      'undefined'
     );
-    // Domains get no override: only admins may change a user's domains, which
-    // is the row's own default (ADR:2026-10-21-only-admins-change-a-users-domains).
     expect(screen.getByTestId('domains-row')).toHaveAttribute(
       'data-can-edit',
       'undefined'
@@ -266,7 +268,7 @@ describe('ProfileDetailsPanel', () => {
     );
     expect(screen.getByTestId('persona-row')).toHaveAttribute(
       'data-can-edit',
-      'false'
+      'undefined'
     );
   });
 
@@ -276,6 +278,29 @@ describe('ProfileDetailsPanel', () => {
     expect(screen.queryByText('********@masked.com')).not.toBeInTheDocument();
     expect(screen.queryByText('label.verified-status')).not.toBeInTheDocument();
   });
+
+  it('shows the verified email badge only when the backend marks the email verified', () => {
+    renderPanel({ isEmailVerified: true });
+
+    expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
+    expect(screen.getByText('label.verified-status')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['explicitly false', false],
+    ['omitted (admin-created, CSV-imported, password-reset invite)', undefined],
+  ])(
+    'hides the verified email badge when isEmailVerified is %s',
+    (_label, isEmailVerified) => {
+      renderPanel({ isEmailVerified });
+
+      // The email itself is still shown; only the verification claim is dropped.
+      expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.verified-status')
+      ).not.toBeInTheDocument();
+    }
+  );
 
   it('lists custom properties only when asked (own Profile tab)', () => {
     renderPanel();

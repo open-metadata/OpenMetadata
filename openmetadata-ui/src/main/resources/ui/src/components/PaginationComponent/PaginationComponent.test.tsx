@@ -15,8 +15,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import PaginationComponent from './PaginationComponent';
 
 describe('PaginationComponent', () => {
-  it('hides a single page by default', () => {
-    render(<PaginationComponent pageSize={10} total={10} />);
+  it('shows a single page by default', () => {
+    render(<PaginationComponent pageSize={15} total={10} />);
+
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+  });
+
+  it('hides when there are no records', () => {
+    render(<PaginationComponent pageSize={15} total={0} />);
+
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
+
+  it('still hides a single page when the caller opts out', () => {
+    render(<PaginationComponent hideOnSinglePage pageSize={15} total={10} />);
 
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });

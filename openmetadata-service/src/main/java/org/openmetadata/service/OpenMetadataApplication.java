@@ -121,6 +121,7 @@ import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandle
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
@@ -128,6 +129,7 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.CredentialUnavailableExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.RdfStorageMaintenanceExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.approval.ChangeRequestRecoveryScheduler;
 import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
@@ -157,6 +159,8 @@ import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.*;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
+import org.openmetadata.service.ontology.OntologyPackInstallJobHandler;
+import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -207,6 +211,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
+import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
@@ -328,6 +333,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Metrics initialization now handled by MicrometerBundle
 
+    // Before any resource starts work, so extraction can tell a server stop from a failure.
+    // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+    ServerStopping.registerShutdownHook();
     AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
     environment.lifecycle().manage(RdfBackgroundScheduler.getInstance());
 
@@ -578,6 +586,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
+    registry.register(
+        OntologyPackInstallJobManager.HANDLER_NAME, OntologyPackInstallJobHandler.createDefault());
     registry.register(new ContextMemoryExtractionJobHandler());
     registry.register(new MemoryGlossaryDerivationJobHandler());
     return registry;
@@ -830,6 +840,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.jersey().register(CredentialUnavailableExceptionMapper.class);
+    environment.jersey().register(RdfStorageMaintenanceExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
@@ -901,6 +912,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Only register servlets if they don't already exist to prevent duplicate registration
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
         contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      }
+      if (!isSamlServletRegistered(contextHandler, SamlLoginCompletionServlet.PATH)) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLoginCompletionServlet()), SamlLoginCompletionServlet.PATH);
       }
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
         contextHandler.addServlet(

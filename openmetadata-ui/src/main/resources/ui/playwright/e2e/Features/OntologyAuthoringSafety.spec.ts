@@ -21,6 +21,7 @@ import {
   clickIgnoringToasts,
   getWorkerAdminAPIContext,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 
@@ -172,9 +173,8 @@ test.describe(
               const text = 'Saved ' + tab + ' description';
               await description.fill(text);
               if (tab === 'Concepts') {
-                await page
-                  .getByRole('button', { name: 'Person', exact: true })
-                  .click();
+                // A Concepts row opens the concept's panel on the graph; leaving for the Ontology tab is guarded.
+                await page.getByTestId('submode-tab-definitions').click();
               } else {
                 await page
                   .getByRole('tab', { name: 'Constraints', exact: true })
@@ -210,6 +210,9 @@ test.describe(
                 await page.getByTestId('mode-tab-edit').click();
                 await page.getByTestId('submode-tab-definitions').click();
               }
+              if (tab === 'Concepts') {
+                await page.getByTestId('submode-tab-definitions').click();
+              }
               await page
                 .getByRole('tab', { name: 'Constraints', exact: true })
                 .click();
@@ -235,6 +238,10 @@ test.describe(
               'ontology-import-export-trigger',
             ]) {
               await page.getByTestId(trigger).click();
+              // One ontology's Import / export opens a menu first; the guard runs on its action.
+              if (trigger === 'ontology-import-export-trigger') {
+                await page.getByTestId('ontology-export-menu-item').click();
+              }
               await expect(confirmation).toBeVisible();
               await confirmation
                 .getByRole('button', { name: 'Cancel', exact: true })
@@ -279,11 +286,25 @@ test.describe(
               .click();
             await page.getByTestId('ontology-add-axiom').click();
             const editor = page.getByTestId('ontology-axiom-panel');
+            await expect(
+              editor.getByTestId('ontology-axiom-mode-quick')
+            ).toHaveAttribute('aria-selected', 'true');
+            await editor.getByTestId('ontology-axiom-mode-advanced').click();
+            await selectOptionWithRetry(
+              editor
+                .getByTestId('ontology-expression-0')
+                .getByRole('button', { name: 'Constraint Type', exact: true }),
+              page.getByRole('option', { name: 'Classification', exact: true })
+            );
             await editor
-              .getByRole('textbox', { name: 'Display Name', exact: true })
+              .getByRole('textbox', {
+                name: /^Display Name$/i,
+              })
               .fill('Customer is a Person');
             await editor
-              .getByRole('textbox', { name: 'Description', exact: true })
+              .getByRole('textbox', {
+                name: /^Description$/i,
+              })
               .fill('Every customer is a person.');
             for (const [label, name] of [
               ['Subject', 'Customer'],
@@ -312,15 +333,18 @@ test.describe(
               body: await page.screenshot(),
               contentType: 'image/png',
             });
+            // The constraint drawer overlays the right of the tab row; Overview stays clear of it.
             await page
-              .getByRole('tab', { name: 'Settings', exact: true })
+              .getByRole('tab', { name: 'Overview', exact: true })
               .click();
             await page
               .getByRole('dialog')
               .getByRole('button', { name: 'Cancel', exact: true })
               .click();
             await expect(
-              editor.getByRole('textbox', { name: 'Display Name', exact: true })
+              editor.getByRole('textbox', {
+                name: /^Display Name$/i,
+              })
             ).toHaveValue('Customer is a Person');
             const created = page.waitForResponse(
               (response) =>
@@ -340,10 +364,15 @@ test.describe(
               expressions: [{ kind: 'NAMED_CLASS', classIri: concepts[1].iri }],
             });
             await expect(
-              page.getByRole('button', {
-                name: 'Customer is a Person',
+              page.getByRole('row', {
+                name: 'Customer Subclass of Person',
                 exact: true,
               })
+            ).toBeVisible();
+            await expect(
+              page
+                .getByTestId('ontology-definition-drawer')
+                .getByRole('heading', { name: 'Customer is a Person' })
             ).toBeVisible();
             await testInfo.attach('axiom-' + mode, {
               body: await page.screenshot(),

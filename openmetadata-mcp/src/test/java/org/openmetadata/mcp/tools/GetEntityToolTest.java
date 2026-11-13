@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,6 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
@@ -44,11 +48,16 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
@@ -348,6 +357,127 @@ class GetEntityToolTest {
     }
 
     assertEquals(PIIMasker.MASKED_MAIL, result.get("email"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testCaseDetailsUseTheLinkedColumnResponsePolicy(boolean authorized) throws Exception {
+    String tableFqn = "service.db.schema.table";
+    String fqn = tableFqn + ".SSN.check";
+    TestCase testCase =
+        new TestCase()
+            .withName("check")
+            .withFullyQualifiedName(fqn)
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::SSN>")
+            .withIncidentStatus(
+                new TestCaseResolutionStatus().withFailureSummary("Incident details"))
+            .withDescription("Column details");
+    Table table =
+        new Table()
+            .withOwners(List.of())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("ssn")
+                        .withTags(
+                            List.of(new TagLabel().withTagFQN(PIIMasker.SENSITIVE_PII_TAG)))));
+    Authorizer authorizer = mock(Authorizer.class);
+    CatalogSecurityContext context = securityContextFor("alice");
+    when(authorizer.authorizePII(context, List.of())).thenReturn(authorized);
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(eq(Entity.TEST_CASE), eq(fqn), anyString(), any()))
+          .thenReturn(testCase);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      Map<String, Object> result =
+          new GetEntityTool()
+              .execute(
+                  authorizer,
+                  context,
+                  Map.of(
+                      "entityType",
+                      Entity.TEST_CASE,
+                      "fqn",
+                      fqn,
+                      "include",
+                      authorized ? List.of() : List.of("context")));
+      assertEquals(authorized ? "Column details" : null, result.get("description"));
+      assertEquals(authorized ? "check" : "check [MASKED]", result.get("name"));
+      assertEquals(authorized, JsonUtils.pojoToJson(result).contains("Incident details"));
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+  void testCaseContentUsesTheLinkedColumnPolicyBeforePassageRetrieval(
+      boolean authorized, boolean query) throws Exception {
+    String tableFqn = "service.db.schema.table";
+    String fqn = tableFqn + ".SSN.check";
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("check")
+            .withFullyQualifiedName(fqn)
+            .withDescription("Column details")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::SSN>");
+    Table table =
+        new Table()
+            .withOwners(List.of())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("ssn")
+                        .withTags(
+                            List.of(new TagLabel().withTagFQN(PIIMasker.SENSITIVE_PII_TAG)))));
+    Authorizer authorizer = mock(Authorizer.class);
+    CatalogSecurityContext context = securityContextFor("alice");
+    when(authorizer.authorizePII(context, List.of())).thenReturn(authorized);
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.isVectorEmbeddingEnabled()).thenReturn(true);
+    OpenSearchVectorService vector = mock(OpenSearchVectorService.class);
+    when(vector.searchChunksByParent(anyString(), anyString(), anyInt(), any()))
+        .thenReturn(List.of("Passage details"));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(eq(Entity.TEST_CASE), eq(fqn), anyString(), any()))
+          .thenReturn(testCase);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(context))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vector);
+      Map<String, Object> result =
+          new GetEntityTool()
+              .execute(
+                  authorizer,
+                  context,
+                  Map.of(
+                      "entityType",
+                      Entity.TEST_CASE,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content"),
+                      "query",
+                      query ? "retention" : ""));
+      String content = JsonUtils.pojoToJson(result);
+      assertEquals(authorized && !query, content.contains("Column details"));
+      assertEquals(authorized && query, content.contains("Passage details"));
+      assertEquals("Column details", testCase.getDescription());
+    }
   }
 
   static WorkflowDefinition gitSinkWorkflow(String name) {

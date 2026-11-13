@@ -45,6 +45,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+  ButtonUtility: ({
+    onClick,
+    tooltip,
+    'data-testid': testId,
+  }: {
+    onClick?: () => void;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => <button aria-label={tooltip} data-testid={testId} onClick={onClick} />,
 }));
 
 jest.mock('./FieldRow', () => ({

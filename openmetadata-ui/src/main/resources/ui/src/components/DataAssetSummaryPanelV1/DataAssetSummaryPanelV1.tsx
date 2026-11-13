@@ -23,8 +23,7 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
-import { TagSource } from '../../generated/type/tagLabel';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { ChangeSummaryEntry } from '../../rest/changeSummaryAPI';
@@ -660,9 +659,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -771,9 +767,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -841,9 +834,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -878,9 +868,7 @@ export const DataAssetSummaryPanelV1 = ({
           entityType={entityType}
           hasPermission={editTagsPermission}
           key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-          tags={dataAsset.tags?.filter(
-            (tag: TagLabel) => tag.source !== TagSource.Glossary
-          )}
+          tags={dataAsset.tags}
           onTagsUpdate={onTagsUpdate}
         />
       </div>
@@ -933,9 +921,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -948,9 +933,7 @@ export const DataAssetSummaryPanelV1 = ({
             entityType={entityType}
             hasPermission={editTagsPermission}
             key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-            tags={dataAsset.tags?.filter(
-              (tag: TagLabel) => tag.source !== TagSource.Glossary
-            )}
+            tags={dataAsset.tags}
             onTagsUpdate={onTagsUpdate}
           />
         </div>

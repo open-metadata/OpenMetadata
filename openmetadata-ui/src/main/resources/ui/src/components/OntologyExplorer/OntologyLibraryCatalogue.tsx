@@ -76,7 +76,6 @@ const OntologyPackCard = ({
     pack,
     pack.modules.map((module) => module.id)
   );
-  const presentation = PACK_PRESENTATION[pack.id];
 
   let action: ReactNode = null;
   if (pack.bundled) {
@@ -112,7 +111,7 @@ const OntologyPackCard = ({
       className="tw:relative tw:h-full"
       data-testid={`ontology-pack-${pack.id}`}
       size="md"
-      variant={isAiMode ? 'default' : 'elevated'}>
+      variant={isAiMode ? 'muted' : 'elevated'}>
       <Card.Content className="tw:h-full">
         <Box className="tw:h-full" direction="col" gap={3}>
           <Box align="center" gap={3}>
@@ -124,7 +123,7 @@ const OntologyPackCard = ({
                   role="heading"
                   size="text-md"
                   weight="semibold">
-                  {presentation ? t(presentation.titleKey) : pack.name}
+                  {pack.name}
                 </Typography>
                 {installed && (
                   <BadgeWithIcon

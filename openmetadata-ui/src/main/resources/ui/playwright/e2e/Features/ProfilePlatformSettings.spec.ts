@@ -18,6 +18,7 @@ import {
   chooseSelectOption,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -30,6 +31,8 @@ import { enableAiAppMode } from '../Utils/appMode';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const SETTINGS_PUT = '**/api/v1/system/settings';
+const ENTITY_RULE_PATCH =
+  '**/api/v1/system/settings/entityRulesSettings/rules/**';
 
 type PatchOp = { op: string; path: string; value: unknown };
 
@@ -440,12 +443,19 @@ test.describe(
     });
 
     test('lineage: saves depths and layer', async ({ page }) => {
+      // The form does not edit it, but the settings PUT replaces the whole
+      // value, so the save has to send it back.
+      const graphPerformanceConfig = {
+        enableCaching: false,
+        cacheTTLSeconds: 600,
+      };
       const settings = await stubSettingRoundTrip(page, 'lineageSettings', {
         initial: {
           upstreamDepth: 2,
           downstreamDepth: 2,
           lineageLayer: 'EntityLineage',
           pipelineViewMode: 'Node',
+          graphPerformanceConfig,
         },
       });
       await openPlatformSettings(page);
@@ -469,6 +479,7 @@ test.describe(
         downstreamDepth: 2,
         lineageLayer: 'ColumnLevelLineage',
         pipelineViewMode: 'Node',
+        graphPerformanceConfig,
       });
       await expect(page.getByTestId('upstream-depth-value')).toHaveText('4');
       await expect(page.getByTestId('lineage-layer-value')).toHaveText(
@@ -620,6 +631,61 @@ test.describe(
       );
     });
 
+    test('profiler configuration: "All" metrics excludes every other metric', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'profilerConfiguration',
+        {
+          initial: {
+            metricConfiguration: [
+              { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+            ],
+            sampleDataConfig: { storeSampleData: false, readSampleData: true },
+          },
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'profiler-configuration');
+      await expect(page.getByTestId('metric-row-INT')).toContainText('Max');
+      await header(page).getByTestId('edit-button').click();
+
+      const metricSelect = page
+        .getByTestId('metric-row-0')
+        .getByTestId('metric-type-select');
+      const chips = metricSelect.getByTestId('autocomplete-selected-item');
+      const metricInput = metricSelect.getByRole('combobox');
+      const pickMetric = (name: string) =>
+        selectOptionWithRetry(
+          metricInput,
+          page.getByRole('option', { name, exact: true }),
+          () => metricInput.fill(name)
+        );
+
+      await test.step('Picking "All" clears the other metrics', async () => {
+        await pickMetric('All');
+
+        await expect(chips).toHaveCount(1);
+        await expect(chips).toContainText('All');
+      });
+
+      await test.step('Picking a metric clears "All"', async () => {
+        await pickMetric('Max');
+
+        await expect(chips).toHaveCount(1);
+        await expect(chips).toContainText('Max');
+      });
+
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toMatchObject({
+        metricConfiguration: [
+          { dataType: 'INT', metrics: ['max'], disabled: false },
+        ],
+      });
+    });
+
     test('data quality: adds, edits and deletes a custom dimension', async ({
       page,
     }) => {
@@ -693,7 +759,9 @@ test.describe(
         await afterAction();
       }
     });
-    test('data asset rules: toggling a rule saves it', async ({ page }) => {
+    test('data asset rules: toggling a rule patches only that rule', async ({
+      page,
+    }) => {
       const rule = {
         name: 'Single Domain',
         description: 'One domain per asset.',
@@ -702,6 +770,21 @@ test.describe(
       };
       const settings = await stubSettingRoundTrip(page, 'entityRulesSettings', {
         initial: { entitySemantics: [rule] },
+      });
+      // The rule patch is stubbed too: entity rules are tenant-wide, and this
+      // rule does not exist on the real backend.
+      const rulePatches: { url: string; ops: PatchOp[] }[] = [];
+      await page.route(ENTITY_RULE_PATCH, async (route) => {
+        rulePatches.push({
+          url: route.request().url(),
+          ops: route.request().postDataJSON() as PatchOp[],
+        });
+        await route.fulfill({
+          json: {
+            config_type: 'entityRulesSettings',
+            config_value: { entitySemantics: [{ ...rule, enabled: true }] },
+          },
+        });
       });
       await openPlatformSettings(page);
       await openCard(page, 'data-asset-rules');
@@ -712,12 +795,18 @@ test.describe(
       await clickAndWaitFor(
         page,
         page.getByTestId('toggle-Single Domain'),
-        SETTINGS_PUT
+        ENTITY_RULE_PATCH
       );
 
-      expect(settings.puts[0].config_value).toEqual({
-        entitySemantics: [{ ...rule, enabled: true }],
-      });
+      expect(rulePatches).toEqual([
+        {
+          url: expect.stringContaining(
+            '/api/v1/system/settings/entityRulesSettings/rules/Single%20Domain'
+          ),
+          ops: [{ op: 'replace', path: '/enabled', value: true }],
+        },
+      ]);
+      expect(settings.puts).toHaveLength(0);
     });
 
     test('data asset rules: empty state offers no Add, as adding is unsupported', async ({

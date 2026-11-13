@@ -19,18 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.jknack.handlebars.EscapingStrategy;
-import com.github.jknack.handlebars.Handlebars;
-import com.github.jknack.handlebars.Template;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.helpers.BuildEntityUrlHelper;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbox;
 
 /**
  * Renders the dedicated {@code system-notification-task-entity-updated} template through the real
@@ -48,26 +47,30 @@ class TaskEntityUpdatedTemplateTest {
   private static final String TEMPLATE =
       "/json/data/notifications/templates/system-notification-task-entity-updated.json";
 
-  private Template template;
+  private TemplateSandbox sandbox;
+  private String templateBody;
 
   @BeforeEach
   void setUp() throws Exception {
-    Handlebars handlebars = new Handlebars().with(EscapingStrategy.HTML_ENTITY);
-    for (HandlebarsHelper helper : HandlebarsProvider.getAllHelperInstances()) {
-      helper.register(handlebars);
-    }
     // Override buildEntityUrl so the test does not depend on EmailUtil / DB-backed settings.
-    new BuildEntityUrlHelper() {
-      @Override
-      protected String getBaseUrl() {
-        return BASE_URL;
-      }
-    }.register(handlebars);
+    HandlebarsHelper localBuildEntityUrl =
+        new BuildEntityUrlHelper() {
+          @Override
+          protected String getBaseUrl() {
+            return BASE_URL;
+          }
+        };
+    sandbox =
+        new TemplateSandbox(
+            Stream.concat(
+                    HandlebarsProvider.getAllHelperInstances().stream(),
+                    Stream.of(localBuildEntityUrl))
+                .toList());
 
     try (InputStream in = getClass().getResourceAsStream(TEMPLATE)) {
       assertNotNull(in, "dedicated task template must be on the classpath: " + TEMPLATE);
       JsonNode node = new ObjectMapper().readTree(in);
-      template = handlebars.compileInline(node.get("templateBody").asText());
+      templateBody = node.get("templateBody").asText();
     }
   }
 
@@ -107,7 +110,7 @@ class TaskEntityUpdatedTemplateTest {
             "event", Map.of("changeDescription", cd),
             "entity", incidentTask("please look at this incident"));
 
-    String out = unescape(template.apply(ctx));
+    String out = unescape(sandbox.render(templateBody, ctx));
 
     assertTrue(out.contains("commented on"), out);
     assertTrue(out.contains("Incident"), out);
@@ -134,7 +137,7 @@ class TaskEntityUpdatedTemplateTest {
             "event", Map.of("changeDescription", cd),
             "entity", incidentTask("an older comment"));
 
-    String out = unescape(template.apply(ctx));
+    String out = unescape(sandbox.render(templateBody, ctx));
 
     assertTrue(out.contains("updated the"), out);
     assertTrue(out.contains("Incident"), out);
@@ -154,7 +157,7 @@ class TaskEntityUpdatedTemplateTest {
             "event", Map.of("changeDescription", cd),
             "entity", incidentTask("an older comment"));
 
-    String out = unescape(template.apply(ctx));
+    String out = unescape(sandbox.render(templateBody, ctx));
 
     assertTrue(out.contains("updated the assignees of"), out);
     assertTrue(out.contains("Assignees:"), out);

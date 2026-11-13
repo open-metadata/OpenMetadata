@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { ROUTES } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import LimitWrapper from '../../hoc/LimitWrapper';
+import { usePaging } from '../../hooks/paging/usePaging';
 import ApplicationPage from './ApplicationPage';
 
 const mockNavigate = jest.fn();
@@ -106,6 +107,24 @@ jest.mock('../../hoc/LimitWrapper', () => {
 });
 
 describe('ApplicationPage', () => {
+  it('keeps the pager for a single page of apps at the default page size', async () => {
+    const paging = (usePaging as jest.Mock)();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...paging,
+      pageSize: 12,
+      showPagination: false,
+    });
+
+    await act(async () => {
+      render(<ApplicationPage />);
+    });
+
+    expect(screen.getByText('ApplicationCard')).toBeInTheDocument();
+    expect(screen.getByText('NextPrevious')).toBeInTheDocument();
+
+    (usePaging as jest.Mock).mockReturnValue(paging);
+  });
+
   it('should render all necessary elements', async () => {
     await act(async () => {
       render(<ApplicationPage />);

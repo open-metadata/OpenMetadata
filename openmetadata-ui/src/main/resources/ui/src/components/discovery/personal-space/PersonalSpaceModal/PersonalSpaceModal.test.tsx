@@ -29,17 +29,27 @@ jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // Mirrors react-aria: Escape dismisses the overlay unless keyboard dismiss is disabled.
   ModalOverlay: ({
     isOpen,
+    isKeyboardDismissDisabled,
     onOpenChange,
     children,
   }: {
     isOpen?: boolean;
+    isKeyboardDismissDisabled?: boolean;
     onOpenChange: (...args: unknown[]) => void;
     children?: ReactNode;
   }) =>
     isOpen ? (
-      <div data-testid="overlay">
+      <div
+        data-testid="overlay"
+        role="presentation"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !isKeyboardDismissDisabled) {
+            onOpenChange(false);
+          }
+        }}>
         <button
           aria-label="overlay-dismiss"
           data-testid="overlay-dismiss"
@@ -153,6 +163,15 @@ describe('PersonalSpaceModal', () => {
     renderInRouter();
 
     fireEvent.click(screen.getByTestId('overlay-dismiss'));
+
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('closes when Escape is pressed', () => {
+    mockActivePanel = 'profile';
+    renderInRouter();
+
+    fireEvent.keyDown(screen.getByTestId('profile-page'), { key: 'Escape' });
 
     expect(mockClose).toHaveBeenCalled();
   });

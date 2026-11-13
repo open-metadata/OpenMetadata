@@ -210,13 +210,12 @@ const ContractPolicyCard = ({
             {isDisabled ? (
               <span />
             ) : (
-              <Button
-                aria-label={t('label.remove')}
-                className="contract-consumer-security-card-rule-delete-button tw:mt-6.5"
-                color="secondary"
-                iconLeading={XClose}
-                size="sm"
-                onPress={() => removeRowFilter(rowFilterIndex)}
+              <ButtonUtility
+                className="tw:mt-6.5"
+                icon={XClose}
+                size="lg"
+                tooltip={t('label.remove')}
+                onClick={() => removeRowFilter(rowFilterIndex)}
               />
             )}
           </div>
@@ -254,18 +253,17 @@ const ContractPolicyCard = ({
             <Box align="center" gap={3}>
               <ButtonUtility
                 className="edit-expand-button"
-                color="secondary"
                 data-testid={`edit-policy-${policyIndex}`}
                 icon={Edit01}
-                size="sm"
+                size="lg"
                 tooltip={t('label.edit')}
                 onClick={() => onEdit(policyIndex)}
               />
               <ButtonUtility
-                color="secondary-destructive"
+                color="tertiary-destructive"
                 data-testid={`delete-policy-${policyIndex}`}
                 icon={Trash01}
-                size="sm"
+                size="lg"
                 tooltip={t('label.delete')}
                 onClick={() => onDelete(policyIndex)}
               />

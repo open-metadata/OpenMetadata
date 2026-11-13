@@ -458,7 +458,10 @@ const AppInstall: FC<AppInstallProps> = ({
       }
       case 'schedule':
         return (
-          <Box direction="col">
+          <Box
+            className="tw:mx-auto tw:w-full tw:max-w-[50%]"
+            data-testid="install-schedule-step"
+            direction="col">
             <ScheduleInterval
               defaultSchedule={defaultCron}
               includePeriodOptions={initialOptions}

@@ -17,14 +17,10 @@ import java.util.Locale;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
-import org.apache.jena.query.SortCondition;
 import org.apache.jena.sparql.core.TriplePath;
 import org.apache.jena.sparql.expr.E_Call;
 import org.apache.jena.sparql.expr.Expr;
-import org.apache.jena.sparql.expr.ExprAggregator;
 import org.apache.jena.sparql.expr.ExprFunction;
-import org.apache.jena.sparql.expr.ExprFunctionOp;
-import org.apache.jena.sparql.expr.ExprList;
 import org.apache.jena.sparql.path.P_Alt;
 import org.apache.jena.sparql.path.P_Distinct;
 import org.apache.jena.sparql.path.P_FixedLength;
@@ -42,25 +38,21 @@ import org.apache.jena.sparql.path.P_ZeroOrMore1;
 import org.apache.jena.sparql.path.P_ZeroOrMoreN;
 import org.apache.jena.sparql.path.P_ZeroOrOne;
 import org.apache.jena.sparql.path.PathVisitorBase;
-import org.apache.jena.sparql.syntax.Element;
-import org.apache.jena.sparql.syntax.ElementAssign;
-import org.apache.jena.sparql.syntax.ElementBind;
 import org.apache.jena.sparql.syntax.ElementDataset;
-import org.apache.jena.sparql.syntax.ElementFilter;
 import org.apache.jena.sparql.syntax.ElementNamedGraph;
 import org.apache.jena.sparql.syntax.ElementPathBlock;
 import org.apache.jena.sparql.syntax.ElementService;
 import org.apache.jena.sparql.syntax.ElementSubQuery;
 import org.apache.jena.sparql.syntax.ElementTriplesBlock;
-import org.apache.jena.sparql.syntax.ElementUnfold;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
-import org.apache.jena.sparql.syntax.ElementWalker;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.service.rdf.federation.SparqlQueryWalker;
 
 /**
- * Walks every place a graph pattern can hide: the WHERE clause, subqueries, and EXISTS / NOT EXISTS
- * inside FILTER, BIND, projection, GROUP BY, HAVING, and ORDER BY expressions. {@link
- * ElementWalker} does not descend into subqueries or expressions, so both are followed explicitly.
+ * Rejects graph selection, SERVICE, java: extension calls, CALL and eval wherever they appear.
+ * {@link SparqlQueryWalker} supplies every element and expression, including those inside
+ * subqueries and inside EXISTS / NOT EXISTS in any position, so the checks here only judge what
+ * they are handed.
  */
 final class AgentSparqlQueryInspector extends ElementVisitorBase {
 
@@ -71,51 +63,26 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
   private AgentSparqlQueryInspector() {}
 
   static void inspect(final Query query) {
-    new AgentSparqlQueryInspector().inspectQuery(query);
+    rejectDatasetDescription(query);
+    SparqlQueryWalker.walk(
+        query, new AgentSparqlQueryInspector(), AgentSparqlQueryInspector::inspectExpr);
   }
 
-  private void inspectQuery(final Query query) {
+  private static void rejectDatasetDescription(final Query query) {
     if (query.hasDatasetDescription()) {
       throw graphSelection("FROM and FROM NAMED are not allowed");
     }
-    inspectElement(query.getQueryPattern());
-    query.getProject().getExprs().values().forEach(this::inspectExpr);
-    query.getGroupBy().getExprs().values().forEach(this::inspectExpr);
-    query.getHavingExprs().forEach(this::inspectExpr);
-    query.getAggregators().forEach(this::inspectExpr);
-    if (query.hasOrderBy()) {
-      query.getOrderBy().stream().map(SortCondition::getExpression).forEach(this::inspectExpr);
-    }
   }
 
-  private void inspectElement(final Element element) {
-    if (element != null) {
-      ElementWalker.walk(element, this);
-    }
-  }
-
-  private void inspectExpr(final Expr expr) {
+  private static void inspectExpr(final Expr expr) {
     if (expr instanceof E_Call) {
       // The function name is computed at run time and resolved through the same registry
       // that loads java: classes, so there is no fixed name to check.
       throw formNotAllowed("CALL is not allowed");
     }
-    if (expr instanceof ExprFunctionOp patternExpr) {
-      inspectElement(patternExpr.getElement());
-    }
-    if (expr instanceof ExprAggregator aggregatorExpr) {
-      inspectExprs(aggregatorExpr.getAggregator().getExprList());
-    }
     if (expr instanceof ExprFunction function) {
       rejectJavaScheme(function.getFunctionIRI());
       rejectEval(function.getFunctionIRI());
-      function.getArgs().forEach(this::inspectExpr);
-    }
-  }
-
-  private void inspectExprs(final ExprList exprs) {
-    if (exprs != null) {
-      exprs.forEach(this::inspectExpr);
     }
   }
 
@@ -137,27 +104,7 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
 
   @Override
   public void visit(final ElementSubQuery element) {
-    inspectQuery(element.getQuery());
-  }
-
-  @Override
-  public void visit(final ElementFilter element) {
-    inspectExpr(element.getExpr());
-  }
-
-  @Override
-  public void visit(final ElementBind element) {
-    inspectExpr(element.getExpr());
-  }
-
-  @Override
-  public void visit(final ElementAssign element) {
-    inspectExpr(element.getExpr());
-  }
-
-  @Override
-  public void visit(final ElementUnfold element) {
-    inspectExpr(element.getExpr());
+    rejectDatasetDescription(element.getQuery());
   }
 
   @Override

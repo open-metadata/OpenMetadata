@@ -29,8 +29,10 @@ import {
 import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
+  buildReusePropertyPatch,
   buildSubClassAxiomRequest,
   getAvailableName,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
@@ -39,6 +41,7 @@ import {
   getObjectProperties,
   humanizeName,
   OntologyStudioModel,
+  withSuperClasses,
 } from './OntologyStudioModel.utils';
 
 const NS = 'https://example.org/retail/';
@@ -209,6 +212,32 @@ describe('OntologyStudioModel utils', () => {
     });
   });
 
+  it('sets superclasses from named SubClassOf parents, skipping restrictions and deleted axioms', () => {
+    const concepts = withSuperClasses(model.concepts, [
+      ...model.axioms,
+      axiom('ExternalParent', AxiomType.SubclassOf, customer.iri, [
+        named('https://schema.org/Person'),
+      ]),
+      {
+        ...axiom('Gone', AxiomType.SubclassOf, shipment.iri, [
+          named(party.iri),
+        ]),
+        deleted: true,
+      },
+    ]);
+    const parentsOf = (iri: string) =>
+      concepts.find((concept) => concept.iri === iri)?.superClasses;
+
+    expect(parentsOf(customer.iri)).toEqual([
+      party.iri,
+      'https://schema.org/Person',
+    ]);
+    expect(parentsOf(premiumCustomer.iri)).toEqual([customer.iri]);
+    expect(parentsOf(order.iri)).toEqual([]);
+    expect(parentsOf(shipment.iri)).toEqual([]);
+    expect(parentsOf(physicalProduct.iri)).toEqual([product.iri]);
+  });
+
   it('ignores definitions pointing outside the model and deleted ones', () => {
     const relations = getModelRelations({
       ...model,
@@ -363,6 +392,52 @@ describe('OntologyStudioModel utils', () => {
     ]);
   });
 
+  it('lists an annotation property on its concept, labelled annotation', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+    const rows = getConceptPropertyRows(
+      { ...model, properties: [...model.properties, note] },
+      getModelRelations(model),
+      premiumCustomer
+    );
+
+    expect(
+      rows.map((row) => [
+        row.property.name,
+        row.datatype,
+        row.inheritedFrom?.name,
+      ])
+    ).toContainEqual(['internalNote', 'annotation', undefined]);
+  });
+
+  it('offers data properties to bind, own then inherited, and leaves out annotations', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+
+    expect(
+      getBindableConceptProperties(
+        { ...model, properties: [...model.properties, note] },
+        getModelRelations(model),
+        premiumCustomer
+      ).map(({ label, isIdentifier }) => [label, isIdentifier])
+    ).toEqual([
+      ['customer id', true],
+      ['legal name', undefined],
+    ]);
+  });
+
   it('labels data types by their XSD local name, and enumerations as enum', () => {
     expect(getDatatypeLabel(orderTotal)).toBe('decimal');
     expect(
@@ -439,5 +514,37 @@ describe('OntologyStudioModel utils', () => {
       ontology: 'RetailCommerce',
       range: [`${XSD}string`],
     });
+  });
+
+  it('builds an annotation property with no range', () => {
+    expect(
+      buildDataPropertyRequest(model, order, {
+        datatype: 'string',
+        isIdentifier: false,
+        kind: 'annotation',
+        name: 'reviewNote',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        domain: [order.iri],
+        kind: 'ANNOTATION',
+        range: [],
+      })
+    );
+  });
+
+  it('reuses a declared property by adding the concept to its domain', () => {
+    const declared = {
+      domain: [customer.iri],
+      id: 'p',
+      iri: `${NS}code`,
+      version: 0.2,
+    } as OntologyProperty;
+
+    expect(buildReusePropertyPatch(declared, order)).toEqual([
+      { op: 'test', path: '/version', value: 0.2 },
+      { op: 'add', path: '/domain/1', value: order.iri },
+    ]);
+    expect(buildReusePropertyPatch(declared, customer)).toEqual([]);
   });
 });

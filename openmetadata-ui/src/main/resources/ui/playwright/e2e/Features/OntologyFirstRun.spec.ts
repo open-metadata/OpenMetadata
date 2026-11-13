@@ -148,12 +148,10 @@ test.describe(
           .getByRole('button', { name: 'Install from library' })
           .click();
         await expect(page.getByTestId('ontology-library')).toBeVisible();
-        await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-module-foundations').click();
-        await page.getByTestId('ontology-module-business-entities').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await expect(
           page.getByTestId('ontology-pack-concept-count')
-        ).toHaveText('8');
+        ).toHaveText('9');
 
         const created = page.waitForResponse(isOntologyCreate);
         await page.getByTestId('ontology-library-native-install').click();
@@ -161,7 +159,7 @@ test.describe(
           await created,
           'Install into a new ontology'
         );
-        await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+        await expect(page.getByTestId('ontology-pack-dcat')).toContainText(
           'Installed'
         );
         await page.keyboard.press('Escape');
@@ -185,6 +183,11 @@ test.describe(
         await expect(
           page.getByTestId('ontology-native-import-target')
         ).toContainText('New ontology');
+        const parsed = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/imports/preview') &&
+            response.request().method() === 'POST'
+        );
         await page
           .getByTestId('ontology-native-import-file')
           .locator('input[type="file"]')
@@ -196,17 +199,10 @@ test.describe(
         await expect(
           page.getByTestId('ontology-native-import-format')
         ).toHaveText('Turtle');
-
-        const parsed = page.waitForResponse(
-          (response) =>
-            response.url().endsWith('/imports/preview') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('ontology-native-import-parse').click();
         expect((await parsed).status()).toBe(200);
         await expect(
-          page.getByTestId('ontology-native-import-count-new-concepts')
-        ).toContainText('2');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('2 new concepts');
         await expect(page.getByTestId('ontology-empty-state')).toBeVisible();
 
         const created = page.waitForResponse(isOntologyCreate);
@@ -241,17 +237,20 @@ test.describe(
         await expect(submit).toBeDisabled();
 
         await page.getByTestId('ontology-create-name').fill('Finance Core');
-        await expect(
-          page.getByTestId('ontology-create-iri-preview')
-        ).toHaveText(/\/onto\/financec#$/);
+        await page.getByTestId('ontology-create-advanced-toggle').click();
+        await expect(page.getByTestId('ontology-create-namespace')).toHaveValue(
+          /\/onto\/financec#$/
+        );
         await page.getByTestId('ontology-create-name').clear();
         await expect(submit).toBeDisabled();
 
         await page.getByTestId('ontology-create-name').fill(name);
-        await page.getByTestId('ontology-create-prefix').fill(prefix);
-        await expect(
-          page.getByTestId('ontology-create-iri-preview')
-        ).toHaveText(new RegExp(`/onto/${prefix}#$`));
+        await page
+          .getByTestId('ontology-create-iri')
+          .fill(`https://open-metadata.org/onto/${prefix}`);
+        await expect(page.getByTestId('ontology-create-namespace')).toHaveValue(
+          new RegExp(`/onto/${prefix}#$`)
+        );
 
         const response = page.waitForResponse(isOntologyCreate);
         await submit.click();

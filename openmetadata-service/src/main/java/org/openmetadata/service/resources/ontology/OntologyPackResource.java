@@ -45,9 +45,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
-import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPackInstaller;
+import org.openmetadata.service.ontology.OntologyPackModels;
 import org.openmetadata.service.ontology.OntologyPackSampler;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -78,9 +78,7 @@ public final class OntologyPackResource {
   OntologyPackResource(final Authorizer authorizer, final OntologyPackInstaller installer) {
     this.authorizer = authorizer;
     this.installer = installer;
-    this.sampler =
-        new OntologyPackSampler(
-            installer.catalog(), new OntologyPackContentLoader(getClass().getClassLoader()));
+    this.sampler = new OntologyPackSampler(installer.catalog(), OntologyPackModels.bundled());
   }
 
   @GET
@@ -156,7 +154,7 @@ public final class OntologyPackResource {
     if (existing == null) {
       authorizeCreate(securityContext, targetGlossaryName);
     } else {
-      authorizeEdit(securityContext, repository, existing);
+      authorizeEdit(securityContext, existing);
     }
   }
 
@@ -170,14 +168,12 @@ public final class OntologyPackResource {
         new CreateResourceContext<>(Entity.GLOSSARY, candidate));
   }
 
-  private void authorizeEdit(
-      final SecurityContext securityContext,
-      final GlossaryRepository repository,
-      final Glossary glossary) {
+  private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {
+    // By id, so the context loads every attribute a condition reads.
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL),
-        new ResourceContext<>(Entity.GLOSSARY, glossary, repository));
+        new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null, Include.ALL));
   }
 
   private static String requireUser(final SecurityContext securityContext) {

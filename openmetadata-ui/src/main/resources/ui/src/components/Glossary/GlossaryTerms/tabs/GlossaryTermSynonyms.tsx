@@ -16,9 +16,11 @@ import {
   BadgeWithButton,
   Box,
   Button,
+  ButtonUtility,
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import {
   KeyboardEvent,
@@ -40,10 +42,6 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityDiffPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { SynonymBadge } from '../../GlossaryTermBadges/GlossaryTermBadges';
@@ -363,17 +361,19 @@ const GlossaryTermSynonyms = () => {
     canEditAll &&
     isViewMode &&
     (isEmpty(synonyms) ? (
-      <WidgetPlusButton
+      <ButtonUtility
         data-testid="synonym-add-button"
-        title={t('label.add-entity', {
+        icon={Plus}
+        tooltip={t('label.add-entity', {
           entity: t('label.synonym-plural'),
         })}
         onClick={() => setIsViewMode(false)}
       />
     ) : (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-button"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.synonym-plural'),
         })}
         onClick={() => setIsViewMode(false)}

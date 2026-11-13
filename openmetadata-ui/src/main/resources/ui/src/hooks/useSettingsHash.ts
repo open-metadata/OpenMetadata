@@ -24,7 +24,9 @@ import {
   useNavigate,
   useNavigationType,
 } from 'react-router-dom';
+import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
+import { useSavedPageSize } from './paging/useSavedPageSize';
 
 /**
  * Parsed hash state for the settings modal.
@@ -40,6 +42,15 @@ export interface SettingsHashState {
   tab: ProfileNavId | null;
   subPath: string;
   params: Record<string, string>;
+}
+
+export interface SetHashOptions {
+  push?: boolean;
+}
+
+/** History state of a `setHash` push: the hash the modal showed before it. */
+interface SettingsPushState {
+  fromHash: string;
 }
 
 const EMPTY_PARAMS: Record<string, string> = {};
@@ -156,8 +167,8 @@ export const useSettingsHash = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
 
-  // History entries a settings link pushed for the open modal: 1 when a link
-  // opened it over the page, +1 per link followed inside it. Closing pops them
+  // History entries pushed for the open modal: 1 when a settings link or a
+  // `setHash` push opened it over the page, +1 per push inside it. Closing pops them
   // so the page's own entry is current again instead of a duplicate of it; 0
   // (deep link, refresh, Back/Forward) closes by replacing as before. Each hook
   // instance counts the pushes it sees, so the count belongs to whoever closes:
@@ -241,7 +252,7 @@ export const useSettingsHash = () => {
   // A `<Link>`/`navigate()` to a settings hash from outside the modal (a
   // mode-aware settings link, `getSettingsLink`) pushes a new entry on the same
   // pathname, which neither effect above sees. Adopt the live hash on every
-  // push; `setHash`/`clearHash` replace, so in-modal navigation never echoes.
+  // push; a `setHash` push adopts the hash it already wrote, so it never echoes.
   // Skip the mount run: the push that brought the page here is not a settings
   // link, and its (often empty) hash would wipe the deep link the mount sync kept.
   const didMountPushRef = useRef(false);
@@ -254,23 +265,32 @@ export const useSettingsHash = () => {
     if (navigationType === NavigationType.Push) {
       const liveHash = globalThis.location.hash;
       const pushed = pushedEntriesRef.current;
+      // `setHash` already put its hash in the store, so it says where it came from.
+      const fromHash =
+        (locationRef.current.state as SettingsPushState | null)?.fromHash ??
+        renderedHashRef.current;
       pushedEntriesRef.current =
-        liveHash && (!renderedHashRef.current || pushed) ? pushed + 1 : 0;
+        liveHash && (!fromHash || pushed) ? pushed + 1 : 0;
       setStoreHash(liveHash);
     }
   }, [location.key, navigationType]);
 
   // pathname/search are read from `globalThis.location` at call time (mirroring
   // useTableFilters) so these callbacks stay referentially stable.
+  // Replaces by default, so redirects and param updates never leave an entry
+  // that Back would land on; `push` is for a view the user opened, so Back
+  // returns to the one before it (ADR:2026-11-12-settings-modal-views-push-history-only-when-the-user-opens-them).
   const setHash = useCallback(
     (
       tab: string,
       subPath?: string,
-      params?: Record<string, string | undefined>
+      params?: Record<string, string | undefined>,
+      options?: SetHashOptions
     ) => {
       const next = buildHash(tab, subPath, params);
 
       if (storeHash !== next) {
+        const pushState: SettingsPushState = { fromHash: storeHash };
         setStoreHash(next);
         void navigateRef.current(
           {
@@ -278,7 +298,7 @@ export const useSettingsHash = () => {
             search: locationRef.current.search,
             hash: next.slice(1),
           },
-          { replace: true }
+          options?.push ? { state: pushState } : { replace: true }
         );
       }
     },
@@ -316,16 +336,25 @@ export const useSettingsHash = () => {
     }
   }, []);
 
+  // Merges into the live hash, not this render's `state`: a debounced or async
+  // caller (a search resetting its page) can fire after the user navigated to
+  // another view, and writing the stale tab/subPath would navigate them back.
   const updateParams = useCallback(
     (params: Record<string, string | undefined>) => {
-      if (state.tab) {
-        setHash(state.tab, state.subPath || undefined, {
-          ...state.params,
-          ...params,
-        });
+      const live = parseHash(storeHash);
+      if (
+        !live.tab ||
+        live.tab !== state.tab ||
+        live.subPath !== state.subPath
+      ) {
+        return;
       }
+      setHash(live.tab, live.subPath || undefined, {
+        ...live.params,
+        ...params,
+      });
     },
-    [state.tab, state.subPath, state.params, setHash]
+    [state.tab, state.subPath, setHash]
   );
 
   // In-app navigation to a hash target; shared so panels don't each re-declare
@@ -339,17 +368,58 @@ export const useSettingsHash = () => {
   return { state, setHash, clearHash, updateParams, goTo };
 };
 
+interface HashPaging {
+  page: number;
+  cursorType?: string;
+  cursor?: string;
+  pageSize?: number;
+  isPageSizeRejected: boolean;
+}
+
+function readHashPaging(
+  params: Record<string, string | undefined>,
+  pageSizeOptions: number[]
+): HashPaging {
+  const requestedPageSize = Number(params.pageSize) || undefined;
+  const isPageSizeRejected = Boolean(
+    requestedPageSize && !pageSizeOptions.includes(requestedPageSize)
+  );
+
+  if (isPageSizeRejected) {
+    return { page: 1, isPageSizeRejected };
+  }
+
+  return {
+    page: Number(params.page) || 1,
+    cursorType: params.cursorType || undefined,
+    cursor: params.cursor || undefined,
+    pageSize: requestedPageSize,
+    isPageSizeRejected,
+  };
+}
+
 /**
  * Hook to read/write pagination params from the hash.
  * Drop-in replacement for usePaging when inside the settings modal.
  */
-export const useHashPagingParams = () => {
+export const useHashPagingParams = (
+  pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
+) => {
   const { state, updateParams } = useSettingsHash();
+  const { page, cursorType, cursor, pageSize, isPageSizeRejected } =
+    readHashPaging(state.params, pageSizeOptions);
+  const { resolvePageSize, savePageSize } = useSavedPageSize(pageSizeOptions);
 
-  const page = Number(state.params.page) || 1;
-  const cursorType = state.params.cursorType || undefined;
-  const cursor = state.params.cursor || undefined;
-  const pageSize = Number(state.params.pageSize) || undefined;
+  useEffect(() => {
+    if (isPageSizeRejected) {
+      updateParams({
+        page: undefined,
+        cursorType: undefined,
+        cursor: undefined,
+        pageSize: undefined,
+      });
+    }
+  }, [isPageSizeRejected, updateParams]);
 
   const setPage = useCallback(
     (
@@ -368,7 +438,15 @@ export const useHashPagingParams = () => {
     [updateParams]
   );
 
-  return { page, cursorType, cursor, pageSize, setPage };
+  return {
+    page,
+    cursorType,
+    cursor,
+    pageSize,
+    resolvedPageSize: resolvePageSize(pageSize),
+    savePageSize,
+    setPage,
+  };
 };
 
 /**
@@ -379,20 +457,27 @@ export const useSettingsHashSync = (
   openModal: (panel: 'profile') => void,
   isOpen: boolean,
   suppressHashClear?: boolean,
-  clearSuppressHashClear?: () => void
+  clearSuppressHashClear?: () => void,
+  closeModal?: () => void
 ) => {
   const { state, clearHash } = useSettingsHash();
   const wasOpenRef = useRef(isOpen);
-  const prevTabRef = useRef<string | null>(null);
+  const view = state.tab && `${state.tab}/${state.subPath}`;
+  const prevViewRef = useRef<string | null>(null);
 
-  // Only auto-open when the hash itself changes (deep link or refresh),
-  // not when isOpen flips (which would fight the close path).
+  // Only auto-open when the hash itself changes (deep link, refresh, or Back
+  // out of the fullscreen persona customizer to a view the modal shows), not
+  // when isOpen flips (which would fight the close path).
+  // Back past the entry that opened the modal lands on the page without a
+  // settings hash: close the modal over it.
   useEffect(() => {
-    if (state.tab && state.tab !== prevTabRef.current && !isOpen) {
+    if (view && view !== prevViewRef.current && !isOpen) {
       openModal('profile');
+    } else if (!view && prevViewRef.current && isOpen) {
+      closeModal?.();
     }
-    prevTabRef.current = state.tab;
-  }, [state.tab, isOpen, openModal]);
+    prevViewRef.current = view;
+  }, [view, isOpen, openModal, closeModal]);
 
   // Clear hash only when modal transitions from open → closed (not on mount).
   // Skip when suppressHashClear is set (fullscreen customize overlay took over).

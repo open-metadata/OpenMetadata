@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   FunctionComponent,
@@ -20,7 +21,6 @@ import {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as RightArrowIcon } from '../../../assets/svg/right-arrow.svg';
 import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import './title-breadcrumb.less';
@@ -86,9 +86,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         {noLink &&
           index < titleLinks.length - 1 &&
           (useCustomArrow ? (
-            <span className="custom-separator">
-              <RightArrowIcon />
-            </span>
+            <ChevronRight className="tw:mx-1 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary" />
           ) : (
             <span className="text-xss text-grey-muted">{'>'}</span>
           ))}
@@ -132,9 +130,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     {useCustomArrow ? (
-                      <span className="custom-separator">
-                        <RightArrowIcon />
-                      </span>
+                      <ChevronRight className="tw:mx-1 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary" />
                     ) : (
                       <span className="text-sm font-regular p-x-xs text-grey-muted">
                         {BREADCRUMB_SEPARATOR}

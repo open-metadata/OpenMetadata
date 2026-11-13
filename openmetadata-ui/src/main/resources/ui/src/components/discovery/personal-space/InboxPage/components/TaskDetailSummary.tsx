@@ -31,7 +31,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -122,7 +121,12 @@ const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
       return <UsersValue label={label} value={value} />;
 
     case 'agent':
-      return <AgentBadge name={value.name} />;
+      return (
+        <Box align="center" gap={1}>
+          <ProfilePicture isAgent displayName={value.name} name="" width="20" />
+          <Typography size="text-sm">{value.name}</Typography>
+        </Box>
+      );
 
     // The full tag FQN, as a reviewer searches for it: "PII.Sensitive".
     case 'tags':

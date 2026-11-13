@@ -197,6 +197,7 @@ def service(metadata, mlflow_environment):
     )
 
     service_entity = metadata.create_or_update(data=service)
+    service_entity.connection = service.connection
     yield service_entity
     metadata.delete(MlModelService, service_entity.id, recursive=True, hard_delete=True)
 

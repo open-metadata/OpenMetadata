@@ -340,7 +340,7 @@ describe('Ontology Studio mode-switch integration', () => {
     ).toBeVisible();
   });
 
-  it('keeps the native inspector and selection across aggregate tree, owner Edit, and Query', async () => {
+  it('closes the inspector on a surface switch and keeps the reopened selection across owner Edit and Query', async () => {
     const ontology: Ontology = {
       id: 'retail',
       name: 'Retail',
@@ -387,9 +387,21 @@ describe('Ontology Studio mode-switch integration', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'label.tree' }));
 
-    expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
-      'A person who buys goods.'
+    // Switching surfaces closes the drawer; the concept opens again from the tree.
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument()
     );
+
+    const customerRow = (
+      await screen.findAllByTestId(/^ontology-tree-term-/)
+    ).find((row) => row.textContent?.includes('Customer'));
+    fireEvent.click(customerRow as HTMLElement);
+
+    expect(
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toHaveTextContent('A person who buys goods.');
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
     await waitFor(() =>
@@ -406,7 +418,7 @@ describe('Ontology Studio mode-switch integration', () => {
     ).toHaveTextContent('urn:retail:Customer');
     expect(mockGetOntology).toHaveBeenCalledWith(
       ontology.id,
-      'owners,reviewers',
+      'owners,reviewers,publicationStatus',
       expect.any(AbortSignal)
     );
     expect(mockListOntologyConcepts).toHaveBeenCalledTimes(3);
@@ -509,6 +521,7 @@ describe('Ontology Studio mode-switch integration', () => {
     fireEvent.click(editor.getByRole('button', { name: 'label.save' }));
     await screen.findByRole('button', { name: 'Customer ID' });
     fireEvent.click(screen.getByTestId('submode-tab-graph'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
     await waitFor(() =>
       expect(
         screen.getByTestId('ontology-concept-properties')
@@ -535,7 +548,8 @@ describe('Ontology Studio mode-switch integration', () => {
     });
     const ontology: Ontology = {
       id: 'new-native',
-      name: 'Finance Core',
+      name: 'finance-core',
+      displayName: 'Finance Core',
       fullyQualifiedName: 'FinanceCore',
       iri: 'https://open-metadata.org/onto/financec',
       namespace: 'https://open-metadata.org/onto/financec#',
@@ -568,10 +582,11 @@ describe('Ontology Studio mode-switch integration', () => {
       target: { value: 'Finance Core' },
     });
 
+    fireEvent.click(screen.getByTestId('ontology-create-advanced-toggle'));
     await waitFor(() =>
-      expect(
-        screen.getByTestId('ontology-create-iri-preview')
-      ).toHaveTextContent('https://open-metadata.org/onto/financec#')
+      expect(screen.getByTestId('ontology-create-namespace')).toHaveValue(
+        'https://open-metadata.org/onto/financec#'
+      )
     );
 
     fireEvent.click(screen.getByTestId('ontology-create-submit'));
@@ -587,7 +602,8 @@ describe('Ontology Studio mode-switch integration', () => {
     );
     expect(mockCreateOntology).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'Finance Core',
+        name: 'finance-core',
+        displayName: 'Finance Core',
         iri: ontology.iri,
         namespace: ontology.namespace,
         layer: 'L3',
@@ -607,11 +623,7 @@ describe('Ontology Studio mode-switch integration', () => {
 
     expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
 
-    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
-
-    expect(
-      screen.getByTestId('ontology-publication-select-new-native')
-    ).toBeVisible();
+    expect(screen.getByTestId('ontology-publication-trigger')).toBeDisabled();
   });
 
   it('does not open the New class panel later for an ontology the user moved away from', async () => {
@@ -846,10 +858,6 @@ describe('Ontology Studio mode-switch integration', () => {
       'data-scope-key',
       'ontology:other'
     );
-    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
-      'aria-selected',
-      'true'
-    );
 
     await act(async () => {
       release();
@@ -977,10 +985,11 @@ describe('Ontology Studio mode-switch integration', () => {
     fireEvent.change(await screen.findByTestId('ontology-create-name'), {
       target: { value: 'Customer 360' },
     });
+    fireEvent.click(screen.getByTestId('ontology-create-advanced-toggle'));
     await waitFor(() =>
-      expect(
-        screen.getByTestId('ontology-create-iri-preview')
-      ).toHaveTextContent('https://open-metadata.org/onto/customer#')
+      expect(screen.getByTestId('ontology-create-namespace')).toHaveValue(
+        'https://open-metadata.org/onto/customer#'
+      )
     );
 
     expect(
@@ -1147,14 +1156,16 @@ describe('Ontology Studio mode-switch integration', () => {
         </QueryClientProvider>
       );
 
-      expect(screen.getByText('label.loading')).toBeVisible();
+      expect(screen.getByTestId('loader')).toBeVisible();
 
       expect(await screen.findByRole('alert')).toBeVisible();
       expect(screen.queryByTestId('graph-nodes')).not.toBeInTheDocument();
       expect(screen.getByTestId('location')).toHaveTextContent(
         'ontology=unavailable'
       );
-      expect(screen.getByRole('button', { name: 'label.retry' })).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'label.reload' })
+      ).toBeVisible();
 
       fireEvent.click(screen.getByRole('button', { name: 'label.all-entity' }));
       await waitFor(() =>

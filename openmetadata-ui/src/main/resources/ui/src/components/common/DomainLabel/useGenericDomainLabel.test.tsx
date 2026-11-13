@@ -16,6 +16,12 @@ import { EntityReference } from '../../../generated/entity/type';
 import { DomainLabel } from './DomainLabel.component';
 import { useGenericDomainLabel } from './useGenericDomainLabel';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 const mockDomains: EntityReference[] = [
   {
     id: 'dom-1',

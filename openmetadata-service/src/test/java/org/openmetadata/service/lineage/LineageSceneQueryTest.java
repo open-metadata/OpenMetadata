@@ -6,15 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorResponse;
+import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.QueryFilterParser;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 class LineageSceneQueryTest {
   @ParameterizedTest
@@ -61,9 +64,35 @@ class LineageSceneQueryTest {
     assertFalse(QueryFilterParser.matchesFilter(nonMatchingEntity, normalized));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  void malformedFiltersAreRejectedAsBadRequests(String filter) {
+    BadRequestException error =
+        assertThrows(BadRequestException.class, () -> LineageSceneQuery.parseQueryFilter(filter));
+
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+  }
+
   @Test
-  void malformedFiltersAreNotSilentlyDiscarded() {
-    assertThrows(
-        JsonParsingException.class, () -> LineageSceneQuery.parseQueryFilter("{\"query\":"));
+  void searchEngineBadRequestsAnywhereInTheCauseChainAreRejectedFilters() {
+    ErrorResponse elasticError =
+        ErrorResponse.of(
+            e -> e.status(400).error(cause -> cause.type("parsing_exception").reason("bad")));
+    os.org.opensearch.client.opensearch._types.ErrorResponse openSearchError =
+        os.org.opensearch.client.opensearch._types.ErrorResponse.of(
+            e -> e.status(400).error(cause -> cause.type("parsing_exception").reason("bad")));
+
+    assertTrue(
+        LineageSceneQuery.isRejectedBySearchEngine(
+            new IllegalStateException(new ElasticsearchException("search", elasticError))));
+    assertTrue(
+        LineageSceneQuery.isRejectedBySearchEngine(new OpenSearchException(openSearchError)));
+    assertFalse(
+        LineageSceneQuery.isRejectedBySearchEngine(
+            new ElasticsearchException(
+                "search",
+                ErrorResponse.of(
+                    e -> e.status(500).error(cause -> cause.type("node").reason("down"))))));
+    assertFalse(LineageSceneQuery.isRejectedBySearchEngine(new IllegalStateException("down")));
   }
 }

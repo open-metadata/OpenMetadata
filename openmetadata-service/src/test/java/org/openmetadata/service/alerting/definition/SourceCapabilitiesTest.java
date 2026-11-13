@@ -184,14 +184,20 @@ class SourceCapabilitiesTest {
   @Test
   void recipientsAreWhatTheSourcesOffer() {
     assertEquals(
-        List.of(SubscriptionCategory.ASSIGNEES, SubscriptionCategory.MENTIONS),
-        of(AlertType.NOTIFICATION, List.of("task"), null).getRecipientCategories());
-    assertEquals(
         List.of(
             SubscriptionCategory.ASSIGNEES,
             SubscriptionCategory.OWNERS,
             SubscriptionCategory.MENTIONS),
-        of(AlertType.NOTIFICATION, List.of("task", "conversation"), null).getRecipientCategories());
+        of(AlertType.NOTIFICATION, List.of("task"), null).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.ASSIGNEES,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.MENTIONS),
+        of(AlertType.NOTIFICATION, List.of("task", "announcement"), null).getRecipientCategories());
   }
 
   @Test

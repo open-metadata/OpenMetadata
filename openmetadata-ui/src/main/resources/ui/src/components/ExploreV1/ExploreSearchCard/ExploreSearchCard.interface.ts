@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { CardProps } from '@openmetadata/ui-core-components';
 import { SearchExplanation } from '../../../interface/search.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
@@ -39,4 +40,9 @@ export interface ExploreSearchCardProps {
   matchedQueries?: string[];
   highlight?: SearchedDataProps['data'][number]['highlight'];
   classNameForBreadcrumb?: string;
+  /**
+   * Core Card surface; `muted` when the card sits inside a surface panel
+   * (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
+   */
+  variant?: NonNullable<CardProps['variant']>;
 }

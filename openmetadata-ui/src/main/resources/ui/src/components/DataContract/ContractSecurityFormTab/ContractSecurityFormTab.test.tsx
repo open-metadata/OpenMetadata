@@ -75,20 +75,6 @@ jest.mock('../../common/ExpandableCard/ExpandableCard', () => {
   };
 });
 
-jest.mock('../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: ({
-    onClick,
-    'data-testid': dataTestId,
-  }: {
-    onClick: () => void;
-    'data-testid': string;
-  }) => (
-    <button data-testid={dataTestId} onClick={onClick}>
-      Edit
-    </button>
-  ),
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {

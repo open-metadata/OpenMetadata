@@ -28,12 +28,16 @@ import {
 import {
   Copy01,
   Edit01 as Edit,
+  Policy as PolicyIcon,
+  Teams,
   Trash01 as Delete,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
   FC,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -157,11 +161,10 @@ const renderEntityCell = (
         })}
         onConfirm={() => onRemove(item)}>
         <ButtonUtility
-          color="tertiary"
           data-testid={`remove-${getEntityName(item)}`}
           icon={Delete}
           isDisabled={!canEditAll || isLoadingOnSave}
-          size="xs"
+          size="lg"
           tooltip={translate('label.remove')}
           tooltipPlacement="left"
         />
@@ -178,6 +181,7 @@ interface EntityTableProps {
   ariaLabel: string;
   canEditAll: boolean;
   columns: DetailColumn[];
+  emptyIcon: ReactNode;
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[] | undefined;
@@ -191,6 +195,7 @@ const EntityTable: FC<EntityTableProps> = ({
   ariaLabel,
   canEditAll,
   columns,
+  emptyIcon,
   emptyTitle,
   isLoadingOnSave,
   items,
@@ -223,9 +228,9 @@ const EntityTable: FC<EntityTableProps> = ({
       renderEmptyState={() => (
         <Box
           align="center"
-          className="tw:min-h-32 tw:relative"
+          className="tw:relative tw:min-h-60"
           justify="center">
-          <NoDataPlaceholder title={emptyTitle} />
+          <NoDataPlaceholder icon={emptyIcon} title={emptyTitle} />
         </Box>
       )}>
       {(item) => (
@@ -292,10 +297,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       </Typography>
       {canEdit && !isEditing && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-description-btn"
           icon={Edit}
-          size="xs"
           tooltip={String(
             t('label.edit-entity', { entity: t('label.description') })
           )}
@@ -521,11 +524,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-role-btn"
           icon={Edit}
           isDisabled={!canEditAll}
-          size="xs"
+          size="lg"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -536,10 +538,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           }}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="copy-link-btn"
           icon={Copy01}
-          size="xs"
+          size="lg"
           tooltip={String(
             hasCopied
               ? t('message.link-copy-to-clipboard')
@@ -560,11 +561,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         entityName={getEntityName(role)}
         entityType={EntityType.ROLE}>
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-role-btn"
           icon={Delete}
           isDisabled={!canDelete}
-          size="xs"
+          size="lg"
           tooltip={String(
             canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -890,6 +890,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           ariaLabel={t('label.policy-plural')}
           canEditAll={canEditAll}
           columns={columns}
+          emptyIcon={<PolicyIcon />}
           emptyTitle={t('label.no-entity-found', {
             entity: t('label.policy-plural'),
           })}
@@ -934,6 +935,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         ariaLabel={t('label.team-plural')}
         canEditAll={Boolean(isAdminUser)}
         columns={columns}
+        emptyIcon={<Teams />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.team-plural'),
         })}
@@ -956,6 +958,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         ariaLabel={t('label.user-plural')}
         canEditAll={Boolean(isAdminUser)}
         columns={columns}
+        emptyIcon={<User01 />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.user-plural'),
         })}

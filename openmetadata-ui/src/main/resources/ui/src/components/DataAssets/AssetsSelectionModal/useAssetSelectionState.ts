@@ -363,6 +363,16 @@ export const useAssetSelectionState = ({
 
   const handleSaveError = useCallback(
     (err: unknown) => {
+      // A bulk request where every row failed comes back as a 400 carrying the
+      // per-row reasons, which the list shows against each asset.
+      const bulkResult = (err as AxiosError<BulkOperationResult>).response
+        ?.data;
+      if (bulkResult?.failedRequest?.length) {
+        setFailedStatus(bulkResult);
+
+        return;
+      }
+
       if (variant === 'drawer') {
         showErrorToast(
           err as AxiosError,

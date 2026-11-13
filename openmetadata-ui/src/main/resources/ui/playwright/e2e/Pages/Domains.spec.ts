@@ -581,7 +581,7 @@ test.describe('Domains', () => {
       await Promise.all([
         createSubDomain(page, subDomain.data),
         page.waitForResponse(
-          '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
+          '/api/v1/search/query?q=&index=domain&from=0&size=15&deleted=false*'
         ),
       ]);
 
@@ -629,7 +629,7 @@ test.describe('Domains', () => {
       await selectDomain(page, domain.data);
 
       const subDomainApiRes1 = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=15&deleted=false*'
       );
 
       // Create new sub domain under the existing sub domain
@@ -784,6 +784,11 @@ test.describe('Domains', () => {
 
       await expect(
         page.getByTestId(user1.responseData.displayName)
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('inherited-owner-icon')
       ).toBeVisible();
 
       await expect(

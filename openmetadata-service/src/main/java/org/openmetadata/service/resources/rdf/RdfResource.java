@@ -90,6 +90,7 @@ import org.openmetadata.service.rdf.insights.RdfInsightsService;
 import org.openmetadata.service.rdf.semantic.SemanticSearchEngine;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -983,6 +984,10 @@ public class RdfResource {
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         new ResourceContext<>(entityType, id, null));
+    if (Entity.USER.equals(entityType) && !authorizer.authorizePII(securityContext, null)) {
+      // A user's graph node carries the email the user endpoints mask for this caller.
+      throw new AuthorizationException("Reading a user's RDF requires access to its email");
+    }
     RdfGraphService.Representation representation =
         executeGraphOperation(
             "retrieving an entity as RDF", () -> graphService().entity(entityType, id, format));
@@ -1015,10 +1020,9 @@ public class RdfResource {
       @QueryParam("fromVersion") final Double fromVersion,
       @QueryParam("toVersion") final Double toVersion) {
     final String entityType = RdfEntityTypeValidator.requireKnown(requestedEntityType);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType, entityId, null));
+    // The diff reads stored versions directly, past the redaction each entity's own versions
+    // endpoint applies, so it stays with the rest of the graph tooling: admin only.
+    authorizer.authorizeAdmin(securityContext);
     final RdfEntityDiff diff =
         entityDiffService().diff(entityType, entityId, fromVersion, toVersion);
     return Response.ok(diff).build();

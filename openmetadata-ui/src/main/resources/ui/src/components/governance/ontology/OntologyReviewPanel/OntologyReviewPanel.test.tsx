@@ -21,30 +21,16 @@ import {
 import { OntologyReviewTarget } from '../../../../generated/type/ontologyReviewTarget';
 import APIClient from '../../../../rest/axiosClient';
 import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
+import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import OntologyReviewPanel from './OntologyReviewPanel';
 
 jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
-jest.mock('@uiw/react-codemirror', () => {
-  const { forwardRef } = jest.requireActual<typeof import('react')>('react');
-
-  return {
-    __esModule: true,
-    default: forwardRef<HTMLPreElement, { value: string }>(function Editor(
-      { value },
-      ref
-    ) {
-      return (
-        <pre data-testid="review-content" ref={ref}>
-          {value}
-        </pre>
-      );
-    }),
-  };
-});
-
 const get = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
 const target: OntologyReviewTarget = {
   entityId: 'release-id',
@@ -165,7 +151,9 @@ describe('OntologyReviewPanel', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'message.ontology-review-unavailable'
       );
-      expect(screen.queryByTestId('review-content')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('ontology-review-field-changes')
+      ).not.toBeInTheDocument();
       expect(get).toHaveBeenCalledTimes(1);
       expect(onReadyChange).toHaveBeenLastCalledWith(false);
     }
@@ -176,7 +164,9 @@ describe('OntologyReviewPanel', () => {
     renderWithQueryClient(<OntologyReviewPanel task={task} />);
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.queryByTestId('review-content')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-review-field-changes')
+    ).not.toBeInTheDocument();
   });
 
   it('does not read an unpinned or per-definition task target', async () => {
@@ -194,5 +184,166 @@ describe('OntologyReviewPanel', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(get).not.toHaveBeenCalled();
+  });
+
+  describe('field changes in English', () => {
+    beforeEach(() => {
+      useEnUsTranslations();
+    });
+
+    afterEach(() => {
+      useKeyEchoTranslations();
+    });
+
+    const serve = (
+      changeType: string,
+      payloads: { before?: object; after?: object },
+      semanticVersion?: string
+    ) =>
+      get.mockImplementation(async (url) => {
+        if (url.endsWith('/versions/0.2')) {
+          return { data: { ...release, semanticVersion } };
+        }
+        if (url.endsWith('/diff')) {
+          return {
+            data: {
+              data: [
+                {
+                  entity: {
+                    id: 'concept-id',
+                    name: 'Customer',
+                    type: 'ontologyConcept',
+                  },
+                  memberKind: 'CONCEPT',
+                  changeType,
+                  beforeReleaseId: payloads.before
+                    ? 'previous-release'
+                    : undefined,
+                  afterReleaseId: payloads.after ? 'release-id' : undefined,
+                },
+              ],
+              paging: { total: 1 },
+            },
+          };
+        }
+        if (url.includes('/members/CONCEPT/concept-id')) {
+          return {
+            data: {
+              payload: url.includes('/previous-release/')
+                ? payloads.before
+                : payloads.after,
+            },
+          };
+        }
+
+        throw new Error(`Unexpected request ${url}`);
+      });
+
+    it('shows each changed field with its old and new value and no JSON', async () => {
+      serve('CHANGED', {
+        before: {
+          name: 'Customer',
+          description: 'Someone who buys',
+          synonyms: ['Client'],
+          updatedAt: 1,
+        },
+        after: {
+          name: 'Customer',
+          description: 'Someone who buys or subscribes',
+          synonyms: ['Client', 'Shopper'],
+          updatedAt: 2,
+        },
+      });
+      renderWithQueryClient(<OntologyReviewPanel task={task} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
+
+      const rows = await screen.findAllByTestId('ontology-review-field-change');
+
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'descriptionBefore: Someone who buysAfter: Someone who buys or subscribes',
+        'synonymsBefore: ClientAfter: Client, Shopper',
+      ]);
+      expect(
+        screen.getByTestId('ontology-review-field-changes').textContent
+      ).not.toMatch(/[{}"]/);
+    });
+
+    it('shows an added member with every field Not set before', async () => {
+      serve('ADDED', { after: { name: 'Customer', description: 'New' } });
+      renderWithQueryClient(<OntologyReviewPanel task={task} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
+
+      const rows = await screen.findAllByTestId('ontology-review-field-change');
+
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'nameBefore: Not setAfter: Customer',
+        'descriptionBefore: Not setAfter: New',
+      ]);
+    });
+
+    it('names the release by its semantic version, not the entity version', async () => {
+      serve('CHANGED', { before: { a: '1' }, after: { a: '2' } }, '1.5.0');
+      renderWithQueryClient(<OntologyReviewPanel task={task} />);
+
+      expect(await screen.findByText('Release 2 · v1.5.0')).toBeInTheDocument();
+      expect(screen.queryByText(/Version 0\.2/)).not.toBeInTheDocument();
+    });
+
+    it('calls a release with no semantic version a Draft', async () => {
+      serve('CHANGED', { before: { a: '1' }, after: { a: '2' } });
+      renderWithQueryClient(<OntologyReviewPanel task={task} />);
+
+      expect(await screen.findByText('Release 2 · Draft')).toBeInTheDocument();
+    });
+  });
+
+  it('groups changes by kind and filters them by change type in the changes view', async () => {
+    const change = (id: string, memberKind: string, changeType: string) => ({
+      entity: { id, name: id, type: 'ontologyConcept' },
+      memberKind,
+      changeType,
+    });
+    get.mockImplementation(async (url) => {
+      if (url.endsWith('/versions/0.2')) {
+        return {
+          data: {
+            ...release,
+            changeSummary: { added: 1, changed: 1, removed: 0, deprecated: 0 },
+          },
+        };
+      }
+      if (url.endsWith('/diff')) {
+        return {
+          data: {
+            data: [
+              change('Customer', 'CONCEPT', 'ADDED'),
+              change('buys', 'ASSOCIATION', 'CHANGED'),
+            ],
+            paging: { total: 2 },
+          },
+        };
+      }
+
+      throw new Error(`Unexpected request ${url}`);
+    });
+    renderWithQueryClient(<OntologyReviewPanel asChanges task={task} />);
+
+    expect(await screen.findByText('label.concept-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.relationship-plural')).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.submitted-definition')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-change-filter-added'));
+
+    expect(
+      screen.getByRole('button', { name: 'Customer' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'buys' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('label.relationship-plural')
+    ).not.toBeInTheDocument();
   });
 });

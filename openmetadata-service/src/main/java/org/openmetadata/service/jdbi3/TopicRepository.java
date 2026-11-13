@@ -57,6 +57,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -430,10 +431,13 @@ public class TopicRepository extends EntityRepository<Topic> {
     EntityUtil.mergeTags(allTags, topic.getTags());
     List<Field> schemaFields =
         topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
-    for (Field schemaField : listOrEmpty(schemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, schemaFields);
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,messageSchema");
   }
 
   public static Set<TagLabel> getAllFieldTags(Field field) {
@@ -670,8 +674,7 @@ public class TopicRepository extends EntityRepository<Topic> {
           continue;
         }
 
-        String schemaFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String schemaFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);

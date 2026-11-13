@@ -16,9 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -32,9 +36,11 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
@@ -48,6 +54,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.feed.Announcement;
@@ -75,6 +82,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Regression coverage for issue #18158 ("Users without access can fetch & perform patch on the
@@ -190,11 +198,11 @@ class FeedAccessAuthzIT {
         List.of(
             ACTIVITY_PATH + "/user/" + actor.getId() + "?days=1",
             ACTIVITY_PATH + "?actorId=" + actor.getId() + "&days=1")) {
-      List<String> deniedView = eventIds(denied, path);
+      List<String> deniedView = listedIds(denied, path);
       assertTrue(deniedView.contains(shownEvent.toString()), path + " lost a viewable event");
       assertFalse(deniedView.contains(hiddenEvent.toString()), path + " leaked a hidden event");
       assertTrue(
-          eventIds(SdkClients.adminClient(), path).contains(hiddenEvent.toString()),
+          listedIds(SdkClients.adminClient(), path).contains(hiddenEvent.toString()),
           path + " must still show admins every event");
     }
   }
@@ -221,7 +229,7 @@ class FeedAccessAuthzIT {
     replyAsAdmin(hiddenEvent, mention);
     replyAsAdmin(shownEvent, mention);
 
-    List<String> mentions = eventIds(denied, ACTIVITY_PATH + "/mentions?days=1");
+    List<String> mentions = listedIds(denied, ACTIVITY_PATH + "/mentions?days=1");
 
     assertTrue(mentions.contains(shownEvent.toString()), "lost a mention on a viewable table");
     assertFalse(mentions.contains(hiddenEvent.toString()), "leaked a mention on a hidden table");
@@ -286,6 +294,133 @@ class FeedAccessAuthzIT {
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options),
         "Conversations on a table the caller cannot view must not be listable");
+  }
+
+  @Test
+  void readAnnouncement_callerDeniedViewOnTarget_forbidden(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table restricted = createTable(schema, ns.shortPrefix("restricted"), List.of(PII_SENSITIVE));
+    Announcement announcement = createAnnouncement(ns, restricted);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_read"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+    RequestOptions byLink =
+        RequestOptions.builder().queryParam("entityLink", entityLink(restricted)).build();
+
+    for (String path :
+        List.of(
+            ANNOUNCEMENTS_PATH + "/" + announcement.getId(),
+            ANNOUNCEMENTS_PATH + "/name/" + announcement.getFullyQualifiedName(),
+            ANNOUNCEMENTS_PATH + "/" + announcement.getId() + "/versions",
+            ANNOUNCEMENTS_PATH + "/" + announcement.getId() + "/versions/0.1")) {
+      assertForbidden(
+          () -> get(denied, path), path + " must honour the view permission on its asset");
+    }
+    assertForbidden(
+        () ->
+            denied
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, ANNOUNCEMENTS_PATH, null, byLink),
+        "Announcements narrowed to an asset must honour the view permission on it");
+  }
+
+  @Test
+  void listAnnouncements_hidesUnviewableAssets(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table restricted = createTable(schema, ns.shortPrefix("hidden"), List.of(PII_SENSITIVE));
+    Table open = createTable(schema, ns.shortPrefix("open"), List.of());
+    Announcement hidden = createAnnouncement(ns, restricted);
+    Announcement shown = createAnnouncement(ns, open);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_list"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    List<String> deniedView = activeAnnouncementIds(denied);
+    assertTrue(deniedView.contains(shown.getId().toString()), "lost a viewable announcement");
+    assertFalse(
+        deniedView.contains(hidden.getId().toString()), "listed an announcement on a hidden asset");
+    assertTrue(
+        activeAnnouncementIds(SdkClients.adminClient()).contains(hidden.getId().toString()),
+        "admins must still see every announcement");
+  }
+
+  @Test
+  void listAnnouncements_totalCountsOnlyViewable(TestNamespace ns) throws Exception {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("ann-total"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Scopes the announcement total check"));
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    createAnnouncement(
+        ns, inDomain(createTable(schema, ns.shortPrefix("tot_h"), List.of(PII_SENSITIVE)), domain));
+    createAnnouncement(
+        ns, inDomain(createTable(schema, ns.shortPrefix("tot_s"), List.of()), domain));
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_total"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    assertEquals(
+        1,
+        announcementPage(denied, domain, null).path("paging").path("total").asInt(),
+        "first page total counts only viewable announcements");
+    assertEquals(
+        2,
+        announcementPage(SdkClients.adminClient(), domain, null)
+            .path("paging")
+            .path("total")
+            .asInt(),
+        "admins count every announcement");
+  }
+
+  @Test
+  void readAnnouncement_afterAssetRename_checksAsset(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("ann-renamed"))
+                    .withDescription("Glossary that is renamed after its announcement")
+                    .withTags(List.of(PII_SENSITIVE)));
+    long now = System.currentTimeMillis();
+    Announcement announcement =
+        admin
+            .announcements()
+            .create(
+                new CreateAnnouncement()
+                    .withName(ns.prefix("announcement-renamed"))
+                    .withDescription("Announcement on a glossary")
+                    .withEntityLink("<#E::glossary::" + glossary.getFullyQualifiedName() + ">")
+                    .withStartTime(now)
+                    .withEndTime(now + ONE_DAY_MILLIS));
+    patch(admin, "/v1/glossaries/" + glossary.getId(), replace("/name", ns.prefix("ann-moved")));
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_renamed"),
+            "glossary",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    assertForbidden(
+        () -> get(denied, ANNOUNCEMENTS_PATH + "/" + announcement.getId()),
+        "A rename of the asset must not lift the view check on its announcement");
+    assertFalse(
+        activeAnnouncementIds(denied).contains(announcement.getId().toString()),
+        "A rename of the asset must not expose its announcement in lists");
   }
 
   @Test
@@ -488,6 +623,130 @@ class FeedAccessAuthzIT {
     assertEquals("Conditional write", updated.getDescription());
   }
 
+  // ==================== Reads by id carry their target's check ====================
+
+  @Test
+  void conversationById_aboutATableTheCallerCannotView_isNotFound(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "conv_by_id");
+    Conversation conversation = createConversation(entityLink(table), "About a hidden table");
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "convbyid", Entity.TABLE);
+
+    for (String path :
+        List.of(
+            CONVERSATIONS_PATH + "/" + conversation.getId(),
+            CONVERSATIONS_PATH + "/" + conversation.getId() + "/replies")) {
+      ApiException failure = assertThrows(ApiException.class, () -> get(denied, path), path);
+      assertEquals(404, failure.getStatusCode(), path);
+    }
+  }
+
+  @Test
+  void taskById_aboutATableTheCallerCannotView_isRefused(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "task_by_id");
+    Task task = createTaskAbout(ns, table);
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "taskbyid", Entity.TABLE);
+
+    for (String path :
+        List.of(
+            TASKS_PATH + "/" + task.getId(),
+            TASKS_PATH + "/" + task.getId() + "?fields=assignees",
+            TASKS_PATH + "/" + task.getId() + "/versions")) {
+      assertThrows(ForbiddenException.class, () -> get(denied, path), path);
+    }
+  }
+
+  /**
+   * The listings hand out what the read by id refuses unless they check each task's entity too: a
+   * task about a table the caller may not view stays out of the listing by that table, the
+   * assignee's inbox and the domain's tasks, while a task about a table they may view stays in.
+   */
+  @Test
+  void taskListings_leaveOutTasksAboutEntitiesTheCallerCannotView(TestNamespace ns)
+      throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Signs the reader's token with the harness key, which a deployed cluster rejects");
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Domain domain =
+        ns.trackRoot(
+            Entity.DOMAIN,
+            admin
+                .domains()
+                .create(
+                    new CreateDomain()
+                        .withName(ns.prefix("task-list-domain"))
+                        .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                        .withDescription("Domain of the tables the listed tasks are about")));
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table hiddenTable =
+        createTableInDomain(schema, ns.prefix("list-hidden"), List.of(PII_SENSITIVE), domain);
+    Table openTable = createTableInDomain(schema, ns.prefix("list-open"), List.of(), domain);
+    User reader = readerDeniedTaggedTables(ns);
+    String hidden = createTaskAssignedTo(ns, hiddenTable, reader, "hidden").getId().toString();
+    String shown = createTaskAssignedTo(ns, openTable, reader, "shown").getId().toString();
+    OpenMetadataClient asReader =
+        SdkClients.createClient(reader.getName(), reader.getEmail(), new String[] {});
+    String byAbout = TASKS_PATH + "?fields=about,payload,assignees&limit=100&aboutEntity=";
+
+    assertEquals(List.of(), listedIds(asReader, byAbout + encode(hiddenTable)));
+    assertEquals(List.of(shown), listedIds(asReader, byAbout + encode(openTable)));
+    for (String path :
+        List.of(
+            TASKS_PATH + "/assigned?limit=100",
+            "/v1/domains/"
+                + URLEncoder.encode(domain.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                + "/tasks?limit=100")) {
+      List<String> listed = listedIds(asReader, path);
+      assertTrue(listed.contains(shown), path + " lost a task about a viewable table");
+      assertFalse(listed.contains(hidden), path + " leaked a task about a hidden table");
+    }
+    assertEquals(List.of(hidden), listedIds(admin, byAbout + encode(hiddenTable)));
+  }
+
+  @Test
+  void activityAboutALink_returnsOnlyEventsOfTheLinksEntityType(TestNamespace ns) throws Exception {
+    String sharedName = "act_" + UUID.randomUUID().toString().substring(0, 8);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgresWithName(sharedName, ns);
+    User namesake =
+        ns.trackRoot(
+            Entity.USER,
+            SdkClients.adminClient()
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(sharedName)
+                        .withEmail(sharedName + "@test.openmetadata.org")));
+    ActivityEvent serviceEvent =
+        new ActivityEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(ActivityEventType.ENTITY_UPDATED)
+            .withEntity(service.getEntityReference())
+            .withAbout("<#E::databaseService::" + sharedName + ">")
+            .withActor(namesake.getEntityReference())
+            .withTimestamp(System.currentTimeMillis())
+            .withSummary("Updated " + sharedName);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            ACTIVITY_PATH + "/test-insert",
+            MAPPER.writeValueAsString(serviceEvent),
+            RequestOptions.builder().build());
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "actlink", Entity.DATABASE_SERVICE);
+
+    List<String> ids =
+        listedIds(
+            denied,
+            ACTIVITY_PATH
+                + "/about?entityLink="
+                + java.net.URLEncoder.encode(
+                    "<#E::user::" + namesake.getName() + ">",
+                    java.nio.charset.StandardCharsets.UTF_8));
+
+    assertFalse(ids.contains(serviceEvent.getId().toString()), ids.toString());
+  }
+
   // ==================== Helpers ====================
 
   private static String patchWithIfMatch(String path, String body, String ifMatch)
@@ -551,7 +810,7 @@ class FeedAccessAuthzIT {
         .announcements()
         .create(
             new CreateAnnouncement()
-                .withName(ns.prefix("announcement"))
+                .withName(ns.shortPrefix("announcement-" + UUID.randomUUID()))
                 .withDescription("Announcement authored by admin")
                 .withEntityLink(entityLink(table))
                 .withStartTime(now)
@@ -599,15 +858,84 @@ class FeedAccessAuthzIT {
           .withState(TagLabel.State.CONFIRMED);
 
   private static Table createTable(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    return SdkClients.adminClient().tables().create(tableRequest(schema, name, tags));
+  }
+
+  private static Table createTableInDomain(
+      DatabaseSchema schema, String name, List<TagLabel> tags, Domain domain) {
     return SdkClients.adminClient()
         .tables()
         .create(
-            new CreateTable()
-                .withName(name)
-                .withDatabaseSchema(schema.getFullyQualifiedName())
-                .withColumns(
-                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
-                .withTags(tags));
+            tableRequest(schema, name, tags).withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static CreateTable tableRequest(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    return new CreateTable()
+        .withName(name)
+        .withDatabaseSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+        .withTags(tags);
+  }
+
+  private static Task createTaskAssignedTo(
+      TestNamespace ns, Table table, User assignee, String label) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix("task-" + label))
+                .withDescription("Task about " + table.getName())
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.DescriptionUpdate)
+                .withAbout(entityLink(table))
+                .withAssignees(List.of(assignee.getFullyQualifiedName())));
+  }
+
+  /** A user denied ViewBasic on tables tagged PII.Sensitive, cleaned up with the namespace. */
+  private static User readerDeniedTaggedTables(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.shortPrefix("tasklist");
+    Rule denyTagged =
+        new Rule()
+            .withName(prefix + "_deny")
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withCondition("matchAnyTag('PII.Sensitive')")
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(prefix + "_policy")
+                        .withDescription("Denies viewing tables tagged PII.Sensitive")
+                        .withRules(List.of(denyTagged))));
+    Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(prefix + "_role")
+                        .withDescription("Role carrying the tagged-table deny")
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    String name = prefix + "_user";
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId()))));
+  }
+
+  private static String encode(Table table) {
+    return URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
   }
 
   private static UUID insertActivity(Table table, User actor) throws Exception {
@@ -644,9 +972,59 @@ class FeedAccessAuthzIT {
     return MAPPER.readTree(get(client, "/v1/users/loggedInUser")).path("name").asText();
   }
 
-  private static List<String> eventIds(OpenMetadataClient client, String path) throws Exception {
+  private static List<String> listedIds(OpenMetadataClient client, String path) throws Exception {
     List<String> ids = new ArrayList<>();
     MAPPER.readTree(get(client, path)).path("data").forEach(e -> ids.add(e.path("id").asText()));
+    return ids;
+  }
+
+  private static Table inDomain(Table table, Domain domain) throws Exception {
+    patch(
+        SdkClients.adminClient(),
+        "/v1/tables/" + table.getId(),
+        "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\""
+            + domain.getId()
+            + "\",\"type\":\"domain\"}]}]");
+    return table;
+  }
+
+  /** One page of size one of the announcements in {@code domain}, from {@code after}. */
+  private static JsonNode announcementPage(OpenMetadataClient client, Domain domain, String after)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("domain", domain.getFullyQualifiedName())
+            .queryParam("limit", "1");
+    if (after != null) {
+      options.queryParam("after", after);
+    }
+    return MAPPER.readTree(
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ANNOUNCEMENTS_PATH, null, options.build()));
+  }
+
+  /** Every active entity announcement the client is shown, across all pages. */
+  private static List<String> activeAnnouncementIds(OpenMetadataClient client) throws Exception {
+    List<String> ids = new ArrayList<>();
+    String after = null;
+    do {
+      RequestOptions.Builder options =
+          RequestOptions.builder()
+              .queryParam("active", "true")
+              .queryParam("system", "false")
+              .queryParam("limit", "1000");
+      if (after != null) {
+        options.queryParam("after", after);
+      }
+      JsonNode page =
+          MAPPER.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(HttpMethod.GET, ANNOUNCEMENTS_PATH, null, options.build()));
+      page.path("data").forEach(announcement -> ids.add(announcement.path("id").asText()));
+      after = page.path("paging").path("after").asText(null);
+    } while (after != null);
     return ids;
   }
 

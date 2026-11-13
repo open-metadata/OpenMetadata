@@ -70,9 +70,7 @@ describe('TaskDetailHeader', () => {
     renderHeader();
 
     expect(
-      screen
-        .getByTestId('task-actions-menu')
-        .querySelector('[data-icon="leading"]')
+      screen.getByTestId('task-actions-menu').querySelector('[data-icon]')
     ).toBeInTheDocument();
   });
 });

@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Relationship.OWNS;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -46,6 +48,7 @@ import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityDimension;
 import org.openmetadata.schema.tests.TestCase;
@@ -55,6 +58,7 @@ import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -906,6 +910,219 @@ public interface TimeSeriesDAOs {
   }
 
   interface EntityExtensionTimeSeriesDAO extends EntityTimeSeriesDAO {
+    record PipelineStatusFilter(
+        Long startTs,
+        Long endTs,
+        String statusesJson,
+        String taskNamePattern,
+        Long minDuration,
+        Long maxDuration,
+        Long beforeTs,
+        Long afterTs) {
+      static PipelineStatusFilter fromRequest(
+          Long startTs,
+          Long endTs,
+          String statuses,
+          String search,
+          Long minDuration,
+          Long maxDuration,
+          Long beforeTs,
+          Long afterTs) {
+        return new PipelineStatusFilter(
+            startTs,
+            endTs,
+            buildStatusesJson(statuses),
+            buildTaskNamePattern(search),
+            minDuration,
+            maxDuration,
+            beforeTs,
+            afterTs);
+      }
+
+      private static String buildStatusesJson(String statuses) {
+        return nullOrEmpty(statuses)
+            ? null
+            : JsonUtils.pojoToJson(Arrays.stream(statuses.split(",")).map(String::trim).toList());
+      }
+
+      private static String buildTaskNamePattern(String search) {
+        return nullOrEmpty(search)
+            ? null
+            : "%"
+                + search
+                    .toLowerCase(Locale.ROOT)
+                    .replace("!", "!!")
+                    .replace("%", "!%")
+                    .replace("_", "!_")
+                + "%";
+      }
+    }
+
+    String PIPELINE_DURATION_FILTER =
+        """
+        AND (:taskNamePattern IS NULL OR task_timings.matched > 0)
+        AND ((:minDuration IS NULL AND :maxDuration IS NULL) OR (
+          task_timings.maxEnd >= task_timings.minStart
+          AND (:minDuration IS NULL OR task_timings.maxEnd - task_timings.minStart >= :minDuration)
+          AND (:maxDuration IS NULL OR task_timings.maxEnd - task_timings.minStart <= :maxDuration)
+        ))
+        """;
+    String MYSQL_FILTERED_PIPELINE_STATUSES =
+        """
+        FROM entity_extension_time_series history
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) matched, MIN(task.startTime) minStart, MAX(task.endTime) maxEnd
+          FROM JSON_TABLE(history.json, '$.taskStatus[*]' COLUMNS (
+            name TEXT PATH '$.name',
+            startTime BIGINT PATH '$.startTime',
+            endTime BIGINT PATH '$.endTime'
+          )) task
+          WHERE (:taskNamePattern IS NOT NULL OR :minDuration IS NOT NULL OR :maxDuration IS NOT NULL)
+            AND (:taskNamePattern IS NULL
+              OR LOWER(task.name) COLLATE utf8mb4_bin LIKE :taskNamePattern ESCAPE '!')
+        ) task_timings ON TRUE
+        WHERE history.entityFQNHash = :entityFQNHash
+          AND history.extension = 'pipeline.pipelineStatus'
+          AND history.timestamp >= :startTs AND history.timestamp <= :endTs
+          AND (:statusesJson IS NULL
+            OR JSON_CONTAINS(CAST(:statusesJson AS JSON), JSON_EXTRACT(history.json, '$.executionStatus')))
+        """
+            + PIPELINE_DURATION_FILTER;
+    String POSTGRES_FILTERED_PIPELINE_STATUSES =
+        """
+        FROM entity_extension_time_series history
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) matched,
+            MIN((task.value->>'startTime')::bigint) minStart,
+            MAX((task.value->>'endTime')::bigint) maxEnd
+          FROM jsonb_array_elements(
+            COALESCE(NULLIF(history.json->'taskStatus', 'null'::jsonb), '[]'::jsonb)
+          ) task(value)
+          WHERE (:taskNamePattern IS NOT NULL OR :minDuration IS NOT NULL OR :maxDuration IS NOT NULL)
+            AND (:taskNamePattern IS NULL
+              OR LOWER(task.value->>'name') COLLATE "C" LIKE :taskNamePattern ESCAPE '!')
+        ) task_timings ON TRUE
+        WHERE history.entityFQNHash = :entityFQNHash
+          AND history.extension = 'pipeline.pipelineStatus'
+          AND history.timestamp >= :startTs AND history.timestamp <= :endTs
+          AND (:statusesJson IS NULL
+            OR CAST(:statusesJson AS jsonb) @> jsonb_build_array(history.json->>'executionStatus'))
+        """
+            + PIPELINE_DURATION_FILTER;
+    String MYSQL_PIPELINE_STATUS_SELECT =
+        """
+        SELECT history.json, CASE WHEN :taskNamePattern IS NULL THEN NULL ELSE (
+          SELECT JSON_ARRAYAGG(task.taskIndex)
+          FROM JSON_TABLE(history.json, '$.taskStatus[*]' COLUMNS (
+            taskIndex FOR ORDINALITY, name TEXT PATH '$.name'
+          )) task
+          WHERE LOWER(task.name) COLLATE utf8mb4_bin LIKE :taskNamePattern ESCAPE '!'
+        ) END taskIndexes
+        """;
+    String POSTGRES_PIPELINE_STATUS_SELECT =
+        """
+        SELECT history.json, CASE WHEN :taskNamePattern IS NULL THEN NULL ELSE (
+          SELECT jsonb_agg(task.taskIndex)
+          FROM jsonb_array_elements(
+            COALESCE(NULLIF(history.json->'taskStatus', 'null'::jsonb), '[]'::jsonb)
+          ) WITH ORDINALITY task(value, taskIndex)
+          WHERE LOWER(task.value->>'name') COLLATE "C" LIKE :taskNamePattern ESCAPE '!'
+        ) END taskIndexes
+        """;
+    String PIPELINE_STATUS_PAGE =
+        """
+        AND (:beforeTs IS NULL OR history.timestamp > :beforeTs)
+        AND (:afterTs IS NULL OR history.timestamp < :afterTs)
+        ORDER BY history.timestamp DESC LIMIT :limit
+        """;
+
+    /**
+     * The runtime of the run in row {@code eets}, null unless positive. The observability average and
+     * the runtime trend both select it, so the two agree
+     * (ADR:2026-11-06-pipeline-run-runtime-has-one-sql-definition).
+     */
+    String MYSQL_RUN_RUNTIME =
+        """
+        NULLIF(GREATEST(COALESCE(
+          (SELECT MAX(task.endTime) - MIN(task.startTime)
+            FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS (
+              startTime BIGINT PATH '$.startTime',
+              endTime BIGINT PATH '$.endTime'
+            )) task
+            WHERE task.startTime IS NOT NULL AND task.endTime IS NOT NULL),
+          JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp), 0), 0)
+        """;
+
+    String POSTGRES_RUN_RUNTIME =
+        """
+        NULLIF(GREATEST(COALESCE(
+          (SELECT MAX((task.value->>'endTime')::bigint) - MIN((task.value->>'startTime')::bigint)
+            FROM jsonb_array_elements(
+              COALESCE(NULLIF(eets.json->'taskStatus', 'null'::jsonb), '[]'::jsonb)
+            ) task(value)
+            WHERE task.value->>'startTime' IS NOT NULL AND task.value->>'endTime' IS NOT NULL),
+          (eets.json->>'endTime')::bigint - eets.timestamp), 0), 0)
+        """;
+    String PIPELINE_RUNS_BETWEEN =
+        """
+        FROM entity_extension_time_series eets
+        WHERE eets.entityFQNHash = :entityFQNHash
+          AND eets.extension = 'pipeline.pipelineStatus'
+          AND eets.timestamp >= :startTs AND eets.timestamp <= :endTs
+        """;
+
+    /** Null when no run in the range has a runtime. */
+    @ConnectionAwareSqlQuery(
+        value = "SELECT AVG(" + MYSQL_RUN_RUNTIME + ") " + PIPELINE_RUNS_BETWEEN,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT AVG(" + POSTGRES_RUN_RUNTIME + ") " + PIPELINE_RUNS_BETWEEN,
+        connectionType = POSTGRES)
+    Double averagePipelineRuntime(
+        @BindFQN("entityFQNHash") String fqn,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) " + MYSQL_FILTERED_PIPELINE_STATUSES,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) " + POSTGRES_FILTERED_PIPELINE_STATUSES,
+        connectionType = POSTGRES)
+    int countPipelineStatuses(
+        @BindFQN("entityFQNHash") String fqn, @BindMethods PipelineStatusFilter filter);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            MYSQL_PIPELINE_STATUS_SELECT + MYSQL_FILTERED_PIPELINE_STATUSES + PIPELINE_STATUS_PAGE,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            POSTGRES_PIPELINE_STATUS_SELECT
+                + POSTGRES_FILTERED_PIPELINE_STATUSES
+                + PIPELINE_STATUS_PAGE,
+        connectionType = POSTGRES)
+    @RegisterRowMapper(PipelineStatusPageMapper.class)
+    List<PipelineStatus> listPipelineStatuses(
+        @BindFQN("entityFQNHash") String fqn,
+        @BindMethods PipelineStatusFilter filter,
+        @Bind("limit") int limit);
+
+    class PipelineStatusPageMapper implements RowMapper<PipelineStatus> {
+      @Override
+      public PipelineStatus map(ResultSet rs, StatementContext ctx) throws SQLException {
+        PipelineStatus status = JsonUtils.readValue(rs.getString("json"), PipelineStatus.class);
+        String indexesJson = rs.getString("taskIndexes");
+        if (indexesJson != null) {
+          List<Integer> indexes = JsonUtils.readValue(indexesJson, new TypeReference<>() {});
+          // SQL ordinality preserves task order without relying on JSON aggregate ordering.
+          status.setTaskStatus(
+              indexes.stream().sorted().map(i -> status.getTaskStatus().get(i - 1)).toList());
+        }
+        return status;
+      }
+    }
+
     @Override
     default String getTimeSeriesTableName() {
       return "entity_extension_time_series";
@@ -978,22 +1195,8 @@ public interface TimeSeriesDAOs {
                 + "  SELECT "
                 + "    eets.*, "
                 + "    pe.fqnHash, "
-                + "    CASE "
-                + "      WHEN JSON_LENGTH(JSON_EXTRACT(eets.json, '$.taskStatus')) > 0 "
-                + "        AND JSON_EXTRACT(eets.json, '$.taskStatus[0].endTime') IS NOT NULL THEN "
-                + "        ( "
-                + "          SELECT MAX(CAST(JSON_EXTRACT(task.value, '$.endTime') AS UNSIGNED)) "
-                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
-                + "          WHERE JSON_EXTRACT(task.value, '$.endTime') IS NOT NULL "
-                + "        ) - ( "
-                + "          SELECT MIN(CAST(JSON_EXTRACT(task.value, '$.startTime') AS UNSIGNED)) "
-                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
-                + "          WHERE JSON_EXTRACT(task.value, '$.startTime') IS NOT NULL "
-                + "        ) "
-                + "      WHEN JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL THEN "
-                + "        JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp "
-                + "      ELSE NULL "
-                + "    END AS runtime "
+                + MYSQL_RUN_RUNTIME
+                + "    AS runtime "
                 + "  FROM entity_extension_time_series eets "
                 + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
                 + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
@@ -1027,25 +1230,8 @@ public interface TimeSeriesDAOs {
                 + "    eets.timestamp, "
                 + "    eets.json, "
                 + "    pe.fqnHash, "
-                + "    CASE "
-                + "      WHEN jsonb_array_length(COALESCE(eets.json->'taskStatus', '[]'::jsonb)) > 0 "
-                + "        AND EXISTS ( "
-                + "          SELECT 1 FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
-                + "          WHERE task->>'endTime' IS NOT NULL "
-                + "        ) THEN "
-                + "        ( "
-                + "          SELECT MAX((task->>'endTime')::bigint) "
-                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
-                + "          WHERE task->>'endTime' IS NOT NULL "
-                + "        ) - ( "
-                + "          SELECT MIN((task->>'startTime')::bigint) "
-                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
-                + "          WHERE task->>'startTime' IS NOT NULL "
-                + "        ) "
-                + "      WHEN eets.json->>'endTime' IS NOT NULL THEN "
-                + "        (eets.json->>'endTime')::bigint - eets.timestamp "
-                + "      ELSE NULL "
-                + "    END AS runtime "
+                + POSTGRES_RUN_RUNTIME
+                + "    AS runtime "
                 + "  FROM entity_extension_time_series eets "
                 + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
                 + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
@@ -1620,6 +1806,66 @@ public interface TimeSeriesDAOs {
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    void updateSystemProfile(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @BindJson("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("operation") String operation);
+
+    default void updateSystemProfile(
+        String entityFQNHash, String extension, String json, Long timestamp, String operation) {
+      updateSystemProfile(
+          getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
+    }
+
+    // System-profile operation is stored under profileData, and the unique key is built from that
+    // same path via the generated operation column, so the lookup must read the identical path.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    String getSystemProfileAtTimestamp(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") long timestamp,
+        @Bind("operation") String operation);
+
+    default String getSystemProfileAtTimestamp(
+        String entityFQNHash, String extension, long timestamp, String operation) {
+      return getSystemProfileAtTimestamp(
+          getTimeSeriesTableName(), entityFQNHash, extension, timestamp, operation);
+    }
+
+    default void storeSystemProfile(
+        String fqn,
+        String extension,
+        String jsonSchema,
+        String entityJson,
+        Long timestamp,
+        String operation,
+        boolean update) {
+      if (update) {
+        updateSystemProfile(fqn, extension, entityJson, timestamp, operation);
+      } else {
+        insert(fqn, extension, jsonSchema, entityJson);
+      }
+    }
+
     @SqlQuery(
         "SELECT json FROM profiler_data_time_series "
             + "WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
@@ -1935,8 +2181,24 @@ public interface TimeSeriesDAOs {
     @SqlQuery(
         value =
             "SELECT json FROM test_case_resolution_status_time_series "
-                + "WHERE stateId = :stateId ORDER BY timestamp DESC")
+                + "WHERE stateId = :stateId ORDER BY timestamp DESC, id DESC")
     List<String> listTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
+
+    @SqlQuery(
+        "SELECT json FROM test_case_resolution_status_time_series "
+            + "WHERE stateId = :stateId "
+            + "AND (:afterTs IS NULL OR timestamp < :afterTs "
+            + "OR (timestamp = :afterTs AND id < :afterId)) "
+            + "ORDER BY timestamp DESC, id DESC LIMIT :limit")
+    List<String> listTestCaseResolutionStatusesForStateId(
+        @Bind("stateId") String stateId,
+        @Bind("afterTs") Long afterTs,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM test_case_resolution_status_time_series WHERE stateId = :stateId")
+    int countTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
     @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
     @SqlQuery(
@@ -1982,6 +2244,24 @@ public interface TimeSeriesDAOs {
     default void delete(String entityFQNHash) {
       deleteRecords(entityFQNHash);
       deleteIncidents(entityFQNHash);
+    }
+
+    @SqlQuery("SELECT stateId FROM test_case_resolution_status_time_series WHERE id = :id")
+    String getStateId(@Bind("id") String id);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_incident WHERE stateId = :stateId AND NOT EXISTS ("
+            + "SELECT 1 FROM test_case_resolution_status_time_series WHERE stateId = :stateId)")
+    void deleteIncidentWithoutRecords(@Bind("stateId") String stateId);
+
+    // An incident row summarizes the records of its stateId, so it goes with the last of them.
+    @Override
+    default void deleteById(UUID id) {
+      String stateId = getStateId(id.toString());
+      deleteById(getTimeSeriesTableName(), id.toString());
+      if (stateId != null) {
+        deleteIncidentWithoutRecords(stateId);
+      }
     }
 
     @ConnectionAwareSqlUpdate(
@@ -2261,6 +2541,20 @@ public interface TimeSeriesDAOs {
                 + ")",
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_incident "
+            + "WHERE stateId IN ("
+            + "  SELECT stateId FROM ("
+            + "    SELECT tci.stateId FROM test_case_incident tci "
+            + "    WHERE NOT EXISTS ("
+            + "      SELECT 1 FROM test_case_resolution_status_time_series ts "
+            + "      WHERE ts.stateId = tci.stateId"
+            + "    ) "
+            + "    LIMIT :limit"
+            + "  ) sub"
+            + ")")
+    int deleteOrphanedIncidents(@Bind("limit") int limit);
 
     // Statuses an open incident can currently be in, from the most actionable to the least.
     // Resolved is left out throughout: a resolved incident has left the group, so it neither

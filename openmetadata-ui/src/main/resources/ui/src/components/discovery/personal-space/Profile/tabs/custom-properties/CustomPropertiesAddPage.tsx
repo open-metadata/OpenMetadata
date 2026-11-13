@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Category, Type } from '../../../../../../generated/entity/type';
@@ -48,7 +48,13 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [descriptionKey, setDescriptionKey] = useState(0);
 
+  const existingNames = useMemo(
+    () => entityType.customProperties?.map(({ name }) => name),
+    [entityType.customProperties]
+  );
+
   const form = useForm<AddCustomPropertyFormValues>({
+    mode: 'onChange',
     defaultValues: {
       name: '',
       displayName: '',
@@ -123,6 +129,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
             onSubmit={form.handleSubmit(handleSubmit)}>
             <CustomPropertyFormFields
               descriptionKey={descriptionKey}
+              existingNames={existingNames}
               form={form}
               propertyTypes={propertyTypes}
             />
@@ -147,9 +154,10 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
           color="primary"
           data-testid="custom-property-save"
           form="add-custom-property-form"
+          isDisabled={!form.formState.isValid}
           isLoading={isSaving}
           type="submit">
-          {t('label.save-entity', { entity: t('label.change-plural') })}
+          {t('label.create')}
         </Button>
       </Box>
     </Box>

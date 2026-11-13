@@ -23,6 +23,12 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../common/EntityDescription/Description', () => {

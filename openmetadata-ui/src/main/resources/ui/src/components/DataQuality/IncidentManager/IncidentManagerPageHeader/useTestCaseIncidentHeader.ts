@@ -219,7 +219,9 @@ export const useTestCaseIncidentHeader = ({
       // would invite the user to repeat a transition the server has applied.
       let latest: TestCaseResolutionStatus | undefined;
       try {
-        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+          limit: 1,
+        });
         latest = refreshed?.data?.[0];
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -276,7 +278,7 @@ export const useTestCaseIncidentHeader = ({
 
   const fetchTestCaseResolution = async (id: string) => {
     try {
-      const { data } = await getListTestCaseIncidentByStateId(id);
+      const { data } = await getListTestCaseIncidentByStateId(id, { limit: 1 });
 
       return first(data);
     } catch {

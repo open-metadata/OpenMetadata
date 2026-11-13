@@ -6,7 +6,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +55,18 @@ import os.org.opensearch.client.opensearch.generic.Response;
 @Slf4j
 public class OpenSearchVectorService implements VectorIndexService {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String ALREADY_CLOSED_EXCEPTION = "already_closed_exception";
+  private static final Retry GENERIC_REQUEST_RETRY =
+      Retry.of(
+          "opensearch-vector-request",
+          RetryConfig.custom()
+              .maxAttempts(3)
+              .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
+              .retryOnException(
+                  error ->
+                      error instanceof UncheckedIOException
+                          && error.getCause() instanceof ClosedSegmentException)
+              .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
   public static final String HYBRID_PIPELINE_NAME = "hybrid-rrf";
 
@@ -1814,45 +1830,32 @@ public class OpenSearchVectorService implements VectorIndexService {
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
 
   /**
-   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. {@code currentFingerprint}
-   * is a {@link Supplier} so the caller doesn't pay the MD5 + meta-text construction cost when the
-   * cheaper {@code updatedAt} fast-path resolves the match. {@code updatedAt} may be {@code null}
-   * for entities that don't expose it; in that case the supplier is consulted unconditionally.
-   */
-  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
-
-  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
-
-  /**
-   * Two-step batch fetch of cached embedding documents from {@code indexName}, scoped to entities
-   * whose cached state matches the caller-provided current state. Designed to keep large vector
-   * payloads off the wire for entities that will be re-embedded anyway.
+   * Two-step batch fetch of the stored embeddings a reindex may reuse, keyed by entity id. Designed
+   * to keep large vector payloads off the wire for entities that will be re-embedded anyway.
    *
-   * <p>Step 1 — {@code mget} {@code fingerprint} + {@code updatedAt} only for every requested ID,
-   * then decide which IDs "match":
-   *
-   * <ul>
-   *   <li>Fast path: cached {@code updatedAt} equals current {@code updatedAt} — the entity hasn't
-   *       been touched since the prior index, so the embedding is reusable without recomputing the
-   *       fingerprint.
-   *   <li>Fallback: the lazy fingerprint {@link Supplier} is invoked and compared against the
-   *       cached fingerprint.
-   * </ul>
+   * <p>Step 1 — {@code mget} only the stored {@code fingerprint} for every requested ID and keep
+   * the IDs whose fingerprint equals the current one (see {@link StoredEmbeddingReuse}).
    *
    * <p>Step 2 — issue a second {@code mget} that pulls the full embedding {@code _source} only for
    * matching IDs. Entries that don't match are dropped, and the caller can rely on every returned
    * value being safe to splice into a staged index document.
+   *
+   * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
+   *     one exists
    */
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
-      String indexName, Map<String, EntityFingerprintInput> currentById) {
-    if (currentById == null || currentById.isEmpty()) {
+      String indexName, Map<String, Supplier<String>> currentFingerprintById) {
+    if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      List<String> entityIds = new ArrayList<>(currentFingerprintById.keySet());
       MgetResponse<JsonData> headerResponse =
           client.mget(
-              m -> m.index(indexName).ids(entityIds).sourceIncludes(FINGERPRINT_HEADER_FIELDS),
+              m ->
+                  m.index(indexName)
+                      .ids(entityIds)
+                      .sourceIncludes(StoredEmbeddingReuse.HEADER_FIELDS),
               JsonData.class);
 
       List<String> matchingIds = new ArrayList<>();
@@ -1868,11 +1871,9 @@ public class OpenSearchVectorService implements VectorIndexService {
         if (header == null || !header.isObject()) {
           continue;
         }
-        EntityFingerprintInput input = currentById.get(doc.id());
-        if (input == null) {
-          continue;
-        }
-        if (cachedStateMatches(header, input)) {
+        Supplier<String> currentFingerprint = currentFingerprintById.get(doc.id());
+        if (currentFingerprint != null
+            && StoredEmbeddingReuse.fingerprintMatches(doc.id(), header, currentFingerprint)) {
           matchingIds.add(doc.id());
         }
       }
@@ -1895,7 +1896,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           continue;
         }
         JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
-        if (isSpliceable(cached)) {
+        if (StoredEmbeddingReuse.isSpliceable(cached)) {
           result.put(doc.id(), cached);
         }
       }
@@ -1904,35 +1905,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
-  }
-
-  /**
-   * The splice-site contract: callers can rely on every returned entry being a JSON object whose
-   * {@code embedding} is a non-empty array and whose {@code fingerprint} is non-blank text.
-   * Anything else is dropped — silently, since these only fail on corrupt or partial cached docs
-   * that the caller will regenerate from scratch anyway.
-   */
-  private static boolean isSpliceable(JsonNode cached) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
-  }
-
-  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
-    JsonNode cachedUpdatedAt = header.path("updatedAt");
-    if (cachedUpdatedAt.isIntegralNumber()
-        && input.updatedAt() != null
-        && cachedUpdatedAt.asLong() == input.updatedAt()) {
-      return true;
-    }
-    String cachedFp = header.path("fingerprint").asText(null);
-    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
   }
 
   public void partialUpdateEntity(
@@ -1975,33 +1947,52 @@ public class OpenSearchVectorService implements VectorIndexService {
   @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
     try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var builder = Requests.builder().endpoint(endpoint).method(method);
-      if (body != null) {
-        builder.json(body);
+      return GENERIC_REQUEST_RETRY.executeSupplier(
+          () -> executeGenericRequestAttempt(method, endpoint, body));
+    } catch (RuntimeException e) {
+      Throwable cause = e instanceof UncheckedIOException ? e.getCause() : e;
+      LOG.error("Generic request failed: {} {}", method, endpoint, cause);
+      throw new RuntimeException("OpenSearch generic request failed", cause);
+    }
+  }
+
+  private String executeGenericRequestAttempt(String method, String endpoint, String body) {
+    var builder = Requests.builder().endpoint(endpoint).method(method);
+    if (body != null) {
+      builder.json(body);
+    }
+    try (var response = client.generic().execute(builder.build())) {
+      validateGenericResponse(response);
+      return response.getBody().map(this::readGenericResponseBody).orElse("{}");
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private void validateGenericResponse(Response response) throws IOException {
+    if (response.getStatus() >= 400) {
+      String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
+      String message =
+          "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody;
+      if (response.getStatus() >= 500 && errorBody.contains(ALREADY_CLOSED_EXCEPTION)) {
+        throw new ClosedSegmentException(message);
       }
-      var request = builder.build();
-      try (var response = genericClient.execute(request)) {
-        if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
-          throw new IOException(
-              "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
-        }
-        return response
-            .getBody()
-            .map(
-                b -> {
-                  try {
-                    return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                  } catch (Exception e) {
-                    return "{}";
-                  }
-                })
-            .orElse("{}");
-      }
-    } catch (Exception e) {
-      LOG.error("Generic request failed: {} {}", method, endpoint, e);
-      throw new RuntimeException("OpenSearch generic request failed", e);
+      throw new IOException(message);
+    }
+  }
+
+  private String readGenericResponseBody(Body body) {
+    try {
+      return new String(body.bodyAsBytes(), StandardCharsets.UTF_8);
+    } catch (RuntimeException e) {
+      LOG.warn("Failed to read OpenSearch response body", e);
+      return "{}";
+    }
+  }
+
+  private static final class ClosedSegmentException extends IOException {
+    private ClosedSegmentException(String message) {
+      super(message);
     }
   }
 }

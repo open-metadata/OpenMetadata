@@ -410,8 +410,8 @@ database:
     mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-300000}  # Socket timeout in milliseconds
 
 objectStorage:
-  enabled: false
-  provider: NOOP
+  enabled: ${ASSET_UPLOADER_ENABLE:-false}
+  provider: ${ASSET_UPLOADER_PROVIDER:-NOOP}
   maxFileSize: 5242880
 
 migrationConfiguration:
@@ -705,6 +705,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    podLabels: ${K8S_POD_LABELS:-""}
     tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 

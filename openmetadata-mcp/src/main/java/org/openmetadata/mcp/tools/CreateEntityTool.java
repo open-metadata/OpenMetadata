@@ -37,6 +37,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -105,6 +106,15 @@ public class CreateEntityTool implements McpTool {
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    // As TeamResource.create: the persona a Group hands its members is admin only, and never set
+    // while impersonating, since it outlives the request.
+    if (entity instanceof Team team && team.getDefaultPersona() != null) {
+      if (securityContext.impersonatedUser() != null) {
+        throw new AuthorizationException(
+            "Impersonated requests cannot set a team's default persona");
+      }
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   private static RestUtil.PutResponse<EntityInterface<?>> persist(

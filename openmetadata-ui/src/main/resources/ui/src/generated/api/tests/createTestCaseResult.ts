@@ -192,6 +192,7 @@ export interface DimensionValue {
  * Which rows the run was measured on.
  */
 export interface TestCaseEvaluationScope {
+    executionSource?: TableExecutionSource;
     /**
      * Column the partition filter was applied on.
      */
@@ -215,6 +216,16 @@ export interface TestCaseEvaluationScope {
      * ignores the configured sample.
      */
     sampled?: boolean;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

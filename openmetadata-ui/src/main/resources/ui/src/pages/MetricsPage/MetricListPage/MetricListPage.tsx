@@ -17,18 +17,19 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  ButtonUtility,
   Card,
   Checkbox,
   Dialog,
   Dot,
   Dropdown,
   FeaturedIcon,
+  HoverCard,
   Input,
   Modal,
   ModalOverlay,
   PageLayout,
   Skeleton,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -37,7 +38,7 @@ import {
   ChevronRight,
   CursorClick01,
   Download01,
-  Edit03,
+  Edit01,
   FileCheck03,
   Grid01,
   Package,
@@ -57,7 +58,7 @@ import {
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import type { ChangeEvent, Key, SyntheticEvent } from 'react';
+import type { ChangeEvent, Key, KeyboardEvent, SyntheticEvent } from 'react';
 import {
   ReactNode,
   useCallback,
@@ -96,11 +97,14 @@ import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
+  getMetricParentIds,
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -118,6 +122,8 @@ import {
 import {
   flattenMetricRows,
   flattenVisibleMetricRows,
+  getTopmostSelectedMetrics,
+  getUnloadedMetricAncestorIds,
   hasMetricChildren,
   isGroupRow,
   isLoadMoreRow,
@@ -127,6 +133,7 @@ import {
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
@@ -160,7 +167,6 @@ const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
 const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
-const METRIC_PAGE_SIZE = 20;
 const METRIC_LISTING_QUERY_KEY = 'metric-listing';
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
@@ -248,9 +254,16 @@ const MAX_VISIBLE_BADGES = 2;
 // link inside a cell must stop these events or the row navigates instead (TableV2 does the same
 // for its filter trigger).
 const stopRowAction = (event: SyntheticEvent) => event.stopPropagation();
+// Escape never presses the row, and stopping it would also stop the native event at the React
+// root, so HoverCard's document listener could not close the "+N" card.
+const stopRowKey = (event: KeyboardEvent<HTMLElement>) => {
+  if (event.key !== 'Escape') {
+    event.stopPropagation();
+  }
+};
 const ROW_ACTION_GUARD = {
   onClick: stopRowAction,
-  onKeyDown: stopRowAction,
+  onKeyDown: stopRowKey,
   onMouseDown: stopRowAction,
   onPointerDown: stopRowAction,
 };
@@ -275,7 +288,6 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
-  const [page, setPage] = useState(1);
   const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
   const {
     preferences: { selectedEntityTableColumns },
@@ -283,6 +295,10 @@ const MetricListPage = () => {
   // Owned by TableV2's Customize menu; card view only reads it.
   const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
+  const { savedPageSize: metricPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(viewMode)
+  );
+  const [page, setPage] = usePageForSize(metricPageSize);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -327,14 +343,14 @@ const MetricListPage = () => {
         search: debouncedSearch,
         status: statusFilter,
         page,
-        size: METRIC_PAGE_SIZE,
+        size: metricPageSize,
       },
     ],
     queryFn: () =>
       searchQuery({
         query: debouncedSearch,
         pageNumber: page,
-        pageSize: METRIC_PAGE_SIZE,
+        pageSize: metricPageSize,
         searchIndex: SearchIndex.METRIC,
         trackTotalHits: true,
         queryFilter: statusFilter
@@ -367,7 +383,7 @@ const MetricListPage = () => {
   } = useMetricHierarchy({
     enabled: [hasViewPermission, isTreeMode].every(Boolean),
     page,
-    pageSize: METRIC_PAGE_SIZE,
+    pageSize: metricPageSize,
     query: debouncedSearch,
   });
 
@@ -430,7 +446,7 @@ const MetricListPage = () => {
     });
   }, [selectableMetricIds]);
 
-  const hierarchyExpansionScope = `${page}:${debouncedSearch}`;
+  const hierarchyExpansionScope = `${page}:${metricPageSize}:${debouncedSearch}`;
 
   useEffect(() => {
     const hasExpandableGroup = topLevelNodes.some(({ groupId }) => groupId);
@@ -473,7 +489,7 @@ const MetricListPage = () => {
   const totalMetrics = isTreeMode
     ? treePaging.total
     : searchResponse?.hits.total.value ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalMetrics / METRIC_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalMetrics / metricPageSize));
   const listingError =
     permissionError ?? (isTreeMode ? treeError : searchError);
   const listingErrorMessage = permissionError
@@ -543,10 +559,14 @@ const MetricListPage = () => {
     [setCurrentPage]
   );
 
-  const handleViewModeChange = useCallback((nextMode: MetricViewMode) => {
-    setViewMode(nextMode);
-    localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
-  }, []);
+  const handleViewModeChange = useCallback(
+    (nextMode: MetricViewMode) => {
+      setViewMode(nextMode);
+      setCurrentPage(1);
+      localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
+    },
+    [setCurrentPage]
+  );
 
   const handleImport = useCallback(() => {
     setIsMetricActionsOpen(false);
@@ -594,8 +614,17 @@ const MetricListPage = () => {
       // Recursive so a parent's variants are deleted with it; a non-recursive job fails with
       // "metric is not empty" once the parent has variants. Never a hard delete, so the hierarchy
       // stays restorable (ADR:2026-10-28-metric-bulk-delete-is-a-recursive-soft-delete).
+      const unloadedAncestorIds = getUnloadedMetricAncestorIds(
+        rows,
+        selectedMetricIds
+      );
+      const extraParentIds = unloadedAncestorIds.length
+        ? await getMetricParentIds(unloadedAncestorIds).catch(() => undefined)
+        : undefined;
       const deleteJobs = await Promise.all(
-        selectedMetrics.map(({ id }) => deleteMetricAsync(id, true))
+        getTopmostSelectedMetrics(rows, selectedMetricIds, extraParentIds).map(
+          ({ id }) => deleteMetricAsync(id, true)
+        )
       );
       setPendingDeleteJobIds((ids) => [
         ...ids,
@@ -609,14 +638,23 @@ const MetricListPage = () => {
       setSelectedMetricIds([]);
       setIsDeleteDialogOpen(false);
       setPage(1);
-      queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
+      void queryClient.invalidateQueries({
+        queryKey: [METRIC_LISTING_QUERY_KEY],
+      });
       resetHierarchy();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsDeletingMetrics(false);
     }
-  }, [queryClient, resetHierarchy, selectedMetrics, t]);
+  }, [
+    queryClient,
+    resetHierarchy,
+    rows,
+    selectedMetricIds,
+    selectedMetrics,
+    t,
+  ]);
 
   // Deletes run as async jobs, so the refetch in handleBulkDelete can land before a job
   // finishes. Refresh again when one of this page's jobs reports a final status; jobs started
@@ -630,7 +668,9 @@ const MetricListPage = () => {
     }
     setPendingDeleteJobIds((ids) => ids.filter((id) => id !== jobId));
     if (status === 'COMPLETED' || status === 'FAILED') {
-      queryClient.invalidateQueries({ queryKey: [METRIC_LISTING_QUERY_KEY] });
+      void queryClient.invalidateQueries({
+        queryKey: [METRIC_LISTING_QUERY_KEY],
+      });
       resetHierarchy();
     }
   }, [asyncDeleteJob, pendingDeleteJobIds, queryClient, resetHierarchy]);
@@ -667,6 +707,16 @@ const MetricListPage = () => {
     [loadingGroupIds, loadingParentIds]
   );
 
+  // A focusable trigger so the hidden items open on hover and on keyboard focus;
+  // the react-aria press handling keeps a click on "+N" from opening the metric row.
+  const renderOverflow = (count: number, content: ReactNode) => (
+    <HoverCard className="tw:p-3" content={content}>
+      <Button color="link-gray" data-testid="metric-overflow-trigger" size="sm">
+        +{count}
+      </Button>
+    </HoverCard>
+  );
+
   // Table cells stay on one line; narrow cards must wrap or the overflow is clipped.
   // Each badge links to its own page; a plain badge let the click fall through to the row,
   // which opened the metric instead.
@@ -680,7 +730,7 @@ const MetricListPage = () => {
         {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
           <Link
             {...ROW_ACTION_GUARD}
-            className="tw:no-underline"
+            className="tw:min-w-0 tw:no-underline"
             data-testid={`metric-tag-link-${tag.tagFQN}`}
             key={tag.tagFQN}
             to={getTagPath(tag.tagFQN)}>
@@ -689,17 +739,24 @@ const MetricListPage = () => {
             </Badge>
           </Link>
         ))}
-        {tags.length > MAX_VISIBLE_BADGES && (
-          <Tooltip
-            title={tags
-              .slice(MAX_VISIBLE_BADGES)
-              .map((tag) => tag.name ?? tag.tagFQN)
-              .join(', ')}>
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              +{tags.length - MAX_VISIBLE_BADGES}
-            </Typography>
-          </Tooltip>
-        )}
+        {tags.length > MAX_VISIBLE_BADGES &&
+          renderOverflow(
+            tags.length - MAX_VISIBLE_BADGES,
+            <Box className="tw:max-w-72" direction="col" gap={1}>
+              {tags.slice(MAX_VISIBLE_BADGES).map((tag) => (
+                <Link
+                  {...ROW_ACTION_GUARD}
+                  className="tw:min-w-0 tw:no-underline"
+                  data-testid={`metric-tag-link-${tag.tagFQN}`}
+                  key={tag.tagFQN}
+                  to={getTagPath(tag.tagFQN)}>
+                  <Badge color="blue" size="sm">
+                    {tag.name ?? tag.tagFQN}
+                  </Badge>
+                </Link>
+              ))}
+            </Box>
+          )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
@@ -723,11 +780,32 @@ const MetricListPage = () => {
             />
           </Link>
         ))}
-        {owners.length > 3 && (
-          <Typography as="span" className="tw:text-tertiary" size="text-xs">
-            +{owners.length - 3}
-          </Typography>
-        )}
+        {owners.length > 3 &&
+          renderOverflow(
+            owners.length - 3,
+            <Box direction="col" gap={2}>
+              {owners.slice(3).map((owner) => (
+                <Link
+                  {...ROW_ACTION_GUARD}
+                  className="tw:no-underline"
+                  data-testid={`metric-owner-link-${owner.id}`}
+                  key={owner.id}
+                  to={getOwnerPath(owner)}>
+                  <Box align="center" gap={2}>
+                    <ProfilePicture
+                      displayName={owner.displayName}
+                      isTeam={owner.type === EntityType.TEAM}
+                      name={owner.name ?? ''}
+                      size="xs"
+                    />
+                    <Typography as="span" size="text-sm">
+                      {getEntityName(owner)}
+                    </Typography>
+                  </Box>
+                </Link>
+              ))}
+            </Box>
+          )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
@@ -739,23 +817,22 @@ const MetricListPage = () => {
     if (!hasMetricChildren(metric)) {
       // Keep names aligned with the header unless some row has a toggle.
       return hasExpandableRows ? (
-        <Box aria-hidden="true" className="tw:size-6 tw:shrink-0" />
+        <Box aria-hidden="true" className="tw:size-5 tw:shrink-0" />
       ) : null;
     }
 
     return (
-      <Button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={
           isExpanded ? t('label.collapse-all') : t('label.expand-all')
         }
         className="tw:shrink-0"
-        color="tertiary"
         data-testid={`expand-${metric.id}`}
-        iconLeading={isExpanded ? ChevronDown : ChevronRight}
+        icon={isExpanded ? ChevronDown : ChevronRight}
         isLoading={loadingParentIds.includes(metric.id)}
         size="xs"
-        onPress={() => toggleExpand(!isExpanded, metric)}
+        onClick={() => toggleExpand(!isExpanded, metric)}
       />
     );
   };
@@ -852,16 +929,12 @@ const MetricListPage = () => {
         ].join(' ')}
         color="tertiary"
         data-testid={`metric-group-${row.group.name}`}
+        iconLeading={isCollapsed ? ChevronRight : ChevronDown}
         isLoading={loadingGroupIds.includes(row.group.id)}
         size="sm"
         onPress={() => toggleGroup(row.id)}>
-        {isCollapsed ? (
-          <ChevronRight aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ChevronDown aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        )}
         <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-700">
-          <Package aria-hidden="true" className="tw:size-4" />
+          <Package aria-hidden="true" size={20} />
         </span>
         <Box align="baseline" className="tw:min-w-0 tw:flex-1" gap={2}>
           <Typography
@@ -1169,7 +1242,7 @@ const MetricListPage = () => {
   );
 
   const renderPagination = () =>
-    totalMetrics > METRIC_PAGE_SIZE ? (
+    totalMetrics > 0 ? (
       <Box
         aria-label={t('label.page')}
         className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
@@ -1318,7 +1391,6 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1352,6 +1424,7 @@ const MetricListPage = () => {
     if (selectedMetricIds.length === 0) {
       return (
         <Input
+          autoComplete="off"
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
           icon={Search}
@@ -1379,10 +1452,10 @@ const MetricListPage = () => {
         </Button>
         {permissionFlags.canEditAll && (
           <Button
-            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
+            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-utility-brand-600!"
             color="link-color"
             data-testid="bulk-edit-metric"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             onPress={handleBulkEdit}>
             {t('label.bulk-edit-count', {
               count: selectedMetricIds.length,
@@ -1445,7 +1518,7 @@ const MetricListPage = () => {
             className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
             color="link-color"
             data-testid="bulk-edit-metric"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             onPress={handleBulkEdit}>
             {t('label.bulk-edit-all')}
           </Button>
@@ -1564,13 +1637,12 @@ const MetricListPage = () => {
     return (
       <TableV2<VisibleMetricTableRow>
         aria-label={t('label.metric-plural')}
-        cellClassName="tw:px-2 tw:py-3 tw:align-middle tw:whitespace-nowrap"
+        cellClassName="tw:px-2 tw:py-3 tw:align-middle tw:whitespace-nowrap tw:overflow-hidden"
         // Empty: hide the header and stretch the placeholder row to the card.
         // TableV2 stays mounted so the toolbar's search input keeps focus.
         className={isEmptyList ? 'tw:h-full tw:[&_thead]:hidden' : undefined}
         columns={metricTableColumns}
-        // The empty-state row is not a data row, so it gets no hover fill.
-        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap tw:[&_tbody[data-empty]_tr:hover_td]:bg-transparent"
+        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap"
         data-testid="metric-list-table"
         dataSource={isPlaceholder ? [] : visibleRows}
         defaultVisibleColumns={DEFAULT_VISIBLE_METRIC_COLUMNS}
@@ -1589,12 +1661,14 @@ const MetricListPage = () => {
               keys.map(String).filter((id) => selectableMetricIds.includes(id))
             ),
         }}
-        // Columns keep their widths as minimums and the table scrolls sideways.
-        scroll={{ x: 'max-content' }}
+        // Fixed layout so each page's content cannot resize the columns (they jumped between
+        // pages); `min-content` keeps the table at least as wide as its visible columns, so it
+        // scrolls sideways instead of squeezing them.
+        scroll={{ x: 'min-content' }}
         scrollContainerClassName={isEmptyList ? 'tw:flex-1' : undefined}
         size="small"
         staticVisibleColumns={METRIC_STATIC_COLUMNS}
-        tableLayout="auto"
+        tableLayout="fixed"
         onRowAction={handleMetricRowAction}
       />
     );

@@ -22,7 +22,12 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Documents,
+  Plus,
+  Trash01,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -35,9 +40,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import {
   FOLDER_FILES_PAGE_SIZE,
@@ -108,13 +110,7 @@ const FolderRowContent = ({
           ellipsis
           className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
           color="tertiary"
-          iconLeading={
-            <FolderIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={14}
-              width={14}
-            />
-          }
+          iconLeading={Documents}
           size="sm"
           onClick={(e: MouseEvent) => {
             e.stopPropagation();
@@ -138,11 +134,10 @@ const FolderRowContent = ({
 
           {canDelete && (
             <ButtonUtility
-              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
-              color="tertiary"
+              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
               data-testid={`delete-folder-btn-${folder.id}`}
-              icon={<TrashIcon height={18} width={18} />}
-              size="xs"
+              icon={Trash01}
+              size="lg"
               tooltip={t('label.delete')}
               onClick={(e: MouseEvent) => {
                 e.stopPropagation();
@@ -203,11 +198,7 @@ const FolderEmptyRow = ({
         <div className="tw:flex tw:flex-1 tw:items-center tw:gap-3 tw:py-2">
           <div
             className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-2 tw:shrink-0')}>
-            <UploadIcon
-              className="tw:text-fg-quaternary"
-              height={14}
-              width={14}
-            />
+            <UploadCloud01 className="tw:text-fg-quaternary" size={14} />
           </div>
           <div className="tw:min-w-0 tw:flex-1">
             <Typography ellipsis size="text-sm" weight="medium">
@@ -617,11 +608,7 @@ const DocumentFolderView = (
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5 tw:shrink-0">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
-              <FolderIcon
-                className="tw:text-fg-quaternary"
-                height={20}
-                width={20}
-              />
+              <Documents className="tw:text-fg-quaternary" size={20} />
             </div>
             <div>
               <Typography size="text-md" weight="semibold">

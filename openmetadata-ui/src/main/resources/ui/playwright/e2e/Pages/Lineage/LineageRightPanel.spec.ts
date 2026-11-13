@@ -20,6 +20,7 @@ import { MetricClass } from '../../../support/entity/MetricClass';
 import { MlModelClass } from '../../../support/entity/MlModelClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import {
@@ -29,6 +30,7 @@ import {
 import { pickEntityMatrix } from '../../../utils/entityMatrix';
 import {
   clickLineageNode,
+  connectEdgeBetweenNodesViaAPI,
   dismissLineageMapOnboarding,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -118,6 +120,12 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     const table = new TableClass();
+    // A focused table with no lineage is an empty scene; an upstream table in
+    // its own service gives the Layer band a real edge (a same-service edge
+    // collapses at that level).
+    const upstreamTable = new TableClass({
+      service: new DatabaseServiceClass(),
+    });
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
@@ -125,6 +133,12 @@ test.describe(
       );
 
       await table.create(apiContext);
+      await upstreamTable.create(apiContext);
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: upstreamTable.entityResponseData.id, type: 'table' },
+        { id: table.entityResponseData.id, type: 'table' }
+      );
       await afterAction();
     });
 
@@ -133,6 +147,7 @@ test.describe(
         browser
       );
 
+      await upstreamTable.delete(apiContext);
       await table.delete(apiContext);
       await afterAction();
     });

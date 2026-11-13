@@ -47,6 +47,8 @@ interface CustomPropertyFormFieldsProps {
   form: UseFormReturn<AddCustomPropertyFormValues>;
   propertyTypes: Type[];
   descriptionKey: number;
+  /** Names already defined on the entity type; a new name must not match one, ignoring case. */
+  existingNames?: string[];
   /** Rendered right after the type select. */
   typeAddon?: ReactNode;
 }
@@ -97,6 +99,7 @@ const CustomPropertyFormFields = ({
   form,
   propertyTypes,
   descriptionKey,
+  existingNames,
   typeAddon,
 }: CustomPropertyFormFieldsProps) => {
   const { t } = useTranslation();
@@ -115,11 +118,14 @@ const CustomPropertyFormFields = ({
 
         return {
           id: type.id ?? '',
-          label: startCase(getEntityName(type).replaceAll('-cp', '')),
+          label:
+            type.name === 'sqlQuery'
+              ? t('label.sql-query')
+              : startCase(getEntityName(type).replaceAll('-cp', '')),
           icon: IconComp,
         };
       }),
-    [propertyTypes]
+    [propertyTypes, t]
   );
 
   const {
@@ -154,9 +160,18 @@ const CustomPropertyFormFields = ({
           value: CUSTOM_PROPERTY_NAME_REGEX,
           message: t('message.custom-property-name-validation'),
         },
+        // UI-only rule; the server still compares case-sensitively.
+        // ADR:2026-11-02-custom-property-names-are-unique-per-entity-type-ignoring-case-in-the-ui
+        validate: (value: string) =>
+          !existingNames?.some(
+            (name) => name.toLowerCase() === value.trim().toLowerCase()
+          ) ||
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.custom-property'),
+          }),
       },
     }),
-    [t]
+    [existingNames, t]
   );
 
   const displayNameField: FieldProp = useMemo(
@@ -235,10 +250,11 @@ const CustomPropertyFormFields = ({
       id: 'root/formatConfig',
       label: t('label.format'),
       type: FieldTypes.SELECT,
-      required: false,
+      required: true,
       placeholder: t('label.format'),
       doc: t('message.custom-property-format-config-help'),
       rules: {
+        required: t('label.field-required', { field: t('label.format') }),
         validate: (value: AddCustomPropertyFormValues['formatConfig']) => {
           const id = toId(value ?? undefined);
           if (id && !supportedFormats.includes(id)) {

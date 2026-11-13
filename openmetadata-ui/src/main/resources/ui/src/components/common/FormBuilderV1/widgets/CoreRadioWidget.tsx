@@ -75,9 +75,7 @@ const CoreRadioWidget = ({
             : 'tw:flex tw:flex-col tw:gap-3'
         }
         isDisabled={disabled || readonly}
-        value={
-          value === undefined || value === null ? undefined : String(value)
-        }
+        value={value === undefined || value === null ? null : String(value)}
         onChange={(nextValue) => onChange(optionValueMap.get(nextValue))}>
         {items.map((item) => (
           <RadioButton

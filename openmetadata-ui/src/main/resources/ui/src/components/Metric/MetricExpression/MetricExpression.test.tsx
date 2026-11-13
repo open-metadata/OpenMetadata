@@ -167,4 +167,51 @@ describe('MetricExpression', () => {
     expect(onUpdate).not.toHaveBeenCalled();
     expect(screen.getByText('SUM(revenue) - SUM(cost)')).toBeInTheDocument();
   });
+
+  it('shows the code diff on a version that changed the expression', () => {
+    render(
+      <MetricExpression
+        changeDescription={{
+          fieldsAdded: [],
+          fieldsDeleted: [],
+          fieldsUpdated: [
+            {
+              name: 'metricExpression',
+              oldValue: { code: 'SUM(revenue)', language: Language.SQL },
+              newValue: metric.metricExpression,
+            },
+          ],
+        }}
+        metric={metric}
+      />
+    );
+
+    expect(screen.getByTestId('metric-expression-code')).toHaveTextContent(
+      'SUM(revenue) - SUM(cost)'
+    );
+    expect(screen.getByTestId('diff-added')).toHaveTextContent('- SUM(cost)');
+  });
+
+  it('shows cleared code as removed rather than an empty expression', () => {
+    render(
+      <MetricExpression
+        changeDescription={{
+          fieldsAdded: [],
+          fieldsDeleted: [],
+          fieldsUpdated: [
+            {
+              name: 'metricExpression',
+              oldValue: JSON.stringify(metric.metricExpression),
+              newValue: JSON.stringify({ language: Language.SQL }),
+            },
+          ],
+        }}
+        metric={{ ...metric, metricExpression: { language: Language.SQL } }}
+      />
+    );
+
+    expect(screen.getByTestId('diff-removed')).toHaveTextContent(
+      'SUM(revenue) - SUM(cost)'
+    );
+  });
 });

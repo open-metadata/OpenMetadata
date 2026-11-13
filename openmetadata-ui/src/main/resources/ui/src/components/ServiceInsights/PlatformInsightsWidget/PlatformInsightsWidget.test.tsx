@@ -23,6 +23,12 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PlatformInsightsWidget from './PlatformInsightsWidget';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 // Mock dependencies
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  ChevronDown: () => <div data-testid="arrow-down-icon" />,
+  TrendUp01: () => <div data-testid="arrow-up-icon" />,
+}));
+
 jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),
 }));
@@ -36,19 +42,6 @@ jest.mock('../../../utils/ServicePureUtils', () => ({
 }));
 
 // Mock SVG components
-jest.mock('../../../assets/svg/ic-arrow-down.svg', () => {
-  return {
-    __esModule: true,
-    ReactComponent: () => <div data-testid="arrow-down-icon" />,
-  };
-});
-
-jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
-  return {
-    __esModule: true,
-    ReactComponent: () => <div data-testid="arrow-up-icon" />,
-  };
-});
 
 const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<
   typeof useRequiredParams
@@ -285,9 +278,7 @@ describe('PlatformInsightsWidget', () => {
       expect(screen.getByText('0%')).toBeInTheDocument();
 
       // Should not show the icon (since showIcon = false when percentageChange === 0)
-      const icons = screen.getAllByTestId('arrow-up-icon');
-
-      expect(icons).toHaveLength(1); // Only the one from the header
+      expect(screen.queryByTestId('arrow-up-icon')).not.toBeInTheDocument();
     });
 
     it('should render percentage change icon correctly', () => {

@@ -15,8 +15,8 @@
  */
 export interface CreateContextFile {
     /**
-     * Legacy reference to Asset entity in object storage (S3, Azure Blob, in-memory, or no-op
-     * provider). Prefer headContentId / ContextFileContent for new flows.
+     * Server-managed content reference. Omit this field from metadata requests; supplying a
+     * value returns 400. Use the file upload endpoint to add stored content.
      */
     assetId?: string;
     /**

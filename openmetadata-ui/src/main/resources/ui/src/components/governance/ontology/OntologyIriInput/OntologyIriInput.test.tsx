@@ -100,9 +100,7 @@ it('requires an explicit selection when more than one IRI has the same label', a
 
   fireEvent.focus(input);
   fireEvent.keyDown(input, { key: 'ArrowDown' });
-  fireEvent.click(
-    await screen.findByRole('option', { name: 'CUSTOMER', exact: true })
-  );
+  fireEvent.click(await screen.findByRole('option', { name: 'CUSTOMER' }));
 
   expect(screen.getByTestId('stored-iri')).toHaveTextContent(
     'urn:two:Customer'

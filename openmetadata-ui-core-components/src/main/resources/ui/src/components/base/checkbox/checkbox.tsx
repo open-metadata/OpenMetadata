@@ -88,13 +88,18 @@ interface CheckboxProps extends AriaCheckboxProps {
   size?: 'xs' | 'sm' | 'md';
   label?: ReactNode;
   hint?: ReactNode;
+  /**
+   * Layout classes (margin) for the box. The default top margin centres the
+   * box on a 20px first line; a label that opens with taller content passes its own.
+   */
+  boxClassName?: string;
 }
 
 export const Checkbox = forwardRef<
   HTMLLabelElement,
   Omit<CheckboxProps, 'ref'>
 >(function Checkbox(
-  { label, hint, size = 'sm', className, ...ariaCheckboxProps },
+  { label, hint, size = 'sm', className, boxClassName, ...ariaCheckboxProps },
   ref
 ) {
   const sizes = {
@@ -123,7 +128,8 @@ export const Checkbox = forwardRef<
       {...ariaCheckboxProps}
       className={(state) =>
         cx(
-          'tw:flex tw:items-start',
+          // relative contains react-aria's absolutely positioned hidden input.
+          'tw:relative tw:flex tw:items-start',
           state.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
           typeof className === 'function' ? className(state) : className
@@ -133,7 +139,7 @@ export const Checkbox = forwardRef<
       {({ isSelected, isIndeterminate, isDisabled, isFocusVisible }) => (
         <>
           <CheckboxBase
-            className={label || hint ? 'tw:mt-0.5' : ''}
+            className={cx((label || hint) && 'tw:mt-0.5', boxClassName)}
             isDisabled={isDisabled}
             isFocusVisible={isFocusVisible}
             isIndeterminate={isIndeterminate}

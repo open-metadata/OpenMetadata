@@ -16,6 +16,12 @@
  */
 export interface OntologyRelease {
     /**
+     * Why this release was approved. REVIEWED means the ontology's reviewers decided it;
+     * NO_REVIEWERS_CONFIGURED means the ontology had no reviewers when an author published it
+     * directly. Absent on releases approved before this field existed, which were all reviewed.
+     */
+    approvalBasis?: ApprovalBasis;
+    /**
      * Active release at capture, retained as the immutable review comparison baseline.
      */
     baseReleaseId?:     string;
@@ -88,6 +94,16 @@ export interface OntologyRelease {
     updatedBy?: string;
     version?:   number;
     versionIri: string;
+}
+
+/**
+ * Why this release was approved. REVIEWED means the ontology's reviewers decided it;
+ * NO_REVIEWERS_CONFIGURED means the ontology had no reviewers when an author published it
+ * directly. Absent on releases approved before this field existed, which were all reviewed.
+ */
+export enum ApprovalBasis {
+    NoReviewersConfigured = "NO_REVIEWERS_CONFIGURED",
+    Reviewed = "REVIEWED",
 }
 
 /**
@@ -170,7 +186,29 @@ export interface OntologyReleaseChangeSummary {
      * total is unavailable.
      */
     deprecated?: number;
+    /**
+     * Every counted change (added, changed, removed and deprecated) grouped by member kind. The
+     * ontology row is counted apart so readers can leave out the container the user created.
+     * Absent on summaries captured before kind counts existed.
+     */
+    kindCounts?: OntologyReleaseKindCounts;
     removed:     number;
+}
+
+/**
+ * Every counted change (added, changed, removed and deprecated) grouped by member kind. The
+ * ontology row is counted apart so readers can leave out the container the user created.
+ * Absent on summaries captured before kind counts existed.
+ *
+ * Counts of changed release members by member kind.
+ */
+export interface OntologyReleaseKindCounts {
+    association: number;
+    axiom:       number;
+    concept:     number;
+    ontology:    number;
+    property:    number;
+    shape:       number;
 }
 
 /**
