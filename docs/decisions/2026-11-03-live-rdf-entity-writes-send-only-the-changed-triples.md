@@ -1,7 +1,7 @@
 # Live RDF entity writes send only the changed triples
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-13 (constraint and profile ownership)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** `RdfEntityWritePlannerTest`, `RdfOwnedResourcesTest`, `RdfEntityDiffWriteIT`,
   `EntityWriteCircuitBreakerTest`, `InferenceInvalidatingRdfStorageTest`,
@@ -77,3 +77,15 @@ rewrite also left the previous list's cells behind.
 - Revisit if relationship writes, which still delete and reinsert their edge, show up in disk growth,
   if `corrected` writes become common (Fuseki timing out routinely), or if a Jena upgrade stops
   admitting writers in arrival order.
+
+## Amendment 2026-11-13
+
+Entity writes now own table constraints and quality measurements attached to the entity or any
+of its columns, including nested columns. Differential writes, replacements, bulk reconciliation
+and deletion clean up those resources. Their `om:hasColumn`, `om:hasConstraint` and
+`dqv:hasQualityMeasurement` links are replaced even when the new projection omits them.
+Columns referenced in other tables and relationship-managed lineage remain outside this scope.
+
+This completes the constraint and profile cleanup deferred above. Other deferred resources remain
+outside the scope. Already disconnected resources still require `recreateIndex: true`.
+Guarded by `RdfOwnedResourcesTest`, `RdfEntityWritePlannerTest` and `RdfEntityDiffWriteIT` (#37755).
