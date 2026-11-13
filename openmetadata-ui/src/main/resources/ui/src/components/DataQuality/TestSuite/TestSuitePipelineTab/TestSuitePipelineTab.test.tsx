@@ -532,6 +532,15 @@ describe('TestSuite Pipeline component', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it('should not offer Add Pipeline when the host marks the entity deleted', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab deleted testSuite={mockTestSuite} />);
+    });
+
+    expect(await screen.findByText('pipeline1')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-pipeline-button')).not.toBeInTheDocument();
+  });
+
   it('should let the host take over Add through onAddPipeline', async () => {
     const onAddPipeline = jest.fn();
     await act(async () => {
