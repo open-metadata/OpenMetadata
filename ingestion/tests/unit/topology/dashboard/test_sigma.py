@@ -1162,6 +1162,46 @@ def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
     assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1")[0]] == ["PETS"]
 
 
+def sheet(node_id: str, element_id: str) -> dict:
+    return {"nodeId": node_id, "type": "sheet", "name": node_id, "elementId": element_id}
+
+
+def edge(source: str, target: str) -> dict:
+    return {"source": source, "target": target, "type": "source"}
+
+
+# el-wb-1 reads ORDERS (T1) through another element's sheet; CUSTOMERS (T2) feeds an unrelated element
+TWO_BRANCHES = {
+    "dependencies": {
+        "sheetRevenue": sheet("sheetRevenue", "el-wb-1"),
+        "sheetPrep": sheet("sheetPrep", "elPrep"),
+        "sheetCustomers": sheet("sheetCustomers", "elCustomers"),
+        "T1": {"nodeId": "T1", "type": "table", "name": "ORDERS"},
+        "T2": {"nodeId": "T2", "type": "table", "name": "CUSTOMERS"},
+    },
+    "edges": [edge("T1", "sheetPrep"), edge("sheetPrep", "sheetRevenue"), edge("T2", "sheetCustomers")],
+}
+
+
+@pytest.mark.parametrize(
+    "edges, element_id, tables",
+    [
+        (TWO_BRANCHES["edges"], "el-wb-1", ["ORDERS"]),
+        ([*TWO_BRANCHES["edges"], edge("sheetRevenue", "sheetPrep")], "el-wb-1", ["ORDERS"]),
+        # No sheet node for the element, or a walk that reaches no table: every table of the response, as before
+        (TWO_BRANCHES["edges"], "el-other", ["ORDERS", "CUSTOMERS"]),
+        ([edge("sheetRevenue", "T1"), edge("T2", "sheetCustomers")], "el-wb-1", ["ORDERS", "CUSTOMERS"]),
+    ],
+    ids=["unrelated-branch-dropped", "cycle", "no-sheet-node", "nothing-reached"],
+)
+def test_element_lineage_keeps_the_tables_the_element_reaches(sigma_over_http, routes, edges, element_id, tables):
+    source, _ = sigma_over_http
+    routes["GET", f"/v2/workbooks/wb-1/lineage/elements/{element_id}"] = {**TWO_BRANCHES, "edges": edges}
+    routes["GET", "/v2/files/T2"] = sigma_file("T2", "CUSTOMERS", "table")
+
+    assert sorted(node.name for node in source.client.get_lineage_details("wb-1", element_id)[0]) == sorted(tables)
+
+
 def sigma_connection(connection_id: str, connection_type: str) -> dict:
     return {
         "organizationId": "org-1",
