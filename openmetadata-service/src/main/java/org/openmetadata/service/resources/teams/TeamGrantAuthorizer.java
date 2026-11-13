@@ -29,7 +29,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -62,11 +64,16 @@ public final class TeamGrantAuthorizer {
   }
 
   /**
-   * Keyed off the request's impersonated user rather than {@code ImpersonationContext}, which the
-   * MCP server sets on every tool call. On REST the two are set together.
+   * MCP passes its own context, keyed off the impersonated user, because the MCP server sets {@code
+   * ImpersonationContext} on every tool call. A REST resource gets Jersey's wrapper instead, so
+   * there the thread-local set with the request is read, as {@code DefaultAuthorizer} does.
    */
   private static void rejectImpersonated(SecurityContext securityContext) {
-    if (SecurityUtil.isImpersonated(securityContext)) {
+    boolean impersonated =
+        securityContext instanceof CatalogSecurityContext
+            ? SecurityUtil.isImpersonated(securityContext)
+            : ImpersonationContext.getImpersonatedBy() != null;
+    if (impersonated) {
       throw new AuthorizationException(
           "Impersonated requests cannot add roles or policies to a team");
     }

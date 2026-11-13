@@ -216,10 +216,7 @@ class CreateEntityToolTest {
     verify(repository, never()).create(any(), any(), anyString(), any());
   }
 
-  /**
-   * As TeamResource: only an admin may hand a new team's members a role. Before, create_entity let
-   * anyone with Create Team set an Admin default role.
-   */
+  /** As TeamResource: only an admin may hand a new team's members a role. */
   @Test
   void aNonAdminCannotCreateATeamWithDefaultRoles() {
     EntityRepository<EntityInterface<?>> repository = repositoryFor(Team.class);

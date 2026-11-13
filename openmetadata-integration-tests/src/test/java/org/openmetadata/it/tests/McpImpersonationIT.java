@@ -39,8 +39,8 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 
 /**
- * {@code X-Impersonate-User} on {@code /mcp} follows REST's rules (#37764), and a write an approval
- * workflow holds answers as held (#37757).
+ * {@code X-Impersonate-User} on {@code /mcp} follows REST's rules, and a write an approval workflow
+ * holds answers as held.
  */
 // The held-write test deploys an Enforce workflow, which receives the signals of every glossary
 // event, so the class runs alone, as ChangeRequestAdmissionIT does.
