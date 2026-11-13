@@ -111,11 +111,14 @@ const chooseType = async (type: OntologyConceptType) => {
 
 const fill = (id: string, value: string) =>
   fireEvent.change(screen.getByTestId(id), { target: { value } });
-const fillMappingIri = (value: string) =>
-  fireEvent.change(
-    within(screen.getByTestId('new-class-mapping-iri')).getByRole('combobox'),
-    { target: { value } }
-  );
+// Mapping rows appear on Add mapping, as the design does; fill the last one.
+const fillMappingIri = (value: string) => {
+  fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+  const rows = screen.getAllByTestId('new-class-mapping-iri');
+  fireEvent.change(within(rows[rows.length - 1]).getByRole('combobox'), {
+    target: { value },
+  });
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -180,6 +183,7 @@ it('gates the name, derives IRI, preserves manual local name, read-only layer an
   fill('new-class-label', 'Another Label');
 
   expect(screen.getByTestId('new-class-local-name')).toHaveValue('Transfer');
+
   expect(screen.getByRole('textbox', { name: /label.layer/ })).toHaveAttribute(
     'readonly'
   );
@@ -223,7 +227,9 @@ it('commits synonyms on comma and Enter and requires two distinct enum chips', a
 
   fireEvent.click(screen.getByTestId('new-class-add-property'));
 
-  expect(screen.getByText(/state · Pending, Settled/)).toBeVisible();
+  expect(screen.getByTestId('new-class-own-property')).toHaveTextContent(
+    'state' + 'Pending, Settled'
+  );
 });
 
 it('retains a completed atomic plan and only retries model reconciliation after refresh failure', async () => {
@@ -289,9 +295,9 @@ it('adds a named own data property with Enter and its identifier flag', () => {
     key: 'Enter',
   });
 
-  expect(
-    screen.getByText(/reference · label.string · label.identifier/)
-  ).toBeVisible();
+  expect(screen.getByTestId('new-class-own-property')).toHaveTextContent(
+    'referencelabel.string · label.identifier'
+  );
   expect(screen.getByTestId('new-class-property-name')).toHaveValue('');
 });
 
@@ -794,7 +800,9 @@ describe('with the shipped English translations', () => {
       key: 'Enter',
     });
 
-    expect(screen.getByText('reference · String')).toBeVisible();
+    expect(screen.getByTestId('new-class-own-property')).toHaveTextContent(
+      'referenceString'
+    );
   });
 });
 
@@ -863,7 +871,7 @@ describe('one drawer for every entry point', () => {
       .getAllByRole('textbox')
       .map((box) => box.getAttribute('aria-label') ?? box.id);
 
-  it('orders Name, Display name, Synonyms, Type, IRI, then Description and Mappings, with the rest under Advanced', () => {
+  it('orders Name, Display name, Synonyms, Type, IRI, then Description, Definition source and Mappings, with the rest under Advanced', () => {
     setup();
 
     expect(
@@ -876,18 +884,19 @@ describe('one drawer for every entry point', () => {
       'new-class-synonyms',
       'new-class-iri-input',
       'new-class-description',
+      'new-class-source',
     ]);
+    expect(screen.getByTestId('new-class-add-mapping')).toBeVisible();
     expect(
-      within(screen.getByTestId('new-class-mapping-iri')).getByRole('combobox')
-    ).toBeVisible();
+      screen.queryByTestId('new-class-mapping-iri')
+    ).not.toBeInTheDocument();
     expect(
       within(screen.getByTestId('new-class-type')).getByRole('button')
     ).toHaveTextContent('label.class-owl');
-    expect(textboxNames()).toHaveLength(5);
+    expect(textboxNames()).toHaveLength(6);
     expect(
       screen.queryByRole('combobox', { name: 'label.subclass-of' })
     ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('new-class-source')).not.toBeInTheDocument();
 
     openAdvanced();
 
@@ -1008,11 +1017,6 @@ describe('one drawer for every entry point', () => {
     fill('new-class-iri-input', 'https://example.org/other#Remittance');
     fill('new-class-synonyms', 'Wire,');
     fillMappingIri('https://schema.org/Payment');
-    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
-
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://schema.org/Payment'
-    );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('new-class-create'));
@@ -1438,7 +1442,9 @@ describe('a SKOS concept takes no OWL axioms', () => {
 
     expect(screen.getByText(SKOS_ERROR)).toBeVisible();
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
-    expect(screen.getByText(/reference · String/)).toBeVisible();
+    expect(screen.getByTestId('new-class-own-property')).toHaveTextContent(
+      'referenceString'
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove reference' }));
 
@@ -1452,7 +1458,6 @@ describe('a SKOS concept takes no OWL axioms', () => {
     await chooseType(OntologyConceptType.SkosConcept);
     fill('new-class-synonyms', 'Wire,');
     fillMappingIri('https://schema.org/Payment');
-    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
 
     expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
     expect(screen.getByTestId('new-class-create')).toBeEnabled();
@@ -1507,10 +1512,14 @@ describe('mappings are picked by label', () => {
         : base?.(url, ...rest)
     );
   };
-  const mappingPicker = async () => {
-    const picker = await screen.findByRole('combobox', {
-      name: /^label\.concept-iri/,
-    });
+  // Each Add mapping opens a row; the picker is the concept IRI combobox of row `index`.
+  const mappingPicker = async (index = 0) => {
+    while (screen.queryAllByTestId('new-class-mapping-iri').length <= index) {
+      fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+    }
+    const picker = within(
+      screen.getAllByTestId('new-class-mapping-iri')[index]
+    ).getByRole('combobox');
     await act(async () => undefined);
 
     return picker;
@@ -1519,8 +1528,6 @@ describe('mappings are picked by label', () => {
     fireEvent.focus(picker);
     fireEvent.change(picker, { target: { value: text } });
   };
-  const addMapping = () =>
-    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
   const createdConcept = async () => {
     await act(async () => {
       fireEvent.click(screen.getByTestId('new-class-create'));
@@ -1530,8 +1537,23 @@ describe('mappings are picked by label', () => {
     return post.mock.calls.find(([url]) => url === '/ontologyChangeSets')?.[1]
       .operations[0].concept;
   };
+  const savedIris = async () =>
+    (await createdConcept()).conceptMappings.map(
+      (mapping: { conceptIri: string }) => mapping.conceptIri
+    );
 
   beforeEach(serveReadableConcepts);
+
+  it('opens no row until Add mapping, and one row per press', async () => {
+    setup();
+
+    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+
+    expect(screen.getAllByTestId('new-class-mapping')).toHaveLength(2);
+  });
 
   it('offers a concept of another ontology by label and saves its IRI', async () => {
     setup();
@@ -1546,13 +1568,8 @@ describe('mappings are picked by label', () => {
     );
 
     fireEvent.click(option);
-    addMapping();
 
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://example.org/ledger#Account'
-    );
-    expect(picker).toHaveValue('');
-
+    expect(picker).toHaveValue('Account');
     expect((await createdConcept()).conceptMappings).toEqual([
       expect.objectContaining({
         mappingType: 'EXACT_MATCH',
@@ -1563,46 +1580,42 @@ describe('mappings are picked by label', () => {
 
   it('offers a concept of the ontology being edited by label', async () => {
     setup();
+    fill('new-class-label', 'Remittance');
     const picker = await mappingPicker();
     type(picker, 'Trans');
     fireEvent.keyDown(picker, { key: 'ArrowDown' });
     fireEvent.click(await screen.findByRole('option', { name: /Transaction/ }));
-    addMapping();
 
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://example.org/fin#Transaction'
-    );
+    expect(await savedIris()).toEqual(['https://example.org/fin#Transaction']);
   });
 
   it('keeps a pasted IRI that no concept carries, next to a picked one', async () => {
     setup();
     fill('new-class-label', 'Remittance');
-    const picker = await mappingPicker();
-    type(picker, 'Acc');
-    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    const first = await mappingPicker();
+    type(first, 'Acc');
+    fireEvent.keyDown(first, { key: 'ArrowDown' });
     fireEvent.click(await screen.findByRole('option', { name: /Account/ }));
-    addMapping();
-    type(picker, 'https://schema.org/Payment');
-    fireEvent.blur(picker);
+    const second = await mappingPicker(1);
+    type(second, 'https://schema.org/Payment');
+    fireEvent.blur(second);
 
-    expect(screen.getByTestId('new-class-add-mapping')).toBeEnabled();
-
-    addMapping();
-
-    expect(
-      screen.getAllByTestId('new-class-mapping').map((row) => row.textContent)
-    ).toEqual([
-      'Exact match · https://example.org/ledger#Account',
-      'Exact match · https://schema.org/Payment',
-    ]);
-    expect(
-      (await createdConcept()).conceptMappings.map(
-        (mapping: { conceptIri: string }) => mapping.conceptIri
-      )
-    ).toEqual([
+    expect(await savedIris()).toEqual([
       'https://example.org/ledger#Account',
       'https://schema.org/Payment',
     ]);
+  });
+
+  it('removes a row with its delete button, and the mapping is not saved', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    type(await mappingPicker(), 'https://schema.org/Payment');
+    type(await mappingPicker(1), 'https://schema.org/Invoice');
+
+    fireEvent.click(screen.getAllByTestId('new-class-remove-mapping')[0]);
+
+    expect(screen.getAllByTestId('new-class-mapping')).toHaveLength(1);
+    expect(await savedIris()).toEqual(['https://schema.org/Invoice']);
   });
 
   it('shows no error while a partial label is typed', async () => {
@@ -1615,21 +1628,6 @@ describe('mappings are picked by label', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('rejects Add mapping on text that is neither a concept label nor an absolute IRI', async () => {
-    setup();
-    const picker = await mappingPicker();
-    type(picker, 'no such concept');
-
-    expect(
-      screen.queryByText('message.invalid-concept-iri')
-    ).not.toBeInTheDocument();
-
-    addMapping();
-
-    expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
-    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
-  });
-
   it('rejects Enter on text that is neither a concept label nor an absolute IRI', async () => {
     setup();
     const picker = await mappingPicker();
@@ -1637,7 +1635,6 @@ describe('mappings are picked by label', () => {
     fireEvent.keyDown(picker, { key: 'Enter' });
 
     expect(screen.getByText('message.invalid-concept-iri')).toBeVisible();
-    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
   });
 
   it('rejects leaving the field with text that is neither a concept label nor an absolute IRI', async () => {
@@ -1653,7 +1650,7 @@ describe('mappings are picked by label', () => {
     setup();
     const picker = await mappingPicker();
     type(picker, 'no such concept');
-    addMapping();
+    fireEvent.blur(picker);
     type(picker, 'no such concept 2');
 
     expect(
@@ -1675,44 +1672,7 @@ describe('mappings are picked by label', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('adds a concept picked by label when Enter is pressed and no option is focused', async () => {
-    setup();
-    const picker = await mappingPicker();
-    type(picker, 'Acc');
-    fireEvent.keyDown(picker, { key: 'ArrowDown' });
-    fireEvent.click(await screen.findByRole('option', { name: /Account/ }));
-    fireEvent.keyDown(picker, { key: 'Enter' });
-
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://example.org/ledger#Account'
-    );
-    expect(picker).toHaveValue('');
-  });
-
-  it('adds a concept whose label was typed in full when Enter is pressed', async () => {
-    setup();
-    const picker = await mappingPicker();
-    type(picker, 'Account');
-    fireEvent.keyDown(picker, { key: 'Enter' });
-
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://example.org/ledger#Account'
-    );
-  });
-
-  it('adds a pasted IRI when Enter is pressed and no option is focused', async () => {
-    setup();
-    const picker = await mappingPicker();
-    type(picker, 'https://schema.org/Payment');
-    fireEvent.keyDown(picker, { key: 'Enter' });
-
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://schema.org/Payment'
-    );
-    expect(picker).toHaveValue('');
-  });
-
-  it('selects the focused option on Enter instead of adding the mapping', async () => {
+  it('selects the focused option on Enter and opens no other row', async () => {
     setup();
     const picker = await mappingPicker();
     type(picker, 'Acc');
@@ -1723,14 +1683,7 @@ describe('mappings are picked by label', () => {
 
     await waitFor(() => expect(picker).toHaveValue('Account'));
 
-    expect(screen.queryByTestId('new-class-mapping')).not.toBeInTheDocument();
-    expect(screen.getByTestId('new-class-add-mapping')).toBeEnabled();
-
-    addMapping();
-
-    expect(screen.getByTestId('new-class-mapping')).toHaveTextContent(
-      'Exact match · https://example.org/ledger#Account'
-    );
+    expect(screen.getAllByTestId('new-class-mapping')).toHaveLength(1);
   });
 
   it('shows a loading row, then the matches of concepts that arrive after typing', async () => {
@@ -1749,9 +1702,7 @@ describe('mappings are picked by label', () => {
       return base?.(url, ...rest);
     });
     setup();
-    const picker = await screen.findByRole('combobox', {
-      name: /^label\.concept-iri/,
-    });
+    const picker = await mappingPicker();
     type(picker, 'Acc');
     fireEvent.keyDown(picker, { key: 'ArrowDown' });
 
@@ -1772,16 +1723,15 @@ describe('mappings are picked by label', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('refuses the same mapping twice', async () => {
+  it('marks a row that repeats an earlier mapping', async () => {
     setup();
-    const picker = await mappingPicker();
-    type(picker, 'https://schema.org/Payment');
-    addMapping();
-    type(picker, 'https://schema.org/Payment');
+    type(await mappingPicker(), 'https://schema.org/Payment');
+    type(await mappingPicker(1), 'https://schema.org/Payment');
 
-    expect(screen.getByTestId('new-class-add-mapping')).toBeDisabled();
     expect(
-      screen.getByText('message.ontology-mapping-already-added')
+      within(screen.getAllByTestId('new-class-mapping')[1]).getByText(
+        'message.ontology-mapping-already-added'
+      )
     ).toBeVisible();
     expect(
       screen.queryByText('message.invalid-concept-iri')
@@ -1809,20 +1759,12 @@ describe('mappings are picked by label', () => {
     expect(picker).toHaveValue('no such concept');
   });
 
-  it('creates the concept once with the mapping when the field repeats an added mapping', async () => {
+  it('creates the concept once with the mapping when two rows repeat it', async () => {
     setup();
     fill('new-class-label', 'Remittance');
-    const picker = await mappingPicker();
-    type(picker, 'https://schema.org/Payment');
-    addMapping();
-    type(picker, 'https://schema.org/Payment');
+    type(await mappingPicker(), 'https://schema.org/Payment');
+    type(await mappingPicker(1), 'https://schema.org/Payment');
 
-    const concept = await createdConcept();
-
-    expect(
-      concept.conceptMappings.map(
-        (mapping: { conceptIri: string }) => mapping.conceptIri
-      )
-    ).toEqual(['https://schema.org/Payment']);
+    expect(await savedIris()).toEqual(['https://schema.org/Payment']);
   });
 });

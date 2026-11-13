@@ -344,9 +344,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(
       first.getByRole('button', { name: /label\.mapping-type$/ })
     );
-    fireEvent.click(
-      await screen.findByRole('option', { name: ConceptMappingType.ExactMatch })
-    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Exact match' }));
     fireEvent.click(
       within(rows[1]).getByRole('button', { name: 'label.remove' })
     );
@@ -397,9 +395,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
     );
-    fireEvent.click(
-      await screen.findByRole('option', { name: ConceptMappingType.SameAs })
-    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Same as' }));
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
 
@@ -409,7 +405,7 @@ describe('OntologyConceptEditor', () => {
     ).toHaveValue('urn:external:Customer');
     expect(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
-    ).toHaveTextContent(ConceptMappingType.SameAs);
+    ).toHaveTextContent('Same as');
     expect(screen.getByRole('button', { name: 'label.save' })).toBeEnabled();
   });
 

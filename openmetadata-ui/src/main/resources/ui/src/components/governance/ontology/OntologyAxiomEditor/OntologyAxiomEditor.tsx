@@ -36,6 +36,7 @@ import {
   AxiomModeSwitch,
   AxiomOutcome,
   AxiomPreview,
+  AxiomPublishNote,
   collectAxiomProblems,
   previewSentence,
   QuickRuleFields,
@@ -216,9 +217,10 @@ const OntologyAxiomEditor = ({
             values={values}
           />
         )}
-        <AxiomDetailFields />
         <AxiomPreview sentence={sentence} />
         <AxiomOutcome problems={problems} validation={validation.current} />
+        <AxiomDetailFields />
+        <AxiomPublishNote />
         {created ? (
           <Alert
             title={created.displayName ?? created.name}
@@ -230,7 +232,7 @@ const OntologyAxiomEditor = ({
           isDirty={form.formState.isDirty}
           isSaving={form.formState.isSubmitting}
           status={t(validationStatusKey(validation.current?.report?.valid))}
-          submitLabel={t('label.save')}
+          submitLabel={t(axiom ? 'label.save' : 'label.add-rule')}
           submitTestId="ontology-axiom-submit"
           testId="ontology-axiom-footer"
           onCancel={onCancel ?? cancel}>

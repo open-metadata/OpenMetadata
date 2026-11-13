@@ -371,6 +371,7 @@ const TestSuiteDetailsPage = () => {
         children: (
           <div className="tw:w-full tw:p-4">
             <TestSuitePipelineTab
+              deleted={testSuite?.deleted}
               testSuite={testSuite}
               onPipelinesChange={handlePipelinesChange}
             />

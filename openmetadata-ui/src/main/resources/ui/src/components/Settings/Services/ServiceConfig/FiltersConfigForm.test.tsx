@@ -251,6 +251,35 @@ describe('FiltersConfigForm', () => {
     });
   });
 
+  it('renders all four default filters from the shipped Rill schema', async () => {
+    const rillSchema = jest.requireActual(
+      '../../../../../public/jsons/connectionSchemas/connections/dashboard/rillConnection.json'
+    );
+    mockLoadConnectionSchema.mockResolvedValue({
+      schema: rillSchema,
+      uiSchema: {},
+    });
+
+    await renderForm({
+      data: buildServiceData({ hostPort: 'http://localhost:9009' }),
+      serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+      serviceType: 'Rill',
+    });
+
+    for (const field of [
+      'dashboardFilterPattern',
+      'chartFilterPattern',
+      'dataModelFilterPattern',
+      'projectFilterPattern',
+    ]) {
+      expect(
+        await screen.findByTestId(`filter-section-${field}`)
+      ).toBeInTheDocument();
+    }
+
+    expect(screen.queryByTestId('no-config-available')).not.toBeInTheDocument();
+  });
+
   it('renders the ingest design and converts default regex into readable chips', async () => {
     await renderForm();
 

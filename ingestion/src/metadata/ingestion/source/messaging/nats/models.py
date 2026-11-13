@@ -12,12 +12,13 @@
 NATS connector data models
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NatsStreamConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
+    description: str | None = Field(default=None)
     subjects: list[str] | None = None
     retention: str | None = None
     max_msgs: int | None = None
