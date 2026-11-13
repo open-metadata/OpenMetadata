@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -9,6 +10,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -17,26 +20,47 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.factories.APIServiceTestFactory;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
+import org.openmetadata.it.factories.MlModelServiceTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.factories.SearchServiceTestFactory;
+import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.CreateAPICollection;
+import org.openmetadata.schema.api.data.CreateAPIEndpoint;
+import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.data.CreateContainer;
+import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.CreateMlModel;
+import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.data.CreateSearchIndex;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -52,12 +76,17 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.SearchIndexDataType;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.services.EntityServiceBase;
 
 /**
  * Issue #22095: hiding every asset ingested by a service through a policy condition on the service.
@@ -76,6 +105,11 @@ public class ServiceAttributePolicyIT {
   private static final String HIDDEN_TAG = "PII.Sensitive";
   private static final String TAGS_FIELD = "tags";
   private static final String TIER_TAG = "Tier.Tier1";
+  private static final String TABLE_INDEX = "table_search_index";
+  private static final Duration INDEXING_WAIT = Duration.ofSeconds(90);
+  // Generous for a change that needs no reindex, yet well inside the five-minute TTL of the
+  // compiled search filter, so a filter served stale from that cache still fails the wait.
+  private static final Duration POLICY_CHANGE_WAIT = Duration.ofSeconds(60);
 
   /** Only this test toggles the global search settings, so only it takes the shared lock. */
   @Test
@@ -152,6 +186,70 @@ public class ServiceAttributePolicyIT {
                     "the compiled RBAC query is cached, so this only passes if the cache key "
                         + "tracks the resolved service state");
               });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * collate#7984: search follows a policy change as soon as a direct read does. OpenSearch caches
+   * the compiled filter for five minutes under the subject's user, role, domain and team ids. A Deny
+   * added to a role the user already holds, or a Deny's condition edited in place, leaves every one
+   * of those ids as it was, so the key also carries the policy generation that each policy, role
+   * and team write bumps. Elasticsearch compiles the filter on every search, so there this holds
+   * trivially.
+   */
+  @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
+  void search_followsRoleAndPolicyEditsWithoutWaitingOutTheFilterCache(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseService elsewhere = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table = createTable(admin, prefix + "_rbaccache", schema);
+      String tableId = table.getId().toString();
+      String hidesTheTable = "matchAnyServiceName('" + service.getName() + "')";
+      String hidesNothingHere = "matchAnyServiceName('" + elsewhere.getName() + "')";
+
+      Role role = createDenyRole(admin, prefix, hidesNothingHere, cleanup);
+      UUID rolePolicyId =
+          admin.roles().get(role.getId().toString(), "policies").getPolicies().get(0).getId();
+      OpenMetadataClient restricted = createUserClient(admin, prefix, role, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      // This search compiles the filter and caches it. Nothing below changes an id the cache key
+      // is made of, and nothing changes the indexed documents either.
+      awaitTableInSearch(restricted, prefix, table, true, INDEXING_WAIT, "table is indexed");
+
+      Policy addedDeny =
+          createPolicy(admin, prefix + "_addedDeny", denyViewRule(hidesTheTable), cleanup);
+      admin.roles().patch(role.getId().toString(), addPolicyPatch(addedDeny.getId()));
+      assertThrows(
+          ForbiddenException.class,
+          () -> restricted.tables().get(tableId, ""),
+          "a direct read follows the role edit at once");
+      awaitTableInSearch(
+          restricted, prefix, table, false, POLICY_CHANGE_WAIT, "Deny added to a held role");
+
+      replaceRuleCondition(admin, addedDeny.getId(), hidesNothingHere);
+      assertNotNull(
+          restricted.tables().get(tableId, ""), "the loosened Deny lets the read through");
+      awaitTableInSearch(
+          restricted, prefix, table, true, POLICY_CHANGE_WAIT, "Deny loosened in place");
+
+      replaceRuleCondition(admin, rolePolicyId, hidesTheTable);
+      assertThrows(
+          ForbiddenException.class,
+          () -> restricted.tables().get(tableId, ""),
+          "a direct read follows the policy edit at once");
+      awaitTableInSearch(
+          restricted, prefix, table, false, POLICY_CHANGE_WAIT, "Deny tightened in place");
     } finally {
       drain(cleanup);
     }
@@ -422,6 +520,226 @@ public class ServiceAttributePolicyIT {
   }
 
   /**
+   * collate#7981: a tag an asset inherits from its service is one of its tags for {@code
+   * matchAnyTag} on every read, not only on one that asks for the tags. The decision loads tags on
+   * demand, when a rule first reads them, so it has to merge the inherited ones in itself; a GET
+   * naming other fields, or none, must be refused like a read of the tags.
+   */
+  @Test
+  void denyOnAnInheritedTag_refusesEveryReadOfTheAssetsBelowTheTaggedService(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table = createTable(admin, prefix + "_inherits", schema);
+      String tableId = table.getId().toString();
+
+      Role denyRole = createDenyRole(admin, prefix, "matchAnyTag('" + HIDDEN_TAG + "')", cleanup);
+      OpenMetadataClient restricted = createUserClient(admin, prefix, denyRole, cleanup);
+      assertNotNull(restricted.tables().get(tableId, ""), "readable before the service is tagged");
+
+      tagService(admin, service, HIDDEN_TAG);
+      assertTrue(
+          tagFqnsOf(admin.tables().get(tableId, TAGS_FIELD)).contains(HIDDEN_TAG),
+          "the table inherits the service's tag");
+
+      List<Executable> reads = new ArrayList<>();
+      for (String fields : List.of("", "owners", "columns", TAGS_FIELD)) {
+        reads.add(
+            () ->
+                assertThrows(
+                    ForbiddenException.class,
+                    () -> restricted.tables().get(tableId, fields),
+                    "GET by id, fields=" + fields));
+        reads.add(
+            () ->
+                assertThrows(
+                    ForbiddenException.class,
+                    () -> restricted.tables().getByName(table.getFullyQualifiedName(), fields),
+                    "GET by name, fields=" + fields));
+      }
+      reads.add(
+          () ->
+              assertThrows(
+                  ForbiddenException.class,
+                  () -> restricted.databaseSchemas().get(schema.getId().toString(), ""),
+                  "the schema inherits the tag too"));
+      reads.add(
+          () ->
+              assertThrows(
+                  ForbiddenException.class,
+                  () -> restricted.databases().get(schema.getDatabase().getId().toString(), ""),
+                  "and so does the database"));
+      reads.add(
+          () ->
+              assertEquals(
+                  Permission.Access.DENY,
+                  accessOf(restricted, "table", table.getId(), MetadataOperation.VIEW_ALL),
+                  "the permissions a client reads agree with the decision"));
+      assertAll(reads);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * The same rule for every other kind of asset that inherits its service's tags. Each type resolves
+   * its parent in its own repository, so each is read once under the Deny (collate#7981).
+   */
+  @Test
+  void denyOnAnInheritedTag_refusesDirectReadsOfEveryOtherInheritingAssetType(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      List<InheritingAsset> assets = new ArrayList<>();
+      List<Runnable> tagServices = new ArrayList<>();
+
+      EntityInterface<?> dashboards = DashboardServiceTestFactory.createMetabase(ns);
+      tagServices.add(() -> tag(admin.dashboardServices(), dashboards, HIDDEN_TAG));
+      String dashboardService = dashboards.getFullyQualifiedName();
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::charts,
+              admin
+                  .charts()
+                  .create(
+                      new CreateChart()
+                          .withName(prefix + "_chart")
+                          .withService(dashboardService))));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::dashboards,
+              admin
+                  .dashboards()
+                  .create(
+                      new CreateDashboard()
+                          .withName(prefix + "_dashboard")
+                          .withService(dashboardService))));
+
+      EntityInterface<?> messaging = MessagingServiceTestFactory.createKafka(ns);
+      tagServices.add(() -> tag(admin.messagingServices(), messaging, HIDDEN_TAG));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::topics,
+              admin
+                  .topics()
+                  .create(
+                      new CreateTopic()
+                          .withName(prefix + "_topic")
+                          .withService(messaging.getFullyQualifiedName())
+                          .withPartitions(1))));
+
+      EntityInterface<?> pipelines = PipelineServiceTestFactory.createAirflow(ns);
+      tagServices.add(() -> tag(admin.pipelineServices(), pipelines, HIDDEN_TAG));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::pipelines,
+              admin
+                  .pipelines()
+                  .create(
+                      new CreatePipeline()
+                          .withName(prefix + "_pipeline")
+                          .withService(pipelines.getFullyQualifiedName()))));
+
+      EntityInterface<?> storage = StorageServiceTestFactory.createS3(ns);
+      tagServices.add(() -> tag(admin.storageServices(), storage, HIDDEN_TAG));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::containers,
+              admin
+                  .containers()
+                  .create(
+                      new CreateContainer()
+                          .withName(prefix + "_bucket")
+                          .withService(storage.getFullyQualifiedName()))));
+
+      EntityInterface<?> mlModels = MlModelServiceTestFactory.createMlflow(ns);
+      tagServices.add(() -> tag(admin.mlModelServices(), mlModels, HIDDEN_TAG));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::mlModels,
+              admin
+                  .mlModels()
+                  .create(
+                      new CreateMlModel()
+                          .withName(prefix + "_model")
+                          .withAlgorithm("xgboost")
+                          .withService(mlModels.getFullyQualifiedName()))));
+
+      EntityInterface<?> search = SearchServiceTestFactory.createElasticSearch(ns);
+      tagServices.add(() -> tag(admin.searchServices(), search, HIDDEN_TAG));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::searchIndexes,
+              admin
+                  .searchIndexes()
+                  .create(
+                      new CreateSearchIndex()
+                          .withName(prefix + "_index")
+                          .withService(search.getFullyQualifiedName())
+                          .withFields(
+                              List.of(
+                                  new SearchIndexField()
+                                      .withName("title")
+                                      .withDataType(SearchIndexDataType.TEXT))))));
+
+      EntityInterface<?> apis = APIServiceTestFactory.createRest(ns);
+      tagServices.add(() -> tag(admin.apiServices(), apis, HIDDEN_TAG));
+      APICollection collection =
+          admin
+              .apiCollections()
+              .create(
+                  new CreateAPICollection()
+                      .withName(prefix + "_users")
+                      .withService(apis.getFullyQualifiedName()));
+      assets.add(new InheritingAsset(OpenMetadataClient::apiCollections, collection));
+      assets.add(
+          new InheritingAsset(
+              OpenMetadataClient::apiEndpoints,
+              admin
+                  .apiEndpoints()
+                  .create(
+                      new CreateAPIEndpoint()
+                          .withName(prefix + "_getUser")
+                          .withApiCollection(collection.getFullyQualifiedName())
+                          .withEndpointURL(URI.create("https://example.com/users")))));
+
+      Role denyRole = createDenyRole(admin, prefix, "matchAnyTag('" + HIDDEN_TAG + "')", cleanup);
+      OpenMetadataClient restricted = createUserClient(admin, prefix, denyRole, cleanup);
+
+      // Readable while nothing is tagged, so a 403 below can only come from the inherited tag.
+      List<Executable> readable = new ArrayList<>();
+      for (InheritingAsset asset : assets) {
+        readable.add(
+            () ->
+                assertNotNull(
+                    asset.client().apply(restricted).get(asset.id(), ""),
+                    asset.type() + " is readable before its service is tagged"));
+      }
+      assertAll(readable);
+
+      tagServices.forEach(Runnable::run);
+
+      List<Executable> refused = new ArrayList<>();
+      for (InheritingAsset asset : assets) {
+        refused.add(
+            () ->
+                assertThrows(
+                    ForbiddenException.class,
+                    () -> asset.client().apply(restricted).get(asset.id(), ""),
+                    asset.type() + " inherits its service's tag"));
+      }
+      assertAll(refused);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
    * A condition naming a tag that does not exist is rejected when the policy is created, so a
    * typo cannot silently produce a rule that matches nothing.
    */
@@ -667,6 +985,93 @@ public class ServiceAttributePolicyIT {
     return fqns;
   }
 
+  /** Tags a service through a PATCH, which works the same for every service type. */
+  private static void tag(
+      EntityServiceBase<?> services, EntityInterface<?> service, String tagFqn) {
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/tags")
+        .putArray("value")
+        .add(
+            MAPPER.valueToTree(
+                new TagLabel()
+                    .withTagFQN(tagFqn)
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)
+                    .withLabelType(TagLabel.LabelType.MANUAL)
+                    .withState(TagLabel.State.CONFIRMED)));
+    services.patch(service.getId(), patch);
+  }
+
+  /** An asset read back through the client for its type. */
+  private record InheritingAsset(
+      Function<OpenMetadataClient, EntityServiceBase<?>> client, EntityInterface<?> entity) {
+    String id() {
+      return entity.getId().toString();
+    }
+
+    String type() {
+      return entity.getClass().getSimpleName();
+    }
+  }
+
+  private static Permission.Access accessOf(
+      OpenMetadataClient client, String resource, UUID id, MetadataOperation operation)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/permissions/" + resource + "/" + id, null);
+    return MAPPER.readValue(response, ResourcePermission.class).getPermissions().stream()
+        .filter(permission -> permission.getOperation() == operation)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError(operation + " is missing from " + response))
+        .getAccess();
+  }
+
+  private static JsonNode addPolicyPatch(UUID policyId) {
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/policies/-")
+        .putObject("value")
+        .put("id", policyId.toString())
+        .put("type", "policy");
+    return patch;
+  }
+
+  private static void replaceRuleCondition(
+      OpenMetadataClient admin, UUID policyId, String condition) {
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/rules/0/condition")
+        .put("value", condition);
+    admin.policies().patch(policyId, patch);
+  }
+
+  private void awaitTableInSearch(
+      OpenMetadataClient client,
+      String prefix,
+      Table table,
+      boolean expected,
+      Duration atMost,
+      String alias) {
+    Awaitility.await(alias)
+        .atMost(atMost)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    expected,
+                    searchFqns(client, TABLE_INDEX, prefix).contains(table.getFullyQualifiedName()),
+                    alias));
+  }
+
   private void tagService(OpenMetadataClient admin, DatabaseService service, String tagFqn) {
     DatabaseService fetched = admin.databaseServices().get(service.getId().toString(), TAGS_FIELD);
     List<TagLabel> tags =
@@ -689,28 +1094,36 @@ public class ServiceAttributePolicyIT {
 
   private Role createDenyRole(
       OpenMetadataClient admin, String prefix, String condition, Deque<Runnable> cleanup) {
-    Rule rule =
-        new Rule()
-            .withName("denyViewByServiceAttribute")
-            .withDescription("Deny viewing assets by an attribute of their service")
-            .withEffect(Rule.Effect.DENY)
-            .withOperations(List.of(MetadataOperation.VIEW_ALL))
-            .withResources(List.of("All"))
-            .withCondition(condition);
-    return createRole(admin, prefix, rule, cleanup);
+    return createRole(admin, prefix, denyViewRule(condition), cleanup);
   }
 
-  private Role createRole(
-      OpenMetadataClient admin, String prefix, Rule rule, Deque<Runnable> cleanup) {
+  private static Rule denyViewRule(String condition) {
+    return new Rule()
+        .withName("denyViewByServiceAttribute")
+        .withDescription("Deny viewing assets by an attribute of their service")
+        .withEffect(Rule.Effect.DENY)
+        .withOperations(List.of(MetadataOperation.VIEW_ALL))
+        .withResources(List.of("All"))
+        .withCondition(condition);
+  }
+
+  private Policy createPolicy(
+      OpenMetadataClient admin, String name, Rule rule, Deque<Runnable> cleanup) {
     Policy policy =
         admin
             .policies()
             .create(
                 new CreatePolicy()
-                    .withName(prefix + "_serviceDenyPolicy")
+                    .withName(name)
                     .withDescription("Service-attribute deny policy")
                     .withRules(List.of(rule)));
     cleanup.push(() -> admin.policies().delete(policy.getId()));
+    return policy;
+  }
+
+  private Role createRole(
+      OpenMetadataClient admin, String prefix, Rule rule, Deque<Runnable> cleanup) {
+    Policy policy = createPolicy(admin, prefix + "_serviceDenyPolicy", rule, cleanup);
 
     Role role =
         admin
