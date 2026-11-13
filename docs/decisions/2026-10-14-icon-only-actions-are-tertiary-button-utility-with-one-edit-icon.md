@@ -101,9 +101,8 @@ This replaces "A bordered or filled icon-only button needs a new record" in Cons
   scrolled table.
 - Its `size` keeps the box of the `Button` it sits beside. An icon-only `Button` `sm` draws 32px,
   so it becomes `lg`; `md` draws 36px, so it becomes `xl`. `xl` is used only for this, beside a
-  36px labelled control such as a `FilterSelect` trigger or a comment textarea.
+  36px labelled control such as a `FilterSelect` trigger.
 - A stat card's "open" arrow is `sm` (24px). `xs` is not used for it, because `xs` drops the border.
-- The comment send action is a `primary` `ButtonUtility` (v3), `xl` to match the textarea.
 
 ## Amendment: what stays outside `ButtonUtility` (v9, 2026-11-12)
 These icon-only controls stay as they are. They are listed so a search for children-less
