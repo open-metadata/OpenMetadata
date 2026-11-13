@@ -1238,7 +1238,7 @@ const OntologyStudioQueryConsole = ({
       );
     }
 
-    return <QueryResultsEmptyState />;
+    return <QueryResultsEmptyState isRunning={running} />;
   };
 
   return (

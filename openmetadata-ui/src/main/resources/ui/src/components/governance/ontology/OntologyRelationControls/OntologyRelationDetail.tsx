@@ -24,9 +24,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
-  ChevronDown,
   ChevronLeft,
-  ChevronRight,
   Edit01,
   Trash01,
   XClose,
@@ -43,6 +41,7 @@ import {
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
+import OntologyAdvancedDetails from '../OntologyAdvancedDetails/OntologyAdvancedDetails';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 
 export type OntologyRelationStatus = 'conflict' | 'clear' | 'unchecked';
@@ -335,40 +334,37 @@ const OntologyRelationDetail = ({
   );
 
   const renderAdvanced = () => (
-    <section data-testid="ontology-relation-detail-advanced">
-      <Button
-        aria-expanded={isAdvancedOpen}
-        color="link-gray"
-        data-testid="ontology-relation-detail-advanced-toggle"
-        iconLeading={isAdvancedOpen ? ChevronDown : ChevronRight}
-        size="sm"
-        onPress={() => setIsAdvancedOpen((open) => !open)}>
-        {t('label.advanced')}
-        <span className="tw:ml-1 tw:font-normal tw:text-tertiary">
-          {t('label.ids-and-iris')}
-        </span>
-      </Button>
-      {isAdvancedOpen ? (
-        <dl className="tw:mt-3 tw:mb-0 tw:grid tw:grid-cols-[auto_1fr] tw:gap-x-4 tw:gap-y-2 tw:text-sm">
-          {[
-            [t('label.id'), relation.axiom?.id],
-            [t('label.name'), relation.axiom?.name],
-            [t('label.property-iri'), relation.propertyIri],
-            [t('label.source'), relation.from.iri],
-            [t('label.target'), relation.to.iri],
-          ]
-            .filter(([, value]) => value)
-            .map(([label, value]) => (
-              <div className="tw:contents" key={label}>
-                <dt className="tw:text-tertiary">{label}</dt>
-                <dd className="tw:m-0 tw:break-all tw:font-mono tw:text-xs">
-                  {value}
-                </dd>
-              </div>
-            ))}
-        </dl>
-      ) : null}
-    </section>
+    <OntologyAdvancedDetails
+      isOpen={isAdvancedOpen}
+      rows={[
+        {
+          label: t('label.id'),
+          testId: 'ontology-relation-detail-advanced-id',
+          value: relation.axiom?.name ?? relation.axiom?.id ?? '',
+        },
+        {
+          copyable: true,
+          label: t('label.subject'),
+          testId: 'ontology-relation-detail-advanced-subject',
+          value: relation.from.iri,
+        },
+        {
+          copyable: true,
+          label: t('label.property'),
+          testId: 'ontology-relation-detail-advanced-property',
+          value: relation.propertyIri ?? '',
+        },
+        {
+          copyable: true,
+          label: t('label.target'),
+          testId: 'ontology-relation-detail-advanced-target',
+          value: relation.to.iri,
+        },
+      ].filter(({ value }) => value)}
+      summary={t('label.ids-and-iris')}
+      testId="ontology-relation-detail-advanced"
+      onToggle={() => setIsAdvancedOpen((open) => !open)}
+    />
   );
 
   return (

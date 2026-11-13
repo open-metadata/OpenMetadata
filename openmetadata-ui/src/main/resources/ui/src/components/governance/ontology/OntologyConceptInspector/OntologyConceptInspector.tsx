@@ -29,7 +29,6 @@ import {
   ArrowRight,
   BookClosed,
   Check,
-  ChevronDown,
   ChevronRight,
   Copy01,
   Edit01,
@@ -73,6 +72,7 @@ import {
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
+import OntologyAdvancedDetails from '../OntologyAdvancedDetails/OntologyAdvancedDetails';
 import {
   ConceptEditorFields,
   ConceptEditorFooter,
@@ -691,47 +691,6 @@ const RelationSynonymWarning = ({
 };
 
 /** One read-only fact in the Advanced table, with a copy button for the identifiers. */
-const AdvancedRow = ({
-  copyable = false,
-  label,
-  testId,
-  value,
-}: {
-  readonly copyable?: boolean;
-  readonly label: string;
-  readonly testId: string;
-  readonly value: string;
-}) => {
-  const { t } = useTranslation();
-  const { hasCopied, onCopyToClipBoard } = useClipboard(value);
-
-  return (
-    <div className="tw:flex tw:min-h-9 tw:items-center tw:gap-2.5 tw:py-1.5 tw:pr-1.5 tw:pl-3">
-      <dt className="tw:w-16 tw:shrink-0 tw:text-xs tw:text-quaternary">
-        {label}
-      </dt>
-      <dd
-        className="tw:m-0 tw:min-w-0 tw:flex-1 tw:break-all tw:text-xs tw:text-primary tw:normal-nums"
-        data-testid={testId}>
-        {value}
-      </dd>
-      {copyable ? (
-        <ButtonUtility
-          color="tertiary"
-          icon={hasCopied ? Check : Copy01}
-          size="xs"
-          tooltip={t(
-            hasCopied
-              ? 'message.copied-to-clipboard'
-              : 'message.copy-to-clipboard'
-          )}
-          onClick={() => void onCopyToClipBoard(value)}
-        />
-      ) : null}
-    </div>
-  );
-};
-
 const RelationConflictDot = ({
   isShown,
   label,
@@ -1395,82 +1354,55 @@ const OntologyConceptInspector = ({
     );
 
   const renderAdvanced = () => (
-    <section className="tw:py-4" data-testid="ontology-concept-advanced">
-      {/* The design's disclosure: a semibold "Advanced" and a lighter "ID and IRI", no button chrome. */}
-      <button
-        aria-expanded={isAdvancedOpen}
-        className="tw:flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded tw:border-0 tw:bg-transparent tw:p-0 tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
-        data-testid="ontology-concept-advanced-toggle"
-        type="button"
-        onClick={() => setIsAdvancedOpen((open) => !open)}>
-        {isAdvancedOpen ? (
-          <ChevronDown
-            aria-hidden
-            className="tw:size-4 tw:text-fg-quaternary"
-          />
-        ) : (
-          <ChevronRight
-            aria-hidden
-            className="tw:size-4 tw:text-fg-quaternary"
-          />
-        )}
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="semibold">
-          {t('label.advanced')}
-        </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
-          {t('label.id-and-iri')}
-        </Typography>
-      </button>
-      {isAdvancedOpen ? (
-        <Box className="tw:gap-1.5 tw:pt-2.5" direction="col">
-          <dl className="tw:m-0 tw:divide-y tw:divide-secondary tw:rounded-lg tw:border tw:border-secondary">
-            <AdvancedRow
-              copyable
-              label={t('label.name')}
-              testId="ontology-concept-name"
-              value={concept.name}
-            />
-            <AdvancedRow
-              copyable
-              label={t('label.iri')}
-              testId="ontology-concept-full-iri"
-              value={concept.iri}
-            />
-            <AdvancedRow
-              label={t('label.status')}
-              testId="ontology-concept-lifecycle"
-              value={t(
-                concept.lifecycleStatus
-                  ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
-                  : 'label.unavailable'
-              )}
-            />
-            {concept.provider ? (
-              <AdvancedRow
-                label={t('label.provider')}
-                testId="ontology-concept-provider"
-                value={concept.provider}
-              />
-            ) : null}
-            {concept.abstract ? (
-              <AdvancedRow
-                label={t('label.abstract')}
-                testId="ontology-concept-abstract"
-                value={t('label.yes')}
-              />
-            ) : null}
-          </dl>
-          <Typography
-            className="tw:text-tertiary tw:normal-nums"
-            size="text-xs">
-            {t('message.ontology-generated-read-only')}
-          </Typography>
-        </Box>
-      ) : null}
-    </section>
+    <OntologyAdvancedDetails
+      className="tw:py-4"
+      footnote={t('message.ontology-generated-read-only')}
+      isOpen={isAdvancedOpen}
+      rows={[
+        {
+          copyable: true,
+          label: t('label.name'),
+          testId: 'ontology-concept-name',
+          value: concept.name,
+        },
+        {
+          copyable: true,
+          label: t('label.iri'),
+          testId: 'ontology-concept-full-iri',
+          value: concept.iri,
+        },
+        {
+          label: t('label.status'),
+          testId: 'ontology-concept-lifecycle',
+          value: t(
+            concept.lifecycleStatus
+              ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
+              : 'label.unavailable'
+          ),
+        },
+        ...(concept.provider
+          ? [
+              {
+                label: t('label.provider'),
+                testId: 'ontology-concept-provider',
+                value: concept.provider,
+              },
+            ]
+          : []),
+        ...(concept.abstract
+          ? [
+              {
+                label: t('label.abstract'),
+                testId: 'ontology-concept-abstract',
+                value: t('label.yes'),
+              },
+            ]
+          : []),
+      ]}
+      summary={t('label.id-and-iri')}
+      testId="ontology-concept-advanced"
+      onToggle={() => setIsAdvancedOpen((open) => !open)}
+    />
   );
 
   const renderBody = () => (

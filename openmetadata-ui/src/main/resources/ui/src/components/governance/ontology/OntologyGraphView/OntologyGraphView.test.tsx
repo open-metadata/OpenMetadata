@@ -818,6 +818,25 @@ describe('OntologyGraphView', () => {
     ).toHaveTextContent('Party');
 
     fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-advanced-toggle')
+    );
+    const advanced = within(detail).getByTestId(
+      'ontology-relation-detail-advanced'
+    );
+
+    expect(
+      within(advanced)
+        .getAllByRole('term')
+        .map((term) => term.textContent)
+    ).toEqual(expect.arrayContaining(['label.subject', 'label.target']));
+    expect(
+      within(advanced).getByTestId('ontology-relation-detail-advanced-subject')
+    ).toHaveTextContent(/customer/i);
+    expect(
+      within(advanced).getByTestId('ontology-relation-detail-advanced-target')
+    ).toHaveTextContent(/party/i);
+
+    fireEvent.click(
       within(detail).getByTestId('ontology-relation-detail-target')
     );
 
