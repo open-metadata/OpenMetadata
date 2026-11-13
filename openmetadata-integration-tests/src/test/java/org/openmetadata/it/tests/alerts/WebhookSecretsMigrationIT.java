@@ -437,7 +437,8 @@ class WebhookSecretsMigrationIT {
         .getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
   }
 
-  // The webhook steps as the 2.1.0 migration runs them, after its key check.
+  // The 2.1.0 preflight key check, then the two webhook steps as the 2.1.0 data migration runs
+  // them; the workflow runs the preflight before any pending version is migrated.
   private static void runWebhookSteps(String version) {
     MigrationDAO migrationDAO = TestSuiteBootstrap.getJdbi().onDemand(MigrationDAO.class);
     TestSuiteBootstrap.getJdbi()

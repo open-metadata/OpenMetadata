@@ -42,12 +42,15 @@ class WebhookSecretsMigrationTest {
   private static final String KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String PREVIOUS_KEY = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ5x4uDcWn7mY=";
   private static final String VERSION = "2.1.0";
+  private static final String ALERT_TABLE = "event_subscription_entity";
 
   private final Handle handle = mock(Handle.class);
   private final MigrationDAO migrationDAO = mock(MigrationDAO.class);
   private final PreparedBatch batch = mock(PreparedBatch.class, RETURNS_SELF);
   private final List<Map<String, Object>> alertRows = new ArrayList<>();
   private boolean hasAlertTable = true;
+  private boolean hasMigrationLog = true;
+  private String tableAsked;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -59,7 +62,16 @@ class WebhookSecretsMigrationTest {
     ResultIterable<Integer> tables = mock(ResultIterable.class);
     when(handle.createQuery(anyString())).thenReturn(query);
     when(query.mapTo(Integer.class)).thenReturn(tables);
-    when(tables.one()).thenAnswer(invocation -> hasAlertTable ? 1 : 0);
+    when(query.bind(eq("table"), anyString()))
+        .thenAnswer(
+            invocation -> {
+              tableAsked = invocation.getArgument(1);
+              return query;
+            });
+    when(tables.one())
+        .thenAnswer(
+            invocation ->
+                (ALERT_TABLE.equals(tableAsked) ? hasAlertTable : hasMigrationLog) ? 1 : 0);
     when(query.mapToMap()).thenReturn(rows);
     when(rows.list()).thenReturn(alertRows, List.of());
     when(query.mapTo(String.class)).thenReturn(ids);
@@ -91,16 +103,6 @@ class WebhookSecretsMigrationTest {
         stopped.getMessage());
     assertTrue(stopped.getMessage().contains("'signed' (" + alertId + ")"), stopped.getMessage());
     verify(handle, never()).prepareBatch(anyString());
-  }
-
-  @Test
-  void goesOnWhenTheOperatorChoseToKeepCredentialsThatDoNotOpen() {
-    alertRows.add(alertRow(UUID.randomUUID(), "kept", writtenWithThePreviousKey("a key")));
-
-    assertDoesNotThrow(
-        () ->
-            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
-                handle, ConnectionType.POSTGRES, true));
   }
 
   @Test
@@ -136,6 +138,34 @@ class WebhookSecretsMigrationTest {
         () ->
             WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
                 migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  // A database still on the earliest migrations has alerts but no migration log yet.
+  @Test
+  void runsWithoutAMigrationLogAndReadsItOnlyOnceItExists() {
+    hasMigrationLog = false;
+    alertRows.add(alertRow(UUID.randomUUID(), "opens", Fernet.getInstance().encrypt("a key")));
+    when(migrationDAO.getSqlQuery(anyString(), anyString()))
+        .thenThrow(new IllegalStateException("SERVER_MIGRATION_SQL_LOGS does not exist"));
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  // The operator's choice reads nothing, so no table a database lacks can stop it.
+  @Test
+  void theOperatorsChoiceToKeepUnopenedValuesReadsNothing() {
+    when(migrationDAO.getSqlQuery(anyString(), anyString()))
+        .thenThrow(new IllegalStateException("SERVER_MIGRATION_SQL_LOGS does not exist"));
+    when(handle.createQuery(anyString()))
+        .thenThrow(new IllegalStateException("event_subscription_entity does not exist"));
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES, true));
   }
 
   @Test

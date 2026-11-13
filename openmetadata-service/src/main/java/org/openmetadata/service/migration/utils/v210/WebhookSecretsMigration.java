@@ -51,6 +51,7 @@ public final class WebhookSecretsMigration {
   private static final String TEAM = "team";
   private static final String ALERT = "eventsubscription";
   private static final String ALERT_TABLE = "event_subscription_entity";
+  private static final String MIGRATION_LOG_TABLE = "SERVER_MIGRATION_SQL_LOGS";
 
   private WebhookSecretsMigration() {}
 
@@ -75,22 +76,41 @@ public final class WebhookSecretsMigration {
    * --force} does not skip it. It is not run on a database without alerts yet, nor once the alert
    * step is recorded, since that step has then carried over what opened. The environment variable
    * {@value #KEEP_UNOPENED_ENV} set to {@code true} lets the upgrade go on, leaving those values as
-   * stored. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
+   * stored; the check then reads nothing. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
    */
   public static void requireKeysThatOpenStoredCredentials(
       MigrationDAO migrationDAO, String version, Handle handle, ConnectionType connectionType) {
-    // A new database has no alert table until its first versions are migrated.
-    boolean hasAlerts = new Sql(connectionType).hasTable(handle, ALERT_TABLE);
-    boolean carriedOver =
-        hasAlerts && DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
-    if (hasAlerts && !carriedOver && isKeyDefined()) {
-      requireKeysThatOpenStoredCredentials(
-          handle, connectionType, Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
-    }
+    requireKeysThatOpenStoredCredentials(
+        migrationDAO,
+        version,
+        handle,
+        connectionType,
+        Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
   }
 
   static void requireKeysThatOpenStoredCredentials(
-      Handle handle, ConnectionType connectionType, boolean keepUnopened) {
+      MigrationDAO migrationDAO,
+      String version,
+      Handle handle,
+      ConnectionType connectionType,
+      boolean keepUnopened) {
+    Sql sql = new Sql(connectionType);
+    // A new database has no alert table until its first versions are migrated.
+    boolean hasAlerts = !keepUnopened && isKeyDefined() && sql.hasTable(handle, ALERT_TABLE);
+    if (hasAlerts && !isAlertStepRecorded(migrationDAO, version, handle, sql)) {
+      requireKeysThatOpenStoredCredentials(handle, connectionType);
+    }
+  }
+
+  // A database still on the earliest migrations gets the migration log during this run.
+  private static boolean isAlertStepRecorded(
+      MigrationDAO migrationDAO, String version, Handle handle, Sql sql) {
+    return sql.hasTable(handle, MIGRATION_LOG_TABLE)
+        && DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
+  }
+
+  private static void requireKeysThatOpenStoredCredentials(
+      Handle handle, ConnectionType connectionType) {
     StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
     StoredWebhookSecrets.CarriedCredentials carried = new StoredWebhookSecrets.CarriedCredentials();
     forEachPage(
@@ -102,7 +122,7 @@ public final class WebhookSecretsMigration {
                 row ->
                     secrets.countCarriedCredentials(
                         readRow(row, ALERT_TABLE + " row " + row.get("id")), carried)));
-    carried.requireAnyOpened(keepUnopened);
+    carried.requireAnyOpened();
   }
 
   /**
@@ -294,7 +314,7 @@ public final class WebhookSecretsMigration {
               .createQuery(
                   "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = "
                       + schema
-                      + " AND table_name = :table")
+                      + " AND LOWER(table_name) = LOWER(:table)")
               .bind("table", table)
               .mapTo(Integer.class)
               .one()
