@@ -40,13 +40,9 @@ from metadata.ingestion.source.messaging.nats.connection import (
     _cleanup_temp_certs,
     _get_streams,
     _write_temp_cert,
-    get_connection,
 )
 from metadata.ingestion.source.messaging.nats.connection import (
     NatsConnection as OwnedNatsConnection,
-)
-from metadata.ingestion.source.messaging.nats.connection import (
-    test_connection as run_nats_connection_test,
 )
 from metadata.ingestion.source.messaging.nats.metadata import (
     _NS_TO_MS,
@@ -217,24 +213,25 @@ class TestNatsClient:
         assert not cert_path.exists()
 
 
-class TestNatsGetConnection:
-    def test_get_connection_returns_owned_client(self):
+class TestNatsClientConstruction:
+    def test_connection_owns_and_closes_client(self):
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
         nc = MagicMock()
         nc.options = {}
         nc.connect = AsyncMock()
         nc.drain = AsyncMock()
 
-        with patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc):
-            client = get_connection(connection)
-
-        assert client.nc is nc
-        assert not client._loop.is_closed()
-        assert nc.options["max_reconnect_attempts"] == 60
-        client.close()
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc),
+            OwnedNatsConnection(connection) as owned,
+        ):
+            client = owned.client
+            assert client.nc is nc
+            assert not client._loop.is_closed()
+            assert nc.options["max_reconnect_attempts"] == 60
         assert client._loop.is_closed()
 
-    def test_get_connection_cleans_up_after_connect_failure(self, tmp_path):
+    def test_client_construction_cleans_up_after_connect_failure(self, tmp_path):
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
         nc = MagicMock()
         nc.connect = AsyncMock(side_effect=RuntimeError("connect failed"))
@@ -249,9 +246,10 @@ class TestNatsGetConnection:
         with (
             patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc),
             patch("metadata.ingestion.source.messaging.nats.connection._build_connect_opts", side_effect=options),
+            OwnedNatsConnection(connection) as owned,
             pytest.raises(RuntimeError, match="connect failed"),
         ):
-            get_connection(connection)
+            _ = owned.client
         assert not cert.exists()
 
     def test_reconnect_policy_is_restored_after_bootstrap(self):
@@ -266,12 +264,12 @@ class TestNatsGetConnection:
             assert opts["max_reconnect_attempts"] == 1
 
         nc.connect = AsyncMock(side_effect=connect)
-        with patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc):
-            client = get_connection(config)
-        try:
-            assert nc.options["max_reconnect_attempts"] == 7
-        finally:
-            client.close()
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc),
+            OwnedNatsConnection(config) as owned,
+        ):
+            client = owned.client
+            assert client.nc.options["max_reconnect_attempts"] == 7
 
     @pytest.mark.parametrize(
         ("error", "expected_type", "message"),
@@ -294,9 +292,10 @@ class TestNatsGetConnection:
         nc.connect = AsyncMock(side_effect=connect)
         with (
             patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc),
+            OwnedNatsConnection(config) as owned,
             pytest.raises(expected_type, match=message),
         ):
-            get_connection(config)
+            _ = owned.client
 
 
 class TestNatsConnectionConfig:
@@ -1092,15 +1091,16 @@ class TestNatsTestConnection:
         with pytest.raises(ConnectionError, match="missing-bucket"):
             _check_schema_kv_bucket(client, conn)
 
-    def test_connection_runs_distinct_topic_and_schema_steps(self, metadata):
-        client = self._make_client()
-        client.nc = MagicMock(is_connected=True)
-        client.request.side_effect = [
-            {"streams": []},
-            {"config": {"name": "KV_SCHEMAS"}},
+    def test_connection_dispatch_runs_distinct_topic_and_schema_steps(self, metadata, sdk_client):
+        from metadata.ingestion.source.connections import get_test_connection_fn
+
+        sdk_client.request.side_effect = [
+            MagicMock(data=b'{"streams": []}'),
+            MagicMock(data=b'{"config": {"name": "KV_SCHEMAS"}}'),
         ]
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222", schemaKvBucket="SCHEMAS")
-        result = run_nats_connection_test(metadata=metadata, client=client, service_connection=connection)
+        with patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client):
+            result = get_test_connection_fn(connection)(metadata=metadata)
         assert result.status.value == "Successful"
         assert [step.name for step in result.steps] == ["CheckAccess", "GetTopics", "CheckSchemaKvBucket"]
         assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Passed"]

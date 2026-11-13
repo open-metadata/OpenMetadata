@@ -24,30 +24,20 @@ from typing import Any
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import ChecksProvider, StepName, check
 from metadata.core.connections.test_connection.classifier import ErrorPack, Matchers, when
-from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.core.connections.test_connection.records import Evidence
-from metadata.core.connections.test_connection.runner import TestConnectionRunner
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     BasicAuth,
-    NatsType,
     NkeyAuth,
     TokenAuth,
 )
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     NatsConnection as NatsConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
     ValidateSslClientConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.secure_tempfile import (
     remove_secret_temp_file,
@@ -105,25 +95,19 @@ class NatsClient:
     _temp_cert_files: list[str] = field(default_factory=list)
 
     def request(self, subject: str, payload: bytes = b"{}", timeout: float = 5.0) -> dict:
-        async def _req() -> dict:
-            msg = await self.nc.request(subject, payload, timeout=timeout)
-            try:
-                response = json.loads(msg.data.decode())
-            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise NatsApiError(f"NATS returned invalid JSON for subject '{subject}'") from exc
-            if not isinstance(response, dict):
-                raise NatsApiError(f"NATS returned an invalid response for subject '{subject}'")
-            return response
-
-        return self._loop.run_until_complete(_req())
+        msg = self._loop.run_until_complete(self.nc.request(subject, payload, timeout=timeout))
+        try:
+            response = json.loads(msg.data.decode())
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise NatsApiError(f"NATS returned invalid JSON for subject '{subject}'") from exc
+        if not isinstance(response, dict):
+            raise NatsApiError(f"NATS returned an invalid response for subject '{subject}'")
+        return response
 
     def close(self) -> None:
-        async def _drain() -> None:
-            await self.nc.drain()
-
         try:
             if not self._loop.is_closed():
-                self._loop.run_until_complete(_drain())
+                self._loop.run_until_complete(self.nc.drain())
         except Exception as exc:
             logger.warning("Error draining NATS connection: %s", exc)
         finally:
@@ -167,60 +151,6 @@ def _build_connect_opts(connection: NatsConnectionConfig, temp_cert_files: list[
         opts["tls"] = _build_tls_context(connection.tlsConfig.root, temp_cert_files)
 
     return opts
-
-
-def get_connection(connection: NatsConnectionConfig) -> NatsClient:
-    loop = asyncio.new_event_loop()
-    temp_cert_files: list[str] = []
-    nc = NatsSdkClient()
-    connect_task = None
-    connection_errors: deque[Exception] = deque(maxlen=1)
-    try:
-        opts = _build_connect_opts(connection, temp_cert_files)
-        reconnect_attempts = opts.get("max_reconnect_attempts", DEFAULT_MAX_RECONNECT_ATTEMPTS)
-        error_cb = opts.get("error_cb")
-
-        async def record_error(error: Exception) -> None:
-            connection_errors.append(error)
-            if error_cb:
-                await error_cb(error)
-            else:
-                logger.error("NATS connection error: %s", error)
-
-        # Bound initial retries separately from the established client's reconnect policy.
-        opts["max_reconnect_attempts"] = 1
-        opts["error_cb"] = record_error
-
-        async def _connect() -> None:
-            await nc.connect(**opts)
-            nc.options["max_reconnect_attempts"] = reconnect_attempts
-
-        connect_task = loop.create_task(_connect())
-        loop.run_until_complete(connect_task)
-    except Exception as exc:
-        try:
-            if connect_task is not None and not connect_task.done():
-                connect_task.cancel()
-                with suppress(asyncio.CancelledError):
-                    loop.run_until_complete(connect_task)
-            loop.run_until_complete(nc.close())
-        except Exception as close_error:
-            logger.warning("Error closing failed NATS connection: %s", close_error)
-        finally:
-            _cleanup_temp_certs(temp_cert_files)
-            loop.close()
-        if connection_errors and isinstance(exc, (NoServersError, TimeoutError)):
-            last_error = connection_errors[-1]
-            if isinstance(last_error, TimeoutError) and not str(last_error):
-                raise TimeoutError("NATS connection timed out") from exc
-            if last_error is not exc:
-                raise last_error from exc
-        raise
-    return NatsClient(
-        nc=nc,
-        _loop=loop,
-        _temp_cert_files=temp_cert_files,
-    )
 
 
 def _raise_for_api_error(response: dict, action: str) -> None:
@@ -288,21 +218,57 @@ class NatsChecks:
         return None
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: NatsClient,
-    service_connection: NatsConnectionConfig,
-    automation_workflow: AutomationWorkflow | None = None,
-    timeout_seconds: int | None = STEP_TIMEOUT_SECONDS,
-) -> TestConnectionResult:
-    return TestConnectionRunner(
-        NatsChecks(Borrowed.of(client), service_connection), NatsType.Nats.value, timeout_seconds
-    ).run(metadata, automation_workflow)
-
-
 class NatsConnection(BaseConnection[NatsConnectionConfig, NatsClient]):
     def _get_client(self) -> NatsClient:
-        client = get_connection(self.service_connection)
+        loop = asyncio.new_event_loop()
+        temp_cert_files: list[str] = []
+        nc = NatsSdkClient()
+        connect_task = None
+        connection_errors: deque[Exception] = deque(maxlen=1)
+        try:
+            opts = _build_connect_opts(self.service_connection, temp_cert_files)
+            reconnect_attempts = opts.get("max_reconnect_attempts", DEFAULT_MAX_RECONNECT_ATTEMPTS)
+            error_cb = opts.get("error_cb")
+
+            async def record_error(error: Exception) -> None:
+                connection_errors.append(error)
+                if error_cb:
+                    await error_cb(error)
+                else:
+                    logger.error("NATS connection error: %s", error)
+
+            # Bound initial retries separately from the established client's reconnect policy.
+            opts["max_reconnect_attempts"] = 1
+            opts["error_cb"] = record_error
+
+            connect_task = loop.create_task(nc.connect(**opts))
+            loop.run_until_complete(connect_task)
+            nc.options["max_reconnect_attempts"] = reconnect_attempts
+        except Exception as exc:
+            try:
+                if connect_task is not None and not connect_task.done():
+                    connect_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        loop.run_until_complete(connect_task)
+                loop.run_until_complete(nc.close())
+            except Exception as close_error:
+                logger.warning("Error closing failed NATS connection: %s", close_error)
+            finally:
+                _cleanup_temp_certs(temp_cert_files)
+                loop.close()
+            if connection_errors and isinstance(exc, (NoServersError, TimeoutError)):
+                last_error = connection_errors[-1]
+                if isinstance(last_error, TimeoutError) and not str(last_error):
+                    raise TimeoutError("NATS connection timed out") from exc
+                if last_error is not exc:
+                    raise last_error from exc
+            raise
+        client = NatsClient(
+            nc=nc,
+            _loop=loop,
+            _temp_cert_files=temp_cert_files,
+        )
+
         self._on_close(client.close)
         return client
 
