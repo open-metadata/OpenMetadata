@@ -4,9 +4,9 @@
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Sigma connector maintainers
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_sigma.py`
-  (`test_skip_permission_check_lists_the_documents_the_credential_cannot_open`,
+  (`test_list_all_assets_lists_the_documents_the_credential_cannot_open`,
   `test_by_default_the_listings_send_no_scope_parameter`)
-- **Related:** `sigmaConnection.json` `skipPermissionCheck`; PowerBI `useAdminApis`
+- **Related:** `sigmaConnection.json` `listAllAssets`; PowerBI `useAdminApis`
   (`powerBIConnection.json`); ADR:2026-10-16-oracle-global-temporary-tables-are-opt-in-and-ingested-as-local
 
 ## Context
@@ -28,9 +28,10 @@ behaviour.
 
 ## Decision
 
-- `SigmaConnection.skipPermissionCheck` (boolean, default `false`) opts a connection into the org-wide listing.
-  The field keeps Sigma's parameter name, because that is the term a user finds in Sigma's reference and audit
-  logs; the description, not the name, carries the Admin requirement. Sigma has one API with an admin-only
+- `SigmaConnection.listAllAssets` (boolean, default `false`) opts a connection into the org-wide listing.
+  The field is named for what it does, not for Sigma's parameter: `skipPermissionCheck` on a form reads as if the
+  connector skipped a check of its own. The description names the parameters it sends and the Admin requirement,
+  so a user can still match it to Sigma's reference and audit logs. Sigma has one API with an admin-only
   parameter, not a separate admin API, so PowerBI's `useAdminApis` name was not copied.
 - When it is `true`, the workbook listing sends `skipPermissionCheck=true&excludeExplorations=true` and the data
   model listing sends `skipPermissionCheck=true`, on every page. Custom views are private, per-user views of a

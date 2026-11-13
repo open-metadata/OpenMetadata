@@ -110,7 +110,7 @@ class SigmaApiClient:
         (ADR:2026-11-12-sigma-org-wide-listing-is-opt-in-and-excludes-custom-views). Sigma then lists custom
         views too, which are private per-user views of a workbook, so the workbook listing excludes them.
         """
-        if not self.config.skipPermissionCheck:
+        if not self.config.listAllAssets:
             return None
         scope = {"skipPermissionCheck": "true"}
         if exclude_explorations:

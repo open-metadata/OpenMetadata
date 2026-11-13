@@ -925,9 +925,9 @@ def hidden_documents(routes):
     return routes
 
 
-def test_skip_permission_check_lists_the_documents_the_credential_cannot_open(sigma_over_http, hidden_documents):
+def test_list_all_assets_lists_the_documents_the_credential_cannot_open(sigma_over_http, hidden_documents):
     source, _ = sigma_over_http
-    source.client.config.skipPermissionCheck = True
+    source.client.config.listAllAssets = True
 
     assert [w.workbookId for w in source.client.get_dashboards()] == ["wb-1", "wb-2", "wb-3", "wb-hidden"]
     assert [w.workbookId for w in source.client.test_get_dashboards()] == ["wb-1", "wb-2"]

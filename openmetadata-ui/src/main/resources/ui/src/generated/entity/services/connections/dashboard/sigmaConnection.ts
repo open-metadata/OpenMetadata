@@ -43,15 +43,18 @@ export interface SigmaConnection {
      */
     hostPort: string;
     /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to both
+     * listings, and excludeExplorations=true to the workbook listing so that private custom
+     * views are not ingested. Sigma accepts skipPermissionCheck only from a user with the Admin
+     * account type.
+     */
+    listAllAssets?: boolean;
+    /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?: FilterPattern;
-    /**
-     * List every workbook and data model in the Sigma organization, not only the ones the API
-     * client's owner can access. Sends Sigma's skipPermissionCheck parameter, which is only
-     * available to the Admin account type; custom views are never listed.
-     */
-    skipPermissionCheck?:        boolean;
+    projectFilterPattern?:       FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
