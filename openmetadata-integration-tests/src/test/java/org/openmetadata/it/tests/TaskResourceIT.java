@@ -1726,6 +1726,46 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testDomainOnlyUserWithoutDomainsCannotListRequestedDomainTasks(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain requestedDomain = createDomain(ns, "domain-only-requested");
+    Table requestedTable =
+        createTableWithDomainAndOwners(
+            ns, requestedDomain.getEntityReference(), List.of(shared.USER1_REF));
+    Task requestedTask = createTaskAboutTable(ns, "domain-only-requested", requestedTable);
+    OpenMetadataClient domainOnlyClient = createDomainOnlyTaskUserClient(ns, List.of());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> domainOnlyClient.tasks().get(requestedTask.getId().toString()));
+
+    ListResponse<Task> unfilteredTasks =
+        domainOnlyClient
+            .tasks()
+            .listWithFilters(Map.of("limit", "1000", "fields", "domains,about"));
+    assertTrue(
+        unfilteredTasks.getData().isEmpty(),
+        "Domain-only user without domains should not list tasks");
+
+    ListResponse<Task> requestedDomainTasks =
+        domainOnlyClient
+            .tasks()
+            .listWithFilters(
+                Map.of(
+                    "limit",
+                    "1000",
+                    "domain",
+                    requestedDomain.getFullyQualifiedName(),
+                    "fields",
+                    "domains,about,payload,assignees,createdBy"));
+
+    assertTrue(
+        requestedDomainTasks.getData().isEmpty(),
+        "Requested domain must not replace the user's no-domain restriction");
+    assertEquals(0, requestedDomainTasks.getTotal());
+  }
+
+  @Test
   void testDomainOnlyUserCannotCreateTaskOutsideAllowedDomain(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
 
@@ -4996,6 +5036,11 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   private OpenMetadataClient createDomainOnlyTaskUserClient(
       TestNamespace ns, Domain allowedDomain) {
+    return createDomainOnlyTaskUserClient(ns, List.of(allowedDomain.getFullyQualifiedName()));
+  }
+
+  private OpenMetadataClient createDomainOnlyTaskUserClient(
+      TestNamespace ns, List<String> domains) {
     Role domainOnlyRole = SdkClients.adminClient().roles().getByName("DomainOnlyAccessRole");
     Role elevatedRole = getElevatedRoleForTaskTests();
     String userName = "domtask_" + UUID.randomUUID().toString().substring(0, 8);
@@ -5006,7 +5051,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withName(userName)
             .withEmail(email)
             .withDescription("Domain-only task test user")
-            .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+            .withDomains(domains)
             .withRoles(List.of(domainOnlyRole.getId(), elevatedRole.getId()));
 
     SdkClients.adminClient().users().create(request);
