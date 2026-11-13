@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { OntologyProfileReport } from '../../../src/generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
@@ -24,7 +25,11 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { clickGraphNode, readNodePositions } from '../../utils/ontologyStudio';
+import {
+  chooseInspectorRelationType,
+  clickGraphNode,
+  readNodePositions,
+} from '../../utils/ontologyStudio';
 
 const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 const XSD = 'http://www.w3.org/2001/XMLSchema#';
@@ -153,7 +158,8 @@ const openNewRule = async (page: Page) => {
 /**
  * Types into a label picker and takes the option whose label starts with `label`.
  * A picker that spans ontologies can list the same label twice; `iri` picks the one
- * that belongs to the ontology under test.
+ * that belongs to the ontology under test. An option shows its context and IRI cut in the
+ * middle, so the match is on the IRI's unique tail.
  */
 const pickByLabel = async (picker: Locator, label: string, iri?: string) => {
   const input = picker.getByRole('combobox');
@@ -163,7 +169,7 @@ const pickByLabel = async (picker: Locator, label: string, iri?: string) => {
   const option = picker
     .page()
     .getByRole('option', { name: new RegExp(`^${label}`) });
-  await (iri ? option.filter({ hasText: iri }) : option).click();
+  await (iri ? option.filter({ hasText: iri.slice(-20) }) : option).click();
   await expect(input).toHaveValue(label);
 };
 
@@ -191,8 +197,17 @@ const saveRule = async (page: Page) => {
       response.request().method() === 'POST'
   );
   await clickIgnoringToasts(page.getByTestId('ontology-axiom-submit'));
+  const axiom = await okJson<OntologyAxiom>(await created, 'Create the rule');
+  // Save keeps the overlay drawer open on the saved rule, over the list's Add button.
+  // Close it only once it shows the saved rule, so the unsaved-changes guard has nothing to ask.
+  const drawer = page.getByTestId('ontology-definition-drawer');
+  await expect(drawer.getByRole('heading', { level: 2 })).toHaveText(
+    axiom.displayName || axiom.name
+  );
+  await drawer.getByTestId('ontology-definition-drawer-close').click();
+  await expect(drawer).toHaveCount(0);
 
-  return okJson<OntologyAxiom>(await created, 'Create the rule');
+  return axiom;
 };
 
 const fillQuickMustHave = async (
@@ -236,10 +251,10 @@ test.describe(
               editor.getByRole('textbox', { name: /Rule name/ })
             ).toHaveCount(0);
             await expect(
-              editor.getByRole('textbox', { name: 'Display Name (optional)' })
+              editor.getByRole('textbox', { name: 'Display Name', exact: true })
             ).toBeVisible();
             await expect(
-              editor.getByRole('textbox', { name: 'Description (optional)' })
+              editor.getByRole('textbox', { name: 'Description', exact: true })
             ).toBeVisible();
           });
 
@@ -534,7 +549,7 @@ test.describe(
           ).toBeVisible();
           await expect(
             editor.getByTestId('ontology-axiom-mode-advanced')
-          ).toHaveAttribute('aria-checked', 'true');
+          ).toHaveAttribute('aria-selected', 'true');
           await testInfo.attach('g13-convert', {
             body: await page.screenshot(),
             contentType: 'image/png',
@@ -581,7 +596,10 @@ test.describe(
 
         await openConstraints(page, fixture.ontology);
         await page
-          .getByRole('button', { name: 'PatientTree', exact: true })
+          .getByRole('row', {
+            name: 'Patient Subclass of (Adult and (Insured or Employed))',
+            exact: true,
+          })
           .click();
         const editor = page.getByTestId('ontology-axiom-panel');
 
@@ -649,7 +667,10 @@ test.describe(
 
           await openConstraints(page, fixture.ontology);
           await page
-            .getByRole('button', { name: 'PatientHasBirthDate', exact: true })
+            .getByRole('row', {
+              name: 'Patient must have at least 2 dateOfBirth',
+              exact: true,
+            })
             .click();
           const editor = page.getByTestId('ontology-axiom-panel');
 
@@ -658,8 +679,14 @@ test.describe(
             editor.getByTestId('ontology-axiom-preview')
           ).toContainText('Patient must have at least 2 dateOfBirth');
 
+          // The 40vw drawer can cover the next row at narrower layouts; close it to reach the list.
+          await page.getByTestId('ontology-definition-drawer-close').click();
+          await expect(editor).toHaveCount(0);
           await page
-            .getByRole('button', { name: 'ImportedPatientRule', exact: true })
+            .getByRole('row', {
+              name: 'Patient Equivalent to (Adult or Insured)',
+              exact: true,
+            })
             .click();
 
           await expect(
@@ -716,7 +743,10 @@ test.describe(
           const panel = page.getByTestId('ontology-conflicts-panel');
 
           await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-            '1 conflict to resolve'
+            'Conflict to resolve'
+          );
+          await expect(page.getByTestId('ontology-conflicts-count')).toHaveText(
+            '1'
           );
           await expect(panel.getByTestId('ontology-conflict-row')).toHaveCount(
             1
@@ -726,13 +756,14 @@ test.describe(
             contentType: 'image/png',
           });
 
-          await panel
-            .getByTestId('ontology-conflict-link')
-            .filter({ hasText: 'Tonic' })
-            .click();
+          await panel.getByTestId('ontology-conflict-resolve').click();
+          const inspector = page.getByTestId('ontology-concept-inspector');
           await expect(
-            page.getByTestId('ontology-concept-inspector')
+            inspector.getByRole('heading', { name: 'Tonic' })
           ).toBeVisible();
+          await expect(
+            inspector.getByTestId('ontology-concept-conflicts-toggle')
+          ).toHaveAttribute('aria-expanded', 'true');
 
           expect(
             (
@@ -741,10 +772,20 @@ test.describe(
               )
             ).ok()
           ).toBe(true);
-          await openOntology(page, fixture.ontology);
-          await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-            '0 conflicts to resolve'
+          const validated = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${fixture.ontology.id}/working/validation` &&
+              response.request().method() === 'GET'
           );
+          await openOntology(page, fixture.ontology);
+          const report = await okJson<OntologyProfileReport>(
+            await validated,
+            'Validate the fixed draft'
+          );
+          expect(report.violations).toHaveLength(0);
+          // A clean draft has nothing to resolve, so the conflicts card is not drawn.
+          await expect(panel).toHaveCount(0);
         } finally {
           await fixture.cleanup();
         }
@@ -777,7 +818,8 @@ test.describe(
         await test.step('Data property with a data type', async () => {
           const form = await openForm();
           await form.getByTestId('ontology-property-name').fill('email');
-          await form.getByTestId('ontology-property-type-string').click();
+          await form.getByRole('button', { name: /Range/ }).click();
+          await page.getByTestId('ontology-property-type-string').click();
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
@@ -786,6 +828,7 @@ test.describe(
 
         await test.step('Annotation property', async () => {
           const form = await openForm();
+          await form.getByTestId('ontology-property-kind-more').click();
           await form.getByTestId('ontology-property-kind-annotation').click();
           await form.getByTestId('ontology-property-name').fill('internalNote');
           await clickIgnoringToasts(
@@ -878,7 +921,9 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/ontologyProperties' &&
             response.request().method() === 'POST'
         );
-        await clickIgnoringToasts(editor.getByRole('button', { name: 'Save' }));
+        await clickIgnoringToasts(
+          editor.getByRole('button', { name: 'Create Property', exact: true })
+        );
         const property = await okJson<OntologyProperty>(
           await created,
           'Create the property'
@@ -913,33 +958,38 @@ test.describe(
           .click();
         const editor = page.getByTestId('ontology-concept-editor');
 
-        await editor.getByRole('button', { name: 'Add Mapping' }).click();
-        await pickByLabel(
-          editor
-            .getByRole('group', { name: 'Mapping 1' })
-            .getByTestId('ontology-mapping-concept'),
-          'Party',
-          party.iri
+        // The panel edits one mapping at a time: Add opens the New mapping card,
+        // Add mapping files it as a row and closes the card.
+        const mappingCard = editor.getByTestId('ontology-concept-mapping');
+        const mappingPicker = mappingCard.getByTestId(
+          'ontology-mapping-concept'
         );
-        await editor.getByRole('button', { name: 'Add Mapping' }).click();
-        const otherPicker = editor
-          .getByRole('group', { name: 'Mapping 2' })
-          .getByTestId('ontology-mapping-concept');
-        const otherInput = otherPicker.getByRole('combobox');
-        await otherInput.fill('Account');
-        await otherInput.press('ArrowDown');
-        const accountOption = page.getByRole('option', { name: /^Account/ });
-        await expect(accountOption).toContainText(
-          `${elsewhere.ontology.name} · ${account.iri}`
+        const addMapping = async (fill: () => Promise<void>) => {
+          await editor.getByTestId('ontology-add-mapping').click();
+          await fill();
+          await mappingCard.getByTestId('ontology-mapping-submit').click();
+          await expect(mappingCard).toHaveCount(0);
+        };
+
+        await addMapping(() => pickByLabel(mappingPicker, 'Party', party.iri));
+        await addMapping(async () => {
+          const otherInput = mappingPicker.getByRole('combobox');
+          await otherInput.fill('Account');
+          await otherInput.press('ArrowDown');
+          const accountOption = page
+            .getByRole('option', { name: /^Account/ })
+            .filter({ hasText: account.iri.slice(-20) });
+          await expect(accountOption).toContainText(
+            elsewhere.ontology.name.slice(0, 10)
+          );
+          await accountOption.click();
+        });
+        await addMapping(() =>
+          pasteIri(mappingPicker, 'https://schema.org/Person')
         );
-        await accountOption.click();
-        await editor.getByRole('button', { name: 'Add Mapping' }).click();
-        await pasteIri(
-          editor
-            .getByRole('group', { name: 'Mapping 3' })
-            .getByTestId('ontology-mapping-concept'),
-          'https://schema.org/Person'
-        );
+        await expect(
+          editor.getByTestId('ontology-concept-mapping-row')
+        ).toHaveCount(3);
         const saved = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname ===
@@ -1013,7 +1063,10 @@ test.describe(
 
         await expect(panel.getByTestId('ontology-conflict-row')).toHaveCount(3);
         await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-          '3 conflicts to resolve'
+          'Conflicts to resolve'
+        );
+        await expect(page.getByTestId('ontology-conflicts-count')).toHaveText(
+          '3'
         );
         for (const child of [tonic, pill, syrup]) {
           await expect(panel).toContainText(child.name);
@@ -1057,7 +1110,7 @@ test.describe(
         await clickGraphNode(page, tonic.id);
         const inspector = page.getByTestId('ontology-concept-inspector');
         await inspector.getByTestId('ontology-add-relationship').click();
-        await page.getByTestId(`relation-type-${SUBCLASS_OF}`).click();
+        await chooseInspectorRelationType(page, inspector, SUBCLASS_OF);
         const target = inspector.getByLabel('Target');
         await selectOptionWithRetry(
           target,

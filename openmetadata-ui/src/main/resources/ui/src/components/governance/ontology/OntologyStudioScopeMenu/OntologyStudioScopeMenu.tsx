@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   Dropdown,
   Input,
   Popover,
@@ -21,6 +22,7 @@ import {
   BookClosed,
   Check,
   ChevronDown,
+  DotsHorizontal,
   Globe01,
   Plus,
   Search,
@@ -46,6 +48,7 @@ import {
   OntologyStudioScope,
 } from '../../../../utils/governance/ontology/OntologyStudioScope.utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyDeleteDialog from '../OntologyDeleteDialog/OntologyDeleteDialog';
 import { filterOntologies } from './OntologyStudioScopeMenu.utils';
 
@@ -71,7 +74,7 @@ const SECTION_HEADER_CLASS =
 const ROW_CLASS = [
   'tw:flex tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:items-center tw:gap-3',
   'tw:rounded-md tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left',
-  'tw:text-sm tw:text-primary tw:outline-focus-ring focus-visible:tw:outline-2',
+  'tw:text-sm tw:text-primary tw:outline-focus-ring tw:focus-visible:outline-2',
 ].join(' ');
 
 // react-aria's Button drops `role`; the picker keeps the menu roles it had as a Dropdown.Menu.
@@ -115,12 +118,15 @@ const OntologyRowActions = ({
 
   return (
     <Dropdown.Root onOpenChange={(open) => open && setIsRequested(true)}>
-      <Dropdown.DotsButton
+      {/* Shown on row hover or focus, as the design's picker does; an open menu keeps it shown. */}
+      <ButtonUtility
         aria-label={t('label.more-actions-for', {
           name: getEntityName(ontology),
         })}
-        className="tw:mr-2 tw:shrink-0"
+        className="tw:mr-1 tw:shrink-0 tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-within:opacity-100 tw:aria-expanded:opacity-100"
         data-testid={`ontology-scope-actions-${ontology.id}`}
+        icon={DotsHorizontal}
+        size="sm"
       />
       <Dropdown.Popover>
         <Dropdown.Menu
@@ -185,8 +191,11 @@ const OntologyStudioScopeMenu = ({
   const allOntologiesLabel = t('label.all-entity', {
     entity: t('label.ontology-plural').toLocaleLowerCase(),
   });
+  const searchLabel = t('label.search-entity', {
+    entity: t('label.ontology-plural').toLocaleLowerCase(),
+  });
   const newOntologyLabel = t('label.new-entity', {
-    entity: t('label.ontology'),
+    entity: t('label.ontology').toLocaleLowerCase(),
   });
 
   const handleOpenChange = (open: boolean) => {
@@ -222,18 +231,22 @@ const OntologyStudioScopeMenu = ({
 
     return (
       <li
-        className="tw:flex tw:items-center tw:rounded-md hover:tw:bg-primary_hover"
+        className={classNames(
+          'tw:group tw:flex tw:items-center tw:rounded-md',
+          isSelected ? 'tw:bg-brand-primary' : 'tw:hover:bg-primary_hover'
+        )}
         key={scopeKey}
         role="none">
         <MenuButton
           aria-checked={isSelected}
           aria-label={meta ? `${name}, ${meta}` : name}
+          className={isSelected ? 'tw:text-brand-secondary' : undefined}
           data-testid={testId}
           role="menuitemradio"
           onPress={closeThen(() => onScopeChange(scopeTarget))}>
           {icon}
           <span
-            className="tw:min-w-0 tw:flex-1 tw:truncate"
+            className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-medium"
             data-testid={`${testId}-label`}>
             {name}
           </span>
@@ -243,7 +256,10 @@ const OntologyStudioScopeMenu = ({
             </span>
           ) : null}
           {isSelected ? (
-            <Check aria-hidden="true" className="tw:size-4 tw:shrink-0" />
+            <Check
+              aria-hidden="true"
+              className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+            />
           ) : null}
         </MenuButton>
         {actions}
@@ -321,8 +337,8 @@ const OntologyStudioScopeMenu = ({
   const renderStatus = () => (
     <>
       {isLoading ? (
-        <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-          {t('label.loading')}
+        <div className="tw:px-4 tw:py-2">
+          <Loader size="small" />
         </div>
       ) : null}
       {isError ? (
@@ -353,7 +369,7 @@ const OntologyStudioScopeMenu = ({
       {onCreateOntology ? (
         <div className="tw:mt-1 tw:border-t tw:border-secondary tw:px-1 tw:pt-1">
           <MenuButton
-            className="tw:w-full tw:font-semibold"
+            className="tw:w-full tw:font-medium tw:text-brand-secondary"
             data-testid="ontology-create"
             role="menuitem"
             onPress={closeThen(onCreateOntology)}>
@@ -373,14 +389,10 @@ const OntologyStudioScopeMenu = ({
       {renderStatus()}
       <div className="tw:px-3 tw:pb-2">
         <Input
-          aria-label={t('label.search-entity', {
-            entity: t('label.ontology-plural'),
-          })}
+          aria-label={searchLabel}
           icon={Search}
           inputDataTestId="ontology-scope-search"
-          placeholder={t('label.search-entity', {
-            entity: t('label.ontology-plural'),
-          })}
+          placeholder={searchLabel}
           size="sm"
           value={query}
           onChange={setQuery}

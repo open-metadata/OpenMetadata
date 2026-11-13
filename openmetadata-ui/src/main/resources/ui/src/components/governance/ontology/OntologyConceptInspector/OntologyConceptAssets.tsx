@@ -12,6 +12,8 @@
  */
 import {
   Alert,
+  Badge,
+  BadgeColors,
   Box,
   Button,
   ButtonUtility,
@@ -19,8 +21,17 @@ import {
   ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { MouseEvent, useState } from 'react';
+import {
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  Database01,
+  Table,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { upperFirst } from 'lodash';
+import { FC, MouseEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -34,7 +45,6 @@ import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/u
 import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -42,16 +52,19 @@ import {
   getUnlinkDescription,
   NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
-import {
-  InspectorEmptyText,
-  InspectorSectionHeading,
-} from '../../../OntologyExplorer/OntologyInspectorSection';
 import OntologyColumnMappingStep, {
   ColumnMappingProperty,
 } from './OntologyColumnMappingStep';
-import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
+import {
+  getAssetPath,
+  pinToTopOfScrollParent,
+} from './OntologyConceptInspector.utils';
+import { ConceptSection } from './OntologyConceptSection';
 
 interface OntologyConceptAssetsProps {
   conceptId: string;
@@ -59,8 +72,25 @@ interface OntologyConceptAssetsProps {
   canEdit: boolean;
   /** The concept's bindable properties; without them no column step is offered. */
   properties?: readonly ColumnMappingProperty[];
-  presentation: { kind: 'edit' } | { kind: 'view'; onOpenData: () => void };
+  presentation: { kind: 'edit' } | { kind: 'view' };
+  /**
+   * Opens the link form and scrolls to it once linking is allowed. The request stays until the
+   * form closes, so a remount (Edit swapping in the editor) still opens it.
+   */
+  isLinkRequested?: boolean;
+  onLinkRequestClosed?: () => void;
+  /** The asset picked on the Data canvas; its row is highlighted. */
+  selectedAssetId?: string;
 }
+
+const ASSET_ICONS: Partial<Record<string, FC<{ className?: string }>>> = {
+  [AssetType.Table]: Table,
+  [AssetType.Topic]: Activity,
+};
+const ASSET_BADGE_COLORS: Partial<Record<string, BadgeColors>> = {
+  [AssetType.Table]: 'blue',
+  [AssetType.Topic]: 'orange',
+};
 
 const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
   const { t } = useTranslation();
@@ -72,24 +102,34 @@ const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
   );
 
   return (
-    <Box direction="col" gap={1}>
+    <Box className="tw:min-w-0 tw:flex-1" direction="col">
       {path ? (
-        <Link to={path}>{getEntityName(asset)}</Link>
-      ) : (
-        <Typography size="text-sm">{getEntityName(asset)}</Typography>
-      )}
-      {asset.type === EntityType.TABLE &&
-      asset.fullyQualifiedName &&
-      canViewSampleData ? (
-        <Link
-          to={getEntityDetailsPath(
-            EntityType.TABLE,
-            asset.fullyQualifiedName,
-            EntityTabs.SAMPLE_DATA
-          )}>
-          {t('label.sample-data')}
+        <Link className="tw:truncate tw:text-md tw:text-primary" to={path}>
+          {getEntityName(asset)}
         </Link>
-      ) : null}
+      ) : (
+        <Typography ellipsis size="text-md">
+          {getEntityName(asset)}
+        </Typography>
+      )}
+      <Box align="center" className="tw:min-w-0" gap={2}>
+        <Typography ellipsis className="tw:text-tertiary" size="text-sm">
+          {getAssetPath(asset.fullyQualifiedName)}
+        </Typography>
+        {asset.type === EntityType.TABLE &&
+        asset.fullyQualifiedName &&
+        canViewSampleData ? (
+          <Link
+            className="tw:shrink-0 tw:text-sm"
+            to={getEntityDetailsPath(
+              EntityType.TABLE,
+              asset.fullyQualifiedName,
+              EntityTabs.SAMPLE_DATA
+            )}>
+            {t('label.sample-data')}
+          </Link>
+        ) : null}
+      </Box>
     </Box>
   );
 };
@@ -100,9 +140,11 @@ const OntologyConceptAssets = ({
   canEdit,
   properties = [],
   presentation,
+  isLinkRequested,
+  onLinkRequestClosed,
+  selectedAssetId,
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
   const unlink = useAnchoredConfirm<{
     binding: AssetBinding;
@@ -112,6 +154,7 @@ const OntologyConceptAssets = ({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [bindAssets, setBindAssets] = useState<EntityReference[]>();
   const [page, setPage] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
   const linking = useOntologyAssetLinking(conceptId, bindings);
   const unlinkAsset = useOntologyAssetUnlink(bindings, conceptName);
   const assets = bindings.data?.assets ?? [];
@@ -121,9 +164,20 @@ const OntologyConceptAssets = ({
   );
 
   const canLink = canEdit && bindings.isSuccess;
+  const sectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!isLinkRequested || !canLink) {
+      return undefined;
+    }
+    setIsPickerOpen(true);
+
+    return sectionRef.current
+      ? pinToTopOfScrollParent(sectionRef.current)
+      : undefined;
+  }, [canLink, isLinkRequested]);
 
   const renderPicker = () => {
-    if (!canEdit || (isAiMode && !isPickerOpen && !bindAssets)) {
+    if (!canEdit || (!isPickerOpen && !bindAssets)) {
       return null;
     }
     if (bindAssets) {
@@ -139,7 +193,7 @@ const OntologyConceptAssets = ({
       );
     }
 
-    return isPickerOpen ? (
+    return (
       <OntologyDataAssetPicker
         native={{
           assetTypes: NATIVE_BINDING_ASSET_TYPES,
@@ -151,9 +205,11 @@ const OntologyConceptAssets = ({
         onCancel={() => {
           linking.cancel();
           setIsPickerOpen(false);
+          onLinkRequestClosed?.();
         }}
         onSave={(linked) => {
           setIsPickerOpen(false);
+          onLinkRequestClosed?.();
           const tables = linked.filter(
             (asset) => asset.type === EntityType.TABLE
           );
@@ -162,16 +218,6 @@ const OntologyConceptAssets = ({
           }
         }}
       />
-    ) : (
-      <Button
-        color="secondary"
-        data-testid="ontology-native-link-assets"
-        iconLeading={Plus}
-        isDisabled={!bindings.editableSnapshot}
-        size="xs"
-        onPress={() => setIsPickerOpen(true)}>
-        {t('label.add-entity', { entity: t('label.data-asset-plural') })}
-      </Button>
     );
   };
 
@@ -207,50 +253,68 @@ const OntologyConceptAssets = ({
           }}
         />
       )}
-      {bindings.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
+      {bindings.isPending ? <Loader size="small" /> : null}
       {bindings.readState === 'unavailable' ? (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="link-color"
+              size="sm"
+              onPress={() => void bindings.retryRead().catch(() => undefined)}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('message.ontology-binding-read-unavailable')}
-          <Button
-            color="link-color"
-            size="sm"
-            onPress={() => void bindings.retryRead().catch(() => undefined)}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       ) : null}
     </>
   );
 
-  const visibleAssets =
-    presentation.kind === 'view'
-      ? assets.slice(0, 3)
-      : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
+  // View shows three until the person asks for the rest, which then pages like Edit.
+  const isCollapsed = presentation.kind === 'view' && !isExpanded;
+  const visibleAssets = isCollapsed
+    ? assets.slice(0, 3)
+    : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
 
   const renderAssetList = () =>
     assets.length > 0 ? (
       <Card className="tw:divide-y tw:divide-secondary">
         {visibleAssets.map((binding) => {
+          const Icon = ASSET_ICONS[binding.assetType] ?? Database01;
+          const isSelected = binding.assetId === selectedAssetId;
+
           return (
             <Box
               align="center"
-              className="tw:min-h-12 tw:px-3 tw:py-2"
+              aria-current={isSelected || undefined}
+              className={classNames(
+                'tw:min-h-16 tw:px-4 tw:py-3',
+                isSelected &&
+                  'tw:border-l-2 tw:border-brand tw:bg-brand-primary tw:pl-3.5'
+              )}
+              data-testid={`ontology-native-asset-row-${binding.assetId}`}
               gap={3}
               key={`${binding.assetType}:${binding.assetId}`}>
-              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                <OntologyAssetLinks asset={binding.asset} />
-                <Typography ellipsis color="secondary" size="text-xs">
-                  {binding.asset.fullyQualifiedName}
-                </Typography>
-                <Typography color="secondary" size="text-xs">
-                  {binding.assetType} ·{' '}
-                  {t('label.ontology-column-binding-count', {
-                    count: binding.columns.length,
-                  })}
-                </Typography>
-              </Box>
+              <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
+                <Icon
+                  aria-hidden
+                  className="tw:size-4 tw:text-fg-brand-primary"
+                />
+              </span>
+              <OntologyAssetLinks asset={binding.asset} />
+              <Badge
+                className="tw:shrink-0"
+                color={ASSET_BADGE_COLORS[binding.assetType] ?? 'gray'}
+                size="sm"
+                type="pill-color">
+                {binding.columns.length > 0
+                  ? `${upperFirst(humanizeName(binding.assetType))} · ${t(
+                      'label.ontology-column-count',
+                      { count: binding.columns.length }
+                    )}`
+                  : upperFirst(humanizeName(binding.assetType))}
+              </Badge>
               {canEdit &&
               properties.length > 0 &&
               binding.assetType === AssetType.Table ? (
@@ -293,7 +357,7 @@ const OntologyConceptAssets = ({
     ) : null;
 
   const renderPager = () =>
-    presentation.kind === 'edit' && assets.length > 10 ? (
+    !isCollapsed && assets.length > 10 ? (
       <Box gap={2}>
         <Button
           color="secondary"
@@ -315,32 +379,39 @@ const OntologyConceptAssets = ({
   const renderMoreAssets = () =>
     presentation.kind === 'view' && assets.length > 3 ? (
       <Button
+        className="tw:self-start"
         color="link-color"
         data-testid="ontology-assets-more"
+        iconLeading={isExpanded ? ChevronUp : ChevronDown}
         size="sm"
-        onPress={presentation.onOpenData}>
-        {t('label.ontology-more-assets', { count: assets.length - 3 })}
+        onPress={() => {
+          setIsExpanded((expanded) => !expanded);
+          setPage(0);
+        }}>
+        {isExpanded
+          ? t('label.show-less-lowercase')
+          : t('label.show-all-count', { count: assets.length })}
       </Button>
     ) : null;
 
   const renderAiSection = () => (
     <ConceptSection
-      addLabel={t('label.link-entity', { entity: t('label.asset') })}
+      addLabel={t('label.ontology-link-asset')}
       addTestId="ontology-native-link-assets"
       count={assets.length}
+      sectionRef={sectionRef}
       testId="ontology-native-assets"
-      title={t('label.data-asset-plural')}
+      title={t('label.ontology-data-assets')}
       onAdd={
         canLink && !isPickerOpen ? () => setIsPickerOpen(true) : undefined
       }>
       {renderPicker()}
       {renderStatus()}
       {assets.length === 0 && bindings.isSuccess ? (
-        <ConceptEmptyState
-          hint={t('message.ontology-current-catalog-links')}
-          title={t('label.no-entity', {
-            entity: t('label.data-asset-plural'),
-          })}
+        <InlineEmptyPlaceholder
+          data-testid="ontology-concept-empty"
+          description={t('message.ontology-data-assets-empty-hint')}
+          title={t('message.ontology-no-data-assets-yet')}
         />
       ) : (
         <Typography className="tw:text-tertiary" size="text-xs">
@@ -353,35 +424,7 @@ const OntologyConceptAssets = ({
     </ConceptSection>
   );
 
-  if (isAiMode) {
-    return renderAiSection();
-  }
-
-  return (
-    <Box
-      className="tw:py-1"
-      data-testid="ontology-native-assets"
-      direction="col"
-      gap={2}>
-      <InspectorSectionHeading
-        count={assets.length}
-        label={t('label.data-asset-plural')}
-      />
-      <Typography color="secondary" size="text-xs">
-        {t('message.ontology-current-catalog-links')}
-      </Typography>
-      {renderStatus()}
-      {renderAssetList()}
-      {assets.length === 0 && bindings.isSuccess ? (
-        <InspectorEmptyText>
-          {t('message.no-data-available')}
-        </InspectorEmptyText>
-      ) : null}
-      {renderMoreAssets()}
-      {renderPager()}
-      {renderPicker()}
-    </Box>
-  );
+  return renderAiSection();
 };
 
 export default OntologyConceptAssets;

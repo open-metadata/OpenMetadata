@@ -6,10 +6,12 @@ import com.google.common.base.Throwables;
 import com.google.common.base.Utf8;
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.ConnectException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -47,6 +49,7 @@ import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.jena.atlas.web.HttpException;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
@@ -1545,6 +1548,26 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  /**
+   * Only an unreachable or unavailable Fuseki counts toward the breaker: callers bring their own
+   * queries and deadlines, and one slow query must not short-circuit every other RDF read.
+   */
+  @Override
+  public void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    throwIfCircuitOpen("readQuery");
+    try (QueryExecution execution =
+        connection.newQuery().query(query).timeout(timeoutMillis, TimeUnit.MILLISECONDS).build()) {
+      reader.accept(execution);
+      recordSuccess();
+    } catch (RuntimeException exception) {
+      if (isUnavailableFailure(exception)) {
+        recordFailure();
+      }
+      throw exception;
+    }
+  }
+
   private String doExecuteSparqlQuery(String sparqlQuery, String format) {
     Query query = QueryFactory.create(sparqlQuery);
 
@@ -1639,12 +1662,31 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * short only abandons a clear that still completes; the request timeout of a single entity write
    * is the wrong limit. It neither consults nor feeds the circuit breaker: a long maintenance
    * request says nothing about whether Fuseki can serve entity writes.
+   *
+   * <p>One that Fuseki drops before answering is sent once more, within what is left of the same
+   * budget (ADR:2026-11-13-a-dropped-rdf-maintenance-clear-is-resent-once-within-its-budget).
    */
   @Override
   public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
     final UpdateRequest request = UpdateFactory.create(sparqlUpdate);
-    runWriteWithTimeout(
-        () -> connection.update(request), "maintenanceUpdate", Math.max(1, timeout.toMillis()));
+    final long budgetMillis = Math.max(1, timeout.toMillis());
+    final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budgetMillis);
+    try {
+      runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", budgetMillis);
+    } catch (RuntimeException failure) {
+      final long remainingMillis = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime());
+      if (!isDroppedConnection(failure) || remainingMillis <= 0) {
+        throw failure;
+      }
+      LOG.warn("Fuseki closed the connection before answering a maintenance update; resending it");
+      runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", remainingMillis);
+    }
+  }
+
+  /** The connection closed under the request: read as EOF, or a reset when the close races it. */
+  static boolean isDroppedConnection(final Throwable failure) {
+    return ExceptionUtils.indexOfType(failure, EOFException.class) != -1
+        || ExceptionUtils.indexOfType(failure, SocketException.class) != -1;
   }
 
   @Override

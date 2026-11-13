@@ -18,16 +18,20 @@ import {
   Response,
 } from '@playwright/test';
 import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
-import { test as base } from '../../support/fixtures/base';
 import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
+import { test as base } from '../../support/fixtures/userPages';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import {
   clickIgnoringToasts,
   disableEtagConditionalReads,
+  dismissToasts,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../utils/common';
 import {
   BulkOperationResult,
@@ -36,12 +40,17 @@ import {
   createMemoryViaApi,
   DOCUMENTS_URL,
   expectBulkIdsRequest,
+  expectMemoryExtractionOff,
+  expectMemoryExtractionOffTooltip,
   expectSelectedCount,
   getDocumentRowByName,
   getDocumentSearchInput,
   getFolderTreeItem,
   getMemoryStatus,
   MEMORIES_API,
+  MEMORY_EXTRACTION_AVAILABILITY_API,
+  MEMORY_EXTRACTION_CANNOT_START_MESSAGE,
+  MEMORY_EXTRACTION_OFF_MESSAGE,
   navigateToDocuments,
   parseResponseJson,
   revealFolderRow,
@@ -57,6 +66,7 @@ import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -91,6 +101,23 @@ interface ExtractedMemoryApproval {
   failed?: number;
   needsDecision: { id: string }[];
 }
+
+interface DocumentExtractionState {
+  fullyQualifiedName: string;
+  neverExtracted?: boolean;
+  processingStatus?: string;
+}
+
+const getExtractionState = async (
+  apiContext: APIRequestContext,
+  documentId: string
+): Promise<DocumentExtractionState> =>
+  okJson<DocumentExtractionState>(
+    await apiContext.get(`/api/v1/contextCenter/drive/files/${documentId}`, {
+      params: { fields: 'neverExtracted' },
+    }),
+    `Read the extraction state of document ${documentId}`
+  );
 
 /** A memory as extraction stores it: Unprocessed, linked to its document and anchored on it. */
 const createExtractedMemory = async (
@@ -1208,6 +1235,202 @@ test.describe('Context Center - Documents Page', () => {
       'Unprocessed'
     );
   });
+
+  // ─── Req 5c: Extract and Retry, for a document's owners and admins only ───
+
+  // A Collate server runs with memory extraction on, so these states exist only on OSS.
+  if (process.env.PLAYWRIGHT_IS_OSS) {
+    test('a document uploaded while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
+      documentSession,
+      page,
+      dataConsumerPage,
+    }) => {
+      // The upload's processing has to finish before the document reads Not processed.
+      test.slow();
+      const { apiContext } = documentSession;
+      await expectMemoryExtractionOff(apiContext);
+      const fileName = `not-extracted-${uuid()}.txt`;
+      const document = await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from(`Never extracted ${uuid()}`)
+      );
+      await waitForDocumentProcessingComplete(apiContext, document.id);
+      const state = await getExtractionState(apiContext, document.id);
+
+      expect(state.neverExtracted).toBe(true);
+
+      await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const panel = page.getByTestId('document-preview-panel');
+      await expect(panel.getByTestId('document-status-badge')).toHaveText(
+        'Not processed'
+      );
+      const extract = panel.getByTestId('memory-extraction-btn');
+      await expect(extract).toHaveText('Extract');
+      await expect(extract).toBeDisabled();
+      await expectMemoryExtractionOffTooltip(page);
+
+      await test.step('the row menu offers it the same way', async () => {
+        // A search lists the rows from the index, so wait for it to say Not processed too.
+        await waitForSearchIndexed(
+          apiContext,
+          state.fullyQualifiedName,
+          'contextFile',
+          {
+            queryFilter: JSON.stringify({
+              query: { bool: { filter: [{ term: { neverExtracted: true } }] } },
+            }),
+          }
+        );
+        const row = await searchAndGetDocumentRow(page, fileName, document.id);
+        await expect(row).toBeVisible();
+        await row.getByTestId('manage-button').click();
+        const item = page.getByTestId('memory-extraction-menu-btn');
+        await expect(item).toHaveAccessibleName('Extract');
+        await expect(item).toHaveAttribute('aria-disabled', 'true');
+        // Keyboard navigation skips a disabled item, so the reason is visible, and its description.
+        await expect(item).toHaveAccessibleDescription(
+          MEMORY_EXTRACTION_OFF_MESSAGE
+        );
+        await page.keyboard.press('Escape');
+        await expect(item).toHaveCount(0);
+      });
+
+      await test.step('a data consumer, neither owner nor admin, is offered nothing', async () => {
+        await dataConsumerPage.goto(
+          `${DOCUMENTS_URL}?document=${document.id}`,
+          {
+            waitUntil: 'domcontentloaded',
+          }
+        );
+        const consumerPanel = dataConsumerPage.getByTestId(
+          'document-preview-panel'
+        );
+        await expect(
+          consumerPanel.getByTestId('document-status-badge')
+        ).toHaveText('Not processed');
+        await expect(
+          consumerPanel.getByTestId('memory-extraction-btn')
+        ).toHaveCount(0);
+      });
+    });
+
+    test('a failed document offers an admin Retry, which reaches the server and shows why it is refused', async ({
+      documentSession,
+      page,
+    }) => {
+      // The upload's processing has to finish before the document reads Failed.
+      test.slow();
+      const { apiContext } = documentSession;
+      await expectMemoryExtractionOff(apiContext);
+      // Not a PDF, so its text extraction fails.
+      const fileName = `unreadable-${uuid()}.pdf`;
+      const document = await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from('These bytes are not a PDF document')
+      );
+      await waitForDocumentProcessingComplete(apiContext, document.id);
+      const state = await getExtractionState(apiContext, document.id);
+
+      expect(state.processingStatus).toBe('Failed');
+
+      await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const panel = page.getByTestId('document-preview-panel');
+      const badge = panel.getByTestId('document-status-badge');
+      const retry = panel.getByTestId('memory-extraction-btn');
+      await expect(badge).toHaveText('Failed');
+      await expect(retry).toHaveText('Retry');
+      await expect(retry).toBeDisabled();
+      await expectMemoryExtractionOffTooltip(page);
+
+      const isRetryRequest = (response: Response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/contextCenter/drive/files/${document.id}/extract`;
+      const row = page
+        .getByTestId('documents-view')
+        .getByTestId(`document-row-${document.id}`);
+      const menuRetry = page.getByTestId('memory-extraction-menu-btn');
+
+      await test.step('a page that reads extraction as on gets a 409 and says the document cannot start now', async () => {
+        // Every availability read answers on, the one after the 409 included.
+        await page.route(`**${MEMORY_EXTRACTION_AVAILABILITY_API}`, (route) =>
+          route.fulfill({ json: { available: true } })
+        );
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await expect(retry).toBeEnabled();
+        const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+        await clickIgnoringToasts(retry);
+
+        expect(await (await refusal).json()).toMatchObject({
+          code: 409,
+          message: 'Memory extraction is unavailable: ExtractionDisabled',
+        });
+
+        await toastNotification(page, MEMORY_EXTRACTION_CANNOT_START_MESSAGE);
+        await expect(badge).toHaveText('Failed');
+        await expect(retry).toBeEnabled();
+      });
+
+      await test.step('the row menu Retry reaches the server and says the same', async () => {
+        // The same text would match the first toast, so it goes first.
+        await dismissToasts(page);
+        await waitForToastToDisappear(
+          page,
+          MEMORY_EXTRACTION_CANNOT_START_MESSAGE
+        );
+        // A search lists the rows from the index, so wait for it to say Failed too.
+        await waitForSearchIndexed(
+          apiContext,
+          state.fullyQualifiedName,
+          'contextFile',
+          {
+            queryFilter: JSON.stringify({
+              query: {
+                bool: { filter: [{ term: { processingStatus: 'Failed' } }] },
+              },
+            }),
+          }
+        );
+        await expect(
+          await searchAndGetDocumentRow(page, fileName, document.id)
+        ).toBeVisible();
+        await row.getByTestId('manage-button').click();
+        await expect(menuRetry).toHaveAccessibleName('Retry');
+        const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+        await clickIgnoringToasts(menuRetry);
+        await refusal;
+
+        await toastNotification(page, MEMORY_EXTRACTION_CANNOT_START_MESSAGE);
+      });
+
+      await test.step('once the read after a 409 reaches the server, it says extraction is off and disables Retry', async () => {
+        // The page keeps the availability it read until a 409 reads it again.
+        await page.unroute(`**${MEMORY_EXTRACTION_AVAILABILITY_API}`);
+        await dismissToasts(page);
+        await waitForToastToDisappear(
+          page,
+          MEMORY_EXTRACTION_CANNOT_START_MESSAGE
+        );
+        await row.getByTestId('manage-button').click();
+        const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+        await clickIgnoringToasts(menuRetry);
+        await refusal;
+
+        await toastNotification(page, MEMORY_EXTRACTION_OFF_MESSAGE);
+        await clickIgnoringToasts(row.getByTestId('manage-button'));
+        await expect(menuRetry).toHaveAttribute('aria-disabled', 'true');
+        await expect(menuRetry).toHaveAccessibleDescription(
+          MEMORY_EXTRACTION_OFF_MESSAGE
+        );
+      });
+    });
+  }
 
   // ─── Req 6: Copy link button on document list row ─────────────────────────
 

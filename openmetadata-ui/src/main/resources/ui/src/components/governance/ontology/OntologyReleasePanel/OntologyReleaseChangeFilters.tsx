@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Input,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Input, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import {
@@ -44,50 +39,56 @@ const OntologyReleaseChangeFilters = ({
   onSearchChange,
 }: OntologyReleaseChangeFiltersProps) => {
   const { t } = useTranslation();
-  const summary = [
-    t('message.ontology-change-total', { count: counts.total }),
-    ...KIND_MESSAGES.filter(([kind]) => counts[kind] > 0).map(
-      ([kind, message]) => t(message, { count: counts[kind] })
-    ),
-  ].join(' · ');
+  const kinds = KIND_MESSAGES.filter(([kind]) => counts[kind] > 0).map(
+    ([kind, message]) => t(message, { count: counts[kind] })
+  );
+  const totalText = t('message.ontology-change-total', {
+    count: counts.total,
+  });
 
   return (
-    <Box data-testid="ontology-change-filters" direction="col" gap={2}>
+    <Box data-testid="ontology-change-filters" direction="col" gap={4}>
       <Typography
-        color="secondary"
+        className="tw:text-primary"
         data-testid="ontology-change-counts"
-        size="text-sm">
-        {summary}
+        size="text-sm"
+        weight="semibold">
+        {kinds.length ? `${totalText}: ${kinds.join(', ')}` : totalText}
       </Typography>
-      <Input
-        aria-label={t('label.search-entity', {
-          entity: t('label.change-plural'),
-        })}
-        icon={Search}
-        inputDataTestId="ontology-change-search"
-        placeholder={t('label.search-entity', {
-          entity: t('label.change-plural'),
-        })}
-        size="sm"
-        value={search}
-        onChange={onSearchChange}
-      />
-      <Box
-        aria-label={t('label.change-plural')}
-        gap={1}
-        role="group"
-        wrap="wrap">
-        {FILTERS.map((option) => (
-          <Button
-            aria-pressed={filter === option}
-            color={filter === option ? 'primary' : 'secondary'}
-            data-testid={`ontology-change-filter-${option}`}
-            key={option}
-            size="xs"
-            onPress={() => onFilterChange(option)}>
-            {t(`label.${option}`)} · {rowCounts[option]}
-          </Button>
-        ))}
+      <Box align="center" gap={3} wrap="wrap">
+        <Input
+          aria-label={t('label.search-entity', {
+            entity: t('label.change-plural').toLocaleLowerCase(),
+          })}
+          className="tw:min-w-60 tw:flex-1"
+          icon={Search}
+          inputDataTestId="ontology-change-search"
+          placeholder={t('label.search-entity', {
+            entity: t('label.change-plural').toLocaleLowerCase(),
+          })}
+          size="sm"
+          value={search}
+          onChange={onSearchChange}
+        />
+        {/* The same segmented control as the dialog's Changes / Releases, as the design draws it. */}
+        <Tabs
+          className="tw:w-fit"
+          selectedKey={filter}
+          onSelectionChange={(key) => onFilterChange(key as ChangeFilter)}>
+          <Tabs.List
+            aria-label={t('label.change-plural')}
+            size="sm"
+            type="button-border">
+            {FILTERS.map((option) => (
+              <Tabs.Item
+                data-testid={`ontology-change-filter-${option}`}
+                id={option}
+                key={option}>
+                {t(`label.${option}`)} · {rowCounts[option]}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
       </Box>
     </Box>
   );

@@ -28,6 +28,7 @@ import { EntityReference } from '../../../../generated/type/entityReference';
 import { Include } from '../../../../generated/type/include';
 import { State } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -103,6 +104,8 @@ const OntologyColumnMappingStep = ({
   const { t } = useTranslation();
   const bindings = useOntologyConceptBindings(conceptId);
   const [edits, setEdits] = useState<Record<string, RowState>>({});
+  // Unsaved bindings: closing the drawer asks before dropping them.
+  useOntologyDirtyForm(Object.keys(edits).length > 0);
   const columnQueries = useQueries({
     queries: assets.map((asset) => ({
       queryKey: ['ontology-column-mapping', asset.id],
@@ -300,11 +303,16 @@ const OntologyColumnMappingStep = ({
         <Box
           align="center"
           className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+          gap={3}
           justify="between">
-          <Typography as="span" size="text-sm" weight="semibold">
+          <Typography ellipsis as="span" size="text-sm" weight="semibold">
             {getEntityName(asset)}
           </Typography>
-          <Typography as="span" color="secondary" size="text-xs">
+          <Typography
+            as="span"
+            className="tw:shrink-0 tw:whitespace-nowrap"
+            color="secondary"
+            size="text-xs">
             {t('label.columns-bound-count', {
               count: boundCount,
               total: options.length,
@@ -312,14 +320,17 @@ const OntologyColumnMappingStep = ({
           </Typography>
         </Box>
         {query?.isError ? (
-          <Alert variant="error">
+          <Alert
+            rightContent={
+              <Button
+                color="link-color"
+                size="xs"
+                onPress={() => void query.refetch()}>
+                {t('label.retry')}
+              </Button>
+            }
+            variant="error">
             {t('message.temporary-error-try-reloading')}
-            <Button
-              color="link-color"
-              size="xs"
-              onPress={() => void query.refetch()}>
-              {t('label.retry')}
-            </Button>
           </Alert>
         ) : null}
         {query?.data?.isTruncated ? (
@@ -360,13 +371,18 @@ const OntologyColumnMappingStep = ({
                     weight="medium">
                     {name}
                   </Typography>
-                  <Typography as="span" color="secondary" size="text-xs">
+                  <Typography
+                    ellipsis
+                    as="span"
+                    color="secondary"
+                    size="text-xs"
+                    title={option.datatype}>
                     {option.datatype}
                   </Typography>
                 </span>
                 <Select
                   aria-label={`${t('label.property')}: ${name}`}
-                  className="tw:w-56"
+                  className="tw:w-44 tw:shrink-0"
                   items={propertyItems}
                   size="sm"
                   value={row.propertyId || NOT_MAPPED}
@@ -416,17 +432,24 @@ const OntologyColumnMappingStep = ({
     <Card
       className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
       data-testid="ontology-column-mapping-step">
-      <Box align="start" gap={3} justify="between">
-        <Box direction="col" gap={1}>
-          <Typography as="h3" size="text-sm" weight="semibold">
-            {t('message.ontology-bind-columns-title', {
-              concept: conceptName,
-            })}
-          </Typography>
-          <Typography color="secondary" size="text-xs">
-            {t('message.ontology-bind-columns-description')}
-          </Typography>
-        </Box>
+      <Box direction="col" gap={1}>
+        {/* not-prose: Typography wraps a heading in .prose, whose h3 is 20px with margins. */}
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-sm"
+          weight="semibold">
+          {t('message.ontology-bind-columns-title', {
+            concept: conceptName,
+          })}
+        </Typography>
+        <Typography color="secondary" size="text-xs">
+          {t('message.ontology-bind-columns-description')}
+        </Typography>
+      </Box>
+      {unsavedMessage ? <Alert variant="error">{unsavedMessage}</Alert> : null}
+      {tables.map(renderTable)}
+      <Box align="center" gap={2}>
         <Button
           color="link-color"
           data-testid="ontology-column-mapping-skip"
@@ -434,10 +457,7 @@ const OntologyColumnMappingStep = ({
           onPress={onClose}>
           {t('label.ontology-skip-column-binding')}
         </Button>
-      </Box>
-      {unsavedMessage ? <Alert variant="error">{unsavedMessage}</Alert> : null}
-      {tables.map(renderTable)}
-      <Box gap={2} justify="end">
+        <span className="tw:flex-1" />
         <Button color="secondary" size="sm" onPress={onClose}>
           {t('label.cancel')}
         </Button>

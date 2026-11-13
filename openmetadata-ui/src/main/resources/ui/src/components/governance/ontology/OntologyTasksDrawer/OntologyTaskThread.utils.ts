@@ -12,7 +12,7 @@
  */
 
 import { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
-import { Task } from '../../../../generated/entity/tasks/task';
+import { Task, TaskComment } from '../../../../generated/entity/tasks/task';
 import {
   EventType,
   OntologyReleaseEvent,
@@ -25,6 +25,7 @@ type ThreadEntry = {
   timestamp: number;
   actor: string;
   message?: string;
+  comment?: TaskComment;
   decision?: 'Approved' | 'Rejected' | 'Pending';
   event?: OntologyReleaseEvent;
 };
@@ -55,6 +56,7 @@ export const buildThreadEntries = (
       timestamp: comment.createdAt,
       actor: getEntityName(comment.author),
       message: comment.message,
+      comment,
     });
   }
   for (const { vote } of review.assignees) {

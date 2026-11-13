@@ -100,10 +100,10 @@ test.describe(
           'Read semantic state before operational bindings'
         );
         const bindingPath = `/api/v1/ontologyConcepts/${concept.id}/bindings`;
-        await page.goto(
-          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}`
-        );
-        await page.getByTestId('mode-tab-edit').click();
+        // Switching mode is a press outside the concept drawer, which closes it, so the URL opens
+        // the concept straight in Edit.
+        const editConceptUrl = `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}&mode=edit`;
+        await page.goto(editConceptUrl);
         const inspector = page.getByTestId('ontology-concept-inspector');
         await test.step('Link the authorized table from the native inspector', async () => {
           await inspector.getByTestId('ontology-native-link-assets').click();
@@ -172,20 +172,26 @@ test.describe(
           await expect(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('profile › customer_id');
+          // The open drawer covers the Model/Data switch.
+          await inspector.getByTestId('ontology-concept-close').click();
+          await expect(inspector).toHaveCount(0);
           await page.getByTestId('ontology-graph-mode-data').click();
           const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
             dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
           ).toContainText('Customer');
-          const row = dataGraph.getByTestId(
-            `ontology-data-asset-asset:${concept.id}:${table.entityResponseData.id}`
-          );
-          await expect(row).toContainText(table.entity.displayName);
-          await expect(row).toContainText('1 col');
+          const assetId = `asset:${concept.id}:${table.entityResponseData.id}`;
+          await expect(
+            dataGraph.getByTestId(`ontology-data-asset-${assetId}`)
+          ).toContainText(table.entity.displayName);
+          await expect(
+            dataGraph.getByTestId(
+              `ontology-data-asset-columns-toggle-${assetId}`
+            )
+          ).toHaveText('1 column');
         });
         await test.step('Remove the column binding and table link', async () => {
-          await page.getByTestId('ontology-graph-mode-model').click();
-          await page.getByTestId('mode-tab-edit').click();
+          await page.goto(editConceptUrl);
           const removed = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname === bindingPath &&

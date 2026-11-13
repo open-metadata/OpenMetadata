@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -93,28 +94,96 @@ export async function findOntologyInScopeMenu(
   return page.getByTestId(`ontology-scope-${ontology.id}`);
 }
 
-/** The query picker lists 20 ontologies at a time; Show more reveals the rest until the fixture's row is on screen. */
+/** The concept panel's relationship type is a select; picks one by type id. */
+export async function chooseInspectorRelationType(
+  page: Page,
+  inspector: Locator,
+  typeId: string
+) {
+  await selectOptionWithRetry(
+    inspector.getByTestId('ontology-relationship-type').getByRole('button'),
+    page.getByTestId(`relation-type-${typeId}`)
+  );
+}
+
+/** Opens the full relationship chooser (search, glosses, new type) from the panel's select. */
+export async function openInspectorRelationChooser(
+  page: Page,
+  inspector: Locator
+) {
+  await chooseInspectorRelationType(
+    page,
+    inspector,
+    '__browse-relation-types__'
+  );
+  await expect(page.getByTestId('relationship-type-picker')).toBeVisible();
+}
+
+/**
+ * Opens release history: readers have the release chip, editors reach it under
+ * Review & publish → Releases.
+ */
+export async function openReleaseHistory(page: Page) {
+  const readerChip = page.getByTestId('ontology-release-history-trigger');
+  const publish = page.getByTestId('ontology-publication-trigger');
+  // A user has exactly one of the two, so the union never matches twice.
+  await expect(readerChip.or(publish)).toBeVisible();
+  if (await readerChip.isVisible()) {
+    await readerChip.click();
+
+    return;
+  }
+  await publish.click();
+  await page.getByTestId('ontology-publication-tab-releases').click();
+  await expect(
+    page.getByTestId('ontology-publication-tab-releases')
+  ).toHaveAttribute('aria-selected', 'true');
+}
+
+/** The Import / export button opens a menu; this opens the Import or the Export dialog. */
+export async function openOntologyTransfer(
+  page: Page,
+  dialog: 'import' | 'export' = 'export'
+) {
+  await page.getByTestId('ontology-import-export-trigger').click();
+  await page.getByTestId(`ontology-${dialog}-menu-item`).click();
+}
+
+/** The export scope, options, preview and SHACL check sit in the dialog's collapsed Advanced section. */
+export async function openExportAdvanced(page: Page) {
+  const advanced = page.getByTestId('ontology-export-advanced');
+  if ((await advanced.getAttribute('aria-expanded')) !== 'true') {
+    await advanced.click();
+  }
+  await expect(advanced).toHaveAttribute('aria-expanded', 'true');
+}
+
+/** Opens one ontology's Import dialog and points it at a new ontology instead. */
+export async function openNewOntologyImport(
+  page: Page,
+  owner: Pick<Ontology, 'id'>
+) {
+  await page.goto(`/governance/ontology?ontology=${owner.id}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await openOntologyTransfer(page, 'import');
+  await page.getByTestId('ontology-native-import-target').click();
+  await page.getByRole('option', { name: /new ontology/i }).click();
+}
+
+/** The ontology chooser is a searchable dropdown; typing the name shows the fixture's option. */
 export async function findOntologyInQueryPicker(
   page: Page,
-  ontology: Pick<Ontology, 'id'>
+  ontology: Pick<Ontology, 'id' | 'name' | 'displayName'>
 ) {
+  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
+  await page
+    .getByTestId('ontology-query-picker')
+    .getByRole('combobox')
+    .fill(ontology.displayName ?? ontology.name);
   const option = page.getByTestId(
     `ontology-query-picker-option-${ontology.id}`
   );
-  const showMore = page.getByTestId('ontology-query-picker-show-more');
-  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
-  await expect
-    .poll(
-      async () => {
-        if ((await option.count()) === 0 && (await showMore.count()) > 0) {
-          await showMore.click();
-        }
-
-        return option.count();
-      },
-      { timeout: 30_000 }
-    )
-    .toBe(1);
+  await expect(option).toBeVisible();
 
   return option;
 }
@@ -273,9 +342,18 @@ export async function waitForGraphPoints(
 }
 
 /** A canvas point at least `clearance` px from every node, inside the graph area. */
+const CANVAS_OVERLAY_TEST_IDS = [
+  'ontology-conflicts-panel',
+  'ontology-health-panel',
+  'ontology-canvas-toolbar',
+  'ontology-graph-controls',
+  'ontology-graph-mode-model',
+];
+
 export async function findEmptyCanvasPoint(
   page: Page,
-  clearance = 160
+  clearance = 160,
+  { besideDrawer = false } = {}
 ): Promise<{ x: number; y: number }> {
   // The graph re-fits when a side panel opens or closes, so measure only once
   // two reads agree.
@@ -300,10 +378,41 @@ export async function findEmptyCanvasPoint(
     throw new Error('The graph canvas is not rendered');
   }
   const nodes = Object.values(positions);
+  // Cards and toolbars float over the canvas; a double-click there never reaches it.
+  const overlays = (
+    await Promise.all(
+      CANVAS_OVERLAY_TEST_IDS.map((id) =>
+        page
+          .getByTestId(id)
+          .boundingBox({ timeout: 1000 })
+          .catch(() => null)
+      )
+    )
+  ).filter((rect): rect is NonNullable<typeof rect> => rect !== null);
+  const isUnderOverlay = (x: number, y: number) =>
+    overlays.some(
+      (rect) =>
+        x >= rect.x - 40 &&
+        x <= rect.x + rect.width + 40 &&
+        y >= rect.y - 40 &&
+        y <= rect.y + rect.height + 40
+    );
+  // A studio drawer is 40vw with a 420px floor plus its 8px inset
+  // (ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor). A node created
+  // under it is panned into view when it opens, so it no longer sits at the click.
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const right = besideDrawer
+    ? Math.min(
+        box.x + box.width,
+        viewportWidth - Math.max(viewportWidth * 0.4, 420) - 8
+      )
+    : box.x + box.width;
   const candidates = [];
-  for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
+  for (let x = box.x + 120; x < right - 120; x += 40) {
     for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
-      candidates.push({ x, y });
+      if (!isUnderOverlay(x, y)) {
+        candidates.push({ x, y });
+      }
     }
   }
   const distance = (point: { x: number; y: number }) =>

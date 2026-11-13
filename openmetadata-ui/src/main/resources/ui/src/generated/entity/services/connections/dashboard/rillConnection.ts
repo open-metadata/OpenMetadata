@@ -15,9 +15,25 @@
  */
 export interface RillConnection {
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
      * URL of a Rill Developer runtime or Rill Cloud project endpoint.
      */
-    hostPort:                    string;
+    hostPort: string;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?:       FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * API token to authenticate with Rill.
@@ -31,6 +47,28 @@ export interface RillConnection {
      * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      */
     verifySSL?: boolean;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

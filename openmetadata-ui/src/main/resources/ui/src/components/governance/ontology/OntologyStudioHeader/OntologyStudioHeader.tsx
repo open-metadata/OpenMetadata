@@ -63,7 +63,13 @@ const OntologyStudioHeader = <M extends string>({
   );
 
   const modeItems = modes.map((tab) => (
-    <Tabs.Item data-testid={`mode-tab-${tab.id}`} id={tab.id} key={tab.id}>
+    <Tabs.Item
+      className={({ isSelected }) =>
+        isSelected ? 'tw:font-semibold' : 'tw:font-medium'
+      }
+      data-testid={`mode-tab-${tab.id}`}
+      id={tab.id}
+      key={tab.id}>
       {tab.label}
     </Tabs.Item>
   ));
@@ -75,41 +81,63 @@ const OntologyStudioHeader = <M extends string>({
         data-testid="ontology-studio-header"
         data-tour-step="ontology-studio">
         <PageHeader
-          badge={betaBadge}
           breadcrumb={breadcrumb}
           data-testid="ontology-studio-page-header"
-          // PageHeader's actions slot never shrinks or wraps, so beside the AI
-          // side panel it ran past the viewport; the tab row can wrap instead.
           footer={
-            <Box
-              align="end"
-              className="tw:w-full"
-              gap={2}
-              justify="between"
-              wrap="wrap">
+            modes.length > 0 ? (
               <Tabs
-                className="tw:w-auto tw:shrink-0"
+                className="tw:w-auto"
                 selectedKey={mode}
                 onSelectionChange={handleSelectionChange}>
-                <Tabs.List aria-label={t('label.mode')} type="underline">
+                {/* Same tab strip as the Data Quality header. */}
+                <Tabs.List
+                  aria-label={t('label.mode')}
+                  className="tw:mt-2 tw:gap-6 tw:before:hidden"
+                  size="sm"
+                  type="underline">
                   {modeItems}
                 </Tabs.List>
               </Tabs>
+            ) : undefined
+          }
+          // PageHeader's actions slot never shrinks or wraps, so beside the AI
+          // side panel it ran past the viewport; this row wraps instead.
+          title={
+            <Box
+              align="center"
+              className="tw:w-full tw:min-w-0"
+              gap={3}
+              justify="between"
+              wrap="wrap">
+              <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
+                <Box align="center" className="tw:min-w-0" gap={2}>
+                  <Typography
+                    ellipsis
+                    as="h1"
+                    className="not-prose tw:m-0 tw:min-w-0"
+                    size="text-xl"
+                    weight="semibold">
+                    {t('label.ontology-studio')}
+                  </Typography>
+                  {betaBadge}
+                </Box>
+                <Typography color="secondary" size="text-sm">
+                  {t('message.ontology-studio-description')}
+                </Typography>
+              </Box>
               <Box
                 align="center"
-                className="tw:min-w-0 tw:pb-1.5"
+                className="tw:min-w-0"
                 gap={2}
                 justify="end"
                 wrap="wrap">
-                <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">
+                <Box className="tw:min-w-18 tw:max-w-56 tw:shrink">
                   {scopeMenu}
                 </Box>
                 {actions}
               </Box>
             </Box>
           }
-          subtitle={t('message.ontology-studio-description')}
-          title={t('label.ontology-studio')}
           variant="gradient"
         />
       </header>

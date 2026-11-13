@@ -97,19 +97,21 @@ describe('OntologyHealthPanel', () => {
       />
     );
 
-    expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
-      '0'
-    );
+    expect(
+      screen.getByTestId('ontology-health-all-connected')
+    ).toHaveTextContent('message.all-ontology-terms-connected');
+    expect(
+      screen.queryByTestId('ontology-isolated-count')
+    ).not.toBeInTheDocument();
     expect(screen.getByText('label.healthy')).toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-health-review')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.expand' }));
-
     expect(
-      screen.getByText('message.all-ontology-terms-connected')
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: 'label.expand' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.isolated-term-plural')).toBeNull();
   });
 
   it('minimises to a compact summary and restores the card', () => {

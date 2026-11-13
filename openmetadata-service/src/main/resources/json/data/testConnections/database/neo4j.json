@@ -8,7 +8,8 @@
       "description": "Validate that we can connect to Neo4j with the given credentials.",
       "errorMessage": "Failed to connect to Neo4j, please validate the connection scheme, host, port and credentials.",
       "mandatory": true,
-      "shortCircuit": true
+      "shortCircuit": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetDatabases",
