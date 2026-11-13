@@ -108,12 +108,12 @@ test.describe(
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText(concepts[1].iri);
+          // A press outside the drawer closes it, the surface tabs included.
           await page.getByTestId('submode-tab-graph').click();
           await expect(
             page.getByTestId('ontology-concept-inspector')
-          ).toContainText(concepts[1].iri);
+          ).toHaveCount(0);
           await page.getByTestId('mode-tab-edit').click();
-          await expect(page).toHaveURL(new RegExp('concept=' + concepts[1].id));
           await expect(page).toHaveURL(new RegExp('ontology=' + owner.id));
         });
         await test.step('Publish waits for one ontology to be chosen', async () => {
@@ -535,9 +535,8 @@ test.describe(
             body: await page.screenshot(),
             contentType: 'image/png',
           });
+          // A press outside the drawer, the mode tab included, closes Customer's drawer.
           await page.getByTestId('mode-tab-view').click();
-          // Customer stays selected across modes; its drawer covers the header's Publish.
-          await page.getByTestId('ontology-concept-close').click();
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toHaveCount(0);

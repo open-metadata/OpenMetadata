@@ -179,6 +179,16 @@ make playwright_affected_run ARGS="--update-pr"   # full impacted run for merge 
 Without `gh`, paste `playwright/output/local-pr-results.md` between the
 `local-playwright-results` markers under "Playwright (UI) tests".
 
+**Visual regression baselines:** the visual lane does not run on PR checks but blocks the merge
+queue. When the change alters what any screen renders (shared component, icon, token, layout, copy,
+or an API the visual fixtures in `playwright/utils/visualData.ts` must answer), refresh the affected
+baselines in the same PR. Capture them on CI, never on macOS: dispatch
+`gh workflow run playwright-postgresql-e2e.yml --ref <branch> -f full_suite=false`, review each
+`-diff.png`, copy the first-attempt `-actual.png` over its baseline in
+`playwright/e2e/VisualRegression/__snapshots__/`, and list the refreshed files and the run URL under
+"Visual regression baselines". A scene that fails before its screenshot (error toast, missing ready
+checkpoint) has no actual: fix the fixture or checkpoint first, then re-run.
+
 For each, note the actual coverage % and test file paths in the PR body.
 
 > Tip: hand off the heavy lifting — `/test-enforcement` produces the same evidence and enforces 90% coverage on changed classes. Run it first if the user hasn't already.
@@ -308,6 +318,7 @@ the gate explicitly allows a draft with its remaining work stated:
 - Backend API change without integration test in `openmetadata-integration-tests/`
 - Integration tests "covered by CI": PR CI no longer runs them; the merge queue is their first run
 - New UI feature without Playwright spec
+- Rendering change without refreshed visual baselines: the merge queue fails on the stale snapshot
 - Bug fix without a regression test that fails before the fix
 - Large refactor with `N/A` in the design section — push back and ask for the design
 - Coverage % copied from unrelated evidence — reuse applicable evidence or run the affected check

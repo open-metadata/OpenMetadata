@@ -43,6 +43,7 @@ import {
   OntologyNode,
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
+import OntologySearchClearButton from '../../../OntologyExplorer/OntologySearchClearButton';
 import {
   buildNativeTreeIndex,
   getOntologyHealthSummary,
@@ -72,7 +73,6 @@ interface AllOntologiesGraphViewProps {
   readonly models: OntologyStudioModel[];
   readonly selectedConceptId?: string;
   readonly surface: 'graph' | 'tree';
-  readonly onRequestGraphSurface: () => void;
   readonly isFetching: boolean;
   readonly onRefresh: () => void;
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
@@ -149,7 +149,6 @@ const AllOntologiesGraphView = ({
   models,
   selectedConceptId,
   surface,
-  onRequestGraphSurface,
   isFetching,
   onRefresh,
   onEditConcept,
@@ -311,6 +310,10 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  const clearSearchButton = (
+    <OntologySearchClearButton value={search} onClear={() => setSearch('')} />
+  );
+
   const renderSearch = () => {
     if (searchSlot) {
       return createPortal(
@@ -321,6 +324,7 @@ const AllOntologiesGraphView = ({
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />,
@@ -343,6 +347,7 @@ const AllOntologiesGraphView = ({
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />
@@ -423,10 +428,6 @@ const AllOntologiesGraphView = ({
               ? () => onEditConcept(model.ontology, selected.id)
               : undefined
           }
-          onOpenData={() => {
-            onRequestGraphSurface();
-            setGraphMode('data');
-          }}
           onSelectConcept={selectNode}
         />
       ) : null}

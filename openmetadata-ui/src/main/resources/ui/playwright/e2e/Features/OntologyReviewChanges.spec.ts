@@ -534,15 +534,16 @@ test.describe(
       }
     });
 
-    test('lane 9: the banner names the ontology, version and reviewer, and only for the ontology in view', async ({
+    test('lane 9: the banner asks the reviewer, only for the ontology in view, and never the requester', async ({
       isolatedUserPage: author,
       isolatedUser,
-      freshUserPage: { user },
+      freshUserPage: { page: reviewer, user },
     }, testInfo) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
       await user.setAdminRole(api);
       await setMode(api, isolatedUser.responseData.id, 'ai');
+      await setMode(api, user.responseData.id, 'ai');
       const reviewed = await createOntology(api, 'pw_g7_banner_a', [
         user.responseData.id,
       ]);
@@ -555,76 +556,35 @@ test.describe(
         tasks.push(task.id);
 
         await author.goto(`/governance/ontology?ontology=${reviewed.id}`);
-        const banner = author.getByTestId('ontology-review-banner');
-        await expect(banner).toContainText(
-          `In review · waiting on ${user.getUserDisplayName()}`
-        );
-        await expect(banner).toContainText(`${reviewed.name} · v0.1.0 ·`);
-        await expect(banner).not.toContainText('Unavailable');
-
-        await author.goto(`/governance/ontology?ontology=${other.id}`);
-        await expect(author.getByTestId('ontology-studio-shell')).toBeVisible();
         await expect(
           author.getByTestId('ontology-tasks-trigger')
         ).toBeVisible();
         await expect(author.getByTestId('ontology-review-banner')).toHaveCount(
           0
         );
-        await expect(author.getByText(reviewed.name)).toHaveCount(0);
-        await g7Shot(author, testInfo, 'banner');
 
-        await author.goto('/governance/ontology');
-        const lines = author.getByTestId('ontology-open-reviews-banner');
-        await expect(lines).toContainText(
-          `${
-            reviewed.name
-          } · In review · waiting on ${user.getUserDisplayName()}`
-        );
+        await reviewer.goto(`/governance/ontology?ontology=${reviewed.id}`);
+        const banner = reviewer.getByTestId('ontology-review-banner');
+        await expect(banner).toContainText('asked you to review v0.1.0');
+        await expect(
+          banner.getByRole('button', { name: 'Review', exact: true })
+        ).toBeVisible();
+        await g7Shot(reviewer, testInfo, 'banner');
+
+        await reviewer.goto(`/governance/ontology?ontology=${other.id}`);
+        await expect(
+          reviewer.getByTestId('ontology-tasks-trigger')
+        ).toBeVisible();
+        await expect(
+          reviewer.getByTestId('ontology-review-banner')
+        ).toHaveCount(0);
+
+        await reviewer.goto('/governance/ontology');
+        await expect(
+          reviewer.getByTestId('ontology-open-reviews-banner')
+        ).toContainText(`asked you to review ${reviewed.name}`);
       } finally {
         await cleanUp(api, [reviewed, other], tasks);
-      }
-    });
-
-    test('lane 9b: a review whose only reviewer was deleted reads "no reviewer assigned", not "ready to publish"', async ({
-      isolatedUserPage: author,
-      isolatedUser,
-    }) => {
-      test.slow();
-      const api = await getWorkerAdminAPIContext();
-      await setMode(api, isolatedUser.responseData.id, 'ai');
-      const reviewerName = `pw_g7_gone_${uuid()}`;
-      const reviewer = await okJson<{ id: string }>(
-        await api.post('/api/v1/users', {
-          data: {
-            name: reviewerName,
-            email: `${reviewerName}@example.org`,
-          },
-        }),
-        'Create reviewer'
-      );
-      // The requester is left off the task's reviewers, so listing them on the
-      // ontology keeps it reviewer-bearing after the task's only reviewer goes.
-      const ontology = await createOntology(api, 'pw_g7_orphan', [
-        reviewer.id,
-        isolatedUser.responseData.id,
-      ]);
-      const tasks: string[] = [];
-      try {
-        await addConcept(api, ontology, 'Customer');
-        const task = await requestReview(author, ontology);
-        tasks.push(task.id);
-        await deleteFixtureEntity(
-          api,
-          `/api/v1/users/${reviewer.id}?hardDelete=true&recursive=true`
-        );
-
-        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
-        const banner = author.getByTestId('ontology-review-banner');
-        await expect(banner).toContainText('In review · no reviewer assigned');
-        await expect(banner).toContainText(ontology.name);
-        await expect(banner).not.toContainText('ready to publish');
-      } finally {
-        await cleanUp(api, [ontology], tasks);
       }
     });
 

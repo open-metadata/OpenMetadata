@@ -244,9 +244,13 @@ it.each([
       await within(picker).findByTestId('ontology-native-batch-status')
     ).toHaveTextContent(`message.ontology-binding-${message}`);
     expect(http.put).toHaveBeenCalledTimes(2);
+    // new-one is linked now: ticked and locked, no longer a pending pick.
     expect(
       within(picker).getByRole('checkbox', { name: 'new-one' })
-    ).not.toBeChecked();
+    ).toBeDisabled();
+    expect(
+      within(picker).getByRole('checkbox', { name: 'new-three' })
+    ).toBeEnabled();
     expect(
       within(picker).getByRole('checkbox', { name: 'new-three' })
     ).toBeChecked();
@@ -537,6 +541,80 @@ it('retries failed binding reads before offering editing', async () => {
   ).toBeVisible();
 });
 
+it('opens the link form for a Link data request once the bindings are read, and keeps the request until the form closes', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? { data: { revision: 0, assets: [] } }
+      : { data: { resource: 'table', permissions: [] } }
+  );
+  const onLinkRequestClosed = jest.fn();
+  // Entering Edit swaps the panel for its editor, which mounts the section a second time.
+  const tree = (key: string) => (
+    <MemoryRouter>
+      <OntologyConceptAssets
+        canEdit
+        isLinkRequested
+        conceptId="customer"
+        conceptName="Customer"
+        key={key}
+        presentation={{ kind: 'edit' }}
+        onLinkRequestClosed={onLinkRequestClosed}
+      />
+    </MemoryRouter>
+  );
+  const view = renderWithQueryClient(tree('first'));
+
+  expect(await screen.findByTestId('ontology-data-asset-picker')).toBeVisible();
+
+  view.rerender(tree('second'));
+
+  const picker = await screen.findByTestId('ontology-data-asset-picker');
+
+  expect(onLinkRequestClosed).not.toHaveBeenCalled();
+
+  fireEvent.click(within(picker).getByRole('button', { name: 'label.cancel' }));
+
+  expect(onLinkRequestClosed).toHaveBeenCalledTimes(1);
+});
+
+it('lists a linked asset with its path and column count, and marks the one picked on the canvas', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? {
+          data: {
+            revision: 4,
+            assets: [
+              { ...asset('old-table'), columns: retainedColumns },
+              asset('other'),
+            ],
+          },
+        }
+      : { data: { resource: 'table', permissions: [] } }
+  );
+  renderWithQueryClient(
+    <MemoryRouter>
+      <OntologyConceptAssets
+        canEdit
+        conceptId="customer"
+        conceptName="Customer"
+        presentation={{ kind: 'edit' }}
+        selectedAssetId="old-table"
+      />
+    </MemoryRouter>
+  );
+
+  const picked = await screen.findByTestId(
+    'ontology-native-asset-row-old-table'
+  );
+
+  expect(picked).toHaveAttribute('aria-current', 'true');
+  expect(picked).toHaveTextContent('service › db › schema › old-table');
+  expect(picked).toHaveTextContent('Table · label.ontology-column-count');
+  expect(
+    screen.getByTestId('ontology-native-asset-row-other')
+  ).not.toHaveAttribute('aria-current');
+});
+
 it('does not repeat a link that the re-read reports as already present', async () => {
   const state: OntologyConceptBindingsResponse = { revision: 0, assets: [] };
   serveBindings(state);
@@ -630,4 +708,34 @@ describe('unlinking an asset', () => {
       await screen.findByTestId('ontology-native-asset-remove-old-table')
     ).toBeVisible();
   });
+});
+
+it('puts Bind columns on its own links line under the asset path', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? { data: stored() }
+      : { data: { resource: 'table', permissions: [] } }
+  );
+  renderWithQueryClient(
+    <MemoryRouter>
+      <OntologyConceptAssets
+        canEdit
+        conceptId="customer"
+        conceptName="Customer"
+        presentation={{ kind: 'edit' }}
+        properties={[{ id: 'name', label: 'name' }]}
+      />
+    </MemoryRouter>
+  );
+  const bind = await screen.findByTestId(
+    'ontology-native-asset-bind-columns-old-table'
+  );
+  const path = screen.getByText('service › db › schema › old-table');
+  const linksLine = bind.parentElement;
+
+  expect(linksLine).not.toContainElement(path);
+  expect(linksLine?.previousElementSibling).toContainElement(path);
+  expect(linksLine?.firstElementChild).toBe(bind);
+  expect(bind).toHaveClass('tw:font-normal');
+  expect(bind).not.toHaveClass('tw:font-medium');
 });

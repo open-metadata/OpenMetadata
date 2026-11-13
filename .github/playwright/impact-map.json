@@ -564,6 +564,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ContextCenterRouter/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/styles/knowledge-center.less",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
@@ -594,6 +595,8 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextFileIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryVisibilityTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/security/ContextMemorySearchVisibilityTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/MemoryExtractionAccessTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/llm/LLMClientHolder.java",
         "openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/EntityCreationSpec.java",
@@ -626,6 +629,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts"
       ]
     },
@@ -1674,6 +1678,14 @@
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts"
       ]
+    },
+    {
+      "_comment": "TopicClassBase supplies the Topic page's customizable widget list.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/TopicClassBase.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/CustomizeDetailPage.spec.ts"]
     }
   ]
 }

@@ -1360,7 +1360,7 @@ describe('OntologyExplorerPage', () => {
     expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
   });
 
-  it('shows only the message that points to the All ontologies menu when the catalog passes the aggregate limit', async () => {
+  it('lets the user pick an ontology from the empty state when the catalog passes the aggregate limit', async () => {
     const longName = 'L'.repeat(243);
     const ontologies: Ontology[] = Array.from({ length: 21 }, (_, index) => ({
       ...nativeOntology,
@@ -1372,8 +1372,8 @@ describe('OntologyExplorerPage', () => {
 
     const message = await screen.findByTestId('all-ontologies-load-error');
 
+    expect(message).toHaveTextContent('label.choose-an-ontology-to-view');
     expect(message).toHaveTextContent('message.ontology-aggregate-capacity');
-    expect(within(message).queryAllByRole('button')).toHaveLength(0);
     expect(
       screen.queryByTestId('ontology-shortcut-list')
     ).not.toBeInTheDocument();
@@ -1383,6 +1383,17 @@ describe('OntologyExplorerPage', () => {
     expect(
       screen.queryByText(/0 label\.concept-plural/i)
     ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(message).getByRole('button', { name: /label.select-entity/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Ontology 5' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'ontology=ontology-5'
+      )
+    );
   });
 
   it('defaults to a read-only native graph and opens the owning ontology', async () => {
@@ -2063,6 +2074,22 @@ describe('OntologyExplorerPage', () => {
 
         expect(screen.getByTestId('location')).toHaveTextContent(
           search.slice(1)
+        );
+      }
+    );
+
+    it.each([
+      ['the graph', '?ontology=native-sales', true],
+      ['the tree', '?ontology=native-sales&view=tree', false],
+    ])(
+      'offers full screen only on the graph: %s',
+      async (_name, search, offered) => {
+        renderNativeStudio(search);
+
+        await screen.findByTestId('ontology-canvas-toolbar');
+
+        expect(Boolean(screen.queryByTestId('ontology-full-screen'))).toBe(
+          offered
         );
       }
     );
@@ -3007,7 +3034,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it.each(['?ontology=native-sales', ''])(
-    'opens the selected concept Data graph from the Tree rail in %s',
+    'lists every linked asset in place from the Tree rail in %s',
     async (search) => {
       (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
         revision: 0,
@@ -3027,14 +3054,15 @@ describe('OntologyExplorerPage', () => {
       await screen.findByTestId('native-canvas');
       fireEvent.click(screen.getByTestId('submode-tab-tree'));
       fireEvent.click(await screen.findByTestId('ontology-tree-term-Customer'));
-      fireEvent.click(await screen.findByTestId('ontology-assets-more'));
+      const more = await screen.findByTestId('ontology-assets-more');
 
-      expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
+      expect(screen.queryByText('Asset 6')).not.toBeInTheDocument();
+
+      fireEvent.click(more);
+
+      expect(await screen.findByText('Asset 6')).toBeInTheDocument();
+      expect(screen.getByTestId('submode-tab-tree')).toHaveAttribute(
         'aria-selected',
-        'true'
-      );
-      expect(screen.getByTestId('ontology-graph-mode-data')).toHaveAttribute(
-        'aria-pressed',
         'true'
       );
       expect(
