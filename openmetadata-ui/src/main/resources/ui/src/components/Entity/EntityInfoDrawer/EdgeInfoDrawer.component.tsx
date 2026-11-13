@@ -137,14 +137,20 @@ const getColumnMappingsOverviewItem = (
   isColumnLineage: boolean,
   t: TFunction
 ): OverviewDataItem | undefined => {
-  const mappings = (columns ?? [])
-    .filter((column) => column.toColumn && column.fromColumns?.length)
-    .map(
-      (column) =>
-        `${(column.fromColumns ?? [])
-          .map(getNameFromFQN)
-          .join(', ')} → ${getNameFromFQN(column.toColumn ?? '')}`
-    );
+  const mappings = (columns ?? []).reduce<string[]>(
+    (result, { fromColumns, toColumn }) => {
+      if (toColumn && fromColumns?.length) {
+        result.push(
+          `${fromColumns.map(getNameFromFQN).join(', ')} → ${getNameFromFQN(
+            toColumn
+          )}`
+        );
+      }
+
+      return result;
+    },
+    []
+  );
 
   return isColumnLineage || mappings.length === 0
     ? undefined
