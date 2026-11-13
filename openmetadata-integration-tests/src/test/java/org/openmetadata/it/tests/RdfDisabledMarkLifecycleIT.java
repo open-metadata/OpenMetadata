@@ -1,0 +1,53 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.openmetadata.it.tests;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+
+import java.time.Clock;
+import java.time.Duration;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.it.bootstrap.ForkedServerNode;
+import org.openmetadata.it.bootstrap.ForkedServerNode.Settings;
+import org.openmetadata.it.util.RdfTestUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfLiveWriteStore;
+
+/**
+ * A server with RDF off records it in {@code rdf_projection_health} when it starts and again when it
+ * stops (#36440). The server here is a second process on the suite's database, so both marks come
+ * from its real lifecycle: nothing in this class writes them.
+ */
+@Tag("multi-node")
+class RdfDisabledMarkLifecycleIT {
+  private static final Duration SHUTDOWN_GRACE = Duration.ofSeconds(60);
+
+  @Test
+  void aServerWithRdfOffRecordsItWhenItStartsAndAgainWhenItStops() {
+    assumeFalse(RdfTestUtils.isRdfEnabled(), "The forked server copies the suite's RDF setting");
+    final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+    final long markBeforeStart = health.rdfDisabledAt();
+
+    final ForkedServerNode server = ForkedServerNode.start(Settings.DEFAULT);
+    final long markAfterStart = health.rdfDisabledAt();
+    final long failureVersionAfterStart = health.failureVersion();
+    final boolean stoppedByItself = server.stopWithin(SHUTDOWN_GRACE);
+
+    assertTrue(markAfterStart > markBeforeStart, "the start was not recorded");
+    assertTrue(stoppedByItself, "the server had to be killed, so its stop hooks may not have run");
+    assertTrue(health.rdfDisabledAt() > markAfterStart, "the stop was not recorded");
+    assertTrue(health.failureVersion() > failureVersionAfterStart, "the stop did not degrade");
+  }
+}

@@ -369,11 +369,11 @@ public final class RdfLiveWriteStore {
   }
 
   /**
-   * Records that a server started with RDF off. Changes made from now on never reach the graph, so
-   * the projection is degraded like any other lost write: only a rebuild of the entire projection
-   * that starts afterwards repairs it. The time is kept as well, for the start-up run that queues
-   * that rebuild; the highest value wins, so servers that start at different times, or with
-   * different clocks, never move it back.
+   * Records that a server runs with RDF off; called when it starts and again when it stops. Changes
+   * made through it never reach the graph, so the projection is degraded like any other lost write:
+   * only a rebuild of the entire projection that starts afterwards repairs it. The time is kept as
+   * well, for the start-up run that queues that rebuild; the highest value wins, so servers that
+   * record it at different times, or with different clocks, never move it back.
    */
   public void recordRdfDisabled() {
     final long now = clock.millis();
@@ -385,7 +385,7 @@ public final class RdfLiveWriteStore {
     }
   }
 
-  /** The last time a server started with RDF off, or 0 when none has since this was recorded. */
+  /** The last time a server started or stopped with RDF off, or 0 when none has recorded it. */
   public long rdfDisabledAt() {
     return jdbi.withHandle(handle -> handle.createQuery(RDF_DISABLED_AT).mapTo(Long.class).one());
   }

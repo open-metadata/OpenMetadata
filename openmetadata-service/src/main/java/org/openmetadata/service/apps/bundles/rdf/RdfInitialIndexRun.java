@@ -25,11 +25,11 @@ import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Queues one {@code RdfIndexApp} run at start-up when nothing has indexed the graph since RDF was
- * last off: on a stack that has never run it, and on one whose server started with RDF off, where
- * every change since went unprojected. The app is scheduled weekly, and until a run indexes, the
+ * last off: on a stack that has never run it, and on one where a server ran with RDF off, whose
+ * changes went unprojected. The app is scheduled weekly, and until a run indexes, the
  * projection reports REBUILDING or DEGRADED, which blocks the agent SPARQL path for up to a week.
  *
- * <p>A run record that started after the last RDF-off start is the idempotency key, whatever its
+ * <p>A run record that started after RDF was last recorded off is the idempotency key, whatever its
  * status: a restart, an upgrade or a reinstall that finds one queues nothing, so a failed run is not
  * retried at every restart.
  */

@@ -57,9 +57,9 @@ public final class RdfDisabledMark {
         store.recordRdfDisabled();
       } catch (RuntimeException exception) {
         LOG.warn(
-            "Could not record that RDF is disabled; enabling it later will neither report the "
-                + "graph as out of date nor queue a start-up index run, so run RdfIndexApp with "
-                + "Recreate once after enabling it",
+            "Could not record that RDF is disabled; the graph may be reported as current although "
+                + "this server's changes are not in it, and enabling RDF later may not queue a "
+                + "start-up index run, so run RdfIndexApp with Recreate once after enabling it",
             exception);
       }
     }

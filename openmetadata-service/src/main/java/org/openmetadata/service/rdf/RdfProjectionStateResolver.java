@@ -76,9 +76,9 @@ public final class RdfProjectionStateResolver {
 
   /**
    * True when a run that touched the projection started at or after the last time a server started
-   * with RDF off, so a rebuild has been attempted since changes stopped reaching the graph. This
-   * decides only whether start-up queues a run; whether the graph is current is the health row's
-   * call, which an RDF-off start degrades until the entire projection is rebuilt. A failure to read
+   * or stopped with RDF off, so a rebuild has been attempted since changes stopped reaching the
+   * graph. This decides only whether start-up queues a run; whether the graph is current is the
+   * health row's call, which a server with RDF off degrades until the entire projection is rebuilt. A failure to read
    * the mark propagates: the caller decides what an unknown answer means.
    */
   public boolean hasProjectedSinceRdfWasOff() {

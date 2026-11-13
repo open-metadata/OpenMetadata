@@ -137,19 +137,30 @@ public final class ForkedServerNode implements AutoCloseable {
   /** Stops the process, forcibly after {@value #FORCE_AFTER_SECONDS} s. Safe to call twice. */
   @Override
   public void close() {
-    if (!closed.compareAndSet(false, true)) {
-      return;
-    }
-    OPEN.remove(this);
-    process.destroy();
-    try {
-      if (!process.waitFor(FORCE_AFTER_SECONDS, SECONDS)) {
-        process.destroyForcibly().waitFor(FORCE_AFTER_SECONDS, SECONDS);
+    stopWithin(Duration.ofSeconds(FORCE_AFTER_SECONDS));
+  }
+
+  /**
+   * Asks the process to stop and reports whether it exited by itself within {@code grace}, for a
+   * test that reads what the server's shutdown hooks wrote. A process still alive after that is
+   * killed, and the answer is false: its hooks may not have run.
+   */
+  public boolean stopWithin(final Duration grace) {
+    boolean exitedByItself = !process.isAlive();
+    if (closed.compareAndSet(false, true)) {
+      OPEN.remove(this);
+      process.destroy();
+      try {
+        exitedByItself = process.waitFor(grace.toMillis(), MILLISECONDS);
+        if (!exitedByItself) {
+          process.destroyForcibly().waitFor(FORCE_AFTER_SECONDS, SECONDS);
+        }
+      } catch (InterruptedException interrupted) {
+        process.destroyForcibly();
+        Thread.currentThread().interrupt();
       }
-    } catch (InterruptedException interrupted) {
-      process.destroyForcibly();
-      Thread.currentThread().interrupt();
     }
+    return exitedByItself;
   }
 
   /** CPU time the node's process has used, for load reports. */

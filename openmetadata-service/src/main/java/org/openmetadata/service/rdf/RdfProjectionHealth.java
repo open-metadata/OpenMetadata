@@ -39,7 +39,7 @@ public final class RdfProjectionHealth {
     }
   }
 
-  /** When a server last started with RDF off, or 0 when none did or no store is initialized. */
+  /** When a server last started or stopped with RDF off, or 0 if none did or no store is set. */
   public static long rdfDisabledAt() {
     final RdfLiveWriteStore current = store;
     return current != null ? current.rdfDisabledAt() : 0;

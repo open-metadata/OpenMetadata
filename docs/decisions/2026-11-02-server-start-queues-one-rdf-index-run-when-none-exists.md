@@ -79,13 +79,16 @@ after any off period.
   restart queues one at its own start) read `failureVersion` after the start mark, so on
   completion it would repair the projection and report `READY` over a graph that misses whatever
   the old server wrote after the rebuild passed it. The stop mark raises `failureVersion` after
-  that read, so the state stays `DEGRADED`. It is a lifecycle hook registered before
-  `ManagedShutdown`, so it runs after the server's background writers have stopped. Recording on
+  that read, so from the stop onwards the state is `DEGRADED`, whether or not the rebuild has
+  completed. It is a lifecycle hook registered before `ManagedShutdown`, so it runs after the
+  hooks that stop the server's background writers; a scheduled job that is still running is not
+  waited for. Recording on
   every skipped write was rejected: it adds a statement to every write of every install that does
   not use RDF.
 - **Only a running server writes the mark, after migration validation, decided from
   `rdfConfiguration.enabled`.** The start mark is written in `OpenMetadataApplication.run` once
-  the schema is validated, because it uses a column a pending migration adds. `OpenMetadataOperations` (the ops CLI) loads app seed data through
+  the schema is validated, because it uses a column a pending migration adds.
+  `OpenMetadataOperations` (the ops CLI) loads app seed data through
   `CollectionRegistry.loadSeedData` and never initializes `RdfRepository`; a mark written from
   there, or from `AppResource` or `RdfInitialIndexRun`, would claim RDF was off on a stack where
   it is on. `CollateApplication.run` calls `super.run`, so Collate records it too. The call does
@@ -112,6 +115,8 @@ trigger does not override the configuration an admin chose.
   runs: on demand, at the next RDF-on start, or by the weekly schedule. With several replicas each
   new server can queue a rebuild of its own. Nothing re-checks after the last old server stops;
   that needs RDF-on servers to re-evaluate the trigger while running, which is not built.
+- Until the old server stops, a rebuild that has already completed leaves the state `READY`, and
+  a write through the old server in that interval is missing from the graph.
 - A server with RDF off that is killed writes no stop mark. Writes it took after a rebuild passed
   them are then missed while the state reads `READY`, until the next full rebuild.
 - The scheduler is shared, so a server with RDF off can pick up the queued run and complete it
