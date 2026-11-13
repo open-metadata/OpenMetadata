@@ -13,8 +13,6 @@
 import logging
 import time
 
-import pytest
-
 from metadata.core.connections.test_connection.check import check
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.classifier import (
@@ -144,35 +142,6 @@ def test_all_steps_pass_is_successful():
     result, _ = _run(Provider(), _Step("CheckAccess", Category.ConnectionGate))
     assert result.steps[0].status.value == "Passed"
     assert result.status.value == "Successful"
-
-
-@pytest.mark.parametrize("mandatory", [False, True])
-def test_not_configured_check_is_skipped_without_hiding_mandatory_failure(mandatory):
-    from metadata.core.connections.test_connection.check import CheckSkippedError
-    from metadata.generated.schema.entity.services.connections.testConnectionResult import SkipReason
-
-    class Provider:
-        errors = ErrorPack()
-
-        @check(DatabaseStep.GetQueries)
-        def get_queries(self):
-            raise CheckSkippedError(SkipReason.NotConfigured)
-
-        @check(DatabaseStep.GetTables)
-        def get_tables(self):
-            return Evidence(summary="1 table")
-
-    result, metadata = _run(
-        Provider(),
-        _Step("GetQueries", Category.Capability, mandatory=mandatory),
-        _Step("GetTables", Category.Capability),
-        workflow=object(),
-    )
-    assert [step.status.value for step in result.steps] == ["Skipped", "Passed"]
-    assert result.steps[0].skipReason.value == "NotConfigured"
-    assert result.steps[0].errorLog is None
-    assert result.status.value == ("Failed" if mandatory else "Successful")
-    assert metadata.patches[-1].value == result.status.value
 
 
 def test_mandatory_caveat_is_a_warning_but_keeps_the_connection_successful():

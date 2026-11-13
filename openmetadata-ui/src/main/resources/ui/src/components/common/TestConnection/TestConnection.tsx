@@ -73,7 +73,6 @@ import {
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
-import { getHasOptionalStepsFailing } from '../../../utils/TestConnectionUtils';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Loader from '../Loader/Loader';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -136,6 +135,27 @@ const computeConnectionTestFlags = (
     isReadyToTestCard,
     isTestConnectionDisabled,
   };
+};
+
+const getHasOptionalStepsFailing = (
+  resultSteps: TestConnectionStepResult[],
+  definitionSteps: TestConnectionStep[]
+) => {
+  const optionalDefinitionSteps = definitionSteps.filter(
+    (step) => !step.mandatory
+  );
+
+  if (optionalDefinitionSteps.length > 0) {
+    const resultByName = new Map(
+      resultSteps.map((result) => [result.name, result])
+    );
+
+    return optionalDefinitionSteps.some(
+      (step) => resultByName.get(step.name)?.passed === false
+    );
+  }
+
+  return resultSteps.some((step) => !step.mandatory && !step.passed);
 };
 
 const TestConnection: FC<TestConnectionProps> = ({

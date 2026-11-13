@@ -32,10 +32,7 @@ import {
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import {
-  Status,
-  TestConnectionStepResult,
-} from '../../../../generated/entity/automations/workflow';
+import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
@@ -52,8 +49,7 @@ const getConnectionStepStatus = (
   isTestingConnection: boolean
 ) => {
   const isSkipped =
-    testConnectionStepResult?.status === Status.Skipped ||
-    (isUndefined(testConnectionStepResult) && !isTestingConnection);
+    isUndefined(testConnectionStepResult) && !isTestingConnection;
   const hasPassed = !isSkipped && testConnectionStepResult?.passed;
   const success = hasPassed && !isTestingConnection;
   const failed = !isSkipped && !isTestingConnection && !hasPassed;

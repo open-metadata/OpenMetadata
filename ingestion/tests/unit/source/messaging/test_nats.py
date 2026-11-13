@@ -1029,7 +1029,7 @@ class TestNatsTestConnection:
         ):
             NatsSource.create(config, metadata)
 
-    def test_absent_bucket_is_skipped_with_successful_workflow(self, metadata, sdk_client):
+    def test_absent_bucket_is_not_required_with_successful_workflow(self, metadata, sdk_client):
         with (
             patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
             OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
@@ -1037,8 +1037,9 @@ class TestNatsTestConnection:
             result = owned.test_connection(metadata, automation_workflow=object())
 
         assert result.status.value == "Successful"
-        assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Skipped"]
-        assert result.steps[-1].skipReason.value == "NotConfigured"
+        assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Passed"]
+        assert result.steps[-1].skipReason is None
+        assert result.steps[-1].resultSummary == "Schema KV bucket not configured; check not required"
         assert result.steps[-1].errorLog is None
         assert metadata.patch_automation_workflow_response.call_args.args[-1].value == "Successful"
 
@@ -1069,14 +1070,11 @@ class TestNatsTestConnection:
         with pytest.raises(ConnectionError, match="JetStream API error"):
             _get_streams(client)
 
-    def test_check_schema_kv_bucket_reports_not_configured(self):
+    def test_check_schema_kv_bucket_does_not_request_an_unconfigured_bucket(self):
         client = self._make_client()
         conn = MagicMock()
         conn.schemaKvBucket = None
-        from metadata.core.connections.test_connection.check import CheckSkippedError
-
-        with pytest.raises(CheckSkippedError, match="NotConfigured"):
-            _check_schema_kv_bucket(client, conn)
+        _check_schema_kv_bucket(client, conn)
         client.request.assert_not_called()
 
     def test_check_schema_kv_bucket_succeeds_when_bucket_found(self):

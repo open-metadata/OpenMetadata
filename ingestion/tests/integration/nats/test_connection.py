@@ -92,14 +92,14 @@ def test_refused_port_fails_access_and_live_second_server_still_connects(config,
     config.additionalConfig = {"dont_randomize": True}
     with NatsConnection(config) as connection:
         result = connection.test_connection(catalog)
-    assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Skipped"]
+    assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Passed"]
     assert result.status.value == "Successful"
 
 
 @pytest.mark.parametrize(
-    "bucket, expected_status", [(None, "Skipped"), ("my_missing_bucket", "Warning"), ("my_schemas", "Passed")]
+    "bucket, expected_status", [(None, "Passed"), ("my_missing_bucket", "Warning"), ("my_schemas", "Passed")]
 )
-def test_optional_bucket_is_skipped_only_when_unconfigured(config, catalog, bucket, expected_status):
+def test_optional_bucket_is_not_required_when_unconfigured(config, catalog, bucket, expected_status):
     with NatsConnection(config) as connection:
         client = connection.client
         response = client.request(
@@ -122,7 +122,8 @@ def test_optional_bucket_is_skipped_only_when_unconfigured(config, catalog, buck
     assert result.status.value == "Successful"
     assert catalog.patch_automation_workflow_response.call_args.args[-1].value == "Successful"
     if bucket is None:
-        assert result.steps[-1].skipReason.value == "NotConfigured"
+        assert result.steps[-1].skipReason is None
+        assert result.steps[-1].resultSummary == "Schema KV bucket not configured; check not required"
         assert result.steps[-1].errorLog is None
     elif bucket == "my_missing_bucket":
         assert "stream not found" in result.steps[-1].errorLog

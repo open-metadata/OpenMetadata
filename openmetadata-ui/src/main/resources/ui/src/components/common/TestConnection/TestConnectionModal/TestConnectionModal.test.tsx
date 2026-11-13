@@ -563,39 +563,6 @@ describe('TestConnectionModal', () => {
     ).toBeInTheDocument();
   });
 
-  it('should show success when an unconfigured optional check is skipped', () => {
-    render(
-      <TestConnectionModal
-        {...commonProps}
-        progress={100}
-        testConnectionStep={[
-          { name: 'CheckAccess', description: 'Gate', mandatory: true },
-          {
-            name: 'CheckSchemaKvBucket',
-            description: 'Schemas',
-            mandatory: false,
-          },
-        ]}
-        testConnectionStepResult={[
-          { name: 'CheckAccess', passed: true, mandatory: true },
-          {
-            name: 'CheckSchemaKvBucket',
-            passed: false,
-            mandatory: false,
-            status: Status.Skipped,
-          },
-        ]}
-      />
-    );
-
-    expect(
-      screen.queryByText('message.connection-test-warning')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText('message.test-connection-verified-count')
-    ).toBeInTheDocument();
-  });
-
   it('should hide gate card when API errors before workflow runs (no step results)', () => {
     render(
       <TestConnectionModal

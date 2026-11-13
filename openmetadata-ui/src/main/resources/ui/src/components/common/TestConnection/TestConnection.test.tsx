@@ -19,7 +19,6 @@ import {
 import { act } from 'react';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { Status } from '../../../generated/entity/automations/workflow';
 import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
@@ -516,36 +515,6 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-ready-count')
     ).toBeInTheDocument();
-  });
-
-  it('Should report success when an optional check is skipped', async () => {
-    jest.useFakeTimers();
-    (getWorkflowById as jest.Mock).mockResolvedValueOnce({
-      ...WORKFLOW_DETAILS,
-      response: {
-        ...WORKFLOW_DETAILS.response,
-        steps: WORKFLOW_DETAILS.response.steps.map((step) =>
-          step.name === 'GetViews'
-            ? { ...step, passed: false, status: Status.Skipped }
-            : step
-        ),
-      },
-    });
-    await act(async () => {
-      render(<TestConnection {...mockProps} />);
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
-    });
-    jest.advanceTimersByTime(2000);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
-
-    expect(
-      screen.getByText('message.test-connection-verified')
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('message.connection-test-warning')
-    ).not.toBeInTheDocument();
   });
 
   it('Should show warning message if test connection failed and mandatory steps passed', async () => {

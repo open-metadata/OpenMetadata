@@ -2188,7 +2188,6 @@ export interface Diagnosis {
  */
 export enum SkipReason {
     ConnectionNotEstablished = "ConnectionNotEstablished",
-    NotConfigured = "NotConfigured",
     NotImplemented = "NotImplemented",
 }
 

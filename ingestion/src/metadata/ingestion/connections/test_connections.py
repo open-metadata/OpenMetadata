@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionDefinit
     TestConnectionDefinition,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    Status,
     StatusType,
     TestConnectionResult,
     TestConnectionStepResult,
@@ -233,7 +232,7 @@ def raise_test_connection_exception(result: TestConnectionResult) -> None:
     for step in result.steps:
         if not step.passed and step.mandatory:
             raise SourceConnectionException(f"Failed to run the test connection step: {step.name}")
-        if not step.passed and step.status != Status.Skipped:
+        if not step.passed:
             logger.warning(f"You might be missing metadata in: {step.name} due to {step.message}")
 
 

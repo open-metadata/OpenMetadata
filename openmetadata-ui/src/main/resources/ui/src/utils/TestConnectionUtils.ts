@@ -10,10 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Status,
-  TestConnectionStepResult,
-} from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
 export const CONNECTION_GATE_CATEGORY = 'ConnectionGate';
@@ -60,28 +56,4 @@ export const partitionConnectionSteps = (
   }
 
   return result;
-};
-
-export const getHasOptionalStepsFailing = (
-  resultSteps: TestConnectionStepResult[],
-  definitionSteps: TestConnectionStep[]
-) => {
-  const applicableResults = resultSteps.filter(
-    (step) => step.status !== Status.Skipped
-  );
-  const optionalDefinitionSteps = definitionSteps.filter(
-    (step) => !step.mandatory
-  );
-
-  if (optionalDefinitionSteps.length > 0) {
-    const resultByName = new Map(
-      applicableResults.map((result) => [result.name, result])
-    );
-
-    return optionalDefinitionSteps.some(
-      (step) => resultByName.get(step.name)?.passed === false
-    );
-  }
-
-  return applicableResults.some((step) => !step.mandatory && !step.passed);
 };

@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from metadata.core.connections.lifetime import Borrowed
-from metadata.core.connections.test_connection.check import CheckSkippedError, ChecksProvider, StepName, check
+from metadata.core.connections.test_connection.check import ChecksProvider, StepName, check
 from metadata.core.connections.test_connection.classifier import ErrorPack, Matchers, when
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
@@ -41,7 +41,6 @@ from metadata.generated.schema.entity.services.connections.messaging.natsConnect
     NatsConnection as NatsConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    SkipReason,
     TestConnectionResult,
 )
 from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
@@ -240,7 +239,7 @@ def _get_streams(client: NatsClient) -> None:
 def _check_schema_kv_bucket(client: NatsClient, service_connection: NatsConnectionConfig) -> None:
     bucket = service_connection.schemaKvBucket
     if not bucket:
-        raise CheckSkippedError(SkipReason.NotConfigured)
+        return
     response = client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
     _raise_for_api_error(response, f"Schema KV bucket '{bucket}' is unavailable")
 
@@ -282,10 +281,11 @@ class NatsChecks:
         _get_streams(self._client.client)
 
     @check(NatsStep.CheckSchemaKvBucket)
-    def check_schema_kv_bucket(self) -> None:
+    def check_schema_kv_bucket(self) -> Evidence | None:
         if not self._config.schemaKvBucket:
-            raise CheckSkippedError(SkipReason.NotConfigured)
+            return Evidence(summary="Schema KV bucket not configured; check not required")
         _check_schema_kv_bucket(self._client.client, self._config)
+        return None
 
 
 def test_connection(

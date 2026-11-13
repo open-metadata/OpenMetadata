@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Status } from '../../../../generated/entity/automations/workflow';
 import ConnectionStepCard from './ConnectionStepCard';
 
 const mockCopy = jest.fn();
@@ -27,28 +26,6 @@ jest.mock('../../../../hooks/useClipBoard', () => ({
 const step = { name: 'CheckAccess', mandatory: true, description: 'desc' };
 
 describe('ConnectionStepCard', () => {
-  it('shows an explicitly skipped optional check without a warning', () => {
-    render(
-      <ConnectionStepCard
-        isTestingConnection={false}
-        testConnectionStep={{
-          name: 'CheckSchemaKvBucket',
-          mandatory: false,
-          description: 'Schemas',
-        }}
-        testConnectionStepResult={{
-          name: 'CheckSchemaKvBucket',
-          mandatory: false,
-          passed: false,
-          status: Status.Skipped,
-        }}
-      />
-    );
-
-    expect(screen.getByText('label.skipped')).toBeInTheDocument();
-    expect(screen.queryByTestId('warning-badge')).not.toBeInTheDocument();
-  });
-
   it('shows the failed badge and toggles the error log', () => {
     render(
       <ConnectionStepCard

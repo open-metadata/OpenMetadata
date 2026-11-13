@@ -42,7 +42,7 @@
         "skipReason": {
           "description": "Why a step did not run, when status is Skipped.",
           "type": "string",
-          "enum": ["NotImplemented", "ConnectionNotEstablished", "NotConfigured"]
+          "enum": ["NotImplemented", "ConnectionNotEstablished"]
         },
         "diagnosis": {
           "description": "Classified, actionable explanation of a failure, separate from the raw errorLog.",
