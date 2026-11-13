@@ -58,6 +58,8 @@ A Sigma workbook's project is its workspace, the first part of the workbook's pa
 
 When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it.
 
+A Sigma Data Model also gets lineage from the warehouse tables and the other Sigma Data Models its elements read. Its tables are looked up as described under **Lineage**.
+
 ## Custom Properties
 
 When **Include Custom Properties** is on, each workbook's dashboard gets a `latestVersion` custom property: the most recently published version of the workbook in Sigma. The property is added to every dashboard in OpenMetadata, and is left alone when a property of that name already exists with another type.

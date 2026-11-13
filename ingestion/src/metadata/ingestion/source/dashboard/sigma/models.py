@@ -121,6 +121,7 @@ class EdgeSourceResponse(BaseModel):
 
 class NodeDetails(BaseModel):
     id: str
+    urlId: str | None = None  # noqa: N815
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
@@ -141,6 +142,7 @@ class NodeDetails(BaseModel):
 
 class DataModel(BaseModel):
     dataModelId: str  # noqa: N815
+    dataModelUrlId: str | None = None  # noqa: N815
     name: str | None = None
     url: str | None = None
     ownerId: str | None = None  # noqa: N815
@@ -156,10 +158,13 @@ class Connection(BaseModel):
 
 
 class WorkbookLineageEntry(BaseModel):
+    type: str | None = None
     connectionId: str | None = None  # noqa: N815
     elementId: str | None = None  # noqa: N815
+    sourceIds: list[str] | None = None  # noqa: N815
     dataSourceIds: list[str] | None = None  # noqa: N815
     dataModelId: str | None = None  # noqa: N815
+    inodeId: str | None = None  # noqa: N815
 
 
 class WorkbookLineageResponse(BaseModel):

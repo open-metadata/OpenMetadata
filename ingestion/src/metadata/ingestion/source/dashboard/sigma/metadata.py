@@ -62,6 +62,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
@@ -116,6 +117,13 @@ SIGMA_CONNECTION_DIALECTS = {
 }
 
 
+class _DataModelLineageMarker:
+    """Listed after the last Sigma Data Model, so their lineage is drawn once all of them are written"""
+
+
+_DATA_MODEL_LINEAGE = _DataModelLineageMarker()
+
+
 def _access_details(moment: datetime | None) -> AccessDetails | None:
     return AccessDetails(timestamp=Timestamp(datetime_to_timestamp(moment, milliseconds=True))) if moment else None
 
@@ -155,6 +163,9 @@ class SigmaSource(DashboardServiceSource):
         self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | None] = LRUCache(
             maxsize=MAX_RESOLVED_TABLES
         )
+        # The Sigma Data Models ingested this run, and the url id of every listed one: lineage rows name both ids
+        self._lineage_data_models: list[DataModel] = []
+        self._data_model_url_ids: dict[str, str] = {}
 
     def get_dashboards_list(self) -> list[Workbook] | None:
         """
@@ -838,18 +849,31 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def list_datamodels(self) -> Iterable[DataModel]:
-        """Sigma Data Models, ingested before the workbooks that read from them"""
-        return self.client.get_data_models() if self.source_config.includeDataModels else []
+    def list_datamodels(self) -> Iterable[DataModel | _DataModelLineageMarker]:
+        """Sigma Data Models, ingested before the workbooks that read from them, then the marker for their lineage"""
+        if not self.source_config.includeDataModels:
+            return
+        data_models = self.client.get_data_models()
+        self._lineage_data_models = []
+        self._data_model_url_ids = {
+            data_model.dataModelId: data_model.dataModelUrlId for data_model in data_models if data_model.dataModelUrlId
+        }
+        yield from data_models
+        if data_models:
+            yield _DATA_MODEL_LINEAGE
 
     def yield_bulk_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, data_model: DataModel
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        self, data_model: DataModel | _DataModelLineageMarker
+    ) -> Iterable[Either]:
         """One data model per Sigma Data Model, with a table column per element, as PowerBI models a dataset"""
+        if isinstance(data_model, _DataModelLineageMarker):
+            yield from self._yield_data_model_lineage()
+            return
         display_name = data_model.name or data_model.dataModelId
         if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
             self.status.filter(display_name, "Data model filtered out.")
             return
+        self._lineage_data_models.append(data_model)
         try:
             elements = self.client.get_data_model_elements(data_model.dataModelId)
             if elements is None:
@@ -893,6 +917,72 @@ class SigmaSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 ),
             )
+
+    def _yield_data_model_lineage(self) -> Iterable[Either]:
+        """
+        The tables and Sigma Data Models each Sigma Data Model reads, sent once every data model is written, as a
+        data model can read one listed after it
+        """
+        yield Either(left=None, right=Barrier(reason="sigma_data_model_lineage_flush"))
+        for data_model in self._lineage_data_models:
+            try:
+                yield from self._yield_lineage_of_data_model(data_model)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=data_model.dataModelId,
+                        error=f"Error yielding the lineage of Sigma data model [{data_model.dataModelId}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
+
+    def _yield_lineage_of_data_model(self, data_model: DataModel) -> Iterable[Either[OMetaLineageRequest]]:
+        entries = self.client.get_data_model_lineage(data_model.dataModelId)
+        read_ids = self._ids_read_by_elements(entries)
+        upstream: dict[str, Table | DashboardDataModel] = {}
+        for entry in entries:
+            if source := self._data_model_lineage_source(entry, read_ids):
+                upstream.setdefault(model_str(source.id), source)
+        to_entity = self._get_datamodel(data_model.dataModelId) if upstream else None
+        if not to_entity:
+            return
+        for from_entity in upstream.values():
+            yield from self.yield_lineage_request(
+                self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+            )
+
+    @staticmethod
+    def _ids_read_by_elements(entries: list[WorkbookLineageEntry]) -> set[str]:
+        """
+        The ids a data model's elements read from, as their sourceIds and dataSourceIds write them: an inode or url
+        id, with or without an `inode-` prefix, or `<data model url id>/<element>` for another data model's element
+        """
+        ids = set()
+        for entry in entries:
+            for source_id in (entry.sourceIds or []) + (entry.dataSourceIds or []):
+                bare_id = source_id.removeprefix("inode-")
+                ids.update((bare_id, bare_id.split("/", 1)[0]))
+        return ids
+
+    def _data_model_lineage_source(
+        self, entry: WorkbookLineageEntry, read_ids: set[str]
+    ) -> Table | DashboardDataModel | None:
+        """
+        The table or Sigma Data Model a data model lineage row names, when an element of the data model reads it.
+        Sigma also lists the sources of what the elements read (ADR:2026-11-12-sigma-data-model-lineage-links-only-what-its-elements-read).
+        """
+        if entry.type == "data-model" and entry.dataModelId:
+            if read_ids.isdisjoint({entry.dataModelId, self._data_model_url_ids.get(entry.dataModelId)}):
+                return None
+            return self._get_datamodel(entry.dataModelId)
+        prefixes = self.get_db_service_prefixes()
+        if entry.type != "table" or not entry.inodeId or not prefixes:
+            return None
+        node = self.client.get_file(entry.inodeId)
+        if not node or read_ids.isdisjoint({entry.inodeId, node.urlId}):
+            return None
+        return next((table for prefix in prefixes if (table := self._get_table_entity_from_node(node, prefix))), None)
 
     def get_owner_ref(self, dashboard_details: WorkbookDetails | DataModel) -> EntityReferenceList | None:
         """

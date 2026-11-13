@@ -27,6 +27,9 @@ import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import (
@@ -1265,11 +1268,17 @@ def sigma_data_models(routes):
         ],
         "nextPage": None,
     }
+    routes["GET", "/v2/dataModels/dm-1/lineage"] = {"entries": [], "nextPage": None}
     return routes
 
 
-def bulk_data_models(source) -> list:
+def bulk_stage(source) -> list:
+    """Every record the bulk data model stage sends, in order"""
     return [either.right for model in source.list_datamodels() for either in source.yield_bulk_datamodel(model)]
+
+
+def bulk_data_models(source) -> list:
+    return [record for record in bulk_stage(source) if isinstance(record, CreateDashboardDataModelRequest)]
 
 
 def test_a_sigma_data_model_is_one_data_model_with_a_table_column_per_element(sigma_over_http, sigma_data_models):
@@ -1327,6 +1336,222 @@ def test_a_sigma_data_model_is_owned_by_its_owner(sigma_over_http, sigma_data_mo
     [data_model] = bulk_data_models(source)
 
     assert [owner.name for owner in data_model.owners.root] == ["ada@example.com"]
+
+
+def table_row(inode_id: str, name: str) -> dict:
+    return {"type": "table", "connectionId": "conn-1", "name": name, "inodeId": inode_id}
+
+
+def element_row(element_id: str, source_ids: list[str]) -> dict:
+    return {"type": "element", "elementId": element_id, "sourceIds": source_ids, "dataSourceIds": source_ids}
+
+
+def data_model_row(data_model_id: str, name: str) -> dict:
+    return {"type": "data-model", "connectionId": None, "name": name, "dataModelId": data_model_id}
+
+
+@pytest.fixture
+def two_sigma_data_models(sigma_data_models):
+    """dm-1 (Sales Model) and dm-2 (Orders Model, url id url-dm-2); neither has lineage rows yet"""
+    routes = sigma_data_models
+    routes["GET", "/v2/dataModels"]["entries"].append(sigma_data_model("dm-2", "Orders Model"))
+    routes["GET", "/v2/dataModels/dm-2/elements"] = {
+        "entries": [{"elementId": "dm2El1", "name": "Orders", "type": "table", "columns": ["Order Id"]}],
+        "nextPage": None,
+    }
+    routes["GET", "/v2/dataModels/dm-2/lineage"] = {"entries": [], "nextPage": None}
+    return routes
+
+
+def serve_openmetadata(source, catalog: list[Table], prefixes: list[str]) -> None:
+    """OpenMetadata knows every data model, and answers table searches from `catalog` with its wildcard matching"""
+    services = {table.fullyQualifiedName.root.split(".")[0] for table in catalog}
+
+    def es_search_from_fqn(entity_type, fqn_search_string, **_):
+        if entity_type is DatabaseService:
+            return (
+                [warehouse_service(fqn_search_string, DatabaseServiceType.Snowflake)]
+                if fqn_search_string in services
+                else []
+            )
+        return [table for table in catalog if fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())]
+
+    def get_by_name(entity, fqn, **_):
+        if entity is DatabaseService:
+            return warehouse_service(fqn, DatabaseServiceType.Snowflake) if fqn in services else None
+        if entity is DashboardDataModel:
+            return DashboardDataModel(
+                id=str(uuid5(NAMESPACE_URL, fqn)),
+                name=fqn.rsplit(".", 1)[-1],
+                fullyQualifiedName=fqn,
+                dataModelType="SigmaDataModel",
+                columns=[],
+            )
+        return None
+
+    source.metadata.es_search_from_fqn = es_search_from_fqn
+    source.metadata.get_by_name = get_by_name
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=prefixes)
+
+
+def data_model_lineage(source, prefixes: list[str] | None = None, catalog: list[Table] | None = None):
+    """(from FQN, to FQN) of every lineage edge the bulk data model stage sends"""
+    serve_openmetadata(
+        source, catalog or [warehouse_table("wh_a", "ORDERS")], ["wh_a"] if prefixes is None else prefixes
+    )
+    return [
+        (
+            record.lineage_request.edge.fromEntity.fullyQualifiedName,
+            record.lineage_request.edge.toEntity.fullyQualifiedName,
+        )
+        for record in bulk_stage(source)
+        if hasattr(record, "lineage_request")
+    ]
+
+
+ORDERS_TO_SALES_MODEL = ("wh_a.ANALYTICS.PUBLIC.ORDERS", "mock_sigma.model.dm-1")
+
+
+# T1's /files entry has id T1 and url id t1-url: an element can name it by either, with or without `inode-`
+@pytest.mark.parametrize("source_id", ["inode-t1-url", "t1-url", "inode-T1", "T1"])
+def test_a_table_an_element_reads_is_linked_to_its_sigma_data_model(sigma_over_http, sigma_data_models, source_id):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", [source_id]),
+    ]
+
+    assert data_model_lineage(source) == [ORDERS_TO_SALES_MODEL]
+
+
+def test_a_table_read_by_several_elements_is_linked_once(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-t1-url"]),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl2", ["inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source) == [ORDERS_TO_SALES_MODEL]
+
+
+def test_a_table_no_element_reads_is_not_linked(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-other-url"]),
+    ]
+
+    assert data_model_lineage(source) == []
+    assert calls["GET", "/v2/files/T1"] == 1
+
+
+def test_a_sigma_data_model_another_one_reads_is_linked_to_it(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    # Sigma names the other data model's element as <its url id>/<element>; the table feeds dm-2, not dm-1
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["url-dm-2/dm2El1"]),
+    ]
+
+    assert data_model_lineage(source) == [("mock_sigma.model.dm-2", "mock_sigma.model.dm-1")]
+
+
+def test_a_sigma_data_model_named_by_its_id_is_linked(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        element_row("dmEl1", ["dm-2"]),
+    ]
+
+    assert data_model_lineage(source) == [("mock_sigma.model.dm-2", "mock_sigma.model.dm-1")]
+
+
+def test_a_sigma_data_model_no_element_reads_is_not_linked(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        element_row("dmEl1", ["inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source) == []
+
+
+def test_every_page_of_a_sigma_data_model_lineage_is_read(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"] = {
+        "entries": [element_row("dmEl1", ["inode-t1-url"])],
+        "nextPage": "2",
+    }
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage", "2"] = {
+        "entries": [table_row("T1", "ORDERS")],
+        "nextPage": None,
+    }
+
+    assert data_model_lineage(source) == [ORDERS_TO_SALES_MODEL]
+
+
+def test_a_sigma_data_model_table_found_in_two_services_is_not_linked(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["inode-t1-url"]),
+    ]
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "ORDERS")]
+
+    assert data_model_lineage(source, ["wh_a", "wh_b"], catalog) == []
+
+
+def test_without_db_service_prefixes_only_sigma_data_models_are_linked(sigma_over_http, two_sigma_data_models):
+    source, calls = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        table_row("T1", "ORDERS"),
+        element_row("dmEl1", ["url-dm-2/dm2El1", "inode-t1-url"]),
+    ]
+
+    assert data_model_lineage(source, prefixes=[]) == [("mock_sigma.model.dm-2", "mock_sigma.model.dm-1")]
+    # No table could be linked, so none is read
+    assert calls["GET", "/v2/files/T1"] == 0
+
+
+def test_a_failed_sigma_data_model_lineage_read_links_nothing_and_keeps_the_data_model(
+    sigma_over_http, sigma_data_models
+):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"] = 500
+
+    assert data_model_lineage(source) == []
+    assert [data_model.name.root for data_model in bulk_data_models(source)] == ["dm-1"]
+
+
+def test_a_filtered_sigma_data_model_lineage_is_not_read(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    source.source_config.dataModelFilterPattern = FilterPattern(excludes=["^Sales Model$"])
+
+    assert data_model_lineage(source) == []
+    assert calls["GET", "/v2/dataModels/dm-1/lineage"] == 0
+
+
+def test_sigma_data_model_lineage_is_sent_after_every_data_model_is_written(sigma_over_http, two_sigma_data_models):
+    source, _ = sigma_over_http
+    two_sigma_data_models["GET", "/v2/dataModels/dm-1/lineage"]["entries"] = [
+        data_model_row("dm-2", "Orders Model"),
+        element_row("dmEl1", ["url-dm-2/dm2El1"]),
+    ]
+    serve_openmetadata(source, [], [])
+
+    records = [type(record).__name__ for record in bulk_stage(source)]
+
+    # dm-1 reads dm-2, which is written after it: the barrier flushes both before the edge is sent
+    assert records == [
+        "CreateDashboardDataModelRequest",
+        "CreateDashboardDataModelRequest",
+        "Barrier",
+        "OMetaLineageRequest",
+    ]
 
 
 # Sigma's documented example response for the workbook lineage endpoint (list-lineage-tree): element

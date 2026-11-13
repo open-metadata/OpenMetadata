@@ -183,6 +183,26 @@ class SigmaApiClient:
             logger.warning("Failed to fetch the lineage of workbook %s: %s", workbook_id, exc)
         return []
 
+    def get_data_model_lineage(self, data_model_id: str) -> list[WorkbookLineageEntry]:
+        """The lineage rows of a Sigma Data Model, shaped as a workbook's. Empty when the read fails"""
+        try:
+            return list(self._read_all(f"/dataModels/{data_model_id}/lineage", WorkbookLineageResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the lineage of data model %s: %s", data_model_id, exc)
+        return []
+
+    def get_file(self, node_id: str) -> NodeDetails | None:
+        """The /files entry of a table or other Sigma document, read once per run"""
+        if node_id not in self._file_cache:
+            try:
+                self._file_cache[node_id] = NodeDetails.model_validate(self.client.get(f"/files/{node_id}"))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to fetch node details for %s: %s", node_id, exc)
+                return None
+        return self._file_cache[node_id]
+
     def _read_all(
         self, path: str, response_model: type[DataModelsResponse | ElementsResponse | WorkbookLineageResponse]
     ) -> Iterator:
@@ -320,18 +340,10 @@ class SigmaApiClient:
                 if node.type in ("table", "dataset") and (node_id := EdgeSource(source=node.nodeId).node_id)
             ]
             for node_id in node_ids:
-                try:
-                    if node_id not in self._file_cache:
-                        self._file_cache[node_id] = NodeDetails.model_validate(self.client.get(f"/files/{node_id}"))
-                    node_details = self._file_cache[node_id]
-
-                    if node_details.node_type in ["table", "dataset"]:
-                        source_nodes.append(node_details)
-                    else:
-                        all_sources_read = False
-                except Exception as node_exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning("Failed to fetch node details for %s: %s", node_id, node_exc)
+                node_details = self.get_file(node_id)
+                if node_details and node_details.node_type in ["table", "dataset"]:
+                    source_nodes.append(node_details)
+                else:
                     all_sources_read = False
 
             return (source_nodes, all_sources_read) if source_nodes else None  # noqa: TRY300
