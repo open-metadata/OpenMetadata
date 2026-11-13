@@ -21,7 +21,7 @@ import {
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
 import { useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useSearchParams } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import {
   Code,
@@ -756,6 +756,58 @@ describe('OntologyGraphView', () => {
       ).not.toBeInTheDocument();
     }
   );
+
+  it('opens an isolated concept from Connect when the selection lives in the URL', async () => {
+    // Mirrors the Studio page: selection and the edit request both write the URL, and
+    // react-router's functional setSearchParams does not queue, so a second write in the
+    // same tick would replace the first.
+    const writeParam =
+      (
+        setParams: ReturnType<typeof useSearchParams>[1],
+        key: string,
+        value?: string
+      ) =>
+      () =>
+        setParams((current) => {
+          const next = new URLSearchParams(current);
+          if (value) {
+            next.set(key, value);
+          } else {
+            next.delete(key);
+          }
+
+          return next;
+        });
+    const UrlStudio = () => {
+      const [params, setParams] = useSearchParams();
+
+      return (
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          selectedConceptId={params.get('concept') ?? undefined}
+          surface="graph"
+          onRequestEdit={writeParam(setParams, 'mode', 'edit')}
+          onRequestGraphSurface={jest.fn()}
+          onSelectedConceptChange={(id) =>
+            writeParam(setParams, 'concept', id)()
+          }
+        />
+      );
+    };
+    render(
+      <MemoryRouter>
+        <UrlStudio />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+    fireEvent.click(await screen.findByTestId(`ontology-connect-${orphan.id}`));
+
+    expect(
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toHaveTextContent('Orphan');
+  });
 
   it('renders the full native model, health, search, and concept inspector', async () => {
     const onStatsChange = jest.fn();

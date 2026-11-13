@@ -1364,9 +1364,13 @@ const OntologyGraphView = ({
       }
       graphRef.current?.focusNode(conceptId);
     });
+  // Already in Edit, a mode switch would rewrite the URL from stale params and drop the selection.
+  // From View, pass the id so the edit request reselects it after the switch.
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
-    onRequestEdit?.();
+    if (!isEditing) {
+      onRequestEdit?.(id);
+    }
   };
   const openRelationFrom = (
     conceptId: string,
