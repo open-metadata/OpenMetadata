@@ -857,10 +857,12 @@
         "openmetadata-service/src/main/resources/json/data/document/docs/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
         "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Widgets.constant*",
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"

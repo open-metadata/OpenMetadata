@@ -736,7 +736,7 @@ class RdfIndexAppTest {
       when(reindexLockDAO.tryAcquireLock(
               anyString(), anyString(), anyString(), anyLong(), anyLong()))
           .thenReturn(true);
-      final String failure = "RDF storage unavailable after acquiring the lock";
+      final String failure = "Fuseki unreachable";
       doThrow(new IllegalStateException(failure)).when(mockRdfRepository).ensureStorageReady();
       try {
         testApp.execute(jobContext());
