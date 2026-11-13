@@ -117,14 +117,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
       variant,
       closable,
       onClose,
+      children,
     }: {
       title: ReactNode;
       variant?: string;
       closable?: boolean;
       onClose?: () => void;
+      children?: ReactNode;
     }) => (
       <div data-testid={`alert-${variant}`}>
         {title}
+        {children}
         {closable && (
           <button aria-label="Close alert" type="button" onClick={onClose}>
             Close
@@ -510,6 +513,28 @@ describe('DestinationSelectItem', () => {
     expect(
       screen.getByTestId(`destination-downstream-depth-input-${MOCK_PROPS.id}`)
     ).toBeDisabled();
+  });
+
+  it('tells, in view mode, why the stored destination does not send', () => {
+    const reason =
+      "its stored configuration is not usable: The value at '/authType/secretKey' must be entered again";
+    const failedDestination = {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Webhook,
+          statusDetails: { status: Status.Failed, lastFailedReason: reason },
+        },
+      ],
+    };
+
+    renderWithForm(
+      <DestinationSelectItem {...MOCK_PROPS} isViewMode />,
+      failedDestination
+    );
+
+    expect(screen.getByTestId('alert-error')).toHaveTextContent(
+      `message.destination-does-not-send-until-fixed${reason}`
+    );
   });
 
   it('shows config field when external destination is selected', async () => {

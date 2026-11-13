@@ -121,8 +121,9 @@ export function useAlertDetailsData({
     try {
       setLoadingCount((count) => count + 1);
       setAlertDetailsError(undefined);
+      // statusDetails says, per destination, whether it sends and why not.
       const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
-        fields: 'owners',
+        fields: 'owners,statusDetails',
       });
 
       setAlertDetails(observabilityAlert);

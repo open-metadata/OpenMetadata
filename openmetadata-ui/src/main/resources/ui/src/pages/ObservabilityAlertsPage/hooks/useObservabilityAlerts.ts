@@ -43,6 +43,8 @@ import {
 
 // System alert the classic Notification list always shows on its first page.
 const ACTIVITY_FEED_ALERT_NAME = 'ActivityFeedAlert';
+// Each destination's status, so the list shows an alert whose destinations do not send.
+const ALERT_LIST_FIELDS = 'statusDetails';
 
 export function useObservabilityAlerts({
   alertType = AlertType.Observability,
@@ -152,9 +154,12 @@ export function useObservabilityAlerts({
             before: requestParams?.before,
             limit: pageSize,
             alertType,
+            fields: ALERT_LIST_FIELDS,
           }),
           includeSystemAlerts && isFirstPage
-            ? getAlertsFromName(ACTIVITY_FEED_ALERT_NAME).catch(() => undefined)
+            ? getAlertsFromName(ACTIVITY_FEED_ALERT_NAME, {
+                fields: ALERT_LIST_FIELDS,
+              }).catch(() => undefined)
             : undefined,
         ]);
         const alertsList = includeSystemAlerts
@@ -225,6 +230,10 @@ export function useObservabilityAlerts({
       {
         id: ALERT_TABLE_COLUMN_IDS.NAME,
         name: t('label.name'),
+      },
+      {
+        id: ALERT_TABLE_COLUMN_IDS.STATUS,
+        name: t('label.status'),
       },
       {
         id: ALERT_TABLE_COLUMN_IDS.TRIGGER,

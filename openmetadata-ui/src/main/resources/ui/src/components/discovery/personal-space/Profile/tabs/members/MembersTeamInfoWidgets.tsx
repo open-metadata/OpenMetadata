@@ -44,6 +44,7 @@ import DomainTags from '../../../../../common/DomainTags/DomainTags';
 import PersonaSelect from '../../../../../common/PersonaSelect/PersonaSelect';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import type { SubscriptionWebhook } from '../../../../../Settings/Team/TeamDetails/team.interface';
+import WebhookNotSendingAlert from '../../../../../Settings/Team/TeamDetails/WebhookNotSendingAlert/WebhookNotSendingAlert';
 import { WIDGET_CLASS } from './Members.constants';
 import { toDomainArray } from './Members.utils';
 import type { MembersTeamInfoWidgetsProps } from './MembersTeamDetail.types';
@@ -512,6 +513,10 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
           {subLabel}
         </Typography>
       </Box>
+      <WebhookNotSendingAlert
+        slot={subKey}
+        subscriptionStatus={team.profile?.subscriptionStatus}
+      />
     </InfoWidget>
   );
 };

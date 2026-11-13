@@ -12,7 +12,11 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
-import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
+import {
+  Status,
+  Team,
+  TeamType,
+} from '../../../../../../generated/entity/teams/team';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
 let mockIsAdminUser = true;
@@ -131,6 +135,31 @@ describe('MembersTeamInfoWidgets', () => {
           subscription: { slack: { endpoint: MASKED_PASSWORD_VALUE } },
         },
       })
+    );
+  });
+
+  it('tells why the team webhook does not send', () => {
+    const reason = "The value at '/endpoint' must be entered again";
+    render(
+      <MembersTeamInfoWidgets
+        canEdit={false}
+        team={
+          {
+            ...groupTeam,
+            profile: {
+              subscription: { slack: { endpoint: MASKED_PASSWORD_VALUE } },
+              subscriptionStatus: {
+                slack: { status: Status.Failed, lastFailedReason: reason },
+              },
+            },
+          } as Team
+        }
+        onPatch={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('subscription-not-sending')).toHaveTextContent(
+      `message.webhook-does-not-send-until-fixed${reason}`
     );
   });
 

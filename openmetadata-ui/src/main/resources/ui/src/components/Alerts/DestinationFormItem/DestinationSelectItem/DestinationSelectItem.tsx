@@ -36,6 +36,7 @@ import {
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtilPure';
+import { getNotSendingReason } from '../../../../utils/observability/alertStatus.utils';
 import {
   checkIfDestinationIsInternal,
   getConfigFieldFromDestinationType,
@@ -113,6 +114,11 @@ function DestinationSelectItem({
       ? statusDestination.statusDetails
       : undefined;
   }, [destinationItem, destinationsWithStatus, id]);
+
+  // What the server says when the destination, as stored, does not send.
+  const notSendingReason = isViewMode
+    ? getNotSendingReason(destinationItem.statusDetails)
+    : undefined;
 
   const { statusLabel } = useMemo(
     () => getDestinationStatusAlertData(destinationStatusDetails?.status),
@@ -445,6 +451,17 @@ function DestinationSelectItem({
           {notifyDownstream && renderDownstreamDepthField()}
 
           {renderStatusSection()}
+
+          {notSendingReason && (
+            <Grid.Item span={24}>
+              <Alert
+                data-testid={`destination-not-sending-${id}`}
+                title={t('message.destination-does-not-send-until-fixed')}
+                variant="error">
+                {notSendingReason}
+              </Alert>
+            </Grid.Item>
+          )}
         </Grid>
       </div>
 
