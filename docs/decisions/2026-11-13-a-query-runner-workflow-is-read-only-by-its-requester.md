@@ -19,6 +19,8 @@ queries, while their results and a re-run were already limited to the requester.
   `paging.total` count only readable rows. Workflows of other types are listed as before.
 - The id, name and version reads refuse another user's query runner workflow with 403, the answer
   the results and trigger endpoints already give.
+- The `/history` listing leaves another user's query runner snapshots out of its page rather than
+  refusing the page.
 
 ## Consequences
 A user sees only their own SQL Studio runs; admins and bots, which dispatch and clean up runs, see

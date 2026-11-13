@@ -676,17 +676,26 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
    * may read it, as with its results. Every other workflow is readable as its policies decide.
    */
   private static Workflow requireReadable(SecurityContext securityContext, Workflow workflow) {
-    boolean readable =
-        workflow.getWorkflowType() != WorkflowType.QUERY_RUNNER
-            || ConnectionSecretsGuard.readsStoredSecrets(securityContext)
-            || isRequester(securityContext, workflow);
-    if (!readable) {
+    if (!isReadable(securityContext, workflow)) {
       throw new AuthorizationException(
           String.format(
               "Query runner workflow [%s] is only available to the user who ran it",
               workflow.getId()));
     }
     return workflow;
+  }
+
+  private static boolean isReadable(SecurityContext securityContext, Workflow workflow) {
+    return workflow.getWorkflowType() != WorkflowType.QUERY_RUNNER
+        || ConnectionSecretsGuard.readsStoredSecrets(securityContext)
+        || isRequester(securityContext, workflow);
+  }
+
+  /** The history listing leaves out other users' query runs instead of refusing the page. */
+  @Override
+  protected List<Workflow> retainReadableHistory(
+      SecurityContext securityContext, List<Workflow> snapshots) {
+    return snapshots.stream().filter(workflow -> isReadable(securityContext, workflow)).toList();
   }
 
   private static boolean isRequester(SecurityContext securityContext, Workflow workflow) {

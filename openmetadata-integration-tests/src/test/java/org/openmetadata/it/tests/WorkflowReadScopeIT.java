@@ -70,6 +70,20 @@ public class WorkflowReadScopeIT {
   }
 
   @Test
+  void theHistoryListingLeavesOutAnotherUsersQueryInsteadOfRefusingThePage(TestNamespace ns)
+      throws Exception {
+    long startTs = System.currentTimeMillis() - 60_000;
+    Workflow workflow = createQueryRunnerWorkflow(ns.prefix("qr-scope-history"));
+    long endTs = System.currentTimeMillis() + 60_000;
+    String range = "&startTs=" + startTs + "&endTs=" + endTs;
+
+    String otherToken = tokenFor(OTHER_USER_EMAIL, new String[] {"DataConsumer"});
+    assertFalse(historyIds(otherToken, range).contains(workflow.getId().toString()));
+    String requesterToken = tokenFor(REQUESTER_EMAIL, new String[] {});
+    assertTrue(historyIds(requesterToken, range).contains(workflow.getId().toString()));
+  }
+
+  @Test
   void theRequesterListsAndReadsTheirOwnQuery(TestNamespace ns) throws Exception {
     Workflow workflow = createQueryRunnerWorkflow(ns.prefix("qr-scope-own"));
     String requesterToken = tokenFor(REQUESTER_EMAIL, new String[] {});
@@ -146,10 +160,14 @@ public class WorkflowReadScopeIT {
 
   /** Every id the caller's listing of a workflow type returns, across all pages. */
   private static Set<String> listIds(String token, String workflowType) throws Exception {
+    return pagedIds(token, WORKFLOWS_PATH + "?limit=1000&workflowType=" + workflowType);
+  }
+
+  private static Set<String> pagedIds(String token, String firstPage) throws Exception {
     Set<String> ids = new HashSet<>();
     String after = null;
     do {
-      String path = WORKFLOWS_PATH + "?limit=1000&workflowType=" + workflowType;
+      String path = firstPage;
       if (after != null) {
         path += "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
       }
@@ -161,6 +179,11 @@ public class WorkflowReadScopeIT {
       after = next.isMissingNode() || next.isNull() ? null : next.asText();
     } while (after != null);
     return ids;
+  }
+
+  /** Every workflow id in the caller's history listing of a time range, across all pages. */
+  private static Set<String> historyIds(String token, String range) throws Exception {
+    return pagedIds(token, WORKFLOWS_PATH + "/history?limit=500" + range);
   }
 
   private static String byId(Workflow workflow) {
