@@ -635,6 +635,7 @@ describe('QualityTab', () => {
     });
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
+      isTableDeleted: true,
       table: {
         ...MOCK_TABLE,
         deleted: true,
@@ -918,6 +919,7 @@ describe('QualityTab', () => {
   it('should pass deleted true to ManageButton when table is deleted', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
+      isTableDeleted: true,
       table: {
         ...MOCK_TABLE,
         id: 'test-table-id',

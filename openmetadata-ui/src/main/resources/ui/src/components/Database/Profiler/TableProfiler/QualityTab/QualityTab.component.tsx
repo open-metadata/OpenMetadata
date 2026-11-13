@@ -89,8 +89,8 @@ export const QualityTab = () => {
     testCasePaging,
     table,
     testCaseSummary,
+    isTableDeleted,
   } = useTableProfiler();
-  const isTableDeleted = Boolean(table?.deleted);
   const { getResourceLimit } = useLimitStore();
   const { permissions: globalPermissions } = usePermissionProvider();
 
