@@ -21,6 +21,7 @@ import {
 import {
   ChevronLeft,
   Clock,
+  LinkExternal01,
   Restore,
   SlashCircle01,
   Trash01,
@@ -34,7 +35,6 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -624,7 +624,7 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
+        <LinkExternal01 className="tw:shrink-0" size={14} />
         <Typography>
           <a
             className="text-xs"

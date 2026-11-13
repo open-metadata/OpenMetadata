@@ -19,14 +19,16 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronLeft,
+  Completeness,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { AppScreenshots } from './AppScreenshots';
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
 import { ROUTES } from '../../../../constants/constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
@@ -232,7 +234,10 @@ const MarketPlaceAppDetails = () => {
           />
         )}
         <div className="m-t-md">
-          <CheckMarkIcon className="tw:align-middle tw:mr-1" />
+          <Completeness
+            className="tw:align-middle tw:mr-1 tw:text-utility-blue-700"
+            size={16}
+          />
           <Typography className="text-xs font-medium" color="secondary">
             {t('message.marketplace-verify-msg')}
           </Typography>

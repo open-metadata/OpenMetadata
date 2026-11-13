@@ -27,6 +27,8 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.update.UpdateAction;
+import org.apache.jena.vocabulary.OWL2;
+import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -77,7 +79,7 @@ class OntologyActiveGraphStorageTest {
                       return call.callRealMethod();
                     })
                 .when(storage)
-                .replaceGraph(anyString(), any(Model.class));
+                .replaceGraph(anyString(), any(), any(Model.class));
             final var rebuilding = workers.submit(() -> projection.rebuild(storage));
             try {
               assertTrue(modelBuilt.await(10, TimeUnit.SECONDS));
@@ -124,6 +126,7 @@ class OntologyActiveGraphStorageTest {
             projection.refresh(id, storage);
             final Model original = dataset.getNamedModel(OntologyActiveGraph.graph(id));
             assertTrue(original.contains(null, RDFS.label, fixture.ontology.getName()));
+            assertFalse(original.contains(null, RDF.type, OWL2.Axiom));
             fixture.ontologies.patch(
                 null,
                 id,
@@ -190,7 +193,8 @@ class OntologyActiveGraphStorageTest {
         .getDaoCollection()
         .ontologyReleaseDAO()
         .update(release.withEntityStatus(EntityStatus.APPROVED));
-    new OntologyReleaseActivation(fixture.ontologies, Clock.systemUTC(), ignored -> {})
+    new OntologyReleaseActivation(
+            fixture.ontologies, fixture.releases, Clock.systemUTC(), ignored -> {})
         .activate(
             fixture.ontology.getId(),
             new ActivateOntologyRelease()

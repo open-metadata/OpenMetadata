@@ -11,28 +11,140 @@
  *  limitations under the License.
  */
 
-import {
-  Alert,
-  Box,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import {
-  AssigneeStatus,
   EntityStatus,
   OntologyReleaseReview,
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { releaseChangeCount } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
+import {
+  getReviewStatusMessage,
+  NO_REVIEWER_ASSIGNED_KEY,
+} from './OntologyReviewBanner.utils';
+import OntologyReviewPill from './OntologyReviewPill';
 
 type Props = {
+  onDismiss?: () => void;
   review: OntologyReleaseReview;
   release: OntologyRelease;
   viewerName: string;
   viewerId?: string;
   onOpenTask: (taskId: string) => void;
+};
+
+const DecisionBanner = ({
+  review,
+  release,
+  onOpenTask,
+  onDismiss,
+}: Pick<Props, 'review' | 'release' | 'onOpenTask' | 'onDismiss'>) => {
+  const { t } = useTranslation();
+  const decision = review.latestDecision;
+  const approved = review.status === EntityStatus.Approved;
+  const version = release.semanticVersion
+    ? 'v' + release.semanticVersion
+    : release.name;
+
+  return (
+    <OntologyReviewPill
+      action={
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => onOpenTask(review.task.id)}>
+          {t('label.view-request')}
+        </Button>
+      }
+      detail={`${getEntityName(review.ontology)} · ${
+        review.taskId ?? review.task.id
+      }`}
+      testId="ontology-review-decision-banner"
+      title={t(
+        approved
+          ? 'message.ontology-review-approved-banner'
+          : 'message.ontology-review-rejected-banner',
+        {
+          reviewer: getEntityName(decision?.user),
+          version,
+          reason: decision?.reason ?? '',
+        }
+      )}
+      tone={approved ? 'success' : 'error'}
+      onDismiss={onDismiss}
+    />
+  );
+};
+
+const isDecided = (review: Props['review']) =>
+  Boolean(review.latestDecision) &&
+  (review.status === EntityStatus.Approved ||
+    review.status === EntityStatus.Rejected);
+
+const PendingBanner = ({
+  review,
+  release,
+  viewerName,
+  isRequester,
+  onOpenTask,
+  onDismiss,
+}: Pick<
+  Props,
+  'review' | 'release' | 'viewerName' | 'onOpenTask' | 'onDismiss'
+> & {
+  isRequester: boolean;
+}) => {
+  const { t } = useTranslation();
+  const status = getReviewStatusMessage(
+    review,
+    Boolean(release.reviewers?.length)
+  );
+  const hasNoReviewerLeft =
+    isRequester &&
+    !review.callerCanVote &&
+    status.key === NO_REVIEWER_ASSIGNED_KEY;
+
+  return (
+    <OntologyReviewPill
+      action={
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => onOpenTask(review.task.id)}>
+          {t(review.callerCanVote ? 'label.review-now' : 'label.view-task')}
+        </Button>
+      }
+      detail={[
+        getEntityName(review.ontology),
+        release.semanticVersion
+          ? 'v' + release.semanticVersion
+          : t('label.draft'),
+        `${releaseChangeCount(release) ?? t('label.unavailable')} ${t(
+          'label.change-plural'
+        )}`,
+        getEntityName(review.requester),
+        review.taskId ?? review.task.id,
+      ].join(' · ')}
+      testId="ontology-review-banner"
+      title={
+        review.callerCanVote
+          ? t('message.ontology-review-waiting-for-you', { name: viewerName })
+          : t(status.key, status.values)
+      }
+      tone={review.callerCanVote ? 'warning' : 'brand'}
+      onDismiss={onDismiss}>
+      {hasNoReviewerLeft && (
+        <Typography
+          color="secondary"
+          data-testid="ontology-review-withdraw-hint"
+          size="text-xs">
+          {t('message.ontology-review-no-reviewer-withdraw-hint')}
+        </Typography>
+      )}
+    </OntologyReviewPill>
+  );
 };
 
 const OntologyReviewBanner = ({
@@ -41,46 +153,35 @@ const OntologyReviewBanner = ({
   viewerName,
   viewerId,
   onOpenTask,
+  onDismiss,
 }: Props) => {
-  const { t } = useTranslation();
   const isRequester = review.requester?.id === viewerId;
+  if (isRequester && isDecided(review)) {
+    return (
+      <DecisionBanner
+        release={release}
+        review={review}
+        onDismiss={onDismiss}
+        onOpenTask={onOpenTask}
+      />
+    );
+  }
   if (
     review.status !== EntityStatus.InReview ||
     (!review.callerCanVote && !isRequester)
   ) {
     return null;
   }
-  const pending = review.assignees
-    .filter((entry) => entry.status === AssigneeStatus.Pending)
-    .map((entry) => getEntityName(entry.assignee))
-    .join(', ');
 
   return (
-    <Alert
-      data-testid="ontology-review-banner"
-      title={t(
-        review.callerCanVote
-          ? 'message.ontology-review-waiting-for-you'
-          : 'message.ontology-review-waiting-on',
-        { name: viewerName, names: pending }
-      )}
-      variant={review.callerCanVote ? 'warning' : 'brand'}>
-      <Box align="center" gap={3} justify="between" wrap="wrap">
-        <Typography>
-          {getEntityName(review.ontology)} ·{' '}
-          {release.semanticVersion ?? t('label.unavailable')} ·{' '}
-          {releaseChangeCount(release) ?? t('label.unavailable')}{' '}
-          {t('label.change-plural')} · {getEntityName(review.requester)} ·{' '}
-          {review.taskId ?? review.task.id}
-        </Typography>
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => onOpenTask(review.task.id)}>
-          {t(review.callerCanVote ? 'label.review-now' : 'label.view-task')}
-        </Button>
-      </Box>
-    </Alert>
+    <PendingBanner
+      isRequester={isRequester}
+      release={release}
+      review={review}
+      viewerName={viewerName}
+      onDismiss={onDismiss}
+      onOpenTask={onOpenTask}
+    />
   );
 };
 

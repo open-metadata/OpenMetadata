@@ -45,9 +45,10 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     TestCase testCase =
         Entity.getEntityOrNull(testCaseReference, "testSuite,domains,tags,owners", Include.ALL);
     if (testCase == null) return;
+    EntityReference testSuiteReference = testCase.getTestSuite();
     Table parentTable = resolveParentTable(testCase);
     if (parentTable != null) {
-      doc.put("table", parentTable.getEntityReference());
+      putParentTableRelations(parentTable, doc);
     }
     testCase =
         new TestCase()
@@ -68,7 +69,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
       doc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));
     }
 
-    TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
+    TestSuite testSuite = Entity.getEntityOrNull(testSuiteReference, "", Include.ALL);
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
     if (testSuite.getBasicEntityReference() != null) {
@@ -79,6 +80,18 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
         doc.put("certification", linkedTable.getCertification());
       }
     }
+  }
+
+  /**
+   * The soft delete or restore of any of these ancestors flags the incidents under it by the
+   * ancestor's id (ADR:2026-10-30-incidents-are-scoped-by-their-test-cases-deleted-flag),
+   * so every one is written whether or not the test suite carries a table reference.
+   */
+  private static void putParentTableRelations(Table parentTable, Map<String, Object> doc) {
+    doc.put("table", parentTable.getEntityReference());
+    doc.put("database", parentTable.getDatabase());
+    doc.put("databaseSchema", parentTable.getDatabaseSchema());
+    doc.put("service", parentTable.getService());
   }
 
   /**

@@ -119,6 +119,12 @@ describe('ExploreSearchInput', () => {
     expect(searchInput).not.toHaveAttribute(ARIA_KEY_SHORTCUTS);
   });
 
+  it('turns off browser autocomplete so it does not cover the suggestions', () => {
+    render(<SearchInputHarness />);
+
+    expect(screen.getByRole('textbox')).toHaveAttribute('autocomplete', 'off');
+  });
+
   it('leaves the shortcut for the global Ask Collate listener', () => {
     render(<SearchInputHarness />);
 

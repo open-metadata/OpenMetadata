@@ -16,7 +16,7 @@ import {
 } from '../generated/api/configuration/appConfiguration';
 import { SettingType } from '../generated/settings/settings';
 import axiosClient from './axiosClient';
-import { patchAppConfiguration } from './settingConfigAPI';
+import { patchAppConfiguration, patchEntityRule } from './settingConfigAPI';
 
 jest.mock('./axiosClient');
 
@@ -58,6 +58,29 @@ describe('patchAppConfiguration', () => {
           value: DefaultColumnOrder.SourceOrder,
         },
       ],
+      { headers: { 'Content-Type': 'application/json-patch+json' } }
+    );
+  });
+});
+
+describe('patchEntityRule', () => {
+  const mockClient = axiosClient as jest.Mocked<typeof axiosClient>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('PATCHes the named rule with operations relative to that rule, not the whole list', async () => {
+    mockClient.patch.mockResolvedValue({ data: {} });
+
+    await patchEntityRule('Multiple Domains are not allowed', [
+      { op: 'replace', path: '/enabled', value: false },
+    ]);
+
+    expect(mockClient.put).not.toHaveBeenCalled();
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      '/system/settings/entityRulesSettings/rules/Multiple%20Domains%20are%20not%20allowed',
+      [{ op: 'replace', path: '/enabled', value: false }],
       { headers: { 'Content-Type': 'application/json-patch+json' } }
     );
   });

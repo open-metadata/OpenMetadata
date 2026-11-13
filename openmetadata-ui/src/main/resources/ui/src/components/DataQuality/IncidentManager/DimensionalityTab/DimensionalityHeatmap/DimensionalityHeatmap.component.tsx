@@ -12,9 +12,9 @@
  */
 
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
 import Loader from '../../../../common/Loader/Loader';
 import { DimensionalityHeatmapProps } from './DimensionalityHeatmap.interface';
 import './DimensionalityHeatmap.less';
@@ -101,7 +101,7 @@ const DimensionalityHeatmap = ({
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left tw:cursor-pointer tw:outline-focus-ring"
               type="button"
               onClick={handleScrollLeft}>
-              <RightArrowIcon />
+              <ChevronRight />
             </button>
           )}
 
@@ -149,7 +149,7 @@ const DimensionalityHeatmap = ({
               className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right tw:cursor-pointer tw:outline-focus-ring"
               type="button"
               onClick={handleScrollRight}>
-              <RightArrowIcon />
+              <ChevronRight />
             </button>
           )}
         </div>

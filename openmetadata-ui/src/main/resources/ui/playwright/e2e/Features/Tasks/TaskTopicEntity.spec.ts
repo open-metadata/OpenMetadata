@@ -22,7 +22,7 @@ import { performAdminLogin } from '../../../utils/admin';
  *
  * Tests task workflows for Topic entities including:
  * - Entity-level description tasks
- * - Schema field description tasks (messageSchema::fieldName::description)
+ * - Schema field description tasks (messageSchema.schemaFields.fieldName.description)
  * - Nested schema field tasks (parent.child pattern)
  * - Tag update tasks for topics
  * - Domain update tasks for topics
@@ -170,7 +170,7 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
       const newFieldDescription = 'Updated schema field description from task';
 
       // Create DescriptionUpdate task for schema field
-      // Format: messageSchema::fieldName::description
+      // Format: messageSchema.schemaFields.fieldName.description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: `<#E::topic::${topic.entityResponseData?.fullyQualifiedName}>`,
@@ -178,7 +178,7 @@ test.describe('Task Creation and Resolution - Topic Entity', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `messageSchema::${fieldPath}::description`,
+            fieldPath: `messageSchema.schemaFields.${fieldPath}.description`,
             newDescription: newFieldDescription,
           },
         },

@@ -119,7 +119,7 @@ jobs:
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # dorny/paths-filter calls the PR-files API on pull_request events; the
     # workflow-level `contents: read` block implicitly zeroes every other
@@ -172,8 +172,9 @@ jobs:
   #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
   #      — the filter picks a leg's own describes automatically.
   sso-login:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: check-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: test
     timeout-minutes: 45
     # Static full-9 matrix. Per-event filtering is handled by the step-level
@@ -494,9 +495,9 @@ jobs:
   # with per-cell emoji and right-alignment — no monospace hack needed.
   # The summary Python script builds the full payload; this step just POSTs.
   notify-slack:
-    if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
+    if: ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
       # since these run before every notify + fetch the tree/artifacts the
@@ -540,62 +541,4 @@ jobs:
           if [ "$(echo "$response" | jq -r '.ok')" != "true" ]; then
             echo "::error::Slack post failed: $response"
             exit 1
-          fi
-
-  # continue-on-error on the post step: fork PRs run under a read-only
-  # GITHUB_TOKEN and the comment API returns 403 — swallow that rather
-  # than red-x'ing the whole workflow for a nice-to-have.
-  notify-pr:
-    if: ${{ always() && github.event_name == 'pull_request' }}
-    needs: sso-login
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout (for shared summary script)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          sparse-checkout: |
-            .github/scripts/build_sso_login_summary.py
-          sparse-checkout-cone-mode: false
-
-      - name: Download leg outcomes
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          pattern: sso-login-outcome-*
-          path: outcomes
-
-      - name: Build consolidated summary
-        env:
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: python3 .github/scripts/build_sso_login_summary.py /tmp/sso-summary
-
-      - name: Post sticky PR comment
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          marker='<!-- sso-login-nightly-summary -->'
-
-          # Sticky lookup: match the marker AND scope to the workflow bot's
-          # own comments. Marker-only would let any PR participant paste
-          # the string into their comment and have subsequent runs
-          # overwrite it.
-          existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --paginate --jq \
-            ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
-            | head -n1 || true)
-
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
-              -F body=@/tmp/sso-summary/pr_comment.md
-          else
-            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              -F body=@/tmp/sso-summary/pr_comment.md
           fi

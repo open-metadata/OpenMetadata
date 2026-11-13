@@ -17,10 +17,12 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CreatingIngestion,
+  DeployIngestion,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Fragment } from 'react';
-import { ReactComponent as IconCreateIngestion } from '../../../assets/svg/creating-ingestion.svg';
-import { ReactComponent as IconDeployIngestion } from '../../../assets/svg/deploy-ingestion.svg';
 import { LITE_GRAY_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { DeployIngestionLoaderModalProps } from './DeployIngestionLoaderModal.interface';
@@ -67,7 +69,10 @@ const DeployIngestionLoaderModal = ({
                         background: isActive(isIngestionCreated),
                       }}>
                       <Typography className="flex-center h-full">
-                        <IconCreateIngestion className="align-middle tw:size-3.5 tw:shrink-0" />
+                        <CreatingIngestion
+                          className="align-middle tw:shrink-0"
+                          size={14}
+                        />
                       </Typography>
                     </Typography>
                   </div>
@@ -82,7 +87,10 @@ const DeployIngestionLoaderModal = ({
                         background: isActive(isDeployed),
                       }}>
                       <Typography className="flex-center h-full">
-                        <IconDeployIngestion className="align-middle tw:size-3.5 tw:shrink-0" />
+                        <DeployIngestion
+                          className="align-middle tw:shrink-0"
+                          size={14}
+                        />
                       </Typography>
                     </Typography>
                   </div>

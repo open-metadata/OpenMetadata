@@ -19,8 +19,13 @@ import {
   within,
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
+import {
+  Code,
+  Severity,
+} from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   AxiomType,
@@ -52,9 +57,12 @@ import {
   createRelationshipType,
   getNativeOntologyDataGraphPage,
   getOntologyChangeSet,
+  getOntologyConcept,
   getOntologyState,
+  getOntologyWorkingValidation,
   getRelationshipTypeByName,
   listRelationshipTypes,
+  patchOntologyAxiom,
   patchOntologyConcept,
   patchOntologyProperty,
   patchRelationshipType,
@@ -73,8 +81,48 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { OntologyGraphSearchSlotContext } from './OntologyGraphSearchSlot.context';
 import OntologyGraphView from './OntologyGraphView';
 
+// The type list is virtualized; jsdom has no layout, so without a size it
+// renders only the first rows. Restored after each test.
+const sizeSpies: jest.SpyInstance[] = [];
+const renderEveryOption = () => {
+  if (sizeSpies.length === 0) {
+    sizeSpies.push(
+      jest
+        .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+        .mockReturnValue(2000),
+      jest
+        .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+        .mockReturnValue(1000)
+    );
+  }
+};
+
+afterEach(() => {
+  sizeSpies.splice(0).forEach((spy) => spy.mockRestore());
+});
+
+const openRelationTypes = async () => {
+  renderEveryOption();
+  fireEvent.click(
+    within(await screen.findByTestId('ontology-relationship-type')).getByRole(
+      'button'
+    )
+  );
+};
+
+/** The relationship type is a select in the inline form; this opens it and picks one. */
+const chooseRelationType = async (id: string) => {
+  fireEvent.click(
+    within(await screen.findByTestId('ontology-relationship-type')).getByRole(
+      'button'
+    )
+  );
+  fireEvent.click(screen.getByTestId(`relation-type-${id}`));
+};
+
 const mockGraphProps = jest.fn();
 const mockGraphControls = {
+  clearEdgeSelection: jest.fn(),
   getNodePositions: jest.fn(),
   fitView: jest.fn(),
   zoomIn: jest.fn(),
@@ -90,6 +138,7 @@ const mockPermissions = {
   relationshipType: { Create: true, EditAll: true },
 };
 let mockCanEditConcept = true;
+let mockCanDeleteConcept = false;
 let mockUneditableProperties: string[] = [];
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -101,6 +150,7 @@ jest.mock(
     useEntityPermissions: () =>
       getDerivedPermissionFlags({
         ...DEFAULT_ENTITY_PERMISSION,
+        Delete: mockCanDeleteConcept,
         EditAll: mockCanEditConcept,
       }),
   })
@@ -137,8 +187,10 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
   createOntologyChangeSet: jest.fn(),
   getOntologyChangeSet: jest.fn(),
+  getOntologyConcept: jest.fn(),
   getOntologyEditLock: jest.fn(),
   getOntologyState: jest.fn(),
+  getOntologyWorkingValidation: jest.fn(),
   listOntologyChangeSets: jest.fn(),
   releaseOntologyEditLock: jest.fn(),
   renewOntologyEditLock: jest.fn(),
@@ -151,6 +203,7 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   createRelationshipType: jest.fn(),
   getRelationshipTypeByName: jest.fn(),
   listRelationshipTypes: jest.fn(),
+  patchOntologyAxiom: jest.fn(),
   patchOntologyConcept: jest.fn(),
   patchOntologyProperty: jest.fn(),
   patchRelationshipType: jest.fn(),
@@ -447,8 +500,18 @@ describe('OntologyGraphView', () => {
     mockPermissions.relationshipType.Create = true;
     mockPermissions.relationshipType.EditAll = true;
     mockCanEditConcept = true;
+    mockCanDeleteConcept = false;
     mockUneditableProperties = [];
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
+    (getOntologyConcept as jest.Mock).mockImplementation((id: string) =>
+      Promise.resolve(
+        modelResult.model.concepts.find((concept) => concept.id === id)
+      )
+    );
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: true,
+      violations: [],
+    });
     (listRelationshipTypes as jest.Mock).mockResolvedValue({
       data: registryTypes,
       paging: { total: registryTypes.length },
@@ -493,10 +556,11 @@ describe('OntologyGraphView', () => {
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
-    expect(
-      await screen.findByTestId(`relation-type-${PART_OF}`)
-    ).toHaveTextContent('Has Part');
+    expect(screen.getByTestId(`relation-type-${PART_OF}`)).toHaveTextContent(
+      'Has Part'
+    );
     expect(
       screen.getByTestId(`relation-type-${GOVERNED_BY}`)
     ).toHaveTextContent('Governed By');
@@ -521,11 +585,47 @@ describe('OntologyGraphView', () => {
     );
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
-    expect(screen.getByTestId('relationship-type-picker')).toBeVisible();
     expect(
       screen.queryByTestId(`relation-type-${PART_OF}`)
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps a relationship type picked before the working copy finished loading', async () => {
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    // Synchronously, so the pick lands before the working copy arrives.
+    expect(
+      screen.queryByTestId('ontology-concept-editor')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByTestId('ontology-relationship-type')).getByRole(
+        'button'
+      )
+    );
+    fireEvent.click(screen.getByTestId(`relation-type-${PART_OF}`));
+
+    await screen.findByTestId('ontology-concept-editor');
+
+    // The trigger shows the chosen value; the field also holds a hidden list of every option.
+    expect(
+      within(screen.getByTestId('ontology-relationship-type')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('Part Of');
   });
 
   it('submits a registry relation through the inspector and resets the form after saving', async () => {
@@ -542,8 +642,10 @@ describe('OntologyGraphView', () => {
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    // Edit mode is ready once the working copy loaded and the editor form is up.
+    await screen.findByTestId('ontology-concept-editor');
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
-    fireEvent.click(screen.getByTestId(`relation-type-${PART_OF}`));
+    await chooseRelationType(PART_OF);
     fireEvent.click(screen.getByRole('button', { name: /label\.target/ }));
     fireEvent.click(await screen.findByRole('option', { name: 'Orphan' }));
     fireEvent.click(screen.getByTestId('ontology-relationship-submit'));
@@ -569,10 +671,9 @@ describe('OntologyGraphView', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
 
-    expect(screen.getByTestId('relationship-type-picker')).toBeVisible();
-    expect(
-      screen.queryByTestId('ontology-relationship-submit')
-    ).not.toBeInTheDocument();
+    // A fresh form: no target is carried over, so Add stays off.
+    expect(screen.getByTestId('ontology-relationship-type')).toBeVisible();
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
   });
 
   it.each([
@@ -700,6 +801,21 @@ describe('OntologyGraphView', () => {
     fireEvent.click(
       within(inspector).getByTestId('ontology-concept-relation-concept-party')
     );
+    const detail = screen.getByTestId('ontology-relation-detail');
+
+    expect(
+      screen.queryByTestId('ontology-concept-inspector')
+    ).not.toBeInTheDocument();
+    expect(
+      within(detail).getByTestId('ontology-relation-detail-back')
+    ).toHaveTextContent('Customer');
+    expect(
+      within(detail).getByTestId('ontology-relation-detail-target')
+    ).toHaveTextContent('Party');
+
+    fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-target')
+    );
 
     expect(
       within(screen.getByTestId('ontology-concept-inspector')).getByRole(
@@ -707,6 +823,314 @@ describe('OntologyGraphView', () => {
         { name: 'Party' }
       )
     ).toBeVisible();
+  });
+
+  it('draws a New concept ghost where the canvas was double-clicked while the panel is open', async () => {
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+
+    expect(latestGraphProps().ghostNode).toBeUndefined();
+
+    act(() => latestGraphProps().onCanvasDoubleClick({ x: 40, y: 60 }));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(latestGraphProps().ghostNode).toEqual({
+      label: 'label.new-concept',
+      x: 40,
+      y: 60,
+    });
+
+    fireEvent.click(screen.getByTestId('ontology-new-class-close'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-new-class-panel')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(latestGraphProps().ghostNode).toBeUndefined();
+  });
+
+  it('selects a concept requested from outside the graph, such as a Concepts row', async () => {
+    const onSelectedConceptChange = jest.fn();
+    render(
+      <OntologyGraphView
+        isEditing
+        editConceptRequest={customer.id}
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+        onSelectedConceptChange={onSelectedConceptChange}
+      />
+    );
+
+    await waitFor(() =>
+      expect(onSelectedConceptChange).toHaveBeenCalledWith(customer.id)
+    );
+  });
+
+  it('does not bring a New concept form back after leaving Edit and returning', async () => {
+    const props = {
+      ontology,
+      surface: 'graph' as const,
+      onRequestGraphSurface: jest.fn(),
+    };
+    const { rerender } = render(<OntologyGraphView isEditing {...props} />);
+    await screen.findByTestId('native-ontology-graph');
+    act(() => latestGraphProps().onCanvasDoubleClick({ x: 40, y: 60 }));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+
+    rerender(<OntologyGraphView isEditing={false} {...props} />);
+    rerender(<OntologyGraphView isEditing {...props} />);
+
+    expect(
+      screen.queryByTestId('ontology-new-class-panel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('turns a relation-like synonym into a relationship and leaves the concept unsaved', async () => {
+    const withSynonym = { ...customer, synonyms: ['Buyer', 'part of Party'] };
+    const synonymModel = {
+      ...model,
+      concepts: model.concepts.map((item) =>
+        item.id === customer.id ? withSynonym : item
+      ),
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: synonymModel,
+    });
+    (getOntologyConcept as jest.Mock).mockImplementation((id: string) =>
+      Promise.resolve(synonymModel.concepts.find((item) => item.id === id))
+    );
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    const inspector = screen.getByTestId('ontology-concept-inspector');
+
+    expect(await within(inspector).findByTestId('concept-save')).toBeDisabled();
+
+    fireEvent.click(
+      await within(inspector).findByTestId(
+        'ontology-synonym-add-as-relationship'
+      )
+    );
+
+    expect(
+      within(
+        await within(inspector).findByTestId('ontology-relationship-type')
+      ).getByRole('button')
+    ).toHaveTextContent('Part Of');
+
+    await waitFor(() =>
+      expect(within(inspector).getByTestId('concept-save')).toBeEnabled()
+    );
+
+    expect(
+      within(inspector).getByTestId('concept-save-status')
+    ).toHaveTextContent('label.unsaved-changes');
+    expect(
+      within(inspector).getByTestId('ontology-concept-synonyms')
+    ).not.toHaveTextContent('part of Party');
+  });
+
+  it('opens a relationship from the concept panel and saves its description', async () => {
+    (patchOntologyAxiom as jest.Mock).mockResolvedValue(customerIsParty);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-relation-concept-party')
+    );
+    // The graph keeps reporting no clicked edge on re-render; that must not close the panel.
+    act(() => latestGraphProps().onEdgeClick(undefined));
+    const detail = screen.getByTestId('ontology-relation-detail');
+
+    await waitFor(() =>
+      expect(
+        within(detail).getByTestId('ontology-relation-detail-status')
+      ).toHaveTextContent('label.no-issues')
+    );
+
+    expect(
+      within(detail).queryByTestId('ontology-relation-detail-conflict')
+    ).not.toBeInTheDocument();
+
+    const description = await within(detail).findByRole('textbox');
+    fireEvent.change(description, {
+      target: { value: 'Every buyer is a party' },
+    });
+    fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-description-save')
+    );
+
+    await waitFor(() =>
+      expect(patchOntologyAxiom).toHaveBeenCalledWith(customerIsParty.id, [
+        { op: 'add', path: '/description', value: 'Every buyer is a party' },
+      ])
+    );
+  });
+
+  it('marks the clashing concept and its link on the graph, lists the clash and clears both once the server finds none', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+
+    const row = await screen.findByTestId('ontology-conflict-row');
+
+    expect(row).toHaveTextContent(
+      'Customer is disjoint with its ancestor Party'
+    );
+    expect(screen.getAllByTestId('ontology-conflict-link')).toHaveLength(2);
+
+    await waitFor(() => {
+      const props = mockGraphProps.mock.calls.at(-1)?.[0];
+
+      expect(
+        props.nodes
+          .filter((node: { hasConflict?: boolean }) => node.hasConflict)
+          .map((node: { id: string }) => node.id)
+      ).toEqual(['concept-customer']);
+      expect([...props.conflictEdgeKeys]).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getAllByTestId('ontology-conflict-link')[1]);
+
+    expect(
+      within(screen.getByTestId('ontology-concept-inspector')).getByRole(
+        'heading',
+        { name: 'Party' }
+      )
+    ).toBeVisible();
+  });
+
+  it('clears the badge and the row after the fix when Validate all runs again', async () => {
+    (getOntologyWorkingValidation as jest.Mock)
+      .mockResolvedValueOnce({
+        valid: false,
+        violations: [
+          {
+            code: Code.DisjointClash,
+            conceptIds: ['concept-customer', 'concept-party'],
+            message: 'Customer is disjoint with its ancestor Party',
+            path: '/expressions',
+            severity: Severity.Error,
+          },
+        ],
+      })
+      .mockResolvedValue({ valid: true, violations: [] });
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ontology-conflict-row');
+
+    fireEvent.click(screen.getByTestId('ontology-validate-all'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-conflict-row')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(
+      mockGraphProps.mock.calls
+        .at(-1)?.[0]
+        .nodes.some((node: { hasConflict?: boolean }) => node.hasConflict)
+    ).toBe(false);
+    expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(2);
+  });
+
+  it('attaches an existing property to the concept with one patch instead of declaring it again', async () => {
+    const note: OntologyProperty = {
+      domain: [party.iri],
+      fullyQualifiedName: 'RetailCommerce.note',
+      id: 'property-note',
+      iri: 'urn:retail:note',
+      kind: Kind.Annotation,
+      name: 'note',
+      ontology: { id: ontology.id, type: 'ontology' },
+      version: 0.3,
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...modelResult.model,
+        properties: [...modelResult.model.properties, note],
+      },
+    });
+    (patchOntologyProperty as jest.Mock).mockResolvedValue(note);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-source-existing'));
+    const picker = screen.getByRole('combobox', { name: /label.property/ });
+    fireEvent.focus(picker);
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /note/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-property-submit'));
+    });
+
+    await waitFor(() =>
+      expect(patchOntologyProperty).toHaveBeenCalledWith('property-note', [
+        { op: 'test', path: '/version', value: 0.3 },
+        { op: 'add', path: '/domain/1', value: customer.iri },
+      ])
+    );
+
+    expect(createOntologyProperty).not.toHaveBeenCalled();
   });
 
   it('uses the same inspector from the hierarchy tree', () => {
@@ -773,9 +1197,14 @@ describe('OntologyGraphView', () => {
     );
     expect(graphProps.relationTypeGroups).toEqual([
       expect.objectContaining({
-        id: 'core',
+        id: 'hierarchy',
         options: [
           expect.objectContaining({ id: SUBCLASS_OF, label: 'Subclass Of' }),
+        ],
+      }),
+      expect.objectContaining({
+        id: 'relationships',
+        options: [
           expect.objectContaining({
             id: PART_OF,
             inverseLabel: 'Has Part',
@@ -786,11 +1215,6 @@ describe('OntologyGraphView', () => {
             inverseLabel: 'Part Of',
             label: 'Has Part',
           }),
-        ],
-      }),
-      expect.objectContaining({
-        id: 'custom',
-        options: [
           expect.objectContaining({ id: GOVERNED_BY, label: 'Governed By' }),
           expect.objectContaining({
             id: objectProperty.iri,
@@ -801,7 +1225,7 @@ describe('OntologyGraphView', () => {
     ]);
 
     await act(() =>
-      graphProps.onCreateRelation(customer.id, party.id, SUBCLASS_OF)
+      graphProps.onCreateRelation(orphan.id, party.id, SUBCLASS_OF)
     );
     await act(() =>
       graphProps.onCreateRelation(customer.id, orphan.id, objectProperty.iri)
@@ -814,8 +1238,8 @@ describe('OntologyGraphView', () => {
     expect(createOntologyAxiom).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        name: 'CustomerIsParty2',
-        subjectIri: customer.iri,
+        name: 'OrphanIsParty',
+        subjectIri: orphan.iri,
       })
     );
     expect(createOntologyAxiom).toHaveBeenNthCalledWith(
@@ -859,7 +1283,10 @@ describe('OntologyGraphView', () => {
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'customerNumber' },
     });
-    fireEvent.click(screen.getByTestId('ontology-property-type-integer'));
+    fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
+    fireEvent.click(
+      await screen.findByTestId('ontology-property-type-integer')
+    );
     fireEvent.click(screen.getByTestId('ontology-property-identifier'));
     await act(async () => {
       fireEvent.click(screen.getByTestId('ontology-property-submit'));
@@ -878,11 +1305,11 @@ describe('OntologyGraphView', () => {
 
     expect(onWorkingChange).toHaveBeenCalledTimes(4);
 
-    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+    expect(await screen.findByTestId('concept-save')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-concept-edit')
+    ).not.toBeInTheDocument();
 
-    expect(screen.getByTestId('ontology-concept-editor')).toBeVisible();
-
-    fireEvent.click(screen.getByTestId('ontology-concept-authoring-close'));
     rerender(
       <OntologyGraphView
         isEditing
@@ -1824,6 +2251,144 @@ describe('OntologyGraphView', () => {
     expect(refetch).toHaveBeenCalledTimes(2);
   });
 
+  it('edits the draft wording of a concept the graph draws from the release', async () => {
+    (getOntologyConcept as jest.Mock).mockResolvedValue({
+      ...customer,
+      displayName: 'Customer, draft wording',
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'label.ontology-display-name' })
+      ).toHaveValue('Customer, draft wording')
+    );
+  });
+
+  it('drops in-place edits when the user leaves Edit, so returning starts clean', async () => {
+    const { rerender } = render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    const description = await screen.findByRole('textbox', {
+      name: 'label.description',
+    });
+    fireEvent.change(description, { target: { value: 'Unsaved wording' } });
+
+    expect(await screen.findByTestId('concept-save-status')).toHaveTextContent(
+      'label.unsaved-changes'
+    );
+
+    rerender(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('concept-save-status')).not.toBeInTheDocument();
+
+    rerender(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+
+    expect(
+      await screen.findByRole('textbox', { name: 'label.description' })
+    ).not.toHaveValue('Unsaved wording');
+    expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+      'label.all-changes-saved'
+    );
+  });
+
+  it('says the working copy failed to load instead of leaving Edit read-only without a reason', async () => {
+    (getOntologyConcept as jest.Mock).mockRejectedValue(new Error('boom'));
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+
+    expect(
+      await screen.findByTestId('ontology-concept-editor-error')
+    ).toHaveTextContent('server.unexpected-error');
+    expect(
+      screen.queryByRole('textbox', { name: 'label.description' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps unsaved field edits when a relation is added from the same panel', async () => {
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (getOntologyConcept as jest.Mock).mockResolvedValue(customer);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'label.description' }),
+      { target: { value: 'Unsaved wording' } }
+    );
+    let refetched!: (value: unknown) => void;
+    (getOntologyConcept as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        refetched = resolve;
+      })
+    );
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, SUBCLASS_OF)
+    );
+
+    expect(createOntologyAxiom).toHaveBeenCalled();
+    expect(
+      screen.getByRole('textbox', { name: 'label.description' })
+    ).toHaveValue('Unsaved wording');
+
+    await act(async () => refetched(customer));
+
+    expect(
+      screen.getByRole('textbox', { name: 'label.description' })
+    ).toHaveValue('Unsaved wording');
+    expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+      'label.unsaved-changes'
+    );
+  });
+
   it('starts a blank concept after editing an existing concept and hides the editor in View', async () => {
     const { rerender } = render(
       <OntologyGraphView
@@ -1836,11 +2401,12 @@ describe('OntologyGraphView', () => {
     fireEvent.click(
       await screen.findByTestId('native-graph-node-concept-customer')
     );
-    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+    await screen.findByTestId('concept-save');
+    fireEvent.click(screen.getByTestId('ontology-concept-advanced-toggle'));
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
-      'Customer'
-    );
+    expect(
+      await screen.findByTestId('ontology-concept-name')
+    ).toHaveTextContent('Customer');
 
     rerender(
       <OntologyGraphView
@@ -1915,43 +2481,226 @@ describe('OntologyGraphView', () => {
     );
   });
 
-  describe('canvas Add concept', () => {
-    const renderEditing = () =>
+  describe('keyboard route and large ontologies', () => {
+    const renderGraph = (
+      props: Partial<React.ComponentProps<typeof OntologyGraphView>> = {}
+    ) =>
       render(
         <OntologyGraphView
-          isEditing
           ontology={ontology}
           surface="graph"
-          onRequestCreateConcept={jest.fn()}
           onRequestGraphSurface={jest.fn()}
+          {...props}
         />
       );
+    const findBox = () => screen.getByTestId('ontology-graph-search');
 
-    it('shows for a user who holds all three class-creation rights', async () => {
-      renderEditing();
+    it('lists matches under Find and opens the first one with Enter', async () => {
+      renderGraph();
       await screen.findByTestId('native-ontology-graph');
 
-      expect(screen.getByTestId('ontology-canvas-add-concept')).toBeVisible();
-    });
+      fireEvent.change(findBox(), { target: { value: 'cust' } });
 
-    it('hides without edit rights on the ontology', async () => {
-      mockCanEditConcept = false;
-      renderEditing();
-      await screen.findByTestId('native-ontology-graph');
+      const results = screen.getByTestId('ontology-graph-search-results');
 
       expect(
-        screen.queryByTestId('ontology-canvas-add-concept')
+        within(results)
+          .getAllByRole('option')
+          .map((option) => option.textContent)
+      ).toEqual(['Customer']);
+
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Customer');
+      expect(
+        screen.queryByTestId('ontology-graph-search-results')
       ).not.toBeInTheDocument();
     });
 
-    it('hides without Create on the change set', async () => {
-      mockPermissions.ontologyChangeSet.Create = false;
-      renderEditing();
+    it('says when nothing matches and leaves Enter without effect', async () => {
+      renderGraph();
       await screen.findByTestId('native-ontology-graph');
 
+      fireEvent.change(findBox(), { target: { value: 'zzz' } });
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+
       expect(
-        screen.queryByTestId('ontology-canvas-add-concept')
+        screen.getByTestId('ontology-graph-search-results')
+      ).toHaveTextContent('message.ontology-find-no-match');
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
       ).not.toBeInTheDocument();
+    });
+
+    it('moves through the results with the arrow keys before Enter', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(findBox(), { target: { value: 'r' } });
+      fireEvent.keyDown(findBox(), { key: 'ArrowDown' });
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Orphan');
+    });
+
+    it('closes the panel on Escape and puts focus back on the Find box', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+      findBox().focus();
+      fireEvent.change(findBox(), { target: { value: 'cust' } });
+      fireEvent.keyDown(findBox(), { key: 'Enter' });
+      const inspector = await screen.findByTestId('ontology-concept-inspector');
+      within(inspector).getAllByRole('button')[0].focus();
+
+      fireEvent.keyDown(document.activeElement as HTMLElement, {
+        key: 'Escape',
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('ontology-concept-inspector')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(findBox()).toHaveFocus();
+    });
+
+    it('clears the search on Escape while its result list is open', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+      findBox().focus();
+      fireEvent.change(findBox(), { target: { value: 'cust' } });
+
+      fireEvent.keyDown(findBox(), { key: 'Escape' });
+
+      expect(findBox()).toHaveValue('');
+      expect(
+        screen.queryByTestId('ontology-graph-search-results')
+      ).not.toBeInTheDocument();
+    });
+
+    it('opens a concept from the node list with the keyboard and returns focus to it on Escape', async () => {
+      renderGraph();
+      await screen.findByTestId('native-ontology-graph');
+      const list = within(
+        screen.getByTestId('ontology-graph-node-list')
+      ).getByRole('listbox');
+
+      expect(list).toHaveAttribute('tabindex', '0');
+
+      act(() => list.focus());
+
+      expect(
+        within(list)
+          .getAllByRole('option')
+          .map((option) => option.textContent)
+      ).toEqual(['Customer', 'Orphan', 'Party']);
+
+      fireEvent.keyDown(list, { key: 'ArrowDown' });
+      fireEvent.keyDown(list, { key: 'Enter' });
+
+      expect(
+        await screen.findByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Orphan');
+
+      fireEvent.keyDown(list, { key: 'Escape' });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('ontology-concept-inspector')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(list).toHaveFocus();
+    });
+
+    describe('above the node limit', () => {
+      const filler = Array.from({ length: 600 }, (_, index) => ({
+        id: `filler-${index}`,
+        label: `Filler ${index}`,
+        type: 'ontologyConcept',
+      }));
+      const bigGraph = {
+        nodes: [...graph.nodes, ...filler],
+        edges: [
+          ...graph.edges,
+          ...filler.slice(1).map((node, index) => ({
+            from: node.id,
+            to: filler[index].id,
+            label: 'is a',
+            relationType: 'subClassOf',
+          })),
+        ],
+      };
+
+      beforeEach(() => {
+        mockUseOntologyStudioModel.mockReturnValue({
+          ...modelResult,
+          graph: bigGraph,
+        });
+      });
+
+      it('draws no canvas, explains why and offers Tree until a concept is chosen', async () => {
+        const onRequestTreeSurface = jest.fn();
+        renderGraph({ onRequestTreeSurface });
+
+        const notice = await screen.findByTestId(
+          'ontology-graph-focused-notice'
+        );
+
+        expect(notice).toHaveTextContent('message.ontology-graph-too-large');
+        expect(screen.queryByTestId('native-ontology-graph')).toBeNull();
+
+        fireEvent.click(screen.getByTestId('ontology-graph-open-tree'));
+
+        expect(onRequestTreeSurface).toHaveBeenCalledTimes(1);
+      });
+
+      it('draws the neighbourhood of a concept found with Find', async () => {
+        renderGraph();
+        await screen.findByTestId('ontology-graph-focused-notice');
+
+        fireEvent.change(findBox(), { target: { value: 'Filler 300' } });
+        fireEvent.keyDown(findBox(), { key: 'Enter' });
+
+        await screen.findByTestId('native-ontology-graph');
+        const drawn = latestGraphProps().nodes.map(
+          ({ label }: { label: string }) => label
+        );
+
+        expect(drawn).toEqual(
+          expect.arrayContaining([
+            'Filler 300',
+            'Filler 299',
+            'Filler 301',
+            'Filler 298',
+            'Filler 302',
+          ])
+        );
+        expect(drawn).not.toContain('Filler 10');
+        expect(drawn.length).toBeLessThan(10);
+        expect(
+          screen.getByTestId('ontology-graph-focused-notice')
+        ).toHaveTextContent('message.ontology-graph-focused');
+      });
+
+      it('lists only the drawn concepts in the keyboard node list', async () => {
+        renderGraph({
+          selectedConceptId: 'filler-5',
+          onSelectedConceptChange: jest.fn(),
+        });
+
+        await screen.findByTestId('native-ontology-graph');
+        const list = within(
+          screen.getByTestId('ontology-graph-node-list')
+        ).getByRole('listbox');
+
+        expect(list).toHaveAttribute('aria-label', 'label.concept-plural (5)');
+      });
     });
   });
 
@@ -1977,6 +2726,7 @@ describe('OntologyGraphView', () => {
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
     expect(
       screen.getByTestId(`relation-type-${SUBCLASS_OF}`)
@@ -2034,6 +2784,7 @@ describe('OntologyGraphView', () => {
     await waitForRegistry(HAS_PART);
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
     expect(screen.getByTestId(`relation-type-${HAS_PART}`)).toBeInTheDocument();
     expect(
@@ -2091,23 +2842,27 @@ describe('OntologyGraphView', () => {
     expect(screen.getByTestId('ontology-property-name')).toBeVisible();
   });
 
-  it('does not replay an old add-concept request after the graph remounts', async () => {
-    const view = (createConceptRequestKey: number) => (
-      <OntologyGraphView
-        isEditing
-        createConceptRequestKey={createConceptRequestKey}
-        ontology={ontology}
-        surface="graph"
-        onRequestGraphSurface={jest.fn()}
-      />
-    );
-    const first = render(view(0));
-    first.rerender(view(4));
+  it('does not replay an add-concept request the page marked handled after the graph remounts', async () => {
+    const Page = ({ remountKey }: { remountKey: string }) => {
+      const [handled, setHandled] = useState(false);
+
+      return (
+        <OntologyGraphView
+          isEditing
+          createConceptRequestKey={handled ? 0 : 4}
+          key={remountKey}
+          ontology={ontology}
+          surface="graph"
+          onCreateConceptRequestHandled={() => setHandled(true)}
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
+    };
+    const view = render(<Page remountKey="first" />);
 
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
 
-    first.unmount();
-    render(view(4));
+    view.rerender(<Page remountKey="second" />);
     await screen.findByTestId('native-ontology-graph');
 
     expect(
@@ -2115,7 +2870,7 @@ describe('OntologyGraphView', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('does not open the New class panel for an old add-concept request at first mount', async () => {
+  it('opens the New class panel for a pending add-concept request when the graph mounts after it was made', async () => {
     render(
       <OntologyGraphView
         isEditing
@@ -2126,11 +2881,7 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    await screen.findByTestId('native-ontology-graph');
-
-    expect(
-      screen.queryByTestId('ontology-new-class-panel')
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
   it('keeps a pending class attempt mounted when another canvas node is selected', async () => {
@@ -2330,7 +3081,304 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a relation drawn in Model as a dashed edge once Data shows again, with one reload', async () => {
+  it('stops offering Link data in Data once the concept drawer is closed', async () => {
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({ clusters: [] })
+    );
+    const StudioSelection = () => {
+      const [conceptId, setConceptId] = useState<string>();
+
+      return (
+        <OntologyGraphView
+          ontology={ontology}
+          selectedConceptId={conceptId}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          onSelectedConceptChange={setConceptId}
+        />
+      );
+    };
+    render(
+      <MemoryRouter>
+        <StudioSelection />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(await screen.findByTestId('ontology-data-link-asset')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-concept-close'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('ontology-data-empty')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-link-asset')
+    ).not.toBeInTheDocument();
+  });
+
+  it('floats the conflicts and health cards over the canvas so the graph keeps its width', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+
+    expect(
+      screen.queryByTestId('ontology-graph-sidebar')
+    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('ontology-conflicts-panel')).toHaveClass(
+      'tw:absolute'
+    );
+    expect(screen.getByTestId('ontology-health-panel')).toHaveClass(
+      'tw:absolute'
+    );
+  });
+
+  it('shows no conflicts card while validation is still running', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockReturnValue(
+      new Promise(() => undefined)
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+
+    expect(
+      screen.queryByTestId('ontology-conflicts-panel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no conflicts card once validation finds nothing to resolve', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitFor(() =>
+      expect(getOntologyWorkingValidation).toHaveBeenCalled()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-conflicts-panel')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
+  });
+
+  it('asks to delete a concept inside its panel rather than over the page', async () => {
+    mockCanDeleteConcept = true;
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    const inspector = await screen.findByTestId('ontology-concept-inspector');
+    fireEvent.click(within(inspector).getByTestId('ontology-concept-more'));
+    fireEvent.click(await screen.findByTestId('ontology-concept-delete'));
+
+    expect(inspector).toContainElement(
+      await screen.findByTestId('ontology-concept-delete-dialog')
+    );
+  });
+
+  it('titles a failed validation as an error instead of zero conflicts', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockRejectedValue(
+      new Error('boom')
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    const title = await screen.findByTestId('ontology-conflicts-title');
+    await waitFor(() =>
+      expect(title).toHaveTextContent('message.ontology-conflicts-check-failed')
+    );
+
+    expect(title).not.toHaveTextContent('label.n-conflicts-to-resolve');
+  });
+
+  it('shows conflicts inside the tree card on the Tree surface, not as a floating card', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    const onRequestGraphSurface = jest.fn();
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="tree"
+          onRequestGraphSurface={onRequestGraphSurface}
+        />
+      </MemoryRouter>
+    );
+
+    const conflict = await screen.findByTestId('ontology-tree-conflict');
+
+    expect(conflict).toHaveTextContent(
+      'Customer is disjoint with its ancestor Party'
+    );
+    expect(conflict).toHaveTextContent('label.conflict');
+    expect(
+      screen.queryByTestId('ontology-conflicts-panel')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
+    // As in the design, the tree takes the full width and the cards float on top.
+    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
+      'tw:pr-92'
+    );
+
+    // Each toggle names the conflict it opens, not just "Expand".
+    expect(
+      within(conflict).getByTestId('ontology-tree-conflict-toggle')
+    ).toHaveAccessibleName(
+      'label.expand: Customer is disjoint with its ancestor Party'
+    );
+
+    fireEvent.click(
+      within(conflict).getByTestId('ontology-tree-conflict-toggle')
+    );
+
+    expect(
+      within(conflict).getAllByTestId('ontology-tree-conflict-open')
+    ).toHaveLength(2);
+
+    fireEvent.click(
+      within(conflict).getByTestId('ontology-tree-conflict-show-on-graph')
+    );
+
+    expect(onRequestGraphSurface).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no conflict rows in the tree card for a clean draft', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="tree"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await waitFor(() =>
+      expect(getOntologyWorkingValidation).toHaveBeenCalled()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-tree-conflicts')
+    ).not.toBeInTheDocument();
+  });
+
+  it('goes from loading to loaded and opens Data without a hook-order error', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'concept-customer',
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      graph: undefined,
+      isLoading: true,
+      model: undefined,
+    });
+    const view = (
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    const { rerender } = render(view);
+
+    expect(
+      screen.queryByTestId('native-ontology-graph')
+    ).not.toBeInTheDocument();
+
+    mockUseOntologyStudioModel.mockReturnValue(modelResult);
+    rerender(view);
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-concept-customer')
+    ).toBeVisible();
+    expect(
+      consoleError.mock.calls.filter(([message]) =>
+        String(message).includes('Rendered more hooks')
+      )
+    ).toEqual([]);
+
+    consoleError.mockRestore();
+  });
+
+  it('reloads the picked concept once after a relation is drawn in Model, when Data shows again', async () => {
     const editableModel = {
       ...model,
       properties: [...model.properties, objectProperty],
@@ -2379,12 +3427,13 @@ describe('OntologyGraphView', () => {
     );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
 
-    expect(screen.queryAllByTestId('ontology-data-semantic-edge')).toHaveLength(
-      0
-    );
+    expect(
+      screen.queryByTestId(`ontology-data-cluster-${orphan.id}`)
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
     await act(() =>
@@ -2399,14 +3448,14 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
-    const edge = await screen.findByTestId('ontology-data-semantic-edge');
 
-    expect(edge).toHaveAttribute('data-edge-kind', 'semanticProjection');
-    expect(edge).toHaveAttribute('stroke-dasharray', '4 3');
+    await waitFor(() =>
+      expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2)
+    );
+
     expect(
-      screen.getByTestId('ontology-data-semantic-edge-label')
-    ).toHaveTextContent('served by');
-    expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(2);
+      await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+    ).toBeVisible();
   });
 
   it('reloads Data once for a relation that writes three steps while Data shows', async () => {
@@ -2443,6 +3492,7 @@ describe('OntologyGraphView', () => {
     );
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
 
@@ -2503,9 +3553,11 @@ describe('OntologyGraphView', () => {
     );
     fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
-    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+    await screen.findByTestId('concept-save');
     fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.display-name' }),
+      await screen.findByRole('textbox', {
+        name: 'label.ontology-display-name',
+      }),
       { target: { value: 'Client' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
@@ -2555,7 +3607,10 @@ describe('OntologyGraphView', () => {
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'customerNumber' },
     });
-    fireEvent.click(screen.getByTestId('ontology-property-type-integer'));
+    fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
+    fireEvent.click(
+      await screen.findByTestId('ontology-property-type-integer')
+    );
     await act(async () => {
       fireEvent.click(screen.getByTestId('ontology-property-submit'));
     });
@@ -2594,6 +3649,19 @@ describe('OntologyGraphView', () => {
         </MemoryRouter>
       );
 
+    it('opens the search results upward from the bottom toolbar, so the canvas never cuts them off', async () => {
+      renderAiGraph();
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(within(slot).getByTestId('ontology-graph-search'), {
+        target: { value: 'customer' },
+      });
+
+      expect(
+        within(slot).getByTestId('ontology-graph-search-results')
+      ).toHaveClass('tw:bottom-full');
+    });
+
     it('moves the term search into the sub-bar slot and keeps the canvas controls', async () => {
       renderAiGraph();
 
@@ -2620,7 +3688,7 @@ describe('OntologyGraphView', () => {
       expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
     });
 
-    it('switches to Data mode and shows every bound concept, keeping the chosen one selected', async () => {
+    it('switches to Data mode, asks which concept to show, and keeps the chosen concept when going back and forth', async () => {
       (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
         pageFixture({
           clusters: [
@@ -2645,20 +3713,37 @@ describe('OntologyGraphView', () => {
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
       expect(
-        await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+        await screen.findByText('message.ontology-data-pick-title')
+      ).toBeVisible();
+      expect(screen.queryByTestId('ontology-health-panel')).toBeNull();
+
+      fireEvent.click(
+        screen.getByTestId('ontology-data-concept-picker-trigger')
+      );
+      fireEvent.click(
+        await screen.findByTestId(`ontology-data-concept-option-${orphan.id}`)
+      );
+
+      expect(
+        await screen.findByTestId(`ontology-data-cluster-${orphan.id}`)
       ).toBeVisible();
       expect(
-        screen.getByTestId(`ontology-data-cluster-${orphan.id}`)
-      ).toBeVisible();
+        screen.queryByTestId(`ontology-data-cluster-${customer.id}`)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('ontology-concept-inspector')
+      ).toHaveTextContent('Orphan');
 
       fireEvent.click(screen.getByTestId('ontology-graph-mode-model'));
       fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
       fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
 
-      expect(screen.getByTestId('ontology-native-data-graph')).toBeVisible();
       expect(
-        screen.getByTestId(`ontology-data-cluster-${customer.id}`).className
-      ).toMatch(/border-brand/);
+        await screen.findByTestId(`ontology-data-cluster-${customer.id}`)
+      ).toBeVisible();
+      expect(
+        screen.getByTestId(`ontology-data-root-${customer.id}`)
+      ).toHaveAttribute('aria-pressed', 'true');
       expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
     });
 

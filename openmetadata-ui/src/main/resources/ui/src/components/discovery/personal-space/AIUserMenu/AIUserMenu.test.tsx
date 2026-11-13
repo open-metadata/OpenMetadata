@@ -355,7 +355,9 @@ describe('AIUserMenu', () => {
 
     fireEvent.click(screen.getByTestId('ai-user-menu-profile'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('profile');
+    expect(mockSetHash).toHaveBeenCalledWith('profile', undefined, undefined, {
+      push: true,
+    });
   });
 
   it('opens My Data in the personal-space modal', () => {
@@ -413,7 +415,14 @@ describe('AIUserMenu', () => {
 
     fireEvent.click(screen.getByTestId('ask-user-menu-settings'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('preferences');
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'preferences',
+      undefined,
+      undefined,
+      {
+        push: true,
+      }
+    );
     expect(mockNavigate).not.toHaveBeenCalledWith('/settings');
   });
 

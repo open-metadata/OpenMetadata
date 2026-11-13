@@ -482,6 +482,60 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
     }
   );
 
+  // Switching the type shows the other value field; saving it empty would
+  // drop profileSampleConfig and wipe the stored sampling config (#36612).
+  const renderAndSwitchSampleType = async (
+    config: TableProfilerConfig,
+    option: string
+  ) => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: config,
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(
+      within(await screen.findByTestId('profile-sample')).getByRole('button')
+    );
+    await user.click(await screen.findByRole('option', { name: option }));
+    await user.click(screen.getByRole('button', { name: /save/i }));
+  };
+
+  it('should seed the percentage when switching from rows to percentage', async () => {
+    await renderAndSwitchSampleType(
+      buildStaticSampleConfig(500, ProfileSampleType.Rows),
+      'label.percentage'
+    );
+
+    await waitFor(() => expect(putTableProfileConfig).toHaveBeenCalled());
+
+    expect(
+      (putTableProfileConfig as jest.Mock).mock.calls[0][1].profileSampleConfig
+    ).toEqual({
+      sampleConfigType: SampleConfigType.Static,
+      config: {
+        profileSample: 100,
+        profileSampleType: ProfileSampleType.Percentage,
+      },
+    });
+  });
+
+  it('should block the save when switching to rows without a row count', async () => {
+    await renderAndSwitchSampleType(
+      buildStaticSampleConfig(60),
+      'label.entity-count'
+    );
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
+  });
+
   it('should omit profileSampleConfig when the sample value is cleared', async () => {
     const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
       fireEvent.click(screen.getByTestId('clear-slider-input'));

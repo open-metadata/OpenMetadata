@@ -28,6 +28,10 @@ import {
 import { Stage } from '../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../generated/type/ontologyState';
 import APIClient from '../../../rest/axiosClient';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../test/unit/enUsTranslation';
 import { runQueryNotificationsSynchronously } from '../../../test/unit/test-utils';
 import { useApplicationStore } from '../../useApplicationStore';
 import { useOntologyPublication } from './useOntologyPublication';
@@ -72,7 +76,7 @@ let currentState: OntologyState;
 let ontology: Ontology;
 let releases: OntologyRelease[];
 
-const setup = async () => {
+const setup = async (canEdit = true) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
@@ -91,7 +95,7 @@ const setup = async () => {
     | undefined;
   await act(async () => {
     hook = renderHook(
-      ({ ontologyId }) => useOntologyPublication(ontologyId, true, true),
+      ({ ontologyId }) => useOntologyPublication(ontologyId, canEdit, true),
       { wrapper, initialProps: { ontologyId: owner } }
     );
   });
@@ -113,7 +117,11 @@ beforeEach(() => {
   });
   releases = [
     makeRelease(5),
-    { ...makeRelease(1), entityStatus: EntityStatus.Approved },
+    {
+      ...makeRelease(1),
+      semanticVersion: '1.5.0',
+      entityStatus: EntityStatus.Approved,
+    },
   ];
   currentState = {
     ontologyId: owner,
@@ -171,6 +179,55 @@ afterEach(() => {
   jest.useFakeTimers();
 });
 
+it('takes the version base from the active release, not from a newer versioned Draft', async () => {
+  releases[1] = { ...releases[1], semanticVersion: '1.0.0' };
+  const hook = await setup();
+
+  await waitFor(() =>
+    expect(hook.result.current.versionBase.isSuccess).toBe(true)
+  );
+
+  expect(hook.result.current.versionBase.data?.semanticVersion).toBe('1.0.0');
+  expect(
+    hook.result.current.history.data?.pages[0].data[0].semanticVersion
+  ).toBe('1.5.0');
+});
+
+it('reads the active release without the working diff when the user cannot edit', async () => {
+  const forbidden = Object.assign(new Error('Forbidden'), {
+    isAxiosError: true,
+    response: { status: 403 },
+  });
+  const read = get.getMockImplementation();
+  get.mockImplementation(async (url, config) => {
+    if (url === `/ontologies/${owner}/working/diff`) {
+      throw forbidden;
+    }
+
+    return read ? read(url, config) : { data: undefined };
+  });
+  const hook = await setup(false);
+
+  await waitFor(() =>
+    expect(hook.result.current.versionBase.isSuccess).toBe(true)
+  );
+
+  expect(hook.result.current.versionBase.data?.id).toBe(releaseId(1));
+  expect(hook.result.current.working.isError).toBe(false);
+  expect(hook.result.current.working.data).toBeUndefined();
+});
+
+it('has no version base until a release is active', async () => {
+  currentState = { ...currentState, activeReleaseId: undefined };
+  const hook = await setup();
+
+  await waitFor(() =>
+    expect(hook.result.current.versionBase.isSuccess).toBe(true)
+  );
+
+  expect(hook.result.current.versionBase.data).toBeUndefined();
+});
+
 it('opens the latest Draft when active is older, and keeps current separate from history selection', async () => {
   const hook = await setup();
 
@@ -190,10 +247,34 @@ it('opens the latest Draft when active is older, and keeps current separate from
   expect(hook.result.current.current.value.candidate?.id).toBe(releaseId(5));
 });
 
+it('titles the review task with the ontology and the semantic version', async () => {
+  useEnUsTranslations();
+  const hook = await setup();
+  post.mockImplementation(async (url) => {
+    if (url === `/ontologies/${owner}/releases`) {
+      return { data: makeRelease(currentState.lastReleaseRevision + 1) };
+    }
+
+    throw new Error('Response lost after the task was created');
+  });
+  await act(async () => {
+    await hook.result.current.captureAndRequestApproval(currentState, {
+      versionBump: VersionBump.Minor,
+    });
+  });
+
+  expect(post).toHaveBeenCalledWith(
+    '/tasks',
+    expect.objectContaining({ displayName: 'Review Sales v1.5.0' })
+  );
+
+  useKeyEchoTranslations();
+});
+
 it('does not create a second task after an unknown task outcome returns Draft without a task', async () => {
   const hook = await setup();
 
-  expect(hook.result.current.latestVersioned.isSuccess).toBe(true);
+  expect(hook.result.current.versionBase.isSuccess).toBe(true);
 
   post.mockImplementation(async (url) => {
     if (url === `/ontologies/${owner}/releases`) {
@@ -239,7 +320,7 @@ it('does not create a second task after an unknown task outcome returns Draft wi
   hook.unmount();
   const reopened = await setup();
   await waitFor(() =>
-    expect(reopened.result.current.latestVersioned.isSuccess).toBe(true)
+    expect(reopened.result.current.versionBase.isSuccess).toBe(true)
   );
   await act(async () => {
     await reopened.result.current.captureAndRequestApproval(currentState, {
@@ -616,7 +697,7 @@ it('does not expose previous-user state, diff, version baseline or history after
 
   expect(hook.result.current.state.data).toBeUndefined();
   expect(hook.result.current.working.data).toBeUndefined();
-  expect(hook.result.current.latestVersioned.data).toBeUndefined();
+  expect(hook.result.current.versionBase.data).toBeUndefined();
   expect(hook.result.current.history.data).toBeUndefined();
   expect(hook.result.current.canWrite).toBe(false);
 });

@@ -119,6 +119,7 @@ export const useListSearchInput = ({
   }, [debouncedSearch]);
 
   const searchInputProps = useMemo<{
+    autoComplete: 'off';
     icon: typeof Search;
     placeholder: string;
     value: string;
@@ -127,6 +128,7 @@ export const useListSearchInput = ({
     onChange: (value: string) => void;
   }>(
     () => ({
+      autoComplete: 'off',
       icon: Search,
       placeholder: t('label.search'),
       value: searchInputValue,

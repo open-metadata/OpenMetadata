@@ -12,6 +12,7 @@
  */
 
 import { Extensions } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import blockEditorExtensionsClassBase, {
   BlockEditorExtensionsClassBase,
@@ -38,7 +39,7 @@ jest.mock('@tiptap/extension-placeholder', () => ({
 
 jest.mock('@tiptap/extension-table', () => ({
   __esModule: true,
-  default: {
+  Table: {
     configure: jest.fn(() => ({ name: 'Table' })),
   },
 }));
@@ -202,6 +203,23 @@ describe('BlockEditorExtensionsClassBase', () => {
       expect(starterKit).toBeDefined();
     });
 
+    it('should turn off the StarterKit extensions it registers or keeps off itself', () => {
+      (
+        extensionsClass as unknown as {
+          getCoreExtensions: () => Extensions;
+        }
+      ).getCoreExtensions();
+
+      expect(StarterKit.configure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          link: false,
+          trailingNode: false,
+          underline: false,
+          listKeymap: false,
+        })
+      );
+    });
+
     it('should include Placeholder extension', () => {
       const coreExtensions = (
         extensionsClass as unknown as {
@@ -228,7 +246,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       expect(link).toBeDefined();
     });
 
-    it('should configure links to open on click only in read-only previews', () => {
+    it('should not open links on click while editing', () => {
       (
         extensionsClass as unknown as {
           getCoreExtensions: () => Extensions;
@@ -236,7 +254,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       ).getCoreExtensions();
 
       expect(LinkExtension.configure).toHaveBeenCalledWith(
-        expect.objectContaining({ openOnClick: 'whenNotEditable' })
+        expect.objectContaining({ openOnClick: false })
       );
     });
 

@@ -13,7 +13,10 @@
 
 package org.openmetadata.service.rdf;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import org.apache.jena.query.Query;
 
 /** Resource bounds shared by every user-authored SPARQL query surface. */
@@ -52,6 +55,67 @@ public final class SparqlQueryLimits {
       throw new OutputLimitExceededException();
     }
     return output;
+  }
+
+  /** A local query exceeded its isolated execution or transport budget. */
+  public static class QueryLimitExceededException extends IllegalArgumentException {
+    public QueryLimitExceededException(final String message) {
+      super(message);
+    }
+  }
+
+  /**
+   * The ontology itself does not fit the local worker, so no query over it can run there; one the
+   * triplestore serves can still answer it.
+   */
+  public static final class OntologyTooLargeException extends QueryLimitExceededException {
+    public OntologyTooLargeException(final String message) {
+      super(message);
+    }
+  }
+
+  static final class BoundedOutputStream extends OutputStream {
+    private final OutputStream target;
+    private final long maximumBytes;
+    private final String message;
+    private long written;
+
+    BoundedOutputStream(final OutputStream target, final long maximumBytes, final String message) {
+      this.target = Objects.requireNonNull(target);
+      this.maximumBytes = maximumBytes;
+      this.message = message;
+    }
+
+    @Override
+    public void write(final int value) throws IOException {
+      requireCapacity(1);
+      target.write(value);
+      written++;
+    }
+
+    @Override
+    public void write(final byte[] bytes, final int offset, final int length) throws IOException {
+      Objects.checkFromIndexSize(offset, length, bytes.length);
+      requireCapacity(length);
+      target.write(bytes, offset, length);
+      written += length;
+    }
+
+    private void requireCapacity(final int length) {
+      if (length > maximumBytes - written) {
+        throw new QueryLimitExceededException(message);
+      }
+    }
+
+    @Override
+    public void flush() throws IOException {
+      target.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+      target.close();
+    }
   }
 
   /** The complete result is larger than {@link #MAX_OUTPUT_BYTES}. */

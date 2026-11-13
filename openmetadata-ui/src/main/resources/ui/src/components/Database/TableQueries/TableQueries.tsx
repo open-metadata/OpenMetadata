@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
+  Query as QueryIcon,
   SortAscending,
   SortDescending,
 } from '@openmetadata/ui-core-components/icons';
@@ -508,6 +509,7 @@ const TableQueries: FC<TableQueriesProp> = ({
           )}`}
           doc={USAGE_DOCS}
           heading={t('label.query-lowercase-plural')}
+          icon={<QueryIcon />}
           permission={permissions?.query.Create}
           permissionValue={t('label.create-entity', {
             entity: t('label.query'),

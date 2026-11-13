@@ -26,6 +26,7 @@ import {
   nativeTreeCursorForPath,
   nestTreeRows,
   resolveOntologyTermLabel,
+  revealNativeTreeSelection,
 } from './OntologyStudio.utils';
 
 const FILTERS: GraphFilters = {
@@ -503,6 +504,75 @@ describe('native ontology placements', () => {
     expect(
       page.placements.every(({ path }) => path.length === new Set(path).size)
     ).toBe(true);
+  });
+
+  it('keeps every concept in the window when the selection sits late in a small tree', () => {
+    const nodes = [
+      'Party',
+      'Patient',
+      'Prescription',
+      'Clinician',
+      'Doctor',
+      'Visit',
+    ].map((label) => ({
+      id: label,
+      label,
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    }));
+    const index = buildNativeTreeIndex(
+      {
+        nodes,
+        edges: [
+          parentOf('Party', 'Patient'),
+          parentOf('Party', 'Clinician'),
+          parentOf('Clinician', 'Doctor'),
+          parentOf('Patient', 'Visit'),
+          parentOf('Patient', 'Prescription'),
+        ],
+      },
+      FILTERS,
+      []
+    );
+
+    const state = revealNativeTreeSelection(index, 'Doctor');
+    const page = getNativeTreePage(
+      index,
+      state.disclosure,
+      state.anchor,
+      state.direction
+    );
+
+    expect(
+      [...page.context, ...page.placements].map(({ node }) => node.label)
+    ).toEqual([
+      'Party',
+      'Clinician',
+      'Doctor',
+      'Patient',
+      'Prescription',
+      'Visit',
+    ]);
+    expect(page.previous).toBeUndefined();
+    expect(page.next).toBeUndefined();
+    expect(state.selectedKey).toBeDefined();
+  });
+
+  it('still anchors the window at the selection when the tree needs more than one window', () => {
+    const nodes = Array.from({ length: 3000 }, (_, n) => ({
+      id: String(n),
+      label: String(n).padStart(4, '0'),
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    }));
+    const index = buildNativeTreeIndex({ nodes, edges: [] }, FILTERS, []);
+
+    const state = revealNativeTreeSelection(index, '2500');
+
+    expect(
+      getNativeTreePage(index, state.disclosure, state.anchor, state.direction)
+        .placements[0].node.id
+    ).toBe('2500');
   });
 
   it('walks bounded windows forward and backward through a layered diamond', () => {

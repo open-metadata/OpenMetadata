@@ -9,6 +9,13 @@ argument-hint: "[branch name or PR number — defaults to current branch]"
 
 Self-reviews the branch against `REVIEW.md`, walks through `.github/pull_request_template.md` section by section, gathers evidence, and produces a fully-filled PR description before creating the PR.
 
+## Completion and shared evidence
+
+PR creation uses focused verification and records broader checks as pending; it does not imply
+merge readiness or ongoing CI monitoring. Reuse the implementation's applicable evidence.
+After creation, verify the saved body and branch once, report the PR link and outstanding checks,
+and finish. Do not rerun tests merely to publish their results (`--publish-results`).
+
 ## When to Use
 
 - Before running `gh pr create`
@@ -48,7 +55,7 @@ Use the diff to classify the PR:
 - **Creating a PR for a UI feature or a feature task/subtask with UI impact** → Docker run + recording + GitHub upload required. Use task/issue intent and the diff, not just paths or labels. Standalone fixes, refactors, styling, localization, docs, tests and backend-only changes may explain N/A.
 - **Touches `openmetadata-service/`** + new/changed REST endpoints → backend integration tests required.
 - **Touches Java, a JSON schema, an index mapping, `bootstrap/sql/`, seed data or a pom** → the
-  impacted Java tests must pass locally (Step 3). PR CI runs only the unit tests.
+  focused Java checks must pass or have documented blockers (Step 3); list broader checks separately.
 - **Touches `ingestion/src/metadata/ingestion/source/`** → ingestion tests required.
 - **>5 files changed, or new feature / refactor / breaking change** → high-level design required.
 - **Single-file fix with obvious scope** → small change, design section can be `N/A`.
@@ -103,12 +110,13 @@ If no issue exists, stop and ask the user to open one before continuing.
 Run the relevant commands and capture output. Don't fabricate coverage numbers — run the tools.
 
 **Backend (Java) — unit and integration tests:** PR checks run only the Java unit tests. The
-integration tests run **only in the merge queue**, and JavaUIIT/search-it run nightly. So run the
-tests the diff impacts locally with the `java-affected-tests` skill:
+integration tests run **only in the merge queue**, and JavaUIIT/search-it run nightly. Use the
+`java-affected-tests` skill to select focused checks and report broader coverage separately:
 ```bash
-make java_affected                          # impacted unit tests + ITs, by bucket, with the commands
-make java_affected_run                      # run them; writes the summary and details to target/java-tests/
-make java_affected_run ARGS="--update-pr"   # once the PR exists: summary in the PR body, details in a comment
+make java_affected ARGS="--scope focused"     # changed tests + convention tests; add relevant regressions with a reason
+make java_affected_run ARGS="--scope focused" # run once, unless valid evidence already exists
+make java_affected ARGS="--publish-results"   # publish saved evidence without executing tests
+# For a task requesting merge readiness, run --scope full instead.
 ```
 Before the PR exists, paste `target/java-tests/local-pr-results.md` between the
 `local-java-test-results` markers under "Backend integration tests"; once it exists, post the
@@ -124,7 +132,8 @@ mvn jacoco:report -pl openmetadata-service
 
 **Ingestion (Python):** PR checks run only the unit tests (`py-tests` → "Unit Tests & Static
 Checks"); `tests/integration/` runs **only in the merge queue**. So if the diff touches `ingestion/`,
-you MUST run every unit and integration test that covers a changed file locally before opening the PR.
+select focused unit/integration checks for changed behavior and list broader checks as pending;
+merge-readiness tasks require the full affected set.
 An integration break you skip here first shows up as a merge-queue ejection.
 
 List those tests: the changed test files, plus every test that imports a changed `src/metadata` module:
@@ -142,16 +151,17 @@ changed=$(git diff --name-only --diff-filter=d origin/main...HEAD -- . | sed 's|
 This finds `from metadata.x.y import z`. It misses `from metadata.x import y`, so also add the
 connector's `tests/integration/<connector>/` directory when you change a connector.
 
-Run them. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
+For PR creation, run the focused checks selected for changed behavior and report the remainder
+as pending. For merge readiness, run the full affected list. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
 ```bash
 source ../env/bin/activate
 grep '^tests/unit/' /tmp/affected-tests.txt | xargs -r python -m pytest -n auto --cov=metadata --cov-report=term-missing
 grep '^tests/integration/' /tmp/affected-tests.txt | xargs -r python -m pytest
 ```
 Put the commands you ran and their pass/fail counts in the PR body, under "Unit tests" and
-"Ingestion integration tests". If the list is very large (you changed a shared module like
-`metadata/utils/`), run the full unit suite with `nox --no-venv -s unit-tests`. Then run the
-integration directories for the connectors you touched, and say in the PR body that you ran a subset.
+"Ingestion integration tests". For merge readiness, a shared-module change may require the full unit suite with
+`nox --no-venv -s unit-tests` and affected connector integration directories. For focused work,
+select regressions with a stated reason and report the broader list as pending.
 
 **Frontend unit tests (Jest):**
 ```bash
@@ -160,10 +170,11 @@ yarn test <ChangedComponent> --coverage
 ```
 
 **Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs the full suite),
-so run the impact-mapped specs locally and record the results in the PR body:
+so inspect the impact-mapped specs and select relevant workflow regressions for PR creation.
+Record exact commands/results and list outstanding specs; merge readiness runs all impacted specs:
 ```bash
 make playwright_affected                          # specs selected from .github/playwright/impact-map.json
-make playwright_affected_run ARGS="--update-pr"   # run them; writes the results block into the PR body
+make playwright_affected_run ARGS="--update-pr"   # full impacted run for merge readiness
 ```
 Without `gh`, paste `playwright/output/local-pr-results.md` between the
 `local-playwright-results` markers under "Playwright (UI) tests".
@@ -299,5 +310,5 @@ the gate explicitly allows a draft with its remaining work stated:
 - New UI feature without Playwright spec
 - Bug fix without a regression test that fails before the fix
 - Large refactor with `N/A` in the design section — push back and ask for the design
-- Coverage % copy-pasted from another PR — re-run the tool
+- Coverage % copied from unrelated evidence — reuse applicable evidence or run the affected check
 - A default, limit, contract or ordering explained only in the PR description — the squash-merge drops the description, so the rule belongs in a `docs/decisions/` record

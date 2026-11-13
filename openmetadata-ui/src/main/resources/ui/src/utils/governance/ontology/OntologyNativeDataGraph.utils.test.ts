@@ -16,6 +16,7 @@ import {
   applyBindingsPage,
   applyClustersPage,
   bindingsRequest,
+  buildAssetLineagePairs,
   buildNativeDataGraph,
   classifyPageFailure,
   clustersRequest,
@@ -408,5 +409,26 @@ describe('buildNativeDataGraph', () => {
         edges.filter((edge) => edge.edgeKind === 'observedLineage')
       ).toEqual([]);
     });
+  });
+});
+
+describe('buildAssetLineagePairs', () => {
+  it('joins two assets of the concept by their node ids and leaves out lineage to other concepts', () => {
+    const graph = loadedGraph();
+    const transfer = graph.clusters[0];
+    const { lineageEdges } = stageTopologyPage(
+      EMPTY_NATIVE_TOPOLOGY,
+      pageFixture({
+        lineageEdges: [
+          { from: 'a1', to: 'a2' },
+          { from: 'a2', to: 'a3' },
+          { from: 'a1', to: 'a1' },
+        ],
+      }).topology
+    );
+
+    expect(buildAssetLineagePairs(lineageEdges, transfer)).toEqual([
+      { from: 'asset:transfer:a1', to: 'asset:transfer:a2' },
+    ]);
   });
 });

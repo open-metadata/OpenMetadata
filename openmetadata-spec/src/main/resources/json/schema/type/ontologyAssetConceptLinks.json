@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyAssetConceptLinks.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyAssetConceptLinks",
+  "description": "The ontology concepts one catalog asset is bound to, each with the columns bound to the concept's properties. Concepts the reader cannot view and archived ontologies contribute nothing.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyAssetConceptLinks",
+  "definitions": {
+    "link": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyAssetConceptLink",
+      "properties": {
+        "concept": { "$ref": "entityReference.json" },
+        "ontology": { "$ref": "entityReference.json" },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "ontologyConceptBindingsResponse.json#/definitions/columnBinding" },
+          "maxItems": 100,
+          "default": []
+        }
+      },
+      "required": ["concept", "ontology", "columns"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "links": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/link" },
+      "default": []
+    }
+  },
+  "required": ["links"],
+  "additionalProperties": false
+}

@@ -247,6 +247,12 @@ export interface CartesianBuildInput<T extends object> {
   zoomVisiblePoints?: number;
   /** Category-axis labels emit click events. Set by `onCategoryClick`. */
   categoryClickable?: boolean;
+  /**
+   * Set by the chart component when `onPointHover`/`onPointLeave` are given.
+   * Line and area series draw invisible symbols so ECharts emits per-point
+   * mouseover/mouseout events even on the default dot-less configuration.
+   */
+  hasHover?: boolean;
   /** Merged into the built option last. Objects merge, arrays replace. */
   option?: ChartOption;
   /** Bar charts only. */

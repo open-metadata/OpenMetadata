@@ -114,7 +114,7 @@ public final class OntologyImpactService {
       final BiConsumer<Supplier<List<UUID>>, MetadataOperation> authorizeTerms) {
     if (plan.cascade() || plan.target() != null) {
       final MetadataOperation operation =
-          plan.cascade() ? MetadataOperation.DELETE : MetadataOperation.EDIT_GLOSSARY_TERMS;
+          plan.cascade() ? MetadataOperation.DELETE : MetadataOperation.EDIT_ALL;
       // Admin authorization must be able to return without discovering or loading descendants.
       authorizeTerms.accept(() -> affectedTermIds(snapshot, plan), operation);
     }

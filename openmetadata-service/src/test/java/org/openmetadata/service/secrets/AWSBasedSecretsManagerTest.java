@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.lang.reflect.Field;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,7 @@ public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerT
     SourceConfig sourceConfig = new SourceConfig().withConfig(dbtPipeline);
     IngestionPipeline expectedIngestionPipeline =
         new IngestionPipeline()
+            .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withPipelineType(PipelineType.DBT)
             .withService(

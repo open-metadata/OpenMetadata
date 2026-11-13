@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { RelationshipType } from '../../../src/generated/entity/data/relationshipType';
+import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
@@ -27,7 +29,15 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { clickGraphNode } from '../../utils/ontologyStudio';
+import {
+  chooseInspectorRelationType,
+  clickGraphNode,
+  findEmptyCanvasPoint,
+  openInspectorRelationChooser,
+  readGraphPoints,
+  readNodePositions,
+  waitForGraphPoints,
+} from '../../utils/ontologyStudio';
 
 const PART_OF = 'https://open-metadata.org/ontology/partOf';
 const HAS_PART = 'https://open-metadata.org/ontology/hasPart';
@@ -35,10 +45,136 @@ const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
+interface Fixture {
+  readonly ontology: Ontology;
+  readonly fqn: string;
+  concept: (name: string) => Promise<OntologyConcept>;
+  subclass: (
+    child: OntologyConcept,
+    parent: OntologyConcept
+  ) => Promise<OntologyAxiom>;
+  axioms: () => Promise<OntologyAxiom[]>;
+  cleanup: () => Promise<void>;
+}
+
+const createFixture = async (
+  api: APIRequestContext,
+  prefix: string
+): Promise<Fixture> => {
+  const name = `pw_${prefix}_${uuid()}`;
+  const ontology = await okJson<Ontology>(
+    await api.post('/api/v1/ontologies', {
+      data: { name, iri: `urn:${name}`, namespace: `urn:${name}:` },
+    }),
+    `Create the ${prefix} fixture`
+  );
+  const fqn = ontology.fullyQualifiedName ?? name;
+
+  return {
+    ontology,
+    fqn,
+    concept: async (conceptName) =>
+      okJson<OntologyConcept>(
+        await api.post('/api/v1/ontologyConcepts', {
+          data: { name: conceptName, ontology: fqn, conceptType: 'OWL_CLASS' },
+        }),
+        `Create ${conceptName}`
+      ),
+    subclass: async (child, parent) =>
+      okJson<OntologyAxiom>(
+        await api.post('/api/v1/ontologyAxioms', {
+          data: {
+            name: `${child.name}Is${parent.name}`,
+            displayName: `${child.name} is ${parent.name}`,
+            description: `${child.name} is a ${parent.name}`,
+            ontology: fqn,
+            axiomType: 'SUBCLASS_OF',
+            subjectIri: child.iri,
+            expressions: [{ kind: 'NAMED_CLASS', classIri: parent.iri }],
+            provenance: 'Manual',
+          },
+        }),
+        `Relate ${child.name} to ${parent.name}`
+      ),
+    axioms: async () =>
+      (
+        await okJson<{ data: OntologyAxiom[] }>(
+          await api.get('/api/v1/ontologyAxioms', {
+            params: { ontologyId: ontology.id, limit: 100 },
+          }),
+          'List the axioms'
+        )
+      ).data,
+    cleanup: async () => {
+      await deleteFixtureEntity(
+        api,
+        `/api/v1/ontologies/${ontology.id}?recursive=true&hardDelete=true`
+      );
+    },
+  };
+};
+
+const openStudio = async (page: Page, ontology: Ontology, edit: boolean) => {
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
+  await expect(page.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+    'data-scope-key',
+    `ontology:${ontology.id}`
+  );
+  if (edit) {
+    await page.getByTestId('mode-tab-edit').click();
+    await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  }
+  await readNodePositions(page);
+};
+
+const isAxiomsPost = (response: {
+  url: () => string;
+  request: () => { method: () => string };
+}) =>
+  new URL(response.url()).pathname === '/api/v1/ontologyAxioms' &&
+  response.request().method() === 'POST';
+
+/** Picks the relation type once the picker is open for the pending source and target. */
+const chooseRelationType = async (page: Page, typeIri: string) => {
+  const picker = page.getByTestId('relationship-type-picker');
+  await expect(picker).toBeVisible();
+  await clickIgnoringToasts(picker.getByTestId(`relation-type-${typeIri}`));
+
+  return picker;
+};
+
+/** Starts a click-connect from a node's handle and lands on the target node body. */
+const connectByClick = async (page: Page, fromId: string, toId: string) => {
+  const ports = await waitForGraphPoints(page, 'port', [fromId]);
+  await page.mouse.click(ports[fromId].x, ports[fromId].y);
+  await expect(page.getByTestId('ontology-connect-instruction')).toBeVisible();
+  const nodes = await readGraphPoints(page, 'node');
+  await page.mouse.click(nodes[toId].x, nodes[toId].y);
+};
+
+/** Drags from a node's handle and releases over another node's body. */
+const connectByDrag = async (page: Page, fromId: string, toId: string) => {
+  const ports = await waitForGraphPoints(page, 'port', [fromId]);
+  const nodes = await readGraphPoints(page, 'node');
+  await page.mouse.move(ports[fromId].x, ports[fromId].y);
+  await page.mouse.down();
+  await page.mouse.move(
+    (ports[fromId].x + nodes[toId].x) / 2,
+    (ports[fromId].y + nodes[toId].y) / 2,
+    { steps: 8 }
+  );
+  await page.mouse.move(nodes[toId].x, nodes[toId].y, { steps: 8 });
+  await page.mouse.up();
+};
+
 const openRelationPicker = async (page: Page, conceptId: string) => {
   await clickGraphNode(page, conceptId);
   const inspector = page.getByTestId('ontology-concept-inspector');
   await inspector.getByTestId('ontology-add-relationship').click();
+  await openInspectorRelationChooser(page, inspector);
 
   return { inspector, picker: page.getByTestId('relationship-type-picker') };
 };
@@ -126,7 +262,7 @@ test.describe(
             'true'
           );
           const { picker } = await openRelationPicker(page, account.id);
-          await expect(picker.getByTestId('group-core')).toContainText(
+          await expect(picker.getByTestId('group-hierarchy')).toContainText(
             'Subclass Of'
           );
           await expect(
@@ -134,10 +270,14 @@ test.describe(
           ).toBeVisible();
           const partOf = picker.getByTestId(`relation-type-${PART_OF}`);
           await expect(partOf).toContainText('Part Of');
-          await expect(partOf).toContainText('Has Part');
+          // A registry type is glossed by its description rather than its inverse.
+          await expect(partOf).toContainText('part or component');
           await expect(
             picker.getByTestId(`relation-type-${HAS_PART}`)
-          ).toContainText('Part Of');
+          ).toContainText('Has Part');
+          await expect(picker.getByTestId('group-relationships')).toContainText(
+            'Part Of'
+          );
           await picker.getByTestId('relation-type-search').fill('part');
           await scrollIntoViewAndSettle(partOf);
           await expect(partOf).toBeVisible();
@@ -312,7 +452,7 @@ test.describe(
           await page.reload();
           await page.getByTestId('mode-tab-edit').click();
           const { picker } = await openRelationPicker(page, account.id);
-          const custom = picker.getByTestId('group-custom');
+          const custom = picker.getByTestId('group-relationships');
           await expect(custom).toContainText(`governed by ${suffix}`);
           const local = custom.getByTestId(`relation-type-${localIri}`);
           await expect(local).toContainText('Related locally');
@@ -364,19 +504,21 @@ test.describe(
           const { picker } = await openRelationPicker(authorPage, account.id);
           await expect(
             picker.getByTestId(`relation-type-${PART_OF}`)
-          ).toContainText('Has Part');
-          await expect(picker.getByTestId('group-custom')).toContainText(
+          ).toContainText('Part Of');
+          await expect(picker.getByTestId('group-relationships')).toContainText(
             `governed by ${suffix}`
           );
           await picker.getByTestId('relation-type-search').fill('governed by');
-          await expect(picker.getByTestId('group-custom')).toContainText(
+          await expect(picker.getByTestId('group-relationships')).toContainText(
             `governed by ${suffix}`
           );
           await expect(picker.getByTestId('relation-type-create')).toHaveCount(
             0
           );
-          await scrollIntoViewAndSettle(picker.getByTestId('group-custom'));
-          await expect(picker.getByTestId('group-custom')).toBeVisible();
+          await scrollIntoViewAndSettle(
+            picker.getByTestId('group-relationships')
+          );
+          await expect(picker.getByTestId('group-relationships')).toBeVisible();
           await testInfo.attach('native-relation-steward', {
             body: await authorPage.screenshot(),
             contentType: 'image/png',
@@ -412,6 +554,511 @@ test.describe(
             `/api/v1/policies/${policy.responseData.id}?hardDelete=true`
           );
         }
+      }
+    });
+
+    test('places a new concept where the canvas is double-clicked and leaves View mode alone', async ({
+      isolatedUserPage: page,
+    }, testInfo) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'place');
+      try {
+        const alpha = await fixture.concept('Alpha');
+        const beta = await fixture.concept('Beta');
+        await fixture.subclass(beta, alpha);
+
+        await test.step('View mode ignores a double-click on the canvas and still selects a node', async () => {
+          await openStudio(page, fixture.ontology, false);
+          const empty = await findEmptyCanvasPoint(page);
+          await page.mouse.dblclick(empty.x, empty.y);
+          await expect(
+            page.getByTestId('ontology-new-class-panel')
+          ).toHaveCount(0);
+          await clickGraphNode(page, alpha.id);
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText('Alpha');
+        });
+
+        await test.step('Edit mode opens the one new-concept drawer and puts the node at the click', async () => {
+          await page.getByTestId('mode-tab-edit').click();
+          await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+          await page
+            .getByTestId('ontology-concept-inspector')
+            .getByRole('button', { name: 'Close' })
+            .click();
+          const empty = await findEmptyCanvasPoint(page, 160, {
+            besideDrawer: true,
+          });
+          await page.mouse.dblclick(empty.x, empty.y);
+          const panel = page.getByTestId('ontology-new-class-panel');
+          await expect(panel).toBeVisible();
+          await expect(
+            page.getByTestId('ontology-new-class-panel')
+          ).toHaveCount(1);
+          await page.getByTestId('new-class-label').fill('Placed Concept');
+          await page
+            .getByTestId('new-class-description')
+            .fill('Dropped where the canvas was double-clicked.');
+          const applied = page.waitForResponse(
+            (response) =>
+              response.url().includes('/ontologyChangeSets/') &&
+              response.url().endsWith('/apply') &&
+              response.request().method() === 'POST'
+          );
+          await page.getByTestId('new-class-create').click();
+          await okJson(await applied, 'Apply the placement plan');
+          const placed = (
+            await okJson<{ data: OntologyConcept[] }>(
+              await api.get('/api/v1/ontologyConcepts', {
+                params: { ontology: fixture.fqn, limit: 50 },
+              }),
+              'List the concepts'
+            )
+          ).data.find((candidate) => candidate.name === 'PlacedConcept');
+          expect(placed).toBeDefined();
+          if (!placed) {
+            return;
+          }
+
+          const points = await waitForGraphPoints(page, 'node', [placed.id]);
+          expect(Math.abs(points[placed.id].x - empty.x)).toBeLessThan(40);
+          expect(Math.abs(points[placed.id].y - empty.y)).toBeLessThan(40);
+          await testInfo.attach('g11-placement', {
+            body: await page.screenshot(),
+            contentType: 'image/png',
+          });
+
+          await clickGraphNode(page, alpha.id);
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText('Alpha');
+          const after = await readGraphPoints(page, 'node');
+          expect(Math.abs(after[placed.id].x - empty.x)).toBeLessThan(40);
+          expect(Math.abs(after[placed.id].y - empty.y)).toBeLessThan(40);
+        });
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
+    test('connects two concepts by clicking the handle and by dragging it', async ({
+      isolatedUserPage: page,
+    }, testInfo) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'connect');
+      try {
+        const alpha = await fixture.concept('Alpha');
+        const beta = await fixture.concept('Beta');
+        const gamma = await fixture.concept('Gamma');
+        await openStudio(page, fixture.ontology, true);
+
+        await test.step('Click the handle, then the target, to make a subclass', async () => {
+          await connectByClick(page, beta.id, alpha.id);
+          const created = page.waitForResponse(isAxiomsPost);
+          await chooseRelationType(page, SUBCLASS_OF);
+          const axiom = await okJson<OntologyAxiom>(
+            await created,
+            'Create the clicked relation'
+          );
+          expect(axiom.subjectIri).toBe(beta.iri);
+          expect(axiom.expressions).toEqual([
+            expect.objectContaining({ classIri: alpha.iri }),
+          ]);
+        });
+
+        await test.step('Drag from the handle onto the target to make a link', async () => {
+          await connectByDrag(page, gamma.id, alpha.id);
+          await testInfo.attach('g11-connect-drag', {
+            body: await page.screenshot(),
+            contentType: 'image/png',
+          });
+          const created = page.waitForResponse(isAxiomsPost);
+          await chooseRelationType(page, PART_OF);
+          const axiom = await okJson<OntologyAxiom>(
+            await created,
+            'Create the dragged relation'
+          );
+          expect(axiom.subjectIri).toBe(gamma.iri);
+          expect(axiom.expressions).toEqual([
+            expect.objectContaining({ propertyIri: PART_OF }),
+          ]);
+        });
+
+        await test.step('Releasing a drag on empty canvas draws nothing', async () => {
+          const before = (await fixture.axioms()).length;
+          const ports = await waitForGraphPoints(page, 'port', [alpha.id]);
+          const empty = await findEmptyCanvasPoint(page);
+          await page.mouse.move(ports[alpha.id].x, ports[alpha.id].y);
+          await page.mouse.down();
+          await page.mouse.move(empty.x, empty.y, { steps: 10 });
+          await page.mouse.up();
+          await expect(
+            page.getByTestId('relationship-type-picker')
+          ).toHaveCount(0);
+          expect((await fixture.axioms()).length).toBe(before);
+        });
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
+    test('says why a relationship cannot be saved before it is saved', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'checks');
+      try {
+        const alpha = await fixture.concept('Alpha');
+        const beta = await fixture.concept('Beta');
+        await fixture.subclass(beta, alpha);
+        await openStudio(page, fixture.ontology, true);
+        const saved: string[] = [];
+        page.on('request', (request) => {
+          if (
+            new URL(request.url()).pathname === '/api/v1/ontologyAxioms' &&
+            request.method() === 'POST'
+          ) {
+            saved.push(request.url());
+          }
+        });
+        const message = page.getByTestId('relation-check-message');
+
+        await test.step('A repeated relationship is refused with its own sentence', async () => {
+          await connectByClick(page, beta.id, alpha.id);
+          await chooseRelationType(page, SUBCLASS_OF);
+          await expect(message).toHaveText(
+            /This relationship already exists: Beta .* Alpha\./
+          );
+          await page.getByTestId('relation-type-cancel').click();
+        });
+
+        await test.step('A relationship from a concept to itself is refused', async () => {
+          await connectByClick(page, alpha.id, alpha.id);
+          await chooseRelationType(page, SUBCLASS_OF);
+          await expect(message).toHaveText(
+            'Alpha cannot be related to itself.'
+          );
+          await page.getByTestId('relation-type-cancel').click();
+        });
+
+        await test.step('A subclass that would close a loop is refused', async () => {
+          await connectByClick(page, alpha.id, beta.id);
+          await chooseRelationType(page, SUBCLASS_OF);
+          await expect(message).toHaveText(
+            /already a kind of .*This would make a loop\./
+          );
+          await page.getByTestId('relation-type-cancel').click();
+        });
+
+        expect(saved).toEqual([]);
+        expect(await fixture.axioms()).toHaveLength(1);
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
+    test('changes and deletes a relationship from the inspector and keeps both after reload', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'rows');
+      try {
+        const alpha = await fixture.concept('Alpha');
+        const beta = await fixture.concept('Beta');
+        await fixture.subclass(beta, alpha);
+        await openStudio(page, fixture.ontology, true);
+        await clickGraphNode(page, beta.id);
+        const rows = page
+          .getByTestId('ontology-concept-inspector')
+          .getByTestId('ontology-concept-relationships');
+
+        await test.step('Change Subclass Of to Part Of', async () => {
+          await expect(rows).toContainText('Alpha');
+          await rows.getByTestId('ontology-relation-edit').click();
+          const editForm = rows.getByTestId('ontology-relationship-edit-form');
+          await expect(editForm).toBeVisible();
+          await chooseInspectorRelationType(page, editForm, PART_OF);
+          await clickIgnoringToasts(
+            editForm.getByTestId('ontology-relationship-edit-save')
+          );
+          await expect
+            .poll(async () =>
+              (await fixture.axioms()).map((axiom) => axiom.expressions?.[0])
+            )
+            .toEqual([expect.objectContaining({ propertyIri: PART_OF })]);
+
+          await page.reload();
+          await page.getByTestId('mode-tab-edit').click();
+          await clickGraphNode(page, beta.id);
+          await expect(rows).toContainText(/part of\s*Alpha/i);
+        });
+
+        await test.step('Delete the relationship', async () => {
+          await rows.getByTestId('ontology-relation-delete').click();
+          await expect(page.getByText('Relationship deleted.')).toBeVisible();
+          await expect
+            .poll(async () => (await fixture.axioms()).length)
+            .toBe(0);
+
+          await page.reload();
+          await page.getByTestId('mode-tab-edit').click();
+          await clickGraphNode(page, beta.id);
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).not.toContainText('Alpha');
+          expect(await readGraphPoints(page, 'edge')).toEqual({});
+        });
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
+    test('opens the relationship detail when an edge is clicked', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'edge');
+      try {
+        const alpha = await fixture.concept('Alpha');
+        const beta = await fixture.concept('Beta');
+        const axiom = await fixture.subclass(beta, alpha);
+        await openStudio(page, fixture.ontology, true);
+
+        const edges = await waitForGraphPoints(page, 'edge', [
+          `edge-${axiom.id}`,
+        ]).catch(async () => readGraphPoints(page, 'edge'));
+        const [edge] = Object.values(edges);
+        await page.mouse.click(edge.x, edge.y);
+
+        const detail = page.getByTestId('ontology-relation-detail');
+        await expect(detail).toBeVisible();
+        await expect(
+          detail.getByTestId('ontology-relation-detail-source')
+        ).toHaveText('Beta');
+        await expect(
+          detail.getByTestId('ontology-relation-detail-type')
+        ).toHaveText('is a');
+        await expect(
+          detail.getByTestId('ontology-relation-detail-target')
+        ).toHaveText('Alpha');
+        await expect(
+          detail.getByTestId('ontology-relation-detail-actions')
+        ).toBeVisible();
+
+        await detail.getByTestId('ontology-relation-delete').click();
+        await expect.poll(async () => (await fixture.axioms()).length).toBe(0);
+        await expect(detail).toHaveCount(0);
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
+    test('shows what deleting a concept takes with it and removes the references with it', async ({
+      isolatedUserPage: page,
+    }, testInfo) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'delete');
+      const table = new TableClass({ name: `pw_g11_${uuid()}` });
+      try {
+        const parent = await fixture.concept('Parent');
+        const child = await fixture.concept('Child');
+        const uncle = await fixture.concept('Uncle');
+        await fixture.subclass(child, parent);
+        await fixture.subclass(parent, uncle);
+        await table.create(api);
+        await okJson<OntologyConceptBindingsResponse>(
+          await api.put(`/api/v1/ontologyConcepts/${parent.id}/bindings`, {
+            data: {
+              expectedRevision: 0,
+              asset: {
+                assetType: 'table',
+                assetId: table.entityResponseData.id,
+                columns: [],
+              },
+            },
+          }),
+          'Bind a table to Parent'
+        );
+
+        await openStudio(page, fixture.ontology, true);
+        await clickGraphNode(page, parent.id);
+        await page.getByTestId('ontology-concept-more').click();
+        await page.getByTestId('ontology-concept-delete').click();
+
+        const dialog = page.getByTestId('ontology-concept-delete-dialog');
+        await expect(
+          dialog.getByTestId('ontology-delete-children')
+        ).toContainText('1 child concept will move to the top level: Child.');
+        await expect(
+          dialog.getByTestId('ontology-delete-relationships')
+        ).toContainText('2 relationships will be removed.');
+        await expect(
+          dialog.getByTestId('ontology-delete-bindings')
+        ).toContainText('1 data asset binding will be removed');
+        await testInfo.attach('g11-delete-impact', {
+          body: await page.screenshot(),
+          contentType: 'image/png',
+        });
+
+        await dialog.getByTestId('ontology-delete-remove-references').uncheck();
+        await expect(
+          dialog.getByTestId('ontology-concept-delete-confirm')
+        ).toBeDisabled();
+        await dialog.getByTestId('ontology-delete-remove-references').check();
+        await dialog.getByTestId('ontology-concept-delete-confirm').click();
+        await expect(dialog).toHaveCount(0);
+        await expect.poll(async () => (await fixture.axioms()).length).toBe(0);
+
+        await test.step('Undo brings back the concept and its relationships', async () => {
+          await page.getByTestId('ontology-undo').click();
+          await expect
+            .poll(async () => (await fixture.axioms()).length)
+            .toBe(2);
+          const restored = await okJson<OntologyConcept>(
+            await api.get(`/api/v1/ontologyConcepts/${parent.id}`),
+            'Read the restored concept'
+          );
+          expect(restored.deleted).toBe(false);
+          await expect
+            .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+            .toContain(parent.id);
+        });
+      } finally {
+        await table.delete(api);
+        await fixture.cleanup();
+      }
+    });
+
+    test('offers Restore when a new concept reuses the name of a deleted one', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'reuse');
+      try {
+        const customer = await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: fixture.fqn,
+              conceptType: 'OWL_CLASS',
+              description: 'A party that buys from us.',
+            },
+          }),
+          'Create Customer'
+        );
+        await fixture.concept('Anchor');
+
+        await openStudio(page, fixture.ontology, true);
+        await clickGraphNode(page, customer.id);
+        await page.getByTestId('ontology-concept-more').click();
+        await page.getByTestId('ontology-concept-delete').click();
+        await page.getByTestId('ontology-concept-delete-confirm').click();
+        await expect(
+          page.getByTestId('ontology-concept-delete-dialog')
+        ).toHaveCount(0);
+        await expect(page.getByTestId('ontology-undo')).toBeVisible();
+        await expect(page.getByTestId('ontology-undo')).toHaveCount(0, {
+          timeout: 30_000,
+        });
+
+        const empty = await findEmptyCanvasPoint(page);
+        await page.mouse.dblclick(empty.x, empty.y);
+        await page.getByTestId('new-class-local-name').fill('Customer');
+        await expect(page.getByTestId('new-class-name-deleted')).toContainText(
+          'A deleted concept named Customer exists in this ontology.'
+        );
+        await expect(page.getByTestId('new-class-create')).toBeDisabled();
+
+        await page.getByTestId('new-class-restore').click();
+        await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
+          0
+        );
+        await expect
+          .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+          .toContain(customer.id);
+        await expect(
+          page.getByTestId('ontology-concept-inspector')
+        ).toContainText('A party that buys from us.');
+
+        await page.reload();
+        await expect
+          .poll(async () => Object.keys(await readGraphPoints(page, 'node')))
+          .toContain(customer.id);
+        const restored = await okJson<OntologyConcept>(
+          await api.get(`/api/v1/ontologyConcepts/${customer.id}`),
+          'Read Customer'
+        );
+        expect(restored.deleted).toBe(false);
+        expect(restored.description).toBe('A party that buys from us.');
+      } finally {
+        await fixture.cleanup();
+      }
+    });
+
+    test('filters Broader and Narrower under the Object kind, apart from data properties', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const fixture = await createFixture(api, 'group');
+      try {
+        const iri = (local: string) => `${fixture.ontology.namespace}${local}`;
+        const property = async (name: string, kind: 'OBJECT' | 'DATA') =>
+          okJson<OntologyProperty>(
+            await api.post('/api/v1/ontologyProperties', {
+              data: {
+                name,
+                displayName: name,
+                ontology: fixture.fqn,
+                iri: iri(name),
+                kind,
+                ...(kind === 'DATA'
+                  ? { range: ['http://www.w3.org/2001/XMLSchema#string'] }
+                  : {}),
+              },
+            }),
+            `Create ${name}`
+          );
+        await property('broader', 'OBJECT');
+        await property('narrower', 'OBJECT');
+        await property('legalName', 'DATA');
+
+        await fixture.concept('Anchor');
+        await openStudio(page, fixture.ontology, true);
+        await page.getByTestId('submode-tab-definitions').click();
+        await page
+          .getByRole('tab', { name: 'Properties', exact: true })
+          .click();
+
+        // One table lists every kind; the Kind filter separates relationships from values.
+        const properties = page.getByTestId(
+          'ontology-definition-group-property'
+        );
+        const kinds = page.getByTestId('ontology-definition-kind-filter');
+        await expect(properties).toContainText('legalName');
+        await expect(properties).toContainText('broader');
+
+        await kinds.getByRole('tab', { name: 'Object', exact: true }).click();
+        await expect(properties).toContainText('broader');
+        await expect(properties).toContainText('narrower');
+        await expect(properties).not.toContainText('legalName');
+
+        await kinds.getByRole('tab', { name: 'Data', exact: true }).click();
+        await expect(properties).toContainText('legalName');
+        await expect(properties).not.toContainText('broader');
+      } finally {
+        await fixture.cleanup();
       }
     });
   }

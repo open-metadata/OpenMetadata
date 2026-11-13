@@ -104,7 +104,7 @@ public class SubjectCache {
   }
 
   private static final int DEFAULT_MAX_ENTRIES = 10000;
-  private static final Duration POLICIES_TTL = Duration.ofMinutes(2);
+  static final Duration POLICIES_TTL = Duration.ofMinutes(2);
   private static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
 
   // Bumped whenever the compiled policy caches are dropped wholesale, which is what a policy-rule

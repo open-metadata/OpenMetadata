@@ -40,7 +40,7 @@ import {
   Type,
   type Webhook,
 } from '../../generated/events/eventSubscription';
-import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
 import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import { t } from '../i18next/LocalUtil';
 

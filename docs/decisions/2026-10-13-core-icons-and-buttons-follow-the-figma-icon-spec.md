@@ -1,7 +1,7 @@
 # Core icons and buttons follow the Figma icon sizing spec
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-23 (three landing-page glyphs at a 1.67 stroke) · v3 2026-10-28 (1.8 stroke for Plus/Minus glyphs; link button gap)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-23 (three landing-page glyphs at a 1.67 stroke) · v3 2026-10-28 (1.8 stroke for Plus/Minus glyphs; link button gap) · v4 2026-11-05 (link-color leading icon 18; menu and select icon frames)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx`; `normalizeToGrid` in `scripts/generate-icons.mjs` throws on 24-grid sources it cannot rescale
 - **Related:** open-metadata/OpenMetadata#35348
@@ -55,3 +55,11 @@ icon uses.
 - Unboxed link buttons (`link-gray`, `link-color`, `link-destructive`) drop the label's `px-0.5`,
   so their `gap` is one 2px step wider (2px at `xs`, 4px at `sm` and `md`, 6px at `lg` and `xl`).
   The visible icon-to-label gap then matches boxed buttons.
+
+## Amendment — v4: link icons, menu and select icons
+- `link-color` buttons sit in running text, so their leading icon takes the 18 frame (14px glyph)
+  at every size instead of 20.
+- `Dropdown.Item` icons at the default size use a 20 frame (was 16 with a 2.25 stroke), like the
+  icon + title + description menus. Neutral icons in `Dropdown.Item`, `Select` options and value,
+  `ButtonGroup` and the form-label tooltip are `utility-gray-500`, `utility-gray-600` on hover. A
+  selected `ButtonGroup` item's icon takes the item's text colour.

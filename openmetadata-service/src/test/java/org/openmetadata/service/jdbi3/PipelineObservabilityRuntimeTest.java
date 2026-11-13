@@ -13,63 +13,50 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.PipelineObservabilityResponse;
-import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
+/**
+ * The average runtime is computed in SQL (covered by PipelineStatusPaginationSqlTest); here, once
+ * per request over the last 30 days, and shared by every table in the response.
+ */
 class PipelineObservabilityRuntimeTest {
   private static final String FQN = "pipeline_service.demo_pipeline";
   private static final String EXTENSION = "table.pipelineObservability." + FQN;
+  private static final long THIRTY_DAYS = 30L * 24 * 60 * 60 * 1000;
 
   @Test
-  void tablesShareOneCompleteRuntimeSnapshotAndTheNextRequestRecalculates() {
-    long now = System.currentTimeMillis();
-    List<PipelineStatus> statuses = new ArrayList<>();
-    for (int i = 0; i < 1000; i++) {
-      statuses.add(new PipelineStatus().withTimestamp(now - i - 1).withEndTime(now - i + 39));
-    }
-    statuses.add(
-        new PipelineStatus()
-            .withTimestamp(now - 2000)
-            .withEndTime(now + 10000)
-            .withTaskStatus(
-                List.of(
-                    new Status().withStartTime(10L).withEndTime(110L),
-                    new Status().withStartTime(-1000L),
-                    new Status().withEndTime(9000L))));
-    statuses.add(new PipelineStatus().withTimestamp(now - 3000).withEndTime(now - 3000));
-    statuses.add(new PipelineStatus().withTimestamp(now - 4000).withEndTime(now - 5000));
-    statuses.add(
-        new PipelineStatus().withTimestamp(now - 31L * 24 * 60 * 60 * 1000).withEndTime(now));
-
-    try (RuntimeFixture fixture = new RuntimeFixture(statuses)) {
-      PipelineObservabilityResponse first = fixture.repository.getPipelineObservability(FQN);
-      assertRuntimes(first, (1000 * 40.0 + 100.0) / 1001);
+  void tablesShareOneRuntimePerRequestAndTheNextRequestRecalculates() {
+    try (RuntimeFixture fixture = new RuntimeFixture(66.5, 900.0)) {
+      assertRuntimes(fixture.repository.getPipelineObservability(FQN), 66.5);
       assertRuntimes(fixture.repository.getPipelineObservability(FQN), 900.0);
+      assertEquals(List.of(THIRTY_DAYS, THIRTY_DAYS), fixture.windows);
     }
   }
 
   @Test
   void missingRuntimeIsReusedAcrossTablesButNotAcrossRequests() {
-    try (RuntimeFixture fixture = new RuntimeFixture(List.of())) {
+    try (RuntimeFixture fixture = new RuntimeFixture(null, 900.0)) {
       PipelineObservabilityResponse response = fixture.repository.getPipelineObservability(FQN);
       assertEquals(2, response.getTableObservabilityData().size());
       response
           .getTableObservabilityData()
           .forEach(
               table -> assertNull(table.getObservabilityData().getFirst().getAverageRunTime()));
+      assertEquals(1, fixture.windows.size());
       assertRuntimes(fixture.repository.getPipelineObservability(FQN), 900.0);
+      assertEquals(2, fixture.windows.size());
     }
   }
 
@@ -86,11 +73,13 @@ class PipelineObservabilityRuntimeTest {
                     0.00001));
   }
 
+  /** Two tables observing the pipeline; each average the database computes records its window. */
   private static class RuntimeFixture implements AutoCloseable {
     private final MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS);
+    private final List<Long> windows = new ArrayList<>();
     private final PipelineRepository repository;
 
-    RuntimeFixture(List<PipelineStatus> initialStatuses) {
+    RuntimeFixture(Double... averages) {
       CollectionDAO collectionDAO = mock(CollectionDAO.class);
       CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
       CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDAO =
@@ -123,27 +112,12 @@ class PipelineObservabilityRuntimeTest {
                 .build());
       }
       when(extensionDAO.getExtensionsByPrefixBatch(EXTENSION)).thenReturn(records);
-      AtomicInteger snapshots = new AtomicInteger();
-      when(timeSeriesDAO.listBetweenTimestampsByOrder(
-              eq(FQN),
-              eq(PipelineRepository.PIPELINE_STATUS_EXTENSION),
-              anyLong(),
-              anyLong(),
-              eq(EntityTimeSeriesDAO.OrderBy.DESC)))
+      Iterator<Double> results = Arrays.asList(averages).iterator();
+      when(timeSeriesDAO.averagePipelineRuntime(eq(FQN), anyLong(), anyLong()))
           .thenAnswer(
               call -> {
-                long start = call.getArgument(2);
-                long end = call.getArgument(3);
-                List<PipelineStatus> snapshot =
-                    snapshots.getAndIncrement() == 0
-                        ? initialStatuses
-                        : List.of(
-                            new PipelineStatus().withTimestamp(end - 1000).withEndTime(end - 100));
-                return snapshot.stream()
-                    .filter(
-                        status -> status.getTimestamp() >= start && status.getTimestamp() <= end)
-                    .map(JsonUtils::pojoToJson)
-                    .toList();
+                windows.add(call.<Long>getArgument(2) - call.<Long>getArgument(1));
+                return results.next();
               });
     }
 

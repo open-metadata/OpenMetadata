@@ -27,6 +27,7 @@ import {
   formatServerContent,
   setEditorContent,
 } from '../../utils/BlockEditorUtils';
+import { getLanguageDirection } from '../../utils/i18next/i18nextUtil';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
@@ -72,6 +73,10 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     } = useEntityAttachment();
 
     const editorWrapperRef = useRef<HTMLDivElement>(null);
+    // Read by editorProps.attributes, which ProseMirror recomputes on every
+    // view update, so the role follows setEditable below.
+    const editableRef = useRef(editable);
+    editableRef.current = editable;
 
     const extensions =
       blockEditorExtensionsClassBase.getExtensions(extensionOptions);
@@ -93,10 +98,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         onFocus?.();
       },
       editorProps: {
-        attributes: {
+        // tiptap v3 gives every editor role="textbox". A read-only viewer is
+        // not a text field, so it keeps the generic semantics it had on v2.
+        attributes: () => ({
           class: 'om-block-editor',
           ...(autoFocus ? { autofocus: 'true' } : {}),
-        },
+          ...(editableRef.current ? {} : { role: 'presentation' }),
+        }),
         handleDOMEvents: {
           paste: (view, event) => {
             const items = Array.from(event.clipboardData?.items || []);
@@ -275,8 +283,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       if (!editorWrapper) {
         return;
       }
-      editorWrapper.setAttribute('dir', i18n.dir());
-      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
+      const direction = getLanguageDirection(i18n);
+      editorWrapper.setAttribute('dir', direction);
+      editorWrapper.style.textAlign = direction === 'rtl' ? 'right' : 'left';
     }, [i18n]);
 
     return (

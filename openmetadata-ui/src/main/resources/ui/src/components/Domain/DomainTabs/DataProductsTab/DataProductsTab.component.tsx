@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Package, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  DataProduct as DataProductIcon,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -135,7 +138,7 @@ const DataProductsTab = forwardRef(
               },
             ]}
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<DataProductIcon className="tw:text-fg-brand-primary" />}
             permission={permissions.Create}
             title={t('label.no-data-products-yet')}
           />
@@ -165,6 +168,7 @@ const DataProductsTab = forwardRef(
                     ...dataProduct,
                     entityType: EntityType.DATA_PRODUCT,
                   }}
+                  variant="muted"
                 />
               ))}
               <NextPrevious

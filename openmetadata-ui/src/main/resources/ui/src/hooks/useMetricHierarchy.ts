@@ -54,6 +54,7 @@ interface ChildPage {
 interface GroupPage {
   rows: MetricTreeNode[];
   paging: Paging;
+  generation: number;
 }
 
 export interface MetricHierarchyNode {
@@ -269,6 +270,7 @@ export const useMetricHierarchy = ({
           [groupId]: {
             rows: (response.data ?? []).map(asMetricTreeNode),
             paging: response.paging,
+            generation,
           },
         }));
       } catch (fetchError) {
@@ -350,6 +352,7 @@ export const useMetricHierarchy = ({
               ...(response.data ?? []).map(asMetricTreeNode),
             ],
             paging: response.paging,
+            generation,
           },
         }));
       } catch (fetchError) {
@@ -513,17 +516,16 @@ export const useMetricHierarchy = ({
         Boolean(node.groupId)
     );
     setExpandedGroupRowIds(groupNodes.map(({ row }) => row.id));
+    // Runs in the same commit as the reset on a page/size/query change, when this closure still
+    // holds the previous scope's pages and loading ids; only a page from this generation counts.
     groupNodes.forEach(({ groupId }) => {
-      if (!groupPageOverrides[groupId] && !loadingGroupIds.includes(groupId)) {
+      if (
+        groupPageOverrides[groupId]?.generation !== requestGeneration.current
+      ) {
         fetchInitialGroupMembers(groupId).catch(() => undefined);
       }
     });
-  }, [
-    fetchInitialGroupMembers,
-    groupPageOverrides,
-    loadingGroupIds,
-    topLevelNodes,
-  ]);
+  }, [fetchInitialGroupMembers, groupPageOverrides, topLevelNodes]);
   const collapseAll = useCallback(() => setExpandedGroupRowIds([]), []);
 
   const reset = useCallback(() => {

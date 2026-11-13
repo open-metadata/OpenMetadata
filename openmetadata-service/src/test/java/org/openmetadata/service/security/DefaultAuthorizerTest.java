@@ -212,6 +212,82 @@ class DefaultAuthorizerTest {
   }
 
   @Test
+  void ontologyReviewerWithoutEditRightIsDeniedAWrite() {
+    for (String ontologyType :
+        List.of(
+            Entity.ONTOLOGY,
+            Entity.ONTOLOGY_CONCEPT,
+            Entity.ONTOLOGY_PROPERTY,
+            Entity.ONTOLOGY_RELEASE,
+            Entity.ONTOLOGY_AXIOM,
+            Entity.ONTOLOGY_CHANGE_SET)) {
+      SecurityContext securityContext = securityContext("reviewer");
+      SubjectContext reviewerContext = subjectContext("reviewer", false, false, null);
+      reviewerContext.user().setId(UUID.randomUUID());
+      EntityInterface<?> entity = mock(EntityInterface.class);
+      when(entity.getReviewers())
+          .thenReturn(
+              List.of(
+                  entityReference(Entity.USER, "reviewer").withId(reviewerContext.user().getId())));
+      ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+      when(resourceContext.getResource()).thenReturn(ontologyType);
+      Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entity);
+      OperationContext operationContext =
+          new OperationContext(ontologyType, MetadataOperation.EDIT_ALL);
+
+      try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+          MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+        mockedAuthorizer
+            .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+            .thenReturn(reviewerContext);
+        mockedPolicyEvaluator
+            .when(
+                () ->
+                    PolicyEvaluator.hasPermission(
+                        reviewerContext, resourceContext, operationContext))
+            .thenThrow(new AuthorizationException("no edit right"));
+
+        assertThrows(
+            AuthorizationException.class,
+            () -> authorizer.authorize(securityContext, operationContext, resourceContext),
+            ontologyType);
+      }
+    }
+  }
+
+  @Test
+  void glossaryTermReviewerStillSkipsPolicyEvaluation() {
+    SecurityContext securityContext = securityContext("reviewer");
+    SubjectContext reviewerContext = subjectContext("reviewer", false, false, null);
+    reviewerContext.user().setId(UUID.randomUUID());
+    EntityInterface<?> entity = mock(EntityInterface.class);
+    when(entity.getReviewers())
+        .thenReturn(
+            List.of(
+                entityReference(Entity.USER, "reviewer").withId(reviewerContext.user().getId())));
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    when(resourceContext.getResource()).thenReturn(Entity.GLOSSARY_TERM);
+    Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entity);
+    OperationContext operationContext =
+        new OperationContext(Entity.GLOSSARY_TERM, MetadataOperation.EDIT_ALL);
+
+    try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedAuthorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(reviewerContext);
+      mockedPolicyEvaluator
+          .when(
+              () ->
+                  PolicyEvaluator.hasPermission(reviewerContext, resourceContext, operationContext))
+          .thenThrow(new AuthorizationException("would be denied by policy"));
+
+      assertDoesNotThrow(
+          () -> authorizer.authorize(securityContext, operationContext, resourceContext));
+    }
+  }
+
+  @Test
   void aReviewerIsMatchedByUserIdNotByName() {
     SecurityContext securityContext = securityContext("stewards");
     SubjectContext userContext = subjectContext("stewards", false, false, null);

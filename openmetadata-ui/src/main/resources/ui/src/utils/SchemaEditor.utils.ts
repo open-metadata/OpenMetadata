@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { JSON_TAB_SIZE } from '../constants/constants';
 import { getJSONFromString } from './StringUtils';
 
@@ -35,3 +36,6 @@ export const getSchemaEditorValue = (
 
   return '';
 };
+
+export const getJSONEditorValue = (value?: object): string =>
+  isEmpty(value) ? '' : JSON.stringify(value);

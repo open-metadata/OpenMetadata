@@ -30,6 +30,7 @@ import type {
   ReviewSettings,
   SettingsOutcome,
 } from '../../../../hooks/governance/ontology/useOntologyPublication.types';
+import { useSettlingReviewEdits } from '../../../../hooks/governance/ontology/useSettlingReviewEdits';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import type { ReleasePanelView } from './OntologyReleasePanel.types';
@@ -112,6 +113,28 @@ const OntologyReleaseReviewers = ({
       setSaving(false);
     }
   }, [view.kind, onSearchChange]);
+  const save = async (next: ReviewSettings) => {
+    const epoch = readEpoch.current;
+    setSaving(true);
+    setOutcome(undefined);
+    try {
+      const result = await onChange(next);
+      if (readEpoch.current === epoch) {
+        setOutcome(result);
+      }
+    } finally {
+      if (readEpoch.current === epoch) {
+        setSaving(false);
+      }
+    }
+  };
+  const { interactive, change } = useSettlingReviewEdits({
+    viewKind: view.kind,
+    canEditSettings: model?.canEditSettings,
+    saving,
+    settings: model?.settings,
+    save,
+  });
   if (!model) {
     return view.kind === 'loading' ? (
       <Typography role="status">{t('label.loading')}</Typography>
@@ -160,25 +183,6 @@ const OntologyReleaseReviewers = ({
     { id: OntologyApprovalRule.AnyReviewer, label: t('label.any-one') },
     { id: OntologyApprovalRule.AllReviewers, label: t('label.all') },
   ];
-  const save = async (next: ReviewSettings) => {
-    if (!editable) {
-      return;
-    }
-    const epoch = readEpoch.current;
-    setSaving(true);
-    setOutcome(undefined);
-    try {
-      const result = await onChange(next);
-      if (readEpoch.current === epoch) {
-        setOutcome(result);
-      }
-    } finally {
-      if (readEpoch.current === epoch) {
-        setSaving(false);
-      }
-    }
-  };
-
   const renderAssignees = () =>
     model.assignees.length > 0 && (
       <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
@@ -232,7 +236,7 @@ const OntologyReleaseReviewers = ({
         // The save marks the publication busy, which clears canEditSettings.
         // Disabling the focused input then blurs it, and the focus restored
         // after the save reopens the list over the dialog; stay read-only.
-        isDisabled={(!editable && !saving) || hasTeam}
+        isDisabled={(!interactive && !saving) || hasTeam}
         isReadOnly={saving}
         items={options}
         label={t('label.add-reviewer')}
@@ -244,17 +248,21 @@ const OntologyReleaseReviewers = ({
           search.onSearchChange(value);
         }}
         onSelectionChange={(key) => {
-          if (!editable || searchUnavailable) {
+          if (!interactive || searchUnavailable) {
             return;
           }
           const selected = options.find((option) => option.id === key);
           if (!selected) {
             return;
           }
-          void save({
-            ...settings,
-            reviewers: [...settings.reviewers, selected.value],
-          });
+          change((latest) => ({
+            ...latest,
+            reviewers: latest.reviewers.some(
+              ({ id }) => id === selected.value.id
+            )
+              ? latest.reviewers
+              : [...latest.reviewers, selected.value],
+          }));
           setSearchText('');
           search.onSearchChange('');
         }}>
@@ -323,7 +331,7 @@ const OntologyReleaseReviewers = ({
           {renderReviewerSearch()}
           <Select
             hint={hasTeam ? t('message.ontology-one-team-reviewer') : undefined}
-            isDisabled={!editable}
+            isDisabled={!interactive}
             items={ruleOptions}
             label={t('label.approval-rule')}
             selectedKey={settings.approvalRule}
@@ -333,7 +341,7 @@ const OntologyReleaseReviewers = ({
                 (option) => option.id === key
               )?.id;
               if (approvalRule) {
-                void save({ ...settings, approvalRule });
+                change((latest) => ({ ...latest, approvalRule }));
               }
             }}>
             {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}

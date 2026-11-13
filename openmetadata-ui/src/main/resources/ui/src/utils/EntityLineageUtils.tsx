@@ -12,11 +12,10 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { Check, Metric } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
 import { Link } from 'react-router-dom';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import Loader from '../components/common/Loader/Loader';
 import type { ColumnsType } from '../components/common/Table/Table.interface';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
@@ -60,7 +59,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
     return (
       <div className="d-flex items-center gap-2">
         {isMetricEntity ? (
-          <MetricIcon className="tw:size-5 tw:shrink-0" />
+          <Metric className="tw:shrink-0" size={20} />
         ) : (
           <img
             alt={fqn}

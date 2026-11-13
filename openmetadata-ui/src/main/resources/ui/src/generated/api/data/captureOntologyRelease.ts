@@ -25,15 +25,13 @@ export interface CaptureOntologyRelease {
     expectedWorkingRevision:        number;
     releaseNotes?:                  string;
     /**
-     * Allocate the next semantic version from the latest versioned candidate, including
-     * rejected candidates. The unversioned base is 0.0.0.
+     * Allocate the next semantic version from the active release. The unversioned base is 0.0.0.
      */
     versionBump?: VersionBump;
 }
 
 /**
- * Allocate the next semantic version from the latest versioned candidate, including
- * rejected candidates. The unversioned base is 0.0.0.
+ * Allocate the next semantic version from the active release. The unversioned base is 0.0.0.
  */
 export enum VersionBump {
     Major = "major",

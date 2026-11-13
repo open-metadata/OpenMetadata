@@ -884,6 +884,156 @@ def test_ui_and_docs_only_change_selects_nothing() -> None:
     assert plan.commands == []
 
 
+def test_focused_search_fix_keeps_regression_and_defers_broad_coverage() -> None:
+    planner = PLANNER.Planner(REPO, IMPACT_MAP)
+    changed = [
+        f"{SERVICE}/search/SearchRepository.java",
+        f"{IT_TESTS}/TestCaseSoftDeleteSearchIT.java",
+    ]
+    plan = planner.plan(changed, scope="focused")
+
+    assert set(its(plan)) == {"TestCaseSoftDeleteSearchIT"}
+    assert not plan.full_unit_modules
+    assert plan.deferred_commands
+    full = planner.plan(changed)
+    assert full.not_run_locally
+    assert plan.not_run_locally == full.not_run_locally
+    summary = PLANNER.render_block(plan, [], "abc", "origin/main", False)
+    assert "focused" in summary
+    assert "merge readiness is not established" in summary
+
+
+def test_focused_scope_requires_a_test_when_broad_coverage_exists() -> None:
+    planner = PLANNER.Planner(REPO, IMPACT_MAP)
+    with pytest.raises(SystemExit, match="--add-it or --add-unit"):
+        planner.plan(["pom.xml"], scope="focused")
+
+
+def test_saved_evidence_detects_changed_sources_and_tampered_reports(
+    tmp_path: Path,
+) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / "pom.xml").write_text("<project/>")
+    summary = tmp_path / PLANNER.RESULTS_MARKDOWN
+    summary.parent.mkdir(parents=True)
+    summary.write_text("FAILED: original result")
+    PLANNER.save_evidence(tmp_path, 1)
+    assert PLANNER.load_evidence(tmp_path)["exitCode"] == 1
+    (tmp_path / "README.md").write_text("documentation only")
+    assert PLANNER.load_evidence(tmp_path)["exitCode"] == 1
+    (tmp_path / "pom.xml").write_text("<project>changed</project>")
+    with pytest.raises(SystemExit, match="changed"):
+        PLANNER.load_evidence(tmp_path)
+    (tmp_path / "pom.xml").write_text("<project/>")
+    summary.write_text("PASSED")
+    with pytest.raises(SystemExit, match="changed"):
+        PLANNER.load_evidence(tmp_path)
+
+
+@pytest.mark.parametrize("tracked", [False, True])
+@pytest.mark.parametrize(
+    "relative",
+    [
+        "module/src/main/java/Example.java",
+        "module/src/test/java/ExampleTest.java",
+        "module/src/main/resources/config.json",
+    ],
+)
+def test_evidence_rejects_changed_nested_sources(
+    tmp_path: Path, relative: str, tracked: bool
+) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    source = tmp_path / relative
+    source.parent.mkdir(parents=True)
+    source.write_text("original")
+    if tracked:
+        subprocess.run(["git", "add", relative], cwd=tmp_path, check=True)
+    summary = tmp_path / PLANNER.RESULTS_MARKDOWN
+    summary.parent.mkdir(parents=True)
+    summary.write_text("PASSED")
+    PLANNER.save_evidence(tmp_path, 0)
+    assert PLANNER.load_evidence(tmp_path)["exitCode"] == 0
+    source.write_text("changed")
+    with pytest.raises(SystemExit, match="changed"):
+        PLANNER.load_evidence(tmp_path)
+
+
+def test_publish_existing_evidence_never_runs_tests(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    impact = tmp_path / PLANNER.IMPACT_MAP
+    impact.parent.mkdir(parents=True)
+    impact.write_text("{}")
+    summary = tmp_path / PLANNER.RESULTS_MARKDOWN
+    summary.parent.mkdir(parents=True)
+    summary.write_text("original failed summary")
+    published = tmp_path / "published.txt"
+    tools = tmp_path / "bin"
+    tools.mkdir()
+    gh = tools / "gh"
+    gh.write_text(
+        f"#!{sys.executable}\n"
+        + """
+import json, sys
+from pathlib import Path
+if sys.argv[1:3] == ['pr', 'view']:
+    print(json.dumps({'number': 7, 'url': 'https://example/pull/7', 'body': ''}))
+elif sys.argv[1:3] == ['pr', 'edit']:
+    Path('published.txt').write_text(Path(sys.argv[sys.argv.index('--body-file') + 1]).read_text())
+else:
+    raise SystemExit('Unexpected external operation: ' + str(sys.argv))
+"""
+    )
+    gh.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tools) + os.pathsep + os.environ["PATH"])
+    PLANNER.save_evidence(tmp_path, 1)
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH), "--publish-results"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1, result.stderr
+    assert published.read_text().strip() == "original failed summary"
+    assert "Changed files vs base" not in result.stdout
+
+
+def test_focused_author_selection_is_recorded_and_default_remains_full() -> None:
+    planner = PLANNER.Planner(REPO, IMPACT_MAP)
+    plan = planner.plan(
+        [f"{SERVICE}/search/SearchRepository.java"],
+        scope="focused",
+        add_units=["SearchRepositoryBehaviorTest"],
+        reason="staged target isolation",
+    )
+    assert set(plan.unit_tests["openmetadata-service"]) == {
+        "SearchRepositoryBehaviorTest",
+        "SearchRepositoryTest",
+    }
+    assert (
+        "added by author: staged target isolation"
+        in plan.unit_tests["openmetadata-service"]["SearchRepositoryBehaviorTest"]
+    )
+    assert PLANNER.parse_args([]).scope == "full"
+    with pytest.raises(SystemExit):
+        PLANNER.parse_args(["--publish-results", "--run"])
+
+
+@pytest.mark.parametrize("option", ["MAVEN_OPTS", "MAVEN_ARGS", "_JAVA_OPTIONS"])
+def test_evidence_rejects_changed_java_options(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, option: str
+) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    summary = tmp_path / PLANNER.RESULTS_MARKDOWN
+    summary.parent.mkdir(parents=True)
+    summary.write_text("result")
+    PLANNER.save_evidence(tmp_path, 0)
+    monkeypatch.setenv(option, "-DdatabaseImage=mysql:8.4")
+    with pytest.raises(SystemExit, match="changed"):
+        PLANNER.load_evidence(tmp_path)
+
+
 def test_heavily_shared_class_escalates_to_the_full_unit_suite() -> None:
     _, plan = plan_for(
         "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
@@ -1196,6 +1346,9 @@ def test_update_pr_posts_the_details_and_links_them_from_the_summary(
     [body] = edited
     assert body.startswith("#### Backend integration tests")
     assert summary.strip() in body
+    for _ in range(2):
+        assert PLANNER.main(["--publish-results"]) == 0
+        assert edited[-1].count("- [Details](") == 1
 
 
 def test_a_step_that_ran_no_tests_is_not_a_pass() -> None:

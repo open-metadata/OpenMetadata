@@ -15,9 +15,12 @@ import {
   BreadcrumbItemType,
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft, ArrowRight } from '@openmetadata/ui-core-components/icons';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Column,
+  Table,
+} from '@openmetadata/ui-core-components/icons';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { NodeData } from '../../interface/lineage.interface';
@@ -27,13 +30,13 @@ export const LINEAGE_IMPACT_OPTIONS = [
   {
     label: i18n.t('label.asset-level'),
     key: EImpactLevel.TableLevel,
-    icon: TableIcon,
+    icon: Table,
     entityType: EntityType.TABLE,
   },
   {
     label: i18n.t('label.column-level'),
     key: EImpactLevel.ColumnLevel,
-    icon: ColumnIcon,
+    icon: Column,
     entityType: EntityType.TABLE_COLUMN,
   },
 ];

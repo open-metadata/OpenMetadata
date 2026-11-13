@@ -13,7 +13,12 @@
 
 import { OntologyReleaseExportFormat } from '../../../../rest/ontologyExport.constants';
 
-export type OntologyReleaseExportCard = 'rdfxml' | 'skos' | 'jsonld' | 'csv';
+export type OntologyReleaseExportCard =
+  | 'turtle'
+  | 'rdfxml'
+  | 'skos'
+  | 'jsonld'
+  | 'csv';
 
 interface OntologyReleaseExportFormatOption {
   readonly descriptionKey: string;
@@ -23,14 +28,14 @@ interface OntologyReleaseExportFormatOption {
 
 export const ONTOLOGY_RELEASE_EXPORT_FORMATS = [
   {
-    descriptionKey: 'message.ontology-format-owl-description',
-    format: 'rdfxml',
-    labelKey: 'label.owl-rdf-xml',
+    descriptionKey: 'message.ontology-format-turtle-description',
+    format: 'turtle',
+    labelKey: 'label.turtle',
   },
   {
-    descriptionKey: 'message.ontology-format-skos-description',
-    format: 'skos',
-    labelKey: 'label.skos-skos-xl',
+    descriptionKey: 'message.ontology-format-owl-description',
+    format: 'rdfxml',
+    labelKey: 'label.rdf-xml',
   },
   {
     descriptionKey: 'message.ontology-format-jsonld-description',
@@ -42,6 +47,11 @@ export const ONTOLOGY_RELEASE_EXPORT_FORMATS = [
     format: 'csv',
     labelKey: 'label.csv',
   },
+  {
+    descriptionKey: 'message.ontology-format-skos-description',
+    format: 'skos',
+    labelKey: 'label.skos-skos-xl',
+  },
 ] satisfies readonly OntologyReleaseExportFormatOption[];
 
 /** The SKOS card writes SKOS-XL labels when the toggle is on; every other card is its own format. */
@@ -50,11 +60,5 @@ export const resolveExportFormat = (
   skosXl: boolean
 ): OntologyReleaseExportFormat =>
   card === 'skos' && skosXl ? 'skos-xl' : card;
-
-/** OWL and JSON-LD preview as Turtle, because the graph is the same and Turtle is readable. */
-export const resolvePreviewFormat = (
-  format: OntologyReleaseExportFormat
-): OntologyReleaseExportFormat =>
-  format === 'rdfxml' || format === 'jsonld' ? 'turtle' : format;
 
 export const ONTOLOGY_RELEASE_PREVIEW_LIMIT = 1800;

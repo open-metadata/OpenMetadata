@@ -31,6 +31,13 @@ export interface MCPConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Names of MCP tools to turn off for every user, admins included. A change applies right
+     * away to tool calls and to the next tools/list, on each server as it reloads the setting;
+     * an MCP client that already listed the tools sees the change when it lists them again. A
+     * name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
      * Enable or disable the MCP server
      */
     enabled?: boolean;
@@ -42,11 +49,11 @@ export interface MCPConfiguration {
      */
     maxResponseChars?: number;
     /**
-     * Name of the MCP server
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
     /**
@@ -63,8 +70,9 @@ export interface MCPConfiguration {
     path?: string;
     /**
      * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
-     * user including admins. Turning it on blocks write tools right away; they leave tools/list
-     * after a restart, and turning it off applies after a restart.
+     * user including admins. A change applies right away to tool calls and to the next
+     * tools/list, on each server as it reloads the setting; an MCP client that already listed
+     * the tools sees the change when it lists them again.
      */
     readOnly?: boolean;
     /**
