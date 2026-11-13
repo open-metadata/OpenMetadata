@@ -16,7 +16,14 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isEmpty, isObject, isString, isUndefined } from 'lodash';
+import {
+  identity,
+  isBoolean,
+  isEmpty,
+  isObject,
+  isString,
+  isUndefined,
+} from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -431,7 +438,7 @@ const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
     parentPath,
     (curr as EsMatchPhrase).match_phrase,
     'match_phrase',
-    (body) => body
+    identity
   );
 
 const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
@@ -439,7 +446,7 @@ const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
     parentPath,
     (curr.bool?.must_not as EsMatchPhrase)?.match_phrase,
     'not_match_phrase',
-    (body) => body
+    identity
   );
 
 // AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
@@ -1147,14 +1154,12 @@ const isRenderedClause = (
   );
   const children =
     handler === matchBoolMust
-      ? toClauseArray(
-          (clause.bool as EsBoolQuery).must as QueryFieldInterface[]
-        )
+      ? ((clause.bool as EsBoolQuery).must as QueryFieldInterface[])
       : [];
 
   return (
     Boolean(handler) &&
-    withoutCustomPropertyScope(children ?? []).every((child) =>
+    withoutCustomPropertyScope(children).every((child) =>
       isRenderedClause(child, fields)
     )
   );

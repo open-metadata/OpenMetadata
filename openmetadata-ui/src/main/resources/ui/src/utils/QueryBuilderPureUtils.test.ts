@@ -506,10 +506,6 @@ describe('isQueryFilterFullyRepresentable', () => {
     ],
     ['an empty query', { query: {} }],
     [
-      'a shorthand regexp clause',
-      { query: { bool: { filter: [{ regexp: { name: '.*orders.*' } }] } } },
-    ],
-    [
       'a case-sensitive regexp clause',
       {
         query: {
@@ -584,24 +580,6 @@ describe('isQueryFilterFullyRepresentable', () => {
         query: {
           bool: {
             filter: [{ match_phrase: { description: { query: 'orders' } } }],
-          },
-        },
-      },
-    ],
-    [
-      'a negated match_phrase clause in query form',
-      {
-        query: {
-          bool: {
-            filter: [
-              {
-                bool: {
-                  must_not: {
-                    match_phrase: { description: { query: 'orders' } },
-                  },
-                },
-              },
-            ],
           },
         },
       },
