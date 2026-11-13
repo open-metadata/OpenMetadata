@@ -407,7 +407,10 @@ reports `DEGRADED` (or `REBUILDING` when the graph was never built) until a full
 started after that time completes. A server that starts with RDF on queues one `RdfIndexApp` run
 unless a run has already started since that time; this is the one case where a start queues a
 full reindex, apart from the first install. A run on a server with RDF off indexes nothing and
-does not count. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+does not count. When RDF is turned on with a rolling restart, a server still running with RDF off
+can take writes the rebuild has already passed, or run the queued rebuild itself and index nothing;
+run a full Recreate once every server has restarted. See
+ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 
 ## Blue/green rebuilds
