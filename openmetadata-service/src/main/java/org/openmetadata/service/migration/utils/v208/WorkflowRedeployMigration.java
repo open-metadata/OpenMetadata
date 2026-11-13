@@ -38,22 +38,13 @@ public final class WorkflowRedeployMigration {
   private WorkflowRedeployMigration() {}
 
   public static void redeploy() {
-    redeployAll("v208");
-  }
-
-  /**
-   * Redeploys every governance workflow so each picks up the BPMN the current code builds; a later
-   * migration that changes that BPMN calls this under its own step. Logs under {@code version}.
-   */
-  public static void redeployAll(String version) {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     List<WorkflowDefinition> workflows =
         repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
     int redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
     LOG.info(
-        "[{}] Redeployed {} of {} governance workflow definition(s)",
-        version,
+        "[v208] Redeployed {} of {} governance workflow definition(s)",
         redeployed,
         workflows.size());
   }
@@ -67,7 +58,7 @@ public final class WorkflowRedeployMigration {
       } catch (RuntimeException e) {
         // Flowable reports a failed deploy with its own unchecked exceptions.
         LOG.error(
-            "Failed to redeploy workflow '{}'; save it again to redeploy it",
+            "[v208] Failed to redeploy workflow '{}'; save it again to redeploy it",
             workflow.getFullyQualifiedName(),
             e);
       }

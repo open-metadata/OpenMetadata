@@ -11,8 +11,8 @@
   `test_runRecordsAnApprovalTheWorkflowGaveItselfWithoutStoringItsSteps`);
   `WorkflowInstanceRepositoryTest.aDecidedApprovalStepOutlivesTheRunBeingSuperseded`;
   `WorkflowRunApprovalOutcome.spec.ts`
-- **Related:** `ApprovalOutcomeRecorder`, `RecordVotedApprovalImpl`, `AutoApproveServiceTaskImpl`,
-  `ApprovalOutcomeRedeployMigration`
+- **Related:** `ApprovalOutcomeRecorder`, `ApprovalTaskCompletionValidator`, `RecordVotedApprovalImpl`,
+  `AutoApproveServiceTaskImpl`
 
 ## Context
 An approval step is decided by people, by the workflow itself when no one is left to ask, or by an
@@ -33,8 +33,8 @@ one.
   so a run written by this version stays readable by the previous one during a rolling upgrade.
 - The server records the outcome where the decision is made:
   - the auto-approve step records an automatic outcome;
-  - a listener on the approval task's completion records the people's decision: every voter on the
-    deciding side of a multi-vote task, else the user who completed it;
+  - the approval task's completion validator, once it accepts the completion, records the people's
+    decision: every voter on the deciding side of a multi-vote task, else the user who completed it;
   - when the step reviewed a change request, the change request counts the votes, so its settled
     review names the reviewers on the deciding side, and an approval whose settled selection
     dropped a change is `PartiallyApproved`;
@@ -42,8 +42,11 @@ one.
 - The write runs after the step's Flowable transaction commits, and appends with a partial-JSON
   update of the run row. A run ended from outside it (superseded or cancelled) is ended the same
   way, so neither write overwrites the other.
-- Every governance workflow is redeployed once by the 2.1.0 migration, because a deployed workflow
-  keeps the BPMN it was deployed with and the listener is part of that BPMN.
+- The recording adds nothing to the BPMN. A deployed workflow keeps the BPMN it was deployed with,
+  and stored definitions are not redeployed at startup, so a new listener would reach existing
+  workflows only through a migration that redeploys every one of them. The completion validator is
+  already on every deployed approval task and Flowable loads it by class name, so the recording
+  reaches existing workflows, and runs already waiting on a task, as soon as the server is upgraded.
 - The UI reads `variables.approvals` from the run it already lists; it reads no step records for
   this.
 
@@ -52,10 +55,9 @@ one.
   records. The glossary term's workflow card shows an outcome under its approval step, so it needs
   the step records the card already reads.
 - Runs decided before this change have no `approvals` and show nothing; no migration backfills
-  them. A run already waiting on a task when the migration redeploys its workflow keeps the
-  definition it started on and records no people's decision.
-- The redeploy loads the new listener class, so a server of the previous version cannot run the
-  redeployed definitions; finish the upgrade before such runs are picked up by old pods.
+  them, and no migration redeploys a workflow for this.
+- A server of the previous version runs the same BPMN; it records nothing, and the runs it decides
+  during a rolling upgrade show no line.
 - A step that ends by its expiry timer records no outcome; nobody decided it.
 - A new decision path (another task type or exit) must record its outcome here, or its runs show no
   line.

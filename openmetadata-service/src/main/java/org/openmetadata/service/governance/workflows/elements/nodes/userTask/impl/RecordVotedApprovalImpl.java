@@ -5,7 +5,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.flowable.engine.delegate.TaskListener;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
@@ -17,15 +16,17 @@ import org.openmetadata.service.tasks.TaskReviewVotes;
 /**
  * Records, when an approval task completes, how the people who voted decided its step. The task
  * completes with the deciding vote's result and voter, so both are this pass's own even when the
- * step runs again in a loop.
+ * step runs again in a loop. {@link ApprovalTaskCompletionValidator} calls it once the completion
+ * is accepted.
  */
 @Slf4j
-public class RecordVotedApprovalImpl implements TaskListener {
+public final class RecordVotedApprovalImpl {
   private static final String APPROVERS_VARIABLE = "approversList";
   private static final String REJECTERS_VARIABLE = "rejectersList";
 
-  @Override
-  public void notify(DelegateTask delegateTask) {
+  private RecordVotedApprovalImpl() {}
+
+  static void record(DelegateTask delegateTask) {
     try {
       WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
       TaskReviewVoteDecision decision =

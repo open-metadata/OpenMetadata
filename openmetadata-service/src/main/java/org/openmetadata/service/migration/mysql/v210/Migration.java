@@ -46,7 +46,6 @@ import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAli
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
-import org.openmetadata.service.migration.utils.v210.ApprovalOutcomeRedeployMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
@@ -250,14 +249,5 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         OntologyRolesMigration.STEP_NAME,
         () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
-    // Last, once every other step has written what the workflows read.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        ApprovalOutcomeRedeployMigration.STEP_NAME,
-        () -> {
-          initializeWorkflowHandler();
-          ApprovalOutcomeRedeployMigration.redeploy();
-        });
   }
 }

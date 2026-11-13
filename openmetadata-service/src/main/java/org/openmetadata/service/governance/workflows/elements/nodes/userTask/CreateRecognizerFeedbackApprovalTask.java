@@ -29,7 +29,6 @@ import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CheckFeedbackSubmitterIsReviewerImpl;
-import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.RecordVotedApprovalImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -270,19 +269,11 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
             .implementation(ApprovalTaskCompletionValidator.class.getName())
             .build();
 
-    // Runs after the validator, so only a completion the step accepts is recorded.
-    FlowableListener recordOutcomeListener =
-        new FlowableListenerBuilder()
-            .event("complete")
-            .implementation(RecordVotedApprovalImpl.class.getName())
-            .build();
-
     return new UserTaskBuilder()
         .id(getFlowableElementId(subProcessId, "approvalTask"))
         .addListener(setCandidateUsersListener)
         .addListener(createRecognizerFeedbackTaskListener)
         .addListener(completionValidatorListener)
-        .addListener(recordOutcomeListener)
         .build();
   }
 
