@@ -23,6 +23,7 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
@@ -95,6 +96,7 @@ public final class ClassConverterFactory {
             Map.entry(PubSubConnection.class, new PubSubConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
+            Map.entry(MicroStrategyConnection.class, new MicroStrategyConnectionClassConverter()),
             Map.entry(
                 MicrosoftAccessConnection.class, new MicrosoftAccessConnectionClassConverter()),
             Map.entry(MssqlConnection.class, new MssqlConnectionClassConverter()),
