@@ -88,12 +88,31 @@ test(
         await expect(table).toBeVisible();
       }
       await expect(row).toContainText(client.client_id);
-      await row.getByRole('button', { name: 'Revoke', exact: true }).click();
+      await row
+        .getByRole('button', { name: 'Revoke tokens', exact: true })
+        .click();
+      const tokensRevoked = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/mcp/clients/${client.client_id}/tokens`) &&
+          response.request().method() === 'DELETE'
+      );
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Revoke', exact: true })
+        .click();
+      expect((await tokensRevoked).status()).toBe(204);
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(row).toBeVisible();
+      await row
+        .getByRole('button', { name: 'Remove client', exact: true })
+        .click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toContainText(client.client_id);
       await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
       await expect(row).toBeVisible();
-      await row.getByRole('button', { name: 'Revoke', exact: true }).click();
+      await row
+        .getByRole('button', { name: 'Remove client', exact: true })
+        .click();
       const removed = page.waitForResponse(
         (result) =>
           result.url().endsWith(`/mcp/clients/${client.client_id}`) &&

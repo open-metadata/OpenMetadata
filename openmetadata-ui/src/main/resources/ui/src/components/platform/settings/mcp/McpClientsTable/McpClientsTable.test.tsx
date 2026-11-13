@@ -22,6 +22,7 @@ import {
 import {
   getMcpClients,
   revokeMcpClient,
+  revokeMcpClientTokens,
 } from '../../../../../rest/mcpConfigAPI';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import McpClientsTable from './McpClientsTable';
@@ -29,6 +30,7 @@ import McpClientsTable from './McpClientsTable';
 jest.mock('../../../../../rest/mcpConfigAPI', () => ({
   getMcpClients: jest.fn(),
   revokeMcpClient: jest.fn(),
+  revokeMcpClientTokens: jest.fn(),
 }));
 jest.mock('../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -43,6 +45,8 @@ const client = {
   clientName: 'Test assistant',
   redirectUris: ['https://client.example/callback'],
   issuedAt: 1700000000000,
+  activeAccessTokens: 3,
+  activeRefreshTokens: 2,
 };
 const list = jest.mocked(getMcpClients);
 const revoke = jest.mocked(revokeMcpClient);
@@ -59,6 +63,38 @@ const renderTable = () =>
   );
 
 describe('McpClientsTable', () => {
+  it('shows active token counts and revokes tokens without removing the client', async () => {
+    jest.mocked(revokeMcpClientTokens).mockResolvedValue(undefined);
+    renderTable();
+
+    expect(await screen.findByText('3')).toBeVisible();
+    expect(screen.getByText('2')).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.mcp-revoke-tokens' })
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    expect(
+      within(dialog).getByText('message.mcp-revoke-tokens-confirm')
+    ).toBeVisible();
+
+    list.mockResolvedValue([
+      { ...client, activeAccessTokens: 0, activeRefreshTokens: 0 },
+    ]);
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'label.revoke' })
+    );
+    await waitFor(() => expect(revokeMcpClientTokens).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByText(client.clientName)).toBeVisible();
+    expect(screen.getAllByText('0')).toHaveLength(2);
+    expect(revoke).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     list.mockResolvedValue([client]);
@@ -77,7 +113,7 @@ describe('McpClientsTable', () => {
   it('requires confirmation and allows cancellation without revoking', async () => {
     renderTable();
     fireEvent.click(
-      await screen.findByRole('button', { name: 'label.revoke' })
+      await screen.findByRole('button', { name: 'label.mcp-remove-client' })
     );
     const dialog = await screen.findByRole('dialog');
 
@@ -97,7 +133,7 @@ describe('McpClientsTable', () => {
   it('revokes the selected ID and reloads the inventory', async () => {
     renderTable();
     fireEvent.click(
-      await screen.findByRole('button', { name: 'label.revoke' })
+      await screen.findByRole('button', { name: 'label.mcp-remove-client' })
     );
     list.mockResolvedValue([]);
     fireEvent.click(
@@ -105,9 +141,7 @@ describe('McpClientsTable', () => {
         name: 'label.revoke',
       })
     );
-    await waitFor(() =>
-      expect(revoke).toHaveBeenCalledWith(client.clientId, expect.anything())
-    );
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith(client.clientId));
 
     expect(await screen.findByText('message.mcp-no-clients')).toBeVisible();
     expect(screen.queryByText(client.clientName)).not.toBeInTheDocument();
@@ -118,7 +152,7 @@ describe('McpClientsTable', () => {
     revoke.mockRejectedValue(failure);
     renderTable();
     fireEvent.click(
-      await screen.findByRole('button', { name: 'label.revoke' })
+      await screen.findByRole('button', { name: 'label.mcp-remove-client' })
     );
     fireEvent.click(
       within(await screen.findByRole('dialog')).getByRole('button', {

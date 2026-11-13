@@ -55,6 +55,8 @@ class McpOAuthClientResourceTest {
         .isInstanceOf(AuthorizationException.class);
     assertThatThrownBy(() -> resource.delete(context, "client"))
         .isInstanceOf(AuthorizationException.class);
+    assertThatThrownBy(() -> resource.revokeTokens(context, "client"))
+        .isInstanceOf(AuthorizationException.class);
     verifyNoInteractions(dao);
   }
 
@@ -67,8 +69,20 @@ class McpOAuthClientResourceTest {
       assertThatThrownBy(() -> resource.list(context, "", limit))
           .isInstanceOf(BadRequestException.class);
     }
+    assertThatThrownBy(() -> resource.revokeTokens(context, "missing"))
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> resource.delete(context, "missing"))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void revokingTokensReturnsNoContentWithoutRemovingRegistration() {
+    OAuthDAOs.OAuthClientDAO dao = mock(OAuthDAOs.OAuthClientDAO.class);
+    when(dao.revokeGrants("client")).thenReturn(true);
+    SecurityContext context = mock(SecurityContext.class);
+    when(context.getUserPrincipal()).thenReturn(() -> "admin");
+    var resource = new McpOAuthClientResource(mock(Authorizer.class), dao);
+    assertThat(resource.revokeTokens(context, "client").getStatus()).isEqualTo(204);
   }
 
   @Test

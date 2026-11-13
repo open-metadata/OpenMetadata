@@ -63,6 +63,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.JwtFilter;
@@ -209,6 +210,16 @@ class OAuthHttpStatelessServerTransportProviderTest {
       when(clientRepo.findByClientId(CLIENT_ID)).thenReturn(client);
       UserSSOOAuthProvider provider =
           (UserSSOOAuthProvider) unsafe().allocateInstance(UserSSOOAuthProvider.class);
+      setField(
+          provider,
+          "grantTransaction",
+          new McpGrantTransaction() {
+            @Override
+            public <T, E extends Exception> T execute(String clientId, Operation<T, E> operation)
+                throws E {
+              return operation.get();
+            }
+          });
       setField(provider, "pendingAuthRepository", pendingRepo);
       setField(provider, "clientRepository", clientRepo);
       setField(provider, "codeRepository", codeRepo);

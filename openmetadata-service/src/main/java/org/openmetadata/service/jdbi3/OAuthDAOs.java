@@ -71,10 +71,43 @@ public interface OAuthDAOs {
   SsoTestLoginSessionDAO ssoTestLoginSessionDAO();
 
   interface OAuthClientDAO {
+    @SqlQuery("SELECT client_id FROM oauth_clients WHERE client_id = :clientId FOR UPDATE")
+    String lockClient(@Bind("clientId") String clientId);
+
     @SqlQuery(
-        "SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients WHERE client_id > :after ORDER BY client_id LIMIT :limit")
+        "SELECT c.client_id, c.client_name, c.redirect_uris, c.created_at, "
+            + "(SELECT COUNT(*) FROM oauth_access_tokens a WHERE a.client_id = c.client_id AND a.expires_at > :now) AS active_access_tokens, "
+            + "(SELECT COUNT(*) FROM oauth_refresh_tokens r WHERE r.client_id = c.client_id AND r.expires_at > :now AND r.revoked = FALSE) AS active_refresh_tokens "
+            + "FROM oauth_clients c WHERE c.client_id > :after ORDER BY c.client_id LIMIT :limit")
     @RegisterRowMapper(OAuthClientInventoryMapper.class)
-    List<OAuthClient> listClients(@Bind("after") String after, @Bind("limit") int limit);
+    List<OAuthClient> listClients(
+        @Bind("after") String after, @Bind("limit") int limit, @Bind("now") long now);
+
+    default List<OAuthClient> listClients(String after, int limit) {
+      return listClients(after, limit, System.currentTimeMillis());
+    }
+
+    @SqlUpdate("DELETE FROM oauth_refresh_tokens WHERE client_id = :clientId")
+    void deleteRefreshTokens(@Bind("clientId") String clientId);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE client_id = :clientId")
+    void deleteAccessTokens(@Bind("clientId") String clientId);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE client_id = :clientId")
+    void deleteAuthorizationCodes(@Bind("clientId") String clientId);
+
+    /** Revoke existing grants and pending sign-ins while retaining the registered client. */
+    @Transaction
+    default boolean revokeGrants(String clientId) {
+      final boolean exists = lockClient(clientId) != null;
+      if (exists) {
+        deletePendingRequests(clientId);
+        deleteAuthorizationCodes(clientId);
+        deleteRefreshTokens(clientId);
+        deleteAccessTokens(clientId);
+      }
+      return exists;
+    }
 
     @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
     int deleteClient(@Bind("clientId") String clientId);
@@ -123,7 +156,9 @@ public interface OAuthDAOs {
           .withClientId(result.getString("client_id"))
           .withClientName(result.getString("client_name"))
           .withRedirectUris(JsonUtils.readObjects(result.getString("redirect_uris"), String.class))
-          .withIssuedAt(result.getTimestamp("created_at").getTime());
+          .withIssuedAt(result.getTimestamp("created_at").getTime())
+          .withActiveAccessTokens(result.getInt("active_access_tokens"))
+          .withActiveRefreshTokens(result.getInt("active_refresh_tokens"));
     }
   }
 

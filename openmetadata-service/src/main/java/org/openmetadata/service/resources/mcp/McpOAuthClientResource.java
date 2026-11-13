@@ -70,6 +70,25 @@ public class McpOAuthClientResource {
   }
 
   @DELETE
+  @Path("/{clientId}/tokens")
+  @Operation(
+      operationId = "revokeMcpOAuthClientTokens",
+      summary =
+          "Revoke a client's tokens and pending grants without removing its registration (admin only)")
+  public Response revokeTokens(
+      @Context final SecurityContext context, @PathParam("clientId") final String clientId) {
+    authorizer.authorizeAdmin(context);
+    if (!clients.revokeGrants(clientId)) {
+      throw new NotFoundException("MCP OAuth client not found");
+    }
+    LOG.info(
+        "Administrator {} revoked grants for MCP OAuth client {}",
+        context.getUserPrincipal().getName(),
+        clientId);
+    return Response.noContent().build();
+  }
+
+  @DELETE
   @Path("/{clientId}")
   @Operation(
       operationId = "deleteMcpOAuthClient",

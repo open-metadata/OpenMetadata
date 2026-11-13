@@ -20,6 +20,16 @@
     },
     "issuedAt": {
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "activeAccessTokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of stored access tokens that have not expired at the time of this inventory query."
+    },
+    "activeRefreshTokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of stored refresh tokens that are neither expired nor revoked at the time of this inventory query."
     }
   },
   "additionalProperties": false

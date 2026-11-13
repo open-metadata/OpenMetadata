@@ -55,3 +55,9 @@ export const getMcpClients = async (after = '', limit = 25) => {
 export const revokeMcpClient = async (clientId: string) => {
   await axiosClient.delete(`/mcp/clients/${encodeURIComponent(clientId)}`);
 };
+
+export const revokeMcpClientTokens = async (clientId: string) => {
+  await axiosClient.delete(
+    `/mcp/clients/${encodeURIComponent(clientId)}/tokens`
+  );
+};

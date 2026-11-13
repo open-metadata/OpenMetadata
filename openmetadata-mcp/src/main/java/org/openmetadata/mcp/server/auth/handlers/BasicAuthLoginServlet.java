@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -26,6 +27,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -97,6 +99,34 @@ public class BasicAuthLoginServlet extends HttpServlet {
 
   @Override
   public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    final HttpSession session = request.getSession(false);
+    final LoginForm form =
+        session == null ? null : (LoginForm) session.getAttribute(SESSION_LOGIN_FORM);
+    final McpPendingAuthRequest pending =
+        form == null ? null : pendingAuthRepository.findByAuthRequestId(form.authRequestId());
+    if (pending == null) {
+      doPostLocked(request, response);
+      return;
+    }
+    try {
+      new McpGrantTransaction()
+          .execute(
+              pending.clientId(),
+              () -> {
+                try {
+                  doPostLocked(request, response);
+                  return null;
+                } catch (IOException exception) {
+                  throw new UncheckedIOException(exception);
+                }
+              });
+    } catch (UncheckedIOException exception) {
+      throw exception.getCause();
+    }
+  }
+
+  private void doPostLocked(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
     String password = null;
     try {
       HttpSession session = request.getSession(false);

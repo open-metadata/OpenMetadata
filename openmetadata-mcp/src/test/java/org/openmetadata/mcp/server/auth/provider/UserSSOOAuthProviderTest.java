@@ -43,6 +43,7 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -111,6 +112,16 @@ class UserSSOOAuthProviderTest {
     sun.misc.Unsafe unsafe = getUnsafe();
     UserSSOOAuthProvider provider =
         (UserSSOOAuthProvider) unsafe.allocateInstance(UserSSOOAuthProvider.class);
+    setField(
+        provider,
+        "grantTransaction",
+        new McpGrantTransaction() {
+          @Override
+          public <T, E extends Exception> T execute(String clientId, Operation<T, E> operation)
+              throws E {
+            return operation.get();
+          }
+        });
     setField(provider, "pendingAuthRepository", pendingRepo);
     setField(provider, "clientRepository", clientRepo);
     setField(provider, "issuer", issuer);

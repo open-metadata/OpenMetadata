@@ -14,8 +14,17 @@
  * Administrative MCP OAuth client inventory. Never includes client secrets or tokens.
  */
 export interface OauthClient {
-  clientId?: string;
-  clientName?: string;
-  issuedAt?: number;
-  redirectUris?: string[];
+    /**
+     * Number of stored access tokens that have not expired at the time of this inventory query.
+     */
+    activeAccessTokens?: number;
+    /**
+     * Number of stored refresh tokens that are neither expired nor revoked at the time of this
+     * inventory query.
+     */
+    activeRefreshTokens?: number;
+    clientId?:            string;
+    clientName?:          string;
+    issuedAt?:            number;
+    redirectUris?:        string[];
 }

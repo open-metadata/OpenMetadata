@@ -8,6 +8,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthRefreshTokenRecord;
@@ -21,6 +22,14 @@ public class OAuthTokenRepository {
   private final CollectionDAO.OAuthAccessTokenDAO accessTokenDAO;
   private final CollectionDAO.OAuthRefreshTokenDAO refreshTokenDAO;
   private final Fernet fernet;
+
+  private CollectionDAO.OAuthAccessTokenDAO accessTokenDAO() {
+    return McpGrantTransaction.resolve(daos -> daos.oauthAccessTokenDAO(), accessTokenDAO);
+  }
+
+  private CollectionDAO.OAuthRefreshTokenDAO refreshTokenDAO() {
+    return McpGrantTransaction.resolve(daos -> daos.oauthRefreshTokenDAO(), refreshTokenDAO);
+  }
 
   public OAuthTokenRepository() {
     CollectionDAO dao = Entity.getCollectionDAO();
@@ -38,13 +47,14 @@ public class OAuthTokenRepository {
     String tokenHash = hashToken(token.getToken());
     String encryptedToken = fernet.encrypt(token.getToken());
 
-    accessTokenDAO.insert(
-        tokenHash,
-        encryptedToken,
-        clientId,
-        userName,
-        JsonUtils.pojoToJson(scopes),
-        token.getExpiresAt());
+    accessTokenDAO()
+        .insert(
+            tokenHash,
+            encryptedToken,
+            clientId,
+            userName,
+            JsonUtils.pojoToJson(scopes),
+            token.getExpiresAt());
 
     LOG.debug("Stored access token in database for client: {}", clientId);
   }
@@ -54,7 +64,7 @@ public class OAuthTokenRepository {
    */
   public AccessToken findAccessToken(String tokenValue) {
     String tokenHash = hashToken(tokenValue);
-    OAuthAccessTokenRecord record = accessTokenDAO.findByTokenHash(tokenHash);
+    OAuthAccessTokenRecord record = accessTokenDAO().findByTokenHash(tokenHash);
 
     if (record == null) {
       return null;
@@ -86,10 +96,10 @@ public class OAuthTokenRepository {
    */
   public boolean revokeAccessTokenIssuedTo(String tokenValue, String clientId) {
     String tokenHash = hashToken(tokenValue);
-    OAuthAccessTokenRecord record = accessTokenDAO.findByTokenHash(tokenHash);
+    OAuthAccessTokenRecord record = accessTokenDAO().findByTokenHash(tokenHash);
     boolean issuedToClient = record != null && record.clientId().equals(clientId);
     if (issuedToClient) {
-      accessTokenDAO.delete(tokenHash);
+      accessTokenDAO().delete(tokenHash);
     }
     return issuedToClient;
   }
@@ -101,11 +111,11 @@ public class OAuthTokenRepository {
    */
   public boolean revokeRefreshTokenIssuedTo(String tokenValue, String clientId) {
     String tokenHash = hashToken(tokenValue);
-    OAuthRefreshTokenRecord record = refreshTokenDAO.findByTokenHash(tokenHash);
+    OAuthRefreshTokenRecord record = refreshTokenDAO().findByTokenHash(tokenHash);
     boolean issuedToClient =
         record != null && !record.revoked() && record.clientId().equals(clientId);
     if (issuedToClient) {
-      refreshTokenDAO.revokeWithAccessTokens(tokenHash, record.clientId(), record.userName());
+      refreshTokenDAO().revokeWithAccessTokens(tokenHash, record.clientId(), record.userName());
     }
     return issuedToClient;
   }
@@ -119,13 +129,14 @@ public class OAuthTokenRepository {
     String tokenHash = hashToken(token.getToken());
     String encryptedToken = fernet.encrypt(token.getToken());
 
-    refreshTokenDAO.insert(
-        tokenHash,
-        encryptedToken,
-        clientId,
-        userName,
-        JsonUtils.pojoToJson(scopes),
-        token.getExpiresAt());
+    refreshTokenDAO()
+        .insert(
+            tokenHash,
+            encryptedToken,
+            clientId,
+            userName,
+            JsonUtils.pojoToJson(scopes),
+            token.getExpiresAt());
 
     LOG.debug("Stored refresh token in database for client: {}", clientId);
   }
@@ -135,7 +146,7 @@ public class OAuthTokenRepository {
    */
   public RefreshToken findRefreshToken(String tokenValue) {
     String tokenHash = hashToken(tokenValue);
-    OAuthRefreshTokenRecord record = refreshTokenDAO.findByTokenHash(tokenHash);
+    OAuthRefreshTokenRecord record = refreshTokenDAO().findByTokenHash(tokenHash);
 
     if (record == null || record.revoked()) {
       return null;
@@ -168,7 +179,7 @@ public class OAuthTokenRepository {
    */
   public void revokeRefreshToken(String tokenValue) {
     String tokenHash = hashToken(tokenValue);
-    refreshTokenDAO.revoke(tokenHash);
+    refreshTokenDAO().revoke(tokenHash);
     LOG.debug("Revoked refresh token");
   }
 
@@ -189,7 +200,7 @@ public class OAuthTokenRepository {
       List<String> scopes) {
     // Atomic CAS: only one concurrent request can successfully revoke this token
     String oldTokenHash = hashToken(oldTokenValue);
-    int rowsAffected = refreshTokenDAO.revokeAtomic(oldTokenHash);
+    int rowsAffected = refreshTokenDAO().revokeAtomic(oldTokenHash);
 
     if (rowsAffected == 0) {
       throw new TokenRotationException(
@@ -197,18 +208,19 @@ public class OAuthTokenRepository {
     }
 
     // Revoke any other lingering tokens for this user+client (belt-and-suspenders cleanup)
-    refreshTokenDAO.revokeAllForUser(clientId, userName);
+    refreshTokenDAO().revokeAllForUser(clientId, userName);
 
     // Store the new token
     String tokenHash = hashToken(newToken.getToken());
     String encryptedToken = fernet.encrypt(newToken.getToken());
-    refreshTokenDAO.insert(
-        tokenHash,
-        encryptedToken,
-        clientId,
-        userName,
-        JsonUtils.pojoToJson(scopes),
-        newToken.getExpiresAt());
+    refreshTokenDAO()
+        .insert(
+            tokenHash,
+            encryptedToken,
+            clientId,
+            userName,
+            JsonUtils.pojoToJson(scopes),
+            newToken.getExpiresAt());
 
     LOG.debug("Rotated refresh token for user: {}, client: {}", userName, clientId);
   }
@@ -224,7 +236,7 @@ public class OAuthTokenRepository {
    */
   public void deleteRefreshToken(String tokenValue) {
     String tokenHash = hashToken(tokenValue);
-    refreshTokenDAO.delete(tokenHash);
+    refreshTokenDAO().delete(tokenHash);
     LOG.debug("Deleted refresh token");
   }
 
@@ -234,8 +246,8 @@ public class OAuthTokenRepository {
    */
   public void deleteExpiredTokens() {
     long currentTime = System.currentTimeMillis();
-    accessTokenDAO.deleteExpired(currentTime);
-    refreshTokenDAO.deleteExpired(currentTime);
+    accessTokenDAO().deleteExpired(currentTime);
+    refreshTokenDAO().deleteExpired(currentTime);
     LOG.info("Deleted expired access and refresh tokens");
   }
 

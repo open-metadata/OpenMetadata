@@ -1,7 +1,7 @@
 # MCP registration is operator-controlled and administrators can revoke a whole client
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (error callbacks and proxy attribution) · v3 2026-11-12 (administrator controls)
+- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (error callbacks and proxy attribution) · v3 2026-11-12 (administrator controls) · v4 2026-11-13 (token inventory and revocation)
 - **Deciders:** Mohit Yadav
 - **Guard:** `McpClientPolicyTest`, `McpOAuthClientResourceTest`, `McpGrantRevocationSqlTest`, `McpOAuthClientIT`, `AuthorizationHandlerTest`, `UserSSOOAuthProviderTest`, `OAuthHttpStatelessServerTransportProviderTest`
 - **Related:** ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip, ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
@@ -56,3 +56,21 @@ The administrator MCP configuration page exposes the existing server enable flag
 policy, plus paginated client inventory and confirmed revocation. The transport enforces the
 enable flag on every incoming request. Disabling preserves registration and grant rows; it is
 not equivalent to revoking a client. Administrative REST endpoints remain available while disabled.
+
+## Amendment v4 — token inventory and revocation
+
+The client inventory reports active access-token and refresh-token counts at query time. Active
+means stored and unexpired; revoked refresh tokens are excluded. Counts are not a live connection
+indicator. No token values, hashes or encrypted credentials are selected for this response.
+
+Administrators may call `DELETE /api/v1/mcp/clients/{clientId}/tokens` to revoke all existing tokens,
+authorization codes and pending sign-ins while keeping the registration. A known client with no
+grants returns 204; an unknown client returns 404. Fresh user authorization remains possible.
+The UI distinguishes **Revoke tokens** from **Remove client**, with a confirmation for each.
+
+Issuance and revocation serialize on the client row in the database, across server instances.
+The issuance transaction revalidates pending consent or the presented code/refresh token and
+performs all grant writes on the same connection. Repositories resolve the transaction-scoped
+DAO, cleared in a finally block. An exchange that wins the lock completes before revocation
+removes its tokens; an exchange that loses finds its old grant gone. Protocol errors still commit
+single-use authorization-code consumption, so an incorrect PKCE verifier cannot retry the code.

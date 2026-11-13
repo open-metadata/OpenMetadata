@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
@@ -131,6 +133,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Sent as the "iss" parameter on authorization responses. Volatile because the transport provider
   // sets it again whenever the configured base URL changes while the server is running.
   private volatile String issuer;
+
+  private final McpGrantTransaction grantTransaction = new McpGrantTransaction();
 
   public UserSSOOAuthProvider(JWTTokenGenerator jwtGenerator) {
     this.jwtGenerator = jwtGenerator;
@@ -656,6 +660,32 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    */
   public void handleConsentDecision(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    final McpPendingAuthRequest pending =
+        pendingAuthRepository.findByAuthRequestId(request.getParameter(AUTH_REQUEST_ID_PARAM));
+    if (pending == null) {
+      response.sendError(
+          HttpServletResponse.SC_FORBIDDEN,
+          "This approval is no longer valid. Please restart the authorization flow.");
+      return;
+    }
+    try {
+      grantTransaction.execute(
+          pending.clientId(),
+          () -> {
+            try {
+              handleConsentDecisionLocked(request, response);
+              return null;
+            } catch (IOException exception) {
+              throw new UncheckedIOException(exception);
+            }
+          });
+    } catch (UncheckedIOException exception) {
+      throw exception.getCause();
+    }
+  }
+
+  private void handleConsentDecisionLocked(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
     final String authRequestId = request.getParameter(AUTH_REQUEST_ID_PARAM);
     final String userName =
         pendingAuthRepository.takeConsent(authRequestId, request.getParameter(CONSENT_TOKEN_PARAM));
@@ -840,6 +870,40 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   @Override
   public CompletableFuture<OAuthToken> exchangeAuthorizationCode(
+      OAuthClientInformation client, AuthorizationCode authCode) throws TokenException {
+    try {
+      return exchangeWithGrantLock(
+          client.getClientId(), () -> exchangeAuthorizationCodeLocked(client, authCode));
+    } catch (RuntimeException exception) {
+      return CompletableFuture.failedFuture(exception);
+    }
+  }
+
+  private record GrantExchangeResult(CompletableFuture<OAuthToken> token, TokenException error) {}
+
+  private CompletableFuture<OAuthToken> exchangeWithGrantLock(
+      String clientId,
+      McpGrantTransaction.Operation<CompletableFuture<OAuthToken>, TokenException> operation)
+      throws TokenException {
+    final GrantExchangeResult result =
+        grantTransaction.execute(
+            clientId,
+            () -> {
+              try {
+                return new GrantExchangeResult(operation.get(), null);
+              } catch (TokenException exception) {
+                // Invalid PKCE must still consume the code; protocol errors commit that
+                // consumption.
+                return new GrantExchangeResult(null, exception);
+              }
+            });
+    if (result.error() != null) {
+      throw result.error();
+    }
+    return result.token();
+  }
+
+  private CompletableFuture<OAuthToken> exchangeAuthorizationCodeLocked(
       OAuthClientInformation client, AuthorizationCode authCode) throws TokenException {
     try {
       LOG.info("Exchanging authorization code for JWT token with PKCE validation");
@@ -1055,6 +1119,17 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   @Override
   public CompletableFuture<OAuthToken> exchangeRefreshToken(
+      OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
+      throws TokenException {
+    try {
+      return exchangeWithGrantLock(
+          client.getClientId(), () -> exchangeRefreshTokenLocked(client, refreshToken, scopes));
+    } catch (RuntimeException exception) {
+      return CompletableFuture.failedFuture(exception);
+    }
+  }
+
+  private CompletableFuture<OAuthToken> exchangeRefreshTokenLocked(
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException {
     try {

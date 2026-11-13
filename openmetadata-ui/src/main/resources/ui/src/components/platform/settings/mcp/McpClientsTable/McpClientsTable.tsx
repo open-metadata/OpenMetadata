@@ -29,6 +29,7 @@ import { OauthClient } from '../../../../../generated/api/mcp/oauthClient';
 import {
   getMcpClients,
   revokeMcpClient,
+  revokeMcpClientTokens,
 } from '../../../../../rest/mcpConfigAPI';
 import {
   showErrorToast,
@@ -41,6 +42,7 @@ const McpClientsTable = () => {
   const queryClient = useQueryClient();
   const [cursors, setCursors] = useState<string[]>(['']);
   const [pendingClient, setPendingClient] = useState<OauthClient>();
+  const [revokeTokensOnly, setRevokeTokensOnly] = useState(false);
   const after = cursors[cursors.length - 1];
   const {
     data: clients = [],
@@ -54,12 +56,21 @@ const McpClientsTable = () => {
     retry: false,
   });
   const revoke = useMutation({
-    mutationFn: revokeMcpClient,
+    mutationFn: (clientId: string) =>
+      revokeTokensOnly
+        ? revokeMcpClientTokens(clientId)
+        : revokeMcpClient(clientId),
     onSuccess: async () => {
       setPendingClient(undefined);
       setCursors(['']);
       await queryClient.invalidateQueries({ queryKey: ['mcp-clients'] });
-      showSuccessToast(t('message.mcp-client-revoked'));
+      showSuccessToast(
+        t(
+          revokeTokensOnly
+            ? 'message.mcp-tokens-revoked'
+            : 'message.mcp-client-revoked'
+        )
+      );
     },
     onError: (error: AxiosError) => showErrorToast(error),
   });
@@ -68,6 +79,17 @@ const McpClientsTable = () => {
       setPendingClient(undefined);
     }
   };
+
+  const confirmation = () =>
+    revokeTokensOnly
+      ? {
+          title: 'label.mcp-revoke-tokens',
+          message: 'message.mcp-revoke-tokens-confirm',
+        }
+      : {
+          title: 'label.mcp-remove-client',
+          message: 'message.mcp-revoke-client-confirm',
+        };
 
   return (
     <Card className="tw:mt-6" data-testid="mcp-clients" variant="outlined">
@@ -105,6 +127,14 @@ const McpClientsTable = () => {
                 label={t('label.mcp-redirect-uris')}
               />
               <Table.Head id="issuedAt" label={t('label.created-at')} />
+              <Table.Head
+                id="accessTokens"
+                label={t('label.mcp-active-access-tokens')}
+              />
+              <Table.Head
+                id="refreshTokens"
+                label={t('label.mcp-active-refresh-tokens')}
+              />
               <Table.Head id="actions" label={t('label.action-plural')} />
             </Table.Header>
             <Table.Body
@@ -134,14 +164,31 @@ const McpClientsTable = () => {
                       ? '—'
                       : new Date(client.issuedAt).toLocaleString()}
                   </Table.Cell>
+                  <Table.Cell>{client.activeAccessTokens ?? '—'}</Table.Cell>
+                  <Table.Cell>{client.activeRefreshTokens ?? '—'}</Table.Cell>
                   <Table.Cell>
-                    <Button
-                      color="primary-destructive"
-                      isDisabled={!client.clientId || revoke.isPending}
-                      size="sm"
-                      onClick={() => setPendingClient(client)}>
-                      {t('label.revoke')}
-                    </Button>
+                    <Box direction="col" gap={2}>
+                      <Button
+                        color="secondary"
+                        isDisabled={!client.clientId || revoke.isPending}
+                        size="sm"
+                        onClick={() => {
+                          setRevokeTokensOnly(true);
+                          setPendingClient(client);
+                        }}>
+                        {t('label.mcp-revoke-tokens')}
+                      </Button>
+                      <Button
+                        color="primary-destructive"
+                        isDisabled={!client.clientId || revoke.isPending}
+                        size="sm"
+                        onClick={() => {
+                          setRevokeTokensOnly(false);
+                          setPendingClient(client);
+                        }}>
+                        {t('label.mcp-remove-client')}
+                      </Button>
+                    </Box>
                   </Table.Cell>
                 </Table.Row>
               )}
@@ -176,10 +223,10 @@ const McpClientsTable = () => {
         onOpenChange={(open) => !open && closeDialog()}>
         <Modal>
           <Dialog dividers="scroll" onClose={closeDialog}>
-            <Dialog.Header title={t('label.mcp-revoke-client')} />
+            <Dialog.Header title={t(confirmation().title)} />
             <Dialog.Content>
               <Typography>
-                {t('message.mcp-revoke-client-confirm', {
+                {t(confirmation().message, {
                   name: pendingClient?.clientName ?? pendingClient?.clientId,
                 })}
               </Typography>

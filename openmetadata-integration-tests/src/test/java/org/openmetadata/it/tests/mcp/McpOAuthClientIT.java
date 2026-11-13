@@ -38,12 +38,39 @@ public class McpOAuthClientIT extends McpTestBase {
       final String userToken = "Bearer " + tokenFor(userName);
       assertThat(getResponse("mcp/clients", userToken).statusCode()).isEqualTo(403);
       assertThat(deleteResponse("mcp/clients/" + id, userToken).statusCode()).isEqualTo(403);
+      assertThat(deleteResponse("mcp/clients/" + id + "/tokens", userToken).statusCode())
+          .isEqualTo(403);
       final var page = getResponse("mcp/clients?after=mcp_admin_&limit=1000", authToken);
       assertThat(page.statusCode()).isEqualTo(200);
       assertThat(page.body())
           .contains(id)
           .doesNotContain("test-secret-hash", "clientSecret", "token");
+      final var accessTokens = Entity.getCollectionDAO().oauthAccessTokenDAO();
+      final var refreshTokens = Entity.getCollectionDAO().oauthRefreshTokenDAO();
+      accessTokens.insert(
+          "access-" + id,
+          "encrypted-fixture",
+          id,
+          userName,
+          "[]",
+          System.currentTimeMillis() + 60000);
+      refreshTokens.insert(
+          "refresh-" + id,
+          "encrypted-fixture",
+          id,
+          userName,
+          "[]",
+          System.currentTimeMillis() + 60000);
+      assertThat(deleteResponse("mcp/clients/" + id + "/tokens", authToken).statusCode())
+          .isEqualTo(204);
+      assertThat(clients.findByClientId(id)).isNotNull();
+      assertThat(accessTokens.findByTokenHash("access-" + id)).isNull();
+      assertThat(refreshTokens.findByTokenHash("refresh-" + id)).isNull();
+      assertThat(deleteResponse("mcp/clients/" + id + "/tokens", authToken).statusCode())
+          .isEqualTo(204);
       assertThat(deleteResponse("mcp/clients/" + id, authToken).statusCode()).isEqualTo(204);
+      assertThat(deleteResponse("mcp/clients/" + id + "/tokens", authToken).statusCode())
+          .isEqualTo(404);
       assertThat(clients.findByClientId(id)).isNull();
       assertThat(deleteResponse("mcp/clients/" + id, authToken).statusCode()).isEqualTo(404);
     } finally {
