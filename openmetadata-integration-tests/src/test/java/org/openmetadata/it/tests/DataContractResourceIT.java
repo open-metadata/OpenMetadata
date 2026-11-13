@@ -9,6 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +21,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,6 +45,7 @@ import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -60,6 +67,7 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleOutcome;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeam;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -102,6 +110,9 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSExportService;
+import org.openmetadata.service.datacontract.odcs.ODCSProfiles;
+import org.openmetadata.service.datacontract.odcs.ODCSPublishedSchema;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -2190,6 +2201,391 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   // ===================================================================
 
   @Test
+  void testVersionedODCSImportMatrix(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = ns.prefix("versionedCostCenter");
+    CustomPropertyTestSupport.registerProperty(client, "dataContract", property, "string");
+    try {
+      for (String version : ODCSProfiles.supportedVersions()) {
+        for (boolean yaml : List.of(false, true)) {
+          Table table = createTestTable(ns);
+          String ruleName = ns.prefix("versioned_not_null");
+          DataContract fixture =
+              new DataContract()
+                  .withId(UUID.randomUUID())
+                  .withName(ns.prefix("versioned_import"))
+                  .withEntity(table.getEntityReference())
+                  .withEntityStatus(EntityStatus.DRAFT)
+                  .withSchema(table.getColumns())
+                  .withOwners(List.of(client.users().getByName("admin").getEntityReference()))
+                  .withExtension(Map.of(property, "A-42"))
+                  .withSla(
+                      new ContractSLA()
+                          .withRefreshFrequency(
+                              new RefreshFrequency()
+                                  .withInterval(24)
+                                  .withUnit(RefreshFrequency.Unit.HOUR)))
+                  .withOdcsQualityRules(
+                      List.of(
+                          new ODCSQualityRule()
+                              .withId("check-id")
+                              .withName(ruleName)
+                              .withColumn("id")
+                              .withType(ODCSQualityRule.Type.LIBRARY)
+                              .withMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES)
+                              .withMustBe(0.0),
+                          new ODCSQualityRule()
+                              .withId("table-check-id")
+                              .withName(ns.prefix("versioned_row_count"))
+                              .withColumn(table.getName())
+                              .withType(ODCSQualityRule.Type.LIBRARY)
+                              .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+                              .withMustBeGreaterOrEqualTo(1.0)));
+          ObjectNode source =
+              (ObjectNode)
+                  new ODCSExportService(contract -> List.of())
+                      .export(fixture, version)
+                      .requireValid();
+          if (version.equals("v2.2.1"))
+            ((ObjectNode) source.at("/dataset/0"))
+                .putArray("description")
+                .add("First paragraph")
+                .add("Second paragraph");
+          source
+              .withArray("customProperties")
+              .addObject()
+              .put("property", "externalMetadata")
+              .putObject("value")
+              .put("retained", true);
+          String content = new YAMLMapper().writeValueAsString(source);
+          JsonNode parsed =
+              client
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.POST,
+                      "/v1/dataContracts/odcs/parse/yaml",
+                      content,
+                      JsonNode.class,
+                      RequestOptions.builder().header("Content-Type", "application/yaml").build());
+          assertEquals(table.getName(), parsed.path("schemaObjects").get(0).asText());
+          ContractValidation preview =
+              client.dataContracts().validateODCSYaml(content, table.getId(), "table");
+          assertTrue(
+              preview.getValid(), () -> preview.getOdcsImportReport().getIssues().toString());
+          assertEquals(version, preview.getOdcsImportReport().getOdcsVersion());
+          assertEquals(
+              ODCSQualityRuleOutcome.Outcome.TEST_CASE,
+              preview.getOdcsImportReport().getQualityRules().getFirst().getOutcome());
+          assertThrows(
+              OpenMetadataException.class,
+              () -> client.dataContracts().getByEntityId(table.getId(), "table"));
+          String testName =
+              preview.getOdcsImportReport().getQualityRules().getFirst().getTestCaseName();
+          assertThrows(
+              OpenMetadataException.class,
+              () -> client.testCases().getByName(table.getFullyQualifiedName() + "." + testName));
+          RequestOptions options =
+              RequestOptions.builder()
+                  .queryParam("entityId", table.getId().toString())
+                  .queryParam("entityType", "table")
+                  .queryParam("createTestCases", "true")
+                  .header("Content-Type", yaml ? "application/yaml" : "application/json")
+                  .build();
+          String route = "/v1/dataContracts/odcs" + (yaml ? "/yaml" : "");
+          DataContract imported =
+              client
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.POST, route, yaml ? content : source, DataContract.class, options);
+          assertEquals(EntityStatus.DRAFT, imported.getEntityStatus());
+          assertEquals(table.getColumns().size(), imported.getSchema().size());
+          assertEquals("admin", imported.getOwners().getFirst().getName());
+          assertEquals(24, imported.getSla().getRefreshFrequency().getInterval());
+          assertEquals("A-42", ((Map<?, ?>) imported.getExtension()).get(property));
+          assertEquals(
+              List.of("check-id", "table-check-id"),
+              imported.getOdcsQualityRules().stream()
+                  .map(ODCSQualityRule::getId)
+                  .sorted()
+                  .toList());
+          assertEquals(2, imported.getQualityExpectations().size());
+          assertEquals(version, imported.getOdcsPreservedFields().path("sourceVersion").asText());
+          for (String mode : List.of("merge", "replace")) {
+            RequestOptions upsert =
+                RequestOptions.builder()
+                    .queryParam("entityId", table.getId().toString())
+                    .queryParam("entityType", "table")
+                    .queryParam("createTestCases", "true")
+                    .queryParam("mode", mode)
+                    .header("Content-Type", yaml ? "application/yaml" : "application/json")
+                    .build();
+            DataContract updated =
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT, route, yaml ? content : source, DataContract.class, upsert);
+            assertEquals(imported.getId(), updated.getId());
+            assertEquals(
+                imported.getQualityExpectations().stream()
+                    .map(EntityReference::getId)
+                    .sorted()
+                    .toList(),
+                updated.getQualityExpectations().stream()
+                    .map(EntityReference::getId)
+                    .sorted()
+                    .toList());
+          }
+          for (String targetVersion : ODCSProfiles.supportedVersions()) {
+            JsonNode exported =
+                new YAMLMapper()
+                    .readTree(
+                        client
+                            .getHttpClient()
+                            .executeForString(
+                                HttpMethod.GET,
+                                "/v1/dataContracts/"
+                                    + imported.getId()
+                                    + "/odcs/yaml?odcsVersion="
+                                    + targetVersion,
+                                null));
+            assertEquals(List.of(), ODCSProfiles.validate(targetVersion, exported));
+            assertTrue(exported.path("customProperties").toString().contains("externalMetadata"));
+            if (version.equals("v2.2.1")) {
+              if (targetVersion.equals("v2.2.1"))
+                assertEquals(
+                    source.at("/dataset/0/description"), exported.at("/dataset/0/description"));
+              else
+                assertEquals(
+                    "First paragraph\nSecond paragraph",
+                    exported
+                        .at(
+                            targetVersion.startsWith("v2")
+                                ? "/dataset/0/description"
+                                : "/schema/0/description")
+                        .asText());
+            }
+          }
+          client
+              .dataContracts()
+              .patch(
+                  imported.getId(),
+                  source
+                      .arrayNode()
+                      .add(
+                          source
+                              .objectNode()
+                              .put("op", "replace")
+                              .put("path", "/extension/" + property)
+                              .put("value", "B-43")));
+          JsonNode edited =
+              new YAMLMapper()
+                  .readTree(
+                      client
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.GET,
+                              "/v1/dataContracts/"
+                                  + imported.getId()
+                                  + "/odcs/yaml?odcsVersion="
+                                  + version,
+                              null));
+          assertTrue(edited.path("customProperties").toString().contains("B-43"));
+          assertFalse(edited.path("customProperties").toString().contains("A-42"));
+          client
+              .dataContracts()
+              .patch(
+                  imported.getId(),
+                  source
+                      .arrayNode()
+                      .add(
+                          source
+                              .objectNode()
+                              .put("op", "remove")
+                              .put("path", "/extension/" + property)));
+          JsonNode deleted =
+              new YAMLMapper()
+                  .readTree(
+                      client
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.GET,
+                              "/v1/dataContracts/"
+                                  + imported.getId()
+                                  + "/odcs/yaml?odcsVersion="
+                                  + version,
+                              null));
+          assertFalse(deleted.path("customProperties").toString().contains(property));
+          assertTrue(deleted.path("customProperties").toString().contains("externalMetadata"));
+        }
+      }
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, "dataContract", property);
+    }
+  }
+
+  @Test
+  void testVersionedODCSInvalidDocumentsHaveNoSideEffects(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    for (String version : ODCSProfiles.supportedVersions()) {
+      Table table = createTestTable(ns);
+      DataContract fixture =
+          new DataContract()
+              .withId(UUID.randomUUID())
+              .withName(ns.prefix("invalid_profile"))
+              .withEntity(table.getEntityReference())
+              .withSchema(table.getColumns())
+              .withOdcsQualityRules(
+                  List.of(
+                      new ODCSQualityRule()
+                          .withName("must_not_exist")
+                          .withType(ODCSQualityRule.Type.LIBRARY)
+                          .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+                          .withMustBeGreaterThan(0.0)));
+      ObjectNode invalid =
+          (ObjectNode)
+              new ODCSExportService(contract -> List.of()).export(fixture, version).requireValid();
+      invalid.remove("version");
+      String content = new YAMLMapper().writeValueAsString(invalid);
+      ContractValidation preview =
+          client.dataContracts().validateODCSYaml(content, table.getId(), "table");
+      assertFalse(preview.getValid());
+      assertFalse(preview.getOdcsImportReport().getCanImport());
+      assertEquals(version, preview.getOdcsImportReport().getOdcsVersion());
+      assertTrue(
+          preview.getOdcsImportReport().getIssues().stream()
+              .anyMatch(issue -> issue.getMessage().contains("version")));
+      for (boolean yaml : List.of(false, true)) {
+        for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+          OpenMetadataException error =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      client
+                          .getHttpClient()
+                          .execute(
+                              method,
+                              "/v1/dataContracts/odcs" + (yaml ? "/yaml" : ""),
+                              yaml ? content : invalid,
+                              DataContract.class,
+                              RequestOptions.builder()
+                                  .queryParam("entityId", table.getId().toString())
+                                  .queryParam("entityType", "table")
+                                  .queryParam("createTestCases", "true")
+                                  .header(
+                                      "Content-Type",
+                                      yaml ? "application/yaml" : "application/json")
+                                  .build()));
+          assertEquals(400, error.getStatusCode());
+        }
+      }
+      assertThrows(
+          OpenMetadataException.class,
+          () -> client.dataContracts().getByEntityId(table.getId(), "table"));
+      assertThrows(
+          OpenMetadataException.class,
+          () ->
+              client.testCases().getByName(table.getFullyQualifiedName() + ".odcs_must_not_exist"));
+    }
+  }
+
+  @Test
+  void testSchemaLessODCSInvalidQualityHasNoSideEffects(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0")) {
+      Table table = createTestTable(ns);
+      DataContract fixture =
+          new DataContract()
+              .withId(UUID.randomUUID())
+              .withName(ns.prefix("invalid_profile"))
+              .withEntity(table.getEntityReference())
+              .withSchema(table.getColumns())
+              .withOdcsQualityRules(
+                  List.of(
+                      new ODCSQualityRule()
+                          .withName("must_not_exist")
+                          .withType(ODCSQualityRule.Type.LIBRARY)
+                          .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+                          .withMustBeGreaterThan(0.0)));
+      ObjectNode invalid =
+          (ObjectNode)
+              new ODCSExportService(contract -> List.of()).export(fixture, version).requireValid();
+      invalid.remove("schema");
+      invalid
+          .withArray("quality")
+          .addObject()
+          .put("name", "must_not_exist")
+          .put("type", "library")
+          .put("metric", "nullValues")
+          .put("column", "id")
+          .put("mustBe", 0)
+          .put("unexpectedField", "invalid");
+      String content = new YAMLMapper().writeValueAsString(invalid);
+      ContractValidation preview =
+          client.dataContracts().validateODCSYaml(content, table.getId(), "table");
+      assertFalse(preview.getValid());
+      assertFalse(preview.getOdcsImportReport().getCanImport());
+      assertEquals(version, preview.getOdcsImportReport().getOdcsVersion());
+      assertTrue(
+          preview.getOdcsImportReport().getIssues().stream()
+              .anyMatch(issue -> issue.getMessage().contains("malformed")));
+      OpenMetadataException parseError =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  client
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.POST,
+                          "/v1/dataContracts/odcs/parse/yaml",
+                          content,
+                          JsonNode.class,
+                          RequestOptions.builder()
+                              .header("Content-Type", "application/yaml")
+                              .build()));
+      assertEquals(400, parseError.getStatusCode());
+      for (boolean yaml : List.of(false, true)) {
+        for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+          OpenMetadataException error =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      client
+                          .getHttpClient()
+                          .execute(
+                              method,
+                              "/v1/dataContracts/odcs" + (yaml ? "/yaml" : ""),
+                              yaml ? content : invalid,
+                              DataContract.class,
+                              RequestOptions.builder()
+                                  .queryParam("entityId", table.getId().toString())
+                                  .queryParam("entityType", "table")
+                                  .queryParam("createTestCases", "true")
+                                  .header(
+                                      "Content-Type",
+                                      yaml ? "application/yaml" : "application/json")
+                                  .build()));
+          assertEquals(400, error.getStatusCode());
+        }
+      }
+      assertEquals(
+          404,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> client.dataContracts().getByEntityId(table.getId(), "table"))
+              .getStatusCode());
+      assertEquals(
+          404,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      client
+                          .testCases()
+                          .getByName(table.getFullyQualifiedName() + ".id.odcs_must_not_exist"))
+              .getStatusCode());
+    }
+  }
+
+  @Test
   void testExportDataContractToODCS(TestNamespace ns) {
     Table table = createTestTable(ns);
 
@@ -2258,6 +2654,147 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertTrue(yamlContent.contains("DataContract"));
     assertTrue(yamlContent.contains("name:"));
     assertTrue(yamlContent.contains(contract.getName()));
+  }
+
+  @Test
+  void testODCSExportScalarColumnWithChildren(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    Column scalar =
+        new Column()
+            .withName("name")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withChildren(List.of(new Column().withName("child").withDataType(ColumnDataType.INT)));
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("odcs_scalar_children"))
+                .withEntity(table.getEntityReference())
+                .withSchema(List.of(scalar)));
+    YAMLMapper mapper = new YAMLMapper();
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0")) {
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + contract.getId() + "/odcs",
+              "/v1/dataContracts/" + contract.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs/yaml")) {
+        JsonNode document =
+            mapper.readTree(
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, route + "?odcsVersion=" + version, null));
+        assertEquals(List.of(), ODCSProfiles.validate(version, document));
+        JsonNode property = document.at("/schema/0/properties/0");
+        assertEquals("name", property.path("name").asText());
+        assertEquals("string", property.path("logicalType").asText());
+        assertEquals("VARCHAR", property.path("physicalType").asText());
+        assertFalse(property.has("properties"));
+      }
+    }
+    DataContract stored = client.dataContracts().get(contract.getId().toString(), "schema");
+    assertEquals(ColumnDataType.VARCHAR, stored.getSchema().getFirst().getDataType());
+    assertEquals("child", stored.getSchema().getFirst().getChildren().getFirst().getName());
+  }
+
+  @Test
+  void testLegacyODCSChildBeforeParentArraysRetainNativeTypes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract fixture = nestedArrayODCSFixture(ns);
+    YAMLMapper mapper = new YAMLMapper();
+    for (String version : List.of("v2.2.2", "v2.2.1")) {
+      for (boolean yaml : List.of(false, true)) {
+        ObjectNode source =
+            (ObjectNode)
+                new ODCSExportService(ignored -> List.of()).export(fixture, version).requireValid();
+        ArrayNode columns = (ArrayNode) source.at("/dataset/0/columns");
+        for (JsonNode column : columns) {
+          if (column.path("logicalType").asText().equals("array")) {
+            ((ObjectNode) column)
+                .withObject("/items")
+                .withArray("customProperties")
+                .addObject()
+                .put("property", "itemMarker")
+                .put("value", column.path("column").asText());
+          }
+        }
+        ArrayNode reversed = mapper.createArrayNode();
+        for (int index = columns.size() - 1; index >= 0; index--) reversed.add(columns.get(index));
+        ((ObjectNode) source.at("/dataset/0")).set("columns", reversed);
+        RequestOptions options =
+            RequestOptions.builder()
+                .queryParam("entityId", fixture.getEntity().getId().toString())
+                .queryParam("entityType", "table")
+                .queryParam("createTestCases", "false")
+                .queryParam("mode", "replace")
+                .header("Content-Type", yaml ? "application/yaml" : "application/json")
+                .build();
+        DataContract imported =
+            client
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    "/v1/dataContracts/odcs" + (yaml ? "/yaml" : ""),
+                    yaml ? mapper.writeValueAsString(source) : source,
+                    DataContract.class,
+                    options);
+        assertNativeNestedArraySchema(imported);
+        assertNativeNestedArraySchema(
+            client.dataContracts().get(imported.getId().toString(), "schema"));
+        for (String target : ODCSProfiles.supportedVersions()) {
+          JsonNode exported =
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataContracts/"
+                              + imported.getId()
+                              + "/odcs/yaml?odcsVersion="
+                              + target,
+                          null));
+          assertEquals(List.of(), ODCSProfiles.validate(target, exported));
+          assertTrue(exported.toString().contains("itemMarker"));
+        }
+      }
+    }
+  }
+
+  private DataContract nestedArrayODCSFixture(TestNamespace ns) {
+    Column leaf =
+        new Column().withName("sku.code").withDataType(ColumnDataType.VARCHAR).withDataLength(30);
+    Column nested =
+        new Column()
+            .withName("nested")
+            .withDataType(ColumnDataType.ARRAY)
+            .withArrayDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(leaf));
+    Column outer =
+        new Column()
+            .withName("items")
+            .withDataType(ColumnDataType.ARRAY)
+            .withArrayDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(nested));
+    Table table = createTestTable(ns, List.of(outer));
+    return new DataContract()
+        .withId(UUID.randomUUID())
+        .withName(ns.prefix("legacy_nested_arrays"))
+        .withEntity(table.getEntityReference())
+        .withSchema(table.getColumns());
+  }
+
+  private static void assertNativeNestedArraySchema(DataContract contract) {
+    Column outer = contract.getSchema().getFirst();
+    Column nested = outer.getChildren().getFirst();
+    assertEquals("items", outer.getName());
+    assertEquals(ColumnDataType.ARRAY, outer.getDataType());
+    assertEquals(ColumnDataType.STRUCT, outer.getArrayDataType());
+    assertEquals("nested", nested.getName());
+    assertEquals(ColumnDataType.ARRAY, nested.getDataType());
+    assertEquals(ColumnDataType.STRUCT, nested.getArrayDataType());
+    assertEquals("sku.code", nested.getChildren().getFirst().getName());
+    assertEquals(ColumnDataType.VARCHAR, nested.getChildren().getFirst().getDataType());
   }
 
   @Test
@@ -2398,8 +2935,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(3, tableObject.getProperties().size());
 
     assertEquals(
-        ODCSSchemaElement.LogicalType.LONG,
-        tableObject.getProperties().get(0).getLogicalType()); // BIGINT maps to LONG
+        ODCSSchemaElement.LogicalType.INTEGER, tableObject.getProperties().get(0).getLogicalType());
     assertEquals(
         ODCSSchemaElement.LogicalType.STRING, tableObject.getProperties().get(1).getLogicalType());
     assertEquals(
@@ -2416,6 +2952,99 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(original.getEntityStatus(), reimported.getEntityStatus());
     assertEquals(original.getSchema().size(), reimported.getSchema().size());
     assertEquals(original.getSchema().get(0).getName(), reimported.getSchema().get(0).getName());
+  }
+
+  @Test
+  void testODCSSpecCompliantV310DocumentRoundTrips(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+
+    // Every shape the published ODCS v3.1.0 schema mandates: team as an object with members,
+    // customProperties as {property, value} arrays, a numeric SLA value and quality rules.
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("v310_round_trip")
+            + "\n"
+            + "version: \"1.0.0\"\n"
+            + "status: active\n"
+            + "description:\n"
+            + "  purpose: Spec-compliant ODCS v3.1.0 document\n"
+            + "team:\n"
+            + "  members:\n"
+            + "    - username: admin\n"
+            + "      role: owner\n"
+            + "schema:\n"
+            + "  - name: "
+            + table.getName()
+            + "\n"
+            + "    logicalType: object\n"
+            + "    properties:\n"
+            + "      - name: id\n"
+            + "        logicalType: integer\n"
+            + "      - name: email\n"
+            + "        logicalType: string\n"
+            + "quality:\n"
+            + "  - id: row_count\n"
+            + "    type: library\n"
+            + "    metric: rowCount\n"
+            + "    mustBeGreaterThan: 0\n"
+            + "    customProperties:\n"
+            + "      - property: engine\n"
+            + "        value: soda\n"
+            + "slaProperties:\n"
+            + "  - property: latency\n"
+            + "    value: 1\n"
+            + "    unit: h\n"
+            + "servers:\n"
+            + "  - server: prod\n"
+            + "    type: snowflake\n"
+            + "    account: sample-account\n"
+            + "    database: ecommerce\n"
+            + "    schema: shopify\n"
+            + "    customProperties:\n"
+            + "      - property: account\n"
+            + "        value: svc-account\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table", false);
+
+    assertNotNull(imported);
+    assertEquals(EntityStatus.APPROVED, imported.getEntityStatus());
+    assertEquals(2, imported.getSchema().size());
+    assertEquals(1, imported.getSla().getMaxLatency().getValue());
+    assertTrue(
+        imported.getOdcsQualityRules().stream()
+            .anyMatch(
+                rule ->
+                    rule.getCustomProperties() != null
+                        && rule.getCustomProperties().stream()
+                            .anyMatch(property -> "engine".equals(property.getProperty()))));
+
+    String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(imported.getId());
+
+    assertTrue(exported.contains("team:"), exported);
+    assertTrue(exported.contains("members:"), exported);
+    assertTrue(
+        java.util.regex.Pattern.compile("contractCreatedTs: \"?\\d{4}-\\d{2}-\\d{2}T[0-9:.]+Z\"?")
+            .matcher(exported)
+            .find(),
+        exported);
+    assertTrue(exported.contains("value: 1"), exported);
+    assertFalse(exported.contains("value: '1'"), exported);
+    assertTrue(exported.contains("quality:"), exported);
+    assertEquals(
+        "engine",
+        new YAMLMapper()
+            .readTree(exported)
+            .at("/schema/0/quality/0/customProperties/0/property")
+            .asText());
+    assertFalse(exported.contains("[]"), exported);
   }
 
   @Test
@@ -2455,7 +3084,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .anyMatch(
                 p ->
                     "freshness".equals(p.getProperty())
-                        && "1".equals(p.getValue())); // ODCS uses "freshness"
+                        && Integer.valueOf(1).equals(p.getValue())); // ODCS uses "freshness"
     assertTrue(hasFreshness);
 
     boolean hasLatency =
@@ -2463,7 +3092,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .anyMatch(
                 p ->
                     "latency".equals(p.getProperty())
-                        && "2".equals(p.getValue())); // ODCS uses "latency"
+                        && Integer.valueOf(2).equals(p.getValue())); // ODCS uses "latency"
     assertTrue(hasLatency);
   }
 
@@ -3130,6 +3759,566 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testImportedContractExportsAcrossVersionsWithRenamedTargetAndDescriptions(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: 1.0.0
+        status: active
+        schema:
+          - name: customers
+            logicalType: object
+            description: Imported customer dataset description
+            properties:
+              - name: id
+                logicalType: integer
+                physicalType: BIGINT
+                quality:
+                  - type: library
+                    name: id_not_null
+                    metric: nullValues
+                    mustBe: 0
+            quality:
+              - type: library
+                name: customers_table_not_empty
+                metric: rowCount
+                mustBeGreaterOrEqualTo: 1
+                customProperties:
+                  - property: testCaseLabel
+                    value: retained source metadata
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("imported_export"));
+    DataContract imported =
+        client
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table", "merge", true);
+    JsonNode preserved = imported.getOdcsPreservedFields().deepCopy();
+    YAMLMapper mapper = new YAMLMapper();
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1")) {
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + imported.getId() + "/odcs",
+              "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+        JsonNode document =
+            mapper.readTree(
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, route + "?odcsVersion=" + version, null));
+        assertEquals(version, document.path("apiVersion").asText());
+        assertTrue(document.toString().contains("retained source metadata"));
+        if (version.startsWith("v2")) {
+          assertEquals(table.getName(), document.at("/dataset/0/table").asText());
+          assertEquals(1, document.at("/dataset/0/columns").size());
+          assertEquals(2, document.at("/dataset/0/quality").size());
+          JsonNode description = document.at("/dataset/0/description");
+          assertEquals(version.equals("v2.2.1"), description.isArray());
+          assertEquals(
+              "Imported customer dataset description",
+              description.isArray() ? description.get(0).asText() : description.asText());
+        } else {
+          assertEquals(table.getName(), document.at("/schema/0/name").asText());
+          assertEquals(1, document.at("/schema/0/properties").size());
+          assertEquals(1, document.at("/schema/0/quality").size());
+          assertEquals(1, document.at("/schema/0/properties/0/quality").size());
+          assertEquals(
+              version.equals("v3.1.0") ? "metric" : "rule",
+              document.at("/schema/0/quality/0").has("metric") ? "metric" : "rule");
+        }
+      }
+    }
+    assertEquals(
+        preserved,
+        client.dataContracts().get(imported.getId().toString()).getOdcsPreservedFields());
+  }
+
+  @Test
+  void testRepairedSqlAssertionsAndDottedColumnsSurviveStoredVersionedExports(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table =
+        createTestTable(
+            ns, List.of(new Column().withName("customer.id").withDataType(ColumnDataType.STRING)));
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: 1.0.0
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - type: sql
+                name: sql_response
+                query: SELECT 'OK'
+                mustBe: OK
+              - type: sql
+                name: precise_response
+                query: SELECT ratio
+                mustBe: 0.12345678901234567890123456789
+            properties:
+              - name: customer.id
+                logicalType: string
+                quality:
+                  - type: library
+                    name: required_id
+                    metric: nullValues
+                    mustBe: 0
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("repaired_sql"), table.getName());
+    DataContract imported =
+        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    YAMLMapper mapper = new YAMLMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    JsonNode expected = mapper.readTree(yaml).at("/schema/0/quality");
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1")) {
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + imported.getId() + "/odcs",
+              "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+        JsonNode document =
+            mapper.readTree(
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, route + "?odcsVersion=" + version, null));
+        boolean legacy = version.startsWith("v2");
+        JsonNode rules = document.at(legacy ? "/dataset/0/quality" : "/schema/0/quality");
+        assertEquals(legacy ? 3 : 2, rules.size());
+        for (int index = 0; index < 2; index++) {
+          JsonNode rule = rules.get(index);
+          if (legacy) {
+            for (JsonNode property : rule.path("customProperties"))
+              if ("odcsRule".equals(property.path("property").asText()))
+                rule = property.path("value");
+          } else if ("custom".equals(rule.path("type").asText())) {
+            rule = mapper.readTree(rule.path("implementation").asText()).path("odcsRule");
+          }
+          assertEquals(expected.get(index).path("mustBe"), rule.path("mustBe"), version);
+        }
+        JsonNode columns = document.at(legacy ? "/dataset/0/columns" : "/schema/0/properties");
+        assertEquals(1, columns.size());
+        assertEquals(
+            legacy ? "\"customer.id\"" : "customer.id",
+            columns.get(0).path(legacy ? "column" : "name").asText());
+        if (legacy) assertEquals("\"customer.id\"", rules.get(2).path("column").asText());
+        else assertEquals(1, columns.get(0).path("quality").size());
+      }
+    }
+    DataContract stored = client.dataContracts().get(imported.getId().toString());
+    ODCSQualityRule edited =
+        stored.getOdcsQualityRules().stream()
+            .filter(rule -> "precise_response".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+    edited.setMustBe(7.0);
+    client
+        .dataContracts()
+        .createOrUpdate(
+            new CreateDataContract()
+                .withName(stored.getName())
+                .withEntity(table.getEntityReference())
+                .withSchema(stored.getSchema())
+                .withOdcsQualityRules(List.of(edited)));
+    JsonNode updated = mapper.readTree(client.dataContracts().exportToODCSYaml(stored.getId()));
+    assertEquals(1, updated.at("/schema/0/quality").size());
+    assertEquals(7, updated.at("/schema/0/quality/0/mustBe").asInt());
+    assertFalse(updated.toString().contains("sql_response"));
+  }
+
+  @Test
+  void testLegacyRootSqlAssertionsArePreservedAtTheirExportScopes(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: 1.0.0
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: email
+                logicalType: string
+                physicalType: VARCHAR
+        quality:
+          - name: root_response
+            type: sql
+            query: SELECT 'OK'
+            mustBe: OK
+          - name: column_response
+            type: sql
+            column: email
+            query: SELECT 'PASS'
+            mustBe: PASS
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("legacy_root_sql"), table.getName());
+    DataContract contract =
+        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    JsonNode document =
+        new YAMLMapper().readTree(client.dataContracts().exportToODCSYaml(contract.getId()));
+    assertFalse(document.has("quality"));
+    assertEquals("OK", document.at("/schema/0/quality/0/mustBe").asText());
+    assertEquals("PASS", document.at("/schema/0/properties/0/quality/0/mustBe").asText());
+    assertFalse(document.at("/schema/0/properties/0/quality/0").has("column"));
+  }
+
+  @Test
+  void testNativeCustomPropertiesExportAsValidOdcsAcrossAllRoutes(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String costCenter = ns.prefix("exportCostCenter");
+    String retentionDays = ns.prefix("exportRetentionDays");
+    String qualityTarget = ns.prefix("exportQualityTarget");
+    Map<String, String> types =
+        Map.of(costCenter, "string", retentionDays, "integer", qualityTarget, "number");
+    try {
+      for (Map.Entry<String, String> property : types.entrySet()) {
+        CustomPropertyTestSupport.registerProperty(
+            client, "dataContract", property.getKey(), property.getValue());
+      }
+      Table table = createTestTable(ns);
+      TestCase check =
+          client
+              .testCases()
+              .create(
+                  new CreateTestCase()
+                      .withName(ns.prefix("native_id_not_null"))
+                      .withEntityLink(
+                          "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                      .withTestDefinition("columnValuesToBeNotNull"));
+      Map<String, Object> values =
+          Map.of(costCenter, "ANALYTICS-042", retentionDays, 90, qualityTarget, 99.5);
+      CreateDataContract request =
+          new CreateDataContract()
+              .withName(ns.prefix("native_export"))
+              .withEntity(table.getEntityReference())
+              .withSchema(table.getColumns())
+              .withQualityExpectations(List.of(check.getEntityReference()))
+              .withOwners(List.of(client.users().getByName("admin").getEntityReference()))
+              .withSla(
+                  new ContractSLA()
+                      .withRefreshFrequency(
+                          new RefreshFrequency()
+                              .withInterval(24)
+                              .withUnit(RefreshFrequency.Unit.HOUR)))
+              .withExtension(values);
+      DataContract created = client.dataContracts().create(request);
+      DataContract stored =
+          client
+              .dataContracts()
+              .get(created.getId().toString(), "extension,schema,qualityExpectations");
+      assertEquals(values.keySet(), ((Map<?, ?>) stored.getExtension()).keySet());
+      assertTrue(nullOrEmpty(stored.getOdcsQualityRules()));
+      assertNull(stored.getOdcsPreservedFields());
+
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + created.getId() + "/odcs",
+              "/v1/dataContracts/" + created.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs/yaml")) {
+        OpenMetadataException unsupported =
+            assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .getHttpClient()
+                        .executeForString(HttpMethod.GET, route + "?odcsVersion=v99.0.0", null));
+        assertEquals(400, unsupported.getStatusCode());
+      }
+
+      YAMLMapper mapper = new YAMLMapper();
+      List<JsonNode> exported =
+          List.of(
+              mapper.readTree(client.dataContracts().exportToODCSYaml(created.getId())),
+              mapper.readTree(
+                  client.dataContracts().exportToODCSYamlByFqn(created.getFullyQualifiedName())),
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataContracts/" + created.getId() + "/odcs", null)),
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs",
+                          null)));
+      for (JsonNode document : exported) {
+        assertEquals(List.of(), ODCSPublishedSchema.validate(document));
+        Map<String, JsonNode> properties = new HashMap<>();
+        document
+            .path("customProperties")
+            .forEach(
+                property ->
+                    properties.put(property.path("property").asText(), property.path("value")));
+        assertEquals("ANALYTICS-042", properties.get(costCenter).asText());
+        assertTrue(properties.get(retentionDays).isIntegralNumber());
+        assertEquals(90, properties.get(retentionDays).asInt());
+        assertEquals(99.5, properties.get(qualityTarget).asDouble());
+        assertFalse(document.at("/schema/0/properties/0/quality/0").has("column"));
+      }
+      for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1")) {
+        for (String route :
+            List.of(
+                "/v1/dataContracts/" + created.getId() + "/odcs",
+                "/v1/dataContracts/" + created.getId() + "/odcs/yaml",
+                "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs",
+                "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs/yaml")) {
+          JsonNode document =
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          route + "?odcsVersion=" + version + "&fields=schema",
+                          null));
+          assertEquals(version, document.path("apiVersion").asText());
+          assertEquals(3, document.path("customProperties").size());
+          for (JsonNode property : document.path("customProperties")) {
+            String name = property.path("property").asText();
+            if (name.equals(costCenter))
+              assertEquals("ANALYTICS-042", property.path("value").asText());
+            if (name.equals(retentionDays)) assertEquals(90, property.path("value").asInt());
+            if (name.equals(qualityTarget)) assertEquals(99.5, property.path("value").asDouble());
+          }
+          assertEquals(24, document.at("/slaProperties/0/value").asInt());
+          if (version.startsWith("v2")) {
+            assertFalse(document.has("schema"));
+            assertEquals(created.getId().toString(), document.path("uuid").asText());
+            assertEquals(table.getName(), document.at("/dataset/0/table").asText());
+            assertEquals("admin", document.at("/stakeholders/0/username").asText());
+            assertEquals(
+                "columnValuesToBeNotNull",
+                document.at("/dataset/0/quality/0/templateName").asText());
+          } else {
+            assertEquals(
+                "admin",
+                version.equals("v3.1.0")
+                    ? document.at("/team/members/0/username").asText()
+                    : document.at("/team/0/username").asText());
+            assertEquals(
+                version.equals("v3.1.0") ? "nullValues" : "nullCount",
+                document
+                    .at(
+                        version.equals("v3.1.0")
+                            ? "/schema/0/properties/0/quality/0/metric"
+                            : "/schema/0/properties/0/quality/0/rule")
+                    .asText());
+          }
+        }
+      }
+      for (String version : List.of("v2.2.0", "v3.2.0")) {
+        OpenMetadataException unsupported =
+            assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .getHttpClient()
+                        .executeForString(
+                            HttpMethod.GET,
+                            "/v1/dataContracts/" + created.getId() + "/odcs?odcsVersion=" + version,
+                            null));
+        assertEquals(400, unsupported.getStatusCode());
+      }
+      String externalProperty = ns.prefix("externalOnly");
+      ObjectNode reimportDocument = (ObjectNode) exported.getFirst().deepCopy();
+      reimportDocument
+          .withArray("customProperties")
+          .addObject()
+          .put("property", externalProperty)
+          .put("value", "preserved external value");
+      DataContract reimported =
+          client
+              .dataContracts()
+              .createOrUpdateFromODCSYaml(
+                  mapper.writeValueAsString(reimportDocument),
+                  table.getId(),
+                  "table",
+                  "merge",
+                  false);
+      assertNotNull(reimported.getOdcsPreservedFields());
+      DataContract nativeImport =
+          client.dataContracts().get(reimported.getId().toString(), "extension");
+      assertEquals(values, nativeImport.getExtension());
+      JsonNode explicitVersion =
+          mapper.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      "/v1/dataContracts/"
+                          + created.getId()
+                          + "/odcs?odcsVersion=v3.1.0&fields=schema",
+                      null));
+      assertEquals(4, explicitVersion.path("customProperties").size());
+
+      request.setExtension(Map.of(costCenter, "UPDATED"));
+      DataContract updated = client.dataContracts().createOrUpdate(request);
+      JsonNode changed = mapper.readTree(client.dataContracts().exportToODCSYaml(updated.getId()));
+      assertEquals(2, changed.path("customProperties").size());
+      assertEquals("UPDATED", changed.at("/customProperties/0/value").asText());
+      request.setExtension(Map.of());
+      client.dataContracts().createOrUpdate(request);
+      JsonNode cleared = mapper.readTree(client.dataContracts().exportToODCSYaml(created.getId()));
+      assertEquals(1, cleared.path("customProperties").size());
+      assertEquals(externalProperty, cleared.at("/customProperties/0/property").asText());
+      assertEquals("preserved external value", cleared.at("/customProperties/0/value").asText());
+      JsonNode jsonCleared =
+          mapper.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET, "/v1/dataContracts/" + created.getId() + "/odcs", null));
+      assertEquals(cleared.path("customProperties"), jsonCleared.path("customProperties"));
+      assertEquals(List.of(), ODCSPublishedSchema.validate(cleared));
+    } finally {
+      for (String property : types.keySet()) {
+        CustomPropertyTestSupport.removeProperty(client, "dataContract", property);
+      }
+    }
+  }
+
+  @Test
+  void testGenericODCSMetadataSurvivesImportUpdateAndBothYamlExports(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: '1.0.0'
+        status: active
+        customProperties:
+          - property: enabled
+            value: false
+          - property: externalSection
+            value:
+              nested: [1, null, false, {unknown: preserved}]
+              preciseAmount: 1234567890.1234567890123456789
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: email
+                logicalType: string
+                physicalType: VARCHAR
+                primaryKeyPosition: 2
+                customProperties:
+                  - property: externalSettings
+                    value: {settings: [true, 1.25]}
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("generic_odcs"), table.getName());
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yaml, table.getId(), "table", false);
+    assertNotNull(imported.getOdcsPreservedFields());
+    DataContract edited = editDescriptionAsNonODCSClient(table, imported);
+    assertNotNull(edited.getOdcsPreservedFields());
+    assertTrue(edited.getVersion() > imported.getVersion());
+
+    YAMLMapper mapper = new YAMLMapper();
+    JsonNode original = mapper.readTree(yaml);
+    String yamlById = SdkClients.adminClient().dataContracts().exportToODCSYaml(edited.getId());
+    JsonNode byId = mapper.readTree(yamlById);
+    JsonNode precise =
+        new YAMLMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .readTree(yamlById);
+    assertEquals(
+        "1234567890.1234567890123456789",
+        precise.at("/customProperties/1/value/preciseAmount").decimalValue().toPlainString());
+    JsonNode byName =
+        mapper.readTree(
+            SdkClients.adminClient()
+                .dataContracts()
+                .exportToODCSYamlByFqn(edited.getFullyQualifiedName()));
+    assertEquals(original.get("customProperties"), byId.get("customProperties"));
+    assertEquals(
+        original.at("/schema/0/properties/0/customProperties"),
+        byId.at("/schema/0/properties/0/customProperties"));
+    assertEquals("Description edited outside of ODCS", byId.at("/description/purpose").asText());
+    assertEquals(byId, byName);
+    ODCSDataContract jsonById =
+        SdkClients.adminClient().dataContracts().exportToODCS(edited.getId());
+    ODCSDataContract jsonByName =
+        SdkClients.adminClient().dataContracts().exportToODCSByFqn(edited.getFullyQualifiedName());
+    assertEquals(jsonById.getAdditionalProperties(), jsonByName.getAdditionalProperties());
+    assertEquals(
+        original.at("/schema/0/properties/0/customProperties"),
+        mapper.valueToTree(jsonById).at("/schema/0/properties/0/customProperties"));
+
+    CreateDataContract clear =
+        new CreateDataContract()
+            .withName(edited.getName())
+            .withEntity(table.getEntityReference())
+            .withSchema(edited.getSchema())
+            .withOdcsPreservedFields(mapper.createObjectNode());
+    DataContract cleared = SdkClients.adminClient().dataContracts().createOrUpdate(clear);
+    JsonNode exported =
+        mapper.readTree(SdkClients.adminClient().dataContracts().exportToODCSYaml(cleared.getId()));
+    assertFalse(exported.has("futureSection"));
+    assertFalse(exported.has("customProperties"));
+  }
+
+  @Test
+  void testIncompatiblePreservedMetadataBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: '1.0.0'
+        status: active
+        futureSection: {retained: true}
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("incompatible_odcs"));
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract imported =
+        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    for (String route :
+        List.of(
+            "/v1/dataContracts/" + imported.getId() + "/odcs",
+            "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
+            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
+            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+      OpenMetadataException error =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> client.getHttpClient().executeForString(HttpMethod.GET, route, null));
+      assertEquals(400, error.getStatusCode());
+      assertTrue(error.getMessage().contains("futureSection"), error.getMessage());
+    }
+    DataContract stored =
+        client.dataContracts().get(imported.getId().toString(), "odcsPreservedFields");
+    assertEquals(imported.getOdcsPreservedFields(), stored.getOdcsPreservedFields());
+  }
+
+  @Test
   void testODCSQualityRulesSurviveNonODCSUpdate(TestNamespace ns) {
     Table table = createTestTable(ns);
     DataContract imported = importODCSWithPassthrough(ns, table);
@@ -3352,15 +4541,39 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     emailNotNull.setName("email_not_null");
     emailNotNull.setType(ODCSQualityRule.Type.LIBRARY);
     emailNotNull.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    emailNotNull.setMustBe(0.0);
     emailProperty.setQuality(List.of(emailNotNull));
 
     ODCSSchemaElement tableObject = new ODCSSchemaElement();
     tableObject.setName(table.getName());
     tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
     tableObject.setProperties(List.of(emailProperty));
+    tableObject.setPrimaryKey(null);
+    tableObject.setPrimaryKeyPosition(null);
+    tableObject.setRequired(null);
+    tableObject.setUnique(null);
+    tableObject.setPartitionKeyPosition(null);
     odcs.setSchema(List.of(tableObject));
 
     return SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+  }
+
+  private static List<ODCSQualityRule> exportedQualityRules(ODCSDataContract contract) {
+    List<ODCSQualityRule> rules = new ArrayList<>();
+    for (ODCSSchemaElement object : contract.getSchema()) {
+      collectExportedQualityRules(object, rules);
+    }
+    return rules;
+  }
+
+  private static void collectExportedQualityRules(
+      ODCSSchemaElement element, List<ODCSQualityRule> rules) {
+    if (element.getQuality() != null) {
+      rules.addAll(element.getQuality());
+    }
+    if (element.getProperties() != null) {
+      element.getProperties().forEach(child -> collectExportedQualityRules(child, rules));
+    }
   }
 
   private static ODCSSchemaElement findExportedProperty(ODCSDataContract odcs, String name) {
@@ -4112,8 +5325,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testImportODCSWithMissingApiVersionUsesDefault(TestNamespace ns) {
-    // Note: apiVersion has a default value of v3.1.0 in the schema, so missing it should succeed
+  void testImportODCSWithMissingApiVersionIsRejected(TestNamespace ns) {
     Table table = createTestTable(ns);
 
     String yamlWithoutVersion =
@@ -4127,14 +5339,18 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "version: '1.0.0'\n"
             + "status: active\n";
 
-    // Should succeed using default apiVersion
-    DataContract imported =
-        SdkClients.adminClient()
-            .dataContracts()
-            .importFromODCSYaml(yamlWithoutVersion, table.getId(), "table");
-
-    assertNotNull(imported);
-    assertEquals(ns.prefix("missing_version"), imported.getName());
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataContracts()
+                    .importFromODCSYaml(yamlWithoutVersion, table.getId(), "table"));
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().contains("apiVersion"));
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table"));
   }
 
   @Test
@@ -5552,10 +6768,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract odcs = SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
 
     assertNotNull(odcs);
-    assertNotNull(odcs.getQuality());
-    assertEquals(1, odcs.getQuality().size());
+    assertNull(odcs.getQuality());
+    assertEquals(1, exportedQualityRules(odcs).size());
 
-    ODCSQualityRule exportedRule = odcs.getQuality().get(0);
+    ODCSQualityRule exportedRule = exportedQualityRules(odcs).get(0);
     assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule.getType());
     assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, exportedRule.getMetric());
     assertEquals(0.0, exportedRule.getMustBeGreaterThan());
@@ -5583,13 +6799,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     sqlRule.setQuery("SELECT MAX(updated_at) FROM data");
     sqlRule.setDimension(ODCSQualityRule.Dimension.TIMELINESS);
     sqlRule.setSeverity("critical");
+    sqlRule.setMustBeGreaterThan(0.0);
     qualityRules.add(sqlRule);
 
     // Library rule with metric
     ODCSQualityRule libraryRule = new ODCSQualityRule();
     libraryRule.setType(ODCSQualityRule.Type.LIBRARY);
-    libraryRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    libraryRule.setMetric(ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES);
     libraryRule.setColumn("email");
+    libraryRule.setMustBe(0.0);
     libraryRule.setDimension(ODCSQualityRule.Dimension.UNIQUENESS);
     qualityRules.add(libraryRule);
 
@@ -5612,12 +6830,12 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract exported =
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
-    assertNotNull(exported.getQuality());
-    assertEquals(3, exported.getQuality().size());
+    assertNull(exported.getQuality());
+    assertEquals(3, exportedQualityRules(exported).size());
 
     // Verify SQL rule
     ODCSQualityRule exportedSqlRule =
-        exported.getQuality().stream()
+        exportedQualityRules(exported).stream()
             .filter(r -> r.getType() == ODCSQualityRule.Type.SQL)
             .findFirst()
             .orElseThrow();
@@ -5627,16 +6845,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     // Verify library rule
     ODCSQualityRule exportedLibraryRule =
-        exported.getQuality().stream()
+        exportedQualityRules(exported).stream()
             .filter(r -> r.getType() == ODCSQualityRule.Type.LIBRARY)
             .findFirst()
             .orElseThrow();
-    assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedLibraryRule.getMetric());
-    assertEquals("email", exportedLibraryRule.getColumn());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES, exportedLibraryRule.getMetric());
+    assertNull(exportedLibraryRule.getColumn());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES,
+        findExportedProperty(exported, "email").getQuality().getFirst().getMetric());
 
     // Verify custom rule
     ODCSQualityRule exportedCustomRule =
-        exported.getQuality().stream()
+        exportedQualityRules(exported).stream()
             .filter(r -> r.getType() == ODCSQualityRule.Type.CUSTOM)
             .findFirst()
             .orElseThrow();
@@ -5816,6 +7038,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSQualityRule rule = new ODCSQualityRule();
     rule.setType(ODCSQualityRule.Type.LIBRARY);
     rule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    rule.setMustBeGreaterThan(0.0);
     rule.setScheduler("cron");
     rule.setSchedule("0 0 * * *");
     qualityRules.add(rule);
@@ -5836,9 +7059,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract exported =
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
-    assertNotNull(exported.getQuality());
-    assertEquals("cron", exported.getQuality().get(0).getScheduler());
-    assertEquals("0 0 * * *", exported.getQuality().get(0).getSchedule());
+    assertNull(exported.getQuality());
+    assertEquals("cron", exportedQualityRules(exported).get(0).getScheduler());
+    assertEquals("0 0 * * *", exportedQualityRules(exported).get(0).getSchedule());
   }
 
   @Test
@@ -5875,10 +7098,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     // Rule with multiple assertions
     ODCSQualityRule multiAssertRule = new ODCSQualityRule();
     multiAssertRule.setType(ODCSQualityRule.Type.LIBRARY);
-    multiAssertRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    multiAssertRule.setMetric(ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES);
     multiAssertRule.setColumn("id");
-    multiAssertRule.setMustBeGreaterThan(0.0);
-    multiAssertRule.setMustBeLessThan(1000000.0);
+    multiAssertRule.setMustBeBetween(List.of(0.0, 1000000.0));
     qualityRules.add(multiAssertRule);
 
     odcs.setQuality(qualityRules);
@@ -5908,15 +7130,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract exported =
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
-    assertNotNull(exported.getQuality());
-    assertEquals(3, exported.getQuality().size());
+    assertNull(exported.getQuality());
+    assertEquals(3, exportedQualityRules(exported).size());
 
-    ODCSQualityRule exportedBetweenRule = exported.getQuality().get(0);
+    ODCSQualityRule exportedBetweenRule = exportedQualityRules(exported).get(0);
     assertNotNull(exportedBetweenRule.getMustBeBetween());
     assertEquals(100.0, exportedBetweenRule.getMustBeBetween().get(0));
     assertEquals(10000.0, exportedBetweenRule.getMustBeBetween().get(1));
 
-    ODCSQualityRule exportedNotBetweenRule = exported.getQuality().get(1);
+    ODCSQualityRule exportedNotBetweenRule = exportedQualityRules(exported).get(1);
     assertNotNull(exportedNotBetweenRule.getMustNotBeBetween());
     assertEquals(10.0, exportedNotBetweenRule.getMustNotBeBetween().get(0));
     assertEquals(90.0, exportedNotBetweenRule.getMustNotBeBetween().get(1));
@@ -5995,7 +7217,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setName("Admin User");
     owner.setRole("owner");
     team.add(owner);
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract imported =
         SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -6036,7 +7258,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     reviewer.setRole("reviewer");
     team.add(reviewer);
 
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract imported =
         SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
@@ -6075,7 +7297,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setUsername("admin");
     owner.setRole("owner");
     team.add(owner);
-    odcsWithOwner.setTeam(team);
+    odcsWithOwner.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract updated =
         SdkClients.adminClient()
@@ -6088,9 +7310,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertNotNull(exported);
     assertNotNull(exported.getTeam());
-    assertFalse(exported.getTeam().isEmpty());
+    assertFalse(exported.getTeam().getMembers().isEmpty());
 
-    ODCSTeamMember exportedOwner = exported.getTeam().get(0);
+    ODCSTeamMember exportedOwner = exported.getTeam().getMembers().get(0);
     assertEquals("admin", exportedOwner.getUsername());
     assertEquals("owner", exportedOwner.getRole());
   }
@@ -6113,7 +7335,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setName("Admin User");
     owner.setRole("owner");
     team.add(owner);
-    odcs.setTeam(team);
+    odcs.setTeam(new ODCSTeam().withMembers(team));
 
     // Import
     DataContract imported =
@@ -6127,9 +7349,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
     assertNotNull(exported.getTeam());
-    assertEquals(1, exported.getTeam().size());
-    assertEquals("admin", exported.getTeam().get(0).getUsername());
-    assertEquals("owner", exported.getTeam().get(0).getRole());
+    assertEquals(1, exported.getTeam().getMembers().size());
+    assertEquals("admin", exported.getTeam().getMembers().get(0).getUsername());
+    assertEquals("owner", exported.getTeam().getMembers().get(0).getRole());
   }
 
   @Test
@@ -6185,7 +7407,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     owner.setUsername("admin");
     owner.setRole("owner");
     team.add(owner);
-    initialOdcs.setTeam(team);
+    initialOdcs.setTeam(new ODCSTeam().withMembers(team));
 
     DataContract created =
         SdkClients.adminClient()
@@ -7187,6 +8409,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "        quality:\n"
             + "          - type: library\n"
             + "            metric: nullValues\n"
+            + "            mustBe: 0\n"
             + "            name: email_not_null\n"
             + "      - name: id\n"
             + "        logicalType: integer\n"
@@ -7222,9 +8445,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(1, emailProp.getQuality().size());
     assertEquals("email_not_null", emailProp.getQuality().get(0).getName());
 
-    assertTrue(
-        exported.getQuality().isEmpty(),
-        "Top-level quality should be empty when all rules are column-level");
+    assertNull(
+        exported.getQuality(),
+        "Top-level quality should be absent when all rules are column-level");
   }
 
   @Test
@@ -7878,6 +9101,17 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
           new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
           new Column().withName("updated_at").withDataType(ColumnDataType.TIMESTAMP));
 
+  private static String odcsWithExportableQualityRules(String contractName, String tableName) {
+    return odcsWithQualityRules(contractName, tableName)
+            .replace(
+                "rule: validValues\n            validValues: [open, closed]",
+                "metric: invalidValues\n            arguments:\n              validValues: [open, closed]\n            mustBe: 0")
+            .replace(
+                "metric: freshness\n            mustBeLessOrEqualTo: 24\n            unit: hours",
+                "type: text\n            description: Freshness is defined by the contract SLA")
+        + "slaProperties:\n  - property: freshness\n    value: 24\n    unit: h\n    element: updated_at\n";
+  }
+
   private static String odcsWithQualityRules(String contractName, String tableName) {
     return """
         apiVersion: v3.1.0
@@ -8204,7 +9438,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient()
             .dataContracts()
             .createOrUpdateFromODCSYaml(
-                odcsWithQualityRules(contract.getName(), table.getName()),
+                odcsWithExportableQualityRules(contract.getName(), table.getName()),
                 table.getId(),
                 "table",
                 "merge");
@@ -8455,7 +9689,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient()
             .dataContracts()
             .createOrUpdateFromODCSYaml(
-                odcsWithQualityRules(ns.prefix("odcs_fresh_export"), table.getName()),
+                odcsWithExportableQualityRules(ns.prefix("odcs_fresh_export"), table.getName()),
                 table.getId(),
                 "table");
     String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(contract.getId());
@@ -8556,14 +9790,14 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 "      - name: status\n", "      - name: status\n        businessName: Status\n")
             .replace(
                 "quality:\n  - name: Steward review",
-                "servers:\n  - server: prod\n    type: snowflake\nquality:\n  - name: Steward review");
+                "servers:\n  - server: prod\n    type: snowflake\n    account: sample\n    database: ecommerce\n    schema: shopify\nquality:\n  - name: Steward review");
 
     ContractValidation validation =
         SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
 
     ODCSImportReport report = validation.getOdcsImportReport();
-    assertTrue(validation.getValid());
-    assertTrue(report.getCanImport());
+    assertTrue(validation.getValid(), () -> report.getIssues().toString());
+    assertTrue(report.getCanImport(), () -> report.getIssues().toString());
     assertTrue(report.getCanCreateTestCases());
     assertEquals("v3.1.0", report.getOdcsVersion());
     List<String> reportedFields =
@@ -8629,7 +9863,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testImportODCSReadsPastValuesItCannotRepresent(TestNamespace ns) {
+  void testImportODCSRejectsUnregisteredPublishedProfiles(TestNamespace ns) {
     Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
     String yaml =
         """
@@ -8658,20 +9892,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     ContractValidation validation =
         SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
-    DataContract contract =
-        SdkClients.adminClient().dataContracts().importFromODCSYaml(yaml, table.getId(), "table");
-
-    assertTrue(validation.getOdcsImportReport().getCanImport());
-    List<String> warned =
-        validation.getOdcsImportReport().getIssues().stream()
-            .filter(issue -> issue.getSeverity() == ODCSImportIssueSeverity.WARNING)
-            .map(ODCSImportIssue::getPath)
-            .toList();
-    assertTrue(warned.contains("schema[0].properties[0].logicalType"));
-    assertTrue(warned.contains("slaProperties[0].unit"));
-    assertEquals(ColumnDataType.BIGINT, contract.getSchema().getFirst().getDataType());
-    assertNull(contract.getSla().getRefreshFrequency());
-    assertEquals(30, contract.getSla().getMaxLatency().getValue());
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation.getOdcsImportReport().getIssues().getFirst().getMessage().contains("v3.2.0"));
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataContracts()
+                    .importFromODCSYaml(yaml, table.getId(), "table"));
+    assertEquals(400, error.getStatusCode());
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table"));
   }
 
   @Test

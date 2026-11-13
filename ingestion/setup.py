@@ -46,7 +46,10 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
-    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
+    # pyarrow 26 needs Python >=3.11, so 3.10 stays on the 23.0.1+ range. Every consumer lists
+    # both entries: their markers are mutually exclusive.
+    "pyarrow": "pyarrow>=26.0.0,<27; python_version >= '3.11'",
+    "pyarrow-py310": "pyarrow>=23.0.1,<26; python_version < '3.11'",
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
@@ -110,6 +113,7 @@ COMMONS = {
     "storage-archive": {
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["rarfile"],
         VERSIONS["py7zr"],
         VERSIONS["brotli"],
@@ -122,6 +126,7 @@ COMMONS = {
         VERSIONS["ijson"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
@@ -222,7 +227,7 @@ base_requirements = {
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
     # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
     "sqlalchemy>=2.0.0,<2.1",
-    "collate-sqllineage==2.1.8",
+    "collate-sqllineage==2.1.9",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -238,6 +243,10 @@ base_requirements = {
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",
     "urllib3>=2.8.0",  # CVE-2026-97687/97688/97689: proxy TLS configuration and streaming DoS
+    "oauthlib>=4.0.1",  # GHSA-3jp2-3mrg-2vxc: device-code grant issues a token for any device_code
+    # The fixes below need Python 3.11, so the Python 3.10 fork keeps the vulnerable releases.
+    'dnspython>=2.9.0; python_version >= "3.11"',  # GHSA-45c3-73f7-pv4m: name decompression CPU DoS
+    'filelock>=4.2.1; python_version >= "3.11"',  # GHSA-v4x8-3wr5-3wq8: ReadWriteLock follows planted symlinks
 }
 
 plugins: dict[str, set[str]] = {
@@ -270,6 +279,7 @@ plugins: dict[str, set[str]] = {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["numpy"],
         VERSIONS["sqlalchemy-bigquery"],
     },
@@ -301,7 +311,7 @@ plugins: dict[str, set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "collate-dbt-artifacts-parser",
+        "collate-dbt-artifacts-parser>=0.1.5",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
@@ -490,7 +500,7 @@ plugins: dict[str, set[str]] = {
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
-    "pyarrow": {VERSIONS["pyarrow"]},
+    "pyarrow": {VERSIONS["pyarrow"], VERSIONS["pyarrow-py310"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["preshed"],
@@ -560,12 +570,13 @@ test = {
     "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
-    "collate-dbt-artifacts-parser",
+    "collate-dbt-artifacts-parser>=0.1.5",
     "freezegun",
     VERSIONS["databricks-sdk"],
     VERSIONS["databricks-sql-connector"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
+    VERSIONS["pyarrow-py310"],
     VERSIONS["trino"],
     VERSIONS["spacy"],
     VERSIONS["pydomo"],

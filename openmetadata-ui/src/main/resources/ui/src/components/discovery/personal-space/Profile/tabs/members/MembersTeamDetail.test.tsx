@@ -22,13 +22,16 @@ import React, { ReactElement, ReactNode, useCallback, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
+import { usePersistentStorage } from '../../../../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
+  deleteUserFromTeam,
   getTeams,
   getTeamsAssetCounts,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
+import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
@@ -130,6 +133,8 @@ jest.mock('../../../../../../rest/teamsAPI', () => ({
 
 jest.mock('../../../../../../rest/userAPI', () => ({
   getUsers: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  getUserById: jest.fn(),
+  updateUserDetail: jest.fn().mockResolvedValue({ id: 'me', teams: [] }),
 }));
 
 jest.mock('../../../../../../rest/searchAPI', () => ({
@@ -139,9 +144,18 @@ jest.mock('../../../../../../rest/searchAPI', () => ({
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
 }));
 
-jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'me', teams: [] } }),
-}));
+const mockUpdateCurrentUser = jest.fn();
+jest.mock('../../../../../../hooks/useApplicationStore', () => {
+  const state = {
+    currentUser: { id: 'me', name: 'me', teams: [] },
+    updateCurrentUser: (user: unknown) => mockUpdateCurrentUser(user),
+  };
+
+  return {
+    useApplicationStore: (selector?: (store: typeof state) => unknown) =>
+      selector ? selector(state) : state,
+  };
+});
 
 jest.mock(
   '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -281,6 +295,72 @@ describe('MembersTeamDetail', () => {
     jest.clearAllMocks();
     mockGetContributions.mockReturnValue([]);
     mockGlobalPermissions = {};
+  });
+
+  // The stored user has no teams, so each patch below can only have been built
+  // from the user fetched at the time of the click.
+  describe('join and leave', () => {
+    const renderJoinableTeam = (users: { id: string; type: string }[]) => {
+      mockGetTeamByName.mockResolvedValueOnce({
+        id: '1',
+        name: 'engineering',
+        fullyQualifiedName: 'engineering',
+        teamType: 'Group',
+        isJoinable: true,
+        users,
+        children: [],
+        defaultRoles: [],
+        policies: [],
+        domains: [],
+        owners: [],
+      });
+      renderWithRouter(<HeaderHarness onNavigate={jest.fn()} />);
+    };
+
+    it('leaves by patching the teams the server holds and keeps the stored user in step', async () => {
+      (getUserById as jest.Mock).mockResolvedValueOnce({
+        id: 'me',
+        teams: [
+          { id: 'org', type: 'team' },
+          { id: '1', type: 'team' },
+        ],
+      });
+      renderJoinableTeam([{ id: 'me', type: 'user' }]);
+
+      press(await screen.findByTestId('leave-team-button'));
+
+      await waitFor(() =>
+        expect(updateUserDetail).toHaveBeenCalledWith('me', [
+          { op: 'remove', path: '/teams/1' },
+        ])
+      );
+
+      expect(getUserById).toHaveBeenCalledWith('me', { fields: 'teams' });
+      expect(deleteUserFromTeam).not.toHaveBeenCalled();
+      expect(mockUpdateCurrentUser).toHaveBeenCalledWith({
+        id: 'me',
+        teams: [],
+      });
+    });
+
+    it('joins by appending to the teams the server holds', async () => {
+      (getUserById as jest.Mock).mockResolvedValueOnce({
+        id: 'me',
+        teams: [
+          { id: 'org', type: 'team' },
+          { id: 'other', type: 'team' },
+        ],
+      });
+      renderJoinableTeam([]);
+
+      press(await screen.findByTestId('join-team-button'));
+
+      await waitFor(() =>
+        expect(updateUserDetail).toHaveBeenCalledWith('me', [
+          { op: 'add', path: '/teams/2', value: { id: '1', type: 'team' } },
+        ])
+      );
+    });
   });
 
   describe('delete from the team menu', () => {
@@ -538,8 +618,8 @@ describe('MembersTeamDetail', () => {
       }));
 
     const firstPage = {
-      data: subTeams(10, 'team'),
-      paging: { after: 'cursor-2', total: 25 },
+      data: subTeams(15, 'team'),
+      paging: { after: 'cursor-2', total: 40 },
     };
 
     const latestSubTeamRows = () =>
@@ -547,7 +627,7 @@ describe('MembersTeamDetail', () => {
         .filter(([props]) => props['data-testid'] === 'sub-teams-table')
         .pop()?.[0].dataSource as { name: string }[];
 
-    it('loads ten sub-teams at a time and labels the tab with the full count', async () => {
+    it('loads fifteen sub-teams at a time and labels the tab with the full count', async () => {
       (getTeams as jest.Mock).mockResolvedValue(firstPage);
       renderWithRouter(
         <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
@@ -555,12 +635,12 @@ describe('MembersTeamDetail', () => {
 
       await waitFor(() =>
         expect(getTeams).toHaveBeenCalledWith(
-          expect.objectContaining({ parentTeam: 'engineering', limit: 10 })
+          expect.objectContaining({ parentTeam: 'engineering', limit: 15 })
         )
       );
 
       expect(
-        await screen.findByRole('tab', { name: /label.team-plural \(25\)/ })
+        await screen.findByRole('tab', { name: /label.team-plural \(40\)/ })
       ).toBeInTheDocument();
     });
 
@@ -574,7 +654,7 @@ describe('MembersTeamDetail', () => {
 
       await waitFor(() =>
         expect(getTeams).toHaveBeenLastCalledWith(
-          expect.objectContaining({ after: 'cursor-2', limit: 10 })
+          expect.objectContaining({ after: 'cursor-2', limit: 15 })
         )
       );
     });
@@ -594,7 +674,7 @@ describe('MembersTeamDetail', () => {
       renderWithRouter(
         <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
       );
-      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(10));
+      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(15));
 
       expect(latestSubTeamRows().map(({ name }) => name)).not.toContain(
         'audit-0'
@@ -612,7 +692,7 @@ describe('MembersTeamDetail', () => {
         expect.objectContaining({
           query: '*audit*',
           pageNumber: 1,
-          pageSize: 10,
+          pageSize: 15,
           searchIndex: SearchIndex.TEAM,
           queryFilter: {
             query: { bool: { must: [{ term: { 'parents.id': '1' } }] } },
@@ -624,7 +704,7 @@ describe('MembersTeamDetail', () => {
     it('pages search results by number on the backend', async () => {
       (getTeams as jest.Mock).mockResolvedValue(firstPage);
       (searchQuery as jest.Mock).mockResolvedValue(
-        searchHits(subTeams(10, 'sales'), 25)
+        searchHits(subTeams(15, 'sales'), 40)
       );
       renderWithRouter(
         <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
@@ -661,7 +741,7 @@ describe('MembersTeamDetail', () => {
 
       const [lastParams] = (getTeams as jest.Mock).mock.calls.at(-1);
 
-      expect(lastParams).toEqual(expect.objectContaining({ limit: 10 }));
+      expect(lastParams).toEqual(expect.objectContaining({ limit: 15 }));
       expect(lastParams.after).toBeUndefined();
     });
 
@@ -702,7 +782,7 @@ describe('MembersTeamDetail', () => {
       renderWithRouter(
         <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
       );
-      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(10));
+      await waitFor(() => expect(latestSubTeamRows()).toHaveLength(15));
 
       fireEvent.change(await screen.findByTestId('sub-teams-table-search'), {
         target: { value: 'sales' },
@@ -714,8 +794,8 @@ describe('MembersTeamDetail', () => {
     });
 
     const secondPage = {
-      data: subTeams(10, 'page2'),
-      paging: { before: 'cursor-1', after: 'cursor-3', total: 25 },
+      data: subTeams(15, 'page2'),
+      paging: { before: 'cursor-1', after: 'cursor-3', total: 40 },
     };
 
     it('keeps the page number with its rows when Next is pressed twice', async () => {
@@ -768,7 +848,7 @@ describe('MembersTeamDetail', () => {
 
       await waitFor(() =>
         expect(getTeams).toHaveBeenLastCalledWith(
-          expect.objectContaining({ before: 'cursor-1', limit: 10 })
+          expect.objectContaining({ before: 'cursor-1', limit: 15 })
         )
       );
     });
@@ -800,6 +880,9 @@ describe('MembersTeamDetail', () => {
       expect(
         (getTeams as jest.Mock).mock.calls.at(-1)[0].after
       ).toBeUndefined();
+      expect(
+        usePersistentStorage.getState().getUserPreference('me').globalPageSize
+      ).toBe(25);
     });
 
     it('escapes and encodes the search term for the URL', async () => {

@@ -26,7 +26,7 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedEventSubscription } from '../../../utils/AlertsClassBase.interface';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import AlertDetailsPage from './AlertDetailsPage';
 
@@ -60,7 +60,7 @@ jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
   useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 
-jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
 

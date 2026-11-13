@@ -71,6 +71,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
@@ -132,6 +133,58 @@ class ConceptContextIT extends McpTestBase {
         .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> assertThat(termContext(term).path("totalAssets").asInt()).isEqualTo(1));
+  }
+
+  @Test
+  void pendingDefinitionsKeepTheirStageButHaveNoGovernedConceptContext() throws Exception {
+    String reviewerName = "concept_reviewer_" + suffix;
+    User reviewer =
+        post(
+            "users",
+            new CreateUser()
+                .withName(reviewerName)
+                .withEmail(reviewerName + "@test.openmetadata.org"),
+            User.class);
+    List<EntityReference> reviewers = List.of(reference(reviewer.getId(), "user"));
+    GlossaryTerm pendingTerm =
+        post(
+            "glossaryTerms",
+            new CreateGlossaryTerm()
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withName("PendingDefinition")
+                .withDescription(DEFINITION)
+                .withReviewers(reviewers),
+            GlossaryTerm.class);
+    Metric pendingMetric =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("pending_metric_" + suffix)
+                .withDescription(DEFINITION)
+                .withMetricExpression(new MetricExpression().withCode(EXPRESSION))
+                .withReviewers(reviewers),
+            Metric.class);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      get(
+                              "glossaryTerms/name/" + pendingTerm.getFullyQualifiedName(),
+                              GlossaryTerm.class)
+                          .getEntityStatus())
+                  .isEqualTo(EntityStatus.IN_REVIEW);
+              assertThat(
+                      get("metrics/name/" + pendingMetric.getFullyQualifiedName(), Metric.class)
+                          .getEntityStatus())
+                  .isEqualTo(EntityStatus.IN_REVIEW);
+            });
+    assertThat(termContext(pendingTerm).isMissingNode()).isTrue();
+    assertThat(metricContext(pendingMetric).at("/assetContext/conceptContext").isMissingNode())
+        .isTrue();
+    assertThat(termContext(term).path("definition").asText()).isEqualTo(DEFINITION);
+    assertThat(metricContext(metric).at("/assetContext/conceptContext").isMissingNode()).isFalse();
   }
 
   @Test

@@ -177,6 +177,8 @@ export const styles = sortCx({
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
         'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-700 tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        // A link sits in running text, so its leading icon takes the 18px frame.
+        'tw:*:data-[icon=leading]:size-4.5 tw:*:data-[icon=leading]:p-[0.25px]',
       ].join(' '),
     },
     'primary-destructive': {
@@ -238,6 +240,17 @@ export const styles = sortCx({
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
+    // Neutral text on a warning outline: the action inside a warning notice, which already
+    // carries the colour, so the button only echoes it in its edge.
+    'secondary-warning-outline': {
+      root: [
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-warning-300`,
+        'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:*:data-icon:text-utility-gray-500',
+      ].join(' '),
+    },
     'secondary-brand': {
       root: [
         'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
@@ -276,6 +289,8 @@ export interface CommonProps {
    * beside it (antd's `type="link"`).
    */
   boxed?: boolean;
+  /** Fully rounded ends, for a button inside a pill-shaped notice or toolbar */
+  pill?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
   /**
@@ -343,6 +358,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       noTextPadding,
       boxed,
       ellipsis,
+      pill,
       wrap,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
@@ -413,6 +429,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
+          pill && 'tw:rounded-full tw:before:rounded-full',
           wrap &&
             'tw:min-w-0 tw:justify-start tw:text-start tw:whitespace-normal',
           (loading || (href && (disabled || loading))) &&

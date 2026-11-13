@@ -21,14 +21,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
@@ -63,9 +66,14 @@ public class AIContextFinder {
   private static final int MAX_ASSETS_PER_ITEM = 10;
   private static final String METRIC_HIERARCHY_FIELDS = "parent,childrenCount";
   private static final int MAX_CONTENT_CHARS = 2000;
+  private static final Set<KnowledgeItem.Type> REVIEWED_TYPES =
+      Set.of(KnowledgeItem.Type.GLOSSARY_TERM, KnowledgeItem.Type.METRIC);
 
   private final SubjectContext subjectContext;
   private final Predicate<KnowledgeItem> canView;
+
+  /** Stages read for hits that carry none, so each entity is read at most once per request. */
+  private final Map<UUID, Boolean> governedEntities = new HashMap<>();
 
   public AIContextFinder() {
     this(null, item -> true);
@@ -142,9 +150,9 @@ public class AIContextFinder {
    * article matches once per relevant chunk and would otherwise appear repeatedly, blowing the
    * caller's size budget with duplicates; first (highest-scoring) chunk wins. Type is part of the
    * key because knowledge types can share an FQN (a metric and a page both named "Revenue") — an
-   * FQN-only key would drop the second item along with the assets it routes to. A hit the caller
-   * cannot view is skipped before routing, so the assets it would route to are not suggested
-   * through it.
+   * FQN-only key would drop the second item along with the assets it routes to. A hit that is not
+   * Approved, or that the caller cannot view, is skipped before routing, so the assets it would
+   * route to are not suggested through it.
    */
   void collectHit(
       Map<String, Object> hit,
@@ -153,7 +161,9 @@ public class AIContextFinder {
     KnowledgeItem item = toKnowledgeItem(hit);
     if (item != null) {
       String itemKey = item.getType().value() + ":" + item.getFullyQualifiedName();
-      if (!items.containsKey(itemKey) && canView.test(item)) {
+      if (!items.containsKey(itemKey)
+          && isApprovedForContext(hit, item.getType())
+          && canView.test(item)) {
         items.put(itemKey, item);
         for (CandidateAsset asset : routeToAssets(hit, item)) {
           // FQNs are only unique per entity type (a chart and a dashboard under the same service
@@ -188,7 +198,7 @@ public class AIContextFinder {
     KnowledgeItem item = null;
     String fqn = asString(hit.get("fullyQualifiedName"));
     KnowledgeItem.Type kind = knowledgeType(asString(hit.get("entityType")));
-    if (!nullOrEmpty(fqn) && kind != null && isApprovedForContext(hit, kind)) {
+    if (!nullOrEmpty(fqn) && kind != null) {
       item =
           new KnowledgeItem()
               .withType(kind)
@@ -201,15 +211,34 @@ public class AIContextFinder {
   }
 
   /**
-   * Draft / in-review glossary terms are untrusted as business-rule context — mirror the Approved
-   * filter the asset-anchored path applies in {@link AIContextBuilder}. Other knowledge types keep
-   * their existing behavior (a missing status means no review workflow applies).
+   * Draft / in-review glossary terms and metrics are untrusted as business-rule context — mirror the
+   * Approved filter the asset-anchored path applies in {@link AIContextBuilder}. Articles keep their
+   * existing behavior. Vector chunk docs carry no stage, so a term or metric hit without one is
+   * judged on its entity, and dropped when that cannot be read
+   * (ADR:2026-11-03-only-approved-definitions-reach-ai-context-as-governed-knowledge).
    */
-  static boolean isApprovedForContext(Map<String, Object> hit, KnowledgeItem.Type kind) {
+  boolean isApprovedForContext(Map<String, Object> hit, KnowledgeItem.Type kind) {
     String status = asString(hit.get("entityStatus"));
-    return kind != KnowledgeItem.Type.GLOSSARY_TERM
-        || nullOrEmpty(status)
-        || EntityStatus.APPROVED.value().equals(status);
+    return !REVIEWED_TYPES.contains(kind)
+        || (nullOrEmpty(status)
+            ? governedEntities.computeIfAbsent(
+                resolveKnowledgeId(hit), id -> isGovernedEntity(kind, id))
+            : EntityStatus.APPROVED.value().equals(status));
+  }
+
+  /** One unreadable entity drops its hit rather than failing the whole search. */
+  private static boolean isGovernedEntity(KnowledgeItem.Type kind, UUID id) {
+    boolean governed = false;
+    if (id != null) {
+      try {
+        EntityInterface<?> entity =
+            Entity.getEntityOrNull(kind.value(), id, "", Include.NON_DELETED);
+        governed = entity != null && AIContextBuilder.isGovernedDefinition(entity);
+      } catch (RuntimeException e) {
+        LOG.warn("AIContext find: dropping {} {}: {}", kind.value(), id, e.getMessage());
+      }
+    }
+    return governed;
   }
 
   static KnowledgeItem.Type knowledgeType(String entityType) {

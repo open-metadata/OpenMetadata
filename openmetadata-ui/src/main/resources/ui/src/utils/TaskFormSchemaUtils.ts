@@ -386,10 +386,7 @@ const resolveFieldPath = (
   fieldPathField: string,
   normalizedPayload: NormalizedTaskPayload
 ) =>
-  payload[fieldPathField] ??
-  payload.fieldPath ??
-  payload.field ??
-  normalizedPayload.fieldPath;
+  payload[fieldPathField] ?? payload.fieldPath ?? normalizedPayload.fieldPath;
 
 const buildEditableFieldPayload = (
   payload: TaskPayload,

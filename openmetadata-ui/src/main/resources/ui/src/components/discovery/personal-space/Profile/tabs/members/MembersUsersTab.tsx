@@ -24,11 +24,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -146,7 +142,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
         <PaginationCardWithControls
           page={usersPage}
           pageSize={usersPageSize}
-          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={Math.max(
             1,
             Math.ceil((usersPaging.total ?? 0) / usersPageSize)

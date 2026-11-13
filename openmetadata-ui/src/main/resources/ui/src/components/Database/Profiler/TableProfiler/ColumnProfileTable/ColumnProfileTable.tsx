@@ -27,7 +27,6 @@ import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
   EntityTabs,
   EntityType,
@@ -105,7 +104,7 @@ const ColumnProfileTable = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const tableDetailsWithColumns = useMemo(
     () => ({ ...tableProfiler, columns: data as Column[] } as TableType),

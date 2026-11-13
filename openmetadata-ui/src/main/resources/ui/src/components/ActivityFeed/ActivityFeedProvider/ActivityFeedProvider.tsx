@@ -549,6 +549,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setTasks((prev) =>
       prev.map((taskItem) => (taskItem.id === task.id ? task : taskItem))
     );
+    // The open drawer renders selectedTask, not the list row.
+    setSelectedTask((current) => (current?.id === task.id ? task : current));
   }, []);
 
   const deleteFeed = useCallback(

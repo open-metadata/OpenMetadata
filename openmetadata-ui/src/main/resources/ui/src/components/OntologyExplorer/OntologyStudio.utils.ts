@@ -996,11 +996,16 @@ export function revealNativeTreeSelection(
     }
   }
   const key = path ? nativeTreePlacementKey(index, path) : undefined;
+  const revealed = { ...disclosure, overrides };
+  // A window that starts at the selection hides every row before it, so it is
+  // only used when the whole tree does not fit in one window.
+  const fitsOneWindow = !getNativeTreePage(index, revealed).next;
 
   return {
     index,
-    disclosure: { ...disclosure, overrides },
-    anchor: path ? nativeTreeCursorForPath(index, path) : undefined,
+    disclosure: revealed,
+    anchor:
+      path && !fitsOneWindow ? nativeTreeCursorForPath(index, path) : undefined,
     direction: 'forward',
     selectedId,
     selectedKey: key,

@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
 import OntologyHealthPanel from './OntologyHealthPanel';
@@ -59,6 +61,15 @@ describe('OntologyHealthPanel', () => {
     expect(onConnect).toHaveBeenCalledWith(isolatedTerms[1]);
   });
 
+  it('lists isolated terms without a Connect action when the viewer cannot edit', () => {
+    render(<OntologyHealthPanel health={health} />);
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+
+    expect(screen.getByText('Account')).toBeInTheDocument();
+    expect(screen.queryByTestId('ontology-connect-term-1')).toBeNull();
+    expect(screen.queryByRole('button', { name: /label.connect/ })).toBeNull();
+  });
+
   it('prefers the explicit isolated count over the list length', () => {
     render(
       <OntologyHealthPanel
@@ -86,19 +97,21 @@ describe('OntologyHealthPanel', () => {
       />
     );
 
-    expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
-      '0'
-    );
+    expect(
+      screen.getByTestId('ontology-health-all-connected')
+    ).toHaveTextContent('message.all-ontology-terms-connected');
+    expect(
+      screen.queryByTestId('ontology-isolated-count')
+    ).not.toBeInTheDocument();
     expect(screen.getByText('label.healthy')).toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-health-review')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.expand' }));
-
     expect(
-      screen.getByText('message.all-ontology-terms-connected')
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: 'label.expand' })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.isolated-term-plural')).toBeNull();
   });
 
   it('minimises to a compact summary and restores the card', () => {
@@ -142,6 +155,55 @@ describe('OntologyHealthPanel', () => {
       expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
         '2'
       );
+    });
+  });
+
+  describe('minimized choice per user', () => {
+    const signIn = (name: string) =>
+      useApplicationStore.setState({
+        currentUser: { id: name, name } as never,
+      });
+
+    afterEach(() => {
+      usePersistentStorage.setState({ preferences: {} });
+      useApplicationStore.setState({ currentUser: undefined });
+    });
+
+    it('opens minimized again for the user who minimized the sidebar card, and open for another user', () => {
+      signIn('steward');
+      render(<OntologyHealthPanel health={health} placement="sidebar" />);
+      fireEvent.click(screen.getByRole('button', { name: 'label.minimize' }));
+
+      expect(screen.getByTestId('ontology-health-restore')).toBeVisible();
+
+      cleanup();
+      render(<OntologyHealthPanel health={health} placement="sidebar" />);
+
+      expect(screen.getByTestId('ontology-health-restore')).toBeVisible();
+
+      cleanup();
+      signIn('other');
+      render(<OntologyHealthPanel health={health} placement="sidebar" />);
+
+      expect(
+        screen.queryByTestId('ontology-health-restore')
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('label.ontology-health')).toBeVisible();
+    });
+
+    it('opens the card again once the user expands it', () => {
+      signIn('steward');
+      usePersistentStorage.setState({
+        preferences: {
+          steward: { isOntologyHealthMinimized: true } as never,
+        },
+      });
+      render(<OntologyHealthPanel health={health} placement="sidebar" />);
+      fireEvent.click(screen.getByTestId('ontology-health-restore'));
+      cleanup();
+      render(<OntologyHealthPanel health={health} placement="sidebar" />);
+
+      expect(screen.getByText('label.ontology-health')).toBeVisible();
     });
   });
 });

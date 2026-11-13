@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import { Alert, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
-import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
 import './limit-banner.less';
 
 export const LimitBanner = () => {
@@ -31,7 +30,7 @@ export const LimitBanner = () => {
       })}
       hidden={!bannerDetails}>
       <div className="d-flex ">
-        <WarningIcon className="tw:self-center tw:size-6 tw:shrink-0" />
+        <Alert className="tw:self-center tw:shrink-0" size={24} />
         <div className="p-l-sm">
           <p className="pricing-header">{bannerDetails?.header}</p>
           <p className="pricing-subheader">

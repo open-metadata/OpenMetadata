@@ -253,5 +253,90 @@ test.describe(
         await anchor.delete(api);
       }
     });
+
+    test('a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL', async ({
+      isolatedUserPage: page,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_native_live_retry_${uuid()}`;
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: { name, iri: `urn:${name}`, namespace: `urn:${name}:` },
+        }),
+        'Create Live data retry ontology'
+      );
+      const anchor = new TableClass();
+      let table: Table | undefined;
+      try {
+        await anchor.create(api);
+        const concept = await createConcept(
+          api,
+          ontology,
+          'FundsTransfer',
+          'Funds Transfer'
+        );
+        const transferId = await createProperty(api, ontology, {
+          name: 'transferId',
+          kind: Kind.Data,
+          domain: [concept.iri],
+          range: [XSD_STRING],
+        });
+        table = await createTable(
+          api,
+          anchor.schemaResponseData.fullyQualifiedName ?? '',
+          'transfers',
+          ['transfer_id']
+        );
+        await bindColumns(api, concept, table, [
+          { property: transferId, column: 'transfer_id' },
+        ]);
+
+        const bindingsUrl = `**/api/v1/ontologyConcepts/${concept.id}/bindings`;
+        await page.route(bindingsUrl, (route) =>
+          route.request().method() === 'GET'
+            ? route.fulfill({
+                status: 500,
+                contentType: 'application/json',
+                body: JSON.stringify({ code: 500, message: 'bindings down' }),
+              })
+            : route.continue()
+        );
+        await page.goto(
+          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}`
+        );
+        const liveData = page
+          .getByTestId('ontology-concept-inspector')
+          .getByTestId('ontology-concept-live-data');
+
+        await expect(
+          liveData.getByTestId('ontology-live-data-retry-bindings')
+        ).toBeVisible();
+        await expect(liveData).not.toContainText(
+          'Bind this concept to a table'
+        );
+        await expect(
+          liveData.getByTestId('ontology-live-data-sql')
+        ).toHaveCount(0);
+
+        await page.unroute(bindingsUrl);
+        await liveData.getByTestId('ontology-live-data-retry-bindings').click();
+
+        await expect(
+          liveData.getByTestId('ontology-live-data-sql')
+        ).toContainText('SELECT `transfer_id`');
+      } finally {
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true&hardDelete=true`
+        );
+        if (table) {
+          await deleteFixtureEntity(
+            api,
+            `/api/v1/tables/${table.id}?hardDelete=true`
+          );
+        }
+        await anchor.delete(api);
+      }
+    });
   }
 );

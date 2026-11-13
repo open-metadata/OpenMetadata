@@ -13,7 +13,7 @@
 
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   ChevronRight,
   Copy01,
   Lightbulb03,
@@ -98,7 +98,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
       <Box
         align="center"
         className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
-        <AlertTriangle className={accentIconClass} size={15} />
+        <Alert className={accentIconClass} size={15} />
         <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>

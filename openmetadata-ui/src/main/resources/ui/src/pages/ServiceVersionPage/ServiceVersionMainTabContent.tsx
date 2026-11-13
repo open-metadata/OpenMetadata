@@ -16,7 +16,6 @@ import { Assets } from '@openmetadata/ui-core-components/icons';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
-import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,12 +24,12 @@ import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicePageData } from '../../interface/platform/service.interface';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { getCountLabel } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -41,6 +40,7 @@ function ServiceVersionMainTabContent({
   data,
   isServiceLoading,
   paging,
+  pageSize,
   pagingHandler,
   currentPage,
   serviceDetails,
@@ -104,10 +104,8 @@ function ServiceVersionMainTabContent({
                 customPaginationProps={{
                   currentPage,
                   isLoading: isServiceLoading,
-                  showPagination:
-                    Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                    !isEmpty(data),
-                  pageSize: PAGE_SIZE,
+                  showPagination: shouldShowPager(data),
+                  pageSize,
                   paging,
                   pagingHandler,
                 }}

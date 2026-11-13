@@ -1,7 +1,7 @@
 # Use native TypeScript for UI validation and retain the JavaScript API for tooling
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-25 (initial) · v2 2026-10-25 (optional tsrs checks) · v3 2026-10-26 (type compatibility cleanup)
+- **Revisions:** v1 2026-10-25 (initial) · v2 2026-10-25 (optional tsrs checks) · v3 2026-10-26 (type compatibility cleanup) · v4 2026-11-04 (i18next 26 peer range)
 - **Deciders:** UI maintainers
 - **Guard:** UI compiler scripts and core yarn test:native-build
 - **Related:** [Microsoft TypeScript](https://github.com/microsoft/typescript-go)
@@ -81,3 +81,12 @@ Core builds use i18next 25 declarations to match react-i18next. The public
 translation initializer requires only the resource-registration methods it uses,
 with no dependency on their version-specific return value. Its peer range continues
 to support i18next 21 hosts such as Collate, alongside i18next 25.
+
+## Amendment: i18next 26 peer range
+
+i18next releases before 26.4.4 carry defects fixed upstream, so the core peer
+range narrows to ^26.7.1 and drops i18next 21 and 25 hosts, including both Collate
+apps until they upgrade. The application depends on the same range and pins 26.7.1
+in resolutions, so the transitive copy from the query builder dedupes onto it.
+Core builds use i18next 26 declarations; react-i18next stays on 15.x, whose peer
+range accepts i18next 26.

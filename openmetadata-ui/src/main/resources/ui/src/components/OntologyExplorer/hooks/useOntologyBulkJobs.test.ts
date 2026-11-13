@@ -71,17 +71,14 @@ describe('useOntologyBulkJobs', () => {
     jest.useRealTimers();
   });
 
-  it('filters returned jobs to those matching the passed glossaryId', async () => {
-    mockListResolves([
-      makeJob({ id: 1, glossary: { id: GLOSSARY_ID, type: 'glossary' } }),
-      makeJob({ id: 2, glossary: { id: 'other-glossary', type: 'glossary' } }),
-      makeJob({ id: 3, glossary: { id: GLOSSARY_ID, type: 'glossary' } }),
-    ]);
+  it('passes the glossaryId to the API and uses the server-filtered response without further client-side filtering', async () => {
+    mockListResolves([makeJob({ id: 1 }), makeJob({ id: 3 })]);
 
     const { result } = renderHook(() => useOntologyBulkJobs(GLOSSARY_ID));
 
     await waitFor(() => expect(result.current.jobs).toHaveLength(2));
 
+    expect(mockList).toHaveBeenCalledWith(GLOSSARY_ID);
     expect(result.current.jobs.map((job) => job.id)).toEqual([1, 3]);
     expect(result.current.hasLoadError).toBe(false);
   });

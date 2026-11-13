@@ -12,6 +12,7 @@
  */
 
 import { Box, Tooltip } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
@@ -25,7 +26,11 @@ import { TreeNode } from '../interface/tree.interface';
 import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
-import { getStatusBadgeIcon } from './PipelineDetailsUtils';
+import {
+  getStatusBadgeClassName,
+  getStatusBadgeIcon,
+} from './PipelineDetailsUtils';
+import { getSafeHttpUrl } from './StringUtils';
 interface StatusIndicatorInterface {
   status: StatusType;
 }
@@ -40,6 +45,9 @@ export interface ViewDataInterface {
   startTime?: number;
   endTime?: number;
   duration?: string;
+  rowsRead?: number;
+  rowsWritten?: number;
+  logLink?: string;
 }
 
 const StatusBadge = ({ status }: { status?: StatusType }) => {
@@ -48,9 +56,12 @@ const StatusBadge = ({ status }: { status?: StatusType }) => {
   return (
     <Badge
       aria-label="result"
-      // the badge supplies its own colours; stop currentColor tinting it
-      className="tw:align-middle tw:size-6 tw:shrink-0 tw:text-transparent"
+      className={classNames(
+        'tw:align-middle tw:shrink-0',
+        getStatusBadgeClassName(status)
+      )}
       role="img"
+      size={24}
     />
   );
 };
@@ -67,9 +78,12 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => {
       itemClassName="layout-space-item">
       <StatusBadgeIcon
         aria-label="result"
-        // the badge supplies its own colours; stop currentColor tinting it
-        className="tw:align-middle tw:size-4 tw:shrink-0 tw:text-transparent"
+        className={classNames(
+          'tw:align-middle tw:shrink-0',
+          getStatusBadgeClassName(status)
+        )}
         role="img"
+        size={16}
       />
       <p>
         {status === StatusType.Successful
@@ -103,8 +117,16 @@ export const getTableViewData = (
     execution.taskStatus?.map((execute: TaskStatus) => {
       const startTime = execute.startTime;
       const endTime = execute.endTime;
-      const duration =
-        startTime && endTime ? formatDuration(endTime - startTime) : '--';
+      const executionTimeMs = execute.metrics?.executionTimeMs;
+      // Wall-clock duration wins; the producer-reported execution time only
+      // fills the gap when start/end are missing, so the two never compete for
+      // a column (ADR:2026-11-04-pipeline-execution-metric-columns-render-only-when-reported).
+      let duration = '--';
+      if (startTime && endTime) {
+        duration = formatDuration(endTime - startTime);
+      } else if (!isUndefined(executionTimeMs)) {
+        duration = formatDuration(executionTimeMs);
+      }
 
       viewData.push({
         name: execute.name,
@@ -116,6 +138,9 @@ export const getTableViewData = (
         startTime,
         endTime,
         duration,
+        rowsRead: execute.metrics?.rowsRead,
+        rowsWritten: execute.metrics?.rowsWritten,
+        logLink: getSafeHttpUrl(execute.logLink),
       });
     });
   });
@@ -154,49 +179,39 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
-// Function to build a tree for all nodes
-export const buildCompleteTree = (
+type ViewElement = { key: string; value: React.ReactNode };
+
+const createNode = (
+  nodeKey: string,
+  title: React.ReactNode,
+  icon: React.ReactNode | null
+): TreeNode => {
+  if (icon != null) {
+    return { key: nodeKey, title, children: [], icon };
+  }
+
+  return { key: nodeKey, title, children: [] };
+};
+
+export function buildCompleteTree(
   data: Task[],
-  viewElements: {
-    key: string;
-    value: React.ReactNode;
-  }[],
+  viewElements: ViewElement[],
   icon: React.ReactNode | null,
   key: string,
-  parentKey: string
-) => {
-  let node: TreeNode;
-
+  parentKey: string,
+  expanded = new Set<string>()
+): TreeNode {
   const nodeKey: string = parentKey + '-' + key;
-
-  if (icon != null) {
-    node = {
-      key: nodeKey,
-      title: viewElements.find((item) => item.key === key)?.value ?? null,
-      children: [],
-      icon,
-    };
-  } else {
-    node = {
-      key: nodeKey,
-      title: viewElements.find((item) => item.key === key)?.value ?? null,
-      children: [],
-    };
-  }
+  const title = viewElements.find((item) => item.key === key)?.value ?? null;
+  const node = createNode(nodeKey, title, icon);
   const entry = data.find((item) => item.name === key);
 
-  if (entry) {
-    const childrenKeys = entry.downstreamTasks ?? [];
-
-    for (const childKey of childrenKeys) {
-      const childNode = buildCompleteTree(
-        data,
-        viewElements,
-        icon,
-        childKey,
-        parentKey + '-' + entry.name
+  if (entry && !expanded.has(key)) {
+    expanded.add(key);
+    for (const childKey of new Set(entry.downstreamTasks ?? [])) {
+      node.children?.push(
+        buildCompleteTree(data, viewElements, icon, childKey, nodeKey, expanded)
       );
-      node.children?.push(childNode);
     }
   }
 
@@ -205,15 +220,13 @@ export const buildCompleteTree = (
   }
 
   return node;
-};
+}
 
 export const getTreeData = (
   tasks: Task[],
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  const treeDataList: TreeNode[] = [];
-  const treeLabelList: TreeNode[] = [];
 
   // map execution element to task name
   const viewElements = map(
@@ -281,22 +294,39 @@ export const getTreeData = (
     labelElements.push(object);
   });
 
-  const roots: string[] = [];
-
-  for (const task of tasks) {
-    if (!checkIsDownStreamTask(task, tasks)) {
-      roots.push(task.name);
-    }
-  }
-
-  roots.forEach((taskName) => {
-    treeDataList.push(
-      buildCompleteTree(tasks, viewElements, null, taskName, 'root')
+  const roots = new Set(
+    tasks
+      .filter((task) => !checkIsDownStreamTask(task, tasks))
+      .map((task) => task.name)
+  );
+  const buildTreeList = (
+    elements: ViewElement[],
+    nodeIcon: React.ReactNode | null
+  ) => {
+    const expanded = new Set<string>();
+    const trees = [...roots].map((taskName) =>
+      buildCompleteTree(tasks, elements, nodeIcon, taskName, 'root', expanded)
     );
-    treeLabelList.push(
-      buildCompleteTree(tasks, labelElements, icon, taskName, 'root')
-    );
-  });
+    tasks.forEach((task) => {
+      if (!expanded.has(task.name)) {
+        trees.push(
+          buildCompleteTree(
+            tasks,
+            elements,
+            nodeIcon,
+            task.name,
+            'root',
+            expanded
+          )
+        );
+      }
+    });
 
-  return { treeDataList, treeLabelList };
+    return trees;
+  };
+
+  return {
+    treeDataList: buildTreeList(viewElements, null),
+    treeLabelList: buildTreeList(labelElements, icon),
+  };
 };

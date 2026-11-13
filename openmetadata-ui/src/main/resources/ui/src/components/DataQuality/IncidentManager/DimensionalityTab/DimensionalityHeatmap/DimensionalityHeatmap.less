@@ -25,18 +25,37 @@
   &__labels-column {
     flex-shrink: 0;
     width: 150px;
-    background-color: var(--tw-color-bg-primary);
   }
 
   &__scroll-wrapper {
     flex: 1;
     position: relative;
     overflow: hidden;
+
+    &:has(.dimensionality-heatmap__scroll-indicator--left) {
+      --heatmap-fade-left: calc(var(--tw-spacing) * 15);
+    }
+
+    &:has(.dimensionality-heatmap__scroll-indicator--right) {
+      --heatmap-fade-right: calc(var(--tw-spacing) * 15);
+    }
   }
 
+  // Fade the cells out under the scroll indicators with a mask rather than a
+  // gradient overlay, so the edge blends into whatever surface hosts the
+  // heatmap (white shell in light, canvas in dark) without naming a colour.
   &__scroll-container {
     overflow-x: auto;
     overflow-y: hidden;
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--heatmap-fade-left, 0px) * 0.6),
+      black var(--heatmap-fade-left, 0px),
+      black calc(100% - var(--heatmap-fade-right, 0px)),
+      transparent calc(100% - var(--heatmap-fade-right, 0px) * 0.6),
+      transparent 100%
+    );
 
     &.is-scrolling {
       .dimensionality-heatmap__cell,
@@ -52,7 +71,6 @@
     justify-content: flex-start;
     height: 30px;
     padding-bottom: var(--om-space-2);
-    background-color: var(--tw-color-bg-primary);
   }
 
   &__header-row {
@@ -82,8 +100,7 @@
     line-height: 20px;
     font-size: var(--om-font-size-xs);
     font-weight: var(--om-font-weight-medium);
-    color: var(--om-legacy-color-111827);
-    background-color: var(--tw-color-bg-primary);
+    color: var(--tw-text-color-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -134,99 +151,32 @@
     }
   }
 
+  // Holds the scroll button over the faded edge; only the button takes the
+  // pointer, so the cells under the fade stay hoverable.
   &__scroll-indicator {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 60px;
-    cursor: pointer;
+    display: flex;
+    align-items: center;
     z-index: var(--om-z-1);
-    pointer-events: auto;
-    border: none;
-    padding: 0;
-    font: inherit;
-    background: transparent;
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
 
     &--left {
       left: 0;
-      background: linear-gradient(
-        to left,
-        var(--om-legacy-color-255-255-255-0) 0%,
-        var(--om-legacy-color-255-255-255-0-8) 20%,
-        var(--om-legacy-color-255-255-255-0-95) 40%,
-        @white 60%
-      );
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: var(--tw-color-bg-primary);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-15);
-        transition: all var(--om-duration-200) ease;
-      }
-
-      &:hover::after {
-        box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-2);
-        transform: translateY(-50%) scale(1.05);
-      }
-
-      svg {
-        position: absolute;
-        left: 16px;
-        top: 50%;
-        transform: translateY(-50%) rotate(180deg);
-        width: 14px;
-        height: 14px;
-        color: @grey-7;
-        z-index: var(--om-z-1);
-      }
+      justify-content: flex-start;
+      padding-left: calc(var(--tw-spacing) * 2);
     }
 
     &--right {
       right: 0;
-      background: linear-gradient(
-        to right,
-        var(--om-legacy-color-255-255-255-0) 0%,
-        var(--om-legacy-color-255-255-255-0-8) 20%,
-        var(--om-legacy-color-255-255-255-0-95) 40%,
-        @white 60%
-      );
-
-      &::after {
-        content: '';
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: var(--tw-color-bg-primary);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-15);
-        transition: all var(--om-duration-200) ease;
-      }
-
-      &:hover::after {
-        box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-2);
-        transform: translateY(-50%) scale(1.05);
-      }
-
-      svg {
-        position: absolute;
-        right: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        color: @grey-7;
-        z-index: var(--om-z-1);
-      }
+      justify-content: flex-end;
+      padding-right: calc(var(--tw-spacing) * 2);
     }
   }
 
@@ -285,7 +235,7 @@
     align-items: center;
     justify-content: center;
     padding: var(--om-space-40);
-    color: var(--om-legacy-color-6b7280);
+    color: var(--tw-text-color-tertiary);
     font-size: var(--om-font-size-sm);
   }
 }

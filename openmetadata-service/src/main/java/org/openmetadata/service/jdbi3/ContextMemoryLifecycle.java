@@ -167,7 +167,7 @@ public final class ContextMemoryLifecycle {
     }
   }
 
-  private static List<MemoryDispute> addedDisputes(ContextMemory original, ContextMemory updated) {
+  static List<MemoryDispute> addedDisputes(ContextMemory original, ContextMemory updated) {
     List<MemoryDispute> existing = listOrEmpty(original == null ? null : original.getDisputes());
     return listOrEmpty(updated.getDisputes()).stream()
         .filter(dispute -> !existing.contains(dispute))

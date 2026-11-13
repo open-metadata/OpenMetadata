@@ -13,11 +13,10 @@
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
 
+import { CheckCircle02, XCircle } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-badge.svg';
-import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/success-badge.svg';
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -55,20 +54,18 @@ export const UserImportResult = ({
               itemClassName="layout-space-item"
               style={{ maxWidth: 200 }}>
               {status === Status.Success && (
-                <SuccessBadgeIcon
-                  className="m-t-xss"
+                <CheckCircle02
+                  className="m-t-xss tw:text-utility-green-500"
                   data-testid="success-badge"
-                  height={16}
-                  width={16}
+                  size={16}
                 />
               )}
               {status === Status.Failure && (
                 <>
-                  <FailBadgeIcon
-                    className="m-t-xss"
+                  <XCircle
+                    className="m-t-xss tw:text-utility-error-600"
                     data-testid="failure-badge"
-                    height={16}
-                    width={16}
+                    size={16}
                   />
                   {record.details}
                 </>

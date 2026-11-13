@@ -94,6 +94,9 @@ TARGET_MS = 20 * 60 * 1000
 # 19-minute budget feasible again.
 COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
+# Four Linux visual shards sustained 70–74% of ideal worker parallelism in
+# run 40957818435; reserve browser startup and capture scheduling overhead.
+VISUAL_EFFICIENCY = 0.70
 # Raised 24 → 28 together with the budget revert above. Current chromium
 # content (~71,700 predicted worker-seconds) needs 25 shards at a
 # 19-minute budget — over the old cap, which is exactly why #30784 had to
@@ -123,6 +126,10 @@ CHECKED_IN_TIMING_BASELINE = (
     Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
 )
 AUDITED_PARALLEL_SUITES = {
+    # Each connector scene owns its page and read fixtures; splitting the
+    # light/dark describes keeps the expanded branch matrix within the budget.
+    ("VisualRegression/connectionBranches.spec.ts", "Connection branches light"),
+    ("VisualRegression/connectionBranches.spec.ts", "Connection branches dark"),
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     # Six long-running tests (each 5-10 min per test.setTimeout) inside one
     # top-level describe. Left as a single atomic unit, its total weight
@@ -656,6 +663,9 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         "ingestion",
         "reindex",
         "search-rbac",
+        # Visual states own their page and HTTP fixtures. Split the growing
+        # catalog within the existing budget instead of lengthening its job.
+        "visual",
     }:
         return (1, 8) if mode == "full" else (1, 2)
     return (1, 1)
@@ -665,12 +675,16 @@ def shard_budget_ms_for_lane(lane: str) -> int:
     return COMMON_SHARD_BUDGET_MS if lane == "chromium" else TARGET_MS
 
 
+def lane_efficiency(lane: str | None) -> float:
+    return VISUAL_EFFICIENCY if lane == "visual" else EFFICIENCY
+
+
 def shard_count(units: list[Unit], lane: str, mode: str) -> int:
     workers = LANE_WORKERS.get(lane, 3)
     minimum, maximum = lane_bounds(lane, mode)
     total_weight = sum(unit.weight_ms for unit in units)
     calculated = math.ceil(
-        total_weight / (workers * shard_budget_ms_for_lane(lane) * EFFICIENCY)
+        total_weight / (workers * shard_budget_ms_for_lane(lane) * lane_efficiency(lane))
     )
     return max(minimum, min(maximum, max(1, calculated)))
 
@@ -687,9 +701,13 @@ def assign_lpt(units: list[Unit], count: int) -> list[list[Unit]]:
     return shards
 
 
-def predicted_execution_ms(units: list[Unit], workers: int) -> int:
+def predicted_execution_ms(
+    units: list[Unit], workers: int, lane: str | None = None
+) -> int:
     return max(
-        math.ceil(sum(unit.weight_ms for unit in units) / (workers * EFFICIENCY)),
+        math.ceil(
+            sum(unit.weight_ms for unit in units) / (workers * lane_efficiency(lane))
+        ),
         max((unit.weight_ms for unit in units), default=0),
     )
 
@@ -707,11 +725,11 @@ def assign_lane_within_budget(
     budget_ms = shard_budget_ms_for_lane(lane)
     while True:
         shards = [shard for shard in assign_lpt(units, count) if shard]
-        if all(predicted_execution_ms(shard, workers) <= budget_ms for shard in shards):
+        if all(predicted_execution_ms(shard, workers, lane) <= budget_ms for shard in shards):
             return shards
         if count >= maximum:
             heaviest_ms = max(
-                predicted_execution_ms(shard, workers) for shard in shards
+                predicted_execution_ms(shard, workers, lane) for shard in shards
             )
             raise SystemExit(
                 f"Lane {lane} needs more than {maximum} shards to stay within the "
@@ -728,7 +746,7 @@ def write_plan(
     shard_id = f"{lane}-{index + 1:02d}"
     workers = LANE_WORKERS.get(lane, 3)
     total_weight_ms = sum(unit.weight_ms for unit in units)
-    predicted_ms = predicted_execution_ms(units, workers)
+    predicted_ms = predicted_execution_ms(units, workers, lane)
     budget_ms = shard_budget_ms_for_lane(lane)
     if predicted_ms > budget_ms:
         raise SystemExit(
@@ -820,8 +838,8 @@ def main() -> None:
     # below requires that full-mode planning stay unblocked even when a
     # newly re-enabled suite has no baseline. In full mode, the softer
     # emit_unweighted_warnings above still surfaces the issue as a warning.
-    # Gated lanes are single-shard, so an unweighted test cannot push a shard
-    # over budget there.
+    # Gated lanes always select their complete catalog. Missing timings use
+    # fallback weights; the unit and shard budget checks still apply below.
     stale_files = (
         stale_baseline_files_in_plan(
             [unit for unit in units if PROJECT_LANES[unit.project] not in GATED_LANES],

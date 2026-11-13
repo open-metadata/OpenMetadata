@@ -1,8 +1,11 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,6 +20,7 @@ import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
@@ -25,6 +29,7 @@ import org.openmetadata.service.ontology.OntologyReferences;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 
 /** Reads only affected definitions and their semantic context under the ontology's write lock. */
 final class OntologyWorkingModel {
@@ -40,6 +45,7 @@ final class OntologyWorkingModel {
           "inverse",
           "propertyChain",
           "disjointWith",
+          "superProperties",
           "characteristics",
           "enumValues",
           "replacedBy",
@@ -49,7 +55,7 @@ final class OntologyWorkingModel {
           "propertyIri",
           "targetIri",
           "literal");
-  private static final int LIMIT = OntologyReleaseManifest.MAX_MEMBERS;
+  private static final int LIMIT = OntologyWriteClosureLimits.WORKING_MODEL_CLOSURE;
   private final CollectionDAO dao;
 
   record Change(OntologyDefinition before, OntologyDefinition after) {}
@@ -59,7 +65,7 @@ final class OntologyWorkingModel {
   }
 
   void requireValid(final UUID ontologyId, final List<Change> changes) {
-    final var context = new Context(ontologyId, true);
+    final var context = new Context(ontologyId, true, false);
     for (final var change : changes) {
       if (!structure(change.before()).equals(structure(change.after()))) {
         if (change.after() != null) {
@@ -77,7 +83,7 @@ final class OntologyWorkingModel {
   }
 
   OntologyProfileReport validate(final OntologyAxiom proposed) {
-    final var context = new Context(proposed.getOntology().getId(), false);
+    final var context = new Context(proposed.getOntology().getId(), false, true);
     context.add(proposed, true);
     context.expand();
     return OntologyStructureValidator.validateWorking(context.values(), context.affected);
@@ -92,6 +98,7 @@ final class OntologyWorkingModel {
   private final class Context {
     private final UUID ontologyId;
     private final String locking;
+    private final boolean withDisjointness;
     private final Map<UUID, OntologyDefinition> definitions = new LinkedHashMap<>();
     private final Set<UUID> affected = new HashSet<>();
     private final Set<String> dependentIris = new HashSet<>();
@@ -99,8 +106,9 @@ final class OntologyWorkingModel {
     private final Set<String> ancestorIris = new HashSet<>();
     private long bytes;
 
-    Context(final UUID ontologyId, final boolean forUpdate) {
+    Context(final UUID ontologyId, final boolean forUpdate, final boolean withDisjointness) {
       this.ontologyId = ontologyId;
+      this.withDisjointness = withDisjointness;
       this.locking = forUpdate ? "FOR UPDATE" : "";
     }
 
@@ -206,6 +214,9 @@ final class OntologyWorkingModel {
               OntologyClassHierarchy.namedParents(axiom).stream()
                   .map(URI::toString)
                   .forEach(parents::add);
+              if (withDisjointness) {
+                disjointnessSeeds(axiom).forEach(parents::add);
+              }
             }
           }
         }
@@ -249,8 +260,38 @@ final class OntologyWorkingModel {
           rows.stream()
               .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))
               .forEach(value -> add(value, false));
+          if (withDisjointness) {
+            final var disjoint =
+                dao.ontologyReferenceDAO()
+                    .disjointAxioms(
+                        ontologyId,
+                        parents.stream().map(DigestUtils::sha256Hex).toList(),
+                        LIMIT + 1,
+                        locking);
+            requireBound(disjoint.size());
+            disjoint.stream()
+                .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))
+                .forEach(value -> add(value, false));
+          }
         }
       }
+    }
+
+    /** Classes whose own parents must load so a disjointness clash through them is visible. */
+    private static List<String> disjointnessSeeds(final OntologyAxiom axiom) {
+      if (axiom.getSubjectIri() == null
+          || (axiom.getAxiomType() != OntologyAxiomType.SUBCLASS_OF
+              && axiom.getAxiomType() != OntologyAxiomType.DISJOINT_WITH)) {
+        return List.of();
+      }
+      final var seeds = new ArrayList<String>();
+      seeds.add(axiom.getSubjectIri().toString());
+      if (axiom.getAxiomType() == OntologyAxiomType.DISJOINT_WITH) {
+        listOrEmpty(axiom.getExpressions()).stream()
+            .filter(expression -> expression != null && expression.getClassIri() != null)
+            .forEach(expression -> seeds.add(expression.getClassIri().toString()));
+      }
+      return seeds;
     }
   }
 

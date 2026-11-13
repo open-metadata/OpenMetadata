@@ -21,12 +21,14 @@ import {
   TimePickerValue,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock } from '@openmetadata/ui-core-components/icons';
+import {
+  Calendar,
+  Clock,
+  Trigger,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
-import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
@@ -241,7 +243,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
       description: t('message.schedule-entity-description', {
         entity: entity ?? t('label.ingestion'),
       }),
-      icon: <ClockIcon />,
+      icon: <Calendar />,
     },
     {
       value: SchedularOptions.ON_DEMAND,
@@ -249,7 +251,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
       description: t('message.on-demand-entity-description', {
         entity: entity ?? t('label.ingestion'),
       }),
-      icon: <PlayIcon />,
+      icon: <Trigger />,
     },
   ];
 
@@ -481,7 +483,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
         className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
         size="sm"
         variant="muted">
-        <Clock className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+        <Clock className="tw:shrink-0 tw:text-fg-quaternary" size={20} />
         <Typography size="text-sm">{cronStringValue}</Typography>
       </Card>
     );

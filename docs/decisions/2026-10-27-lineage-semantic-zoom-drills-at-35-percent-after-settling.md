@@ -1,10 +1,12 @@
 # Lineage semantic zoom drills at 35% screen fill, once the zoom settles
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial); v2 2026-11-04 (a settled zoom is judged against the
+  zoom it last rested at)
 - **Deciders:** Chirag Madlani
 - **Guard:** `LineageMap.utils.test.ts` (threshold either side of 35%, nearest-centre box,
-  drillable-with-children predicate); the settle delay and targeting are `reviewer`
+  drillable-with-children predicate); `PlatformLineage.spec.ts` (a fast zoom-in past the maximum
+  still drills); the settle delay and targeting are `reviewer`
 - **Related:** #36363, #36370
 
 ## Context
@@ -23,7 +25,9 @@ pause would drill when a pinch overshoots while the user only zooms in to read a
   each axis (`ZOOM_TARGET_CENTRE_REGION`). Empty containers are never an unaimed target, because
   the scene API marks them expandable; the rail then falls back to `getRailDrillFallbackNode`.
 - A drill fires only after the viewport has been still for 250ms
-  (`SEMANTIC_ZOOM_IN_SETTLE_MS`); any further move, a pan included, cancels or restarts it.
+  (`SEMANTIC_ZOOM_IN_SETTLE_MS`); any further move, a pan included, restarts that wait. When the
+  viewport settles, it is compared with the zoom it last rested at, not with the move before:
+  once the zoom reaches its maximum, the wheel keeps sending moves that no longer change the zoom.
 - Zooming out is unchanged: it returns to the parent level as soon as the graph fills less than a
   third of the canvas.
 

@@ -28,22 +28,20 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-  pagingObject,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
@@ -52,6 +50,7 @@ const KPIList = () => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
+  const { savedPageSize: kpiPageSize } = useSavedPageSize();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const viewKPIPermission = useMemo(
@@ -65,30 +64,33 @@ const KPIList = () => {
   const [selectedKpi, setSelectedKpi] = useState<Kpi>();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchKpiList = async (param?: Record<string, string>) => {
-    try {
-      setIsLoading(true);
-      const response = await getListKPIs({
-        fields: [
-          TabSpecificField.START_DATE,
-          TabSpecificField.END_DATE,
-          TabSpecificField.TARGET_VALUE,
-          TabSpecificField.DATA_INSIGHT_CHART,
-          TabSpecificField.METRIC_TYPE,
-        ],
-        limit: PAGE_SIZE_MEDIUM,
-        before: param && param.before,
-        after: param && param.after,
-      });
-      setKpiList(response.data);
-      setKpiPaging(response.paging);
-    } catch {
-      setKpiList([]);
-      setKpiPaging(pagingObject);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchKpiList = useCallback(
+    async (param?: Record<string, string>) => {
+      try {
+        setIsLoading(true);
+        const response = await getListKPIs({
+          fields: [
+            TabSpecificField.START_DATE,
+            TabSpecificField.END_DATE,
+            TabSpecificField.TARGET_VALUE,
+            TabSpecificField.DATA_INSIGHT_CHART,
+            TabSpecificField.METRIC_TYPE,
+          ],
+          limit: kpiPageSize,
+          before: param && param.before,
+          after: param && param.after,
+        });
+        setKpiList(response.data);
+        setKpiPaging(response.paging);
+      } catch {
+        setKpiList([]);
+        setKpiPaging(pagingObject);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [kpiPageSize]
+  );
 
   const columns = useMemo(() => {
     const col: ColumnsType<Kpi> = [
@@ -205,8 +207,9 @@ const KPIList = () => {
   };
 
   useEffect(() => {
+    setKpiPage(INITIAL_PAGING_VALUE);
     fetchKpiList();
-  }, []);
+  }, [fetchKpiList]);
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchKpiList();
@@ -251,8 +254,8 @@ const KPIList = () => {
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,
-          showPagination: kpiList.length > PAGE_SIZE_MEDIUM,
-          pageSize: PAGE_SIZE_MEDIUM,
+          showPagination: shouldShowPager(kpiList),
+          pageSize: kpiPageSize,
           paging: kpiPaging,
           pagingHandler: kpiPagingHandler,
         }}

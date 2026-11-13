@@ -12,10 +12,10 @@
  */
 
 import {
-  Clock,
-  ShieldTick,
+  ActivityOwnerChanged,
+  OnlineUsers,
+  Teams,
   User01,
-  Users01,
 } from '@openmetadata/ui-core-components/icons';
 import {
   PAGE_SIZE,
@@ -63,7 +63,7 @@ export const SCROLLING_USER_DETAIL_TABS: ReadonlySet<UserDetailTab> = new Set([
 export const LANDING_CARDS: MembersLandingCard[] = [
   {
     id: 'teams',
-    icon: Users01,
+    icon: Teams,
     titleKey: 'label.team-plural',
     descriptionKey: 'message.members-teams-description',
     view: { type: 'teams' },
@@ -77,14 +77,14 @@ export const LANDING_CARDS: MembersLandingCard[] = [
   },
   {
     id: 'admins',
-    icon: ShieldTick,
+    icon: ActivityOwnerChanged,
     titleKey: 'label.admin-plural',
     descriptionKey: 'message.members-admins-description',
     view: { type: 'admins' },
   },
   {
     id: 'online-users',
-    icon: Clock,
+    icon: OnlineUsers,
     titleKey: 'label.online-user-plural',
     descriptionKey: 'message.members-online-users-description',
     view: { type: 'online-users' },

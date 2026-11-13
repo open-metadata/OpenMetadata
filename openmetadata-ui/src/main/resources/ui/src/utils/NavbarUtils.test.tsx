@@ -193,11 +193,10 @@ describe('NavbarUtils test', () => {
         // Second child should be the external link icon
         const externalIcon = secondColumn.props.children[1];
 
-        // The SVG asset is now rendered directly, sized by a class rather
-        // than antd's injected font-size.
         expect(externalIcon.props.className).toBe(
-          'tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0'
+          'tw:ml-1 tw:text-secondary tw:shrink-0'
         );
+        expect(externalIcon.props.size).toBe(16);
       });
     });
 

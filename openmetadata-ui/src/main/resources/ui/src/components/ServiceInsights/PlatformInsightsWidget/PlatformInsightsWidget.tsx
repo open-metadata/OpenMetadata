@@ -21,13 +21,12 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown, TrendUp01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as ArrowUp } from '../../../assets/svg/ic-trend-up.svg';
 import { PLATFORM_INSIGHTS_CHARTS } from '../../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -47,7 +46,7 @@ const renderViewMoreExpandIcon = (
     className="expand-icon-container tw:text-brand-secondary"
     gap={2}>
     <Typography>{t('label.view-more')}</Typography>
-    <ArrowSvg height={14} width={14} />
+    <ChevronDown size={14} />
   </Box>
 );
 
@@ -135,12 +134,11 @@ function PlatformInsightsWidget({
                         size="sm"
                         type="color">
                         {chart.percentageChange !== 0 && (
-                          <ArrowUp
+                          <TrendUp01
                             className={classNames(
                               !chart.isIncreased && 'flip-vertical'
                             )}
-                            height={11}
-                            width={11}
+                            size={11}
                           />
                         )}
                         {getReadableCountString(chart.percentageChange)}%

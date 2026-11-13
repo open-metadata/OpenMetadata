@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Card } from '@openmetadata/ui-core-components';
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -305,6 +306,32 @@ describe('ExploreSearchCard - Card container', () => {
 
     expect(card).toHaveClass('explore-search-card');
     expect(card).toHaveClass('highlight-card');
+  });
+
+  it('paints the core Card variant it is given, so a card inside a surface panel can take the muted step', () => {
+    const { Card: ActualCard } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    const cardMock = Card as unknown as jest.Mock;
+    const stubImplementation = cardMock.getMockImplementation();
+    cardMock.mockImplementation((props) => <ActualCard {...props} />);
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{ ...baseSource, fullyQualifiedName: 'svc.db.schema.users' }}
+          variant="muted"
+        />
+      </MemoryRouter>
+    );
+
+    const card = screen.getByTestId('table-data-card_svc.db.schema.users');
+
+    expect(card).toHaveClass('tw:bg-primary_alt');
+    expect(card).not.toHaveClass('tw:bg-surface');
+
+    cardMock.mockImplementation(stubImplementation);
   });
 
   it('renders human-readable ranking explanations from matched query names and score explanation', () => {

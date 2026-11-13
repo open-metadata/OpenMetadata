@@ -598,7 +598,8 @@ export interface AirflowConnectionObject {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -1904,10 +1905,16 @@ export interface AirflowConnectionObject {
      */
     spaceUUID?: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
@@ -1966,7 +1973,7 @@ export interface AirflowConnectionObject {
      *
      * Confluent Redpanda Consumer Config
      */
-    consumerConfig?: { [key: string]: any };
+    consumerConfig?: ConsumerConfig;
     /**
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
@@ -1990,7 +1997,7 @@ export interface AirflowConnectionObject {
      *
      * Confluent Redpanda Schema Registry Config.
      */
-    schemaRegistryConfig?: { [key: string]: any };
+    schemaRegistryConfig?: SchemaRegistryConfig;
     /**
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
@@ -4240,6 +4247,52 @@ export enum VerifySSL {
 }
 
 /**
+ * Confluent Kafka Consumer Config. From
+ * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+ *
+ * Confluent Redpanda Consumer Config
+ */
+export interface ConsumerConfig {
+    /**
+     * Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.passphrase"?: string;
+    /**
+     * PEM private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.pem"?: string;
+    /**
+     * Client secret for the OAUTHBEARER (OIDC) token request.
+     */
+    "sasl.oauthbearer.client.secret"?: string;
+    /**
+     * SASL/OAUTHBEARER configuration string, which can carry a client secret.
+     */
+    "sasl.oauthbearer.config"?: string;
+    /**
+     * SASL password.
+     */
+    "sasl.password"?: string;
+    /**
+     * Passphrase of the client's private key.
+     */
+    "ssl.key.password"?: string;
+    /**
+     * Client's private key as a PEM string.
+     */
+    "ssl.key.pem"?: string;
+    /**
+     * Password of the client keystore (PKCS#12).
+     */
+    "ssl.keystore.password"?: string;
+    /**
+     * Password of the truststore.
+     */
+    "ssl.truststore.password"?: string;
+    [property: string]: any;
+}
+
+/**
  * GCP Credentials
  *
  * GCP credentials configs.
@@ -4854,6 +4907,28 @@ export interface PolicyAgentConfig {
 export enum RunMode {
     Batch = "batch",
     Stream = "stream",
+}
+
+/**
+ * Confluent Kafka Schema Registry Config. From
+ * https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
+ *
+ * Confluent Redpanda Schema Registry Config.
+ */
+export interface SchemaRegistryConfig {
+    /**
+     * Schema Registry credentials in the form of username:password.
+     */
+    "basic.auth.user.info"?: string;
+    /**
+     * Client secret for the Schema Registry OAuth token request.
+     */
+    "bearer.auth.client.secret"?: string;
+    /**
+     * Static bearer token for the Schema Registry.
+     */
+    "bearer.auth.token"?: string;
+    [property: string]: any;
 }
 
 /**

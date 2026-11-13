@@ -12,8 +12,8 @@
  */
 
 import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { InheritedRoles } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
@@ -29,7 +29,7 @@ const UserProfileInheritedRoles = ({
       data-testid="user-profile-inherited-roles">
       <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
         <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
-          <InheritedRolesIcon height={16} />
+          <InheritedRoles size={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography className="text-sm font-medium">

@@ -19,8 +19,9 @@ import {
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import {
-  File06 as Articles,
-  Lock01 as Lock,
+  File06,
+  Lock01,
+  NoSearch,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
@@ -44,7 +45,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import {
   CREATE_PAGE_HASH,
   PAGE_SIZE_MEDIUM,
@@ -170,7 +170,7 @@ const KnowledgePageAccessDenied = () => {
             }}
           />
         }
-        icon={<Lock />}
+        icon={<Lock01 />}
         title={t('label.access-denied')}
       />
     </div>
@@ -184,7 +184,7 @@ const KnowledgePageNoSearchResults = () => {
     <div className="tw:relative tw:min-h-[320px] tw:py-12">
       <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon />}
+        icon={<NoSearch />}
         title={t('label.no-matching-results')}
       />
     </div>
@@ -266,7 +266,7 @@ const KnowledgePageEmptyState = ({
             {addQuickLinkModalElement}
           </>
         }
-        icon={<Articles />}
+        icon={<File06 />}
         title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.article'),
         })}

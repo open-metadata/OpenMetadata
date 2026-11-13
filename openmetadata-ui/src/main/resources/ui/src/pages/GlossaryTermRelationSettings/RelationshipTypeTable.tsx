@@ -298,7 +298,14 @@ const RelationshipTypeTable = ({
         data-testid="relation-types-table">
         <Table.Header>
           {getColumns(t).map(({ label, align }) => (
-            <Table.Head align={align} id={label} key={label} label={label} />
+            // Relation names identify rows for React Aria's keyboard navigation.
+            <Table.Head
+              align={align}
+              id={label}
+              isRowHeader={label === t('label.name')}
+              key={label}
+              label={label}
+            />
           ))}
         </Table.Header>
         <Table.Body items={relationshipTypes}>

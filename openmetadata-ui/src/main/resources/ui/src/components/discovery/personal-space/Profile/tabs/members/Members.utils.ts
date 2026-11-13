@@ -16,8 +16,9 @@ import type {
   SelectItemType,
 } from '@openmetadata/ui-core-components';
 import {
-  Clock,
-  ShieldTick,
+  ActivityOwnerChanged,
+  OnlineUsers,
+  Teams,
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
@@ -219,16 +220,16 @@ export const getMembersIcons = (
 ): Record<MembersView['type'], FC<{ className?: string }>> => ({
   section: sectionIcon ?? Users01,
   landing: Users01,
-  teams: Users01,
-  [TEAM_DETAIL]: Users01,
-  [TEAMS_ADD]: Users01,
-  [TEAMS_IMPORT]: Users01,
-  [TEAM_TAB_SUBPAGE]: Users01,
+  teams: Teams,
+  [TEAM_DETAIL]: Teams,
+  [TEAMS_ADD]: Teams,
+  [TEAMS_IMPORT]: Teams,
+  [TEAM_TAB_SUBPAGE]: Teams,
   users: User01,
   [USER_DETAIL]: User01,
-  admins: ShieldTick,
-  'user-create': createUserIsAdmin ? ShieldTick : User01,
-  'online-users': Clock,
+  admins: ActivityOwnerChanged,
+  'user-create': createUserIsAdmin ? ActivityOwnerChanged : User01,
+  'online-users': OnlineUsers,
 });
 
 export const getMembersDescriptions = (

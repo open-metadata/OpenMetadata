@@ -48,6 +48,7 @@ import org.openmetadata.service.ontology.OntologyReleaseStructure;
 import org.openmetadata.service.ontology.OntologyReleaseValidationService;
 import org.openmetadata.service.rdf.OntologyExportFormat;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -78,7 +79,16 @@ public final class OntologyReleaseResource
                 Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables()),
             authorizer,
             Entity::getEntityRepository);
-    validation = new OntologyReleaseValidationService(repository, bindings);
+    validation =
+        new OntologyReleaseValidationService(
+            repository, bindings, OntologyReleaseResource::hasMaterializedInference);
+  }
+
+  private static boolean hasMaterializedInference() {
+    final RdfRepository rdf = RdfRepository.getInstanceOrNull();
+    return rdf != null
+        && rdf.isEnabled()
+        && RdfRepository.supportsMaterializedInference(rdf.getConfig());
   }
 
   /** Bound asset links take their IRIs from the RDF base URI, which the RDF store also uses. */

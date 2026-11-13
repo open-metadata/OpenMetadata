@@ -115,11 +115,24 @@ public class MetricObservabilityBuilder {
 
   public MetricObservability build(
       UUID metricId, List<MetricAssetDirection> linkedAssets, Set<UUID> visibleAssetIds) {
+    return build(metricId, linkedAssets, visibleAssetIds, visibleAssetIds);
+  }
+
+  /**
+   * Seeing a linked asset does not imply seeing its data quality: {@code visibleAssetIds} decides
+   * which linked assets are listed, {@code testVisibleAssetIds} which upstream tables have their
+   * tests, results and incidents detailed.
+   */
+  public MetricObservability build(
+      UUID metricId,
+      List<MetricAssetDirection> linkedAssets,
+      Set<UUID> visibleAssetIds,
+      Set<UUID> testVisibleAssetIds) {
     MetricObservability result;
     boolean failed = false;
     long startedAt = System.nanoTime();
     try {
-      result = compute(metricId, linkedAssets, visibleAssetIds);
+      result = compute(metricId, linkedAssets, visibleAssetIds, testVisibleAssetIds);
     } catch (RuntimeException exception) {
       failed = true;
       LOG.warn("Failed to compute Metric observability for {}", metricId, exception);
@@ -157,7 +170,10 @@ public class MetricObservabilityBuilder {
   }
 
   private MetricObservability compute(
-      UUID metricId, List<MetricAssetDirection> prefetchedLinkedAssets, Set<UUID> visibleAssetIds) {
+      UUID metricId,
+      List<MetricAssetDirection> prefetchedLinkedAssets,
+      Set<UUID> visibleAssetIds,
+      Set<UUID> testVisibleAssetIds) {
     Metric metric = metricRepository.get(null, metricId, metricRepository.getFields("id"));
     List<MetricAssetDirection> linkedAssets =
         prefetchedLinkedAssets == null
@@ -165,7 +181,7 @@ public class MetricObservabilityBuilder {
             : List.copyOf(prefetchedLinkedAssets);
     List<EntityReference> upstreamTables = directUpstreamTables(linkedAssets);
     List<Observation> observations = loadObservations(upstreamTables);
-    Set<UUID> visibleUpstream = visibleAssets(upstreamTables, visibleAssetIds);
+    Set<UUID> visibleUpstream = visibleAssets(upstreamTables, testVisibleAssetIds);
     Set<UUID> visibleLinked = visibleLinkedAssetIds(linkedAssets, visibleAssetIds);
     List<MetricIncident> incidents = loadIncidents(observations, visibleUpstream);
     return summarize(

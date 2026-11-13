@@ -40,6 +40,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -53,8 +54,13 @@ import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
+import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
-import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
+import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
+import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
+import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -66,6 +72,7 @@ public class Migration extends MigrationProcessImpl {
     // First, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, POSTGRES, getPipelineServiceClient());
+    ODCSCustomPropertiesMigration.migrate(handle, POSTGRES);
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);
     refreshConversationNotificationTemplates();
@@ -117,6 +124,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         CreationAuditMigration.STEP_NAME,
         () -> backfillCreationAudit(handle, POSTGRES));
+    // Task field paths take one format from 2.1 on; every stored description, tag and suggestion
+    // task is rewritten into it, so readers never parse a legacy path. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        TaskFieldPathMigration.STEP_NAME,
+        () -> TaskFieldPathMigration.migrate(handle, POSTGRES));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -125,12 +139,12 @@ public class Migration extends MigrationProcessImpl {
     // Lineage edges written before pipelines were type-restricted can name any entity — a database
     // service among them — which the edge copied into the downstream search document
     // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
-    // credential rotation. DB-agnostic, so it also runs on MySQL.
+    // credential rotation. It runs on both engines, each with its own page query.
     runOnce(
         migrationDAO,
         getVersion(),
         LineageEdgePipelineCleanupMigration.STEP_NAME,
-        () -> clearNonPipelineEdgePipelines(collectionDAO));
+        () -> clearNonPipelineEdgePipelines(handle, POSTGRES));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -155,6 +169,19 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
+    // New writes encrypt each webhook secret for the alert destination or profile webhook that
+    // holds it; this does the same for what is already stored. Each destination's id owns its
+    // secrets, so this runs after the destination id step. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.PROFILE_STEP_NAME,
+        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, POSTGRES));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.ALERT_STEP_NAME,
+        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, POSTGRES));
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.
@@ -163,6 +190,20 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
+    // Same for the 2.0.8 data product domain containment repair. The repair only rewrites links
+    // that disagree, so running it after 2.0.8 already did changes nothing.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductDomainContainmentRepair.STEP_NAME,
+        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    // Renames MicroStrategy charts by dossier. It reads charts through the repository, so it runs
+    // after the conversation and custom property migrations above.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MicroStrategyChartRename.STEP_NAME,
+        () -> MicroStrategyChartRename.renameAll(handle, collectionDAO));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
     runOnce(
         migrationDAO,
@@ -172,15 +213,15 @@ public class Migration extends MigrationProcessImpl {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
         });
+    // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
+    AppCreatedAlerts.logForReviewOnPostgres(handle);
+    UnsupportedNotificationTemplates.review(handle);
+    // Seed data never reaches a role that already exists, so stewards of an installed catalog get
+    // the ontology author and reviewer policies here. Idempotent.
     runOnce(
         migrationDAO,
         getVersion(),
-        WorkflowRedeployMigration.STEP_NAME,
-        () -> {
-          initializeWorkflowHandler();
-          WorkflowRedeployMigration.redeploy();
-        });
-    // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
-    AppCreatedAlerts.logForReviewOnPostgres(handle);
+        OntologyRolesMigration.STEP_NAME,
+        () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
   }
 }

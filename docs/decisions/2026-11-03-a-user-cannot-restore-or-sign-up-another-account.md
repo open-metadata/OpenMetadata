@@ -1,7 +1,7 @@
 # A PUT to /users authorizes the self case explicitly, and only an admin changes privileged fields
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (the team page offers it only to admins)
 - **Deciders:** Mohit Yadav
 - **Guard:** `UserResourceIT` (`test_selfPut_keepsStoredRolesAndCannotChangeThem`,
   `test_patchUser_cannotJoinClosedTeamThroughAnyOperation`, `test_nonAdmin_cannotLeaveClosedTeam`,
@@ -34,5 +34,6 @@ admin changes; a deny role binds only while its holder cannot drop it.
 ## Consequences
 Changing a user's roles, admin flag or bot flag requires an admin, through PUT, PATCH or CSV alike. A
 user editing its own profile (description, display name, joining or leaving open teams) is
-unaffected; leaving a closed team now takes an admin. Reviving a deleted account is an admin restore,
+unaffected; leaving a closed team now takes an admin, and the team page offers joining or leaving
+one only to admins (`TeamDetailsV1.test.tsx`). Reviving a deleted account is an admin restore,
 not a self PUT.

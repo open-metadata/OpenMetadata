@@ -24,6 +24,7 @@ export interface ServiceVersionMainTabContentProps {
   data: ServicePageData[];
   isServiceLoading: boolean;
   paging: Paging;
+  pageSize: number;
   currentPage: number;
   pagingHandler: NextPreviousProps['pagingHandler'];
   entityType: EntityType;

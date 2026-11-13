@@ -1,0 +1,18 @@
+[
+  {
+    "token": "00000000-0000-4000-8000-000000000888",
+    "userId": "00000000-0000-4000-8000-000000000999",
+    "tokenName": "ai-profile-token",
+    "tokenType": "PERSONAL_ACCESS",
+    "expiryDate": 1769731200000,
+    "jwtToken": "visual-example-token"
+  },
+  {
+    "token": "00000000-0000-4000-8000-000000000889",
+    "userId": "00000000-0000-4000-8000-000000000999",
+    "tokenName": "Expired integration",
+    "tokenType": "PERSONAL_ACCESS",
+    "expiryDate": 1767225600000,
+    "jwtToken": "visual-expired-example"
+  }
+]

@@ -710,6 +710,48 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(storedTeamIds(user).contains(open.getId()), "joining an open team stays allowed");
   }
 
+  /** A patch that leaves the user in a team twice is refused, through any operation. */
+  @Test
+  void test_patchUser_cannotListATeamTwiceThroughAnyOperation(TestNamespace ns) {
+    Team team = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("dupteam"), true));
+    User user =
+        ns.trackRoot(
+            Entity.USER, createEntity(selfLoginUserRequest().withTeams(List.of(team.getId()))));
+
+    for (String op : List.of("add", "ADD")) {
+      ArrayNode add = PATCH_MAPPER.createArrayNode();
+      add.addObject().put("op", op).put("path", "/teams/-").set("value", teamReference(team));
+      assertTeamListedTwiceIsRefused(user, add);
+    }
+    ArrayNode copy = PATCH_MAPPER.createArrayNode();
+    copy.addObject().put("op", "copy").put("from", "/teams/0").put("path", "/teams/-");
+    assertTeamListedTwiceIsRefused(user, copy);
+    assertTeamListedTwiceIsRefused(
+        user,
+        teamsPatch(
+            "/teams",
+            PATCH_MAPPER.createArrayNode().add(teamReference(team)).add(teamReference(team))));
+
+    ArrayNode reorder = PATCH_MAPPER.createArrayNode();
+    reorder.addObject().put("op", "move").put("from", "/teams/0").put("path", "/teams/-");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), reorder);
+    assertEquals(List.of(team.getId()), storedTeamIds(user), "moving a team is not a repeat");
+  }
+
+  private static void assertTeamListedTwiceIsRefused(User user, ArrayNode patch) {
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch));
+    assertEquals(400, refused.getStatusCode(), patch + " -> " + refused.getMessage());
+    assertTrue(refused.getMessage().contains("is already part of the team"), patch.toString());
+  }
+
   /** Leaving a closed team sheds its roles and policies, so it needs an admin too. */
   @Test
   void test_nonAdmin_cannotLeaveClosedTeam(TestNamespace ns) {
@@ -2372,6 +2414,52 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     User fetched = Users.get(user.getId().toString(), "domains,teams");
     assertNotNull(fetched.getDomains());
+  }
+
+  /** A patch removing a user's own domain that a team also gives must not store it back. */
+  @Test
+  void test_removingOwnDomainAlsoGivenByTeamDropsIt(TestNamespace ns) throws Exception {
+    Domain shared = createUserDomain(ns, "sharedDomain");
+    Domain kept = createUserDomain(ns, "keptDomain");
+    Team team =
+        org.openmetadata.sdk.fluent.Teams.create(
+            new CreateTeam()
+                .withName(ns.prefix("sharedDomainTeam"))
+                .withDomains(List.of(shared.getFullyQualifiedName()))
+                .withDescription("Team giving the shared domain"));
+    String userName = ns.prefix("ownAndTeamDomainUser");
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(toValidEmail(userName))
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(shared.getFullyQualifiedName(), kept.getFullyQualifiedName()))
+                .withDescription("User with an own domain its team also gives"));
+    List<EntityReference> before = Users.get(user.getId().toString(), "domains").getDomains();
+    int sharedIndex = before.stream().map(EntityReference::getId).toList().indexOf(shared.getId());
+
+    SdkClients.adminClient()
+        .users()
+        .patch(
+            user.getId().toString(),
+            new ObjectMapper()
+                .readTree("[{\"op\":\"remove\",\"path\":\"/domains/%d\"}]".formatted(sharedIndex)));
+
+    List<UUID> ownDomains =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(kept.getId()), ownDomains);
+  }
+
+  private static Domain createUserDomain(TestNamespace ns, String suffix) {
+    return org.openmetadata.sdk.fluent.Domains.create(
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("User domain test"));
   }
 
   @Test

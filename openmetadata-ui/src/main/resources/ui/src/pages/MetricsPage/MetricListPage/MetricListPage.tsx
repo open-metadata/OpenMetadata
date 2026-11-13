@@ -24,12 +24,12 @@ import {
   Dot,
   Dropdown,
   FeaturedIcon,
+  HoverCard,
   Input,
   Modal,
   ModalOverlay,
   PageLayout,
   Skeleton,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -58,7 +58,7 @@ import {
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import type { ChangeEvent, Key, SyntheticEvent } from 'react';
+import type { ChangeEvent, Key, KeyboardEvent, SyntheticEvent } from 'react';
 import {
   ReactNode,
   useCallback,
@@ -97,6 +97,8 @@ import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
@@ -131,6 +133,7 @@ import {
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
@@ -164,7 +167,6 @@ const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
 const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
-const METRIC_PAGE_SIZE = 20;
 const METRIC_LISTING_QUERY_KEY = 'metric-listing';
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
@@ -252,9 +254,16 @@ const MAX_VISIBLE_BADGES = 2;
 // link inside a cell must stop these events or the row navigates instead (TableV2 does the same
 // for its filter trigger).
 const stopRowAction = (event: SyntheticEvent) => event.stopPropagation();
+// Escape never presses the row, and stopping it would also stop the native event at the React
+// root, so HoverCard's document listener could not close the "+N" card.
+const stopRowKey = (event: KeyboardEvent<HTMLElement>) => {
+  if (event.key !== 'Escape') {
+    event.stopPropagation();
+  }
+};
 const ROW_ACTION_GUARD = {
   onClick: stopRowAction,
-  onKeyDown: stopRowAction,
+  onKeyDown: stopRowKey,
   onMouseDown: stopRowAction,
   onPointerDown: stopRowAction,
 };
@@ -279,7 +288,6 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
-  const [page, setPage] = useState(1);
   const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
   const {
     preferences: { selectedEntityTableColumns },
@@ -287,6 +295,10 @@ const MetricListPage = () => {
   // Owned by TableV2's Customize menu; card view only reads it.
   const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
+  const { savedPageSize: metricPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(viewMode)
+  );
+  const [page, setPage] = usePageForSize(metricPageSize);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -331,14 +343,14 @@ const MetricListPage = () => {
         search: debouncedSearch,
         status: statusFilter,
         page,
-        size: METRIC_PAGE_SIZE,
+        size: metricPageSize,
       },
     ],
     queryFn: () =>
       searchQuery({
         query: debouncedSearch,
         pageNumber: page,
-        pageSize: METRIC_PAGE_SIZE,
+        pageSize: metricPageSize,
         searchIndex: SearchIndex.METRIC,
         trackTotalHits: true,
         queryFilter: statusFilter
@@ -371,7 +383,7 @@ const MetricListPage = () => {
   } = useMetricHierarchy({
     enabled: [hasViewPermission, isTreeMode].every(Boolean),
     page,
-    pageSize: METRIC_PAGE_SIZE,
+    pageSize: metricPageSize,
     query: debouncedSearch,
   });
 
@@ -434,7 +446,7 @@ const MetricListPage = () => {
     });
   }, [selectableMetricIds]);
 
-  const hierarchyExpansionScope = `${page}:${debouncedSearch}`;
+  const hierarchyExpansionScope = `${page}:${metricPageSize}:${debouncedSearch}`;
 
   useEffect(() => {
     const hasExpandableGroup = topLevelNodes.some(({ groupId }) => groupId);
@@ -477,7 +489,7 @@ const MetricListPage = () => {
   const totalMetrics = isTreeMode
     ? treePaging.total
     : searchResponse?.hits.total.value ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalMetrics / METRIC_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalMetrics / metricPageSize));
   const listingError =
     permissionError ?? (isTreeMode ? treeError : searchError);
   const listingErrorMessage = permissionError
@@ -547,10 +559,14 @@ const MetricListPage = () => {
     [setCurrentPage]
   );
 
-  const handleViewModeChange = useCallback((nextMode: MetricViewMode) => {
-    setViewMode(nextMode);
-    localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
-  }, []);
+  const handleViewModeChange = useCallback(
+    (nextMode: MetricViewMode) => {
+      setViewMode(nextMode);
+      setCurrentPage(1);
+      localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
+    },
+    [setCurrentPage]
+  );
 
   const handleImport = useCallback(() => {
     setIsMetricActionsOpen(false);
@@ -691,6 +707,16 @@ const MetricListPage = () => {
     [loadingGroupIds, loadingParentIds]
   );
 
+  // A focusable trigger so the hidden items open on hover and on keyboard focus;
+  // the react-aria press handling keeps a click on "+N" from opening the metric row.
+  const renderOverflow = (count: number, content: ReactNode) => (
+    <HoverCard className="tw:p-3" content={content}>
+      <Button color="link-gray" data-testid="metric-overflow-trigger" size="sm">
+        +{count}
+      </Button>
+    </HoverCard>
+  );
+
   // Table cells stay on one line; narrow cards must wrap or the overflow is clipped.
   // Each badge links to its own page; a plain badge let the click fall through to the row,
   // which opened the metric instead.
@@ -713,17 +739,24 @@ const MetricListPage = () => {
             </Badge>
           </Link>
         ))}
-        {tags.length > MAX_VISIBLE_BADGES && (
-          <Tooltip
-            title={tags
-              .slice(MAX_VISIBLE_BADGES)
-              .map((tag) => tag.name ?? tag.tagFQN)
-              .join(', ')}>
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              +{tags.length - MAX_VISIBLE_BADGES}
-            </Typography>
-          </Tooltip>
-        )}
+        {tags.length > MAX_VISIBLE_BADGES &&
+          renderOverflow(
+            tags.length - MAX_VISIBLE_BADGES,
+            <Box className="tw:max-w-72" direction="col" gap={1}>
+              {tags.slice(MAX_VISIBLE_BADGES).map((tag) => (
+                <Link
+                  {...ROW_ACTION_GUARD}
+                  className="tw:min-w-0 tw:no-underline"
+                  data-testid={`metric-tag-link-${tag.tagFQN}`}
+                  key={tag.tagFQN}
+                  to={getTagPath(tag.tagFQN)}>
+                  <Badge color="blue" size="sm">
+                    {tag.name ?? tag.tagFQN}
+                  </Badge>
+                </Link>
+              ))}
+            </Box>
+          )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
@@ -747,11 +780,32 @@ const MetricListPage = () => {
             />
           </Link>
         ))}
-        {owners.length > 3 && (
-          <Typography as="span" className="tw:text-tertiary" size="text-xs">
-            +{owners.length - 3}
-          </Typography>
-        )}
+        {owners.length > 3 &&
+          renderOverflow(
+            owners.length - 3,
+            <Box direction="col" gap={2}>
+              {owners.slice(3).map((owner) => (
+                <Link
+                  {...ROW_ACTION_GUARD}
+                  className="tw:no-underline"
+                  data-testid={`metric-owner-link-${owner.id}`}
+                  key={owner.id}
+                  to={getOwnerPath(owner)}>
+                  <Box align="center" gap={2}>
+                    <ProfilePicture
+                      displayName={owner.displayName}
+                      isTeam={owner.type === EntityType.TEAM}
+                      name={owner.name ?? ''}
+                      size="xs"
+                    />
+                    <Typography as="span" size="text-sm">
+                      {getEntityName(owner)}
+                    </Typography>
+                  </Box>
+                </Link>
+              ))}
+            </Box>
+          )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
@@ -1188,7 +1242,7 @@ const MetricListPage = () => {
   );
 
   const renderPagination = () =>
-    totalMetrics > METRIC_PAGE_SIZE ? (
+    totalMetrics > 0 ? (
       <Box
         aria-label={t('label.page')}
         className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
@@ -1370,6 +1424,7 @@ const MetricListPage = () => {
     if (selectedMetricIds.length === 0) {
       return (
         <Input
+          autoComplete="off"
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
           icon={Search}

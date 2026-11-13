@@ -1,7 +1,7 @@
 # An empty seen-set deletes the whole scope only when the connector confirms its listing
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-05 (MicroStrategy also confirms its listing)
 - **Deciders:** harshsoni2024
 - **Guard:** `BulkDeleteStaleIT` (`test_emptySeenFqns_withPopulatedScope_deletesNothing`, `test_emptySeenFqns_withAllowFlag_deletesWholeScope`), `ingestion/tests/unit/topology/test_delete_stale.py`, `ingestion/tests/unit/topology/dashboard/test_powerbi_confirmed_listing.py`
 - **Related:** PowerBI `dataModelFilterPattern` matching no data model left every previously ingested one in place
@@ -38,3 +38,12 @@ Other connectors are unchanged until they mark a listing complete, which they sh
 their listing calls report failure instead of returning an empty list. Servers that predate the
 field reject it, so a newer client against one of them reports a failed delete step and deletes
 nothing in that one case.
+
+## Amendment
+v2 2026-11-05: MicroStrategy marks its dashboard and data model listings complete after it searched
+the dossiers of every project the filter keeps, with at least one project visible, and marks them
+failed when the project listing or a project's search fails or a listed object does not parse. It
+counts listed and filtered dossiers and data models, so a run whose filters exclude everything
+confirms the scope empty while a run whose entities all failed to ingest does not. See
+ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged for the partial
+runs it keeps from deleting.

@@ -12,9 +12,12 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Check, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Check,
+  Classification as ClassificationIcon,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { SettledStatus } from '../enums/Axios.enum';
@@ -185,7 +188,7 @@ export const TagListItemRenderer = (props: EntityReference) => {
       className="layout-space layout-space-horizontal"
       gap={2}
       itemClassName="layout-space-item">
-      <ClassificationIcon className="tw:block" height={22} width={16} />
+      <ClassificationIcon className="tw:block" size={16} />
       <Typography>{getEntityName(props)}</Typography>
     </Box>
   );

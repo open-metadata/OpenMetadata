@@ -22,6 +22,7 @@ import {
 import { AxiosError } from 'axios';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { OwnerType } from '../../../enums/user.enum';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -105,7 +106,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
           data-testid="owner-name"
           size="text-xs"
           weight="medium">
-          {t('label.no-entity', { entity: t('label.owner') })}
+          {NO_DATA_PLACEHOLDER}
         </Typography>
       )}
 

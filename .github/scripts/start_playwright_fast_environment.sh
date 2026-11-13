@@ -269,6 +269,9 @@ echo "$capture_pid" > "$PW_SERVER_CAPTURE_PID_FILE"
 
 (
   cd "$runtime_root/server"
+  # ADR:2026-11-13-playwright-server-stores-uploads-in-memory
+  export ASSET_UPLOADER_ENABLE=true
+  export ASSET_UPLOADER_PROVIDER=inmemory
   export AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER="${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-10000}"
   export DB_DRIVER_CLASS="$PW_DB_DRIVER_CLASS"
   export DB_HOST=127.0.0.1

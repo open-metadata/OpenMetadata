@@ -35,6 +35,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -45,13 +46,17 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public abstract class ServiceEntityRepository<
@@ -173,15 +178,15 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .prepareServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+      Object config =
+          SecretsManagerFactory.getSecretsManager()
+              .prepareServiceConnectionConfig(
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  serviceType);
+      SecretsUtil.validateSslConfig(config, service.getServiceType().value());
+      service.getConnection().setConfig(config);
     }
   }
 
@@ -208,20 +213,112 @@ public abstract class ServiceEntityRepository<
   // ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage
   @Override
   protected void store(T service, boolean update, Double expectedVersion) {
-    encryptConnection(service);
-    super.store(service, update, expectedVersion);
+    writeWithSecretOwnership(
+        List.of(service),
+        update,
+        () -> {
+          encryptConnection(service);
+          super.store(service, update, expectedVersion);
+        });
   }
 
   @Override
   protected void storeMany(List<T> services) {
-    services.forEach(this::encryptConnection);
-    super.storeMany(services);
+    writeWithSecretOwnership(
+        services,
+        false,
+        () -> {
+          services.forEach(this::encryptConnection);
+          super.storeMany(services);
+        });
   }
 
   @Override
   protected void updateMany(List<T> services) {
-    services.forEach(this::encryptConnection);
-    super.updateMany(services);
+    writeWithSecretOwnership(
+        services,
+        true,
+        () -> {
+          services.forEach(this::encryptConnection);
+          super.updateMany(services);
+        });
+  }
+
+  private SecretInventory secretInventory(SecretsManager manager, T entity) {
+    return manager.secretInventory(entity, serviceType);
+  }
+
+  private void writeWithSecretOwnership(List<T> entities, boolean update, Runnable write) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      write.run();
+      return;
+    }
+    List<SecretInventory> inputs =
+        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          List<SecretInventory> originals =
+              entities.stream()
+                  .map(
+                      entity ->
+                          update
+                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
+                              : null)
+                  .toList();
+          SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
+          write.run();
+          for (int i = 0; i < entities.size(); i++) {
+            T entity = entities.get(i);
+            ownership.recordWrite(
+                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
+            String root = inputs.get(i).root();
+            PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
+          }
+          return null;
+        });
+  }
+
+  private T lockStoredForSecretWrite(T entity) {
+    String stored = dao.findJsonByIdForUpdate(entity.getId(), Include.ALL);
+    if (stored == null) {
+      throw EntityNotFoundException.byId(entity.getId().toString());
+    }
+    return JsonUtils.readValue(stored, entityClass);
+  }
+
+  private void cleanOwnedSecrets(SecretsManager manager, String root) {
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          ownership.clean(root);
+          return null;
+        });
+  }
+
+  private void scheduleSecretDeletion(T entity) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return;
+    }
+    SecretInventory deleted = secretInventory(manager, entity);
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          executeInTransaction(
+              () -> {
+                SecretMapOwnership ownership =
+                    new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+                ownership.lock();
+                ownership.removeOwner(entity.getId(), deleted);
+                return null;
+              });
+          cleanOwnedSecrets(manager, deleted.root());
+        });
   }
 
   private void encryptConnection(T service) {
@@ -268,6 +365,9 @@ public abstract class ServiceEntityRepository<
   /** Remove the secrets from the secret manager only on hard delete */
   @Override
   protected void postDelete(T service, boolean hardDelete) {
+    if (hardDelete) {
+      scheduleSecretDeletion(service);
+    }
     super.postDelete(service, hardDelete);
     invalidateServiceAttributes(service);
     // A hard-deleted service takes its assets with it, so a matchAnyServiceName call naming it
@@ -280,15 +380,6 @@ public abstract class ServiceEntityRepository<
           condition ->
               PolicyConditionUpdater.removeFromCondition(
                   condition, service.getName(), PolicyConditionUpdater.SERVICE_FUNCTIONS));
-    }
-    // Only delete secrets on hard delete to allow soft delete to be reversible
-    if (hardDelete && service.getConnection() != null) {
-      SecretsManagerFactory.getSecretsManager()
-          .deleteSecretsFromServiceConnectionConfig(
-              service.getConnection().getConfig(),
-              service.getServiceType().value(),
-              service.getName(),
-              serviceType);
     }
   }
 
