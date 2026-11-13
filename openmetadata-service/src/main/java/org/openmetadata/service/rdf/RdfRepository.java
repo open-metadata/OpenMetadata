@@ -26,10 +26,13 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -1801,6 +1804,15 @@ public class RdfRepository {
       throw new IllegalStateException("RDF not enabled");
     }
     return storageService.executeSparqlQuery(query, format);
+  }
+
+  /** Streams a read query that already names its dataset, so no graph restriction is added. */
+  public void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF not enabled");
+    }
+    storageService.readQuery(query, timeoutMillis, reader);
   }
 
   /**
