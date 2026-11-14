@@ -122,7 +122,10 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
         .build();
   }
 
-  /** Keeps the error type a client branches on, such as SETTINGS_MANAGED_BY_ENVIRONMENT. */
+  /**
+   * Keeps the error type a client branches on, such as SETTINGS_MANAGED_BY_ENVIRONMENT.
+   * ADR:2026-11-14-typed-client-errors-preserve-their-error-type
+   */
   private Response getTypedResponse(Response response, WebServiceException ex) {
     if (ex.getErrorType() == null) {
       return getResponse(response, ex);
