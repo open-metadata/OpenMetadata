@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import enUS from '../../../locale/languages/en-us.json';
 import {
   classifyMergedRelation,
   classifyRelation,
@@ -19,6 +20,7 @@ import {
   normalizeRelationKey,
   RelationCategory,
   RELATION_CATEGORIES,
+  RELATION_LABEL_KEYS,
   toSentenceCase,
 } from './KnowledgeGraph.relations';
 
@@ -219,6 +221,26 @@ describe('KnowledgeGraph.relations', () => {
       );
 
       expect(new Set(dashes).size).toBe(RELATION_CATEGORIES.length);
+    });
+  });
+
+  describe('RELATION_LABEL_KEYS', () => {
+    it('points every predicate at an existing en-us label', () => {
+      const labels: Record<string, string> = enUS.label;
+      const missing = Object.values(RELATION_LABEL_KEYS).filter(
+        (key) => !labels[key.replace(/^label\./, '')]
+      );
+
+      expect(missing).toEqual([]);
+    });
+
+    it('reads every predicate label in sentence case, as the edges did before translation', () => {
+      const labels: Record<string, string> = enUS.label;
+      const titleCased = Object.values(RELATION_LABEL_KEYS)
+        .map((key) => labels[key.replace(/^label\./, '')])
+        .filter((text) => text !== toSentenceCase(text));
+
+      expect(titleCased).toEqual([]);
     });
   });
 
