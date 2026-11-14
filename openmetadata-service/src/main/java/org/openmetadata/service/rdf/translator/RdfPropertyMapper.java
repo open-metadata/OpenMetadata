@@ -171,6 +171,9 @@ public class RdfPropertyMapper {
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
           OM_NS + "hasCustomProperty",
+          OM_NS + "hasColumn",
+          OM_NS + "hasConstraint",
+          "http://www.w3.org/ns/dqv#hasQualityMeasurement",
           // Remove stale roles from unreleased glossary realizations on the next entity write.
           OM_NS + "hasPrimaryStore",
           OM_NS + "hasDerivedAsset",
@@ -1376,8 +1379,8 @@ public class RdfPropertyMapper {
           sourceColumn.addProperty(isPrimaryKey, model.createTypedLiteral(true));
           sourceColumn.addProperty(
               model.createProperty(OM_NS, "isNullable"), model.createTypedLiteral(false));
-          sourceColumn.addProperty(isUnique, model.createTypedLiteral(true));
-        } else if ("UNIQUE".equals(type)) {
+        }
+        if (sourceColumns.size() == 1 && ("PRIMARY_KEY".equals(type) || "UNIQUE".equals(type))) {
           sourceColumn.addProperty(isUnique, model.createTypedLiteral(true));
         }
       }

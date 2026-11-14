@@ -41,6 +41,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableConstraint.ConstraintType;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -64,12 +68,22 @@ class RdfOwnedResourcesTest {
   @Test
   void walkingTheProjectionFindsWhatTheStoreScopeMatches() {
     final UUID tableId = UUID.randomUUID();
+    final Column zip =
+        column("svc.db.schema.orders.customer.address.zip")
+            .withProfile(new ColumnProfile().withNullCount(2.0));
     final Table table =
         new Table()
             .withId(tableId)
             .withName("orders")
             .withFullyQualifiedName("svc.db.schema.orders")
             .withExtension(Map.of("costCenter", "finance", "tier", 2))
+            .withProfile(new TableProfile().withRowCount(100.0))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of("id"))
+                        .withReferredColumns(List.of("svc.db.schema.customers.id"))))
             .withColumns(
                 List.of(
                     column("svc.db.schema.orders.id"),
@@ -79,10 +93,7 @@ class RdfOwnedResourcesTest {
                             List.of(
                                 column("svc.db.schema.orders.customer.address")
                                     .withDataType(ColumnDataType.STRUCT)
-                                    .withChildren(
-                                        List.of(
-                                            column(
-                                                "svc.db.schema.orders.customer.address.zip")))))));
+                                    .withChildren(List.of(zip))))));
     final UUID topicId = UUID.randomUUID();
     final Topic topic =
         new Topic()
@@ -91,8 +102,14 @@ class RdfOwnedResourcesTest {
             .withFullyQualifiedName("kafka.events")
             .withCleanupPolicies(List.of(CleanupPolicy.DELETE, CleanupPolicy.COMPACT));
 
-    // The extension, its two properties, and four columns at three levels of nesting.
-    assertWalkMatchesStoreScope(BASE + "entity/table/" + tableId, translator.toRdf(table), 7);
+    // The extension, its two properties, four columns, one constraint and two measurements.
+    final Model projection = translator.toRdf(table);
+    final String tableUri = BASE + "entity/table/" + tableId;
+    assertWalkMatchesStoreScope(tableUri, projection, 10);
+    assertFalse(
+        storeScopeSubjects(tableUri, projection)
+            .contains(
+                NodeFactory.createURI(RdfUtils.columnUri(BASE, "svc.db.schema.customers.id"))));
     assertWalkMatchesStoreScope(BASE + "entity/topic/" + topicId, translator.toRdf(topic), 2);
   }
 

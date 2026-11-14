@@ -23,6 +23,9 @@ public final class RdfOwnedResources {
       NodeFactory.createURI(OM_NS + "hasExtensionProperty");
   private static final Node HAS_COLUMN = NodeFactory.createURI(OM_NS + "hasColumn");
   private static final Node HAS_CHILD_COLUMN = NodeFactory.createURI(OM_NS + "hasChildColumn");
+  private static final Node HAS_CONSTRAINT = NodeFactory.createURI(OM_NS + "hasConstraint");
+  private static final Node HAS_QUALITY_MEASUREMENT =
+      NodeFactory.createURI("http://www.w3.org/ns/dqv#hasQualityMeasurement");
 
   private RdfOwnedResources() {}
 
@@ -47,9 +50,18 @@ public final class RdfOwnedResources {
           }
         }
         UNION {
-          ?entity <https://open-metadata.org/ontology/hasColumn> ?topColumn .
-          ?topColumn (<https://open-metadata.org/ontology/hasChildColumn>)* ?subject .
+          ?entity (<https://open-metadata.org/ontology/hasConstraint>
+                   |<http://www.w3.org/ns/dqv#hasQualityMeasurement>) ?subject .
           ?subject ?p ?o
+        }
+        UNION {
+          ?entity <https://open-metadata.org/ontology/hasColumn> ?topColumn .
+          ?topColumn (<https://open-metadata.org/ontology/hasChildColumn>)* ?column .
+          { ?column ?p ?o . BIND(?column AS ?subject) }
+          UNION {
+            ?column <http://www.w3.org/ns/dqv#hasQualityMeasurement> ?subject .
+            ?subject ?p ?o
+          }
         }
         UNION {
           ?entity ?listProperty ?list .
@@ -93,7 +105,14 @@ public final class RdfOwnedResources {
       owned.add(extension);
       owned.addAll(objects(graph, extension, HAS_EXTENSION_PROPERTY));
     }
-    owned.addAll(descendants(graph, objects(graph, entity, HAS_COLUMN), HAS_CHILD_COLUMN));
+    owned.addAll(objects(graph, entity, HAS_CONSTRAINT));
+    owned.addAll(objects(graph, entity, HAS_QUALITY_MEASUREMENT));
+    final Set<Node> columns =
+        descendants(graph, objects(graph, entity, HAS_COLUMN), HAS_CHILD_COLUMN);
+    owned.addAll(columns);
+    for (Node column : columns) {
+      owned.addAll(objects(graph, column, HAS_QUALITY_MEASUREMENT));
+    }
     owned.addAll(listCells(graph, entity));
     return owned;
   }
