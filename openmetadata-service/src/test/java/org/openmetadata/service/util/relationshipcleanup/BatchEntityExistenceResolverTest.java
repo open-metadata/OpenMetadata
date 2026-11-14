@@ -61,4 +61,12 @@ class BatchEntityExistenceResolverTest {
       assertTrue(resolver.exists(conversationId, Entity.CONVERSATION));
     }
   }
+
+  @Test
+  void treatsSuggestionEndpointsAsOrphaned() {
+    final BatchEntityExistenceResolver resolver =
+        new BatchEntityExistenceResolver(Map.of(), Map.of());
+
+    assertFalse(resolver.exists(UUID.randomUUID(), Entity.SUGGESTION));
+  }
 }

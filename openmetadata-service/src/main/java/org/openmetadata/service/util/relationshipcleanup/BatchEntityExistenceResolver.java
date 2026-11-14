@@ -145,7 +145,8 @@ public class BatchEntityExistenceResolver implements RelationshipValidator.Entit
       result = existsInTimeSeriesRepository(entityId, entityType);
     } else if (Entity.CONVERSATION.equals(entityType)) {
       result = existsInConversationRepository(entityId);
-    } else if (Entity.THREAD.equals(entityType)) {
+    } else if (Entity.THREAD.equals(entityType) || Entity.SUGGESTION.equals(entityType)) {
+      // Pre-2.0 types whose tables the 2.0 migration replaced; rows pointing at them are orphans
       result = false;
     } else {
       result = true;
