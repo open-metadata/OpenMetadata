@@ -399,7 +399,8 @@ public class AttachmentResource {
     try (BufferedUpload buffered =
         ContextFileUploadSupport.bufferUpload(fileInputStream, maxFileSize)) {
       String originalFileName =
-          fileDetail.getFileName() != null ? fileDetail.getFileName() : fileDetail.getName();
+          ContextFileUploadSupport.decodeMultipartFileName(
+              fileDetail.getFileName() != null ? fileDetail.getFileName() : fileDetail.getName());
       String extension = "";
       int dotIndex = originalFileName == null ? -1 : originalFileName.lastIndexOf('.');
       if (dotIndex != -1) {

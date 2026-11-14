@@ -2,14 +2,20 @@ package org.openmetadata.service.resources.drive;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.junit.jupiter.api.Test;
+import org.jvnet.mimepull.MIMEConfig;
+import org.jvnet.mimepull.MIMEMessage;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -92,5 +98,38 @@ class ContextFileUploadSupportTest {
 
     assertEquals(bytes.length, ex.getActualSize());
     assertEquals(3, ex.getMaxFileSize());
+  }
+
+  @Test
+  void decodeMultipartFileNameRecoversUtf8NameFromParsedUpload() throws Exception {
+    String original = "Отчёт.xlsx";
+    String body =
+        "--XX\r\n"
+            + "Content-Disposition: form-data; name=\"file\"; filename=\""
+            + original
+            + "\"\r\n"
+            + "Content-Type: application/octet-stream\r\n\r\n"
+            + "abc\r\n"
+            + "--XX--\r\n";
+    MIMEMessage message =
+        new MIMEMessage(
+            new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)),
+            "XX",
+            new MIMEConfig());
+    List<String> header = message.getAttachments().get(0).getHeader("Content-Disposition");
+    String parsed = new FormDataContentDisposition(header.get(0)).getFileName();
+
+    assertNotEquals(original, parsed);
+    assertEquals(original, ContextFileUploadSupport.decodeMultipartFileName(parsed));
+  }
+
+  @Test
+  void decodeMultipartFileNameLeavesOtherNamesUnchanged() {
+    assertNull(ContextFileUploadSupport.decodeMultipartFileName(null));
+    assertEquals(
+        "report-2026.pdf", ContextFileUploadSupport.decodeMultipartFileName("report-2026.pdf"));
+    assertEquals("Отчёт.xlsx", ContextFileUploadSupport.decodeMultipartFileName("Отчёт.xlsx"));
+    assertEquals("報告.pdf", ContextFileUploadSupport.decodeMultipartFileName("報告.pdf"));
+    assertEquals("Café.txt", ContextFileUploadSupport.decodeMultipartFileName("Café.txt"));
   }
 }

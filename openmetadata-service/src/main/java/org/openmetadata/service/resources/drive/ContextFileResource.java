@@ -357,7 +357,8 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       throws IOException {
     String user = securityContext.getUserPrincipal().getName();
     String originalFileName =
-        fileDetail.getFileName() != null ? fileDetail.getFileName() : fileDetail.getName();
+        ContextFileUploadSupport.decodeMultipartFileName(
+            fileDetail.getFileName() != null ? fileDetail.getFileName() : fileDetail.getName());
     String contentType = URLConnection.guessContentTypeFromName(originalFileName);
     if (contentType == null) {
       contentType = "application/octet-stream";
