@@ -1875,10 +1875,12 @@ public class LineageRepository {
     // Table is downstream
     lineageRows.addAll(
         dao.relationshipDAO().findFromBatch(tableIdList, Relationship.UPSTREAM.ordinal()));
-    // Table is upstream
+    // Table is upstream, of an entity of any type: an edge into a metric (its own column endpoint),
+    // a data model or a dashboard names this table's columns just as an edge into a table does.
     lineageRows.addAll(
         dao.relationshipDAO()
-            .findToBatch(tableIdList, Relationship.UPSTREAM.ordinal(), Entity.TABLE, Entity.TABLE));
+            .findToBatchAllTypes(
+                tableIdList, Relationship.UPSTREAM.ordinal(), Include.NON_DELETED));
 
     for (CollectionDAO.EntityRelationshipObject row : lineageRows) {
       try {
@@ -1909,7 +1911,7 @@ public class LineageRepository {
 
   private boolean rewriteColumnMappings(
       LineageDetails details, Map<String, String> renameMap, Set<String> deletedFqns) {
-    if (details.getColumnsLineage() == null) {
+    if (details == null || details.getColumnsLineage() == null) {
       return false;
     }
 

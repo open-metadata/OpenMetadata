@@ -325,6 +325,26 @@ describe('NodeChildren Component', () => {
       expect(screen.getByTestId('column-column2')).toBeInTheDocument();
     });
 
+    it('should keep a metric endpoint that has no lineage yet visible when filter is active', () => {
+      const metricNode = {
+        id: 'metric-id',
+        type: EntityType.METRIC,
+        entityType: EntityType.METRIC,
+        name: 'total_sales',
+        fullyQualifiedName: 'metricService.total_sales',
+      } as unknown as LineageNodeType;
+
+      render(
+        <NodeChildren
+          isChildrenListExpanded
+          isOnlyShowColumnsWithLineageFilterActive
+          node={metricNode}
+        />
+      );
+
+      expect(screen.getByTestId('column-total_sales')).toBeInTheDocument();
+    });
+
     it('should update filtered columns when lineage filter is toggled', () => {
       const { rerender } = render(
         <NodeChildren

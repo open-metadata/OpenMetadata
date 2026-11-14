@@ -22,6 +22,7 @@ import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getAggregationOptions } from '../../../utils/ExploreUtils';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -248,6 +249,122 @@ describe('AddLineagePopover', () => {
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('s.d.sc.orders', {
       fields: 'columns',
     });
+  });
+
+  // A metric is its own single column endpoint, keyed by its FQN.
+  const METRIC_NODE = {
+    id: 'm',
+    name: 'total_sales',
+    displayName: 'Total Sales',
+    fullyQualifiedName: 'total_sales',
+    entityType: 'metric',
+  };
+  const canvasAsset = (node: Record<string, unknown>) =>
+    ({ id: node.id, position: { x: 0, y: 0 }, data: { node } } as Node);
+
+  it('connects a column to a metric on the canvas, the metric being the column', async () => {
+    render(
+      <AddLineagePopover
+        {...baseProps}
+        canvasNodes={[
+          canvasAsset({
+            id: 'self',
+            name: 'self',
+            fullyQualifiedName: 's.d.sc.self',
+            entityType: 'table',
+          }),
+          canvasAsset(METRIC_NODE),
+        ]}
+        excludeEntityId="self"
+        request={{
+          nodeId: 'self',
+          direction: LineageDirection.Downstream,
+          columnFqn: 's.d.sc.self.amount',
+          triggerRef,
+        }}
+      />
+    );
+
+    await user.click(
+      within(screen.getByTestId('add-lineage-canvas-asset-select')).getByRole(
+        'button'
+      )
+    );
+    await user.click(screen.getByRole('option', { name: /Total Sales/ }));
+
+    // There is no column to pick: the metric itself is the endpoint.
+    expect(
+      screen.queryByTestId('add-lineage-column-select')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('add-lineage-preview').textContent).toMatch(
+      /customers\.amount.*Total Sales$/
+    );
+
+    fireEvent.click(screen.getByTestId('add-lineage-submit'));
+
+    await waitFor(() =>
+      expect(baseProps.onSubmit).toHaveBeenCalledWith({
+        entity: { id: 'm', type: 'metric', fullyQualifiedName: 'total_sales' },
+        columnFqn: 'total_sales',
+      })
+    );
+
+    expect(getTableDetailsByFQN).not.toHaveBeenCalled();
+    expect(getDataModelByFqn).not.toHaveBeenCalled();
+  });
+
+  it("names a metric's own endpoint by the metric alone when it is edited", async () => {
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      columns: [{ name: 'id', fullyQualifiedName: 's.d.sc.orders.id' }],
+    });
+    render(
+      <AddLineagePopover
+        {...baseProps}
+        canvasNodes={[
+          canvasAsset(METRIC_NODE),
+          canvasAsset({
+            id: 'b',
+            name: 'orders',
+            fullyQualifiedName: 's.d.sc.orders',
+            entityType: 'table',
+          }),
+        ]}
+        excludeEntityId="m"
+        nodeName="Total Sales"
+        request={{
+          nodeId: 'm',
+          direction: LineageDirection.Upstream,
+          columnFqn: 'total_sales',
+          triggerRef,
+        }}
+      />
+    );
+
+    await user.click(
+      within(screen.getByTestId('add-lineage-canvas-asset-select')).getByRole(
+        'button'
+      )
+    );
+    await user.click(screen.getByRole('option', { name: /orders/ }));
+    await user.click(
+      within(screen.getByTestId('add-lineage-column-select')).getByRole(
+        'button'
+      )
+    );
+    await user.click(await screen.findByRole('option', { name: 'id' }));
+
+    expect(screen.getByTestId('add-lineage-preview').textContent).toMatch(
+      /orders\.id.*Total Sales$/
+    );
+
+    fireEvent.click(screen.getByTestId('add-lineage-submit'));
+
+    await waitFor(() =>
+      expect(baseProps.onSubmit).toHaveBeenCalledWith({
+        entity: { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.orders' },
+        columnFqn: 's.d.sc.orders.id',
+      })
+    );
   });
 
   it('stays open when submit fails, and ignores duplicate submits', async () => {

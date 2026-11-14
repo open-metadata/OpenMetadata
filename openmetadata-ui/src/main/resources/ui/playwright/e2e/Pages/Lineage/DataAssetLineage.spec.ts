@@ -455,14 +455,7 @@ test.describe('Column Level Lineage', () => {
         await addPipelineBetweenNodes(page, table, metric);
         await activateColumnLayer(page);
 
-        await addColumnLineageViaAPI(
-          page,
-          apiContext,
-          table,
-          metric,
-          tableCol,
-          metricCol
-        );
+        await addColumnLineage(page, tableCol, metricCol, metric);
       });
 
       await test.step('Verify column lineage survives a reload', async () => {
