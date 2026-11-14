@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Entity type reachable under the `di-data-assets-*` wildcard. Asset types are ingested by
- * DataInsightsApp and configured in `dataInsights/config.json`. Test cases, test results
- * and resolution statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the
- * app must never create or delete data streams for those live-index aliases. Test case
- * documents carry no `@timestamp`, so test cases are charted in live mode (`searchIndex:
- * testCase`) rather than over a time window.
+ * Entity type reachable under the `di-data-assets-*` wildcard. Asset types and test case
+ * definitions are captured as daily snapshots by DataInsightsApp and configured in
+ * `dataInsights/config.json`. Test results and resolution statuses are supplied by
+ * live-index aliases. Test case coverage history begins with successfully captured
+ * snapshots; backfills do not reconstruct definitions from before collection started.
  */
 export enum DataAssetType {
     APIEndpoint = "apiEndpoint",

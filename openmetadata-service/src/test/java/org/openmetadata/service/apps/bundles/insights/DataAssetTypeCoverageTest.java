@@ -120,11 +120,9 @@ class DataAssetTypeCoverageTest {
   }
 
   @Test
-  void testCasesReachDataInsightsThroughTheLiveIndexAliasOnly() {
-    // Test case definitions are read in place so charts can count them per table; ingesting them as
-    // a snapshot would have the app manage a data stream the live alias already occupies.
-    assertTrue(aliasedTypes().contains("testCase"), "testCase must be aliased in");
-    assertFalse(ingestedTypes().contains("testCase"), "testCase must not be ingested");
+  void testCasesAreDailySnapshotsRatherThanALiveIndexAlias() {
+    assertFalse(aliasedTypes().contains("testCase"), "testCase must not alias the live index");
+    assertTrue(ingestedTypes().contains("testCase"), "testCase must have daily snapshots");
   }
 
   /** Every entity type the search layer knows how to index. */

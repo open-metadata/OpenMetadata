@@ -32,6 +32,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerTeamStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.RecursiveColumnStatsStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TagAndTierSourcesStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TestCaseParentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TierStep;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -61,8 +62,8 @@ public class DataInsightsEntityEnricherProcessor
 
   /**
    * Step pipeline: each entity-version's enrichment runs through this list once. A step that
-   * throws produces no fields on that version's snapshot, but sibling steps still run and the
-   * entity is still emitted to the index. See {@link EnrichmentPipeline} for the failure-isolation
+   * throws normally drops only its contribution. Required identity/linkage steps reject the
+   * snapshot because emitting it would corrupt dependent metrics. See {@link EnrichmentPipeline} for the failure-isolation
    * contract.
    *
    * <p>Ordering is not load-bearing for correctness — no step reads keys written by sibling
@@ -74,6 +75,7 @@ public class DataInsightsEntityEnricherProcessor
       new EnrichmentPipeline(
           List.of(
               new IdentityProjectionStep(),
+              new TestCaseParentStep(),
               new EntityStatusStep(),
               new DescriptionSourcesStep(),
               new TagAndTierSourcesStep(),
@@ -185,8 +187,8 @@ public class DataInsightsEntityEnricherProcessor
 
   /**
    * Per-entity orchestration: resolve version windows → enrich each → fan out across days. One
-   * entity in, N daily snapshots out. The only way to lose the entity entirely is if version
-   * resolution itself throws — step failures only drop their own fields, not the entity (see
+   * entity in, N daily snapshots out. Version resolution and required enrichment failures
+   * reject the entity; optional step failures only drop their own fields (see
    * {@link EnrichmentPipeline}).
    */
   private List<Map<String, Object>> enrichEntityToSnapshots(

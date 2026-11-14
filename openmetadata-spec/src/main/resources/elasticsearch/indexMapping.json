@@ -250,8 +250,7 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
     "parentAliases": ["testSuite", "all", "dataAssetEmbeddings"],
-    "childAliases": ["testCaseResolutionStatus", "testCaseResult"],
-    "dataInsightAliases": ["di-data-assets-testcase"]
+    "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
   },
   "testCaseResult": {
     "indexName": "test_case_result_search_index",
