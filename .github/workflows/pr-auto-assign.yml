@@ -16,9 +16,11 @@ name: PR Auto Assign
 #   * Author has write access -> the author.
 #   * Otherwise (external contributors cannot be assigned) -> an owner of the CODEOWNERS
 #     rule covering the most changed lines. Team owners can't be assigned either, so they
-#     resolve through .github/teams.yml, rotated by PR number to spread the load.
+#     resolve to the GitHub team's members when the team is listed under `assign.teams` in
+#     .github/team-config.yml (approval-only teams such as `mergers` are not), minus
+#     `assign.exclude`, rotated by PR number to spread the load.
 # A PR that already has an assignee is left alone. Only metadata is read through the API
-# (CODEOWNERS/teams.yml from the base commit, no checkout), so pull_request_target is safe.
+# (CODEOWNERS/team-config.yml from the base commit, no checkout), so pull_request_target is safe.
 on:
   pull_request_target:
     types: [opened]
@@ -34,8 +36,37 @@ jobs:
     if: ${{ github.event.pull_request.assignees[0] == null }}
     runs-on: ubuntu-latest
     steps:
+      # Listing team members needs members:read, which the default GITHUB_TOKEN doesn't have.
+      # Without it a team owner contributes no candidates and the PR stays unassigned.
+      # Same org bot App as openmetadata-collate's workflows, narrowed to members:read.
+      - name: Generate a token
+        id: generate_token
+        continue-on-error: true
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.GH_BOT_ID }}
+          private-key: ${{ secrets.GH_BOT_PK }}
+          owner: ${{ github.repository_owner }}
+          permission-members: read
+
+      - name: Read team config from the base commit
+        id: team-config
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          # github.sha is the base-branch commit this workflow was loaded from.
+          BASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          json=$(gh api "repos/${REPO}/contents/.github/team-config.yml?ref=${BASE_SHA}" --jq .content \
+            | base64 -d | yq -o=json -I=0 '.')
+          echo "json=${json}" >> "$GITHUB_OUTPUT"
+
       - name: Assign author or code owner
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          TEAM_CONFIG: ${{ steps.team-config.outputs.json }}
+          ORG_READ_TOKEN: ${{ steps.generate_token.outputs.token }}
         with:
           script: |
             const { owner, repo } = context.repo;
@@ -112,26 +143,45 @@ jobs:
             }
             const topOwners = [...weights].sort((a, b) => b[1] - a[1])[0][0].split(' ');
 
-            const teams = {};
-            let currentTeam;
-            for (const line of (await readBaseFile('.github/teams.yml')).split('\n')) {
-              const team = line.match(/^["']?([^"'#:]+)["']?:\s*$/);
-              const member = line.match(/^\s+-\s*["']?@([^"'\s]+)/);
-              if (team) {
-                currentTeam = teams[team[1].toLowerCase()] = [];
-              } else if (member && currentTeam) {
-                currentTeam.push(member[1]);
+            const { teams: assignTeams = [], exclude = [] } = JSON.parse(process.env.TEAM_CONFIG).assign ?? {};
+            const lower = (values) => new Set(values.map((value) => value.toLowerCase()));
+            const assignableTeams = lower(assignTeams);
+            const excluded = lower(exclude);
+            const orgApi = process.env.ORG_READ_TOKEN ? getOctokit(process.env.ORG_READ_TOKEN) : null;
+
+            // A team owner listed under assign.teams expands to its GitHub members (child teams
+            // included); any other team is an approval gate and contributes nobody. An individual
+            // owner is used as-is. assign.exclude only filters team expansion.
+            async function expand(handle) {
+              const name = handle.replace(/^@/, '');
+              if (!name.includes('/')) {
+                return [name];
+              }
+              const [org, teamSlug] = name.split('/');
+              if (!assignableTeams.has(teamSlug.toLowerCase())) {
+                core.info(`${handle} is not in assign.teams; it contributes no candidates.`);
+                return [];
+              }
+              if (!orgApi) {
+                core.warning(`No members:read token; ${handle} contributes no candidates.`);
+                return [];
+              }
+              try {
+                const members = await orgApi.paginate(orgApi.rest.teams.listMembersInOrg, {
+                  org,
+                  team_slug: teamSlug,
+                  per_page: 100,
+                });
+                return members.map((member) => member.login).filter((login) => !excluded.has(login.toLowerCase()));
+              } catch (error) {
+                core.warning(`Could not list members of ${handle}: ${error.message}`);
+                return [];
               }
             }
 
-            const candidates = [
-              ...new Set(
-                topOwners.flatMap((handle) => {
-                  const name = handle.replace(/^@/, '');
-                  return name.includes('/') ? (teams[name.split('/')[1].toLowerCase()] ?? []) : [name];
-                })
-              ),
-            ].filter((name) => name !== author);
+            const candidates = [...new Set((await Promise.all(topOwners.map(expand))).flat())].filter(
+              (name) => name !== author
+            );
 
             for (let i = 0; i < candidates.length; i++) {
               const candidate = candidates[(pr.number + i) % candidates.length];
