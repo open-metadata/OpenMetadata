@@ -32,7 +32,7 @@ public final class DataMigrationStep {
       final String stepName,
       final Runnable step) {
     final String marker = markerFor(version, stepName);
-    if (isRecorded(migrationDAO, version, marker)) {
+    if (hasMarker(migrationDAO, version, marker)) {
       LOG.info("Skipping data migration step {} for {}: already applied", stepName, version);
     } else {
       step.run();
@@ -40,12 +40,18 @@ public final class DataMigrationStep {
     }
   }
 
+  /** Whether {@code stepName} already ran for {@code version}. */
+  public static boolean isRecorded(
+      final MigrationDAO migrationDAO, final String version, final String stepName) {
+    return hasMarker(migrationDAO, version, markerFor(version, stepName));
+  }
+
   /** SERVER_MIGRATION_SQL_LOGS keys on the marker alone, so it must be unique across versions. */
   static String markerFor(final String version, final String stepName) {
     return MARKER_PREFIX + version + ":" + stepName;
   }
 
-  private static boolean isRecorded(
+  private static boolean hasMarker(
       final MigrationDAO migrationDAO, final String version, final String marker) {
     return !nullOrEmpty(migrationDAO.getSqlQuery(version, marker));
   }

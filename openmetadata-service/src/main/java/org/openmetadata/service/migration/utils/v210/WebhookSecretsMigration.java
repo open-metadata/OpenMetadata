@@ -16,14 +16,18 @@ package org.openmetadata.service.migration.utils.v210;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 
 /**
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
@@ -31,9 +35,9 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * webhook that holds it, and in its versions, the change descriptions recorded with them and the
  * stored change events, the mask, since nothing sends from those. Plaintext is encrypted for its
  * webhook. Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and
- * OAuth2 credentials of an alert destination, when it is stored nowhere else ({@link
- * StoredCiphertextCopies}); any other value stays as stored and is entered again before its
- * webhook sends. Values already in that form are kept, so running it again changes nothing. The
+ * OAuth2 credentials of an alert destination, each copy for the destination that holds it; any
+ * other value stays as stored and is entered again before its webhook sends. Values already in that
+ * form are kept, so running it again changes nothing. The
  * rules it applies are frozen in {@link StoredWebhookSecrets}; a row it cannot read stops the step
  * with an error that names the row.
  */
@@ -41,10 +45,13 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 public final class WebhookSecretsMigration {
   public static final String PROFILE_STEP_NAME = "bindProfileWebhookSecrets";
   public static final String ALERT_STEP_NAME = "bindAlertDestinationSecrets";
+  // An operator's choice to upgrade although no webhook credential stored before 2.1 opens.
+  static final String KEEP_UNOPENED_ENV = "MIGRATION_KEEP_UNREADABLE_WEBHOOK_CREDENTIALS";
   private static final int PAGE_SIZE = 500;
   private static final String USER = "user";
   private static final String TEAM = "team";
   private static final String ALERT = "eventsubscription";
+  private static final String ALERT_TABLE = "event_subscription_entity";
 
   private WebhookSecretsMigration() {}
 
@@ -61,18 +68,75 @@ public final class WebhookSecretsMigration {
     }
   }
 
+  /**
+   * Stops the upgrade when webhook credentials releases before 2.1 stored encrypted exist and none
+   * of them opens with the configured Fernet keys ({@link StoredWebhookSecrets.CarriedCredentials}).
+   * It only reads, and the 2.1.0 migration runs it as its preflight, before any pending version is
+   * migrated, so no step of this or an earlier version writes with those keys first; {@code migrate
+   * --force} does not skip it. It is not run on a database without alerts yet, nor once the alert
+   * step is recorded, since that step has then carried over what opened. The environment variable
+   * {@value #KEEP_UNOPENED_ENV} set to {@code true} lets the upgrade go on, leaving those values as
+   * stored; the check then reads nothing. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
+   */
+  public static void requireKeysThatOpenStoredCredentials(
+      MigrationDAO migrationDAO, String version, Handle handle, ConnectionType connectionType) {
+    requireKeysThatOpenStoredCredentials(
+        migrationDAO,
+        version,
+        handle,
+        connectionType,
+        Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
+  }
+
+  static void requireKeysThatOpenStoredCredentials(
+      MigrationDAO migrationDAO,
+      String version,
+      Handle handle,
+      ConnectionType connectionType,
+      boolean keepUnopened) {
+    Sql sql = new Sql(connectionType);
+    // A new database has no alert table until its first versions are migrated.
+    boolean hasAlerts =
+        !keepUnopened && isKeyDefined() && MigrationTableUtil.tableExists(handle, ALERT_TABLE);
+    if (hasAlerts && !isAlertStepRecorded(migrationDAO, version, handle, sql)) {
+      requireKeysThatOpenStoredCredentials(handle, connectionType);
+    }
+  }
+
+  // A database still on the earliest migrations gets the migration log during this run.
+  private static boolean isAlertStepRecorded(
+      MigrationDAO migrationDAO, String version, Handle handle, Sql sql) {
+    return MigrationTableUtil.tableExists(handle, sql.migrationLogTable())
+        && DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
+  }
+
+  private static void requireKeysThatOpenStoredCredentials(
+      Handle handle, ConnectionType connectionType) {
+    StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
+    StoredWebhookSecrets.CarriedCredentials carried = new StoredWebhookSecrets.CarriedCredentials();
+    forEachPage(
+        handle,
+        new Sql(connectionType),
+        ALERT_TABLE,
+        rows ->
+            rows.forEach(
+                row ->
+                    secrets.countCarriedCredentials(
+                        readRow(row, ALERT_TABLE + " row " + row.get("id")), carried)));
+    carried.requireAnyOpened();
+  }
+
+  /**
+   * Binds the alert destinations. A credential stored before 2.1 that does not open stays as
+   * stored; whether the configured keys open any of them is checked first, by {@link
+   * #requireKeysThatOpenStoredCredentials}.
+   */
   public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
-      Set<String> storedElsewhere = StoredCiphertextCopies.find(handle, connectionType);
-      rewriteById(
-          handle,
-          sql,
-          "event_subscription_entity",
-          row -> secrets.bindAlert(row, storedElsewhere::contains));
-      rewriteVersions(
-          handle, sql, "event_subscription_entity", ALERT, StoredWebhookSecrets::maskAlert);
+      rewriteById(handle, sql, ALERT_TABLE, secrets::bindAlert);
+      rewriteVersions(handle, sql, ALERT_TABLE, ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
     }
   }
@@ -87,8 +151,29 @@ public final class WebhookSecretsMigration {
 
   private static void rewriteById(
       Handle handle, Sql sql, String table, Predicate<JsonNode> transform) {
+    AtomicInteger rewritten = new AtomicInteger();
+    forEachPage(
+        handle,
+        sql,
+        table,
+        rows -> {
+          PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
+          for (Map<String, Object> row : rows) {
+            String id = String.valueOf(row.get("id"));
+            String json = rewritten(row, transform, table + " row " + id);
+            if (json != null) {
+              batch.bind("id", id).bind("json", json).add();
+            }
+          }
+          rewritten.addAndGet(execute(batch));
+        });
+    LOG.info("Bound the webhook secrets of {} rows of {}", rewritten.get(), table);
+  }
+
+  /** Every row of {@code table} that could hold a webhook, a page at a time, by id. */
+  private static void forEachPage(
+      Handle handle, Sql sql, String table, Consumer<List<Map<String, Object>>> page) {
     String cursor = "";
-    int rewritten = 0;
     List<Map<String, Object>> rows;
     do {
       rows =
@@ -98,17 +183,9 @@ public final class WebhookSecretsMigration {
               .bind("pageSize", PAGE_SIZE)
               .mapToMap()
               .list();
-      PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
-      for (Map<String, Object> row : rows) {
-        cursor = String.valueOf(row.get("id"));
-        String json = rewritten(row, transform, table + " row " + cursor);
-        if (json != null) {
-          batch.bind("id", cursor).bind("json", json).add();
-        }
-      }
-      rewritten += execute(batch);
+      page.accept(rows);
+      cursor = rows.isEmpty() ? cursor : String.valueOf(rows.getLast().get("id"));
     } while (rows.size() == PAGE_SIZE);
-    LOG.info("Bound the webhook secrets of {} rows of {}", rewritten, table);
   }
 
   /**
@@ -144,7 +221,7 @@ public final class WebhookSecretsMigration {
   }
 
   /** The next {@code size} ids of {@code table} after {@code after}, so no table is held whole. */
-  static List<String> idPage(Handle handle, String table, String after, int size) {
+  private static List<String> idPage(Handle handle, String table, String after, int size) {
     return handle
         .createQuery("SELECT id FROM " + table + " WHERE id > :after ORDER BY id LIMIT :size")
         .bind("after", after)
@@ -186,6 +263,15 @@ public final class WebhookSecretsMigration {
     LOG.info("Masked the webhook secrets of {} change events of {}", rewritten, entityTypes);
   }
 
+  private static JsonNode readRow(Map<String, Object> row, String rowName) {
+    try {
+      return JsonUtils.readTree(String.valueOf(row.get("json")));
+    } catch (RuntimeException e) {
+      throw new IllegalStateException(
+          "The webhook secrets of " + rowName + " could not be read to check the Fernet keys", e);
+    }
+  }
+
   /**
    * The row's JSON once transformed, or null when it stays as stored. A row that cannot be read or
    * rewritten stops the step, naming the row, rather than being left as it is.
@@ -221,6 +307,11 @@ public final class WebhookSecretsMigration {
 
     private String jsonValue() {
       return isMySql() ? ":json" : ":json::jsonb";
+    }
+
+    // Created unquoted, so PostgreSQL keeps the name in lower case.
+    String migrationLogTable() {
+      return isMySql() ? "SERVER_MIGRATION_SQL_LOGS" : "server_migration_sql_logs";
     }
 
     String selectById(String table) {

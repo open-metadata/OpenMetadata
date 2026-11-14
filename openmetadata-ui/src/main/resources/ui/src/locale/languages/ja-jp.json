@@ -4875,6 +4875,7 @@
     "derived-tag-warning": "このタグは関連する用語から自動で派生しており、関連する用語を削除することでのみ除去できます。",
     "describe-what-ask-collate-should-remember": "AskCollate に記憶させる内容を記述してください。",
     "description-coverage-widget-description": "サービス内のすべてのデータアセットに対する説明のカバレッジ。<0>詳細を見る。</0>",
+    "destination-does-not-send-until-fixed": "これが修正されるまで、この送信先には送信されません",
     "destination-owner-selection-warning": "\"オーナー\" は \"{{subscriptionType}}\" を設定済みの <0>チーム</0> である必要があります。",
     "destination-selection-warning": "\"{{subscriptionCategory}}\" において \"{{subscriptionType}}\" がアラート受信設定されていることを確認してください。",
     "dimension-delete-fallback": "それらはディメンションを持たなくなります。テストケースが削除されることはありません。",

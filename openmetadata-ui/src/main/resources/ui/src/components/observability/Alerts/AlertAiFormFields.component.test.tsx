@@ -353,10 +353,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
     AccordionItem: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionPanel: ({ children }: MockCoreProps) => <div>{children}</div>,
     Alert: ({
+      children,
       title,
       variant,
     }: MockCoreProps & { title?: ReactNode; variant?: string }) => (
-      <div data-testid={`alert-${variant}`}>{title}</div>
+      <div data-testid={`alert-${variant}`}>
+        {title}
+        {children}
+      </div>
     ),
     Autocomplete,
     BadgeWithButton: ({
@@ -1213,6 +1217,107 @@ describe('AlertAi form field components', () => {
     expect(
       screen.queryByTestId('destination-category-select-0-combobox')
     ).not.toBeInTheDocument();
+  });
+
+  it('tells, on the details page, why a stored destination does not send', () => {
+    const reason =
+      "The value at '/authType/clientSecret' must be entered again";
+    const destination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Webhook,
+      type: SubscriptionType.Webhook,
+      statusDetails: {
+        status: Status.Failed,
+        lastFailedReason: reason,
+        configurationUnusable: true,
+      },
+    } as ModifiedDestination;
+    const value = {
+      ...baseValue,
+      destinations: [destination],
+    } as ModifiedCreateEventSubscription;
+
+    const { rerender } = render(
+      <AlertAiDestinationItem
+        isViewOnly
+        destination={destination}
+        name={0}
+        value={value}
+      />
+    );
+
+    expect(screen.getByTestId('alert-error')).toHaveTextContent(
+      `message.destination-does-not-send-until-fixed${reason}`
+    );
+
+    rerender(
+      <AlertAiDestinationItem
+        destination={destination}
+        name={0}
+        value={value}
+      />
+    );
+
+    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+  });
+
+  it('tells, on the details page, why the last send failed', () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Webhook,
+      type: SubscriptionType.Webhook,
+      statusDetails: {
+        status: Status.AwaitingRetry,
+        lastFailedReason: 'Webhook failed with status: 503',
+      },
+    } as ModifiedDestination;
+
+    render(
+      <AlertAiDestinationItem
+        isViewOnly
+        destination={destination}
+        name={0}
+        value={
+          {
+            ...baseValue,
+            destinations: [destination],
+          } as ModifiedCreateEventSubscription
+        }
+      />
+    );
+
+    expect(screen.getByTestId('alert-error')).toHaveTextContent(
+      'label.failure-reasonWebhook failed with status: 503'
+    );
+    expect(screen.getByTestId('alert-error')).not.toHaveTextContent(
+      'message.destination-does-not-send-until-fixed'
+    );
+  });
+
+  it('says nothing on the details page about a destination that sends', () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Webhook,
+      type: SubscriptionType.Webhook,
+      statusDetails: { status: Status.Active },
+    } as ModifiedDestination;
+
+    render(
+      <AlertAiDestinationItem
+        isViewOnly
+        destination={destination}
+        name={0}
+        value={
+          {
+            ...baseValue,
+            destinations: [destination],
+          } as ModifiedCreateEventSubscription
+        }
+      />
+    );
+
+    expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
   });
 
   it('renders read-only destination and type fields side by side on the details page', () => {

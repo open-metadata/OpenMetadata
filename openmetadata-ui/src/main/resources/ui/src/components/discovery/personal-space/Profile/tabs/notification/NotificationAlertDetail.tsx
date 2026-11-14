@@ -40,7 +40,10 @@ import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
-import { EntityType } from '../../../../../../enums/entity.enum';
+import {
+  EntityType,
+  TabSpecificField,
+} from '../../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../../generated/entity/data/table';
 import { EventsRecord } from '../../../../../../generated/events/api/eventsRecord';
 import { EventSubscriptionDiagnosticInfo } from '../../../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -344,7 +347,9 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     setIsLoading(true);
     try {
       const [alertData, diagData, eventsData] = await Promise.allSettled([
-        getAlertsFromName(fqn, { fields: 'owners' }),
+        getAlertsFromName(fqn, {
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.STATUS_DETAILS}`,
+        }),
         getDiagnosticInfo(fqn),
         getAlertEventsDiagnosticsInfo({ fqn, listCountOnly: true }),
       ]);

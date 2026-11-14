@@ -4875,6 +4875,7 @@
     "derived-tag-warning": "Bu etiket otomatik olarak türetilmiştir ve yalnızca ilgili Sözlük Terimi silinerek kaldırılabilir.",
     "describe-what-ask-collate-should-remember": "AskCollate'in neyi hatırlaması gerektiğini açıklayın.",
     "description-coverage-widget-description": "Servisteki tüm veri varlıkları için açıklama kapsamı. <0>daha fazla bilgi edinin.</0>",
+    "destination-does-not-send-until-fixed": "Bu hedef, bu sorun düzeltilene kadar gönderim yapmaz",
     "destination-owner-selection-warning": "Lütfen \"Sahip\"in uyarıları almak için \"{{subscriptionType}}\" yapılandırılmış bir <0>Takım</0> olduğundan emin olun.",
     "destination-selection-warning": "Lütfen \"{{subscriptionCategory}}\" kategorisinin uyarıları almak için \"{{subscriptionType}}\" türünü yapılandırdığından emin olun.",
     "dimension-delete-fallback": "Artık bir boyutları olmayacak. Hiçbir test senaryosu silinmez.",

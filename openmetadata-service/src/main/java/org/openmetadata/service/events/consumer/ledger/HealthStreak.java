@@ -16,7 +16,10 @@ public final class HealthStreak {
   public static DestinationHealth after(
       DestinationHealth previous, DestinationOutcome outcomeOfThisTick) {
     SubscriptionStatus statusOfThisTick = outcomeOfThisTick.status();
-    DestinationHealth result = new DestinationHealth().withStatus(statusOfThisTick);
+    DestinationHealth result =
+        new DestinationHealth()
+            .withStatus(statusOfThisTick)
+            .withConfigurationFingerprint(outcomeOfThisTick.configurationFingerprint());
     if (outcomeOfThisTick.kind() == DestinationOutcome.Kind.FAILED) {
       result
           .withConsecutiveFailedTicks(failedTicksBefore(previous) + 1)

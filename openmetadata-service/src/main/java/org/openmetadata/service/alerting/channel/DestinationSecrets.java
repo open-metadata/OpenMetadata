@@ -29,6 +29,7 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
@@ -106,11 +107,30 @@ public final class DestinationSecrets {
    * stored when a secret does not open, so a value waiting to be entered again stops no edit.
    */
   public static SubscriptionDestination decryptedOrAsStored(SubscriptionDestination destination) {
+    return openedOr(destination, Function.identity(), refused -> destination);
+  }
+
+  /**
+   * Why the destination, as stored, cannot send: a secret that does not open for it, named as the
+   * send path names it. Empty when every secret opens. Only decrypts, so a status read stays cheap.
+   */
+  public static Optional<String> unusableBecause(SubscriptionDestination destination) {
+    return openedOr(destination, opened -> Optional.empty(), Optional::of);
+  }
+
+  // The decrypted copy, or, when a secret does not open, why not, as the send path says it.
+  private static <T> T openedOr(
+      SubscriptionDestination destination,
+      Function<SubscriptionDestination, T> opened,
+      Function<String, T> refused) {
+    SubscriptionDestination copy = null;
+    String refusal = null;
     try {
-      return decrypted(destination);
+      copy = decrypted(destination);
     } catch (BadRequestException e) {
-      return destination;
+      refusal = e.getMessage();
     }
+    return refusal == null ? opened.apply(copy) : refused.apply(refusal);
   }
 
   /**

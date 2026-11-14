@@ -10,12 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
+import {
+  EventSubscription,
+  Status,
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../../../generated/events/eventSubscription';
 import {
   AlertTableColumn,
   ALERT_TABLE_COLUMN_IDS,
@@ -139,10 +145,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Box: MockBox,
+    Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
     Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,
     TableCard: MockTableCard,
+    Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
+    TooltipTrigger: jest.requireActual('@openmetadata/ui-core-components')
+      .TooltipTrigger,
   };
 });
 
@@ -163,6 +173,9 @@ jest.mock('./ObservabilityAlertActions', () =>
   jest.fn().mockImplementation(() => <div data-testid="alert-actions" />)
 );
 
+const NOT_SENDING_REASON =
+  "The value at '/authType/secretKey' must be entered again";
+
 const mockAlerts: EventSubscription[] = [
   {
     id: 'alert-1',
@@ -174,6 +187,7 @@ const mockAlerts: EventSubscription[] = [
 
 const columnList: AlertTableColumn[] = [
   { id: 'name', name: 'label.name' },
+  { id: 'status', name: 'label.status' },
   { id: 'trigger', name: 'label.trigger' },
   { id: 'description', name: 'label.description' },
   { id: 'actions', name: 'label.action-plural' },
@@ -228,6 +242,48 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.getByTestId('alert-table')).toBeInTheDocument();
     expect(screen.getByTestId('alert-name')).toBeInTheDocument();
     expect(screen.getByTestId('alert-actions')).toBeInTheDocument();
+  });
+
+  it('shows why an alert whose destination does not send has failed', async () => {
+    renderTable({
+      alerts: [
+        {
+          ...mockAlerts[0],
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              type: SubscriptionType.Webhook,
+              statusDetails: {
+                status: Status.Failed,
+                lastFailedReason: NOT_SENDING_REASON,
+                configurationUnusable: true,
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('alert-status')).toHaveTextContent(
+      'label.failed'
+    );
+
+    // react-aria holds the first tooltip of a session behind a warmup and opens later ones at once,
+    // so hovering twice opens it either way.
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const settle = () =>
+      act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+    await user.hover(screen.getByTestId('alert-status'));
+    await settle();
+    await user.unhover(screen.getByTestId('alert-status'));
+    await user.hover(screen.getByTestId('alert-status'));
+    await settle();
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      `message.destination-does-not-send-until-fixed${NOT_SENDING_REASON}`
+    );
   });
 
   it('marks only the name column as the row header', () => {

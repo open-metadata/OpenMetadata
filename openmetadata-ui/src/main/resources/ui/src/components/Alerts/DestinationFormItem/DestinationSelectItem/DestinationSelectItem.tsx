@@ -37,6 +37,10 @@ import {
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtilPure';
 import {
+  getDestinationProblem,
+  getDestinationProblemAlertProps,
+} from '../../../../utils/observability/alerts/alertStatus.utils';
+import {
   checkIfDestinationIsInternal,
   getConfigFieldFromDestinationType,
 } from '../../../../utils/ObservabilityUtils';
@@ -113,6 +117,11 @@ function DestinationSelectItem({
       ? statusDestination.statusDetails
       : undefined;
   }, [destinationItem, destinationsWithStatus, id]);
+
+  // What the server says when the destination, as stored, is not sending.
+  const destinationProblem = isViewMode
+    ? getDestinationProblem(destinationItem.statusDetails)
+    : undefined;
 
   const { statusLabel } = useMemo(
     () => getDestinationStatusAlertData(destinationStatusDetails?.status),
@@ -445,6 +454,16 @@ function DestinationSelectItem({
           {notifyDownstream && renderDownstreamDepthField()}
 
           {renderStatusSection()}
+
+          {destinationProblem && (
+            <Grid.Item span={24}>
+              <Alert
+                data-testid={`destination-not-sending-${id}`}
+                {...getDestinationProblemAlertProps(destinationProblem, t)}>
+                {destinationProblem.reason}
+              </Alert>
+            </Grid.Item>
+          )}
         </Grid>
       </div>
 

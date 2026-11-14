@@ -4875,6 +4875,7 @@
     "derived-tag-warning": "Dieses Tag wird automatisch abgeleitet und kann nur entfernt werden, indem der zugehörige Glossarbegriff gelöscht wird.",
     "describe-what-ask-collate-should-remember": "Beschreiben Sie, was AskCollate sich merken soll.",
     "description-coverage-widget-description": "Beschreibungsabdeckung für alle Datenvermögenswerte im Dienst. <0>Mehr erfahren.</0>",
+    "destination-does-not-send-until-fixed": "Dieses Ziel sendet nicht, bis dies behoben ist",
     "destination-owner-selection-warning": "Bitte stellen Sie sicher, dass der \"Eigentümer\" ein <0>Team</0> ist, das \"{{subscriptionType}}\" konfiguriert hat, um Benachrichtigungen zu erhalten.",
     "destination-selection-warning": "Bitte stellen Sie sicher, dass die \"{{subscriptionCategory}}\" ihre \"{{subscriptionType}}\" konfiguriert haben, um die Alarme zu erhalten.",
     "dimension-delete-fallback": "Sie haben dann keine Dimension mehr. Es wird kein Testfall gelöscht.",

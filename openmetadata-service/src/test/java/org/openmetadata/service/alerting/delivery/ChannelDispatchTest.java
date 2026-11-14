@@ -25,6 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,10 +43,12 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerting.audience.EmailRecipient;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.RecipientResolver;
 import org.openmetadata.service.alerting.audience.Recipients;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
 import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.content.EventContent;
@@ -168,6 +171,27 @@ class ChannelDispatchTest {
             .contains("1 of 2 recipients failed"));
     assertEquals(
         "1 of 2 recipients failed. bob: mailbox full", statusOf(owners).getLastFailedReason());
+  }
+
+  // A team whose saved webhook cannot be used is reported against the alert, never sent to, and
+  // costs only itself.
+  @Test
+  void aTeamWhoseSavedWebhookCannotBeUsedFailsAsOneRecipient() throws Exception {
+    Destination<ChangeEvent> teams = publisher(true);
+    Recipient working =
+        new WebhookRecipient(
+            new Webhook().withEndpoint(URI.create("https://hooks.example.com/ok")), "ops");
+    Recipient unusable =
+        WebhookRecipient.unusable("data", UUID.randomUUID(), "enter it again on the team");
+
+    ChannelResult result = dispatch(Set.of(working, unusable), teams).send(EVENT, CONTENT);
+
+    verify(teams).sendTo(any(), eq(working));
+    verify(teams, never()).sendTo(any(), eq(unusable));
+    assertInstanceOf(ChannelResult.Failed.class, result);
+    assertEquals(
+        "1 of 2 recipients failed. data: enter it again on the team",
+        statusOf(teams).getLastFailedReason());
   }
 
   @Test

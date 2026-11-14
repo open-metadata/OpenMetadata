@@ -27,6 +27,7 @@ import org.openmetadata.service.alerting.audience.RecipientResolver;
 import org.openmetadata.service.alerting.channel.*;
 import org.openmetadata.service.alerting.content.EventContent;
 import org.openmetadata.service.events.consumer.EventPublisherException;
+import org.openmetadata.service.events.consumer.ledger.DestinationOutcome.Cause;
 
 /**
  * An alert's channels for one tick. A destination nothing can be sent through is not attempted,
@@ -95,7 +96,20 @@ public final class TickChannels implements ChannelDelivery {
 
   private void notAttempted(UnservedDestination unserved) {
     health.notAttempted(
-        destinationIdOf(unserved), channelIdOf(unserved), unserved.cause(), unserved.reason());
+        destinationIdOf(unserved),
+        channelIdOf(unserved),
+        unserved.cause(),
+        unserved.reason(),
+        () -> unusableSettingsOf(unserved));
+  }
+
+  // Taken here, where a tick records it, and from the destination the tick built from, so a save
+  // during the tick is not mistaken for what it found unusable. A test send builds the same
+  // destination from what the user typed, so it never takes one.
+  private static String unusableSettingsOf(UnservedDestination unserved) {
+    return unserved.cause() == Cause.CONFIGURATION_UNUSABLE
+        ? DestinationFingerprint.of(unserved.getSubscriptionDestination())
+        : null;
   }
 
   private static Map<String, List<UnservedDestination>> unservedByChannel(

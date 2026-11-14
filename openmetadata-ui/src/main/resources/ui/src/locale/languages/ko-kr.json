@@ -4875,6 +4875,7 @@
     "derived-tag-warning": "이 태그는 자동으로 파생되며 관련 용어집 용어를 삭제해야만 제거할 수 있습니다.",
     "describe-what-ask-collate-should-remember": "AskCollate가 기억해야 할 내용을 설명하세요.",
     "description-coverage-widget-description": "서비스 내 모든 데이터 자산에 대한 설명 커버리지입니다. <0>자세히 알아보기.</0>",
+    "destination-does-not-send-until-fixed": "이 문제가 해결될 때까지 이 대상으로 전송되지 않습니다",
     "destination-owner-selection-warning": "\"소유자\"가 알림을 받도록 \"{{subscriptionType}}\"이 구성된 <0>팀</0>인지 확인하세요.",
     "destination-selection-warning": "\"{{subscriptionCategory}}\"가 알림을 받을 수 있도록 \"{{subscriptionType}}\"이(가) 구성되어 있는지 확인하세요.",
     "dimension-delete-fallback": "해당 항목에는 더 이상 차원이 없습니다. 삭제되는 테스트 케이스는 없습니다.",

@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -148,20 +149,34 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      // The Fernet key check is the preflight, which the workflow runs for every pending version
+      // before any of them is migrated; the data migration does not run it again.
+      webhookSecretsMigration.verify(
+          () ->
+              WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                  any(), any(), any(), any()),
+          never());
+      migration.preflight(handle);
+      webhookSecretsMigration.verify(
+          () ->
+              WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                  any(), any(), eq(handle), eq(connectionType)));
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
-      // Each destination's id owns its secrets, so ids are settled before secrets are bound.
+      // Each destination's id owns its secrets, so ids are settled before secrets are bound. The
+      // alert step may stop the upgrade on the wrong Fernet key, so it runs before the profile
+      // step writes anything with that key.
       InOrder idsThenSecrets = inOrder(DestinationIdMigration.class, WebhookSecretsMigration.class);
       idsThenSecrets.verify(
           destinationIdMigration,
           () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, connectionType));
+          () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, connectionType));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, connectionType));
+          () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->

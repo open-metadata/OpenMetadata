@@ -4875,6 +4875,7 @@
     "derived-tag-warning": "תג זה נגזר אוטומטית וניתן להסירו רק על ידי מחיקת מונח המילון הקשור.",
     "describe-what-ask-collate-should-remember": "תאר מה AskCollate צריך לזכור.",
     "description-coverage-widget-description": "כיסוי תיאורים עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
+    "destination-does-not-send-until-fixed": "יעד זה אינו שולח עד שהבעיה תתוקן",
     "destination-owner-selection-warning": "אנא וודא שה\"בעלים\" הוא <0>צוות</0> עם \"{{subscriptionType}}\" מוגדר לקבלת התראות.",
     "destination-selection-warning": "אנא וודא שה\"{{subscriptionCategory}}\" הגדירו את \"{{subscriptionType}}\" שלהם לקבלת ההתראות.",
     "dimension-delete-fallback": "לא יהיה להם עוד ממד. שום מקרה בדיקה לא נמחק.",
