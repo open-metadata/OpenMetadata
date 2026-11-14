@@ -137,6 +137,7 @@ from metadata.utils.sqlalchemy_utils import is_complex_type
 # being processed concurrently and must be keyed by the fully qualified name.
 DATASET_OBJ_CACHE_SIZE = 512
 TABLE_OBJ_CACHE_SIZE = 2048
+TABLE_DDL_CACHE_SIZE = 2048
 
 # google-cloud-bigquery has no ExternalSourceFormat member for this and the REST reference
 # for externalDataConfiguration.sourceFormat omits it, so it has to be a literal.
@@ -293,7 +294,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
-        self._table_ddl_cache = {}
+        self._table_ddl_cache: LRUCache = LRUCache(capacity=TABLE_DDL_CACHE_SIZE)
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
@@ -879,8 +880,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         if not self.source_config.includeDDL:
             return
 
-        self._table_ddl_cache.clear()
-
         database = self.context.get().database
 
         try:
@@ -912,8 +911,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
+            # Key by fully qualified name (project.dataset.table): the databaseSchema
+            # node runs multi-threaded on one shared source instance, so a bare-name
+            # key would let a concurrent dataset's prefetch clobber this one's DDLs.
             for row in results:
-                self._table_ddl_cache[row.table_name] = row.ddl
+                self._table_ddl_cache.put(f"{database}.{schema_name}.{row.table_name}", row.ddl)
         except Exception as exc:
             logger.warning(
                 "Error pre-fetching table DDLs for '%s.%s': %s",
@@ -1329,7 +1331,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     )
                     values = self._sharded_table_metadata(query, table_name)
                     return values["ddl"] if values else None
-                return self._table_ddl_cache.get(table_name)
+                # Read by fully qualified name so concurrent datasets on the same
+                # shared source instance cannot return each other's DDLs.
+                ddl_key = f"{self.context.get().database}.{schema_name}.{table_name}"  # pyright: ignore[reportAttributeAccessIssue]
+                try:
+                    return self._table_ddl_cache.get(ddl_key)
+                except KeyError:
+                    return None
         except NotImplementedError:
             logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
         except Exception as exc:
