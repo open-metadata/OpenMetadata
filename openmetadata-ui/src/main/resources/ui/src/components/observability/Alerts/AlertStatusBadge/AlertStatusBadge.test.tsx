@@ -19,20 +19,20 @@ import {
   Status,
   SubscriptionCategory,
   SubscriptionType,
-  TionStatus,
 } from '../../../../generated/events/eventSubscription';
+import { DestinationStatus } from '../../../../utils/observability/alerts/alertStatus.utils';
 import AlertStatusBadge from './AlertStatusBadge';
 
 const UNUSABLE = "The value at '/authType/secretKey' must be entered again";
 const REFUSED = 'Webhook failed with status: 503';
-const UNUSABLE_STATUS: TionStatus = {
+const UNUSABLE_STATUS: DestinationStatus = {
   status: Status.Failed,
   lastFailedReason: UNUSABLE,
   configurationUnusable: true,
 };
 
 const alertWith = (
-  statuses: TionStatus[],
+  statuses: DestinationStatus[],
   enabled = true
 ): EventSubscription => ({
   alertType: AlertType.Observability,

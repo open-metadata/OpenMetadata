@@ -13,9 +13,9 @@
 
 import { TFunction } from 'i18next';
 import {
+  Destination,
   EventSubscription,
   Status,
-  TionStatus,
 } from '../../../generated/events/eventSubscription';
 
 export type AlertListStatus = Status.Active | Status.Disabled | Status.Failed;
@@ -28,8 +28,11 @@ export interface AlertListStatusDetails {
   failureReasons: string[];
 }
 
+/** A destination's status, as the server reports it on the alert. */
+export type DestinationStatus = NonNullable<Destination['statusDetails']>;
+
 type ReportedStatus = Pick<
-  TionStatus,
+  DestinationStatus,
   'status' | 'lastFailedReason' | 'configurationUnusable'
 >;
 
