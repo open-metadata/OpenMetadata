@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit) · v3 2026-11-13 (every copy of an earlier credential is carried over; the step stops when the configured keys open none; a value that cannot be used is reported on its alert)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `IngestionPipelineMigrationEntryPointTest`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnALaterVersionsPreflightBeforeAnyVersionRuns`, `AlertDiagnosticsStatusTest`, `TickChannelsTest#destinationWhoseStoredConfigurationIsUnusableIsNotAttempted`, `ChannelDispatchTest#aTeamWhoseSavedWebhookCannotBeUsedFailsAsOneRecipient`, `WebhookAddressesTest`, `ProfileWebhookSecretsIT#aTeamWhoseWebhookCannotBeUsedIsReportedOnTheAlert`
+- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `IngestionPipelineMigrationEntryPointTest`, `MigrationWorkflowTest#runMigrationWorkflowsStopsOnALaterVersionsPreflightBeforeAnyVersionRuns`, `AlertDiagnosticsStatusTest`, `DestinationFingerprintTest`, `TickChannelsTest#destinationWhoseStoredConfigurationIsUnusableIsNotAttempted`, `ChannelDispatchTest#aTeamWhoseSavedWebhookCannotBeUsedFailsAsOneRecipient`, `WebhookAddressesTest`, `ProfileWebhookSecretsIT#aTeamWhoseWebhookCannotBeUsedIsReportedOnTheAlert`
 - **Related:** ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored, ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids (owned vault keys, a different mechanism that shares `SecretOwner`)
 
 ## Context
@@ -42,8 +42,8 @@ so they can have keys of their own and open only there.
     A credential stored there is carried over to that destination wherever else the same value
     is stored; from 2.1 on, a value opens only where it was written;
   - any other ciphertext stays as stored. It opens for no owner, so the destination stays enabled
-    and reports the field to enter again, and a profile webhook is left out of the send, until the
-    value is entered again.
+    and reports the field to enter again, and a team or user webhook holding it is a failed
+    recipient reported on the alert that targets it, until the value is entered again.
   - (v3:2026-11-13) when such credentials are stored and none of them decrypts with the configured
     Fernet keys, the 2.1.0 data migration stops before any of its steps writes (see Amendment v3).
 
@@ -117,10 +117,16 @@ looks, on the alert, not only in the recent events of a send.
   read only decrypts, the way a send does, and reads the health of every listed alert in one
   query, so it builds no publisher and resolves no address.
 - One status says that a stored configuration cannot be used, built in one place
-  (`DestinationStatuses.configurationUnusable`): a send that finds the configuration unusable
-  stores it with the destination's health, and the read builds the same one. A stored one speaks
-  until the alert is saved again, the only way to repair it: an alert saved since, whose secrets
-  open, reads `active` until its next send, so entering the value again clears it at once. A send that failed
+  (`DestinationStatuses`): a send that finds the configuration unusable stores it with the
+  destination's health, with the time it failed, and the read builds the same one without a
+  failure time. A send finds causes the read cannot, such as an endpoint the outbound URL policy
+  refuses, so the stored one also keeps `configurationFingerprint`, a SHA-256 of that
+  destination's settings as stored (`DestinationFingerprint`: secrets still encrypted, never
+  decrypted; id, status and `enabled` left out). It speaks while the destination's settings still
+  match it, so renaming the alert or editing another destination leaves it. A value entered in
+  place of one that does not open is stored as new ciphertext, and any other change to the
+  destination changes its settings too: either reads `active` at once, unless its secrets still do not open, until the next send judges
+  the new settings. A stored one without a fingerprint speaks until the next send. A send that failed
   or waits for a retry keeps its own status and reason, without `configurationUnusable`. An alert
   list counts every one of them as not sending, except on a switched-off alert or destination,
   which reads disabled.

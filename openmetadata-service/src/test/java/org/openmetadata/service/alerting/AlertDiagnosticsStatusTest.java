@@ -14,6 +14,7 @@
 package org.openmetadata.service.alerting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,6 +36,8 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.channel.DestinationFingerprint;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 import org.openmetadata.service.fernet.Fernet;
@@ -45,6 +48,8 @@ import org.openmetadata.service.secrets.SecretOwner;
 class AlertDiagnosticsStatusTest {
   private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String SIGNING_KEY = "/authType/secretKey";
+  private static final String URL_REFUSED =
+      "Not attempted: its stored configuration is not usable: URL scheme not allowed";
 
   private final Map<UUID, Map<String, DestinationHealth>> health = new HashMap<>();
   private MockedStatic<AlertRecord> records;
@@ -109,29 +114,103 @@ class AlertDiagnosticsStatusTest {
     assertNull(read.getConfigurationUnusable());
   }
 
-  // The last tick found the configuration unusable. It speaks until the alert is saved again; once
-  // it is, with secrets that open, the alert reads Active before the next tick.
   @Test
-  void anUnusableStatusTheLastTickStoredSpeaksUntilTheAlertIsSavedAgain() {
-    SubscriptionDestination destination = signedWith("a key entered again");
-    EventSubscription alert = alertWith(destination).withUpdatedAt(1L);
-    SubscriptionStatus storedByTheTick =
-        DestinationStatuses.configurationUnusable(
-            "Not attempted: its stored configuration is not usable: URL scheme not allowed", 2L);
+  void anUnusableStatusFoundWhenReadCarriesNoFailureTime() {
+    SubscriptionDestination writtenElsewhere =
+        signedWith(BoundCiphertext.encrypt(anotherDestination(), SIGNING_KEY, "a key"));
+
+    SubscriptionStatus read =
+        statusOf(AlertDiagnostics.destinationsWithStatus(alertWith(writtenElsewhere)).getFirst());
+
+    assertTrue(read.getConfigurationUnusable());
+    assertNull(read.getLastFailedAt(), "nothing failed when it was read");
+    assertNotNull(read.getTimestamp());
+  }
+
+  // A tick found a destination's configuration unusable for a reason a read cannot see. Saving
+  // the alert without changing that destination leaves the verdict standing.
+  @Test
+  void anUnusableStatusSpeaksThroughASaveThatLeavesTheDestinationAsItWas() {
+    SubscriptionDestination refused = stored(signedWith("a key"));
+    SubscriptionDestination other = stored(signedWith("another key"));
+    EventSubscription alert = alertWith(refused, other).withUpdatedAt(1L);
+    foundUnusableByTheTick(alert, refused);
+
+    EventSubscription renamed = alert.withDescription("renamed").withUpdatedAt(3L);
+    SubscriptionStatus afterTheRename = statusOf(destinationsWithStatus(renamed).getFirst());
+    EventSubscription otherEdited =
+        alertWith(refused, stored(signedWith("a third key")).withId(other.getId()))
+            .withId(alert.getId())
+            .withUpdatedAt(4L);
+    SubscriptionStatus afterTheOtherEdit = statusOf(destinationsWithStatus(otherEdited).getFirst());
+
+    assertFoundUnusableByTheTick(afterTheRename);
+    assertFoundUnusableByTheTick(afterTheOtherEdit);
+  }
+
+  @Test
+  void aSecretEnteredAgainEndsTheStatusTheTickStored() {
+    SubscriptionDestination refused = stored(signedWith("a key"));
+    EventSubscription alert = alertWith(refused);
+    foundUnusableByTheTick(alert, refused);
+
+    SubscriptionDestination enteredAgain = stored(signedWith("a key").withId(refused.getId()));
+    SubscriptionStatus read =
+        statusOf(destinationsWithStatus(alertWith(enteredAgain).withId(alert.getId())).getFirst());
+
+    assertEquals(SubscriptionStatus.Status.ACTIVE, read.getStatus());
+    assertNull(read.getLastFailedReason());
+  }
+
+  @Test
+  void anotherEndpointEndsTheStatusTheTickStored() {
+    SubscriptionDestination refused = stored(signedWith("a key"));
+    EventSubscription alert = alertWith(refused);
+    foundUnusableByTheTick(alert, refused);
+
+    SubscriptionDestination moved = JsonUtils.deepCopy(refused, SubscriptionDestination.class);
+    Map<String, Object> config = new HashMap<>(JsonUtils.getMap(moved.getConfig()));
+    config.put("endpoint", "https://hooks.example.com/moved");
+    SubscriptionStatus read =
+        statusOf(
+            destinationsWithStatus(alertWith(moved.withConfig(config)).withId(alert.getId()))
+                .getFirst());
+
+    assertEquals(SubscriptionStatus.Status.ACTIVE, read.getStatus());
+  }
+
+  // Entered again, but written for another destination: the read finds it before the stored one.
+  @Test
+  void aSecretEnteredAgainThatStillDoesNotOpenReadsFailed() {
+    SubscriptionDestination refused = stored(signedWith("a key"));
+    EventSubscription alert = alertWith(refused);
+    foundUnusableByTheTick(alert, refused);
+
+    SubscriptionDestination stillUnusable =
+        signedWith(BoundCiphertext.encrypt(anotherDestination(), SIGNING_KEY, "a key"))
+            .withId(refused.getId());
+    SubscriptionStatus read =
+        statusOf(destinationsWithStatus(alertWith(stillUnusable).withId(alert.getId())).getFirst());
+
+    assertEquals(SubscriptionStatus.Status.FAILED, read.getStatus());
+    assertTrue(read.getConfigurationUnusable());
+    assertTrue(read.getLastFailedReason().contains("must be entered again"));
+  }
+
+  // Stored before tick verdicts named their settings: it speaks until the next tick.
+  @Test
+  void anUnusableStatusStoredWithoutAFingerprintSpeaksUntilTheNextTick() {
+    SubscriptionDestination refused = stored(signedWith("a key"));
+    EventSubscription alert = alertWith(refused);
     health.put(
         alert.getId(),
-        Map.of(
-            destination.getId().toString(), new DestinationHealth().withStatus(storedByTheTick)));
+        Map.of(refused.getId().toString(), new DestinationHealth().withStatus(foundByTheTick())));
 
-    SubscriptionStatus beforeTheSave =
-        statusOf(AlertDiagnostics.destinationsWithStatus(alert).getFirst());
-    SubscriptionStatus afterTheSave =
-        statusOf(AlertDiagnostics.destinationsWithStatus(alert.withUpdatedAt(3L)).getFirst());
+    SubscriptionDestination enteredAgain = stored(signedWith("a key").withId(refused.getId()));
+    SubscriptionStatus read =
+        statusOf(destinationsWithStatus(alertWith(enteredAgain).withId(alert.getId())).getFirst());
 
-    assertEquals(SubscriptionStatus.Status.FAILED, beforeTheSave.getStatus());
-    assertTrue(beforeTheSave.getConfigurationUnusable());
-    assertEquals(SubscriptionStatus.Status.ACTIVE, afterTheSave.getStatus());
-    assertNull(afterTheSave.getLastFailedReason());
+    assertFoundUnusableByTheTick(read);
   }
 
   @Test
@@ -146,6 +225,36 @@ class AlertDiagnosticsStatusTest {
     assertEquals(
         SubscriptionStatus.Status.ACTIVE,
         statusOf(second.getDestinations().getFirst()).getStatus());
+  }
+
+  private void foundUnusableByTheTick(
+      EventSubscription alert, SubscriptionDestination destination) {
+    health.put(
+        alert.getId(),
+        Map.of(
+            destination.getId().toString(),
+            new DestinationHealth()
+                .withStatus(foundByTheTick())
+                .withConfigurationFingerprint(DestinationFingerprint.of(destination))));
+  }
+
+  private static SubscriptionStatus foundByTheTick() {
+    return DestinationStatuses.configurationUnusable(URL_REFUSED, 2L);
+  }
+
+  private static void assertFoundUnusableByTheTick(SubscriptionStatus read) {
+    assertEquals(SubscriptionStatus.Status.FAILED, read.getStatus());
+    assertTrue(read.getConfigurationUnusable());
+    assertEquals(URL_REFUSED, read.getLastFailedReason());
+    assertEquals(2L, read.getLastFailedAt());
+  }
+
+  private static List<SubscriptionDestination> destinationsWithStatus(EventSubscription alert) {
+    return AlertDiagnostics.destinationsWithStatus(alert);
+  }
+
+  private static SubscriptionDestination stored(SubscriptionDestination destination) {
+    return DestinationSecrets.encrypt(List.of(destination)).getFirst();
   }
 
   private static SubscriptionStatus statusOf(SubscriptionDestination destination) {

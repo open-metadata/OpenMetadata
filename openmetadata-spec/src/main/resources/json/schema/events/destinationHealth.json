@@ -18,6 +18,10 @@
       "description": "Ticks in a row in which this destination failed.",
       "type": "integer",
       "default": 0
+    },
+    "configurationFingerprint": {
+      "description": "SHA-256 of the destination's settings as stored, secrets still encrypted, when the tick found that configuration unusable. A stored unusable status speaks only while the destination's settings still match it.",
+      "type": "string"
     }
   },
   "required": [

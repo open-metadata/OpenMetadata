@@ -40,12 +40,25 @@ public final class DestinationStatuses {
   }
 
   /**
-   * A destination whose stored configuration cannot be used to send, such as a secret to enter
-   * again: it does not send until the configuration is changed. The one place this status is built.
+   * A destination whose stored configuration a send found it cannot use, such as a secret to enter
+   * again: it does not send until the configuration is changed. It failed when the send found it.
    */
-  public static SubscriptionStatus configurationUnusable(String reason, long at) {
+  public static SubscriptionStatus configurationUnusable(String reason, long failedAt) {
+    return unusable(reason, failedAt, failedAt);
+  }
+
+  /**
+   * The same status, found by reading the stored configuration rather than by a send: nothing
+   * failed then, so it carries no failure time.
+   */
+  public static SubscriptionStatus configurationUnusableAsRead(String reason, long readAt) {
+    return unusable(reason, null, readAt);
+  }
+
+  // The one place this status is built.
+  private static SubscriptionStatus unusable(String reason, Long failedAt, long at) {
     return buildSubscriptionStatus(
-            SubscriptionStatus.Status.FAILED, null, at, null, reason, null, at)
+            SubscriptionStatus.Status.FAILED, null, failedAt, null, reason, null, at)
         .withConfigurationUnusable(true);
   }
 
