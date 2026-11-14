@@ -15,7 +15,9 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -23,8 +25,11 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.ai.CopiedAIFrameworkControl;
 import org.openmetadata.schema.api.ai.CreateAIFrameworkControl;
 import org.openmetadata.schema.api.ai.CreateAIGovernanceFramework;
+import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
+import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkResponse;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -55,6 +60,39 @@ public class AIFrameworkControlResourceIT {
         secondControl.getFullyQualifiedName());
     assertEquals(firstFramework.getId(), firstControl.getFramework().getId());
     assertEquals(secondFramework.getId(), secondControl.getFramework().getId());
+  }
+
+  @Test
+  void aForkCopiesTheControlsOfItsSourceFramework(TestNamespace namespace) throws Exception {
+    AIGovernanceFramework source = createFramework(namespace.prefix("fork_source"));
+    AIGovernanceFramework other = createFramework(namespace.prefix("fork_other"));
+    String sourceControl = namespace.prefix("source_control");
+    createControl(sourceControl, source.getFullyQualifiedName());
+    createControl(namespace.prefix("other_control"), other.getFullyQualifiedName());
+
+    ForkAIGovernanceFrameworkResponse fork =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/aiGovernanceFrameworks/" + source.getId() + "/fork",
+                new ForkAIGovernanceFrameworkRequest().withName(namespace.prefix("fork")),
+                ForkAIGovernanceFrameworkResponse.class);
+
+    assertEquals(
+        List.of(sourceControl),
+        fork.getCopiedControls().stream().map(CopiedAIFrameworkControl::getName).toList());
+    AIFrameworkControl copy =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/aiFrameworkControls/name/"
+                    + encodeURIComponent(
+                        fork.getFramework().getFullyQualifiedName() + "." + sourceControl),
+                null,
+                AIFrameworkControl.class);
+    assertEquals(fork.getFramework().getId(), copy.getFramework().getId());
   }
 
   private AIGovernanceFramework createFramework(String name) throws Exception {

@@ -602,7 +602,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
+    java.util.Map<String, Integer> result =
+        repository.getAllGlossaryTermsWithAssetsCount(
+            parent, DefaultAuthorizer.getSubjectContext(securityContext));
     return Response.ok(result).build();
   }
 

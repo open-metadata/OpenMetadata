@@ -252,7 +252,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .getDistinctTagTargetCount(TagSource.GLOSSARY.ordinal(), fullyQualifiedName);
   }
 
-  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(String parent) {
+  /**
+   * Each term's asset count, leaving out assets {@code caller}'s search access policies deny.
+   */
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(
+      String parent, SubjectContext caller) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for glossary term asset counts");
       return new HashMap<>();
@@ -274,7 +278,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
 
     for (String fqn : fqns) {
-      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0);
+      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0).forCaller(caller);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(

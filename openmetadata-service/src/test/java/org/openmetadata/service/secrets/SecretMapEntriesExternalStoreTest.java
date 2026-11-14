@@ -27,6 +27,8 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpHeaders;
 import org.openmetadata.schema.services.connections.llm.CustomLLMConnection;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -284,6 +286,50 @@ class SecretMapEntriesExternalStoreTest {
     ownership.clean(root);
 
     assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  /**
+   * A server's key is written once per server, so a server a later update drops from the list keeps
+   * its key until the service is hard-deleted, and then goes with the others.
+   */
+  @Test
+  void aServerDroppedFromAnMcpServiceLosesItsKeyWhenTheServiceIsHardDeleted() {
+    McpConnection created =
+        encryptMcp(
+            List.of(mcpServer("first", "first-key"), mcpServer("second", "second-key")), null);
+    assertEquals(2, secretsManager.getSecretsMap().size());
+
+    McpConnection updated = encryptMcp(List.of(created.getServers().getFirst()), created);
+    ownership.removeOwner(owner, secretsManager.secretInventory(updated, mcpRoot()));
+    ownership.clean(mcpRoot());
+
+    assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  private McpConnection encryptMcp(List<McpServerConfig> servers, McpConnection original) {
+    McpConnection config = new McpConnection().withServers(servers);
+    SecretInventory input = secretsManager.secretInventory(config, mcpRoot());
+    McpConnection stored =
+        (McpConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                JsonUtils.deepCopy(config, McpConnection.class), "Mcp", SERVICE, ServiceType.MCP);
+    ownership.recordWrite(
+        owner,
+        original == null ? null : secretsManager.secretInventory(original, mcpRoot()),
+        input,
+        secretsManager.secretInventory(stored, mcpRoot()));
+    return stored;
+  }
+
+  private static McpServerConfig mcpServer(String name, String apiKey) {
+    return new McpServerConfig()
+        .withName(name)
+        .withUrl("https://" + name + ".example.com/mcp")
+        .withApiKey(apiKey);
+  }
+
+  private String mcpRoot() {
+    return secretsManager.buildSecretId(true, ServiceType.MCP.value(), SERVICE);
   }
 
   private CustomLLMConnection encryptLlm(Map<String, Object> config, CustomLLMConnection original) {

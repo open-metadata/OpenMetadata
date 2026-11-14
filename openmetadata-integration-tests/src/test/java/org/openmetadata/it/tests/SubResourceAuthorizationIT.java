@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,6 +9,7 @@ import static org.openmetadata.it.util.ApiAssertions.assertForbidden;
 import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
 import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
 import org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -49,6 +52,7 @@ import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiTargetType;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
@@ -71,10 +75,12 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RecognizerFeedback;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -114,6 +120,41 @@ public class SubResourceAuthorizationIT {
 
     assertHttpStatusFor(denied, 403, HttpMethod.GET, path, null);
     assertNotNull(adminGet(path));
+  }
+
+  /**
+   * A column's profile needs ViewDataProfile on its table and its custom metrics ViewTests, as the
+   * table's own profile and metric reads do. Every column read returns the columns and leaves out
+   * the field the caller may not view.
+   */
+  @Test
+  void tableColumnReads_leaveOutProfilesAndMetricsTheCallerMayNotView(TestNamespace ns) {
+    Table table = createTable(ns);
+    addColumnProfileAndMetric(table, "id");
+    OpenMetadataClient noProfile =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("colprofile"), "table", MetadataOperation.VIEW_DATA_PROFILE);
+    OpenMetadataClient noTests =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("colmetric"), "table", MetadataOperation.VIEW_TESTS);
+    String fields = "fields=profile,customMetrics";
+    String fqn = encodeURIComponent(table.getFullyQualifiedName());
+    List<String> paths =
+        List.of(
+            "/v1/tables/" + table.getId() + "/columns?" + fields,
+            "/v1/tables/name/" + fqn + "/columns?" + fields,
+            "/v1/tables/" + table.getId() + "/columns/search?q=id&" + fields,
+            "/v1/tables/name/" + fqn + "/columns/search?q=id&" + fields,
+            "/v1/columns/name/"
+                + encodeURIComponent(table.getFullyQualifiedName() + ".id")
+                + "?entityType=table&"
+                + fields);
+
+    for (String path : paths) {
+      assertColumnFields(SdkClients.adminClient(), path, true, true);
+      assertColumnFields(noProfile, path, false, true);
+      assertColumnFields(noTests, path, true, false);
+    }
   }
 
   @Test
@@ -824,6 +865,53 @@ public class SubResourceAuthorizationIT {
 
   private static String adminGet(String path) {
     return SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
+  private static void addColumnProfileAndMetric(Table table, String columnName) {
+    long timestamp = System.currentTimeMillis();
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile().withTimestamp(timestamp).withRowCount(10.0).withColumnCount(2.0))
+            .withColumnProfile(
+                List.of(
+                    new ColumnProfile()
+                        .withName(columnName)
+                        .withTimestamp(timestamp)
+                        .withValuesCount(10.0)
+                        .withNullCount(1.0)));
+    OpenMetadataClient admin = SdkClients.adminClient();
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/tables/" + table.getId() + "/customMetric",
+            new CreateCustomMetric()
+                .withName("non_null_" + columnName)
+                .withColumnName(columnName)
+                .withExpression("count(" + columnName + ")"),
+            Table.class);
+  }
+
+  /** {@code path} answers the {@code id} column, alone or in a page. */
+  private static void assertColumnFields(
+      OpenMetadataClient client, String path, boolean hasProfile, boolean hasMetrics) {
+    JsonNode body =
+        JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
+    JsonNode column = body;
+    for (JsonNode listed : body.path("data")) {
+      if ("id".equals(listed.path("name").asText())) {
+        column = listed;
+      }
+    }
+    String context = path + " -> " + body;
+    assertEquals("id", column.path("name").asText(), context);
+    assertEquals(hasProfile, column.hasNonNull("profile"), context);
+    assertEquals(hasMetrics, !column.path("customMetrics").isEmpty(), context);
   }
 
   private static Table createTable(TestNamespace ns) {
