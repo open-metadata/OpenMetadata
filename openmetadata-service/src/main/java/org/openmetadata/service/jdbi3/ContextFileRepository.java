@@ -273,17 +273,31 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
             this, getFields(ContextFileVisibility.guardFields(null)));
     Set<UUID> visible = new HashSet<>();
     for (List<UUID> batch : Lists.partition(fileIds, VISIBILITY_READ_BATCH)) {
-      List<ContextFile> readable =
-          rowCheck.retainPermitted(
-              securityContext,
-              CONTEXT_FILE_ENTITY,
-              this,
+      retainVisible(
               getWithoutExtractedText(batch, fields, include),
-              operations);
-      ContextFileVisibility.filterVisible(readable, securityContext)
+              securityContext,
+              rowCheck,
+              operations)
           .forEach(file -> visible.add(file.getId()));
     }
     return visible;
+  }
+
+  /**
+   * Of {@code files}, loaded with at least their authorization fields, the ones the caller may
+   * read: the listing's row check when a rule could refuse one, then sharing.
+   */
+  public List<ContextFile> retainVisible(
+      List<ContextFile> files,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    List<ContextFile> readable =
+        rowsMayDiffer(securityContext, operations)
+            ? rowCheck.retainPermitted(
+                securityContext, CONTEXT_FILE_ENTITY, this, files, operations)
+            : files;
+    return ContextFileVisibility.filterVisible(readable, securityContext);
   }
 
   /** Of the Shared files {@code fileIds}, the ones whose sharing names the caller. */
@@ -429,17 +443,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
   }
 
-  @Override
-  protected List<EntityReference> getCountingParents(ContextFile file) {
-    EntityReference folder = folderOf(file);
-    return folder == null ? List.of() : List.of(folder);
-  }
-
-  // The folder is kept out of the stored JSON, so a file loaded without it looks it up.
-  private EntityReference folderOf(ContextFile file) {
-    return file.getFolder() != null ? file.getFolder() : getFolder(file);
-  }
-
   public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
     ContextFile original =
         Entity.getEntity(CONTEXT_FILE_ENTITY, id, "folder,owners,tags", Include.NON_DELETED);
@@ -543,11 +546,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   @Override
   protected void entitySpecificCleanup(ContextFile entityInterface) {
-    // Cleanup removes the edge to the folder before postDelete refreshes the folder's count. A
-    // hard-delete cascade skips that refresh, so it skips the lookup too.
-    if (!isInHardDeleteCascade()) {
-      entityInterface.setFolder(folderOf(entityInterface));
-    }
     List<ContextFileContent> contents =
         new ArrayList<>(contentRepository.listByContextFileId(entityInterface.getId()));
     if (contents.isEmpty()) {

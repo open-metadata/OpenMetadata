@@ -142,6 +142,71 @@ public class ListRowAuthorizationIT {
   }
 
   @Test
+  void aFolderContentsLeavesOutAndDoesNotCountFilesADenyRuleRefuses(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "contents");
+    OpenMetadataClient restricted = restrictedUser(ns, "contents", secret, Entity.CONTEXT_FILE);
+    FolderService folders = new FolderService(admin.getHttpClient());
+    Folder parent = folders.create(new CreateFolder().withName(ns.prefix("lraParent")));
+    Folder child =
+        folders.create(
+            new CreateFolder()
+                .withName(ns.prefix("lraChild"))
+                .withParent(parent.getFullyQualifiedName()));
+    admin
+        .contextFiles()
+        .create(
+            new CreateContextFile()
+                .withName(ns.prefix("hiddenFile"))
+                .withFolder(child.getFullyQualifiedName())
+                .withTags(List.of(tag(secret))));
+    ContextFile visible =
+        admin
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("visibleFile"))
+                    .withFolder(child.getFullyQualifiedName()));
+
+    JsonNode parentContents = list(restricted, contentsPath(parent));
+    assertEquals(
+        1,
+        parentContents.path("folders").path(0).path("childrenCount").asInt(),
+        parentContents.toString());
+    JsonNode childContents = list(restricted, contentsPath(child));
+    assertEquals(List.of(visible.getName()), names(childContents.path("files")));
+    assertEquals(1, childContents.path("childrenFileCount").asInt(), childContents.toString());
+  }
+
+  @Test
+  void aFolderContentsLeavesOutSubfoldersADenyRuleRefuses(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "subfolders");
+    OpenMetadataClient restricted = restrictedUser(ns, "subfolders", secret, Entity.FOLDER);
+    FolderService folders = new FolderService(admin.getHttpClient());
+    Folder parent = folders.create(new CreateFolder().withName(ns.prefix("lraSubParent")));
+    folders.create(
+        new CreateFolder()
+            .withName(ns.prefix("hiddenSub"))
+            .withParent(parent.getFullyQualifiedName())
+            .withTags(List.of(tag(secret))));
+    Folder visible =
+        folders.create(
+            new CreateFolder()
+                .withName(ns.prefix("visibleSub"))
+                .withParent(parent.getFullyQualifiedName()));
+
+    JsonNode contents = list(restricted, contentsPath(parent));
+    assertEquals(List.of(visible.getName()), names(contents.path("folders")));
+    assertEquals(1, contents.path("childrenFolderCount").asInt(), contents.toString());
+  }
+
+  private static String contentsPath(Folder folder) {
+    return "/v1/contextCenter/drive/folders/" + folder.getId() + "/contents";
+  }
+
+  @Test
   void aColumnTagDeniesTheTableWhateverFieldsAreRequested(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     String secret = secretTag(ns, "column");
@@ -391,8 +456,9 @@ public class ListRowAuthorizationIT {
   }
 
   private static List<String> names(JsonNode page) {
+    JsonNode rows = page.isArray() ? page : page.path("data");
     List<String> names = new ArrayList<>();
-    page.path("data").forEach(row -> names.add(row.path("name").asText()));
+    rows.forEach(row -> names.add(row.path("name").asText()));
     return names;
   }
 

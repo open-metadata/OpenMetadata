@@ -607,7 +607,13 @@ class ContextFileIT {
     User teamMember = DriveTestUsers.createUser(ns, "t-share", List.of(team.getId()));
     User named = DriveTestUsers.createUser(ns, "n-share");
     User stranger = DriveTestUsers.createUser(ns, "s-share");
-    Folder folder = createFolder(admin, new CreateFolder().withName(ns.prefix("sharing-counts")));
+    Folder parent = createFolder(admin, new CreateFolder().withName(ns.prefix("sharing-parent")));
+    Folder folder =
+        createFolder(
+            admin,
+            new CreateFolder()
+                .withName(ns.prefix("sharing-counts"))
+                .withParent(parent.getFullyQualifiedName()));
     sharedFileIn(admin, folder, ns.prefix("a-unset"), owner, null);
     sharedFileIn(
         admin,
@@ -636,6 +642,7 @@ class ContextFileIT {
           listFiles(rest, folder.getId(), 1, null).get("paging").get("total").asInt(),
           who + " total");
       assertEquals(visible, folderChildrenCount(rest, folder.getId()), who + " folder badge");
+      assertEquals(visible, subfolderChildrenCount(rest, parent.getId()), who + " in contents");
     }
   }
 
@@ -660,6 +667,15 @@ class ContextFileIT {
     try (Response response = rest.rawGet(FOLDER_PATH + "/" + folderId + "?fields=childrenCount")) {
       assertEquals(200, response.getStatus());
       return JsonUtils.readTree(response.readEntity(String.class)).get("childrenCount").asInt();
+    }
+  }
+
+  /** The {@code childrenCount} of the only subfolder in a folder's contents. */
+  private static int subfolderChildrenCount(RestClient rest, UUID parentId) {
+    try (Response response = rest.rawGet(FOLDER_PATH + "/" + parentId + "/contents")) {
+      assertEquals(200, response.getStatus());
+      JsonNode contents = JsonUtils.readTree(response.readEntity(String.class));
+      return contents.get("folders").get(0).get("childrenCount").asInt();
     }
   }
 

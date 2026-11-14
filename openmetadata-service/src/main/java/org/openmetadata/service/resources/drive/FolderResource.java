@@ -45,6 +45,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewOperations;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Tag(
     name = "Context Center Drive Folders",
@@ -159,16 +161,37 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
     if (counted.isEmpty() || ContextFileVisibility.seesEveryFile(securityContext)) {
       return;
     }
-    ContextFileRepository files =
-        (ContextFileRepository)
-            Entity.getEntityRepository(ContextFileRepository.CONTEXT_FILE_ENTITY);
     Map<UUID, Integer> counts =
-        files.countVisibleByFolder(
-            counted.stream().map(Folder::getId).toList(),
-            securityContext,
-            viewPermissionFilter,
-            VIEW_BASIC_ONLY);
+        fileRepository()
+            .countVisibleByFolder(
+                counted.stream().map(Folder::getId).toList(),
+                securityContext,
+                viewPermissionFilter,
+                VIEW_BASIC_ONLY);
     counted.forEach(folder -> folder.setChildrenCount(counts.getOrDefault(folder.getId(), 0)));
+  }
+
+  /** The subfolders the caller may read, as the folder listing returns them. */
+  private List<Folder> readableFolders(SecurityContext securityContext, List<Folder> folders) {
+    Fields fields = getFields(FIELDS);
+    return rowsMayDiffer(securityContext, fields)
+        ? rowAuthorization(fields).readable().apply(securityContext, folders)
+        : folders;
+  }
+
+  /** The files the caller may read, as the file listing returns them. */
+  private List<ContextFile> visibleFiles(SecurityContext securityContext, List<ContextFile> files) {
+    ContextFileRepository fileRepository = fileRepository();
+    List<MetadataOperation> operations =
+        ViewOperations.forFields(
+            ContextFileRepository.CONTEXT_FILE_ENTITY,
+            fileRepository.getFields(ContextFileResource.FIELDS));
+    return fileRepository.retainVisible(files, securityContext, viewPermissionFilter, operations);
+  }
+
+  private static ContextFileRepository fileRepository() {
+    return (ContextFileRepository)
+        Entity.getEntityRepository(ContextFileRepository.CONTEXT_FILE_ENTITY);
   }
 
   @GET
@@ -182,10 +205,11 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @PathParam("id") UUID id,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
     Folder folder = getInternal(uriInfo, securityContext, id, "parent,children", include);
-    List<Folder> folders = repository.getChildFolderEntities(folder);
+    List<Folder> folders =
+        readableFolders(securityContext, repository.getChildFolderEntities(folder));
+    countVisibleFiles(securityContext, folders);
     List<ContextFile> files =
-        ContextFileVisibility.filterVisible(
-            repository.getChildFileEntities(folder), securityContext);
+        visibleFiles(securityContext, repository.getChildFileEntities(folder));
 
     FolderContents response = new FolderContents();
     response.folder = folder;

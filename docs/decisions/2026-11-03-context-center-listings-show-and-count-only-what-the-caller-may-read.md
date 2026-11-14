@@ -6,7 +6,10 @@
 - **Guard:** `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`,
   `ContextMemoryResourceTest`, `ContextFileIT.testListingCountsOnlyFilesTheCallerMaySee`,
   `ContextFileIT.testCountsAgreeWithTheListingForEverySharing`,
-  `ListRowAuthorizationIT.aFileListingOrderedByUpdateTimeLeavesOutAndDoesNotCountRowsADenyRuleRefuses`
+  `ListRowAuthorizationIT.aFileListingOrderedByUpdateTimeLeavesOutAndDoesNotCountRowsADenyRuleRefuses`,
+  `ListRowAuthorizationIT.aFolderContentsLeavesOutAndDoesNotCountFilesADenyRuleRefuses`,
+  `ListRowAuthorizationIT.aFolderContentsLeavesOutSubfoldersADenyRuleRefuses`,
+  `FolderResourceIT#test_folderSearchDocumentCarriesNoChildrenCount`
 - **Related:** ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request;
   ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review;
   ADR:ai-platform/2026-10-11-explicit-memory-delete-searches-every-status
@@ -74,3 +77,8 @@ files have no scan bound.
 
 The listing ordered by update time (`orderBy`) applies the same row check to its page, so the page
 and its total agree; it does not refill, and its cursors are sealed when rows are checked.
+
+A folder's contents (`/folders/{id}/contents`) list the subfolders and files the folder and file
+listings would return to the caller, with the same row checks, and each subfolder's
+`childrenCount` is counted as above. The folder search document carries no `childrenCount`, since
+no single value is right for every reader.
