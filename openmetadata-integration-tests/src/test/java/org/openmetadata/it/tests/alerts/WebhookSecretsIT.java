@@ -183,7 +183,10 @@ class WebhookSecretsIT {
                   "/hook-oauth",
                   Map.of(
                       "authType",
-                      oauth2(receiver, uniqueClientId(), encryptedWithAnotherKey("old")))));
+                      oauth2(
+                          receiver,
+                          Fernet.getInstance().encrypt(uniqueClientId()),
+                          encryptedWithAnotherKey("old")))));
       destinations
           .get(1)
           .withConfig(
@@ -332,7 +335,8 @@ class WebhookSecretsIT {
     return withEndpoint;
   }
 
-  // As the server stores a configuration: its endpoint encrypted with the server's key.
+  // As the server stores a configuration: its endpoint encrypted with the server's key, as every
+  // other secret it holds must be, or a save that encrypts one would read as a change to judge.
   private static Map<String, Object> storedConfig(
       RecordingReceiver receiver, String path, Map<String, Object> config) {
     Map<String, Object> stored = legacyConfig(receiver, path, config);
