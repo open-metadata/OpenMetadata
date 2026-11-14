@@ -13,7 +13,9 @@
 package org.openmetadata.service.rdf.reasoning;
 
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.api.rdf.RdfOntologyReleaseRef;
 import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
 import org.openmetadata.schema.api.rdf.RdfReasoningInput;
 import org.openmetadata.schema.api.rdf.RdfSourceRevision;
@@ -27,16 +29,23 @@ public final class ReasoningFreshness {
 
   /**
    * The serving side now. The enqueued watermark counts every write handed a live-write queue ID,
-   * including writes recorded from outside the queue.
+   * including writes recorded from outside the queue. The active releases are the ones the serving
+   * graph holds now; activating another release makes a result computed over the old one stale.
    */
   public record Serving(
       UUID datasetGeneration,
       long enqueuedWatermark,
       boolean projectionDegraded,
-      String ontologyDigest,
+      Set<RdfOntologyReleaseRef> activeReleases,
       String ruleBundleDigest) {}
 
+  /**
+   * Freshness of a refresh's snapshot. A check or explanation records only the one release it read,
+   * which need not be active, so comparing it with the active set would always say STALE; it is
+   * refused instead.
+   */
   public static RdfReasoningFreshness of(final RdfReasoningInput input, final Serving now) {
+    requireSnapshotInput(input);
     if (now.projectionDegraded()) {
       // The graph itself is missing writes, so no result computed from it can be vouched for, and
       // refreshing cannot help until a rebuild repairs the projection.
@@ -46,8 +55,18 @@ public final class ReasoningFreshness {
     final boolean current =
         now.datasetGeneration().equals(read.getDatasetGeneration())
             && now.enqueuedWatermark() <= read.getLiveWriteWatermark()
-            && Objects.equals(now.ontologyDigest(), input.getOntologyDigest())
+            && Objects.equals(now.activeReleases(), input.getOntologyReleases())
             && Objects.equals(now.ruleBundleDigest(), input.getRuleBundleDigest());
     return current ? RdfReasoningFreshness.CURRENT : RdfReasoningFreshness.STALE;
+  }
+
+  private static void requireSnapshotInput(final RdfReasoningInput input) {
+    if (input.getReleaseRdf() != null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Freshness applies to a refresh's snapshot, not to a check or explanation of the"
+                  + " uploaded release %s",
+              input.getReleaseRdf().getDigest()));
+    }
   }
 }

@@ -409,12 +409,13 @@ journal replays writes into a blue/green target. Reuse these instead of a Fuseki
   a write that cannot be recorded marks the projection degraded, which makes them `UNKNOWN`. The
   admin SPARQL Update, pipeline-status provenance writes, and in-place reindex runs (before their
   first write and after their last) record themselves. Derived graphs (rule output and insights)
-  are never captured, `OntologyLoader` reloads identical content and is covered by the ontology
-  digest, and blue/green builds get a new generation at promotion. Direct Fuseki writes that bypass
+  are never captured, `OntologyLoader` reloads identical content and is covered by the active
+  release set, and blue/green builds get a new generation at promotion. Direct Fuseki writes that bypass
   OM are unsupported for freshness.
 - **Freshness** is `UNKNOWN` while projection health is degraded, since a refresh cannot repair a
   graph that is missing writes. Otherwise it is `CURRENT` only when generations match, the snapshot
-  watermark covers the highest *enqueued* queue ID, and ontology/rule digests match, and `STALE`
+  watermark covers the highest *enqueued* queue ID, the same ontology releases are active and the
+  rule digest matches, and `STALE`
   when any of them does not. The metadata commit and queue insert are separate transactions, so a
   crash between them is invisible to freshness, exactly as it is to projection; a full rebuild
   repairs both.
@@ -453,6 +454,7 @@ query-parameter dispatch on one registered endpoint and a servlet registered by 
 
 | Operation | Contract |
 |---|---|
+| `PUT /reasoning/inputs/sha256:{hex}` | Upload the RDF-Thrift of one release for a `CHECK` or `EXPLAIN`, addressed by the SHA-256 of its bytes; at most `maxUploadBytes` |
 | `GET /reasoning/capabilities` | Protocol, engine/coverage versions, memory budget (required and available), limits, readiness |
 | `POST /reasoning/jobs` | Submit `REFRESH`, `CHECK`, or `EXPLAIN`; bounded body; idempotency key; `202` with ID |
 | `GET /reasoning/jobs/{id}` | Durable state, progress, input versions, result location, structured errors |
@@ -475,18 +477,23 @@ are examples:
     "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
     "liveWriteWatermark": 18442
   },
-  "ontologySelection": "APPROVED",
+  "ontologyReleases": [
+    {
+      "ontologyId": "3b9e1f0a-6c2d-4e8f-9a1b-7d5c3e2f1a0b",
+      "releaseId": "8f4a2c6e-1b3d-4f5a-9c7e-2d1b0a9f8e7d",
+      "contentDigest": "0c5f2e8a9b1d3c4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e"
+    }
+  ],
   "ruleBundleDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rules": []
 }
 ```
 
-The digests are OM's identities for its ontology and rule input; the store records them with the
-result without interpreting them, and OM compares them when it computes freshness.
-
-Synchronize the bounded rule bundle from OM's rule repository. A `CHECK` selects an ontology/import
-version and a typed consistency, satisfiability, subsumption, or entailment request using the
-existing expression schema. It does not accept arbitrary files, remote URLs, or Java code.
+A refresh lists every active release and carries the rules inline; a `CHECK` or `EXPLAIN` names
+one release, active or not, whose RDF OM uploaded first, and a typed consistency, satisfiability,
+subsumption, or entailment request using the existing expression schema. No request accepts
+arbitrary files, remote URLs, or Java code
+(ADR:2026-11-10-reasoning-jobs-name-ontology-releases-and-carry-their-rules).
 
 OM retains the public API and authorization boundary. Adapt the inference status, glossary SPARQL,
 and explanation endpoints to this contract. Separate execution state from freshness: `SUCCEEDED`

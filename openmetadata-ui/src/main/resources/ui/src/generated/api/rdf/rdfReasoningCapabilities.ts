@@ -69,8 +69,8 @@ export interface Engine {
  * reports an operation AVAILABLE only when it enforces every limit that operation needs.
  * REFRESH, CHECK and EXPLAIN need maxQueuedJobs, maxJobSeconds, maxDiskBytes,
  * maxClosureAxioms, maxIndividuals, maxExpressionDepth and maxImports; REFRESH also needs
- * maxDerivedTriples and maxRulePasses; RESULTS and QUERY need maxResultRows, and QUERY also
- * needs maxQuerySeconds.
+ * maxDerivedTriples and maxRulePasses; CHECK and EXPLAIN also need maxUploadBytes; RESULTS
+ * and QUERY need maxResultRows, and QUERY also needs maxQuerySeconds.
  */
 export interface Limits {
     /**
@@ -102,6 +102,10 @@ export interface Limits {
      */
     maxResultRows?: number;
     maxRulePasses?: number;
+    /**
+     * Bytes of one uploaded job input, such as the release a CHECK reads.
+     */
+    maxUploadBytes?: number;
 }
 
 /**

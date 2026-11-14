@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-14 (a new operation is also listed in
-  capabilities)
+  capabilities) · v3 2026-11-10 (ontology releases replace closure IRIs)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `RdfReasoningContractTest#theContractRejects` and
   `RdfReasoningContractTest#aConsistencyCheckTakesNoExpression`; in open-metadata/jena,
@@ -47,3 +47,14 @@ v2 2026-10-14: capabilities now say which operations a store implements and whic
 needs (ADR:2026-10-14-rdf-reasoning-capabilities-list-each-operation-and-the-limits-it-enforces).
 A new job operation therefore also adds its value to the capabilities `operation` enum and its
 required limits to `rdfReasoningCapabilities.json` in the same change.
+
+## Amendment v3 — 2026-11-10: ontology releases replace closure IRIs
+
+ADR:2026-11-10-reasoning-jobs-name-ontology-releases-and-carry-their-rules replaces
+`ontologySelection`, `ontologyIri` and `ontologyDigest` with `ontologyReleases`, which every request
+requires. The per-operation rules are now:
+
+- `REFRESH` requires `ruleBundleDigest` and `rules`, and must not carry `releaseRdf`.
+- `CHECK` and `EXPLAIN` require exactly one entry in `ontologyReleases` and `releaseRdf`; `CHECK`
+  also requires `check`, and `EXPLAIN` requires `explain`.
+- The check kinds keep the rules of the decision above.
