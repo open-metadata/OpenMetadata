@@ -103,6 +103,44 @@ class CreateTestCaseToolTest {
     }
   }
 
+  /** An overwrite an approval workflow holds changes nothing yet, so it is not reported as done. */
+  @Test
+  void aHeldOverwriteIsReportedAsPendingApproval() {
+    Principal mockPrincipal = mock(Principal.class);
+    when(mockPrincipal.getName()).thenReturn("test-user");
+    when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
+    TestCaseRepository repo = mock(TestCaseRepository.class);
+    TestCase testCase = new TestCase().withId(UUID.randomUUID()).withName("TestCase_1");
+    UUID changeRequestId = UUID.randomUUID();
+    when(repo.createOrUpdate(isNull(), any(TestCase.class), anyString(), any()))
+        .thenReturn(
+            new RestUtil.PutResponse<>(
+                    Response.Status.ACCEPTED, testCase, EventType.ENTITY_NO_CHANGE)
+                .withPendingChangeRequestId(changeRequestId));
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
+        MockedConstruction<TestCaseMapper> mapperMock =
+            mockConstruction(
+                TestCaseMapper.class,
+                (mapper, context) ->
+                    when(mapper.createToEntity(any(), anyString())).thenReturn(testCase))) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TEST_CASE)).thenReturn(repo);
+      Map<String, Object> params = new HashMap<>();
+      params.put("testDefinitionName", "tableRowCountToEqual");
+      params.put("fqn", "sample_data.ecommerce_db.shopify.orders");
+      params.put("name", "TestCase_1");
+      params.put("parameterValues", new ArrayList<>());
+
+      result = new CreateTestCaseTool().execute(authorizer, limits, securityContext, params);
+    }
+
+    assertThat(result)
+        .containsEntry("_operation", "pendingApproval")
+        .containsEntry("changeRequestId", changeRequestId.toString());
+  }
+
   @Test
   void authorizationRunsBeforePrepareSoADeniedCallerLeavesNoTestSuite() {
     // TestCaseRepository.prepare resolves the basic test suite and persists one as the ingestion

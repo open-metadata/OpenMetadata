@@ -25,6 +25,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -32,6 +33,13 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public class CommonUtils {
+
+  /**
+   * Types REST refuses to write for any impersonated request. Users and team patches never reach
+   * MCP, and a new team's roles and policies are refused in {@link CreateEntityTool}.
+   */
+  private static final Set<String> IMPERSONATION_REFUSED_WRITES =
+      Set.of(Entity.POLICY, Entity.ROLE, Entity.BOT);
 
   /**
    * Reads an entity for a caller and applies that entity's own visibility rule before handing it
@@ -277,6 +285,19 @@ public class CommonUtils {
       authorizer.authorize(securityContext, editContext, existing);
     }
     return overwritesExisting;
+  }
+
+  /**
+   * Refuses an impersonated write to an entity type that grants privileges or a credential, as
+   * REST refuses it through {@code @IdentityEndpoint}: the grant would outlive the request.
+   * ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges
+   */
+  public static void refuseImpersonatedGrantWrite(
+      CatalogSecurityContext securityContext, String entityType) {
+    if (securityContext.impersonatedUser() != null
+        && IMPERSONATION_REFUSED_WRITES.contains(entityType)) {
+      throw new AuthorizationException("Impersonated requests cannot write a " + entityType);
+    }
   }
 
   /**

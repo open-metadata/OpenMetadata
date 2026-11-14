@@ -611,7 +611,7 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Update an existing entity using an RFC 6902 JSON Patch document. This tool never creates entities; use create_entity for creation (create_test_case for test cases and create_lineage for lineage). Call get_entity_details on the target first and use field names present in that response. Array fields use plural paths such as /domains, /owners, /tags and /reviewers. Reference values must contain the referenced entity id and type. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling.",
+      "description": "Update an existing entity using an RFC 6902 JSON Patch document. This tool never creates entities; use create_entity for creation (create_test_case for test cases and create_lineage for lineage). Call get_entity_details on the target first and use field names present in that response. Array fields use plural paths such as /domains, /owners, /tags and /reviewers. Reference values must contain the referenced entity id and type. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling. When an approval workflow holds the write instead, the response has _operation \"pendingApproval\" and a changeRequestId, and the entity is unchanged until a reviewer approves: tell the user it was submitted for approval, not applied.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -805,7 +805,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations. Writes take effect immediately and can overwrite existing state — confirm the target with the user before calling.",
+      "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling. When an approval workflow holds an overwrite instead, the response has _operation \"pendingApproval\" and a changeRequestId, and nothing changes until a reviewer approves: tell the user it was submitted for approval, not applied.",
       "parameters": {
         "description": "This tool can be used to create a test case for a table or a table's column. It requires the test definition and the entity (table or column) to be tested.",
         "type": "object",
