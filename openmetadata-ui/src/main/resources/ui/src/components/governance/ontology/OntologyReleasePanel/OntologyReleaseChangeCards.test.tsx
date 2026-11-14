@@ -77,4 +77,15 @@ describe('OntologyReleaseChangeCards', () => {
       screen.queryByTestId('ontology-change-card-properties-load-more')
     ).not.toBeInTheDocument();
   });
+
+  it('shows the shared no-results state when the filter leaves no changes', () => {
+    render(<OntologyReleaseChangeCards cards={[]} />);
+
+    expect(
+      screen.getByTestId('ontology-change-groups-empty')
+    ).toHaveTextContent('label.no-result-for-these-filter-plural');
+    expect(
+      screen.queryByTestId('ontology-change-groups')
+    ).not.toBeInTheDocument();
+  });
 });

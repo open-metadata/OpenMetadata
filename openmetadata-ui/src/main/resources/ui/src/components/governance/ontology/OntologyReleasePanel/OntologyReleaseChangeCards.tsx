@@ -24,6 +24,7 @@ import {
   ConceptChange,
 } from '../../../../generated/api/data/ontologyWorkingDiff';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import {
   ChangeCard,
   ChangeCardKind,
@@ -153,12 +154,20 @@ const OntologyReleaseChangeCards = ({
   cards,
 }: {
   readonly cards: ChangeCard[];
-}) => (
-  <Box data-testid="ontology-change-groups" direction="col" gap={3}>
-    {cards.map((card) => (
-      <ChangeCardSection key={card.kind} {...card} />
-    ))}
-  </Box>
-);
+}) =>
+  cards.length === 0 ? (
+    // A filter or search that matches nothing, e.g. Changed · 0.
+    <div
+      className="tw:relative tw:min-h-80"
+      data-testid="ontology-change-groups-empty">
+      <NoFilteredResultsPlaceholder />
+    </div>
+  ) : (
+    <Box data-testid="ontology-change-groups" direction="col" gap={3}>
+      {cards.map((card) => (
+        <ChangeCardSection key={card.kind} {...card} />
+      ))}
+    </Box>
+  );
 
 export default OntologyReleaseChangeCards;

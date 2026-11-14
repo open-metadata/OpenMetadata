@@ -344,7 +344,8 @@ const OntologyReleaseExportContent = ({
   const { t } = useTranslation();
 
   return (
-    <Box direction="col" gap={5}>
+    // The dialog body scrolls without bottom padding; this keeps Advanced's border clear of the edge.
+    <Box className="tw:pb-1" direction="col" gap={5}>
       <Typography color="secondary" size="text-sm">
         {t('message.ontology-export-help')}
       </Typography>

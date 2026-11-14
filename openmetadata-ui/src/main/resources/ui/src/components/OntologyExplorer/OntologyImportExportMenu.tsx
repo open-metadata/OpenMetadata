@@ -12,6 +12,7 @@
  */
 
 import {
+  Button,
   ButtonUtility,
   Dialog,
   Dropdown,
@@ -161,6 +162,14 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
               )}
             </Select>
           </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="ontology-owner-picker-cancel"
+              onPress={close}>
+              {t('label.cancel')}
+            </Button>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>
