@@ -653,6 +653,16 @@ public final class UserUtil {
                   + "Rename or delete that user, then restart the server.",
               user.getName()));
     }
+    // Short-circuit when the incoming bot user has no real change vs. what's already in the
+    // database. Without this guard every OM boot calls into addOrUpdateUser ->
+    // userRepository.createOrUpdate, and UserUpdater.entitySpecificUpdate then runs
+    // updateTeams/updateRoles/etc. with the incoming `user.getTeams() == null`, which strips
+    // the bot's stored team relationships, bumps the version, and triggers an Elasticsearch
+    // reindex of the bot user (and any team membership change ripples into the team_search
+    // index too). With many bots this is a reindex storm on every restart.
+    if (isUnchangedBot(originalUser, user)) {
+      return originalUser;
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -663,6 +673,29 @@ public final class UserUtil {
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
     return addOrUpdateUser(user);
+  }
+
+  /**
+   * Whether the stored bot already matches everything the seeded {@code incoming} bot would
+   * write, so the upsert can be skipped. It must not be skipped when the stored bot has no
+   * authentication mechanism (the upsert is what generates its JWT), when {@code isAdmin}
+   * differs (seeding passes an explicit {@code false}), or when the roles differ. Roles are
+   * compared by id: the seeded references and the stored ones name the same roles but can
+   * differ in other fields.
+   */
+  static boolean isUnchangedBot(User original, User incoming) {
+    return original != null
+        && original.getAuthenticationMechanism() != null
+        && Boolean.TRUE.equals(original.getIsAdmin()) == Boolean.TRUE.equals(incoming.getIsAdmin())
+        && roleIds(original).equals(roleIds(incoming))
+        && Objects.equals(original.getDescription(), incoming.getDescription())
+        && Objects.equals(original.getDisplayName(), incoming.getDisplayName());
+  }
+
+  private static Set<UUID> roleIds(User user) {
+    return listOrEmpty(user.getRoles()).stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(
@@ -683,8 +716,12 @@ public final class UserUtil {
     EntityRepository<User> userRepository =
         (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
+      // Include "roles" so the no-op short-circuit in addOrUpdateBotUser can compare it
+      // against the incoming user. description and displayName are scalar fields stored in
+      // the entity JSON column, so they're already populated by the base read without an
+      // extra field fetch.
       return userRepository.getByName(
-          null, user.getName(), new Fields(Set.of("authenticationMechanism")));
+          null, user.getName(), new Fields(Set.of("authenticationMechanism", "roles")));
     } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
