@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -181,6 +183,28 @@ class HealthAttributionTest {
 
     assertEquals(0, health.getConsecutiveFailedTicks());
     assertEquals("Not attempted: " + MAIL_SERVER_OFF, health.getStatus().getLastFailedReason());
+  }
+
+  // The stored health names the settings the tick found unusable, and only those; the next tick's
+  // outcome replaces it.
+  @Test
+  void theHealthKeepsWhichSettingsWereFoundUnusableUntilTheNextTick() {
+    TickHealth tick = new TickHealth();
+    tick.notAttempted(owners, "webhook", Cause.CONFIGURATION_UNUSABLE, "bad scheme", "settings");
+    tick.notAttempted(owners, "webhook", Cause.CHANNEL_UNAVAILABLE, MAIL_SERVER_OFF, "ignored");
+    List<DestinationOutcome> outcomes = new ArrayList<>();
+    tick.reportTo((destinationId, outcome) -> outcomes.add(outcome));
+
+    DestinationHealth unusable = HealthStreak.after(null, outcomes.getFirst());
+    DestinationHealth nextTick = HealthStreak.after(unusable, notAttempted());
+
+    assertEquals("settings", unusable.getConfigurationFingerprint());
+    assertTrue(unusable.getStatus().getConfigurationUnusable());
+    assertNull(nextTick.getConfigurationFingerprint());
+    assertNull(
+        DestinationOutcome.notAttempted(Cause.CHANNEL_UNAVAILABLE, MAIL_SERVER_OFF, 1L, "settings")
+            .configurationFingerprint(),
+        "kept only with an unusable configuration");
   }
 
   @Test

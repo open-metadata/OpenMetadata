@@ -15,6 +15,12 @@
  */
 export interface DestinationHealth {
     /**
+     * SHA-256 of the destination's settings as stored, secrets still encrypted, when the tick
+     * found that configuration unusable. A stored unusable status speaks only while the
+     * destination's settings still match it.
+     */
+    configurationFingerprint?: string;
+    /**
      * Ticks in a row in which this destination failed.
      */
     consecutiveFailedTicks?: number;

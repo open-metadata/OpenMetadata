@@ -14,6 +14,7 @@
 package org.openmetadata.service.alerting.delivery;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,6 +36,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerting.channel.Delivery;
 import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationFingerprint;
+import org.openmetadata.service.events.consumer.ledger.DestinationOutcome;
 
 class TickChannelsTest {
   private static final ChangeEvent EVENT = new ChangeEvent().withId(UUID.randomUUID());
@@ -57,6 +60,7 @@ class TickChannelsTest {
         "Not attempted: The channel not.registered.here is not registered on this server",
         status.getLastFailedReason());
     assertNull(status.getConfigurationUnusable());
+    assertNull(outcomeOf(unserved).configurationFingerprint());
   }
 
   // A configuration saved under older rules must cost this destination only, never the tick.
@@ -79,6 +83,11 @@ class TickChannelsTest {
             .getLastFailedReason()
             .startsWith("Not attempted: its stored configuration is not usable"));
     assertTrue(statusOf(unusable).getConfigurationUnusable(), "stored as the read reports it");
+    assertNotNull(statusOf(unusable).getLastFailedAt(), "a send failed when it found it");
+    assertEquals(
+        DestinationFingerprint.of(savedLongAgo),
+        outcomeOf(unusable).configurationFingerprint(),
+        "the settings it found unusable");
   }
 
   // Before, the first destination of a channel answered for all of them: an unusable one first
@@ -145,8 +154,12 @@ class TickChannelsTest {
   }
 
   private SubscriptionStatus statusOf(Destination<ChangeEvent> destination) {
-    Map<UUID, SubscriptionStatus> reported = new HashMap<>();
-    health.reportTo((destinationId, outcome) -> reported.put(destinationId, outcome.status()));
+    return outcomeOf(destination).status();
+  }
+
+  private DestinationOutcome outcomeOf(Destination<ChangeEvent> destination) {
+    Map<UUID, DestinationOutcome> reported = new HashMap<>();
+    health.reportTo(reported::put);
     return reported.get(destination.getSubscriptionDestination().getId());
   }
 

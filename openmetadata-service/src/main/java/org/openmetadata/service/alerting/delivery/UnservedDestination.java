@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationFingerprint;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.events.consumer.ledger.DestinationOutcome.Cause;
 
@@ -34,13 +35,19 @@ final class UnservedDestination implements Destination<ChangeEvent> {
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final Cause cause;
   private final String reason;
+  private final String configurationFingerprint;
 
   private UnservedDestination(
-      EventSubscription alert, SubscriptionDestination destination, Cause cause, String reason) {
+      EventSubscription alert,
+      SubscriptionDestination destination,
+      Cause cause,
+      String reason,
+      String configurationFingerprint) {
     this.alert = alert;
     this.subscriptionDestination = destination;
     this.cause = cause;
     this.reason = reason;
+    this.configurationFingerprint = configurationFingerprint;
   }
 
   static UnservedDestination ofAnUnregisteredChannel(
@@ -49,16 +56,20 @@ final class UnservedDestination implements Destination<ChangeEvent> {
         alert,
         destination,
         Cause.CHANNEL_NOT_REGISTERED,
-        "The channel " + channelId + " is not registered on this server");
+        "The channel " + channelId + " is not registered on this server",
+        null);
   }
 
+  // Taken from the destination the tick built from, so a save during the tick is not mistaken
+  // for what it found unusable.
   static UnservedDestination ofAnUnusableConfiguration(
       EventSubscription alert, SubscriptionDestination destination, String why) {
     return new UnservedDestination(
         alert,
         destination,
         Cause.CONFIGURATION_UNUSABLE,
-        "its stored configuration is not usable: " + why);
+        "its stored configuration is not usable: " + why,
+        DestinationFingerprint.of(destination));
   }
 
   // Nothing is ever sent through it, so a send that reached it anyway cannot read delivered.
@@ -97,5 +108,10 @@ final class UnservedDestination implements Destination<ChangeEvent> {
 
   String reason() {
     return reason;
+  }
+
+  /** The settings found unusable, or null when the channel is not registered. */
+  String configurationFingerprint() {
+    return configurationFingerprint;
   }
 }

@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.channel.DestinationFingerprint;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.alerting.matching.AlertMatching;
@@ -163,27 +164,28 @@ public final class AlertDiagnostics {
     return switchedOff
         ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
         : DestinationSecrets.unusableBecause(destination)
-            .map(reason -> DestinationStatuses.configurationUnusable(reason, now))
-            .orElseGet(() -> lastSendOrActive(alert, known, now));
+            .map(reason -> DestinationStatuses.configurationUnusableAsRead(reason, now))
+            .orElseGet(() -> lastSendOrActive(destination, known, now));
   }
 
-  // A tick that found the stored configuration unusable speaks until the alert is changed, the
-  // only way to repair it: an alert saved since, whose secrets open, reads Active until the next
-  // tick, so a value entered again clears the failure at once.
   private static SubscriptionStatus lastSendOrActive(
-      EventSubscription alert, DestinationHealth known, long now) {
+      SubscriptionDestination destination, DestinationHealth known, long now) {
     SubscriptionStatus last = known == null ? null : known.getStatus();
-    boolean changedSince =
-        last != null
-            && Boolean.TRUE.equals(last.getConfigurationUnusable())
-            && savedAfter(alert, last.getTimestamp());
-    return last != null && !changedSince
+    return last != null && !changedSinceFoundUnusable(destination, known)
         ? last
         : new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
   }
 
-  private static boolean savedAfter(EventSubscription alert, Long at) {
-    return alert.getUpdatedAt() != null && (at == null || alert.getUpdatedAt() > at);
+  // A tick that found the stored configuration unusable speaks until this destination's settings
+  // change: renaming the alert or editing another destination leaves it, while any change to this
+  // destination ends it at once, and the next tick judges the new settings. One stored without a
+  // fingerprint speaks until the next tick.
+  private static boolean changedSinceFoundUnusable(
+      SubscriptionDestination destination, DestinationHealth known) {
+    String foundUnusable = known.getConfigurationFingerprint();
+    return Boolean.TRUE.equals(known.getStatus().getConfigurationUnusable())
+        && foundUnusable != null
+        && !foundUnusable.equals(DestinationFingerprint.of(destination));
   }
 
   /**

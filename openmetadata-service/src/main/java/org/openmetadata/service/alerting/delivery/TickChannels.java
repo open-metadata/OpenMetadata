@@ -95,7 +95,11 @@ public final class TickChannels implements ChannelDelivery {
 
   private void notAttempted(UnservedDestination unserved) {
     health.notAttempted(
-        destinationIdOf(unserved), channelIdOf(unserved), unserved.cause(), unserved.reason());
+        destinationIdOf(unserved),
+        channelIdOf(unserved),
+        unserved.cause(),
+        unserved.reason(),
+        unserved.configurationFingerprint());
   }
 
   private static Map<String, List<UnservedDestination>> unservedByChannel(

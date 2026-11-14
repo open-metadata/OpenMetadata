@@ -16,16 +16,12 @@ package org.openmetadata.service.alerting.channel;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Checks a destination with the channel that serves it, when the destination is new or was
@@ -77,32 +73,7 @@ public final class DestinationValidation {
   // Secrets are compared as they are used: a stored value the server has since encrypted, or a
   // secret sent again, is the same configuration.
   private static JsonNode whatAUserConfigures(SubscriptionDestination destination) {
-    ObjectNode content =
-        (ObjectNode) JsonUtils.valueToTree(DestinationSecrets.decryptedOrAsStored(destination));
-    content.remove(NOT_PART_OF_WHAT_A_USER_CONFIGURES);
-    return withoutEmptyValues(content);
-  }
-
-  private static JsonNode withoutEmptyValues(JsonNode node) {
-    JsonNode result = node;
-    if (node.isObject()) {
-      ObjectNode kept = JsonUtils.getObjectNode();
-      Map<String, JsonNode> byName =
-          node.properties().stream()
-              .collect(
-                  Collectors.toMap(
-                      Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, TreeMap::new));
-      byName.forEach((name, value) -> keepIfItSaysSomething(kept, name, value));
-      result = kept;
-    }
-    return result;
-  }
-
-  private static void keepIfItSaysSomething(ObjectNode kept, String name, JsonNode value) {
-    JsonNode reduced = withoutEmptyValues(value);
-    boolean empty = reduced.isNull() || (reduced.isContainerNode() && reduced.isEmpty());
-    if (!empty) {
-      kept.set(name, reduced);
-    }
+    return DestinationContent.canonical(
+        DestinationSecrets.decryptedOrAsStored(destination), NOT_PART_OF_WHAT_A_USER_CONFIGURES);
   }
 }

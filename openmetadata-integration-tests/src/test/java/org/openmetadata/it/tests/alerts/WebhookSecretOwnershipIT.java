@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.DataAssetServiceDAOs.DatabaseServiceDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -62,6 +63,7 @@ class WebhookSecretOwnershipIT {
   private static final String SIGNATURE = "X-OM-Signature";
   private static final String OLD_SIGNING_KEY = "a signing key entered long ago";
   private static final String OLD_CLIENT_SECRET = "a client secret entered long ago";
+  private static final String REFUSED_ENDPOINT = "ftp://refused.example.com/hook";
 
   @Test
   void aStoredValueNotWrittenForItsDestinationIsNeverSent(TestNamespace ns) throws Exception {
@@ -252,14 +254,52 @@ class WebhookSecretOwnershipIT {
       HttpResponse<String> patch =
           patchAlert(
               id, Map.of("op", "add", "path", "/destinations/0/statusDetails", "value", sent));
-      SubscriptionDestination afterThePatch =
-          AlertFixtures.stored(id).getDestinations().getFirst();
+      SubscriptionDestination afterThePatch = AlertFixtures.stored(id).getDestinations().getFirst();
 
       assertNull(created.getStatusDetails());
       assertEquals(200, put.statusCode(), put.body());
       assertNull(afterThePut.getStatusDetails());
       assertEquals(200, patch.statusCode(), patch.body());
       assertNull(afterThePatch.getStatusDetails());
+    }
+  }
+
+  // A tick found the endpoint refused, which a read cannot see. Renaming the alert leaves the
+  // destination as it was, so the failure stays; a new endpoint clears it before the next tick.
+  @Test
+  void aFailureOnlyATickFindsStaysThroughARenameAndClearsWithANewEndpoint(TestNamespace ns)
+      throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          createAlert(
+              ns,
+              "refused_endpoint",
+              List.of(AlertFixtures.external(WEBHOOK, receiver.url("/hook"))));
+      QuietAlert.settle(alert);
+      // Encrypted for its destination, as 2.1 stores every endpoint: a plaintext one would be
+      // encrypted by the next save, which changes the destination's settings.
+      DestinationSecrets.encrypt(
+          List.of(
+              alert.getDestinations().getFirst().withConfig(Map.of("endpoint", REFUSED_ENDPOINT))));
+      AlertFixtures.writeBehindTheServer(alert);
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(AlertFixtures.stored(alert.getId()));
+      Map<?, ?> afterTheTick = statusOf(readWithStatus(alert.getId()).getFirst());
+
+      HttpResponse<String> renamed = patchAlert(alert.getId(), replace("/description", "renamed"));
+      Map<?, ?> afterTheRename = statusOf(readWithStatus(alert.getId()).getFirst());
+      HttpResponse<String> moved =
+          patchAlert(
+              alert.getId(), replace("/destinations/0/config/endpoint", receiver.url("/moved")));
+      Map<?, ?> afterTheMove = statusOf(readWithStatus(alert.getId()).getFirst());
+
+      assertEquals(failedStatus(), afterTheTick.get("status"));
+      assertEquals(Boolean.TRUE, afterTheTick.get("configurationUnusable"));
+      assertEquals(200, renamed.statusCode(), renamed.body());
+      assertEquals(failedStatus(), afterTheRename.get("status"), afterTheRename.toString());
+      assertEquals(Boolean.TRUE, afterTheRename.get("configurationUnusable"));
+      assertEquals(200, moved.statusCode(), moved.body());
+      assertEquals(SubscriptionStatus.Status.ACTIVE.value(), afterTheMove.get("status"));
     }
   }
 

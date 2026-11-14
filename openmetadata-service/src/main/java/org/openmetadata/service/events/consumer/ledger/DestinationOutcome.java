@@ -23,8 +23,11 @@ import org.openmetadata.service.alerting.channel.DestinationStatuses;
  * starts or extends one.
  *
  * @param cause why it was not attempted, or {@link Cause#NONE}
+ * @param configurationFingerprint which stored settings were found unusable, with {@link
+ *     Cause#CONFIGURATION_UNUSABLE} only; null otherwise
  */
-public record DestinationOutcome(Kind kind, Cause cause, SubscriptionStatus status) {
+public record DestinationOutcome(
+    Kind kind, Cause cause, SubscriptionStatus status, String configurationFingerprint) {
 
   public enum Kind {
     DELIVERED,
@@ -50,23 +53,33 @@ public record DestinationOutcome(Kind kind, Cause cause, SubscriptionStatus stat
   }
 
   public static DestinationOutcome delivered(SubscriptionStatus status) {
-    return new DestinationOutcome(Kind.DELIVERED, Cause.NONE, status);
+    return new DestinationOutcome(Kind.DELIVERED, Cause.NONE, status, null);
   }
 
   public static DestinationOutcome failed(SubscriptionStatus status) {
-    return new DestinationOutcome(Kind.FAILED, Cause.NONE, status);
+    return new DestinationOutcome(Kind.FAILED, Cause.NONE, status, null);
   }
 
-  /** A stored configuration that cannot be used reads as one, so the alert shows what to change. */
   public static DestinationOutcome notAttempted(Cause cause, String why, long at) {
+    return notAttempted(cause, why, at, null);
+  }
+
+  /**
+   * A stored configuration that cannot be used reads as one, so the alert shows what to change, and
+   * keeps the fingerprint of the settings found unusable, so a change to them ends it.
+   */
+  public static DestinationOutcome notAttempted(
+      Cause cause, String why, long at, String configurationFingerprint) {
+    boolean unusable = cause == Cause.CONFIGURATION_UNUSABLE;
     SubscriptionStatus status =
-        cause == Cause.CONFIGURATION_UNUSABLE
+        unusable
             ? DestinationStatuses.configurationUnusable(notAttemptedReason(why), at)
             : new SubscriptionStatus()
                 .withStatus(SubscriptionStatus.Status.FAILED)
                 .withLastFailedAt(at)
                 .withLastFailedReason(notAttemptedReason(why))
                 .withTimestamp(at);
-    return new DestinationOutcome(Kind.NOT_ATTEMPTED, cause, status);
+    return new DestinationOutcome(
+        Kind.NOT_ATTEMPTED, cause, status, unusable ? configurationFingerprint : null);
   }
 }
