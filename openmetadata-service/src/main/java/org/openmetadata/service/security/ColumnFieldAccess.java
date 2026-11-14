@@ -5,12 +5,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * The fields a read of a table's columns returns to the caller. A column's profile is profiler data
@@ -23,12 +24,8 @@ public final class ColumnFieldAccess {
   public static final String PROFILE_FIELD = "profile";
   private static final String FIELD_SEPARATOR = ",";
   private static final String ALL_FIELDS = "*";
-  private static final Map<String, MetadataOperation> RESTRICTED_FIELDS =
-      Map.of(
-          PROFILE_FIELD,
-          MetadataOperation.VIEW_DATA_PROFILE,
-          TableRepository.CUSTOM_METRICS,
-          MetadataOperation.VIEW_TESTS);
+  private static final Set<String> RESTRICTED_FIELDS =
+      Set.of(PROFILE_FIELD, TableRepository.CUSTOM_METRICS);
 
   private ColumnFieldAccess() {}
 
@@ -56,11 +53,18 @@ public final class ColumnFieldAccess {
       SecurityContext securityContext,
       ResourceContextInterface table,
       String field) {
-    return RESTRICTED_FIELDS.entrySet().stream()
-        .filter(restricted -> ALL_FIELDS.equals(field) || field.contains(restricted.getKey()))
+    return RESTRICTED_FIELDS.stream()
+        .filter(restricted -> ALL_FIELDS.equals(field) || field.contains(restricted))
         .allMatch(
             restricted ->
                 viewFilter.isPermitted(
-                    securityContext, Entity.TABLE, List.of(restricted.getValue()), table));
+                    securityContext, Entity.TABLE, operationsFor(restricted), table));
+  }
+
+  private static List<MetadataOperation> operationsFor(String field) {
+    // A column's profile has no table field of the same name; shared fields use the table's map.
+    return PROFILE_FIELD.equals(field)
+        ? List.of(MetadataOperation.VIEW_DATA_PROFILE)
+        : ViewOperations.forFields(Entity.TABLE, new Fields(Set.of(field)));
   }
 }
