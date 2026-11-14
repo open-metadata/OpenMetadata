@@ -52,15 +52,6 @@ public class StageStatsTracker {
     this.statsDAO = statsDAO;
   }
 
-  public void record(Stage stage, StatsResult result) {
-    switch (stage) {
-      case READER -> recordReader(result);
-      case PROCESS -> recordProcess(result);
-      case SINK -> recordSink(result);
-      case VECTOR -> recordVector(result);
-    }
-  }
-
   public void recordReader(StatsResult result) {
     reader.record(result);
     checkFlush();
@@ -83,15 +74,6 @@ public class StageStatsTracker {
 
   public void recordProcess(StatsResult result) {
     process.record(result);
-    checkFlush();
-  }
-
-  /**
-   * Record a Process batch (doc-build) with the wall-clock duration. Duration is the time taken
-   * for the parallel doc-build join — pure CPU/serialization work, no I/O.
-   */
-  public void recordProcessBatch(int successCount, int failedCount, long durationNanos) {
-    process.add(successCount, failedCount, 0, durationNanos);
     checkFlush();
   }
 
@@ -121,15 +103,6 @@ public class StageStatsTracker {
    */
   public void incrementPendingSink() {
     pendingSinkOps.incrementAndGet();
-  }
-
-  /**
-   * Increment pending sink operations by a batch count.
-   *
-   * @param count Number of documents being submitted
-   */
-  public void incrementPendingSink(int count) {
-    pendingSinkOps.addAndGet(count);
   }
 
   /**
@@ -187,15 +160,6 @@ public class StageStatsTracker {
 
   public void recordVector(StatsResult result) {
     vector.record(result);
-    checkFlush();
-  }
-
-  /**
-   * Record a Vector batch (embedding API call) with the wall-clock duration. Duration isolates
-   * the embedding service round-trip from local doc-build and bulk write.
-   */
-  public void recordVectorBatch(int successCount, int failedCount, long durationNanos) {
-    vector.add(successCount, failedCount, 0, durationNanos);
     checkFlush();
   }
 
