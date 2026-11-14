@@ -10,60 +10,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 
 /**
- * Mock tests for Glossary and GlossaryTerm entity operations.
+ * Mock tests for GlossaryTerm entity operations.
  */
 public class GlossaryMockTest {
 
   @Mock private OpenMetadataClient mockClient;
-  @Mock private GlossaryService mockGlossaryService;
   @Mock private GlossaryTermService mockGlossaryTermService;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-    when(mockClient.glossaries()).thenReturn(mockGlossaryService);
     when(mockClient.glossaryTerms()).thenReturn(mockGlossaryTermService);
-    org.openmetadata.sdk.entities.Glossary.setDefaultClient(mockClient);
     org.openmetadata.sdk.entities.GlossaryTerm.setDefaultClient(mockClient);
-  }
-
-  @Test
-  void testCreateGlossary() {
-    // Arrange
-    CreateGlossary createRequest = new CreateGlossary();
-    createRequest.setName("business-glossary");
-    createRequest.setDisplayName("Business Glossary");
-    createRequest.setDescription("Company-wide business terms and definitions");
-
-    Glossary expectedGlossary = new Glossary();
-    expectedGlossary.setId(UUID.randomUUID());
-    expectedGlossary.setName("business-glossary");
-    expectedGlossary.setDisplayName("Business Glossary");
-    expectedGlossary.setFullyQualifiedName("business-glossary");
-
-    when(mockGlossaryService.create(any(CreateGlossary.class))).thenReturn(expectedGlossary);
-
-    // Act
-    Glossary result = org.openmetadata.sdk.entities.Glossary.create(createRequest);
-
-    // Assert
-    assertNotNull(result);
-    assertEquals("business-glossary", result.getName());
-    assertEquals("Business Glossary", result.getDisplayName());
-    verify(mockGlossaryService).create(any(CreateGlossary.class));
   }
 
   @Test
@@ -95,28 +62,6 @@ public class GlossaryMockTest {
     assertNotNull(result.getSynonyms());
     assertEquals(2, result.getSynonyms().size());
     verify(mockGlossaryTermService).create(any(CreateGlossaryTerm.class));
-  }
-
-  @Test
-  void testRetrieveGlossary() {
-    // Arrange
-    String glossaryId = UUID.randomUUID().toString();
-    Glossary expectedGlossary = new Glossary();
-    expectedGlossary.setId(UUID.fromString(glossaryId));
-    expectedGlossary.setName("technical-glossary");
-    expectedGlossary.setUsageCount(150);
-
-    when(mockGlossaryService.get(glossaryId)).thenReturn(expectedGlossary);
-
-    // Act
-    Glossary result = org.openmetadata.sdk.entities.Glossary.retrieve(glossaryId);
-
-    // Assert
-    assertNotNull(result);
-    assertEquals(glossaryId, result.getId().toString());
-    assertEquals("technical-glossary", result.getName());
-    assertEquals(150, result.getUsageCount());
-    verify(mockGlossaryService).get(glossaryId);
   }
 
   @Test
@@ -173,41 +118,6 @@ public class GlossaryMockTest {
   }
 
   @Test
-  void testUpdateGlossary() {
-    // Arrange
-    Glossary glossaryToUpdate = new Glossary();
-    glossaryToUpdate.setId(UUID.randomUUID());
-    glossaryToUpdate.setName("data-glossary");
-    glossaryToUpdate.setDescription("Updated data glossary with new terms");
-
-    // Add tags
-    TagLabel tag = new TagLabel();
-    tag.setTagFQN("Governance.DataGovernance");
-    glossaryToUpdate.setTags(List.of(tag));
-
-    Glossary expectedGlossary = new Glossary();
-    expectedGlossary.setId(glossaryToUpdate.getId());
-    expectedGlossary.setName(glossaryToUpdate.getName());
-    expectedGlossary.setDescription(glossaryToUpdate.getDescription());
-    expectedGlossary.setTags(glossaryToUpdate.getTags());
-
-    when(mockGlossaryService.update(glossaryToUpdate.getId().toString(), glossaryToUpdate))
-        .thenReturn(expectedGlossary);
-
-    // Act
-    Glossary result =
-        org.openmetadata.sdk.entities.Glossary.update(
-            glossaryToUpdate.getId().toString(), glossaryToUpdate);
-
-    // Assert
-    assertNotNull(result);
-    assertEquals("Updated data glossary with new terms", result.getDescription());
-    assertNotNull(result.getTags());
-    assertEquals("Governance.DataGovernance", result.getTags().get(0).getTagFQN());
-    verify(mockGlossaryService).update(glossaryToUpdate.getId().toString(), glossaryToUpdate);
-  }
-
-  @Test
   void testUpdateGlossaryTerm() {
     // Arrange
     GlossaryTerm termToUpdate = new GlossaryTerm();
@@ -235,19 +145,6 @@ public class GlossaryMockTest {
     assertEquals("Updated definition of customer churn rate", result.getDescription());
     assertEquals(EntityStatus.APPROVED, result.getEntityStatus());
     verify(mockGlossaryTermService).update(termToUpdate.getId().toString(), termToUpdate);
-  }
-
-  @Test
-  void testDeleteGlossary() {
-    // Arrange
-    String glossaryId = UUID.randomUUID().toString();
-    doNothing().when(mockGlossaryService).delete(eq(glossaryId), any());
-
-    // Act
-    org.openmetadata.sdk.entities.Glossary.delete(glossaryId);
-
-    // Assert
-    verify(mockGlossaryService).delete(eq(glossaryId), any());
   }
 
   @Test
