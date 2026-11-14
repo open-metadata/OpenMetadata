@@ -1950,7 +1950,8 @@ const OntologyExplorerContent: React.FC = () => {
         size="lg"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
-        onPress={() => setIsLibraryOpen(true)}
+        // Installing from the library opens another ontology, so unsaved edits are confirmed first.
+        onPress={() => guard(() => setIsLibraryOpen(true))}
       />
     );
   }

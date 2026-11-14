@@ -837,7 +837,7 @@ test.describe(
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
-          await expect(inspector.getByText('internal note')).toBeVisible();
+          await expect(inspector.getByText('internalNote')).toBeVisible();
         });
 
         await test.step('Reuse email on another concept without a duplicate', async () => {

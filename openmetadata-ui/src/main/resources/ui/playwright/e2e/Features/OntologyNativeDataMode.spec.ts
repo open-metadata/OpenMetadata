@@ -25,6 +25,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { selectOntologyOption } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
@@ -151,6 +152,14 @@ const createProperty = async (
       },
     }),
     `Create ${name}`
+  );
+
+// The picker searches the table index, so a table created moments ago must be indexed first.
+const waitForTableIndexed = async (table: TableClass) =>
+  waitForSearchIndexed(
+    await getWorkerAdminAPIContext(),
+    table.entityResponseData.fullyQualifiedName,
+    'table_search_index'
   );
 
 const createTables = async (
@@ -425,6 +434,7 @@ test.describe(
         const property = await createProperty(api, ontology, concept, 'custId');
         await openData(page, ontology, concept);
 
+        await waitForTableIndexed(table);
         await page.getByTestId('ontology-data-link-asset').click();
         const picker = page.getByTestId('ontology-data-asset-picker');
         await picker
@@ -804,6 +814,7 @@ const mappingRow = (page: Page, column: string) =>
   page.getByTestId(`ontology-column-mapping-row-${column}`);
 
 const linkThroughPicker = async (page: Page, table: TableClass) => {
+  await waitForTableIndexed(table);
   await page.getByTestId('ontology-data-link-asset').click();
   const picker = page.getByTestId('ontology-data-asset-picker');
   await picker
@@ -841,9 +852,9 @@ test.describe(
             'Bind columns to Patient’s properties'
           );
           for (const [column, property] of [
-            ['patient_id', 'patient id'],
-            ['date_of_birth', 'date of birth'],
-            ['patient_name', 'patient name'],
+            ['patient_id', 'patientId'],
+            ['date_of_birth', 'dateOfBirth'],
+            ['patient_name', 'patientName'],
           ]) {
             const row = mappingRow(page, column);
 
@@ -942,7 +953,7 @@ test.describe(
         await selectOntologyOption(
           page,
           mappingRow(page, 'created_at').getByRole('button'),
-          'patient name'
+          'patientName'
         );
         await expect(
           mappingRow(page, 'created_at').getByRole('checkbox')

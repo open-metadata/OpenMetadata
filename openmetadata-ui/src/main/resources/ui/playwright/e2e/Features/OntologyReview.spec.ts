@@ -2243,12 +2243,15 @@ test.describe(
                 : expectedBreakdown(release)
             );
           }
-          await expect(
-            page.getByTestId(`ontology-release-kinds-${first.id}`)
-          ).toHaveText('2 concepts');
-          await expect(
-            page.getByTestId(`ontology-release-kinds-${second.id}`)
-          ).toHaveText('3 concepts');
+          // Only the classic row words the kinds; AI rows show the +n ~n −n delta alone.
+          if (mode !== 'ai') {
+            await expect(
+              page.getByTestId(`ontology-release-kinds-${first.id}`)
+            ).toHaveText('2 concepts');
+            await expect(
+              page.getByTestId(`ontology-release-kinds-${second.id}`)
+            ).toHaveText('3 concepts');
+          }
           await g8Shot(page, testInfo, mode === 'ai' ? 'rows' : 'classic');
           await g8ReviewShot(page, 1, mode);
 
