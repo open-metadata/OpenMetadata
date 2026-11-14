@@ -136,7 +136,13 @@ const loadReleaseModel = async (
     loadKind<OntologyAxiom>(MemberKind.Axiom),
   ]);
 
-  return { ontology, axioms, concepts, properties };
+  // A release payload has no `superClasses` field, so parents come from its axioms as for the draft.
+  return {
+    ontology,
+    axioms,
+    concepts: withSuperClasses(concepts, axioms),
+    properties,
+  };
 };
 
 const isForbidden = (error: unknown) =>

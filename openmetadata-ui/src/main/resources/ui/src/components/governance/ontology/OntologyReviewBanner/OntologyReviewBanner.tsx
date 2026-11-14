@@ -29,6 +29,11 @@ type Props = {
   onOpenTask: (taskId: string) => void;
 };
 
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+const versionText = (release: Props['release'], t: Translate) =>
+  release.semanticVersion ? 'v' + release.semanticVersion : t('label.draft');
+
 const DecisionBanner = ({
   review,
   release,
@@ -38,9 +43,8 @@ const DecisionBanner = ({
   const { t } = useTranslation();
   const decision = review.latestDecision;
   const approved = review.status === EntityStatus.Approved;
-  const version = release.semanticVersion
-    ? 'v' + release.semanticVersion
-    : release.name;
+  // `release.name` (release-1) is internal; an unversioned release reads as a draft.
+  const version = versionText(release, t);
 
   return (
     <OntologyReviewPill
@@ -77,11 +81,6 @@ const isDecided = (review: Props['review']) =>
   Boolean(review.latestDecision) &&
   (review.status === EntityStatus.Approved ||
     review.status === EntityStatus.Rejected);
-
-type Translate = ReturnType<typeof useTranslation>['t'];
-
-const versionText = (release: Props['release'], t: Translate) =>
-  release.semanticVersion ? 'v' + release.semanticVersion : t('label.draft');
 
 const PendingBanner = ({
   review,

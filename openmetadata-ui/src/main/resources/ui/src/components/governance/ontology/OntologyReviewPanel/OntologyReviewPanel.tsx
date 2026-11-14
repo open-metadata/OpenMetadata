@@ -70,11 +70,11 @@ const PanelHeader = ({
         weight="semibold">
         {t('label.submitted-definition')}
       </Typography>
+      {/* The release's own name (release-1) is internal; a version is what a reviewer knows. */}
       <Typography>
-        {getEntityName(release)} ·{' '}
         {release.semanticVersion
           ? 'v' + release.semanticVersion
-          : t('label.draft')}
+          : `${getEntityName(release)} · ${t('label.draft')}`}
       </Typography>
     </>
   );

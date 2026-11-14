@@ -599,7 +599,12 @@ const QueryStatusBar = ({
       data-testid="ontology-query-status-bar"
       gap={3}
       justify="between">
-      <Typography color="secondary" size="text-xs">
+      {/* The scope names the ontology, so the line stays one row inside the fixed-height bar. */}
+      <Typography
+        className="tw:min-w-0"
+        color="secondary"
+        ellipsis={{ tooltip: true }}
+        size="text-xs">
         {t('label.line-count', { count: query.split('\n').length })}
         {scopeLabel ? (
           <>
@@ -608,7 +613,7 @@ const QueryStatusBar = ({
           </>
         ) : null}
       </Typography>
-      <Typography color="secondary" size="text-xs">
+      <Typography className="tw:shrink-0" color="secondary" size="text-xs">
         {hints.join(META_SEPARATOR)}
       </Typography>
     </Box>
