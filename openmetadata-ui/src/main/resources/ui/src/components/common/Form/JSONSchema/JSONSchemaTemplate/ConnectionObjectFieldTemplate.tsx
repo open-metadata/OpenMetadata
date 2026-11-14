@@ -32,6 +32,7 @@ import {
   isValidElement,
   ReactElement,
   ReactNode,
+  useEffect,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -496,11 +497,35 @@ const AuthTabs = ({
   );
 };
 
-const SectionCard = ({ section }: { section: SectionConfig }) => {
+const SectionCard = ({
+  errorSchema,
+  section,
+}: {
+  errorSchema?: Record<string, { __errors?: string[] }>;
+  section: SectionConfig;
+}) => {
   const [open, setOpen] = useState(section.defaultOpen);
   const [active, setActive] = useState(false);
   const showBody = !section.collapsible || open;
   const hasVisibleFields = hasVisibleProperties(section.properties);
+
+  // Collapsed sections keep their fields mounted (tw:hidden) so that
+  // transformErrors can find DOM elements, but the error messages rendered
+  // by CoreFieldErrorTemplate are also hidden. Auto-expand a collapsed
+  // section when it contains fields with validation errors so the user can
+  // see why submission was rejected. Mirrors IngestionObjectFieldTemplate.
+  useEffect(() => {
+    if (!section.collapsible || open) {
+      return;
+    }
+    const hasErrors = section.properties.some((p) =>
+      Boolean(errorSchema?.[p.name]?.__errors?.length)
+    );
+    if (hasErrors) {
+      setOpen(true);
+    }
+  }, [errorSchema, open, section.collapsible, section.properties]);
+
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocusedElement = event.relatedTarget as Node | null;
 
@@ -558,11 +583,13 @@ const SectionCard = ({ section }: { section: SectionConfig }) => {
         </>
       )}
       {!showBody && (
-        <HiddenFields
-          properties={section.properties.filter(
-            (property) => !isVisibleProperty(property)
-          )}
-        />
+        // Collapsed section must keep ALL properties mounted (not just
+        // hidden ones): transformErrors in formPureUtils discards any
+        // validation error whose field element is absent from the DOM, so
+        // unmounting visible fields here would silently swallow constraint
+        // violations (e.g. minimum on accessHistoryChunkSize) and let invalid
+        // data submit. Matches IngestionObjectFieldTemplate.
+        <HiddenFields properties={section.properties} />
       )}
     </Card>
   );
@@ -854,7 +881,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props) => {
   const { t } = useTranslation();
-  const { formContext, formData, properties, schema } = props;
+  const { errorSchema, formContext, formData, properties, schema } = props;
   const connectionFormContext = formContext as
     | ConnectionFormContext
     | undefined;
@@ -939,7 +966,13 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
           createElement(AdditionalField, { data: additionalFieldContent })}
         <HiddenFields properties={hiddenUnsectionedProperties} />
         {sections.map((section) => (
-          <SectionCard key={section.key} section={section} />
+          <SectionCard
+            errorSchema={
+              errorSchema as Record<string, { __errors?: string[] }> | undefined
+            }
+            key={section.key}
+            section={section}
+          />
         ))}
       </div>
     );
