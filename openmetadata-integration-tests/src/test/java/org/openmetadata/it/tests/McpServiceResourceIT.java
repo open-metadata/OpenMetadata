@@ -29,6 +29,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -254,5 +255,63 @@ public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpSer
     var botView = configOf(SdkClients.ingestionBotClient().mcpServices().get(id));
     assertEquals("mcp-server", botView.getServers().getFirst().getName());
     assertEquals(SERVER_API_KEY, botView.getServers().getFirst().getApiKey());
+  }
+
+  @Test
+  void put_reorderedStoredServersWithSameName_400_otherEditsStillSave(TestNamespace ns) {
+    String name = ns.prefix("stored_same_names");
+    McpService created =
+        createEntity(
+            createRequest(name, ns)
+                .withConnection(
+                    directConnection(
+                        server("dup", "key-a").withUrl("http://localhost:9001/mcp"),
+                        server("dup-b", "key-b").withUrl("http://localhost:9002/mcp"))));
+    storeAllServersUnderName(created, "dup");
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+
+    CreateMcpService reordered =
+        createRequest(name, ns)
+            .withConnection(
+                directConnection(
+                    server("dup", mask).withUrl("http://localhost:9002/mcp"),
+                    server("dup", mask).withUrl("http://localhost:9001/mcp")));
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> putService(reordered));
+    assertEquals(400, error.getStatusCode());
+
+    CreateMcpService described =
+        createRequest(name, ns)
+            .withDescription("edited")
+            .withConnection(
+                directConnection(
+                    server("dup", mask).withUrl("http://localhost:9001/mcp"),
+                    server("dup", mask).withUrl("http://localhost:9002/mcp")));
+    assertEquals("edited", putService(described).getDescription());
+
+    var servers =
+        configOf(SdkClients.ingestionBotClient().mcpServices().get(created.getId().toString()))
+            .getServers();
+    assertEquals("http://localhost:9001/mcp", servers.get(0).getUrl());
+    assertEquals("key-a", servers.get(0).getApiKey());
+    assertEquals("key-b", servers.get(1).getApiKey());
+  }
+
+  private static McpService putService(CreateMcpService request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/services/mcpServices", request, McpService.class);
+  }
+
+  /** Services saved before server names had to be unique can still repeat a name. */
+  private static void storeAllServersUnderName(McpService service, String serverName) {
+    var dao = Entity.getCollectionDAO().mcpServiceDAO();
+    McpService stored = dao.findEntityById(service.getId());
+    var config = configOf(stored);
+    config.getServers().forEach(server -> server.setName(serverName));
+    stored.getConnection().setConfig(config);
+    dao.update(stored);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.MCP_SERVICE, stored.getId(), stored.getFullyQualifiedName());
   }
 }

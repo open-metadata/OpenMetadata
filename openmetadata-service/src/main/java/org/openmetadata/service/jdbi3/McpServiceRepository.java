@@ -47,21 +47,22 @@ public class McpServiceRepository extends ServiceEntityRepository<McpService, Mc
 
   @Override
   public void prepare(McpService service, boolean update) {
-    List<String> names = serverNames(service);
-    // Checked only when the names change, so an unrelated edit never blocks a stored service. A
-    // PUT reaches here with update=true before the stored id is applied, so look it up by name.
+    List<McpServerConfig> servers = serversWithoutKeys(service);
+    // Checked whenever the servers change apart from their keys, order included, so an unrelated
+    // edit never blocks a stored service. A PUT reaches here with update=true before the stored id
+    // is applied, so look it up by name.
     McpService stored =
         update
             ? findByNameOrNull(FullyQualifiedName.quoteName(service.getName()), Include.ALL)
             : null;
-    boolean namesChanged = stored == null || !names.equals(serverNames(stored));
-    if (namesChanged) {
-      validateUniqueServerNames(names);
+    if (stored == null || !servers.equals(serversWithoutKeys(stored))) {
+      validateUniqueServerNames(servers.stream().map(McpServerConfig::getName).toList());
     }
     super.prepare(service, update);
   }
 
-  private static List<String> serverNames(McpService service) {
+  /** Copies of the service's servers without their keys, which are masked or encrypted. */
+  private static List<McpServerConfig> serversWithoutKeys(McpService service) {
     if (service.getConnection() == null || service.getConnection().getConfig() == null) {
       return List.of();
     }
@@ -69,7 +70,9 @@ public class McpServiceRepository extends ServiceEntityRepository<McpService, Mc
         JsonUtils.convertValue(
             service.getConnection().getConfig(),
             org.openmetadata.schema.services.connections.mcp.McpConnection.class);
-    return listOrEmpty(config.getServers()).stream().map(McpServerConfig::getName).toList();
+    return JsonUtils.deepCopyList(listOrEmpty(config.getServers()), McpServerConfig.class).stream()
+        .map(server -> server.withApiKey(null))
+        .toList();
   }
 
   /**
