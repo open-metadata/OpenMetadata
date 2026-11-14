@@ -282,11 +282,11 @@ describe('OntologyReviewPanel', () => {
       ]);
     });
 
-    it('names the release by its semantic version, not the entity version', async () => {
+    it('names the release by its semantic version alone, not its internal name', async () => {
       serve('CHANGED', { before: { a: '1' }, after: { a: '2' } }, '1.5.0');
       renderWithQueryClient(<OntologyReviewPanel task={task} />);
 
-      expect(await screen.findByText('Release 2 · v1.5.0')).toBeInTheDocument();
+      expect(await screen.findByText('v1.5.0')).toBeInTheDocument();
       expect(screen.queryByText(/Version 0\.2/)).not.toBeInTheDocument();
     });
 

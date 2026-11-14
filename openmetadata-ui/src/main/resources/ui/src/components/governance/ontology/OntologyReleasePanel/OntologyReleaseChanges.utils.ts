@@ -259,6 +259,27 @@ export const visibleWorkingChanges = (
     : { groups, members };
 };
 
+const memberRow = (member: MemberChange): ChangeRow => ({
+  key: member.entity.id + ':' + member.memberKind,
+  kind: memberCardKind(member.memberKind),
+  changeType: member.changeType,
+  member,
+});
+
+/**
+ * A class row folds in its own properties and rules as one sentence. Each of those
+ * members is also listed in its own card, so every card counts what the summary counts
+ * and a rule the sentence cannot show (a disjointness, say) is still reviewable.
+ */
+const foldedMembers = (group: ConceptChange) =>
+  group.concept
+    ? group.changes.filter(
+        ({ memberKind }) =>
+          memberKind !== MemberKind.Concept &&
+          memberKind !== MemberKind.Ontology
+      )
+    : [];
+
 /** The review dialog's rows, one card per kind of definition in a fixed order. */
 export const groupChangeCards = (
   groups: readonly ConceptChange[],
@@ -271,12 +292,8 @@ export const groupChangeCards = (
       changeType: group.changeType,
       group,
     })),
-    ...members.map((member) => ({
-      key: member.entity.id + ':' + member.memberKind,
-      kind: memberCardKind(member.memberKind),
-      changeType: member.changeType,
-      member,
-    })),
+    ...groups.flatMap(foldedMembers).map(memberRow),
+    ...members.map(memberRow),
   ];
 
   return CHANGE_CARD_ORDER.map((kind) => ({

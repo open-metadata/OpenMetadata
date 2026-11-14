@@ -649,6 +649,13 @@ export const AutocompleteBase = ({
     return [...unloadedRows, ...filtered];
   }, [children, visibleIds, itemMap, unrenderedSelection]);
 
+  // A caller that searches the server keeps its own copy of the text; clearing only ours
+  // left it on the old query, so the reopened list showed that query's results.
+  const clearFilter = useCallback(() => {
+    setFilterText('');
+    onSearchChange?.('');
+  }, [onSearchChange]);
+
   const onRemove = useCallback(
     (keys: Set<Key>) => {
       const key = keys.values().next().value;
@@ -657,9 +664,9 @@ export const AutocompleteBase = ({
       }
       setInternalSelected((prev) => prev.filter((item) => item.id !== key));
       onItemCleared?.(key);
-      setFilterText('');
+      clearFilter();
     },
-    [onItemCleared]
+    [onItemCleared, clearFilter]
   );
 
   const onSelectionChange = (id: Key | null) => {
@@ -680,11 +687,12 @@ export const AutocompleteBase = ({
     if (!item) {
       return;
     }
+    // Cleared before the insert, so state the caller sets on insert is not reset by its search.
+    clearFilter();
     if (!selectedKeys.includes(id as string)) {
       setInternalSelected((prev) => [...prev, item]);
       onItemInserted?.(id);
     }
-    setFilterText('');
   };
 
   const onInputChange = useCallback(
@@ -704,6 +712,7 @@ export const AutocompleteBase = ({
       const alreadySelected = internalSelected.some(
         (item) => item.id === value
       );
+      clearFilter();
       if (!multiple) {
         setInternalSelected([newItem]);
         if (!alreadySelected) {
@@ -713,9 +722,8 @@ export const AutocompleteBase = ({
         setInternalSelected((prev) => [...prev, newItem]);
         onItemInserted?.(value);
       }
-      setFilterText('');
     },
-    [onItemInserted, multiple, internalSelected]
+    [onItemInserted, multiple, internalSelected, clearFilter]
   );
 
   const triggerRef = useRef<HTMLDivElement>(null);

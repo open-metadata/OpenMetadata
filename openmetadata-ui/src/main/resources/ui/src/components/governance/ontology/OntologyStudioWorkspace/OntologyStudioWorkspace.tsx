@@ -169,9 +169,11 @@ const OntologyStudioWorkspace = ({
 
   const header = (
     <Box direction="col" gap={1}>
+      {/* A name can be one unbroken token, so it breaks anywhere and stops at two lines. */}
       <Typography
         as="h2"
-        className="not-prose tw:m-0"
+        className="not-prose tw:m-0 tw:wrap-anywhere"
+        ellipsis={{ rows: 2, tooltip: true }}
         size="text-lg"
         weight="semibold">
         {getEntityName(ontology)}

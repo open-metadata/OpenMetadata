@@ -22,7 +22,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowUp, XClose } from '@openmetadata/ui-core-components/icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -191,6 +191,25 @@ const OntologyPublicationModal = ({
   const isAiMode = useIsAiMode();
   const [activeTab, setActiveTab] = useState<PublicationTab>(initialTab);
   const [summary, setSummary] = useState<PublicationSummary>({});
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // A failed action re-renders the footer, unmounting the focused button and dropping focus
+  // to <body>, where Escape no longer reaches the dialog. Focus returns to the dialog instead.
+  useEffect(() => {
+    const body = bodyRef.current;
+    const keepFocus = (event: FocusEvent) => {
+      if (event.relatedTarget) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        if (document.activeElement === document.body) {
+          body?.focus();
+        }
+      });
+    };
+    body?.addEventListener('focusout', keepFocus);
+
+    return () => body?.removeEventListener('focusout', keepFocus);
+  }, []);
 
   const layout = isAiMode ? AI_LAYOUT : CLASSIC_LAYOUT;
   const PublicationHeader = isAiMode
@@ -220,8 +239,10 @@ const OntologyPublicationModal = ({
               }
             }}>
             <div
-              className="tw:flex tw:h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body"
-              data-testid="ontology-publication-modal">
+              className="tw:flex tw:h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body tw:outline-none"
+              data-testid="ontology-publication-modal"
+              ref={bodyRef}
+              tabIndex={-1}>
               <PublicationHeader
                 owner={ontology}
                 summary={summary}

@@ -12,7 +12,11 @@
  */
 
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { generatedOntologyIdentity } from './OntologyCreateForm.utils';
+import {
+  deriveOntologyId,
+  derivePrefix,
+  generatedOntologyIdentity,
+} from './OntologyCreateForm.utils';
 
 const BASE = 'https://open-metadata.org';
 const taken = (name: string, namespace: string) =>
@@ -44,5 +48,12 @@ describe('generatedOntologyIdentity', () => {
   it('waits for the base URI and the ontology list', () => {
     expect(generatedOntologyIdentity('Fibo', '', [])).toBeUndefined();
     expect(generatedOntologyIdentity('Fibo', BASE, undefined)).toBeUndefined();
+  });
+});
+
+describe('accented names', () => {
+  it('keeps an accented letter as its base letter in the ID and the prefix', () => {
+    expect(deriveOntologyId('Ümlauts & Café (v2)')).toBe('umlauts-cafe-v2');
+    expect(derivePrefix('Ümlauts')).toBe(derivePrefix('Umlauts'));
   });
 });

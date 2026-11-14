@@ -274,7 +274,7 @@ describe('create helpers', () => {
 
   it('derives a kebab-cased ID from the display name', () => {
     expect(deriveOntologyId('  LA ClassicMade 2 ')).toBe('la-classicmade-2');
-    expect(deriveOntologyId('Café & Bar')).toBe('caf-bar');
+    expect(deriveOntologyId('Café & Bar')).toBe('cafe-bar');
   });
 
   describe('validateOntologyName', () => {

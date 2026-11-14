@@ -391,7 +391,10 @@ const OntologyDefinitionList = <
             definitionType === 'axiom' && 'tw:flex-col-reverse'
           )}
           direction="col">
-          <Typography color="secondary" size="text-sm">
+          <Typography
+            color="secondary"
+            ellipsis={{ tooltip: true }}
+            size="text-sm">
             {t('label.in-entity', { entity: getEntityName(ontology) })}
           </Typography>
           <Typography
