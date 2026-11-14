@@ -17,6 +17,7 @@
       "properties": {
         "diRunId": { "type": "keyword" },
         "diCapturedAt": { "type": "long" },
+        "dataQualityStatus": { "type": "keyword" },
         "updatedAt": { "type": "long" },
         "completenessDownstreamCount": { "type": "long" },
         "completenessFactVersion": { "type": "integer" },

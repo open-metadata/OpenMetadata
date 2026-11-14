@@ -25,6 +25,7 @@ import static org.openmetadata.service.migration.utils.v210.DataQualityDimension
 import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
+import static org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration.repairHealthyDataAssetsCharts;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
 import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
@@ -162,6 +163,9 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AlertBacklogMigration.STEP_NAME,
         () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    // Platform Insights 'Healthy Data Assets' always showed 0%: fix the v190 chart and split out
+    // its live counterpart. Idempotent.
+    repairHealthyDataAssetsCharts();
     // Alerts name their consumer by its registered id, no longer by its Java class.
     runOnce(
         migrationDAO,

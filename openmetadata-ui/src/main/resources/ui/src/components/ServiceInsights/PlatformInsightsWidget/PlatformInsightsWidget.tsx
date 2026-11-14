@@ -107,61 +107,72 @@ function PlatformInsightsWidget({
                 </Card.Content>
               </Card>
             ))
-          : filteredChartsData.map((chart) => (
-              <Card className={cardClass} key={chart.chartType}>
-                <Card.Content>
-                  <Typography
-                    ellipsis={{ tooltip: true }}
-                    size="text-sm"
-                    weight="semibold">
-                    {getTitleByChartType(chart.chartType)}
-                  </Typography>
-                  <Box
-                    align="center"
-                    className="tw:mt-2"
-                    gap={2}
-                    justify="between">
+          : filteredChartsData.map((chart) => {
+              const unit =
+                chart.chartType === SystemChartType.HealthyDataAssets
+                  ? ''
+                  : '%';
+
+              return (
+                <Card className={cardClass} key={chart.chartType}>
+                  <Card.Content>
                     <Typography
-                      className="current-percentage"
-                      size="text-xl"
+                      ellipsis={{ tooltip: true }}
+                      size="text-sm"
                       weight="semibold">
-                      {getReadableCountString(chart.currentPercentage)}%
+                      {getTitleByChartType(chart.chartType)}
                     </Typography>
+                    <Box
+                      align="center"
+                      className="tw:mt-2"
+                      gap={2}
+                      justify="between">
+                      <Typography
+                        className="current-percentage"
+                        size="text-xl"
+                        weight="semibold">
+                        {`${getReadableCountString(
+                          chart.currentPercentage
+                        )}${unit}`}
+                      </Typography>
+                      {!isUndefined(chart.percentageChange) && (
+                        <Badge
+                          className="percent-change-tag tw:gap-1"
+                          color={chart.isIncreased ? 'success' : 'error'}
+                          size="sm"
+                          type="color">
+                          {chart.percentageChange !== 0 && (
+                            <TrendUp01
+                              className={classNames(
+                                !chart.isIncreased && 'flip-vertical'
+                              )}
+                              size={11}
+                            />
+                          )}
+                          {`${getReadableCountString(
+                            chart.percentageChange
+                          )}${unit}`}
+                        </Badge>
+                      )}
+                    </Box>
                     {!isUndefined(chart.percentageChange) && (
-                      <Badge
-                        className="percent-change-tag tw:gap-1"
-                        color={chart.isIncreased ? 'success' : 'error'}
-                        size="sm"
-                        type="color">
-                        {chart.percentageChange !== 0 && (
-                          <TrendUp01
-                            className={classNames(
-                              !chart.isIncreased && 'flip-vertical'
-                            )}
-                            size={11}
-                          />
-                        )}
-                        {getReadableCountString(chart.percentageChange)}%
-                      </Badge>
+                      <Typography
+                        ellipsis
+                        as="p"
+                        className="tw:mt-1"
+                        color="secondary"
+                        size="text-xs">
+                        {chart.numberOfDays === 1
+                          ? t('label.in-the-last-day')
+                          : t('label.in-last-number-of-days', {
+                              numberOfDays: chart.numberOfDays,
+                            })}
+                      </Typography>
                     )}
-                  </Box>
-                  {!isUndefined(chart.percentageChange) && (
-                    <Typography
-                      ellipsis
-                      as="p"
-                      className="tw:mt-1"
-                      color="secondary"
-                      size="text-xs">
-                      {chart.numberOfDays === 1
-                        ? t('label.in-the-last-day')
-                        : t('label.in-last-number-of-days', {
-                            numberOfDays: chart.numberOfDays,
-                          })}
-                    </Typography>
-                  )}
-                </Card.Content>
-              </Card>
-            ))}
+                  </Card.Content>
+                </Card>
+              );
+            })}
       </div>
     </div>
   );

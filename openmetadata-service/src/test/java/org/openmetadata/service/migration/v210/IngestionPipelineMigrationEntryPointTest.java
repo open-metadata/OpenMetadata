@@ -52,6 +52,7 @@ import org.openmetadata.service.migration.utils.v210.DataContractEntityReference
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
@@ -106,6 +107,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(AlertBacklogMigration.class);
         MockedStatic<AuthenticationSecretsEncryptionMigration> authenticationSecretsMigration =
             mockStatic(AuthenticationSecretsEncryptionMigration.class);
+        MockedStatic<HealthyDataAssetsChartMigration> healthyDataAssetsChartMigration =
+            mockStatic(HealthyDataAssetsChartMigration.class);
         MockedStatic<ConsumerIdMigration> consumerIdMigration =
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<OntologyRolesMigration> ontologyRoles =
@@ -148,6 +151,8 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      healthyDataAssetsChartMigration.verify(
+          HealthyDataAssetsChartMigration::repairHealthyDataAssetsCharts);
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));

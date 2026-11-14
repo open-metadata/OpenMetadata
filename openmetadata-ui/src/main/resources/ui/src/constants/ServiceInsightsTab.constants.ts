@@ -26,7 +26,7 @@ export const PLATFORM_INSIGHTS_LIVE_CHARTS: SystemChartType[] = [
   SystemChartType.AssetsWithPIILive,
   SystemChartType.AssetsWithTierLive,
   SystemChartType.AssetsWithOwnerLive,
-  SystemChartType.HealthyDataAssets,
+  SystemChartType.HealthyDataAssetsLive,
 ];
 
 export const LIVE_CHARTS_LIST = [

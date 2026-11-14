@@ -15,6 +15,7 @@ import { act, render } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import {
   IngestionPipeline,
   PipelineType,
@@ -23,9 +24,11 @@ import {
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { ServicesType } from '../../interface/service.interface';
 import {
+  getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
+import { getCurrentDayStartGMTinMillis } from '../../utils/date-time/DateTimeUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
 import ServiceInsightsTab from './ServiceInsightsTab';
@@ -89,6 +92,8 @@ jest.mock('../../utils/EntityIconUtils', () => ({
   getEntityIcon: jest.fn().mockReturnValue(null),
 }));
 
+const mockGetMultiChartsPreviewByName =
+  getMultiChartsPreviewByName as jest.Mock;
 const mockSetChartDataStreamConnection =
   setChartDataStreamConnection as jest.Mock;
 const mockStopChartDataStreamConnection =
@@ -329,5 +334,48 @@ describe('ServiceInsightsTab', () => {
         })
       ).toEqual([PipelineType.Metadata, 'TierAutomation']);
     });
+  });
+
+  it('should read healthy data assets with the other daily charts so the card shows a trend', async () => {
+    const dayMs = 86400000;
+    const todayStart = getCurrentDayStartGMTinMillis();
+    const healthyResults = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      day: todayStart - (6 - day) * dayMs,
+      count: day === 6 ? 3 : 2,
+    }));
+    mockGetMultiChartsPreviewByName.mockResolvedValue({
+      [SystemChartType.HealthyDataAssets]: { results: healthyResults },
+    });
+    const { PlatformInsightsWidget } =
+      serviceUtilClassBase.getInsightsTabWidgets('databaseServices');
+
+    await renderTab({
+      workflowStatesData: {
+        mainInstanceState: { status: WorkflowStatus.Finished },
+        subInstanceStates: [],
+      },
+    });
+
+    expect(mockGetMultiChartsPreviewByName).toHaveBeenCalledTimes(1);
+    expect(mockGetMultiChartsPreviewByName).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        SystemChartType.DescriptionCoverage,
+        SystemChartType.HealthyDataAssets,
+      ]),
+      expect.objectContaining({ end: todayStart })
+    );
+    expect(PlatformInsightsWidget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chartsData: expect.arrayContaining([
+          expect.objectContaining({
+            chartType: SystemChartType.HealthyDataAssets,
+            currentPercentage: 3,
+            percentageChange: 1,
+            numberOfDays: 6,
+          }),
+        ]),
+      }),
+      expect.anything()
+    );
   });
 });
