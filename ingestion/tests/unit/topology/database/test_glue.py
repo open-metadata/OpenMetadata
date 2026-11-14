@@ -710,6 +710,73 @@ class TestGlueDecimalColumns:
         assert column.dataTypeDisplay == "array<decimal(10,2)>"
 
 
+class TestGlueUnparseableColumnType:
+    """A type outside the Hive grammar, like the unnamed [...] group in a DynamoDB-sourced table,
+    must cost that one column its type, not drop the table with every other column (#37023)."""
+
+    BAD_STRUCT = "struct<first:string,last:string,[X:string,y:string>,other:string>"
+
+    @staticmethod
+    def _request(source, columns, partition_keys=()):
+        table = GlueTable(
+            Name="dynamo_export",
+            TableType="EXTERNAL_TABLE",
+            StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name=n, Type=t) for n, t in columns]),
+            PartitionKeys=[GlueColumn(Name=n, Type=t) for n, t in partition_keys],
+        )
+        source.context.get().__dict__["table_data"] = table
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return next(source.yield_table((table.Name, TableType.External))).right
+
+    def test_bad_column_degrades_and_the_rest_of_the_table_is_ingested(self, glue_source):
+        request = self._request(
+            glue_source,
+            [("good_a", "string"), ("bad_struct", self.BAD_STRUCT), ("good_b", "int")],
+        )
+
+        assert [column.name.root for column in request.columns] == ["good_a", "bad_struct", "good_b"]
+        bad = request.columns[1]
+        assert bad.dataType is DataType.UNKNOWN
+        assert bad.dataTypeDisplay == self.BAD_STRUCT
+        assert bad.children is None
+        assert [column.dataType for column in (request.columns[0], request.columns[2])] == [
+            DataType.STRING,
+            DataType.INT,
+        ]
+        assert glue_source.status.failures == []
+        assert len(glue_source.status.warnings) == 1
+        assert "bad_struct" in glue_source.status.warnings[0]["dynamo_export"]
+
+    def test_bad_partition_key_degrades(self, glue_source):
+        request = self._request(glue_source, [("id", "string")], partition_keys=[("bad_key", self.BAD_STRUCT)])
+
+        assert [(column.name.root, column.dataType) for column in request.columns] == [
+            ("id", DataType.STRING),
+            ("bad_key", DataType.UNKNOWN),
+        ]
+
+    def test_union_with_a_bad_member_degrades(self, glue_source):
+        request = self._request(glue_source, [("u", "uniontype<int, struct<[x:string]>>")])
+
+        assert request.columns[0].dataType is DataType.UNKNOWN
+        assert request.columns[0].dataTypeDisplay == "uniontype<int,struct<[x:string]>>"
+
+    def test_a_degraded_column_is_still_deduplicated(self, glue_source):
+        request = self._request(glue_source, [("dt", self.BAD_STRUCT)], partition_keys=[("dt", self.BAD_STRUCT)])
+
+        assert [column.name.root for column in request.columns] == ["dt"]
+
+    def test_a_valid_struct_still_parses(self, glue_source):
+        column = glue_source._get_column_object(
+            GlueColumn(Name="parent", Type="struct<first:string,last:string,emails:array<string>,other:string>")
+        )
+
+        assert column.dataType is DataType.STRUCT
+        assert [child.name.root for child in column.children] == ["first", "last", "emails", "other"]
+        assert glue_source.status.warnings == []
+
+
 class TestGlueViewModel:
     """The view text has to survive parsing before anything downstream can use it.
 
