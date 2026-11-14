@@ -178,7 +178,7 @@ const ConceptTab = ({
     </Typography>
   );
 
-  const columns: DefinitionColumn<OntologyConcept>[] = [
+  const allColumns: DefinitionColumn<OntologyConcept>[] = [
     {
       id: 'type',
       label: t('label.type'),
@@ -259,6 +259,10 @@ const ConceptTab = ({
       ),
     },
   ];
+  // A release snapshot keeps no edit times, so a published view has nothing to show here.
+  const columns = releaseId
+    ? allColumns.filter((column) => column.id !== 'updated')
+    : allColumns;
 
   const toolbar = (
     <>

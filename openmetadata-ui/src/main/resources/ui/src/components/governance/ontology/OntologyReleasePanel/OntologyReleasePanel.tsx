@@ -38,6 +38,7 @@ import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
@@ -400,12 +401,13 @@ const OntologyReleasePanel = ({
     }
     if (hasNoChanges) {
       return (
-        <Typography
-          color="secondary"
-          data-testid="ontology-working-empty"
-          size="text-sm">
-          {t('message.ontology-no-unpublished-changes')}
-        </Typography>
+        <div
+          className="tw:relative tw:min-h-80"
+          data-testid="ontology-working-empty">
+          <NoDataPlaceholder
+            title={t('message.ontology-no-unpublished-changes')}
+          />
+        </div>
       );
     }
 
@@ -653,14 +655,17 @@ const OntologyReleasePanel = ({
     }
 
     return (
+      // The title can carry a long ontology name, so it may break anywhere; the action
+      // sits in its own slot so it never runs into the sentence.
       <Alert
         closable
+        className="tw:wrap-anywhere"
         data-testid={'ontology-publication-notice-' + notice.kind}
+        rightContent={action}
+        title={title}
         variant={notice.kind === 'unchanged' ? 'warning' : 'success'}
         onClose={dismissNotice}>
-        <Typography weight="semibold">{title}</Typography>
         {detail}
-        {action}
       </Alert>
     );
   };

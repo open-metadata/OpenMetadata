@@ -538,19 +538,6 @@ function getExplorerSurface(
   return mode === 'edit' && editSurface === 'tree' ? 'tree' : 'graph';
 }
 
-/** One ontology shows its graph canvas in View and Edit, except on the Ontology tab. */
-function isNativeGraphCanvas(
-  mode: StudioMode,
-  explorerSurface: ViewSurface,
-  editSurface: EditSurface
-): boolean {
-  if (mode === 'edit') {
-    return explorerSurface === 'graph' && editSurface !== 'definitions';
-  }
-
-  return mode === 'view' && explorerSurface === 'graph';
-}
-
 function getShellClassName(isFullScreen: boolean) {
   return classNames(
     'tw:group/studio tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased',
@@ -2629,20 +2616,15 @@ const OntologyExplorerContent: React.FC = () => {
     );
   };
 
-  // The review banner floats over a graph canvas and sits above any other surface.
+  // The review banner sits above the surface, never over it: floating on the graph it covered
+  // the top nodes and the Model/Data switch.
   const renderCanvasArea = (
     content: React.ReactNode,
-    banner: React.ReactNode,
-    isGraphCanvas: boolean
+    banner: React.ReactNode
   ) => (
     <div className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
       {banner ? (
-        <div
-          className={
-            isGraphCanvas
-              ? 'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:top-3 tw:z-20 tw:flex tw:justify-center tw:px-4 tw:*:pointer-events-auto'
-              : 'tw:flex tw:shrink-0 tw:justify-center tw:px-4 tw:pt-3'
-          }>
+        <div className="tw:flex tw:shrink-0 tw:justify-center tw:px-4 tw:pt-3">
           {banner}
         </div>
       ) : null}
@@ -2696,8 +2678,7 @@ const OntologyExplorerContent: React.FC = () => {
               </div>
               {renderAggregateCreateDrawer()}
             </div>,
-            banner,
-            false
+            banner
           )
         : null}
       {mode === 'query' || aggregateSurface === 'ontology'
@@ -2709,8 +2690,7 @@ const OntologyExplorerContent: React.FC = () => {
               </div>
               {renderAggregateCreateDrawer()}
             </div>,
-            banner,
-            aggregateSurface === 'graph'
+            banner
           )}
     </>
   );
@@ -2739,8 +2719,7 @@ const OntologyExplorerContent: React.FC = () => {
             <section className="tw:flex tw:min-h-0 tw:flex-1 tw:bg-primary">
               {renderNativeContent(selectedOntology)}
             </section>,
-            banner,
-            isNativeGraphCanvas(mode, explorerSurface, editSurface)
+            banner
           )}
         </>
       );
@@ -2749,15 +2728,7 @@ const OntologyExplorerContent: React.FC = () => {
     return (
       <>
         {renderSubModeNav(tasksAction)}
-        {renderCanvasArea(
-          renderMainSection(),
-          banner,
-          [
-            isGlossaryScope,
-            showDefaultSurface,
-            explorerSurface === 'graph',
-          ].every(Boolean)
-        )}
+        {renderCanvasArea(renderMainSection(), banner)}
       </>
     );
   };

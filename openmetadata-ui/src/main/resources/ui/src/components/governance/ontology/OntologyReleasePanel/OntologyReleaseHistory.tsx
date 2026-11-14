@@ -307,9 +307,15 @@ export const useReleaseApproval = (release: OntologyRelease) => {
       decision: 'pending' as const,
     };
   }
+  // Events record user names; a voter who is a listed reviewer reads as that reviewer's display
+  // name, as the pending line does.
+  const displayName = (user: string) =>
+    getEntityName(
+      (release.reviewers ?? []).find((reviewer) => reviewer.name === user)
+    ) || user;
   const name = event?.voters?.length
-    ? event.voters.join(', ')
-    : event?.createdBy;
+    ? event.voters.map(displayName).join(', ')
+    : event?.createdBy && displayName(event.createdBy);
   const decision =
     release.entityStatus === EntityStatus.Rejected
       ? ('rejected' as const)

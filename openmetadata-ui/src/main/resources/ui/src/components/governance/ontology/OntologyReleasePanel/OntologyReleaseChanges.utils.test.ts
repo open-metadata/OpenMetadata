@@ -267,7 +267,7 @@ describe('countRowsByFilter', () => {
 });
 
 describe('groupChangeCards', () => {
-  it('puts a class group under Concepts, a lone shape group under Rules and members by kind, in a fixed order', () => {
+  it('puts a class group under Concepts, its own members and a lone shape group by kind, in a fixed order', () => {
     const cards = groupChangeCards(
       [
         group(undefined, ChangeType.Changed, [
@@ -286,10 +286,41 @@ describe('groupChangeCards', () => {
 
     expect(cards.map(({ kind, rows }) => [kind, rows.length])).toEqual([
       ['concepts', 1],
+      ['properties', 1],
       ['relationships', 1],
       ['rules', 1],
       ['ontology', 1],
     ]);
+  });
+
+  it("lists a class's folded property and rules in their own cards, matching the summary counts", () => {
+    const groups = [
+      group('Medication', ChangeType.Added, [
+        change(MemberKind.Concept, ChangeType.Added),
+        change(MemberKind.Property, ChangeType.Added, 'prescribedFor'),
+        change(MemberKind.Axiom, ChangeType.Added, 'subclass'),
+        change(MemberKind.Axiom, ChangeType.Added, 'disjoint'),
+      ]),
+    ];
+    const members = [change(MemberKind.Property, ChangeType.Added, 'dosage')];
+    const cards = groupChangeCards(groups, members);
+    const counts = countChangesByKind([
+      ...groups.flatMap((g) => g.changes),
+      ...members,
+    ]);
+
+    expect(
+      Object.fromEntries(cards.map(({ kind, rows }) => [kind, rows.length]))
+    ).toEqual({
+      concepts: counts.concepts,
+      properties: counts.properties,
+      rules: counts.rules,
+    });
+    expect(
+      cards
+        .find(({ kind }) => kind === 'rules')
+        ?.rows.map(({ member }) => member?.entity.name)
+    ).toEqual(['subclass', 'disjoint']);
   });
 });
 

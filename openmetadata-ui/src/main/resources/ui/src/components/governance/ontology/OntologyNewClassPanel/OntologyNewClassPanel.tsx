@@ -525,6 +525,7 @@ const OntologyNewClassPanel = ({
           });
         for (const type of ['axiom', 'property', 'concept'] as const) {
           for (const id of ids(type)) {
+            // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- undo must delete in order
             await hardDeleteOntologyDefinition(type, id); // NOSONAR ordered: axioms and properties reference the concept
           }
         }
@@ -1184,10 +1185,11 @@ const OntologyNewClassPanel = ({
         align="center"
         className="tw:sticky tw:top-0 tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-4"
         justify="between">
-        <Box direction="col">
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
           <Typography
             color="secondary"
             data-testid="new-class-in-ontology"
+            ellipsis={{ tooltip: true }}
             size="text-sm"
             weight="medium">
             {t('label.in-entity', { entity: getEntityName(ontology) })}

@@ -72,7 +72,12 @@ const OntologyReviewPill = ({
         className={classNames('tw:size-4 tw:shrink-0', ICON_CLASS[tone])}
       />
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography size="text-sm" weight="semibold">
+        {/* A rejection carries the reviewer's full reason; the pill keeps one line and the
+            ellipsis tooltip shows the rest. */}
+        <Typography
+          ellipsis={{ tooltip: true }}
+          size="text-sm"
+          weight="semibold">
           {title}
         </Typography>
         {detail ? (

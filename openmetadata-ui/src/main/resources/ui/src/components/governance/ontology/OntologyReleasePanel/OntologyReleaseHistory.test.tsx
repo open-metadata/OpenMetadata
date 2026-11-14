@@ -240,6 +240,31 @@ describe('Releases tab', () => {
     expect(screen.queryByTestId('ontology-release-kinds-older')).toBeNull();
   });
 
+  it('names a voter who is a listed reviewer by display name', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockEvents([event(EventType.Rejected, { voters: ['rhea.reviewer'] })]);
+    renderHistory([
+      release('rj', '1.0.0', EntityStatus.Rejected, {
+        reviewers: [
+          {
+            id: 'rhea',
+            type: 'user',
+            name: 'rhea.reviewer',
+            displayName: 'Rhea Reviewer',
+          },
+        ],
+      }),
+    ]);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-release-decision-rj')
+      ).toHaveTextContent('Rhea Reviewer')
+    );
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
   it('shows the same row facts in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     mockEvents([event(EventType.Approved, { voters: ['qa.reviewer1'] })]);
