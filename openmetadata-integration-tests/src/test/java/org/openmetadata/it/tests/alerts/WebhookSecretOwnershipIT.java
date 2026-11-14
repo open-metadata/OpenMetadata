@@ -249,10 +249,17 @@ class WebhookSecretOwnershipIT {
 
       HttpResponse<String> put = putAlert(request.withDescription("sent again"));
       SubscriptionDestination afterThePut = AlertFixtures.stored(id).getDestinations().getFirst();
+      HttpResponse<String> patch =
+          patchAlert(
+              id, Map.of("op", "add", "path", "/destinations/0/statusDetails", "value", sent));
+      SubscriptionDestination afterThePatch =
+          AlertFixtures.stored(id).getDestinations().getFirst();
 
       assertNull(created.getStatusDetails());
       assertEquals(200, put.statusCode(), put.body());
       assertNull(afterThePut.getStatusDetails());
+      assertEquals(200, patch.statusCode(), patch.body());
+      assertNull(afterThePatch.getStatusDetails());
     }
   }
 
@@ -492,7 +499,7 @@ class WebhookSecretOwnershipIT {
   }
 
   @SafeVarargs
-  private static HttpResponse<String> patchAlert(UUID id, Map<String, String>... operations)
+  private static HttpResponse<String> patchAlert(UUID id, Map<String, ?>... operations)
       throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()

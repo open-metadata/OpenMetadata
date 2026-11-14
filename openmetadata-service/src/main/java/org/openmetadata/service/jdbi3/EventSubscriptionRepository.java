@@ -273,7 +273,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       // Batch inserts can be retried after a rollback; keep the submitted values unchanged so
       // server-produced ciphertext is not mistaken for caller-supplied ciphertext on retry.
       EventSubscription stored = JsonUtils.deepCopy(entity, EventSubscription.class);
-      forgetStatusDetails(stored.getDestinations());
       stored.withDestinations(DestinationSecrets.ofANewAlert(stored.getDestinations()));
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(stored));
