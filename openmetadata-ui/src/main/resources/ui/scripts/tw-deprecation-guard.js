@@ -16,8 +16,11 @@
  * Deprecation guard for the Less → Tailwind and raw-SVG → core-icons migrations.
  *
  * Enforces "no NEW debt": fail on added --om-* stylesheet declarations or
- * increased references, or if a change adds a raw `.svg` under
- * `assets/svg` or a new import of one. New `.less` files are reported but do
+ * increased references, a raw `.svg` added under `assets/svg` or a new import
+ * of one, and style debt on ADDED lines — raw Tailwind palette classes,
+ * hardcoded hex colours, and inline `style={{ … }}` (semantic tokens carry
+ * dark mode; these bypass it). A deliberate exception is suppressed with
+ * `style-guard-allow` on the line, with a reason alongside. New `.less` files are reported but do
  * NOT fail the guard while the app-mode migration still ships `.less` for the
  * AI shell. Existing usage is untouched and migrates over time. Test files may
  * import the assets they exercise.
@@ -101,6 +104,81 @@ function newSvgImports() {
     for (const p of afterPaths) {
       if (!beforeKeys.has(svgKey(p))) {
         hits.push({ file: after, path: p });
+      }
+    }
+  }
+  return hits;
+}
+
+const STYLE_ALLOW_TOKEN = 'style-guard-allow';
+
+const STYLE_EXEMPT_PATH =
+  /\.(?:test|spec|stories)\.tsx?$|(^|\/)src\/generated\/|(^|\/)scripts\//;
+
+const STYLE_LINE_CHECKS = [
+  {
+    name: 'raw-palette',
+    // Any tw: utility (including variant chains like tw:hover:bg-gray-50)
+    // ending in a raw palette colour + shade. Use semantic tokens
+    // (tw:text-secondary, tw:bg-utility-*) — they carry the dark-mode variant.
+    re: /tw:[\w![\]:-]*(?:bg|text|border|outline|fill|stroke|from|to|via)-(?:gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/,
+    why: 'raw Tailwind palette class — use a semantic token (docs/colors.md)',
+  },
+  {
+    name: 'hex-colour',
+    re: /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b(?=[^\w]|$)/,
+    why: 'hardcoded hex colour — use a semantic design token (docs/colors.md)',
+  },
+  {
+    name: 'inline-style',
+    re: /style=\{\{/,
+    why: 'inline style object — use tw: utilities or the core component prop',
+  },
+];
+
+// Style debt on ADDED lines of src .ts/.tsx. Added-lines scoping keeps the
+// backlog zero by construction: existing debt never blocks, new debt always does.
+function newStyleDebt() {
+  const out = execFileSync(
+    'git',
+    [
+      'diff',
+      ...(base ? [diffArgs] : ['--cached']),
+      '--unified=0',
+      '--',
+      ':(top)openmetadata-ui/src/main/resources/ui/src',
+    ],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  );
+  const hits = [];
+  let file = '';
+  let line = 0;
+  for (const raw of out.split('\n')) {
+    if (raw.startsWith('+++ b/')) {
+      file = raw.slice(6);
+      continue;
+    }
+    const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)/);
+    if (hunk) {
+      line = Number(hunk[1]);
+      continue;
+    }
+    if (!raw.startsWith('+') || raw.startsWith('+++')) {
+      continue;
+    }
+    const added = raw.slice(1);
+    const current = line;
+    line += 1;
+    if (
+      !/\.tsx?$/.test(file) ||
+      STYLE_EXEMPT_PATH.test(file) ||
+      added.includes(STYLE_ALLOW_TOKEN)
+    ) {
+      continue;
+    }
+    for (const check of STYLE_LINE_CHECKS) {
+      if (check.re.test(added)) {
+        hits.push(`${file}:${current}  [${check.name}] ${check.why}`);
       }
     }
   }
@@ -202,9 +280,12 @@ function main() {
   const svgFiles = newSvgFiles();
   const svgImports = newSvgImports();
   const omTokens = newOmTokenUses();
+  const styleDebt = newStyleDebt();
   // New `.less` files are reported but do NOT fail the guard — the app-mode
-  // migration still lands `.less` for the AI shell. New SVG and token debt blocks.
-  const problems = svgFiles.length + svgImports.length + omTokens.length;
+  // migration still lands `.less` for the AI shell. New SVG, token and style
+  // debt blocks.
+  const problems =
+    svgFiles.length + svgImports.length + omTokens.length + styleDebt.length;
 
   if (less.length) {
     process.stderr.write(C.gray(`\nⓘ New .less file(s) detected (allowed for now — prefer Tailwind (tw:) + UntitledUI):\n`));
@@ -225,6 +306,15 @@ function main() {
       )
     );
     omTokens.forEach((hit) => process.stderr.write(`    ${hit}\n`));
+  }
+
+  if (styleDebt.length) {
+    process.stderr.write(
+      C.red(
+        `\n\u2716 New style debt on added lines (suppress a deliberate exception with \`${STYLE_ALLOW_TOKEN}\` + a reason):\n`
+      )
+    );
+    styleDebt.forEach((hit) => process.stderr.write(`    ${hit}\n`));
   }
 
   if (problems) {
