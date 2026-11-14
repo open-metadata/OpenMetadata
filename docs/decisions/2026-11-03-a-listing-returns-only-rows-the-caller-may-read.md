@@ -1,6 +1,6 @@
 # A listing returns only rows the caller may read
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-13-a-listing-filters-its-rows-in-sql-compiled-from-the-callers-policies
 - **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (the team answer expires)
 - **Deciders:** Mohit Yadav
 - **Guard:** `ListRowAuthorizationIT.aTableListingLeavesOutRowsADenyRuleRefusesAndStillFillsThePage`,

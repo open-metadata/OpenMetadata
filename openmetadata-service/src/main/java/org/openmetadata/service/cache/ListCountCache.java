@@ -88,7 +88,9 @@ public final class ListCountCache {
    * direct compute — listing must not fail because Redis is down.
    */
   public static int getOrCompute(String entityType, ListFilter filter, IntSupplier supplier) {
-    if (EntityCacheBypass.isSkipped() || filter.isTimeDependent()) {
+    // A count scoped to the caller reads owners, domains and team membership, and a change to those
+    // invalidates nothing here.
+    if (EntityCacheBypass.isSkipped() || filter.isTimeDependent() || filter.isScopedToCaller()) {
       return supplier.getAsInt();
     }
     CacheProvider provider = CacheBundle.getCacheProvider();

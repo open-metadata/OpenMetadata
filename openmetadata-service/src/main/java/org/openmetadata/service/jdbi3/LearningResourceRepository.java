@@ -246,6 +246,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       if (!placementCondition.isEmpty()) {
         conditions.add(placementCondition);
       }
+      conditions.add(getAccessScopeCondition(tableName));
       String condition = addCondition(conditions);
       return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
     }

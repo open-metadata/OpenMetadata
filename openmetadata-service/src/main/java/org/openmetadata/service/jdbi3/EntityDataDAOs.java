@@ -1494,14 +1494,8 @@ public interface EntityDataDAOs {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String status = filter.getQueryParam("status");
       if (status != null && !status.isEmpty()) {
-        // Remove status from filter to avoid SQL error
-        Map<String, String> params = new HashMap<>(filter.getQueryParams());
-        params.remove("status");
-        ListFilter cleanFilter = new ListFilter(filter.getInclude());
-        params.forEach(cleanFilter::addQueryParam);
-
-        // Build condition with status JOIN
-        String condition = cleanFilter.getCondition();
+        ListFilter cleanFilter = filter.copyWithoutQueryParam("status");
+        String condition = cleanFilter.getConditionForEntity(getTableName());
         String statusCondition =
             buildStatusJoinCondition(getTableName(), condition, status, beforeName, beforeId, true);
         return listBeforeWithStatus(
@@ -1514,14 +1508,8 @@ public interface EntityDataDAOs {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String status = filter.getQueryParam("status");
       if (status != null && !status.isEmpty()) {
-        // Remove status from filter to avoid SQL error
-        Map<String, String> params = new HashMap<>(filter.getQueryParams());
-        params.remove("status");
-        ListFilter cleanFilter = new ListFilter(filter.getInclude());
-        params.forEach(cleanFilter::addQueryParam);
-
-        // Build condition with status JOIN
-        String condition = cleanFilter.getCondition();
+        ListFilter cleanFilter = filter.copyWithoutQueryParam("status");
+        String condition = cleanFilter.getConditionForEntity(getTableName());
         String statusCondition =
             buildStatusJoinCondition(getTableName(), condition, status, afterName, afterId, false);
         return listAfterWithStatus(
@@ -1534,14 +1522,8 @@ public interface EntityDataDAOs {
     default int listCount(ListFilter filter) {
       String status = filter.getQueryParam("status");
       if (status != null && !status.isEmpty()) {
-        // Remove status from filter to avoid SQL error
-        Map<String, String> params = new HashMap<>(filter.getQueryParams());
-        params.remove("status");
-        ListFilter cleanFilter = new ListFilter(filter.getInclude());
-        params.forEach(cleanFilter::addQueryParam);
-
-        // Build condition with status JOIN
-        String condition = cleanFilter.getCondition();
+        ListFilter cleanFilter = filter.copyWithoutQueryParam("status");
+        String condition = cleanFilter.getConditionForEntity(getTableName());
         String statusCondition = buildStatusCountCondition(getTableName(), condition, status);
         return listCountWithStatus(statusCondition, getBindMap(cleanFilter, status, 0, null, null));
       }

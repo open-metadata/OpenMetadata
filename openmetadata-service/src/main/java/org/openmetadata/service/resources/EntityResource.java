@@ -120,6 +120,7 @@ import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.ViewOperations;
 import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.listaccess.CallerScope;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -287,16 +288,26 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
 
   /** Cursor-paged list inputs, grouped so the paging helper stays within the parameter limit. */
   private record CursorPage(
-      Fields fields, ListFilter filter, int limit, String before, String after) {}
+      Fields fields,
+      ListFilter filter,
+      int limit,
+      String before,
+      String after,
+      CallerScope scope) {}
 
   private ResultList<T> listCursorPaged(
       UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
-    ResultList<T> resultList =
-        rowsMayDiffer(securityContext, page.fields())
-            ? readableRowsPage(uriInfo, securityContext, page)
-            : readPage(uriInfo, page, page.before(), page.after());
+    ResultList<T> resultList = readScopedPage(uriInfo, securityContext, page);
     retainViewableReferences(securityContext, page.fields(), resultList.getData());
     return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
+  }
+
+  /** The rows the scope selects, each checked after the query when the scope is not exact. */
+  private ResultList<T> readScopedPage(
+      UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
+    return page.scope().exact()
+        ? readPage(uriInfo, page, page.before(), page.after())
+        : readableRowsPage(uriInfo, securityContext, page);
   }
 
   /** A reference-list field of {@code E} whose targets are filtered per caller. */
@@ -629,12 +640,16 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       int limit,
       String before,
       String after) {
+    CallerScope scope = listScope(securityContext, fields);
     CursorPage page =
         new CursorPage(
-            fields, filter, limit, ListCursors.unseal(before), ListCursors.unseal(after));
-    return rowsMayDiffer(securityContext, fields)
-        ? readableRowsPage(uriInfo, securityContext, page)
-        : readPage(uriInfo, page, page.before(), page.after());
+            fields,
+            filter.withAccessScope(scope),
+            limit,
+            ListCursors.unseal(before),
+            ListCursors.unseal(after),
+            scope);
+    return readScopedPage(uriInfo, securityContext, page);
   }
 
   private ResultList<T> readPage(UriInfo uriInfo, CursorPage page, String before, String after) {
@@ -644,13 +659,51 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   }
 
   /**
-   * Whether a row-dependent rule could refuse a row the listing's own check allowed: a listing is
-   * authorized once for its type (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+   * Whether a row-dependent rule could refuse a row that a check on the type alone allows. Only then
+   * does a listing that is not scoped in SQL check its rows one at a time
+   * (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
    */
   protected final boolean rowsMayDiffer(SecurityContext securityContext, Fields fields) {
     RowAuthorization<T> rows = rowAuthorization(fields);
     return RowDecisionGate.mayDiffer(
         getSubjectContext(securityContext), rows.resource(), rows.operations());
+  }
+
+  /**
+   * The rows of this listing the caller may read, as a condition on its query. Rows that another
+   * entity authorizes, as a table authorizes its test cases, are checked one at a time as before.
+   */
+  protected final CallerScope listScope(SecurityContext securityContext, Fields fields) {
+    RowAuthorization<T> rows = rowAuthorization(fields);
+    return entityType.equals(rows.resource())
+        ? authorizer.listScope(securityContext, entityType, rows.operations())
+        : perRowScope(securityContext, fields);
+  }
+
+  private CallerScope perRowScope(SecurityContext securityContext, Fields fields) {
+    return rowsMayDiffer(securityContext, fields)
+        ? CallerScope.eachRowChecked()
+        : CallerScope.allRows();
+  }
+
+  /**
+   * Authorizes a listing on its type, unless the caller's policies decide its rows: a check on the
+   * type alone cannot see the rows a condition allows. A listing through another entity, such as a
+   * service, and a listing the policies refuse keep the check and its error.
+   */
+  private void authorizeListing(
+      SecurityContext securityContext,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext,
+      CallerScope scope) {
+    boolean decidedByRows =
+        resourceContext instanceof ResourceContext<?> context
+            && context.isTypeLevel()
+            && entityType.equals(context.getResource())
+            && scope.authorizesListing(operationContext.getOperations(resourceContext));
+    if (!decidedByRows) {
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+    }
   }
 
   /**
@@ -676,8 +729,9 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   /**
    * The page as the caller may read it. Rows the caller may not read are dropped and replaced from
    * the pages that follow, within {@link #MAX_FILTERED_PAGE_READS} reads and
-   * {@link #MAX_FILTERED_ROWS_SCANNED} rows; past that the page comes back short. The total still
-   * counts every row, and the cursors are sealed because one may point at a dropped row.
+   * {@link #MAX_FILTERED_ROWS_SCANNED} rows; past that the page comes back short. The total counts
+   * the rows the query's condition selects, including the rows dropped here, and the cursors are
+   * sealed because one may point at a dropped row.
    */
   private ResultList<T> readableRowsPage(
       UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
@@ -791,7 +845,8 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     RestUtil.validateCursors(before, after);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    CallerScope scope = listScope(securityContext, fields);
+    authorizeListing(securityContext, operationContext, resourceContext, scope);
 
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
@@ -800,7 +855,12 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         uriInfo,
         securityContext,
         new CursorPage(
-            fields, filter, limitParam, ListCursors.unseal(before), ListCursors.unseal(after)));
+            fields,
+            filter.withAccessScope(scope),
+            limitParam,
+            ListCursors.unseal(before),
+            ListCursors.unseal(after),
+            scope));
   }
 
   /**
@@ -819,6 +879,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       List<AuthRequest> authRequests) {
     RestUtil.validateCursors(before, after);
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    CallerScope scope = listScope(securityContext, fields);
 
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
@@ -827,7 +888,12 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         uriInfo,
         securityContext,
         new CursorPage(
-            fields, filter, limitParam, ListCursors.unseal(before), ListCursors.unseal(after)));
+            fields,
+            filter.withAccessScope(scope),
+            limitParam,
+            ListCursors.unseal(before),
+            ListCursors.unseal(after),
+            scope));
   }
 
   protected ResultList<T> searchInternal(
@@ -841,7 +907,8 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    CallerScope scope = listScope(securityContext, fields);
+    authorizeListing(securityContext, operationContext, resourceContext, scope);
 
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
@@ -850,8 +917,11 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     }
 
     ResultList<T> resultList =
-        repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
-    retainReadableRows(securityContext, fields, resultList);
+        repository.listAfterWithOffset(
+            uriInfo, fields, filter.withAccessScope(scope), limit, offset);
+    if (!scope.exact()) {
+      retainReadableRows(securityContext, fields, resultList);
+    }
     return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
