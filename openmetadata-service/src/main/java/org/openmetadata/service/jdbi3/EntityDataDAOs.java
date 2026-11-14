@@ -1446,7 +1446,7 @@ public interface EntityDataDAOs {
       if (!nullOrEmpty(entityId)) {
         condition =
             String.format(
-                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and (query_entity.name > :afterName OR (query_entity.name = :afterName AND query_entity.name > :afterId))  order by query_entity.name ASC,query_entity.id ASC LIMIT :limit",
+                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and (query_entity.name > :afterName OR (query_entity.name = :afterName AND query_entity.id > :afterId))  order by query_entity.name ASC,query_entity.id ASC LIMIT :limit",
                 condition);
 
         bindMap.put("entityId", entityId);
