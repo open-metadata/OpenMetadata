@@ -16,9 +16,20 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isEmpty, isObject, isUndefined } from 'lodash';
+import {
+  identity,
+  isBoolean,
+  isEmpty,
+  isObject,
+  isString,
+  isUndefined,
+} from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import type {
+  EsMatchPhrase,
+  EsRegexp,
+} from '../interface/queryFilter.interface';
 import type {
   EsBoolQuery,
   EsExistsQuery,
@@ -193,7 +204,7 @@ export const getCommonFieldProperties = (
       properties: {
         field,
         operator,
-        value: isUndefined(value) ? [] : [value.replaceAll(/(^\*)|(\*$)/g, '')],
+        value: isUndefined(value) ? [] : [value],
         valueSrc: isUndefined(value) ? [] : ['value'],
         operatorOptions: null,
         valueType: isUndefined(value) ? [] : ['text'],
@@ -354,31 +365,94 @@ const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
-const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr as EsWildCard).wildcard)) {
-    return undefined;
-  }
+type UnknownRecord = Record<string, unknown>;
 
-  return getCommonFieldProperties(
+const firstEntry = (value: unknown): [string, unknown] | undefined =>
+  Object.entries((value ?? {}) as UnknownRecord)[0];
+
+const stripWildcards = (value: unknown): string =>
+  String(value ?? '').replace(/^\*|\*$/g, '');
+
+// Claims the clause only when readValue finds a string in the shape the UI writes; any
+// other ES form stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
+const getStringValueRule = (
+  parentPath: Array<string>,
+  clause: UnknownRecord | undefined,
+  operator: string,
+  readValue: (body: unknown) => unknown
+) => {
+  const [field, body] = firstEntry(clause) ?? [];
+  const value = readValue(body);
+
+  return field && isString(value)
+    ? getCommonFieldProperties(parentPath, field, operator, value)
+    : undefined;
+};
+
+// The builder writes `like` rules as `{ value: '*value*' }`; API clients may write the shorthand
+// `'*value*'`. Nothing else is read: a prefix or case-insensitive wildcard would be rewritten
+// as a contains match on the next save.
+const readWildcardValue = (body: unknown) => {
+  const { value, ...rest } = isObject(body)
+    ? (body as UnknownRecord)
+    : { value: body };
+
+  return isString(value) && isEmpty(rest) && /^\*.*\*$/.test(value)
+    ? stripWildcards(value)
+    : undefined;
+};
+
+// Regular expression rules are saved as `{ value, case_insensitive: true }` and nothing else;
+// reading a case-sensitive or flagged regexp would widen it on the next save.
+const readRegexpValue = (body: unknown) => {
+  const {
+    value,
+    case_insensitive: caseInsensitive,
+    ...rest
+  } = isObject(body) ? (body as UnknownRecord) : {};
+
+  return caseInsensitive === true && isEmpty(rest) ? value : undefined;
+};
+
+const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr as EsWildCard).wildcard)[0],
+    (curr as EsWildCard).wildcard,
     'like',
-    Object.values((curr as EsWildCard).wildcard)[0]?.value
+    readWildcardValue
   );
-};
 
-const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr.bool?.must_not as EsWildCard)?.wildcard)) {
-    return undefined;
-  }
-
-  return getCommonFieldProperties(
+const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
+    (curr.bool?.must_not as EsWildCard)?.wildcard,
     'not_like',
-    Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]?.value
+    readWildcardValue
   );
-};
+
+const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsRegexp).regexp,
+    'regexp',
+    readRegexpValue
+  );
+
+const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsMatchPhrase).match_phrase,
+    'match_phrase',
+    identity
+  );
+
+const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr.bool?.must_not as EsMatchPhrase)?.match_phrase,
+    'not_match_phrase',
+    identity
+  );
 
 // AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
 // row the user filled, not one `!=` row per value.
@@ -451,8 +525,6 @@ interface CustomPropertyClause {
   negated: boolean;
 }
 
-type UnknownRecord = Record<string, unknown>;
-
 const asClauseArray = (value: unknown): UnknownRecord[] => {
   if (Array.isArray(value)) {
     return value as UnknownRecord[];
@@ -460,9 +532,6 @@ const asClauseArray = (value: unknown): UnknownRecord[] => {
 
   return isUndefined(value) ? [] : [value as UnknownRecord];
 };
-
-const firstEntry = (value: unknown): [string, unknown] | undefined =>
-  Object.entries((value ?? {}) as UnknownRecord)[0];
 
 const toValueField = (key: string): string =>
   key.startsWith(CUSTOM_PROPERTY_VALUE_PREFIX)
@@ -715,9 +784,6 @@ const readRange = (
   };
 };
 
-const stripWildcards = (value: unknown): string =>
-  String(value ?? '').replace(/^\*|\*$/g, '');
-
 // A multiselect holds its choices in a single value slot, so it nests.
 const toRuleValue = (
   fieldType: string | undefined,
@@ -863,6 +929,9 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchExists,
   matchWildcard,
   matchMustNotWildcard,
+  matchRegexp,
+  matchPhrase,
+  matchMustNotPhrase,
   matchBoolMust,
 ];
 
@@ -1071,11 +1140,28 @@ const getRootClauses = (queryBody: QueryFieldInterface) => {
   return { ...grouping, clauses: innerMust ?? clauses, partial };
 };
 
-const isRenderedClause = (clause: QueryFieldInterface, fields?: Fields) =>
-  QUERY_FILTER_BRANCH_HANDLERS.some(
-    (handler) =>
-      !isEmpty(handler(clause, [], fields, getJsonTreePropertyFromQueryFilter))
+// A nested `must` group keeps whichever children it can read, so it renders only when every
+// child does; otherwise a clause the readers leave unread would drop without a warning.
+const isRenderedClause = (
+  clause: QueryFieldInterface,
+  fields?: Fields
+): boolean => {
+  const handler = QUERY_FILTER_BRANCH_HANDLERS.find(
+    (candidate) =>
+      !isEmpty(
+        candidate(clause, [], fields, getJsonTreePropertyFromQueryFilter)
+      )
   );
+  const children =
+    handler === matchBoolMust
+      ? ((clause.bool as EsBoolQuery).must as QueryFieldInterface[])
+      : [];
+
+  return (
+    Boolean(handler) &&
+    children.every((child) => isRenderedClause(child, fields))
+  );
+};
 
 // False when getJsonTreeFromQueryFilter would leave part of `queryFilter` out of
 // its tree, so an editor seeded from that tree drops those conditions on its
