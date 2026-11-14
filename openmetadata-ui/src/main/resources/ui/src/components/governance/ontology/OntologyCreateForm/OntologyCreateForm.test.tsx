@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dialog } from '@openmetadata/ui-core-components';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
@@ -78,13 +79,19 @@ describe('OntologyCreateForm', () => {
       <OntologyCreateForm canEdit ontology={ontology} onSaved={saved} />
     );
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
+    // Identifiers are read-only values with a copy button, not inputs.
+    expect(screen.getByTestId('ontology-settings-name')).toHaveTextContent(
       'Sales'
     );
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toBeDisabled();
+    expect(screen.getByTestId('ontology-settings-namespace')).toHaveTextContent(
+      'urn:sales:'
+    );
     expect(
-      screen.getByRole('textbox', { name: 'label.namespace' })
-    ).toBeDisabled();
+      screen.queryByRole('textbox', { name: 'label.name' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.ontology-settings-owners-hint')
+    ).toBeInTheDocument();
 
     await user.type(
       screen.getByRole('textbox', { name: 'label.display-name' }),
@@ -119,6 +126,61 @@ describe('OntologyCreateForm', () => {
     );
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+  });
+
+  it('in the dialog layout saves through "Save changes", cancels, and keeps identifiers under Advanced', async () => {
+    const user = userEvent.setup();
+    const saved = jest.fn();
+    const cancel = jest.fn();
+    const patch = APIClient.patch as jest.MockedFunction<
+      typeof APIClient.patch
+    >;
+    patch.mockResolvedValue({
+      data: { ...ontology, description: 'Orders' },
+    });
+    renderWithQueryClient(
+      <Dialog>
+        <OntologyCreateForm
+          canEdit
+          layout="dialog"
+          ontology={ontology}
+          onCancel={cancel}
+          onSaved={saved}
+        />
+      </Dialog>
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'label.ontology-iri' })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('ontology-settings-advanced-toggle'));
+
+    expect(
+      screen.getByRole('textbox', { name: 'label.ontology-iri' })
+    ).toBeDisabled();
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'label.description' }),
+      'Orders'
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'label.save-changes' })
+    );
+
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+
+    expect(patch).toHaveBeenCalledWith(
+      '/ontologies/sales',
+      expect.arrayContaining([
+        { op: 'add', path: '/description', value: 'Orders' },
+      ]),
+      expect.anything()
+    );
+
+    await user.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+    expect(cancel).toHaveBeenCalled();
   });
 
   describe('AI mode', () => {
@@ -172,12 +234,12 @@ describe('OntologyCreateForm', () => {
       );
 
       expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+      expect(screen.getByTestId('ontology-settings-iri')).toHaveTextContent(
+        'urn:sales'
+      );
       expect(
-        screen.getByRole('textbox', { name: 'label.name' })
-      ).toBeDisabled();
-      expect(
-        screen.getByRole('textbox', { name: 'label.ontology-iri' })
-      ).toBeDisabled();
+        screen.queryByRole('textbox', { name: 'label.ontology-iri' })
+      ).not.toBeInTheDocument();
       expect(screen.getByRole('tab', { name: Layer.L2 })).toHaveAttribute(
         'aria-selected',
         'true'

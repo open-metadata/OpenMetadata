@@ -31,8 +31,9 @@ interface ApplicationCardProps {
   title: string;
   description?: string;
   /**
-   * Renders a link button that opens the app instead of making the whole card
-   * a button (a button inside a button is not valid markup).
+   * Renders a link button that opens the app. The card still opens it on mouse
+   * click, but is not itself a button (a button inside a button is not valid
+   * markup), so keyboard users reach the app through this link.
    */
   actionLabel?: string;
   /** Shows the "Disabled" badge; the card stays clickable so it can be restored. */
@@ -76,21 +77,21 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const isAvailable = !unavailableReason;
-  const isClickable = isAvailable && !actionLabel;
+  const isCardButton = isAvailable && !actionLabel;
 
   const card = (
     <Card
       aria-disabled={!isAvailable || undefined}
       className={classNames('tw:h-full', { 'tw:opacity-65': !isAvailable })}
       data-testid={`${kebabCase(appName)}-card`}
-      isClickable={isClickable}
-      role={isClickable ? 'button' : undefined}
+      isClickable={isAvailable}
+      role={isCardButton ? 'button' : undefined}
       size="md"
-      tabIndex={isClickable ? 0 : undefined}
+      tabIndex={isCardButton ? 0 : undefined}
       variant="muted"
-      onClick={isClickable ? onClick : undefined}
+      onClick={isAvailable ? onClick : undefined}
       onKeyDown={(e) => {
-        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+        if (isCardButton && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           onClick();
         }

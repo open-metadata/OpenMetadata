@@ -70,6 +70,10 @@ jobs:
       - name: Install uv
         if: ${{ steps.scope.outputs.python == 'true' }}
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        # No push trigger, so no main-scoped entry exists to restore and every
+        # save lands on a PR / queue ref. Installing one ruff wheel needs no cache.
+        with:
+          enable-cache: false
 
       - name: Install Ruff
         if: ${{ steps.scope.outputs.python == 'true' }}

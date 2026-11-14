@@ -103,7 +103,7 @@ const FIBO_PACK: OntologyPackManifest = {
   description: 'A compact starter subset of financial concepts',
   id: 'fibo',
   industry: Industry.Finance,
-  name: 'FIBO Starter',
+  name: 'FIBO',
   standard: 'Financial Industry Business Ontology',
 };
 const UNKNOWN_PACK: OntologyPackManifest = {
@@ -171,7 +171,7 @@ describe('OntologyLibrary', () => {
       'ontology-pack-new-pack',
     ]);
     expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
-      'label.ontology-library-financial-services'
+      FIBO_PACK.name
     );
     expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
       FIBO_PACK.description
@@ -201,6 +201,24 @@ describe('OntologyLibrary', () => {
 
     expect(screen.getByTestId('ontology-pack-fibo')).toBeVisible();
     expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
+  });
+
+  it('keeps one dialog height when a domain filter shortens the list', async () => {
+    mockListPacks.mockResolvedValue({
+      packs: [EXTERNAL_PACK, FHIR_PACK, FIBO_PACK],
+    });
+    render(<OntologyLibrary />);
+    const pane = (await screen.findByTestId('ontology-pack-fibo')).closest(
+      '[class*="tw:h-[60vh]"]'
+    );
+
+    expect(pane).not.toBeNull();
+
+    fireEvent.click(screen.getByTestId('ontology-library-filter-healthcare'));
+
+    expect(
+      screen.getByTestId('ontology-pack-fhir').closest('[class*="tw:h-[60vh]"]')
+    ).toBe(pane);
   });
 
   it('shows the vocabulary catalogue without glossary installation metadata', async () => {

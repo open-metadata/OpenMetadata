@@ -151,6 +151,38 @@ beforeEach(() => {
 });
 
 describe('OntologyAxiomEditor quick form', () => {
+  it('lays out each field with its description, then the preview, details and publish note', () => {
+    renderEditor();
+
+    expect(screen.getByText('The concept this rule is about.')).toBeVisible();
+    expect(screen.getByText('Which property the rule is about.')).toBeVisible();
+    expect(
+      screen.getByText('Optional. The sentence people see in lists.')
+    ).toBeVisible();
+    expect(screen.getByText(/It goes live when you publish/)).toBeVisible();
+    expect(screen.getByTestId('ontology-axiom-submit')).toHaveTextContent(
+      'Add Rule'
+    );
+
+    const order = [
+      screen.getByTestId('ontology-axiom-preview'),
+      screen.getByRole('textbox', { name: /^Display Name/ }),
+    ];
+
+    expect(
+      order[0].compareDocumentPosition(order[1]) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('keeps Save as the label when editing a saved rule', () => {
+    renderEditor({ axiom: savedAxiom() });
+
+    expect(screen.getByTestId('ontology-axiom-submit')).toHaveTextContent(
+      'Save'
+    );
+  });
+
   it('writes Patient must have exactly 1 dateOfBirth and saves it without an IRI typed', async () => {
     mockCreate.mockResolvedValue(savedAxiom());
     renderEditor();
@@ -287,10 +319,9 @@ describe('OntologyAxiomEditor quick form', () => {
     renderEditor();
     await pick(/^Subject/, 'Pat', /Patient/);
     await pick(/^Property/, 'date', /dateOfBirth/);
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /Display Name \(Optional\)/ }),
-      { target: { value: 'Birth date required' } }
-    );
+    fireEvent.change(screen.getByRole('textbox', { name: /^Display Name/ }), {
+      target: { value: 'Birth date required' },
+    });
     await waitFor(() =>
       expect(screen.getByTestId('ontology-axiom-submit')).toBeEnabled()
     );
@@ -371,6 +402,31 @@ describe('OntologyAxiomEditor server reasons', () => {
         'The statement is not valid OWL'
       )
     ).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
+  });
+
+  it('drops the failed summary when every error already shows under its field', async () => {
+    mockValidate.mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.UndeclaredProperty,
+          message: 'The property is not declared in this ontology',
+          path: '/expressions/0/propertyIri',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    renderEditor();
+    await pick(/^Subject/, 'Pat', /Patient/);
+    await pick(/^Property/, 'date', /dateOfBirth/);
+
+    expect(
+      await screen.findByText('The property is not declared in this ontology')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-axiom-profile')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
   });
 
@@ -589,5 +645,32 @@ describe('OntologyAxiomEditor advanced assertions', () => {
     fireEvent.click(screen.getByRole('option', { name: /dateOfBirth/ }));
 
     expect(screen.getByRole('textbox', { name: /^Value/ })).not.toBeRequired();
+  });
+});
+
+describe('OntologyAxiomEditor footer', () => {
+  it('keeps Save disabled on a validated saved rule until it is edited', async () => {
+    renderEditor({ axiom: savedAxiom() });
+    fireEvent.click(screen.getByTestId('ontology-axiom-validate'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-axiom-footer-status')
+      ).toHaveTextContent('Validation Passed')
+    );
+
+    expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
+  });
+
+  it('closes the drawer on Cancel while the rule is unchanged', () => {
+    const onCancel = jest.fn();
+    renderEditor({ axiom: savedAxiom(), onCancel });
+    const cancel = screen.getByTestId('ontology-axiom-footer-cancel');
+
+    expect(cancel).toBeEnabled();
+
+    fireEvent.click(cancel);
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });

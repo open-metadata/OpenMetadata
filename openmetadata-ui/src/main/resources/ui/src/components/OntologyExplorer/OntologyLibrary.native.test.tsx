@@ -19,12 +19,15 @@ import {
   OperationType,
 } from '../../generated/api/data/createOntologyChangeSet';
 import {
+  OntologyPackInstallJob,
+  Status,
+} from '../../generated/api/data/ontologyPackInstallJob';
+import {
   Format,
   Industry,
   Layer,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
-import { OntologyChangeSetState } from '../../generated/entity/data/ontologyChangeSet';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import APIClient from '../../rest/axiosClient';
@@ -136,23 +139,24 @@ const preview = {
     },
   ],
 };
-const draft = {
-  ...preview,
-  id: 'draft-id',
-  ontology: { id: target.id, type: 'ontology', fullyQualifiedName: 'Sales' },
-  state: OntologyChangeSetState.Draft,
-  undoCursor: preview.operations.length,
-};
-const lock = {
-  acquiredAt: 1,
-  expiresAt: Date.now() + 60000,
-  renewedAt: 1,
-  holder: { id: 'author', type: 'user' },
-  resourceId: 'draft-id',
-  resourceType: 'ontologyChangeSet',
-  sessionId: 'session-id',
-  version: 3,
-};
+const installJob = (
+  overrides: Partial<OntologyPackInstallJob> = {}
+): OntologyPackInstallJob => ({
+  id: 7,
+  ontologyId: 'created-id',
+  packId: 'fhir',
+  version: '5.0.0',
+  moduleIds: ['core'],
+  status: Status.Completed,
+  progress: 1,
+  total: 1,
+  membersApplied: 3,
+  memberCount: 3,
+  createdBy: 'author',
+  createdAt: 1,
+  updatedAt: 2,
+  ...overrides,
+});
 const post = mocked<
   (...args: Parameters<typeof APIClient.post>) => Promise<{ data: unknown }>
 >(APIClient.post);
@@ -187,6 +191,24 @@ const install = async () => {
     fireEvent.click(screen.getByTestId('ontology-library-native-install'));
   });
 };
+// The job poll resumes outside any user event, so its renders flush only when an act scope closes.
+const untilRendered = async (assertion: () => void, timeoutMs = 4000) => {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    try {
+      assertion();
+
+      return;
+    } catch (error) {
+      if (Date.now() > deadline) {
+        throw error;
+      }
+    }
+  }
+};
 const openInstalledPack = async () => {
   const card = await screen.findByTestId('ontology-pack-fhir');
 
@@ -205,8 +227,8 @@ const chooseExisting = async () => {
   });
 };
 const creates = () => post.mock.calls.filter(([url]) => url === '/ontologies');
-const drafts = () =>
-  post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+const installs = () =>
+  post.mock.calls.filter(([url]) => String(url).endsWith('/install'));
 const sampleResponse = () => ({
   data: {
     packId: pack.id,
@@ -224,13 +246,7 @@ let catalogueInstallations: {
   installation: { packId: string };
 }[] = [];
 const respond = async (url: string, data: unknown) => {
-  if (url.includes('/library/')) {
-    return { data: preview };
-  }
-  if (url === '/ontologyChangeSets') {
-    return { data: draft };
-  }
-  if (url === '/ontologyChangeSets/draft-id/apply') {
+  if (url.endsWith('/install')) {
     catalogueInstallations = [
       {
         ontology: {
@@ -241,10 +257,10 @@ const respond = async (url: string, data: unknown) => {
       },
     ];
 
-    return { data: { ...draft, state: OntologyChangeSetState.Applied } };
+    return { data: installJob() };
   }
-  if (url === '/ontologyEditLocks/acquire') {
-    return { data: lock };
+  if (url.includes('/library/')) {
+    return { data: preview };
   }
   if (url === '/ontologies') {
     created = {
@@ -287,9 +303,77 @@ describe('OntologyLibrary native installation', () => {
         return { data: created };
       }
 
-      return { data: url.includes('/ontologyEditLocks/') ? lock : draft };
+      return { data: {} };
     });
     post.mockImplementation(respond);
+  });
+
+  it('lists cross-industry packs under their own filter and shows the attribution a license requires', async () => {
+    const dcat: OntologyPackManifest = {
+      ...pack,
+      id: 'dcat',
+      abbreviation: 'DCAT',
+      name: 'DCAT 3',
+      industry: Industry.CrossIndustry,
+      standard: 'Data Catalog Vocabulary (DCAT) Version 3',
+      attribution:
+        'DCAT Version 3, W3C Recommendation. Licensed under CC BY 4.0.',
+    };
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [pack, dcat], installations: [] } };
+      }
+      if (url.includes('/sample')) {
+        return { data: { ...sampleResponse().data, packId: dcat.id } };
+      }
+
+      return { data: {} };
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await act(async () => undefined);
+    await screen.findByTestId('ontology-pack-dcat');
+
+    expect(
+      screen.getByTestId('ontology-library-filter-cross-industry')
+    ).toHaveTextContent('label.ontology-library-cross-industry');
+
+    fireEvent.click(
+      screen.getByTestId('ontology-library-filter-cross-industry')
+    );
+
+    expect(screen.getByTestId('ontology-pack-dcat')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-pack-details-dcat'));
+
+    expect(screen.getByTestId('ontology-pack-attribution')).toHaveTextContent(
+      dcat.attribution as string
+    );
+  });
+
+  it('offers Install for a pack of any size because every install runs as a job', async () => {
+    const fibo: OntologyPackManifest = {
+      ...pack,
+      id: 'fibo',
+      abbreviation: 'FIBO',
+      name: 'FIBO',
+      industry: Industry.Finance,
+    };
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [fibo], installations: [] } };
+      }
+
+      return { data: {} };
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await act(async () => undefined);
+    await screen.findByTestId('ontology-pack-fibo');
+    fireEvent.click(screen.getByTestId('ontology-pack-details-fibo'));
+
+    expect(
+      await screen.findByTestId('ontology-library-native-install')
+    ).toBeVisible();
   });
 
   it('filters native packs by industry and opens the aligned detail from the card action', async () => {
@@ -297,7 +381,7 @@ describe('OntologyLibrary native installation', () => {
       ...pack,
       id: 'fibo',
       abbreviation: 'FIBO',
-      name: 'FIBO Starter',
+      name: 'FIBO',
       industry: Industry.Finance,
       standard: 'Financial Industry Business Ontology',
     };
@@ -309,7 +393,7 @@ describe('OntologyLibrary native installation', () => {
         return { data: { ...sampleResponse().data, packId: fibo.id } };
       }
 
-      return { data: draft };
+      return { data: {} };
     });
     renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
     await act(async () => undefined);
@@ -322,7 +406,7 @@ describe('OntologyLibrary native installation', () => {
     const action = screen.getByTestId('ontology-pack-details-fibo');
 
     expect(action).toHaveClass('tw:after:absolute');
-    expect(action).toHaveAccessibleName('label.view FIBO Starter');
+    expect(action).toHaveAccessibleName('label.view FIBO');
 
     fireEvent.click(action);
 
@@ -365,7 +449,7 @@ describe('OntologyLibrary native installation', () => {
     expect(native.onCreated).toHaveBeenCalledTimes(1);
     expect(native.onApplied).toHaveBeenCalledWith(created);
     expect(post).toHaveBeenCalledWith(
-      '/ontologies/created-id/library/fhir/preview',
+      '/ontologies/created-id/library/fhir/install',
       { moduleIds: ['core'] }
     );
     expect(
@@ -464,7 +548,7 @@ describe('OntologyLibrary native installation', () => {
     await openInstalledPack();
 
     expect(post).toHaveBeenCalledWith(
-      '/ontologies/created-id/library/fhir/preview',
+      '/ontologies/created-id/library/fhir/install',
       { moduleIds: ['core', 'clinical'] }
     );
   });
@@ -503,8 +587,12 @@ describe('OntologyLibrary native installation', () => {
     ).toHaveTextContent('3');
   });
 
-  it('installs into an explicitly chosen owner and completes no-op without a draft', async () => {
-    post.mockResolvedValue({ data: { ...preview, operations: [] } });
+  it('installs into an explicitly chosen owner and completes a job with nothing to apply as unchanged', async () => {
+    post.mockImplementation(async (url, data) =>
+      url.endsWith('/install')
+        ? { data: installJob({ total: 0, progress: 0, memberCount: 0 }) }
+        : respond(url, data)
+    );
     const native = nativeProps();
     renderWithQueryClient(<OntologyLibrary native={native} />);
     await openPack();
@@ -515,7 +603,7 @@ describe('OntologyLibrary native installation', () => {
 
     expect(native.onOpenOntology).not.toHaveBeenCalled();
     expect(creates()).toHaveLength(0);
-    expect(drafts()).toHaveLength(0);
+    expect(installs()).toHaveLength(1);
     expect(native.onApplied).not.toHaveBeenCalled();
   });
 
@@ -558,7 +646,7 @@ describe('OntologyLibrary native installation', () => {
     );
 
     expect(creates()).toHaveLength(1);
-    expect(drafts()).toHaveLength(1);
+    expect(installs()).toHaveLength(1);
   });
 
   it.each([
@@ -576,7 +664,7 @@ describe('OntologyLibrary native installation', () => {
         screen.getByTestId('ontology-library-native-install')
       ).toBeDisabled();
       expect(
-        post.mock.calls.filter(([url]) => !String(url).endsWith('/review'))
+        post.mock.calls.filter(([url]) => !String(url).endsWith('/summary'))
       ).toHaveLength(0);
     }
   );
@@ -591,7 +679,7 @@ describe('OntologyLibrary native installation', () => {
     expect(creates()).toHaveLength(1);
     expect(
       post.mock.calls.some(
-        ([url]) => url.includes('/library/') && !url.endsWith('/review')
+        ([url]) => url.includes('/library/') && !url.endsWith('/summary')
       )
     ).toBe(false);
     expect(screen.getByTestId('ontology-library-close')).toBeDisabled();
@@ -643,7 +731,7 @@ describe('OntologyLibrary native installation', () => {
         return sampleResponse();
       }
 
-      return { data: url.startsWith('/ontologies/name/') ? created : draft };
+      return { data: url.startsWith('/ontologies/name/') ? created : {} };
     });
     const native = nativeProps();
     renderWithQueryClient(<OntologyLibrary native={native} />);
@@ -678,7 +766,7 @@ describe('OntologyLibrary native installation', () => {
         return { data: created };
       }
 
-      return { data: url === '/ontologyPacks' ? { packs: [pack] } : draft };
+      return { data: url === '/ontologyPacks' ? { packs: [pack] } : {} };
     });
     renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
     await openPack();
@@ -697,16 +785,16 @@ describe('OntologyLibrary native installation', () => {
     await openInstalledPack();
 
     expect(creates()).toHaveLength(1);
-    expect(drafts()).toHaveLength(1);
+    expect(installs()).toHaveLength(1);
   });
 
-  it('keeps the created target on preview failure and retries its selected modules', async () => {
-    let failPreview = true;
+  it('keeps the created target when starting the job fails and starts it again on retry', async () => {
+    let failStart = true;
     post.mockImplementation(async (url, data) => {
-      if (url.endsWith('/preview') && failPreview) {
-        failPreview = false;
+      if (url.endsWith('/install') && failStart) {
+        failStart = false;
 
-        throw new Error('preview failed');
+        throw new Error('install could not start');
       }
 
       return respond(url, data);
@@ -723,17 +811,22 @@ describe('OntologyLibrary native installation', () => {
     await openInstalledPack();
 
     expect(creates()).toHaveLength(1);
-    expect(drafts()).toHaveLength(1);
+    expect(installs()).toHaveLength(2);
   });
 
-  it('retains the same target and draft after a failed application', async () => {
-    let failApply = true;
+  it('shows the failure of a job and starts a new job for the same target on retry', async () => {
+    let failJob = true;
     post.mockImplementation(async (url, data) => {
-      if (url.endsWith('/apply') && failApply) {
-        failApply = false;
+      if (url.endsWith('/install') && failJob) {
+        failJob = false;
 
         return {
-          data: { ...draft, state: OntologyChangeSetState.ApplyFailed },
+          data: installJob({
+            status: Status.Failed,
+            progress: 0,
+            membersApplied: 0,
+            error: 'Slice 1 of 1 did not apply',
+          }),
         };
       }
 
@@ -744,13 +837,111 @@ describe('OntologyLibrary native installation', () => {
     await install();
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'server.unexpected-error'
+      'Slice 1 of 1 did not apply'
     );
 
     await install();
     await openInstalledPack();
 
     expect(creates()).toHaveLength(1);
-    expect(drafts()).toHaveLength(1);
+    expect(installs()).toHaveLength(2);
+  });
+
+  it('follows a running job to completion and reports its progress', async () => {
+    post.mockImplementation(async (url, data) =>
+      url.endsWith('/install')
+        ? {
+            data: installJob({
+              status: Status.Running,
+              total: 4,
+              progress: 1,
+              membersApplied: 1000,
+              memberCount: 3800,
+            }),
+          }
+        : respond(url, data)
+    );
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [pack], installations: [] } };
+      }
+      if (url.includes('/sample')) {
+        return sampleResponse();
+      }
+      if (url === '/ontologies/created-id/library/jobs/7') {
+        return { data: installJob({ total: 4, progress: 4 }) };
+      }
+
+      return { data: created };
+    });
+    const native = nativeProps();
+    renderWithQueryClient(<OntologyLibrary native={native} />);
+    await openPack();
+    await install();
+
+    expect(
+      await screen.findByTestId('ontology-library-install-progress')
+    ).toHaveTextContent('message.ontology-library-install-progress');
+
+    await waitFor(
+      () => expect(native.onApplied).toHaveBeenCalledWith(created),
+      {
+        timeout: 4000,
+      }
+    );
+  });
+
+  it('cancels a running job and offers to continue it', async () => {
+    const running = installJob({
+      status: Status.Running,
+      total: 4,
+      progress: 1,
+    });
+    post.mockImplementation(async (url, data) =>
+      url.endsWith('/install') ? { data: running } : respond(url, data)
+    );
+    mocked(APIClient.put).mockResolvedValue({
+      data: installJob({ status: Status.Cancelled, total: 4, progress: 1 }),
+    });
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [pack], installations: [] } };
+      }
+      if (url.includes('/sample')) {
+        return sampleResponse();
+      }
+      if (url === '/ontologies/created-id/library/jobs/7') {
+        return {
+          data: installJob({
+            status: Status.Cancelled,
+            total: 4,
+            progress: 1,
+          }),
+        };
+      }
+
+      return { data: created };
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await openPack();
+    await install();
+    const cancel = await screen.findByTestId('ontology-library-install-cancel');
+    await act(async () => {
+      fireEvent.click(cancel);
+    });
+    await waitFor(() => expect(mocked(APIClient.put)).toHaveBeenCalled());
+
+    await untilRendered(() =>
+      expect(
+        screen.getByText('message.ontology-library-install-cancelled')
+      ).toBeVisible()
+    );
+
+    expect(mocked(APIClient.put)).toHaveBeenCalledWith(
+      '/ontologies/created-id/library/jobs/7/cancel'
+    );
+    expect(
+      screen.getByTestId('ontology-library-native-install')
+    ).toHaveTextContent('label.retry');
   });
 });

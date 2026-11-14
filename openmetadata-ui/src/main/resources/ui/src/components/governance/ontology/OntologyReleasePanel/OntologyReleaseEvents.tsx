@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { ApprovalBasis } from '../../../../generated/type/ontologyReleaseEvent';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import Loader from '../../../common/Loader/Loader';
 
 const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
   const { t } = useTranslation();
@@ -48,12 +49,14 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
 
   return (
     <Box direction="col" gap={2}>
-      <Typography as="h4" size="text-sm" weight="semibold">
+      <Typography
+        as="h4"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
         {t('label.release-events')}
       </Typography>
-      {events.isPending && (
-        <Typography role="status">{t('label.loading')}</Typography>
-      )}
+      {events.isPending && <Loader size="small" />}
       {events.isError && (
         <Alert variant="error">
           {t('message.ontology-review-unavailable')}
@@ -114,7 +117,7 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
           isLoading={events.isFetchingNextPage}
           size="sm"
           onPress={() => void events.fetchNextPage()}>
-          {t('label.load-more')}
+          {t('label.load-more-lowercase')}
         </Button>
       )}
     </Box>

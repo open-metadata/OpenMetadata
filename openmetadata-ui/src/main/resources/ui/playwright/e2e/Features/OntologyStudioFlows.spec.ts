@@ -34,6 +34,7 @@ import {
   findEmptyCanvasPoint,
   openOntologyInStudio,
   openPageAs,
+  openReleaseHistory,
   readNodePositions,
   removeFlowOntologies,
   STUDIO_PATH,
@@ -318,6 +319,11 @@ test.describe(
 
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Toolbar');
+          // The new concept opens in the inspector, which narrows the canvas; at 1280px
+          // in AI mode no point is left clear of the nodes until it closes.
+          const inspector = page.getByTestId('ontology-concept-inspector');
+          await inspector.getByRole('button', { name: 'Close' }).click();
+          await expect(inspector).toHaveCount(0);
 
           // The graph re-renders after the first concept lands; a double-click in that window is
           // dropped, so re-measure and retry until the drawer opens.
@@ -331,6 +337,9 @@ test.describe(
           await addConceptFromDrawer(page, 'From Canvas');
 
           await page.getByTestId('submode-tab-definitions').click();
+          await page
+            .getByRole('tab', { name: 'Concepts', exact: true })
+            .click();
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Term Tab');
 
@@ -389,7 +398,6 @@ test.describe(
           .getByRole('textbox', { name: 'Description' });
         const startEditing = async (id: string, text: string) => {
           await clickGraphNode(page, id);
-          await page.getByTestId('ontology-concept-edit').click();
           await description.fill(text);
         };
         try {
@@ -402,8 +410,13 @@ test.describe(
           await attachStudioShot(page, testInfo, `p1-guard-${mode}`);
           await answer('Cancel');
           await expect(description).toHaveValue('Unsaved first');
+          // The press outside the drawer asks first; Discard only closes the drawer.
           await clickGraphNode(page, second.id);
           await answer('Discard');
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
+          await clickGraphNode(page, second.id);
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText('Second');
@@ -421,10 +434,10 @@ test.describe(
 
           await page.getByTestId('mode-tab-edit').click();
           await startEditing(first.id, 'Unsaved third');
-          await page.getByTestId('ontology-concept-authoring-close').click();
+          await page.getByTestId('ontology-concept-close').click();
           await answer('Cancel');
           await expect(description).toHaveValue('Unsaved third');
-          await page.getByTestId('ontology-concept-authoring-close').click();
+          await page.getByTestId('ontology-concept-close').click();
           await answer('Discard');
           await expect(page.getByTestId('ontology-concept-editor')).toHaveCount(
             0
@@ -530,7 +543,8 @@ test.describe(
     const reviewNow = async (page: Page, ontology: Ontology) => {
       await openOntologyInStudio(page, ontology.id);
       await page
-        .getByRole('button', { name: 'Review now', exact: true })
+        .getByTestId(/^ontology-(open-reviews|review)-banner$/)
+        .getByRole('button', { name: 'Review', exact: true })
         .click();
       await expect(page.getByTestId('ontology-task-detail')).toBeVisible();
     };
@@ -584,7 +598,7 @@ test.describe(
           await page.getByTestId('ontology-version-published').click();
           await expect(page).toHaveURL(/version=published/);
           await expect(
-            page.getByTestId('ontology-release-history-trigger')
+            page.getByTestId('ontology-version-published')
           ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
@@ -698,7 +712,7 @@ test.describe(
           await author.getByTestId('mode-tab-view').click();
           await author.getByTestId('ontology-version-published').click();
           await expect(
-            author.getByTestId('ontology-release-history-trigger')
+            author.getByTestId('ontology-version-published')
           ).toContainText(`v${release.semanticVersion}`);
           await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
         } finally {
@@ -714,7 +728,6 @@ test.describe(
     ) => {
       await page.getByTestId('submode-tab-tree').click();
       await page.getByTestId(`ontology-tree-term-${conceptId}`).click();
-      await page.getByTestId('ontology-concept-edit').click();
       await page
         .getByTestId('ontology-concept-editor')
         .getByRole('textbox', { name: 'Description' })
@@ -973,9 +986,13 @@ test.describe(
 
           await useMode(page, mode);
           await openOntologyInStudio(page, ontology.id);
-          await page.getByTestId('ontology-release-history-trigger').click();
+          await openReleaseHistory(page);
           await expect(page.getByTestId('ontology-release-row')).toHaveCount(2);
 
+          // AI mode keeps Compare on its own screen behind the history toolbar.
+          if (mode === 'ai') {
+            await page.getByTestId('ontology-release-compare-open').click();
+          }
           await page
             .getByRole('button', { name: 'From version', exact: true })
             .click();
@@ -995,6 +1012,9 @@ test.describe(
           );
           await attachStudioShot(page, testInfo, `p1-history-compare-${mode}`);
 
+          if (mode === 'ai') {
+            await page.getByTestId('ontology-release-compare-back').click();
+          }
           await page.getByTestId(`ontology-release-select-${first.id}`).click();
           const activation = page.waitForResponse(isActivation(ontology.id));
           await page.getByTestId('ontology-rollback-release').click();
@@ -1011,7 +1031,7 @@ test.describe(
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('ontology-version-published').click();
           await expect(
-            page.getByTestId('ontology-release-history-trigger')
+            page.getByTestId('ontology-version-published')
           ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
@@ -1062,7 +1082,10 @@ test.describe(
             }
           }
           for (const concept of [concepts[0], concepts[1]]) {
-            await rowOf(concept.id).click();
+            // The open drawer covers the right of the row; its name sits clear of it.
+            await rowOf(concept.id)
+              .getByText(concept.name, { exact: true })
+              .click();
             await expect(inspector).toContainText(concept.name);
             await expect(page).toHaveURL(
               new RegExp(`[?&]concept=${concept.id}(&|$)`)

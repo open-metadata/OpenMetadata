@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import { Format } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import {
+  Format,
+  Kind,
+  Status,
+} from '../../../../generated/api/data/nativeOntologyImportSummary';
+import {
+  importSummaryParts,
   INITIAL_NATIVE_IMPORT_STATE,
   landOnImportedOntology,
   nativeImportOntologyRequest,
   nativeImportReducer,
-  nativeImportStep,
 } from './OntologyNativeImportPanel.utils';
 
 const summary = {
@@ -35,23 +39,30 @@ const summary = {
 };
 
 describe('nativeImportReducer', () => {
-  it('moves from drop to parse to import as the file is chosen and parsed', () => {
-    let state = INITIAL_NATIVE_IMPORT_STATE;
-
-    expect(nativeImportStep(state)).toBe('drop');
-
-    state = nativeImportReducer(state, {
+  it('keeps the file name and size, and forgets both when the file is removed', () => {
+    let state = nativeImportReducer(INITIAL_NATIVE_IMPORT_STATE, {
       type: 'fileChosen',
       token: 1,
       fileName: 'a.ttl',
+      fileSize: 352,
     });
 
-    expect(nativeImportStep(state)).toBe('parse');
+    expect(state).toMatchObject({ fileName: 'a.ttl', fileSize: 352 });
 
     state = nativeImportReducer(state, { type: 'parseStarted', token: 2 });
     state = nativeImportReducer(state, { type: 'parsed', parseId: 2, summary });
 
-    expect(nativeImportStep(state)).toBe('import');
+    expect(state.parse.kind).toBe('ready');
+
+    state = nativeImportReducer(state, { type: 'fileCleared', token: 3 });
+
+    expect(state.fileName).toBeUndefined();
+    expect(state.fileSize).toBeUndefined();
+    expect(state.detection).toEqual({ kind: 'idle' });
+    expect(state.parse).toEqual({ kind: 'idle' });
+    expect(
+      nativeImportReducer(state, { type: 'parsed', parseId: 2, summary }).parse
+    ).toEqual({ kind: 'idle' });
   });
 
   it('drops the earlier preview and ignores its late answer when a replacement file is rejected', () => {
@@ -72,7 +83,6 @@ describe('nativeImportReducer', () => {
     expect(state.parse).toEqual({ kind: 'idle' });
     expect(state.fileName).toBeUndefined();
     expect(state.detection).toEqual({ kind: 'failed', message: 'too big' });
-    expect(nativeImportStep(state)).toBe('drop');
 
     expect(
       nativeImportReducer(state, { type: 'parsed', parseId: 2, summary }).parse
@@ -146,6 +156,57 @@ describe('nativeImportReducer', () => {
 
     expect(state.parse).toEqual({ kind: 'idle' });
     expect(state.detection).toEqual({ kind: 'ready', format: 'turtle' });
+  });
+});
+
+describe('importSummaryParts', () => {
+  const counts = {
+    ...summary.counts,
+    newConcepts: 42,
+    updatedConcepts: 2,
+    newProperties: 5,
+    updatedProperties: 1,
+    newRelations: 37,
+    newMappings: 12,
+  };
+  const item = (id: string, kind: Kind, status = Status.New) => ({
+    id,
+    kind,
+    label: id,
+    status,
+    conceptIds: [],
+  });
+
+  it('falls back to the dry-run counts when the server lists no items', () => {
+    expect(importSummaryParts({ ...summary, counts }, new Set())).toEqual([
+      { part: 'new-concept', count: 42 },
+      { part: 'updated-concept', count: 2 },
+      { part: 'property', count: 6 },
+      { part: 'relationship', count: 37 },
+      { part: 'mapping', count: 12 },
+    ]);
+  });
+
+  it('counts only the ticked items, by kind, and leaves out empty kinds', () => {
+    const items = [
+      item('a', Kind.Concept),
+      item('b', Kind.Concept),
+      item('c', Kind.Concept, Status.Update),
+      item('d', Kind.Relationship),
+      item('e', Kind.Rule),
+      item('f', Kind.Concept, Status.AlreadyExists),
+    ];
+
+    expect(
+      importSummaryParts(
+        { ...summary, counts, items },
+        new Set(['a', 'b', 'c', 'd'])
+      )
+    ).toEqual([
+      { part: 'new-concept', count: 2 },
+      { part: 'updated-concept', count: 1 },
+      { part: 'relationship', count: 1 },
+    ]);
   });
 });
 

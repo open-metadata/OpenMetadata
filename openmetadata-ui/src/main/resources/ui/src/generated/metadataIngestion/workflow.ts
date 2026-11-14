@@ -619,7 +619,8 @@ export interface AirflowConnectionObject {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -1225,10 +1226,16 @@ export interface AirflowConnectionObject {
      */
     spaceUUID?: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
@@ -1241,6 +1248,16 @@ export interface AirflowConnectionObject {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      *
@@ -6430,6 +6447,11 @@ export interface CollateAIAppConfig {
      */
     resources?: Resource;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -6441,6 +6463,13 @@ export interface CollateAIAppConfig {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -7475,6 +7504,17 @@ export interface BulkIndexOverrides {
 export enum TranslogDurability {
     Async = "async",
     Request = "request",
+}
+
+/**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
 }
 
 /**

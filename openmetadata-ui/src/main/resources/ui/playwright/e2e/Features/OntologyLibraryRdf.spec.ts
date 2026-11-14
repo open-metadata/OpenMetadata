@@ -20,16 +20,16 @@ import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { navigateToOntologyStudio } from '../../utils/ontologyStudio';
 
-const TARGET_GLOSSARY = `pw_fibo_${uuid().replaceAll('-', '')}`;
-const FIBO_VERSION = '2025Q1-om1';
+const TARGET_GLOSSARY = `pw_isa95_${uuid().replaceAll('-', '')}`;
+const ISA95_VERSION = '2025Q1-om1';
 
 const isInstallResult = (value: unknown): value is OntologyPackInstallResult =>
   typeof value === 'object' &&
   value !== null &&
   'packId' in value &&
-  value.packId === 'fibo' &&
+  value.packId === 'isa-95' &&
   'version' in value &&
-  value.version === FIBO_VERSION &&
+  value.version === ISA95_VERSION &&
   'moduleIds' in value &&
   Array.isArray(value.moduleIds);
 
@@ -77,7 +77,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('imports a dependency-aware FIBO vocabulary and opens its glossary graph', async ({
+  test('imports the ISA-95 starter into a glossary and opens its graph', async ({
     browser,
   }) => {
     test.setTimeout(EXTENDED_TEST_TIMEOUT);
@@ -91,32 +91,20 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
 
       await expect(page.getByTestId('ontology-pack-catalogue')).toBeVisible();
       await expect(
-        page.getByTestId('ontology-pack-details-fibo')
+        page.getByTestId('ontology-pack-details-dcat')
       ).toBeVisible();
       await expect(
         page.getByTestId('ontology-pack-details-isa-95')
       ).toBeVisible();
 
-      await page.getByTestId('ontology-pack-details-fibo').click();
+      await page.getByTestId('ontology-pack-details-isa-95').click();
       await expect(page.getByTestId('ontology-pack-detail')).toBeVisible();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '8 Concepts'
+        '9 Concepts'
       );
       await expect(
         page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('6 Relations');
-
-      await page.getByTestId('ontology-module-foundations').click();
-      await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '0 Concepts'
-      );
-      await page.getByTestId('ontology-module-business-entities').click();
-      await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '8 Concepts'
-      );
-      await expect(
-        page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('6 Relations');
+      ).toHaveText('7 Relations');
 
       await page
         .getByTestId('ontology-pack-target-glossary')
@@ -125,12 +113,12 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
       await page.getByTestId('ontology-pack-dry-run').click();
       await expect(page.getByText('Dry run completed')).toBeVisible();
       await expect(
-        page.getByText('8 concepts and 6 relationships')
+        page.getByText('9 concepts and 7 relationships')
       ).toBeVisible();
 
       const installResponsePromise = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/ontologyPacks/fibo/install') &&
+          response.url().includes('/api/v1/ontologyPacks/isa-95/install') &&
           response.request().method() === 'POST'
       );
       await page.getByTestId('ontology-pack-install').click();
@@ -144,13 +132,13 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
         throw new Error('Ontology pack install response is not valid');
       }
 
-      expect(installBody.moduleIds).toHaveLength(2);
+      expect(installBody.moduleIds).toHaveLength(1);
       expect(installBody).toMatchObject({
         targetGlossaryName: TARGET_GLOSSARY,
         dryRun: false,
-        conceptCount: 8,
-        relationshipCount: 6,
-        importResults: [{ termsCreated: 8 }],
+        conceptCount: 9,
+        relationshipCount: 7,
+        importResults: [{ termsCreated: 9 }],
       });
       expect(installBody).not.toHaveProperty('installation');
       await expect(

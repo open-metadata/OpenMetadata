@@ -1,11 +1,17 @@
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.exception.BadRequestException;
 
 class SafeRdfModelParserTest {
@@ -134,6 +140,35 @@ class SafeRdfModelParserTest {
                 RdfSerializationFormat.TURTLE));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"", "  ", "\n\t"})
+  void reportsEmptyRdfAsEmptyNotAsTooLarge(final String empty) {
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class, () -> parser.parse(empty, RdfSerializationFormat.TURTLE));
+    assertEquals("Native ontology RDF is empty", exception.getMessage());
+  }
+
+  @Test
+  void measuresTheLimitInUtf8BytesAtEveryBound() {
+    // "é" is 2 bytes and the emoji 4 bytes (2 UTF-16 units), so characters and bytes differ.
+    assertDoesNotThrow(() -> SafeRdfModelParser.requireContent("ééé", 6, "empty", "large"));
+    assertEquals(
+        "large",
+        assertThrows(
+                BadRequestException.class,
+                () -> SafeRdfModelParser.requireContent("éééé", 6, "empty", "large"))
+            .getMessage());
+    assertDoesNotThrow(() -> SafeRdfModelParser.requireContent("😀😀", 8, "empty", "large"));
+    assertThrows(
+        BadRequestException.class,
+        () -> SafeRdfModelParser.requireContent("😀😀", 7, "empty", "large"));
+    assertThrows(
+        BadRequestException.class,
+        () -> SafeRdfModelParser.requireContent("abcdefg", 6, "empty", "large"));
+    assertDoesNotThrow(() -> SafeRdfModelParser.requireContent("ab", 6, "empty", "large"));
+  }
+
   @Test
   void rejectsRdfBeyondTheSourceSizeLimit() {
     final String oversized = "x".repeat(SafeRdfModelParser.MAX_INPUT_BYTES + 1);
@@ -142,5 +177,72 @@ class SafeRdfModelParserTest {
             BadRequestException.class,
             () -> parser.parse(oversized, RdfSerializationFormat.TURTLE));
     assertEquals("Native ontology RDF must contain at most 10 MiB of data", exception.getMessage());
+  }
+
+  @Test
+  void trustedParsingAcceptsChecksummedContentBeyondTheUploadLimits() {
+    final String large = triples(250_000);
+    assertTrue(large.length() > SafeRdfModelParser.MAX_INPUT_BYTES);
+    assertThrows(
+        BadRequestException.class, () -> parser.parse(large, RdfSerializationFormat.N_TRIPLES));
+
+    final var model =
+        parser.parseTrusted(large, RdfSerializationFormat.N_TRIPLES, DigestUtils.sha256Hex(large));
+    try {
+      assertEquals(250_000, model.size());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void trustedParsingRefusesContentThatDoesNotMatchItsChecksum() {
+    final String data = triples(3);
+
+    final IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                parser.parseTrusted(
+                    data, RdfSerializationFormat.N_TRIPLES, DigestUtils.sha256Hex("other")));
+    assertEquals("Bundled ontology content does not match its checksum", exception.getMessage());
+    assertThrows(
+        IllegalStateException.class,
+        () -> parser.parseTrusted(data, RdfSerializationFormat.N_TRIPLES, null));
+  }
+
+  @Test
+  void trustedParsingStillRefusesRelativeIrisDoctypesAndOversizedBundles() {
+    final String relative = "<relative> <https://example.org/p> <https://example.org/o> .";
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            parser.parseTrusted(
+                relative, RdfSerializationFormat.TURTLE, DigestUtils.sha256Hex(relative)));
+    final String doctype =
+        "<!DOCTYPE rdf:RDF [<!ENTITY xxe SYSTEM 'file:///etc/passwd'>]><rdf:RDF/>";
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            parser.parseTrusted(
+                doctype, RdfSerializationFormat.RDF_XML, DigestUtils.sha256Hex(doctype)));
+    final String oversized = "x".repeat(SafeRdfModelParser.TRUSTED_MAX_INPUT_BYTES + 1);
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                parser.parseTrusted(
+                    oversized, RdfSerializationFormat.TURTLE, DigestUtils.sha256Hex(oversized)));
+    assertEquals(
+        "Bundled ontology RDF must contain at most 64 MiB of data", exception.getMessage());
+  }
+
+  private static String triples(final int count) {
+    return IntStream.range(0, count)
+        .mapToObj(
+            index ->
+                "<https://example.org/subject/%d> <https://example.org/predicate> \"value-%d\" ."
+                    .formatted(index, index))
+        .collect(Collectors.joining("\n"));
   }
 }

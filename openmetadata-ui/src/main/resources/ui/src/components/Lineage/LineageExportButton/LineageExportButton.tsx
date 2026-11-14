@@ -20,7 +20,6 @@ import {
 } from '../../../constants/Export.constants';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getLineagePngExportOptions } from '../../../utils/CanvasUtils';
-import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 
 interface LineageExportButtonProps {
@@ -40,7 +39,8 @@ const LineageExportButton = ({ size }: LineageExportButtonProps) => {
     const { nodes, edges } = useLineageStore.getState();
 
     showModal({
-      name: `${t('label.lineage')}_${getCurrentISODate()}`,
+      // The export provider appends the date itself.
+      name: t('label.lineage'),
       title: t('label.lineage'),
       exportTypes: [ExportTypes.PNG],
       documentSelector: LINEAGE_EXPORT_SELECTOR,

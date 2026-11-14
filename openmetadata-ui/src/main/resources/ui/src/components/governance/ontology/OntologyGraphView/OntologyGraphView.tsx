@@ -24,10 +24,12 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import { Cube01, XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
+import classNames from 'classnames';
 import {
+  ComponentProps,
   KeyboardEvent,
   lazy,
   Suspense,
@@ -76,7 +78,10 @@ import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
   buildNativeRelationGroups,
+  buildObjectPropertyRequest,
+  ConceptPropertyInput,
   findNativeRelationTypeByLabel,
+  findNativeRelationTypeByPhrase,
   MAX_RELATIONSHIP_TYPE_PAGES,
   NativeRelationStep,
   NativeRelationType,
@@ -97,7 +102,6 @@ import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
   buildReusePropertyPatch,
-  DataPropertyInput,
   getBindableConceptProperties,
   OntologyModelRelation,
   OntologyStudioModel,
@@ -106,6 +110,7 @@ import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUnd
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
@@ -131,19 +136,25 @@ import {
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import {
   buildConflictHighlight,
+  conflictEdgeKey,
   ConflictHighlight,
+  makeReadableViolationMessage,
 } from '../../../OntologyExplorer/utils/conflictHighlight';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
-import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
+import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
-import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
+import OntologyRelationDetail, {
+  OntologyRelationStatus,
+} from '../OntologyRelationControls/OntologyRelationDetail';
+import OntologyConceptPicker from './OntologyConceptPicker';
 import OntologyConceptSearch from './OntologyConceptSearch';
+import { buildOntologyConflicts } from './OntologyConflicts.utils';
 import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
@@ -152,6 +163,7 @@ import {
   AI_GRAPH_BACKDROP_CLASS,
   AI_GRAPH_CONTROLS_CLASS,
 } from './OntologyGraphView.constants';
+import OntologyTreeConflicts from './OntologyTreeConflicts';
 
 const OntologyGraphG6 = lazy(
   () => import('../../../OntologyExplorer/OntologyGraphG6')
@@ -175,8 +187,13 @@ const NO_VIOLATIONS: OntologyProfileViolation[] = [];
 const writeDataProperty = async (
   model: OntologyStudioModel,
   concept: OntologyConcept,
-  input: DataPropertyInput
+  input: ConceptPropertyInput
 ) => {
+  if (input.kind === 'object') {
+    return createOntologyProperty(
+      buildObjectPropertyRequest(model, concept, input)
+    );
+  }
   if (!input.reusePropertyIri) {
     return createOntologyProperty(
       buildDataPropertyRequest(model, concept, input)
@@ -434,15 +451,65 @@ const useDraftConcept = (
 ) => {
   const conceptId = editor?.conceptId;
 
-  return useQuery({
+  return useQuery<OntologyConcept>({
     enabled: Boolean(conceptId) && isEditing && !releaseId,
     gcTime: 0,
+    // A refetch after a relation or property write keeps the panel editable, so unsaved field edits survive it.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === conceptId ? previous : undefined,
     queryFn: ({ signal }) =>
       getOntologyConcept(conceptId ?? '', WORKING_CONCEPT_FIELDS, signal),
     queryKey: ['ontology-draft-concept', conceptId, revision],
     retry: false,
     staleTime: 0,
   });
+};
+
+/** Graph and Tree both float the conflicts and health cards, so Validate all stays reachable from either. */
+const showsCanvasCards = (graphMode: string, openPanels: unknown[]) =>
+  graphMode !== 'data' && !openPanels.some(Boolean);
+
+/** The concept whose working copy loads: one being authored, else the selection. */
+const getDraftRequest = (
+  editor: ConceptEditorRequest | undefined,
+  selectedId: string | undefined
+): ConceptEditorRequest | undefined =>
+  editor ?? (selectedId ? { conceptId: selectedId } : undefined);
+
+type InspectorProps = ComponentProps<typeof OntologyConceptInspector>;
+
+interface EditableConceptInspectorProps extends Omit<InspectorProps, 'editor'> {
+  readonly editable: Parameters<typeof useOntologyConceptEditor>[0];
+  /** Edit mode with the concept's working copy loaded: its fields edit in place. */
+  readonly isEditable: boolean;
+}
+
+/**
+ * The concept panel. It stays mounted while the working copy loads, so an add
+ * form the user already opened survives the switch to in-place editing.
+ */
+const EditableConceptInspector = ({
+  editable,
+  isEditable,
+  ...props
+}: EditableConceptInspectorProps) => {
+  const editor = useOntologyConceptEditor(editable);
+  const { reset } = editor;
+  const { isEditing } = props;
+
+  // Leaving Edit discards the in-place edits, so nothing stays marked unsaved in View.
+  useEffect(() => {
+    if (!isEditing) {
+      reset();
+    }
+  }, [isEditing, reset]);
+
+  return (
+    <OntologyConceptInspector
+      {...props}
+      editor={isEditable ? editor : undefined}
+    />
+  );
 };
 
 const OntologyGraphView = ({
@@ -505,7 +572,18 @@ const OntologyGraphView = ({
     ? selectedConceptId
     : localSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
+  // A concept to bring into view once the graph is drawn: Show on graph from the Tree or the Data
+  // view asks before the Model graph exists, so the graph focuses it when it mounts.
+  const [pendingFocusId, setPendingFocusId] = useState<string>();
+  useEffect(() => {
+    if (selectedId) {
+      setPendingFocusId(undefined);
+    }
+  }, [selectedId]);
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string>();
+  // The concept a relationship was opened from, so its panel can lead back there.
+  const [relationBackId, setRelationBackId] = useState<string>();
+  const reportedEdgeId = useRef<string>();
   const [isDeletingConcept, setIsDeletingConcept] = useState(false);
   const guard = useOntologyDraftGuard();
   const { runConfirmed } = useContext(OntologyDraftContext);
@@ -517,10 +595,27 @@ const OntologyGraphView = ({
       }),
     [guard, onSelectedConceptChange]
   );
+  // Link data in the Data view opens this concept's panel in Edit on its data-asset link form.
+  const [linkAssetsConceptId, setLinkAssetsConceptId] = useState<string>();
+  const [dataSelectedAssetId, setDataSelectedAssetId] = useState<string>();
+  const clearLinkAssetsRequest = useCallback(
+    () => setLinkAssetsConceptId(undefined),
+    []
+  );
+  const requestLinkAssets = (conceptId: string) => {
+    setLinkAssetsConceptId(conceptId);
+    if (selectedId !== conceptId) {
+      setSelectedId(conceptId);
+    }
+    if (!isEditing) {
+      onRequestEdit?.(conceptId);
+    }
+  };
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology, releaseId);
+  // Edit mode edits the selected concept in place, so its working copy loads on selection.
   const draftConceptQuery = useDraftConcept(
-    conceptEditor,
+    getDraftRequest(conceptEditor, selectedId),
     isEditing,
     releaseId,
     dataRevision
@@ -535,6 +630,36 @@ const OntologyGraphView = ({
     () => conflictsQuery.data?.violations ?? NO_VIOLATIONS,
     [conflictsQuery.data]
   );
+  const readableViolations = useMemo(() => {
+    const readable = makeReadableViolationMessage(
+      (model?.concepts ?? []).map((concept) => ({
+        name: concept.name,
+        iri: concept.iri,
+        label: getEntityName(concept),
+      }))
+    );
+
+    return conflictViolations.map((violation) => ({
+      ...violation,
+      message: readable(violation.message),
+    }));
+  }, [conflictViolations, model?.concepts]);
+  const conflicts = useMemo(
+    () => buildOntologyConflicts(readableViolations, relations),
+    [readableViolations, relations]
+  );
+  // The concept whose drawer opens with its conflict box expanded, from the canvas Resolve link.
+  const [conflictReviewId, setConflictReviewId] = useState<string>();
+  const treeConflicts = useMemo(() => {
+    const byConcept = new Map<string, string[]>();
+    readableViolations.forEach(({ conceptIds = [], message }) =>
+      conceptIds.forEach((conceptId) =>
+        byConcept.set(conceptId, [...(byConcept.get(conceptId) ?? []), message])
+      )
+    );
+
+    return byConcept;
+  }, [readableViolations]);
   const treeIndex = useMemo(
     () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
@@ -566,16 +691,30 @@ const OntologyGraphView = ({
       graph ? rankConceptMatches(graph.nodes, searchMatchIds, search) : [],
     [graph, search, searchMatchIds]
   );
-  const scope = useMemo(
-    () =>
-      buildStudioGraphScope(graph ?? NO_GRAPH, {
-        seedIds: [
-          ...(selectedId ? [selectedId] : []),
-          ...searchResults.map(({ id }) => id),
-        ],
-      }),
-    [graph, searchResults, selectedId]
-  );
+  // On a graph too large to draw, the concept whose neighbourhood is drawn. It outlives the
+  // selection, so closing the drawer or clicking the canvas keeps the view instead of emptying it.
+  const [focusId, setFocusId] = useState<string>();
+  const scope = useMemo(() => {
+    const focus = focusId ?? selectedId;
+
+    return buildStudioGraphScope(graph ?? NO_GRAPH, {
+      seedIds: [
+        ...(focus ? [focus] : []),
+        ...searchResults.map(({ id }) => id),
+      ],
+    });
+  }, [focusId, graph, searchResults, selectedId]);
+  // A concept selected outside the drawn neighbourhood (Find, Tree, a link) becomes the focus;
+  // one picked inside it does not, so the layout holds still while you explore it.
+  useEffect(() => {
+    if (
+      selectedId &&
+      scope.isFocused &&
+      !scope.graph.nodes.some(({ id }) => id === selectedId)
+    ) {
+      setFocusId(selectedId);
+    }
+  }, [scope, selectedId]);
   const conflictHighlight = useMemo<ConflictHighlight>(
     () => buildConflictHighlight(conflictViolations, scope.graph.edges),
     [conflictViolations, scope.graph.edges]
@@ -679,6 +818,8 @@ const OntologyGraphView = ({
     model?.concepts,
     releaseId
   );
+  // Data shows the selected concept whenever one is selected, so its rights apply there too.
+  const canEditDataBindings = canEditOntology || canEditConcept;
   const selected = model?.concepts.find((concept) => concept.id === selectedId);
   const {
     data: relationTypes = NO_RELATIONSHIP_TYPES,
@@ -744,8 +885,8 @@ const OntologyGraphView = ({
           .filter(({ steps }) => steps.every(canWrite))
           .map(({ type }) => type),
         {
-          core: t('label.core-owl-skos'),
-          custom: t('label.custom-admin-defined'),
+          hierarchy: t('label.hierarchy'),
+          relationships: t('label.relationship-plural'),
         }
       ),
     [canWrite, propertyWrites, t]
@@ -1024,7 +1165,10 @@ const OntologyGraphView = ({
   );
 
   const createDataProperty = useCallback(
-    async (conceptId: string, input: DataPropertyInput): Promise<boolean> => {
+    async (
+      conceptId: string,
+      input: ConceptPropertyInput
+    ): Promise<boolean> => {
       const concept = model?.concepts.find((item) => item.id === conceptId);
       if (!model || !concept || !canCreateProperty) {
         return false;
@@ -1070,9 +1214,35 @@ const OntologyGraphView = ({
       model?.concepts.some((concept) => concept.id === editConceptRequest)
     ),
   ].every(Boolean);
+  // Leaving Edit discards a New concept form (the guard already asked), so it must not
+  // come back when Edit is reopened.
+  useEffect(() => {
+    if (!isEditing) {
+      setConceptEditor(undefined);
+    }
+  }, [isEditing]);
+  const requestedConceptId = model?.concepts.some(
+    (concept) => concept.id === editConceptRequest
+  )
+    ? editConceptRequest
+    : undefined;
+  // A request from outside the graph (a Concepts row) arrives with nothing selected; select it.
+  // The requester already ran the draft guard, so this selection does not ask again.
+  useEffect(() => {
+    if (isEditing && requestedConceptId && selectedId !== requestedConceptId) {
+      runConfirmed(() =>
+        (onSelectedConceptChange ?? setLocalSelectedId)(requestedConceptId)
+      );
+    }
+  }, [
+    isEditing,
+    onSelectedConceptChange,
+    requestedConceptId,
+    runConfirmed,
+    selectedId,
+  ]);
   useEffect(() => {
     if (canOpenRequestedEditor) {
-      setConceptEditor({ conceptId: editConceptRequest });
       onEditConceptRequestHandled?.();
     }
   }, [canOpenRequestedEditor, editConceptRequest, onEditConceptRequestHandled]);
@@ -1101,14 +1271,37 @@ const OntologyGraphView = ({
     runConfirmed,
   ]);
 
-  const dataConcepts = useMemo(
+  const dataConcepts = useMemo(() => {
+    const concepts = model?.concepts ?? [];
+    const nameByIri = new Map(
+      concepts.map((concept) => [concept.iri, getEntityName(concept)])
+    );
+
+    return concepts.map((concept) => ({
+      id: concept.id,
+      name: getEntityName(concept),
+      parentName: nameByIri.get(concept.superClasses?.[0] ?? ''),
+      synonyms: concept.synonyms,
+    }));
+  }, [model?.concepts]);
+  const pickerConcepts = useMemo(() => {
+    const parentById = new Map(
+      dataConcepts.map((concept) => [concept.id, concept.parentName])
+    );
+
+    return (graph?.nodes ?? []).map((node) => ({
+      id: node.id,
+      name: node.label,
+      parentName: parentById.get(node.id),
+    }));
+  }, [dataConcepts, graph?.nodes]);
+
+  const conceptGhost = useMemo(
     () =>
-      (model?.concepts ?? []).map((concept) => ({
-        id: concept.id,
-        name: getEntityName(concept),
-        synonyms: concept.synonyms,
-      })),
-    [model?.concepts]
+      isEditing && conceptEditor?.position && !conceptEditor.conceptId
+        ? { ...conceptEditor.position, label: t('label.new-concept') }
+        : undefined,
+    [conceptEditor, isEditing, t]
   );
 
   const getConceptProperties = useCallback(
@@ -1124,11 +1317,14 @@ const OntologyGraphView = ({
 
   if ([isError, !model].every(Boolean)) {
     return (
-      <Alert variant="error">
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={() => void refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
         {t('server.entity-fetch-error', { entity: t('label.ontology') })}
-        <Button color="secondary" onPress={() => void refetch()}>
-          {t('label.retry')}
-        </Button>
       </Alert>
     );
   }
@@ -1140,6 +1336,7 @@ const OntologyGraphView = ({
     (relation) => relation.key === selectedEdgeKey
   );
   const selectNode = ({ id }: { id: string }) => {
+    setConflictReviewId(undefined);
     setSelectedEdgeKey(undefined);
     graphRef.current?.clearEdgeSelection();
     setSelectedId(id);
@@ -1151,125 +1348,167 @@ const OntologyGraphView = ({
     setSelectedEdgeKey(undefined);
     setConceptEditor({ position });
   };
+  const resolveConflict = (conceptId: string) => {
+    selectNode({ id: conceptId });
+    setConflictReviewId(conceptId);
+  };
+  // All of it behind the discard prompt, so Cancel leaves the drawer, mode and surface as they were.
+  const showConflictOnGraph = (conceptId: string) =>
+    guard(() => {
+      setConflictReviewId(undefined);
+      setSelectedId(undefined);
+      setPendingFocusId(conceptId);
+      changeGraphMode('model');
+      if (surface !== 'graph') {
+        onRequestGraphSurface();
+      }
+      graphRef.current?.focusNode(conceptId);
+    });
+  // Already in Edit, a mode switch would rewrite the URL from stale params and drop the selection.
+  // From View, pass the id so the edit request reselects it after the switch.
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
-    onRequestEdit?.();
+    if (!isEditing) {
+      onRequestEdit?.(id);
+    }
+  };
+  const openRelationFrom = (
+    conceptId: string,
+    relation: OntologyModelRelation
+  ) =>
+    guard(() => {
+      setConceptEditor(undefined);
+      (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+      setRelationBackId(conceptId);
+      setSelectedEdgeKey(relation.key);
+    });
+  const relationStatusOf = (
+    relation: OntologyModelRelation
+  ): OntologyRelationStatus => {
+    if (
+      conflictHighlight.edgeKeys.has(
+        conflictEdgeKey({ from: relation.from.id, to: relation.to.id })
+      )
+    ) {
+      return 'conflict';
+    }
+
+    return conflictsQuery.data ? 'clear' : 'unchecked';
+  };
+  const saveRelationDescription = async (
+    relation: OntologyModelRelation,
+    description: string
+  ) => {
+    if (!relation.axiom) {
+      return false;
+    }
+    try {
+      await patchOntologyAxiom(relation.axiom.id, [
+        { op: 'add', path: '/description', value: description },
+      ]);
+      noteWorkingChange();
+      await refetch();
+
+      return true;
+    } catch (error) {
+      showWriteError(error);
+
+      return false;
+    }
   };
 
   const renderConceptEditor = () => {
-    const listedConcept = model.concepts.find(
-      (concept) => concept.id === conceptEditor?.conceptId
-    );
-    const editingConcept = releaseId ? listedConcept : draftConceptQuery.data;
-
-    if (listedConcept && !editingConcept) {
-      return draftConceptQuery.isError ? (
-        <Typography className="tw:p-5" size="text-sm">
-          {t('server.unexpected-error')}
-        </Typography>
-      ) : (
-        <Loader />
-      );
-    }
-
-    if (!editingConcept) {
-      return (
-        <OntologyNewClassPanel
-          canCreate={canCreateNewClass}
-          canCreateAxiom={canCreateAxiom}
-          canCreateProperty={canCreateProperty}
-          model={model}
-          ontology={ontology}
-          onBeforeCreate={() => {
-            creationPositions.current =
-              graphRef.current?.getNodePositions() ?? {};
-          }}
-          onClose={() => guard(() => setConceptEditor(undefined))}
-          onCreated={async (iri, { keepOpen }) => {
-            const refreshed = await refetch();
-            if (refreshed.error || !refreshed.data) {
-              return false;
-            }
-            const created = refreshed.data.concepts.find((c) => c.iri === iri);
-            if (!created) {
-              return false;
-            }
-            const oldNodes = buildOntologyStudioGraph(
-              refreshed.data
-            ).nodes.filter((n) => n.id !== created.id);
-            const positions = placeNewClass(
-              creationPositions.current ??
-                graphRef.current?.getNodePositions() ??
-                {},
-              oldNodes,
-              created.id
-            );
-            setNodePositions(
-              conceptEditor?.position
-                ? { ...positions, [created.id]: conceptEditor.position }
-                : positions
-            );
-            if (keepOpen) {
-              setConceptEditor({});
-            } else {
-              runConfirmed(() =>
-                (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
-              );
-              setConceptEditor(undefined);
-            }
-            noteWorkingChange();
-
-            return true;
-          }}
-          onLockChange={onAuthoringLockChange}
-          onUndone={() => {
-            void refetch();
-            noteWorkingChange();
-          }}
-        />
-      );
-    }
-
     return (
-      <aside
-        className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
-        data-testid="ontology-concept-authoring">
-        <Box
-          align="center"
-          className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-          gap={2}>
-          <Typography className="tw:flex-1" size="text-sm" weight="semibold">
-            {t('label.edit-entity', { entity: t('label.concept') })}
-          </Typography>
-          <ButtonUtility
-            data-testid="ontology-concept-authoring-close"
-            icon={XClose}
-            size="sm"
-            tooltip={t('label.close')}
-            onClick={() => guard(() => setConceptEditor(undefined))}
-          />
-        </Box>
-        <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
-          <OntologyConceptEditor
-            canEdit={canEditConcept}
-            concept={editingConcept}
-            key={editingConcept.id}
-            ontology={ontology}
-            onSaved={(saved) => {
-              setSelectedId(saved.id);
-              setConceptEditor(undefined);
-              noteWorkingChange();
-              void refetch();
-            }}
-          />
-        </div>
-      </aside>
+      <OntologyNewClassPanel
+        canCreate={canCreateNewClass}
+        canCreateAxiom={canCreateAxiom}
+        canCreateProperty={canCreateProperty}
+        model={model}
+        ontology={ontology}
+        onBeforeCreate={() => {
+          creationPositions.current =
+            graphRef.current?.getNodePositions() ?? {};
+        }}
+        onClose={() => guard(() => setConceptEditor(undefined))}
+        onCreated={async (iri, { keepOpen }) => {
+          const refreshed = await refetch();
+          if (refreshed.error || !refreshed.data) {
+            return false;
+          }
+          const created = refreshed.data.concepts.find((c) => c.iri === iri);
+          if (!created) {
+            return false;
+          }
+          const oldNodes = buildOntologyStudioGraph(
+            refreshed.data
+          ).nodes.filter((n) => n.id !== created.id);
+          const positions = placeNewClass(
+            creationPositions.current ??
+              graphRef.current?.getNodePositions() ??
+              {},
+            oldNodes,
+            created.id
+          );
+          setNodePositions(
+            conceptEditor?.position
+              ? { ...positions, [created.id]: conceptEditor.position }
+              : positions
+          );
+          if (keepOpen) {
+            setConceptEditor({});
+          } else {
+            runConfirmed(() =>
+              (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
+            );
+            setConceptEditor(undefined);
+          }
+          noteWorkingChange();
+
+          return true;
+        }}
+        onLockChange={onAuthoringLockChange}
+        onUndone={() => {
+          void refetch();
+          noteWorkingChange();
+        }}
+      />
     );
   };
+
+  const renderDeleteConceptDialog = () =>
+    isDeletingConcept && selected ? (
+      <OntologyConceptDeleteDialog
+        concept={selected}
+        onCancel={() => setIsDeletingConcept(false)}
+        onDeleted={({ restore }) => {
+          setIsDeletingConcept(false);
+          (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+          noteWorkingChange();
+          void refetch();
+          showUndoToast(
+            t('message.ontology-definition-deleted', {
+              name: selected.displayName ?? selected.name,
+            }),
+            async () => {
+              try {
+                await restore();
+                noteWorkingChange();
+                await refetch();
+              } catch (error) {
+                showWriteError(error);
+              }
+            }
+          );
+        }}
+      />
+    ) : null;
 
   const renderRelationDetail = (selectedRelation: OntologyModelRelation) => {
     return (
       <OntologyRelationDetail
+        backConcept={model.concepts.find(
+          (concept) => concept.id === relationBackId
+        )}
         canCreateRelationType={canCreateRelationType}
         canEdit={isEditing && canCreateAxiom}
         checkType={(typeId) =>
@@ -1283,7 +1522,9 @@ const OntologyGraphView = ({
           )
         }
         groups={relationTypeGroups}
+        key={selectedRelation.key}
         relation={selectedRelation}
+        status={relationStatusOf(selectedRelation)}
         onClose={() => {
           setSelectedEdgeKey(undefined);
           graphRef.current?.clearEdgeSelection();
@@ -1305,17 +1546,50 @@ const OntologyGraphView = ({
           return isChanged;
         }}
         onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+        onSaveDescription={(description) =>
+          saveRelationDescription(selectedRelation, description)
+        }
       />
     );
   };
 
+  const getWorkingConcept = () =>
+    [isEditing, !releaseId, canEditConcept].every(Boolean)
+      ? draftConceptQuery.data
+      : undefined;
+
+  const closeInspector = () => {
+    clearLinkAssetsRequest();
+    setConflictReviewId(undefined);
+    setSelectedId(undefined);
+  };
+
+  const getEditable = (
+    selected: OntologyConcept,
+    workingConcept: OntologyConcept | undefined
+  ) => ({
+    canEdit: [Boolean(workingConcept), canEditConcept].every(Boolean),
+    concept: workingConcept ?? selected,
+    ontology,
+    // Save is the drawer's closing action, like its Cancel and close button.
+    onSaved: () => {
+      noteWorkingChange();
+      void refetch();
+      void draftConceptQuery.refetch();
+      closeInspector();
+    },
+  });
+
   const renderInspector = (
     selected: NonNullable<typeof model>['concepts'][number]
   ) => {
+    const workingConcept = getWorkingConcept();
+
     return (
-      <OntologyConceptInspector
+      <EditableConceptInspector
         canAddProperty={canCreateProperty}
         canAddRelation={canCreateAxiom}
+        canAddRule={canCreateAxiom}
         canCreateRelationType={canCreateRelationType}
         canEditBindings={isEditing && canEditConcept}
         canEditRelations={isEditing && canCreateAxiom}
@@ -1331,46 +1605,55 @@ const OntologyGraphView = ({
           )
         }
         concept={selected}
+        conflicts={conflicts.filter(({ violation }) =>
+          violation.conceptIds?.includes(selected.id)
+        )}
+        editable={getEditable(selected, workingConcept)}
+        findRelationType={(phrase) =>
+          findNativeRelationTypeByPhrase(catalog, phrase)?.id
+        }
+        isConflictReviewOpen={conflictReviewId === selected.id}
+        isEditable={Boolean(workingConcept)}
         isEditing={isEditing}
+        isEditorUnavailable={
+          [isEditing, !releaseId, canEditConcept].every(Boolean) &&
+          draftConceptQuery.isError
+        }
+        isLinkAssetsRequested={linkAssetsConceptId === selected.id}
+        key={selected.id}
         model={model}
         relationTypeGroups={relationTypeGroups}
         relations={relations}
+        selectedAssetId={graphMode === 'data' ? dataSelectedAssetId : undefined}
         onAddProperty={(input) => createDataProperty(selected.id, input)}
         onAddRelation={(targetId, relationType) =>
           createRelation(selected.id, targetId, relationType)
         }
-        onClose={() => setSelectedId(undefined)}
+        onClose={closeInspector}
         onDelete={
           isEditing && canDeleteConcept ? deleteSelectedConcept : undefined
         }
         onDeleteRelation={(relation) => deleteRelation(relation)}
         onEdit={
           canEditConceptByRights
-            ? () => {
-                if (!releaseId) {
-                  setConceptEditor({ conceptId: selected.id });
-                }
-                onRequestEdit?.(selected.id);
-              }
-            : undefined
-        }
-        onEditMappings={
-          isEditing && canEditConcept
-            ? () => setConceptEditor({ conceptId: selected.id })
+            ? () => onRequestEdit?.(selected.id)
             : undefined
         }
         onEditRelation={changeRelationType}
-        onOpenData={() => {
-          onRequestGraphSurface();
-          changeGraphMode('data');
+        onLinkAssetsRequestClosed={clearLinkAssetsRequest}
+        onOpenRelation={(relation) => openRelationFrom(selected.id, relation)}
+        onRuleCreated={() => {
+          noteWorkingChange();
+          void refetch();
         }}
         onSelectConcept={(concept) => setSelectedId(concept.id)}
+        onShowConflictOnGraph={() => showConflictOnGraph(selected.id)}
       />
     );
   };
 
   const renderSidebar = () => {
-    if (conceptEditor && isEditing) {
+    if (conceptEditor && isEditing && !conceptEditor.conceptId) {
       return renderConceptEditor();
     }
 
@@ -1379,41 +1662,56 @@ const OntologyGraphView = ({
     }
 
     if (selected) {
-      return renderInspector(selected);
+      // The delete confirm is a regular page modal, not one scoped to the drawer.
+      return (
+        <>
+          {renderInspector(selected)}
+          {renderDeleteConceptDialog()}
+        </>
+      );
     }
 
-    if (graphMode === 'data') {
+    return null;
+  };
+
+  const conflictConceptLabel = (conceptId: string) => {
+    const concept = model?.concepts.find(
+      (candidate) => candidate.id === conceptId
+    );
+
+    return concept ? getEntityName(concept) : undefined;
+  };
+
+  // Conflicts float top-right under Model / Data; health floats bottom-right.
+  const hasCanvasCards = showsCanvasCards(graphMode, [
+    selected,
+    selectedRelation,
+    conceptEditor,
+  ]);
+
+  const renderCanvasCards = () => {
+    if (!hasCanvasCards) {
       return null;
     }
 
     return (
-      <div
-        className="tw:flex tw:h-full tw:min-h-0 tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden"
-        data-testid="ontology-graph-sidebar">
-        {releaseId ? null : (
+      <>
+        {releaseId || surface === 'tree' ? null : (
           <OntologyConflictsPanel
-            conceptLabel={(conceptId) => {
-              const concept = model?.concepts.find(
-                (candidate) => candidate.id === conceptId
-              );
-
-              return concept ? getEntityName(concept) : undefined;
-            }}
+            conceptLabel={conflictConceptLabel}
+            conflicts={conflicts}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
-            violations={conflictViolations}
-            onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+            onResolve={resolveConflict}
             onValidateAll={() => void conflictsQuery.refetch()}
           />
         )}
-        <div className="tw:min-h-0 tw:flex-1">
-          <OntologyHealthPanel
-            health={health}
-            placement="sidebar"
-            onConnect={canEditOntology ? connectNode : undefined}
-          />
-        </div>
-      </div>
+        <OntologyHealthPanel
+          isRaised
+          health={health}
+          onConnect={canEditOntology ? connectNode : undefined}
+        />
+      </>
     );
   };
 
@@ -1427,14 +1725,16 @@ const OntologyGraphView = ({
         }
         hidden={graphMode !== 'data'}>
         <OntologyNativeDataMode
-          canEditBindings={canEditConcept}
+          canEditBindings={canEditDataBindings}
           concepts={dataConcepts}
           getConceptProperties={getConceptProperties}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}
           revision={dataRevision}
           selectedConceptId={selectedId}
+          onLinkData={canEditDataBindings ? requestLinkAssets : undefined}
           onSelectConcept={setSelectedId}
+          onSelectedAssetChange={setDataSelectedAssetId}
         />
       </div>
     ) : null;
@@ -1466,54 +1766,113 @@ const OntologyGraphView = ({
     );
   };
 
+  // An explicit pick always refocuses, even on a concept already drawn.
+  const pickConcept = (id: string) => {
+    setFocusId(id);
+    selectNode({ id });
+  };
+  const clearFocus = () => {
+    setFocusId(undefined);
+    setSelectedId(undefined);
+  };
+
   const renderScopeNotice = () => {
     if (!scope.isFocused) {
       return null;
     }
-    const message = t(
-      scope.shownCount === 0
-        ? 'message.ontology-graph-too-large'
-        : 'message.ontology-graph-focused',
-      { shown: scope.shownCount, total: scope.totalCount }
-    );
+    // Nothing drawn yet: pick a concept here instead of hunting for Find or Tree.
+    if (scope.shownCount === 0) {
+      return (
+        <div
+          className="tw:absolute tw:inset-0 tw:z-5 tw:flex tw:items-center tw:justify-center tw:p-6"
+          data-testid="ontology-graph-too-large">
+          <NoDataPlaceholder
+            description={t('message.ontology-graph-too-large', {
+              total: scope.totalCount,
+            })}
+            footer={
+              <OntologyConceptPicker
+                concepts={pickerConcepts}
+                onPick={pickConcept}
+              />
+            }
+            icon={Cube01}
+          />
+        </div>
+      );
+    }
 
+    const focus = focusId ?? selectedId;
+
+    // Top left, clear of the concept drawer that opens on the right.
     return (
       <div
-        className={
-          scope.shownCount === 0
-            ? 'tw:absolute tw:inset-0 tw:z-5 tw:flex tw:items-center tw:justify-center tw:p-6'
-            : 'tw:absolute tw:top-16 tw:left-1/2 tw:z-6 tw:w-[min(32rem,calc(100%-2rem))] tw:-translate-x-1/2'
-        }>
-        <Alert data-testid="ontology-graph-focused-notice" variant="brand">
-          {message}
-          {onRequestTreeSurface ? (
-            <Button
-              color="secondary"
-              data-testid="ontology-graph-open-tree"
-              size="sm"
-              onPress={onRequestTreeSurface}>
-              {t('label.open-entity', { entity: t('label.tree') })}
-            </Button>
-          ) : null}
-        </Alert>
+        className={classNames(
+          'tw:absolute tw:left-3.5 tw:z-6 tw:flex tw:max-w-[calc(100%-2rem)] tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:py-1 tw:pr-1 tw:pl-3 tw:shadow-xs',
+          searchSlot ? 'tw:top-3.5' : 'tw:top-16'
+        )}
+        data-testid="ontology-graph-focused-notice">
+        <Typography className="tw:shrink-0" color="secondary" size="text-sm">
+          {t('message.ontology-graph-focused', {
+            shown: scope.shownCount,
+            total: scope.totalCount,
+          })}
+        </Typography>
+        <OntologyConceptPicker
+          concepts={pickerConcepts}
+          label={pickerConcepts.find(({ id }) => id === focus)?.name}
+          onPick={pickConcept}
+        />
+        {onRequestTreeSurface ? (
+          <Button
+            className="tw:shrink-0"
+            color="link-gray"
+            data-testid="ontology-graph-open-tree"
+            size="sm"
+            onPress={onRequestTreeSurface}>
+            {t('label.open-entity', { entity: t('label.tree') })}
+          </Button>
+        ) : null}
+        <ButtonUtility
+          aria-label={t('label.clear')}
+          data-testid="ontology-graph-clear-focus"
+          icon={XClose}
+          size="xs"
+          onPress={clearFocus}
+        />
       </div>
     );
   };
 
+  // On Tree each conflict marks its concept rows; only a failed check gets a strip.
+  const renderTreeConflicts = () =>
+    !releaseId && conflictsQuery.isError ? (
+      <OntologyTreeConflicts onRetry={() => void conflictsQuery.refetch()} />
+    ) : undefined;
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <OntologyTreeView
-          density="compact"
-          emptyMessage={t('label.no-entity-found', {
-            entity: t('label.concept-plural'),
-          })}
-          metrics={metrics}
-          selectedNodeId={selectedId}
-          source={{ kind: 'native', index: treeIndex }}
-          onConnect={canEditOntology ? connectNode : undefined}
-          onSelect={selectNode}
-        />
+        // The tree takes the full width; the floating cards sit on top, as in the design.
+        <div className="tw:h-full" data-testid="ontology-tree-surface">
+          <OntologyTreeView
+            density="compact"
+            emptyMessage={t('label.no-entity-found', {
+              entity: t('label.concept-plural'),
+            })}
+            metrics={metrics}
+            selectedNodeId={selectedId}
+            source={{
+              kind: 'native',
+              conflicts: treeConflicts,
+              index: treeIndex,
+              title: getEntityName(ontology),
+              notice: renderTreeConflicts(),
+            }}
+            onConnect={canEditOntology ? connectNode : undefined}
+            onSelect={selectNode}
+          />
+        </div>
       );
     }
     if (graphMode === 'data') {
@@ -1537,7 +1896,8 @@ const OntologyGraphView = ({
               checkRelation={issueFor}
               conflictEdgeKeys={conflictHighlight.edgeKeys}
               edges={scope.graph.edges}
-              focusNodeId={selectedId}
+              focusNodeId={selectedId ?? pendingFocusId}
+              ghostNode={conceptGhost}
               glossaries={[]}
               glossaryColorMap={{}}
               graphSearchHighlight={searchHighlight}
@@ -1556,10 +1916,17 @@ const OntologyGraphView = ({
                 await createRelation(fromId, toId, relationType);
               }}
               onEdgeClick={(edge) => {
+                // The graph reports its edge selection on every render; only a change is a click,
+                // so a relationship opened from the concept panel is not closed by the next report.
+                if (edge?.id === reportedEdgeId.current) {
+                  return;
+                }
+                reportedEdgeId.current = edge?.id;
                 if (edge?.id) {
                   runConfirmed(() =>
                     (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
                   );
+                  setRelationBackId(undefined);
                   setSelectedEdgeKey(edge.id);
                 } else {
                   setSelectedEdgeKey(undefined);
@@ -1643,19 +2010,6 @@ const OntologyGraphView = ({
       />
     ) : null;
 
-  const renderAddConcept = () =>
-    [canCreateNewClass, Boolean(onRequestCreateConcept), !isEmptyModel].every(
-      Boolean
-    ) ? (
-      <Button
-        className="tw:absolute tw:bottom-4 tw:right-4 tw:z-6"
-        data-testid="ontology-canvas-add-concept"
-        size="sm"
-        onPress={onRequestCreateConcept}>
-        {t('label.add-entity', { entity: t('label.concept') })}
-      </Button>
-    ) : null;
-
   const renderMissingConcept = () =>
     selectedId && !selected ? (
       <div
@@ -1673,13 +2027,14 @@ const OntologyGraphView = ({
   const renderSearch = () => {
     const finder = (
       <OntologyConceptSearch
+        opensUpward={Boolean(searchSlot)}
         results={searchResults}
         value={search}
         onChange={setSearch}
         onOpen={selectNode}
       />
     );
-    if (isAiMode && searchSlot) {
+    if (searchSlot) {
       return createPortal(finder, searchSlot);
     }
 
@@ -1718,39 +2073,13 @@ const OntologyGraphView = ({
         <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
           {renderSearch()}
           {renderMissingConcept()}
-          {renderAddConcept()}
           {renderGraphMode()}
           {renderSurface()}
+          {renderCanvasCards()}
           {renderEmptyCard()}
         </div>
         {renderSidebar()}
         {renderTypeDialog()}
-        {isDeletingConcept && selected ? (
-          <OntologyConceptDeleteDialog
-            concept={selected}
-            onCancel={() => setIsDeletingConcept(false)}
-            onDeleted={({ restore }) => {
-              setIsDeletingConcept(false);
-              (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
-              noteWorkingChange();
-              void refetch();
-              showUndoToast(
-                t('message.ontology-definition-deleted', {
-                  name: selected.displayName ?? selected.name,
-                }),
-                async () => {
-                  try {
-                    await restore();
-                    noteWorkingChange();
-                    await refetch();
-                  } catch (error) {
-                    showWriteError(error);
-                  }
-                }
-              );
-            }}
-          />
-        ) : null}
       </div>
     </RelationWarningContext.Provider>
   );

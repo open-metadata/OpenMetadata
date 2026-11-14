@@ -79,7 +79,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.datacontract.odcs.ODCSExportService;
 import org.openmetadata.service.datacontract.odcs.ODCSImportAnalyzer;
 import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
-import org.openmetadata.service.datacontract.odcs.ODCSLenientReader;
+import org.openmetadata.service.datacontract.odcs.ODCSImportService;
 import org.openmetadata.service.datacontract.odcs.ODCSNativeCustomProperties;
 import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleExporter;
 import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleImporter;
@@ -1436,10 +1436,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response parseODCSYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      JsonNode rootNode = yamlMapper.readTree(yamlContent);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
+      JsonNode rootNode = YAML_MAPPER.readTree(yamlContent);
+      ODCSDataContract odcs = ODCSImportService.readOrReject(YAML_MAPPER, rootNode).contract();
 
       ODCSParseResult result = new ODCSParseResult();
       result.setName(odcs.getName());
@@ -1755,9 +1753,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   private record ODCSImportDocument(ODCSDataContract contract, JsonNode original) {}
 
   private static ODCSImportDocument readODCS(ObjectMapper mapper, String content, String format) {
-    JsonNode original = readTree(mapper, content, format);
-    return new ODCSImportDocument(
-        ODCSLenientReader.readOrReject(mapper, original.deepCopy()), original);
+    ODCSImportService.Document document =
+        ODCSImportService.readOrReject(mapper, readTree(mapper, content, format));
+    return new ODCSImportDocument(document.contract(), document.original());
   }
 
   private static JsonNode readTree(ObjectMapper mapper, String content, String format) {

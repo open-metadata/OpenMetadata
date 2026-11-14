@@ -2,7 +2,10 @@ package org.openmetadata.service.rdf;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.Locale;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -21,12 +24,87 @@ public final class SafeRdfModelParser {
   public static final int MAX_TRIPLES = 100_000;
   public static final long PARSE_NANOS = Duration.ofSeconds(30).toNanos();
 
-  public Model parse(final String data, final RdfSerializationFormat format) {
-    if (data == null
-        || data.isBlank()
-        || data.getBytes(StandardCharsets.UTF_8).length > MAX_INPUT_BYTES) {
-      throw new BadRequestException("Native ontology RDF must contain at most 10 MiB of data");
+  /** A backstop against a corrupt bundle, for content whose checksum was verified. */
+  public static final int TRUSTED_MAX_INPUT_BYTES = 64 * 1024 * 1024;
+
+  public static final int TRUSTED_MAX_TRIPLES = 2_000_000;
+  public static final long TRUSTED_PARSE_NANOS = Duration.ofSeconds(120).toNanos();
+
+  private static final String SHA_256 = "SHA-256";
+  private static final Limits UNTRUSTED =
+      new Limits(
+          MAX_INPUT_BYTES,
+          MAX_TRIPLES,
+          PARSE_NANOS,
+          "Native ontology RDF is empty",
+          "Native ontology RDF must contain at most 10 MiB of data");
+  private static final Limits TRUSTED =
+      new Limits(
+          TRUSTED_MAX_INPUT_BYTES,
+          TRUSTED_MAX_TRIPLES,
+          TRUSTED_PARSE_NANOS,
+          "Bundled ontology RDF is empty",
+          "Bundled ontology RDF must contain at most 64 MiB of data");
+
+  private record Limits(
+      int maxBytes, int maxTriples, long parseNanos, String empty, String tooLarge) {}
+
+  /**
+   * Refuses blank content and content over {@code maxBytes} of UTF-8 with separate messages, so an
+   * empty upload is not reported as too large.
+   */
+  public static void requireContent(
+      final String data, final int maxBytes, final String empty, final String tooLarge) {
+    if (data == null || data.isBlank()) {
+      throw new BadRequestException(empty);
     }
+    if (exceedsUtf8Bytes(data, maxBytes)) {
+      throw new BadRequestException(tooLarge);
+    }
+  }
+
+  // Each UTF-16 unit encodes to one to three UTF-8 bytes, so only lengths between the two bounds
+  // need the encoded copy that a 10 MiB upload would otherwise allocate on every import.
+  private static boolean exceedsUtf8Bytes(final String data, final int maxBytes) {
+    if (data.length() > maxBytes) {
+      return true;
+    }
+    return (long) data.length() * 3 > maxBytes
+        && data.getBytes(StandardCharsets.UTF_8).length > maxBytes;
+  }
+
+  public Model parse(final String data, final RdfSerializationFormat format) {
+    return parse(data, format, UNTRUSTED);
+  }
+
+  /**
+   * Parses bundled content whose checksum the catalogue verified. The size, statement and time
+   * limits that guard user uploads become a large backstop; relative identifiers, named graphs and
+   * DOCTYPE declarations stay refused.
+   */
+  public Model parseTrusted(
+      final String data, final RdfSerializationFormat format, final String expectedSha256) {
+    requireChecksum(data, expectedSha256);
+    return parse(data, format, TRUSTED);
+  }
+
+  private static void requireChecksum(final String data, final String expectedSha256) {
+    final String actual = sha256(data.getBytes(StandardCharsets.UTF_8));
+    if (expectedSha256 == null || !actual.equalsIgnoreCase(expectedSha256)) {
+      throw new IllegalStateException("Bundled ontology content does not match its checksum");
+    }
+  }
+
+  private static String sha256(final byte[] bytes) {
+    try {
+      return HexFormat.of().formatHex(MessageDigest.getInstance(SHA_256).digest(bytes));
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("JVM does not provide SHA-256", exception);
+    }
+  }
+
+  private Model parse(final String data, final RdfSerializationFormat format, final Limits limits) {
+    requireContent(data, limits.maxBytes(), limits.empty(), limits.tooLarge());
     if (format == RdfSerializationFormat.RDF_XML
         && data.toUpperCase(Locale.ROOT).contains("<!DOCTYPE")) {
       throw new BadRequestException("RDF/XML DOCTYPE declarations are not allowed");
@@ -34,9 +112,12 @@ public final class SafeRdfModelParser {
     if (format == RdfSerializationFormat.JSON_LD) {
       return new SafeJsonLdModelParser().parseStrict(data);
     }
-    final Lang lang = format.rdfFormat().getLang();
+    return parseTriples(data, format.rdfFormat().getLang(), limits);
+  }
+
+  private Model parseTriples(final String data, final Lang lang, final Limits limits) {
     final Model model = ModelFactory.createDefaultModel();
-    final long deadline = System.nanoTime() + PARSE_NANOS;
+    final long deadline = System.nanoTime() + limits.parseNanos();
     try {
       RDFParser.fromString(data, lang)
           .resolver(IRIxResolver.create().noBase().resolve(true).allowRelative(false).build())
@@ -46,7 +127,7 @@ public final class SafeRdfModelParser {
 
                 @Override
                 public void triple(final Triple triple) {
-                  if (++count > MAX_TRIPLES || System.nanoTime() >= deadline) {
+                  if (++count > limits.maxTriples() || System.nanoTime() >= deadline) {
                     throw new BadRequestException("Native RDF exceeds its triple or time budget");
                   }
                   requireAbsolute(triple.getSubject());

@@ -28,6 +28,9 @@ import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import {
   findOntologyInQueryPicker,
+  openExportAdvanced,
+  openOntologyTransfer,
+  openReleaseHistory,
   selectOntologyOption,
 } from '../../utils/ontologyStudio';
 
@@ -50,8 +53,11 @@ const expectLoadedNativeLibrary = async (page: Page, responses: Response[]) => {
   await expect(rail).toHaveAttribute('data-library-state', 'ready');
   await expect(rail).toHaveAttribute('aria-busy', 'false');
   await expect(rail).toContainText('Queries');
-  await expect(rail.getByTestId('ontology-query-new')).toHaveText('New Query');
-  await expect(rail).toContainText('Shared queries');
+  await expect(rail.getByTestId('ontology-query-new')).toHaveAttribute(
+    'aria-label',
+    'New query'
+  );
+  await expect(rail).toContainText('Shared');
   await expect(rail).toContainText('My queries');
   const settings: SparqlQuerySettings = await responses[1].json();
   for (const seed of BUNDLED_GLOSSARY_QUERY_TEMPLATES) {
@@ -192,17 +198,22 @@ test.describe(
             'ontology-library-trigger',
             'ontology-import-export-trigger',
             'ontology-publication-trigger',
-            'ontology-tasks-trigger',
           ];
           for (const id of controls) {
             await expect(header.getByTestId(id)).toBeVisible();
           }
-          const isolated = header.getByText('1 Isolated', { exact: true });
-          await expect(isolated).toBeVisible();
+          // AI mode puts Tasks in the row under the header and the isolated count in the health card.
+          const tasks = page
+            .getByTestId('ontology-studio-subbar')
+            .getByTestId('ontology-tasks-trigger');
+          await expect(tasks).toBeVisible();
+          await expect(page.getByTestId('ontology-isolated-count')).toHaveText(
+            '1'
+          );
           const bounds = await header.boundingBox();
           expect(bounds).not.toBeNull();
           const boxes = await Promise.all(
-            [...controls.map((id) => header.getByTestId(id)), isolated].map(
+            [...controls.map((id) => header.getByTestId(id)), tasks].map(
               (control) => control.boundingBox()
             )
           );
@@ -211,7 +222,7 @@ test.describe(
             expect(box?.x).toBeGreaterThanOrEqual(bounds?.x ?? 0);
             expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(924);
           }
-          await page.getByTestId('ontology-release-history-trigger').click();
+          await openReleaseHistory(page);
           await expect(
             page.getByTestId('ontology-publication-tab-releases')
           ).toHaveAttribute('aria-selected', 'true');
@@ -296,11 +307,12 @@ test.describe(
               await expect(shell.getByTestId('mode-tab-query')).toHaveText(
                 'Query'
               );
+              // The header names the Studio in its title; it carries no breadcrumb.
               await expect(
                 shell
                   .getByTestId('ontology-studio-header')
-                  .getByTestId('breadcrumb')
-              ).toContainText('Ontology Studio');
+                  .getByRole('heading', { level: 1 })
+              ).toHaveText('Ontology Studio');
 
               await expectNativeStudioCopy(shell);
               await shell.getByTestId('ontology-scope-menu-trigger').click();
@@ -342,10 +354,14 @@ test.describe(
             await page.getByTestId('ontology-library-close').click();
 
             await shell.getByTestId('ontology-import-export-trigger').click();
+            await page.getByTestId('ontology-export-menu-item').click();
             if (scope === 'aggregate') {
               const target = page.getByTestId('ontology-import-target-picker');
               await expect(target).toContainText('Select Ontology');
-              await expectNativeStudioCopy(page.getByRole('dialog'));
+              // evaluate() does not retry, and the Import / Export menu popover is still a dialog while it animates out.
+              await expectNativeStudioCopy(
+                page.getByRole('dialog', { name: 'Export ontology' })
+              );
               await selectOntologyOption(
                 page,
                 target.getByRole('button'),
@@ -355,13 +371,13 @@ test.describe(
             }
             const transfer = page.getByRole('dialog');
             await expect(transfer).toHaveCount(1);
-            await expect(transfer).toContainText('Import / export ontology');
+            await expect(transfer).toContainText('Export ontology');
             await expect(
-              transfer.getByTestId('ontology-native-export-tab')
-            ).toHaveText('Export');
-            await expect(
-              transfer.getByTestId('ontology-native-import-tab')
-            ).toHaveText('Import');
+              transfer
+                .getByTestId('ontology-export-contents-draft')
+                .getByRole('radio')
+            ).toBeChecked();
+            await openExportAdvanced(page);
             await expect(
               transfer.getByTestId('ontology-export-scope')
             ).toContainText('Current draft');
@@ -370,28 +386,39 @@ test.describe(
             ).toContainText('owl:Ontology');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
-            ).toHaveText('Export');
+            ).toHaveText('Download');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
             ).toBeEnabled();
             await expectNativeStudioCopy(transfer);
-            await transfer.getByTestId('ontology-native-import-tab').click();
-            await expect(
-              transfer.getByTestId('ontology-native-import-file')
-            ).toHaveText('Choose file');
-            await expect(transfer).toContainText(
-              'Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.'
-            );
-            await expect(
-              transfer.getByTestId('ontology-native-import-apply')
-            ).toHaveText('Import');
-            await expect(
-              transfer.getByTestId('ontology-native-import-apply')
-            ).toBeDisabled();
-            await expectNativeStudioCopy(transfer);
             await transfer
               .getByRole('button', { name: 'Close', exact: true })
               .click();
+            await expect(transfer).toHaveCount(0);
+            if (scope !== 'aggregate') {
+              await openOntologyTransfer(page, 'import');
+              const importDialog = page.getByRole('dialog', {
+                name: 'Import into ontology',
+              });
+              await expect(importDialog).toContainText('Import into ontology');
+              await expect(
+                importDialog.getByTestId('ontology-native-import-file')
+              ).toContainText('Click to upload');
+              await expect(importDialog).toContainText(
+                "Add concepts and properties from a file. They land in this ontology as a draft. The active release doesn't change until you publish."
+              );
+              await expect(
+                importDialog.getByTestId('ontology-native-import-apply')
+              ).toHaveText('Import');
+              await expect(
+                importDialog.getByTestId('ontology-native-import-apply')
+              ).toBeDisabled();
+              await expectNativeStudioCopy(importDialog);
+              await importDialog
+                .getByTestId('ontology-native-import-cancel')
+                .click();
+              await expect(importDialog).toHaveCount(0);
+            }
             if (scope === 'aggregate') {
               const libraryResponses = armQueryLibraryResponses(page);
               await (await findOntologyInQueryPicker(page, owner)).click();
@@ -412,6 +439,11 @@ test.describe(
           await expect(
             page.getByTestId('ontology-tree-term-' + leaf.id)
           ).toHaveCount(2);
+          // Collapse and expand before a row opens the drawer, which covers the tree's header.
+          await page.getByTestId('ontology-tree-collapse-all').click();
+          await expect(sharedRows).toHaveCount(0);
+          await page.getByTestId('ontology-tree-expand-all').click();
+          await expect(sharedRows).toHaveCount(2);
           const path = JSON.stringify([owner.id, a.id, shared.id]);
           const selectedPlacement = sharedRows
             .filter({ has: page.locator('[data-testid="tree-expand-btn"]') })
@@ -427,21 +459,28 @@ test.describe(
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText(shared.iri);
-          await page.getByTestId('ontology-tree-collapse-all').click();
-          await expect(sharedRows).toHaveCount(0);
-          await page.getByTestId('ontology-tree-expand-all').click();
-          await expect(sharedRows).toHaveCount(2);
+          // The URL keeps the Tree view; pressing its tab would close the reopened drawer.
+          await expect(page).toHaveURL(/[?&]view=tree(&|$)/);
           await page.reload();
-          await page.getByTestId('submode-tab-tree').click();
           await expect(page.getByRole('row', { selected: true })).toHaveCount(
             1
           );
         });
         await test.step('Return the rail to Health after an empty canvas click', async () => {
+          // Switching surfaces closes the drawer, so Graph is reopened with the concept in the URL.
           await page.getByTestId('submode-tab-graph').click();
           await expect(
             page.getByTestId('ontology-concept-inspector')
-          ).toBeVisible();
+          ).toHaveCount(0);
+          await page.goto(
+            '/governance/ontology?ontology=' +
+              owner.id +
+              '&concept=' +
+              shared.id
+          );
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText(shared.iri);
           await page.locator('.ontology-g6-container').click({
             position: { x: 5, y: 5 },
           });
@@ -460,7 +499,10 @@ test.describe(
           await expect(
             page.getByTestId('ontology-publication-trigger')
           ).toBeDisabled();
+          // The concept drawer covers the header's right, Import / Export included.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-import-export-trigger').click();
+          await page.getByTestId('ontology-import-menu-item').click();
           await expect(
             page.getByTestId('ontology-import-target-picker')
           ).toBeVisible();
@@ -477,7 +519,7 @@ test.describe(
       }
     });
 
-    test('shows three of seven linked assets and opens their Data graph from Tree', async ({
+    test('shows three of seven linked assets and expands the rest in Tree', async ({
       isolatedUserPage: page,
     }) => {
       const api = await getWorkerAdminAPIContext();
@@ -508,12 +550,17 @@ test.describe(
           );
           revision = response.revision;
         }
+        // Pressing the Tree tab would close the concept's drawer, so the URL opens it in Tree.
         await page.goto(
-          '/governance/ontology?ontology=' + owner.id + '&concept=' + concept.id
+          '/governance/ontology?ontology=' +
+            owner.id +
+            '&concept=' +
+            concept.id +
+            '&view=tree'
         );
-        await page.getByTestId('submode-tab-tree').click();
         await test.step('Show the lifecycle, owner and capped asset list', async () => {
           const rail = page.getByTestId('ontology-concept-inspector');
+          await rail.getByTestId('ontology-concept-advanced-toggle').click();
           await expect(
             rail.getByTestId('ontology-concept-lifecycle')
           ).toContainText('Draft');
@@ -541,26 +588,13 @@ test.describe(
                 )
             );
           }
-          await expect(assets.getByTestId('ontology-assets-more')).toHaveText(
-            '+4 more'
-          );
-          await assets.getByTestId('ontology-assets-more').click();
-        });
-        await test.step('Switch both surfaces and retain the selected concept', async () => {
-          await expect(page.getByTestId('submode-tab-graph')).toHaveAttribute(
-            'aria-selected',
-            'true'
-          );
-          await expect(
-            page.getByTestId('ontology-graph-mode-data')
-          ).toHaveAttribute('aria-pressed', 'true');
-          await expect(
-            page.getByTestId('ontology-native-data-graph')
-          ).toBeVisible();
-          await expect(
-            page.getByTestId('ontology-concept-inspector')
-          ).toContainText(concept.iri);
-          await expect(page).toHaveURL(new RegExp('concept=' + concept.id));
+          const more = assets.getByTestId('ontology-assets-more');
+          await expect(more).toHaveText('Show all (7)');
+          await more.click();
+          await expect(assetLinks).toHaveCount(7);
+          await expect(more).toHaveText('Show less');
+          await more.click();
+          await expect(assetLinks).toHaveCount(3);
         });
       } finally {
         await deleteFixtureEntity(

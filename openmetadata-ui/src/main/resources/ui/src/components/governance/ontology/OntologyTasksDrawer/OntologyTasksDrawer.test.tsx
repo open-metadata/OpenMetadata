@@ -28,7 +28,57 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyTasksDrawer from './OntologyTasksDrawer';
+
+// The shared composer wraps a Quill editor jsdom cannot type into; this stand-in keeps its
+// contract: send hands the text to onSave, and a rejected save leaves the draft in place.
+jest.mock('../../../common/CommentComposer/CommentComposer', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    __esModule: true,
+    default: function StubComposer({
+      onSave,
+    }: {
+      onSave: (message: string) => Promise<unknown>;
+    }) {
+      const [draft, setDraft] = useState('');
+
+      return (
+        <>
+          <textarea
+            aria-label="label.comment"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <button
+            disabled={!draft.trim()}
+            type="button"
+            onClick={() =>
+              onSave(draft).then(
+                () => setDraft(''),
+                () => undefined
+              )
+            }>
+            label.send
+          </button>
+        </>
+      );
+    },
+  };
+});
+
+// Paging past the real 40-cursor history takes ~90 renders, too slow under CI coverage.
+jest.mock('./OntologyTasksDrawer.utils', () => ({
+  ...jest.requireActual('./OntologyTasksDrawer.utils'),
+  CURSOR_HISTORY_LIMIT: 5,
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../../utils/ToastUtils'),
+  showSuccessToast: jest.fn(),
+}));
 
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
@@ -313,7 +363,11 @@ it('keeps committed approval when activation conflicts and retries activation wi
   expect(
     await screen.findByText('message.ontology-review-activation-failed')
   ).toBeInTheDocument();
-  expect(screen.getByText('label.approved')).toBeInTheDocument();
+  expect(
+    within(screen.getByTestId('ontology-task-release-card')).getByText(
+      'label.approved'
+    )
+  ).toBeInTheDocument();
 
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'label.publish' })).toBeEnabled()
@@ -361,6 +415,31 @@ it('requires a rejection reason and preserves its original text in the native pa
   );
 });
 
+it('says the approval was recorded, not that the release is approved, when other approvals are still required', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url.endsWith('/review')
+      ? Promise.resolve({ data: { ...review, callerCompletesRule: false } })
+      : read?.(url, config)
+  );
+  post.mockResolvedValue({ data: { ...task, availableTransitions: [] } });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'label.approve' })).toBeEnabled()
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'label.approve' }));
+
+  await waitFor(() =>
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'message.vote-recorded-waiting-for-other-approvers'
+    )
+  );
+
+  expect(showSuccessToast).not.toHaveBeenCalledWith(
+    'message.ontology-task-approved'
+  );
+});
+
 it('keeps a successful final vote approved when its reconciliation read fails', async () => {
   const read = get.getMockImplementation();
   let committed = false;
@@ -387,7 +466,11 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   );
   fireEvent.click(screen.getByRole('button', { name: 'label.approve' }));
 
-  expect(await screen.findByText('label.approved')).toBeInTheDocument();
+  expect(
+    await within(
+      await screen.findByTestId('ontology-task-release-card')
+    ).findByText('label.approved')
+  ).toBeInTheDocument();
   expect(
     await screen.findByText('message.ontology-review-unavailable')
   ).toBeInTheDocument();
@@ -400,6 +483,9 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   expect(
     screen.getByTestId('ontology-only-author-publishes')
   ).toHaveTextContent('message.ontology-publication-only-author-publishes');
+  expect(showSuccessToast).toHaveBeenCalledWith(
+    'message.ontology-task-approved'
+  );
 });
 
 it('keeps writes disabled after an ambiguous outcome until an authoritative read succeeds', async () => {
@@ -457,6 +543,50 @@ it('rejects a direct review with another task identity', async () => {
   expect(screen.queryByTestId('ontology-task-detail')).not.toBeInTheDocument();
 });
 
+it('says there are no tasks yet when the queue is empty', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url === '/ontologies/reviews' && config.params.limit === 25
+      ? Promise.resolve({ data: { data: [], paging: { total: 0 } } })
+      : read?.(url, config)
+  );
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(await screen.findByTestId('ontology-tasks-empty')).toHaveTextContent(
+    'message.ontology-no-tasks-yet'
+  );
+  expect(screen.getByTestId('ontology-tasks-empty')).toHaveTextContent(
+    'message.ontology-tasks-assigned-empty'
+  );
+});
+
+it('reopens on Assigned to me with an empty search after closing on Created by me', async () => {
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+  fireEvent.click(
+    await screen.findByRole('tab', { name: /label.created-by-me/ })
+  );
+  fireEvent.change(
+    screen.getByRole('textbox', { name: 'label.search-tasks' }),
+    { target: { value: 'commerce' } }
+  );
+
+  expect(
+    screen.getByRole('tab', { name: /label.created-by-me/ })
+  ).toHaveAttribute('aria-selected', 'true');
+
+  fireEvent.click(screen.getByTestId('ontology-tasks-close'));
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(
+    await screen.findByRole('tab', { name: /label.assigned-to-me/ })
+  ).toHaveAttribute('aria-selected', 'true');
+  expect(
+    screen.getByRole('textbox', { name: 'label.search-tasks' })
+  ).toHaveValue('');
+});
+
 it('replaces after-only queue pages and resets the cursor when changing tabs', async () => {
   const read = get.getMockImplementation();
   get.mockImplementation((url, config) => {
@@ -503,7 +633,7 @@ it('replaces after-only queue pages and resets the cursor when changing tabs', a
 
   expect(await screen.findByText(/TASK-NEXT/)).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: 'label.created-by-me' }));
+  fireEvent.click(screen.getByRole('tab', { name: /label.created-by-me/ }));
 
   expect(await screen.findByText(/TASK-FIRST/)).toBeInTheDocument();
   expect(
@@ -534,7 +664,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       return Promise.resolve({
         data: {
           data: [{ ...review, taskId: label(page) }],
-          paging: { total: 45 * 25, after: 'cursor-' + (page + 1) },
+          paging: { total: 8 * 25, after: 'cursor-' + (page + 1) },
         },
       });
     }
@@ -552,7 +682,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
 
   expect(await screen.findByText(/PAGE-01/)).toBeInTheDocument();
 
-  for (let page = 2; page <= 45; page++) {
+  for (let page = 2; page <= 8; page++) {
     fireEvent.click(pageButton('label.next'));
 
     expect(
@@ -561,7 +691,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
   }
 
   let presses = 0;
-  while (presses < 50 && isEnabled(pageButton('label.previous'))) {
+  while (presses < 10 && isEnabled(pageButton('label.previous'))) {
     fireEvent.click(pageButton('label.previous'));
     presses++;
     await waitFor(() => expect(pageButton('label.next')).toBeEnabled());
@@ -576,9 +706,9 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       )
       .slice(-2)
       .map(([, config]) => config.params.after)
-  ).toEqual(['cursor-7', undefined]);
+  ).toEqual(['cursor-5', undefined]);
   expect(screen.getByText(/PAGE-01/)).toBeInTheDocument();
-}, 20_000);
+});
 
 it('does not invent a zero pending count when paging is unavailable', async () => {
   get.mockResolvedValue({ data: { data: [] } });
@@ -715,11 +845,9 @@ it('posts two deliberate equal-text comments as two conversation entries', async
     const input = screen.getByRole('textbox', { name: /label.comment/ });
     fireEvent.change(input, { target: { value: 'Same words' } });
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.add-comment' })
-      ).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'label.send' })).toBeEnabled()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'label.add-comment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.send' }));
     await waitFor(() =>
       expect(screen.getAllByText('Same words')).toHaveLength(count)
     );
@@ -755,37 +883,60 @@ it('keeps approve available but disables combined publication when activation st
   );
 });
 
+it('disables every vote when the reviewed ontology was archived', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) => {
+    if (url.endsWith('/review')) {
+      return Promise.resolve({
+        data: { ...review, callerCompletesRule: true },
+      });
+    }
+    if (url.endsWith('/state')) {
+      return Promise.reject(
+        Object.assign(new Error('ontology instance not found'), {
+          isAxiosError: true,
+          response: { status: 404 },
+        })
+      );
+    }
+
+    return read?.(url, config);
+  });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'label.approve' })).toBeDisabled()
+  );
+
+  expect(screen.queryByTestId('ontology-approve-publish')).toBeNull();
+});
+
 describe('the Studio review banner scope', () => {
   const reviewOf = (ontologyName: string, taskId: string) => ({
     ...review,
     ontology: { id: ontologyName, name: ontologyName, type: 'ontology' },
     task: { id: 'uuid-' + taskId, type: 'task' },
     taskId,
-    callerCanVote: false,
+    callerCanVote: true,
     requester: { id: 'reviewer', name: 'reviewer', type: 'user' },
-    assignees: [
-      {
-        assignee: { id: 'alice', name: 'alice', type: 'user' },
-        status: 'Pending',
-      },
-    ],
   });
-  const serveOpenReviews = (reviews: ReturnType<typeof reviewOf>[]) => {
+  /** `pending` waits on the viewer's vote; `created` are the viewer's own open requests. */
+  const serveOpenReviews = (
+    pending: ReturnType<typeof reviewOf>[],
+    created: ReturnType<typeof reviewOf>[] = []
+  ) => {
     const read = get.getMockImplementation();
     get.mockImplementation(async (url: string, config) => {
       if (url === '/ontologies/reviews') {
-        const scoped = reviews.filter(
+        const scoped = (
+          config.params.view === 'created' ? created : pending
+        ).filter(
           (item) =>
             !config.params.ontologyId ||
             item.ontology.id === config.params.ontologyId
         );
 
-        return {
-          data: {
-            data: config.params.view === 'created' ? scoped : [],
-            paging: { total: scoped.length },
-          },
-        };
+        return { data: { data: scoped, paging: { total: scoped.length } } };
       }
       if (url.startsWith('/ontologyReleases/')) {
         return { data: { ...release, semanticVersion: '0.1.0' } };
@@ -812,10 +963,7 @@ describe('the Studio review banner scope', () => {
 
     expect(
       await screen.findByTestId('ontology-review-banner')
-    ).toHaveTextContent('Finance · v0.1.0 · ');
-    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
-      'TASK-2'
-    );
+    ).toHaveTextContent('reviewer asked you to review v0.1.0');
     expect(screen.queryByText(/Sales/)).not.toBeInTheDocument();
   });
 
@@ -844,10 +992,7 @@ describe('the Studio review banner scope', () => {
 
     expect(
       await screen.findByTestId('ontology-review-banner')
-    ).toHaveTextContent('Finance · v0.1.0 · ');
-    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
-      'TASK-LAST'
-    );
+    ).toHaveTextContent('reviewer asked you to review v0.1.0');
 
     const reviewReads = get.mock.calls
       .filter(([url]) => url === '/ontologies/reviews')
@@ -856,12 +1001,67 @@ describe('the Studio review banner scope', () => {
     expect(reviewReads).toEqual(
       expect.arrayContaining([
         { view: 'pending', ontologyId: 'Finance', limit: 100 },
-        { view: 'created', ontologyId: 'Finance', limit: 100 },
       ])
     );
   });
 
-  it('lists one line per open review, naming its ontology, in All ontologies', async () => {
+  it('disables the tasks trigger when the viewer has no tasks', async () => {
+    serveOpenReviews([]);
+    renderWithQueryClient(<Harness />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-tasks-trigger')).toBeDisabled()
+    );
+  });
+
+  it('keeps the tasks trigger enabled when the viewer only created tasks', async () => {
+    serveOpenReviews([], [reviewOf('Finance', 'TASK-2')]);
+    renderWithQueryClient(<Harness />);
+    const trigger = await screen.findByTestId('ontology-tasks-trigger');
+    await waitFor(() => expect(trigger).toHaveTextContent('0'));
+    // While any total is unknown the trigger is enabled regardless, so let
+    // every review read settle before asserting.
+    await act(async () => {
+      await Promise.all(get.mock.results.map(({ value }) => value));
+    });
+
+    expect(screen.getByTestId('ontology-tasks-trigger')).toBeEnabled();
+  });
+
+  it("does not announce the viewer's own open request", async () => {
+    serveOpenReviews([], [reviewOf('Finance', 'TASK-2')]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-tasks-trigger')).toHaveTextContent(
+        '0'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('ontology-review-banner')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-open-reviews-banner')
+    ).not.toBeInTheDocument();
+  });
+
+  it('counts several reviews of the ontology in view in one pill', async () => {
+    serveOpenReviews([
+      reviewOf('Finance', 'TASK-1'),
+      reviewOf('Finance', 'TASK-2'),
+    ]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    expect(
+      await screen.findByTestId('ontology-open-reviews-banner')
+    ).toHaveTextContent('2 reviews waiting on you');
+    expect(
+      screen.queryByTestId('ontology-review-banner')
+    ).not.toBeInTheDocument();
+  });
+
+  it('counts the reviews waiting on the viewer in All ontologies', async () => {
     serveOpenReviews([
       reviewOf('Sales', 'TASK-1'),
       reviewOf('Finance', 'TASK-2'),
@@ -870,14 +1070,19 @@ describe('the Studio review banner scope', () => {
 
     const banner = await screen.findByTestId('ontology-open-reviews-banner');
 
+    expect(banner).toHaveTextContent('2 reviews waiting on you');
     expect(
-      within(banner)
-        .getAllByText(/waiting on/)
-        .map((line) => line.textContent)
-    ).toEqual([
-      'Sales · In review · waiting on alice · TASK-1',
-      'Finance · In review · waiting on alice · TASK-2',
-    ]);
+      within(banner).getByRole('button', { name: 'Review' })
+    ).toBeInTheDocument();
+  });
+
+  it('asks the viewer to review by name when one review waits on them', async () => {
+    serveOpenReviews([reviewOf('Sales', 'TASK-1')]);
+    renderWithQueryClient(<Harness ontologyId={null} />);
+
+    expect(
+      await screen.findByTestId('ontology-open-reviews-banner')
+    ).toHaveTextContent('reviewer asked you to review Sales');
   });
 });
 
@@ -918,4 +1123,94 @@ it('titles each queue row with the task title that names the ontology and versio
   expect(
     screen.getByRole('button', { name: 'TASK-00043 · Review Finance v1.2.0' })
   ).toBeInTheDocument();
+});
+
+it('shows tab counts, a pending group and requester cards that the search narrows, without paging a single page', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) => {
+    if (url !== '/ontologies/reviews' || config.params.view === 'pending') {
+      return read?.(url, config);
+    }
+    if (config.params.limit === 1) {
+      return Promise.resolve({
+        data: {
+          data: [],
+          paging: { total: config.params.view === 'assigned' ? 3 : 5 },
+        },
+      });
+    }
+
+    return Promise.resolve({
+      data: {
+        data: [
+          {
+            ...review,
+            task: { ...review.task, displayName: 'Review Sales v0.1.0' },
+            requester: { id: 'priya', name: 'Priya Raman', type: 'user' },
+          },
+          {
+            ...review,
+            taskId: 'TASK-00043',
+            task: {
+              id: 'task-c',
+              type: 'task',
+              displayName: 'Review Finance v1.2.0',
+            },
+          },
+        ],
+        paging: { total: 2 },
+      },
+    });
+  });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  const assignedTab = await screen.findByRole('tab', {
+    name: /label.assigned-to-me/,
+  });
+  await waitFor(() => expect(assignedTab).toHaveTextContent('3'));
+
+  expect(
+    screen.getByRole('tab', { name: /label.created-by-me/ })
+  ).toHaveTextContent('5');
+
+  // The queue column; the task detail beside it sits in the same tab panel.
+  const panel = screen.getByTestId('ontology-tasks-queue');
+
+  expect(
+    await within(panel).findByTestId('ontology-tasks-group')
+  ).toHaveTextContent('label.pending-approval2');
+  expect(within(panel).getByText('Priya Raman')).toBeInTheDocument();
+
+  expect(
+    within(screen.getByTestId('ontology-tasks-queue')).queryByRole('button', {
+      name: 'label.next',
+    })
+  ).not.toBeInTheDocument();
+
+  await screen.findByText('Review Commerce');
+
+  expect(
+    screen.queryByRole('button', { name: 'label.first' })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('message.ontology-review-event-window')
+  ).not.toBeInTheDocument();
+
+  fireEvent.change(within(panel).getByRole('textbox'), {
+    target: { value: 'finance' },
+  });
+
+  expect(
+    within(panel).getByRole('button', {
+      name: 'TASK-00043 · Review Finance v1.2.0',
+    })
+  ).toBeInTheDocument();
+  expect(
+    within(panel).queryByRole('button', {
+      name: 'TASK-00042 · Review Sales v0.1.0',
+    })
+  ).not.toBeInTheDocument();
+  expect(within(panel).getByTestId('ontology-tasks-group')).toHaveTextContent(
+    'label.pending-approval1'
+  );
 });

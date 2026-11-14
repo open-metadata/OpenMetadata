@@ -86,9 +86,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         {noLink &&
           index < titleLinks.length - 1 &&
           (useCustomArrow ? (
-            <span className="custom-separator">
-              <ChevronRight />
-            </span>
+            <ChevronRight className="tw:mx-1 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary" />
           ) : (
             <span className="text-xss text-grey-muted">{'>'}</span>
           ))}
@@ -132,9 +130,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     {useCustomArrow ? (
-                      <span className="custom-separator">
-                        <ChevronRight />
-                      </span>
+                      <ChevronRight className="tw:mx-1 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary" />
                     ) : (
                       <span className="text-sm font-regular p-x-xs text-grey-muted">
                         {BREADCRUMB_SEPARATOR}

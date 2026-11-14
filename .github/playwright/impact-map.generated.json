@@ -563,7 +563,6 @@
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
-        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -839,6 +838,7 @@
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
@@ -1536,7 +1536,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/KnowledgeCenter.interface.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts"
       ]
     },
     {
@@ -1770,6 +1771,7 @@
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/CustomMetric.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
@@ -2153,6 +2155,7 @@
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ExploreBrowse.spec.ts",
         "playwright/e2e/Pages/ExploreTree.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/TableSharding.spec.ts",
@@ -2305,7 +2308,6 @@
         "playwright/e2e/Features/ClassificationTagUsage.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
@@ -2592,6 +2594,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AppModeSidebarPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextList.spec.ts",
@@ -3141,6 +3144,7 @@
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
@@ -3481,7 +3485,9 @@
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
@@ -3684,6 +3690,7 @@
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
@@ -4368,6 +4375,7 @@
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
@@ -4555,6 +4563,7 @@
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
@@ -4943,6 +4952,8 @@
         "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImportReview.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
@@ -5046,6 +5057,8 @@
         "playwright/e2e/Features/ClassificationTagUsage.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -5221,7 +5234,8 @@
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
         "playwright/e2e/Pages/ExploreBrowse.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -5371,7 +5385,6 @@
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
-        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
@@ -6053,7 +6066,8 @@
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -6252,7 +6266,8 @@
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -6272,6 +6287,14 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/DocumentStatusBadge/DocumentStatusBadge.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts"
       ]
     },
     {
@@ -7505,7 +7528,8 @@
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -7909,6 +7933,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/ArticleStatusBadge/ArticleStatusBadge.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/KnowledgeCard/KnowledgeCard.tsx"
       ],
       "specs": [
@@ -7979,7 +8011,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/KnowledgePages/KnowledgePages.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts"
       ]
     },
     {
@@ -8064,6 +8097,14 @@
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageMap/LineageMap.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -8383,6 +8424,7 @@
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerLocaleLayout.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
+        "playwright/e2e/Features/RTL.spec.ts",
         "playwright/e2e/Features/RoleFixtureSessions.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Features/StorageStateRecovery.spec.ts",
@@ -8613,11 +8655,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyAuthoringInspector.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyPublishedView.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
-        "playwright/e2e/Features/OntologyStudioFlows.spec.ts",
         "playwright/e2e/Features/OntologyStudioPermissions.spec.ts"
       ]
     },
@@ -8640,7 +8680,8 @@
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
         "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
         "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -8701,13 +8742,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyImportExportMenu.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
-        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
-        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
-        "playwright/e2e/Features/OntologyNativeImportReview.spec.ts",
-        "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
-        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
-        "playwright/e2e/Features/OntologyReview.spec.ts"
+        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts"
       ]
     },
     {
@@ -8737,6 +8774,15 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyNativeDataCanvas.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyNativeDataColumns.spec.ts",
+        "playwright/e2e/Features/OntologyNativeDataMode.spec.ts"
       ]
     },
     {
@@ -10297,7 +10343,6 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
-        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts"
       ]
@@ -10545,7 +10590,6 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts",
@@ -10568,7 +10612,6 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts",
@@ -10591,7 +10634,6 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts",
@@ -10789,7 +10831,6 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
-        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -10873,6 +10914,23 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/MemoryExtractionButton/MemoryExtractionButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/MemoryExtractionMenuItem/MemoryExtractionMenuItem.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/MemoryStatusActions/MemoryStatusActions.tsx"
       ],
       "specs": [
@@ -10888,7 +10946,8 @@
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
         "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -10897,6 +10956,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Features/ProfilePreferences.spec.ts",
@@ -11733,6 +11793,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/personas/PersonaCustomizeGrid.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/personas/PersonaDetail.tsx"
       ],
       "specs": [
@@ -12088,8 +12156,15 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyAuthoringWorkspace/OntologyAuthoringWorkspace.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyNativeRelations.spec.ts"
       ]
     },
     {
@@ -12099,6 +12174,14 @@
       "specs": [
         "playwright/e2e/Features/OntologyConceptDrawer.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyAuthoringWorkspace/OntologyDefinitionList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyRules.spec.ts"
       ]
     },
     {
@@ -12115,6 +12198,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyAxiomEditor/OntologyAxiomEditor.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
         "playwright/e2e/Features/OntologyRules.spec.ts"
       ]
     },
@@ -12125,6 +12209,7 @@
       "specs": [
         "playwright/e2e/Features/OntologyConceptDrawer.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
+        "playwright/e2e/Features/OntologyPublishedView.spec.ts",
         "playwright/e2e/Features/OntologyRules.spec.ts",
         "playwright/e2e/Features/OntologyStudioFlows.spec.ts"
       ]
@@ -12150,8 +12235,17 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyConceptInspector/OntologyConceptAssets.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyConceptInspector/OntologyConceptConflicts.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyRules.spec.ts"
       ]
     },
     {
@@ -12160,10 +12254,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyConceptDrawer.spec.ts",
-        "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
+        "playwright/e2e/Features/OntologyNativeDataColumns.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
-        "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
@@ -12181,6 +12274,15 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyConceptInspector/OntologyConceptRules.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
+        "playwright/e2e/Features/OntologyRules.spec.ts"
       ]
     },
     {
@@ -12241,6 +12343,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyGraphView/OntologyConceptPicker.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyLargeGraph.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyGraphView/OntologyConceptSearch.tsx"
       ],
       "specs": [
@@ -12277,6 +12387,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyGraphView/OntologyDataConceptPicker.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeDataColumns.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts"
       ]
     },
@@ -12287,14 +12398,11 @@
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermRelationsGraph.spec.ts",
-        "playwright/e2e/Features/OntologyConceptDrawer.spec.ts",
         "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
-        "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
         "playwright/e2e/Features/OntologyPublishedView.spec.ts",
         "playwright/e2e/Features/OntologyStudio.spec.ts",
-        "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
-        "playwright/e2e/Features/OntologyStudioFlows.spec.ts"
+        "playwright/e2e/Features/OntologyStudioE2E.spec.ts"
       ]
     },
     {
@@ -12304,8 +12412,7 @@
       "specs": [
         "playwright/e2e/Features/OntologyNativeDataColumns.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
-        "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
-        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts"
+        "playwright/e2e/Features/OntologyNativeOperations.spec.ts"
       ]
     },
     {
@@ -12446,9 +12553,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyNativeExport.spec.ts",
-        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImportReview.spec.ts",
-        "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts"
       ]
@@ -12510,7 +12615,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleasePanel/OntologyReleasePanel.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/OntologyReviewChanges.spec.ts",
@@ -12543,25 +12647,6 @@
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/OntologyReviewChanges.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReviewBanner/OntologyOpenReviewsBanner.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyReviewChanges.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReviewBanner/OntologyReviewBanner.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyReview.spec.ts",
-        "playwright/e2e/Features/OntologyReviewChanges.spec.ts",
-        "playwright/e2e/Features/OntologyReviewTasks.spec.ts",
-        "playwright/e2e/Features/OntologyStudioFlows.spec.ts"
       ]
     },
     {
@@ -12635,6 +12720,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
+        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
         "playwright/e2e/Features/OntologyReviewChanges.spec.ts",
         "playwright/e2e/Features/OntologyReviewTasks.spec.ts",
         "playwright/e2e/Features/OntologyStudioFlows.spec.ts",
@@ -12646,12 +12732,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyVersionChip/OntologyVersionChip.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
         "playwright/e2e/Features/OntologyPublishedView.spec.ts",
         "playwright/e2e/Features/OntologyQueryScope.spec.ts",
-        "playwright/e2e/Features/OntologyReview.spec.ts",
-        "playwright/e2e/Features/OntologyReviewChanges.spec.ts",
-        "playwright/e2e/Features/OntologyStudioFlows.spec.ts"
+        "playwright/e2e/Features/OntologyReviewChanges.spec.ts"
       ]
     },
     {
@@ -13071,10 +13154,42 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/createOntologyChangeSet.ts"
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyPackInstallJob.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/OntologyNativeOperations.spec.ts"
+        "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryTermInverseRelation.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryTermRelationsGraph.spec.ts",
+        "playwright/e2e/Features/OntologyConceptDrawer.spec.ts",
+        "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
+        "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
+        "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeImportReview.spec.ts",
+        "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
+        "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
+        "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
+        "playwright/e2e/Features/OntologyNativeTreeShell.spec.ts",
+        "playwright/e2e/Features/OntologyQueryScope.spec.ts",
+        "playwright/e2e/Features/OntologyReview.spec.ts",
+        "playwright/e2e/Features/OntologyRules.spec.ts",
+        "playwright/e2e/Features/OntologyStudio.spec.ts",
+        "playwright/e2e/Features/OntologyStudioCardinality.spec.ts",
+        "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
+        "playwright/e2e/Features/OntologyStudioFlows.spec.ts",
+        "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
+        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
+        "playwright/e2e/Features/OntologyStudioIsolatedToggle.spec.ts",
+        "playwright/e2e/Features/OntologyStudioPermissions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyProfileReport.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyRules.spec.ts"
       ]
     },
     {
@@ -13404,6 +13519,8 @@
         "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
+        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImportReview.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeRelations.spec.ts",
@@ -13460,7 +13577,6 @@
         "playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts",
@@ -13528,7 +13644,6 @@
       "specs": [
         "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
-        "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts"
       ]
     },
@@ -13547,6 +13662,7 @@
         "playwright/e2e/Features/OntologyNativeDataColumns.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
         "playwright/e2e/Features/OntologyNativeExport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImportReview.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
@@ -13767,6 +13883,7 @@
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
@@ -13912,8 +14029,6 @@
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataColumns.spec.ts",
         "playwright/e2e/Features/OntologyNativeDataMode.spec.ts",
-        "playwright/e2e/Features/OntologyNativeExport.spec.ts",
-        "playwright/e2e/Features/OntologyNativeImport.spec.ts",
         "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeLiveData.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
@@ -14196,6 +14311,7 @@
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
@@ -14949,7 +15065,15 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
+        "playwright/e2e/Features/Container.spec.ts",
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
+        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts"
       ]
     },
     {
@@ -15021,6 +15145,7 @@
         "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
         "playwright/e2e/Features/OntologyConceptDrawer.spec.ts",
         "playwright/e2e/Features/OntologyFirstRun.spec.ts",
+        "playwright/e2e/Features/OntologyLargeGraph.spec.ts",
         "playwright/e2e/Features/OntologyNativeAuthoring.spec.ts",
         "playwright/e2e/Features/OntologyNativeExport.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
