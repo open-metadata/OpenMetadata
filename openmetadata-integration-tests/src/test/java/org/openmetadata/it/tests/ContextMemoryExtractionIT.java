@@ -81,6 +81,7 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.CompletionOptions;
@@ -995,7 +996,7 @@ class ContextMemoryExtractionIT {
             file.getId(), UUID.fromString(file.getHeadContentId()));
     long id =
         jobs.insertJob(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION,
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             new ContextMemoryExtractionJobHandler(),
             JsonUtils.pojoToJson(args),
             Entity.ADMIN_USER_NAME,

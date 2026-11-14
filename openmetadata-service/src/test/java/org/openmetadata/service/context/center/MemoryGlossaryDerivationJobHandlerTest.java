@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.BackgroundJobException;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.JobDAO;
 
 class MemoryGlossaryDerivationJobHandlerTest {
@@ -185,7 +186,7 @@ class MemoryGlossaryDerivationJobHandlerTest {
     return new BackgroundJob()
         .withId(id)
         .withCreatedBy("admin")
-        .withJobType(BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION)
+        .withJobType(BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION)
         .withJobArgs(Map.of("memoryIds", List.of(memoryIds).stream().map(UUID::toString).toList()));
   }
 }

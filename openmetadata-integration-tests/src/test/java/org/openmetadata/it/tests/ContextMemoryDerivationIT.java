@@ -68,6 +68,7 @@ import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandle
 import org.openmetadata.service.context.center.MemoryGlossaryDeriver;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
@@ -250,7 +251,7 @@ class ContextMemoryDerivationIT {
                     handle
                         .createQuery(
                             "SELECT id FROM background_jobs WHERE jobType = :jobType AND status = :status")
-                        .bind("jobType", BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name())
+                        .bind("jobType", BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION)
                         .bind("status", BackgroundJob.Status.PENDING.name())
                         .mapTo(Long.class)
                         .list())

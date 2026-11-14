@@ -41,7 +41,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.jobs.EnumCleanupArgs;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
@@ -55,6 +54,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -632,7 +632,7 @@ public class TypeRepository extends EntityRepository<Type> {
             String jobArgs = JsonUtils.pojoToJson(enumCleanupArgs);
             long jobId =
                 jobDao.insertJob(
-                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
+                    BackgroundJobTypes.CUSTOM_PROPERTY_ENUM_CLEANUP,
                     new EnumCleanupHandler(daoCollection),
                     jobArgs,
                     updatedBy);

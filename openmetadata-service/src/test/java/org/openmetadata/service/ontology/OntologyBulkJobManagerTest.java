@@ -36,6 +36,7 @@ import org.openmetadata.schema.api.data.OntologyBulkRequest;
 import org.openmetadata.schema.api.data.OntologyBulkResultArtifact;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.JobDAO;
 
 class OntologyBulkJobManagerTest {
@@ -71,7 +72,7 @@ class OntologyBulkJobManagerTest {
     final ArgumentCaptor<String> arguments = ArgumentCaptor.forClass(String.class);
     verify(jobDao)
         .insertTrackedJobInternal(
-            eq(BackgroundJob.JobType.ONTOLOGY_BULK.name()),
+            eq(BackgroundJobTypes.ONTOLOGY_BULK),
             eq(OntologyBulkJobManager.HANDLER_NAME),
             arguments.capture(),
             eq(OntologyBulkTestFixtures.USER),
@@ -158,7 +159,7 @@ class OntologyBulkJobManagerTest {
             .withGlossary(OntologyBulkTestFixtures.glossary().getEntityReference());
     return new BackgroundJob()
         .withId(JOB_ID)
-        .withJobType(BackgroundJob.JobType.ONTOLOGY_BULK)
+        .withJobType(BackgroundJobTypes.ONTOLOGY_BULK)
         .withMethodName(OntologyBulkJobManager.HANDLER_NAME)
         .withJobArgs(arguments)
         .withStatus(status)

@@ -77,3 +77,6 @@ export const HELP_ITEMS = [
     isExternal: true,
   },
 ];
+
+export const CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE =
+  'CUSTOM_PROPERTY_ENUM_CLEANUP';
