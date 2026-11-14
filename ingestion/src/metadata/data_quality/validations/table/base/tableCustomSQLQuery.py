@@ -228,11 +228,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0
         elif operator in ("<", "<="):
-            passed_rows = row_count - len_rows
+            passed_rows = (row_count - len_rows) if row_count else 0
             failed_rows = len_rows
         elif operator == "==":
             passed_rows = len_rows
-            failed_rows = row_count - len_rows
+            failed_rows = (row_count - len_rows) if row_count else 0
         else:
             passed_rows = len_rows
             failed_rows = 0
@@ -262,7 +262,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     def _calculate_less_than_failure(self, len_rows: int, row_count: int) -> tuple[int, int]:
         """Calculate rows for < or <= operator failure (expected fewer rows)"""
         failed_rows = len_rows
-        passed_rows = row_count - failed_rows
+        passed_rows = (row_count - failed_rows) if row_count else 0
 
         return max(0, passed_rows), max(0, failed_rows)
 
