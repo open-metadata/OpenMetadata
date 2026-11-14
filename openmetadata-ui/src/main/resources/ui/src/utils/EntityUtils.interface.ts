@@ -77,6 +77,7 @@ export enum FormattedDatabaseServiceType {
   BigTable = 'Big Table',
   Cassandra = 'Cassandra',
   Clickhouse = 'Clickhouse',
+  Cloudberry = 'Cloudberry',
   Cockroach = 'Cockroach',
   Couchbase = 'Couchbase',
   CustomDatabase = 'Custom Database',

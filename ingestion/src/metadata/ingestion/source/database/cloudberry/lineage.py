@@ -1,0 +1,33 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""View lineage for Apache Cloudberry."""
+
+from typing import Any
+
+from metadata.generated.schema.entity.services.connections.database.cloudberryConnection import (
+    CloudberryConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Source as WorkflowSource
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.lineage_source import LineageSource
+
+
+class CloudberryLineageSource(LineageSource):
+    @classmethod
+    def create(cls, config_dict: dict[str, Any], metadata: OpenMetadata, pipeline_name: str | None = None):
+        config = WorkflowSource.model_validate(config_dict)
+        if config.serviceConnection is None or not isinstance(
+            config.serviceConnection.root.config, CloudberryConnection
+        ):
+            raise InvalidSourceException("Expected a Cloudberry connection")
+        return cls(config, metadata, get_engine=False)

@@ -185,7 +185,14 @@ const expectAwsCredentialLayout = (
 };
 
 describe('ConnectionConfigForm schema rendering', () => {
-  it.each(['Cassandra', 'Cockroach', 'Databricks', 'Glue', 'Greenplum'])(
+  it.each([
+    'Cassandra',
+    'Cloudberry',
+    'Cockroach',
+    'Databricks',
+    'Glue',
+    'Greenplum',
+  ])(
     'renders %s without leaving the connection form empty',
     async (connectorType) => {
       await renderConnectionSchema(connectorType);

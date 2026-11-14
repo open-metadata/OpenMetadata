@@ -317,6 +317,8 @@ export interface DatabaseConnection {
  * SAP BW/4HANA Database Connection Config
  *
  * Neo4j Connection Config
+ *
+ * Apache Cloudberry Database Connection Config
  */
 export interface Connection {
     /**
@@ -431,6 +433,8 @@ export interface Connection {
      *
      * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
      * 7687.
+     *
+     * Host and port of the Cloudberry coordinator (default port 5432).
      */
     hostPort?: string;
     /**
@@ -629,6 +633,9 @@ export interface Connection {
      *
      * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Cloudberry. You can use databaseFilterPattern on top of
+     * this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -822,6 +829,9 @@ export interface Connection {
      *
      * Username to connect to Neo4j. The user needs read access to the graph schema of the
      * database.
+     *
+     * Username to connect to Cloudberry. This user should have privileges to read all the
+     * metadata in Cloudberry.
      */
     username?: string;
     /**
@@ -878,6 +888,8 @@ export interface Connection {
      *
      * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
      * Fabric SQL endpoint.
+     *
+     * Password authentication for Cloudberry.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
@@ -1480,6 +1492,8 @@ export enum AuthMechanismEnum {
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
+ *
+ * Password authentication for Cloudberry.
  *
  * Choose between different authentication types for Databricks.
  *
@@ -2303,6 +2317,8 @@ export interface HiveMetastoreConnectionDetails {
  *
  * Common Database Connection Config
  *
+ * Password authentication for Cloudberry.
+ *
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
@@ -2539,6 +2555,7 @@ export enum ConfigType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Clickzetta = "Clickzetta",
+    Cloudberry = "Cloudberry",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
@@ -2730,6 +2747,7 @@ export enum DatabaseServiceType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Clickzetta = "Clickzetta",
+    Cloudberry = "Cloudberry",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",

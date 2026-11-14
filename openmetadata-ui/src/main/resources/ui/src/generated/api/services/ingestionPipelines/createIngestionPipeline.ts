@@ -3562,6 +3562,8 @@ export interface ServiceConnection {
  *
  * Neo4j Connection Config
  *
+ * Apache Cloudberry Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -3970,6 +3972,8 @@ export interface AirflowConnectionObject {
      * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
      * 7687.
      *
+     * Host and port of the Cloudberry coordinator (default port 5432).
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -4249,6 +4253,9 @@ export interface AirflowConnectionObject {
      * Username to connect to Neo4j. The user needs read access to the graph schema of the
      * database.
      *
+     * Username to connect to Cloudberry. This user should have privileges to read all the
+     * metadata in Cloudberry.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -4355,6 +4362,8 @@ export interface AirflowConnectionObject {
      *
      * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
      * Fabric SQL endpoint.
+     *
+     * Password authentication for Cloudberry.
      *
      * NATS authentication method. Leave empty for anonymous authentication.
      *
@@ -4751,6 +4760,9 @@ export interface AirflowConnectionObject {
      * use databaseFilterPattern on top of this.
      *
      * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
+     * this.
+     *
+     * Ingest data from all databases in Cloudberry. You can use databaseFilterPattern on top of
      * this.
      */
     ingestAllDatabases?: boolean;
@@ -6026,6 +6038,8 @@ export enum AuthProvider {
  *
  * Common Database Connection Config
  *
+ * Password authentication for Cloudberry.
+ *
  * Choose the ClickZetta authentication configuration.
  *
  * Choose Auth Config Type.
@@ -7093,6 +7107,8 @@ export interface MWAAConfiguration {
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
+ *
+ * Password authentication for Cloudberry.
  *
  * IAM Auth Database Connection Config
  *
@@ -8319,6 +8335,7 @@ export enum AirflowConnectionType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Clickzetta = "Clickzetta",
+    Cloudberry = "Cloudberry",
     Cockroach = "Cockroach",
     Collibra = "Collibra",
     Couchbase = "Couchbase",

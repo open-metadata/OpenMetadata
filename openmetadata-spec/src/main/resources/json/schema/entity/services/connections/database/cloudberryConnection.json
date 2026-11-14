@@ -1,0 +1,129 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/cloudberryConnection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CloudberryConnection",
+  "description": "Apache Cloudberry Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.CloudberryConnection",
+  "definitions": {
+    "cloudberryType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Cloudberry"
+      ],
+      "default": "Cloudberry"
+    },
+    "cloudberryScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "postgresql+psycopg2"
+      ],
+      "default": "postgresql+psycopg2"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/cloudberryType",
+      "default": "Cloudberry"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/cloudberryScheme",
+      "default": "postgresql+psycopg2"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Cloudberry. This user should have privileges to read all the metadata in Cloudberry.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Password authentication for Cloudberry.",
+      "$ref": "./common/basicAuth.json"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Cloudberry coordinator (default port 5432).",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Initial database to connect to. Metadata reading is restricted to this database unless Ingest All Databases is enabled, in which case this database is used as the entry point to discover and scan all databases.",
+      "type": "string"
+    },
+    "sslMode": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Cloudberry. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$", "^gp_toolkit$"]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^template1$", "^template0$"]
+      }
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsViewLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "authType",
+    "database"
+  ]
+}
