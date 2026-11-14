@@ -2278,6 +2278,9 @@ describe('OntologyExplorerPage', () => {
         'aria-selected',
         'true'
       );
+      expect(
+        screen.getByRole('tab', { name: 'label.constraint-plural' })
+      ).toBeInTheDocument();
     });
 
     it('says the ontology was not found for an unknown ontology id', async () => {

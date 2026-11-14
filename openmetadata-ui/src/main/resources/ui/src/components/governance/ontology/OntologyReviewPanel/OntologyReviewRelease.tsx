@@ -17,7 +17,7 @@ import {
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,10 +26,7 @@ import {
   MemberKind,
   type OntologyReleaseDiff,
 } from '../../../../generated/api/data/ontologyReleaseDiff';
-import {
-  getOntologyReleaseDiff,
-  getOntologyReleaseMember,
-} from '../../../../rest/ontologyAPI';
+import { getOntologyReleaseDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeFilters from '../OntologyReleasePanel/OntologyReleaseChangeFilters';
@@ -37,7 +34,6 @@ import type {
   ChangeFilter,
   ChangeKindCounts,
 } from '../OntologyReleasePanel/OntologyReleaseChanges.utils';
-import OntologyReviewFieldChanges from './OntologyReviewFieldChanges';
 
 const EMPTY_COUNTS: ChangeKindCounts = {
   concepts: 0,
@@ -116,8 +112,6 @@ const OntologyReviewRelease = ({
   const [filter, setFilter] = useState<ChangeFilter>('all');
   const [search, setSearch] = useState('');
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const [selected, setSelected] =
-    useState<OntologyReleaseDiff['data'][number]>();
   const after = cursors[cursors.length - 1];
   const page = useQuery({
     queryKey: ['ontology-review-members', releaseId, baseReleaseId, after],
@@ -130,41 +124,7 @@ const OntologyReviewRelease = ({
         signal
       ),
   });
-  const snapshots = selected
-    ? [
-        { releaseId: selected.beforeReleaseId, label: 'label.before' },
-        { releaseId: selected.afterReleaseId, label: 'label.after' },
-      ].filter((snapshot) => snapshot.releaseId)
-    : [];
-  const members = useQueries({
-    queries: snapshots.map((snapshot) => ({
-      queryKey: [
-        'ontology-review-member',
-        snapshot.releaseId,
-        selected?.memberKind,
-        selected?.entity.id,
-      ],
-      retry: false,
-      gcTime: 0,
-      queryFn: ({ signal }: { signal: AbortSignal }) => {
-        if (!selected || !snapshot.releaseId) {
-          throw new Error('Missing captured ontology member');
-        }
-
-        return getOntologyReleaseMember(
-          snapshot.releaseId,
-          selected.memberKind,
-          selected.entity.id,
-          signal
-        );
-      },
-    })),
-  });
-
-  const ready =
-    page.isSuccess &&
-    !page.isFetching &&
-    members.every((member) => member.isSuccess && !member.isFetching);
+  const ready = page.isSuccess && !page.isFetching;
   useEffect(() => {
     onReadyChange?.(ready);
 
@@ -176,33 +136,6 @@ const OntologyReviewRelease = ({
       <Alert variant="error">{t('message.ontology-review-unavailable')}</Alert>
     );
   }
-
-  const renderMember = () => {
-    if (!selected) {
-      return null;
-    }
-    if (members.some((member) => member.isError)) {
-      return (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
-      );
-    }
-    if (members.some((member) => member.isPending)) {
-      return <Loader size="small" />;
-    }
-
-    const payloadOf = (label: string) =>
-      members[snapshots.findIndex((snapshot) => snapshot.label === label)]?.data
-        ?.payload;
-
-    return (
-      <OntologyReviewFieldChanges
-        after={payloadOf('label.after')}
-        before={payloadOf('label.before')}
-      />
-    );
-  };
 
   const renderFilters = (changes: readonly Change[]) =>
     filterable && (
@@ -224,13 +157,12 @@ const OntologyReviewRelease = ({
     <li
       className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
       key={`${change.memberKind}:${change.entity.id}`}>
-      <Button
-        className="tw:min-w-0 tw:flex-1 tw:justify-start"
-        color="link-gray"
-        size="sm"
-        onPress={() => setSelected(change)}>
+      <Typography
+        className="tw:min-w-0 tw:flex-1 tw:truncate"
+        size="text-sm"
+        weight="semibold">
         {getEntityName(change.entity)}
-      </Button>
+      </Typography>
       <Typography
         as="span"
         className={CHANGE_TEXT_COLORS[change.changeType]}
@@ -289,25 +221,20 @@ const OntologyReviewRelease = ({
             color="secondary"
             isDisabled={page.isPending || cursors.length === 1}
             size="sm"
-            onPress={() => {
-              setSelected(undefined);
-              setCursors((current) => current.slice(0, -1));
-            }}>
+            onPress={() => setCursors((current) => current.slice(0, -1))}>
             {t('label.previous')}
           </Button>
           <Button
             color="secondary"
             isDisabled={page.isPending || !page.data?.paging.after}
             size="sm"
-            onPress={() => {
-              setSelected(undefined);
-              setCursors((current) => [...current, page.data?.paging.after]);
-            }}>
+            onPress={() =>
+              setCursors((current) => [...current, page.data?.paging.after])
+            }>
             {t('label.next')}
           </Button>
         </Box>
       )}
-      {renderMember()}
     </Box>
   );
 };

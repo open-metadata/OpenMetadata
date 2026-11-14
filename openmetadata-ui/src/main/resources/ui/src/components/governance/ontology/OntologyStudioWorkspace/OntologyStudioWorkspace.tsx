@@ -74,12 +74,11 @@ const getWorkspaceClassName = (
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
 };
 
-/** View mode's Ontology surface on the draft shows the tabs read-only; a release shows its Overview. */
+/** View mode's Ontology surface shows the tabs read-only, over the draft or a published release. */
 const showsReadOnlyTabs = (
   mode: OntologyStudioWorkspaceProps['mode'],
-  viewSurface: OntologyStudioWorkspaceProps['viewSurface'],
-  releaseId?: string
-) => mode === 'view' && viewSurface === 'ontology' && !releaseId;
+  viewSurface: OntologyStudioWorkspaceProps['viewSurface']
+) => mode === 'view' && viewSurface === 'ontology';
 
 type DefinitionTab = 'concept' | 'property' | 'axiom';
 
@@ -119,21 +118,23 @@ const OntologyStudioWorkspace = ({
   const [revision, setRevision] = useState(0);
   // The tab whose Add was pressed in View mode; Edit opens that tab's create form.
   const [createFor, setCreateFor] = useState<DefinitionTab>();
+  // A published release is frozen, so its tabs offer no Add.
   const createProps = (tab: DefinitionTab, isReadOnly: boolean) => ({
     shouldOpenCreate: !isReadOnly && createFor === tab,
     onCreateOpened: () => setCreateFor(undefined),
     onRequestCreate:
-      isReadOnly && onRequestDefinitionsEdit
+      isReadOnly && !releaseId && onRequestDefinitionsEdit
         ? () => {
             setCreateFor(tab);
             onRequestDefinitionsEdit();
           }
         : undefined,
   });
+  const isReadOnlyTabs = showsReadOnlyTabs(mode, viewSurface);
+  const tabsReleaseId = isReadOnlyTabs ? releaseId : undefined;
   const { model } = useOntologyStudioModel(
-    mode === 'definitions' || showsReadOnlyTabs(mode, viewSurface, releaseId)
-      ? ontology
-      : undefined
+    mode === 'definitions' || isReadOnlyTabs ? ontology : undefined,
+    tabsReleaseId
   );
   // Leaving for the graph drops an open definition editor, so it asks first.
   const openConcept = onRequestEdit
@@ -203,6 +204,7 @@ const OntologyStudioWorkspace = ({
       <Tabs.Panel id="overview">
         <OntologyOverview
           ontology={ontology}
+          releaseId={tabsReleaseId}
           status={publicationStatus}
           onOpenPublication={isReadOnly ? undefined : onOpenPublication}
           onOpenTab={(tab, status) =>
@@ -218,6 +220,7 @@ const OntologyStudioWorkspace = ({
           {...createProps('concept', isReadOnly)}
           isReadOnly={isReadOnly}
           ontology={ontology}
+          releaseId={tabsReleaseId}
           // View mode opens the concept read-only here, as properties do.
           onOpenConcept={isReadOnly ? undefined : openConcept}
           onWorkingChange={onWorkingChange}
@@ -229,6 +232,7 @@ const OntologyStudioWorkspace = ({
           definitionType="property"
           isReadOnly={isReadOnly}
           ontology={ontology}
+          releaseId={tabsReleaseId}
           onWorkingChange={onWorkingChange}
         />
       </Tabs.Panel>
@@ -238,6 +242,7 @@ const OntologyStudioWorkspace = ({
           initialStatus={axiomStatus}
           isReadOnly={isReadOnly}
           ontology={ontology}
+          releaseId={tabsReleaseId}
           onOpenConcept={isReadOnly ? onShowConceptOnGraph : openConcept}
           onWorkingChange={onWorkingChange}
         />
@@ -261,8 +266,7 @@ const OntologyStudioWorkspace = ({
         return renderDefinitionTabs(false);
       case 'view':
       case 'edit':
-        // A published release is read from its snapshot, which only the Overview shows.
-        if (showsReadOnlyTabs(mode, viewSurface, releaseId)) {
+        if (viewSurface === 'ontology') {
           return (
             <Box
               className={
@@ -272,25 +276,6 @@ const OntologyStudioWorkspace = ({
               }
               direction="col">
               {renderDefinitionTabs(true)}
-            </Box>
-          );
-        }
-        if (viewSurface === 'ontology') {
-          return (
-            <Box
-              className={
-                isAiMode
-                  ? 'tw:h-full tw:overflow-auto tw:px-8 tw:pt-6'
-                  : 'tw:h-full tw:overflow-auto tw:p-6'
-              }
-              direction="col"
-              gap={5}>
-              {header}
-              <OntologyOverview
-                ontology={ontology}
-                releaseId={releaseId}
-                status={publicationStatus}
-              />
             </Box>
           );
         }

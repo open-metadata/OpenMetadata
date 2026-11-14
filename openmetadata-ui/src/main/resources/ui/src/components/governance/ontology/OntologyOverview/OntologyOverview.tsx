@@ -597,6 +597,11 @@ const conflictDetail = (
     ? t('message.ontology-overview-in-conflict', { count })
     : undefined;
 
+// Inside the draft's tabs the header names the ontology and Settings holds its details;
+// a published release keeps its version details, which Settings does not show.
+const showsDetails = (onOpenTab: unknown, releaseId?: string) =>
+  !onOpenTab || Boolean(releaseId);
+
 const OntologyOverview = ({
   ontology,
   releaseId,
@@ -667,8 +672,7 @@ const OntologyOverview = ({
     ],
   ] as const;
 
-  // Inside the Ontology tabs the header names the ontology and Settings holds its details.
-  const isStandalone = !onOpenTab;
+  const isStandalone = showsDetails(onOpenTab, releaseId);
 
   return (
     <Box

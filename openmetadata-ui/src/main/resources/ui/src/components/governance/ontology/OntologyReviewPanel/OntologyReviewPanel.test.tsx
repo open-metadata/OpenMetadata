@@ -64,7 +64,7 @@ describe('OntologyReviewPanel', () => {
   });
 
   it.each(['CHANGED', 'REMOVED'])(
-    'compares the captured baseline and opens the %s member snapshots',
+    'compares the captured baseline and lists the %s member as plain text',
     async (changeType) => {
       get.mockImplementation(async (url) => {
         if (url.endsWith('/versions/0.2')) {
@@ -91,17 +91,6 @@ describe('OntologyReviewPanel', () => {
             },
           };
         }
-        if (url.includes('/members/CONCEPT/concept-id')) {
-          return {
-            data: {
-              payload: {
-                description: url.includes('/previous-release/')
-                  ? 'Previous meaning'
-                  : 'Submitted meaning',
-              },
-            },
-          };
-        }
 
         throw new Error(`Unexpected request ${url}`);
       });
@@ -109,18 +98,11 @@ describe('OntologyReviewPanel', () => {
       renderWithQueryClient(
         <OntologyReviewPanel task={task} onReadyChange={onReadyChange} />
       );
-      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
 
-      expect(await screen.findByText(/Previous meaning/)).toBeInTheDocument();
-
-      if (changeType === 'CHANGED') {
-        expect(
-          await screen.findByText(/Submitted meaning/)
-        ).toBeInTheDocument();
-      } else {
-        expect(screen.queryByText(/Submitted meaning/)).not.toBeInTheDocument();
-      }
-
+      expect(await screen.findByText('Customer')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Customer' })
+      ).not.toBeInTheDocument();
       expect(onReadyChange).toHaveBeenLastCalledWith(true);
       expect(get).toHaveBeenCalledWith(
         '/ontologyReleases/release-id/versions/0.2',
@@ -151,9 +133,6 @@ describe('OntologyReviewPanel', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'message.ontology-review-unavailable'
       );
-      expect(
-        screen.queryByTestId('ontology-review-field-changes')
-      ).not.toBeInTheDocument();
       expect(get).toHaveBeenCalledTimes(1);
       expect(onReadyChange).toHaveBeenLastCalledWith(false);
     }
@@ -164,9 +143,6 @@ describe('OntologyReviewPanel', () => {
     renderWithQueryClient(<OntologyReviewPanel task={task} />);
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('ontology-review-field-changes')
-    ).not.toBeInTheDocument();
   });
 
   it('does not read an unpinned or per-definition task target', async () => {
@@ -186,7 +162,7 @@ describe('OntologyReviewPanel', () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  describe('field changes in English', () => {
+  describe('release name in English', () => {
     beforeEach(() => {
       useEnUsTranslations();
     });
@@ -226,60 +202,9 @@ describe('OntologyReviewPanel', () => {
             },
           };
         }
-        if (url.includes('/members/CONCEPT/concept-id')) {
-          return {
-            data: {
-              payload: url.includes('/previous-release/')
-                ? payloads.before
-                : payloads.after,
-            },
-          };
-        }
 
         throw new Error(`Unexpected request ${url}`);
       });
-
-    it('shows each changed field with its old and new value and no JSON', async () => {
-      serve('CHANGED', {
-        before: {
-          name: 'Customer',
-          description: 'Someone who buys',
-          synonyms: ['Client'],
-          updatedAt: 1,
-        },
-        after: {
-          name: 'Customer',
-          description: 'Someone who buys or subscribes',
-          synonyms: ['Client', 'Shopper'],
-          updatedAt: 2,
-        },
-      });
-      renderWithQueryClient(<OntologyReviewPanel task={task} />);
-      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
-
-      const rows = await screen.findAllByTestId('ontology-review-field-change');
-
-      expect(rows.map((row) => row.textContent)).toEqual([
-        'descriptionBefore: Someone who buysAfter: Someone who buys or subscribes',
-        'synonymsBefore: ClientAfter: Client, Shopper',
-      ]);
-      expect(
-        screen.getByTestId('ontology-review-field-changes').textContent
-      ).not.toMatch(/[{}"]/);
-    });
-
-    it('shows an added member with every field Not set before', async () => {
-      serve('ADDED', { after: { name: 'Customer', description: 'New' } });
-      renderWithQueryClient(<OntologyReviewPanel task={task} />);
-      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
-
-      const rows = await screen.findAllByTestId('ontology-review-field-change');
-
-      expect(rows.map((row) => row.textContent)).toEqual([
-        'nameBefore: Not setAfter: Customer',
-        'descriptionBefore: Not setAfter: New',
-      ]);
-    });
 
     it('names the release by its semantic version, not the entity version', async () => {
       serve('CHANGED', { before: { a: '1' }, after: { a: '2' } }, '1.5.0');
@@ -336,12 +261,8 @@ describe('OntologyReviewPanel', () => {
 
     fireEvent.click(screen.getByTestId('ontology-change-filter-added'));
 
-    expect(
-      screen.getByRole('button', { name: 'Customer' })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'buys' })
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('Customer')).toBeInTheDocument();
+    expect(screen.queryByText('buys')).not.toBeInTheDocument();
     expect(
       screen.queryByText('label.relationship-plural')
     ).not.toBeInTheDocument();

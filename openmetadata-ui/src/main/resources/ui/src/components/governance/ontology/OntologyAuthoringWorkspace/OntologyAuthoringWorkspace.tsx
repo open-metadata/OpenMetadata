@@ -63,6 +63,8 @@ interface OntologyAuthoringWorkspaceProps {
   onOpenConcept?: (conceptId: string) => void;
   /** View mode: the list is browsable but not editable. */
   isReadOnly?: boolean;
+  /** Reads the definitions a published release froze instead of the working copy. */
+  releaseId?: string;
   /** View mode's Add, which switches to Edit. */
   onRequestCreate?: () => void;
   /** Opens the create form once, after View mode's Add switched to Edit. */
@@ -138,14 +140,17 @@ const ConceptTab = ({
   onWorkingChange,
   onOpenConcept,
   isReadOnly,
+  releaseId,
   onRequestCreate,
   shouldOpenCreate,
   onCreateOpened,
 }: Omit<OntologyAuthoringWorkspaceProps, 'definitionType'>) => {
   const { t } = useTranslation();
   const canCreate = useCanCreate(ontology, ResourceEntity.ONTOLOGY_CONCEPT);
-  const { model, relations, isError, refetch } =
-    useOntologyStudioModel(ontology);
+  const { model, relations, isError, refetch } = useOntologyStudioModel(
+    ontology,
+    releaseId
+  );
   const [search, setSearch] = useState('');
   const [conceptType, setConceptType] = useState<string>(ALL);
   const [level, setLevel] = useState<ConceptLevelFilter>('any');
@@ -350,6 +355,7 @@ const PropertyTab = ({
   ontology,
   onWorkingChange,
   isReadOnly,
+  releaseId,
   onRequestCreate,
   shouldOpenCreate,
   onCreateOpened,
@@ -359,7 +365,10 @@ const PropertyTab = ({
 >) => {
   const { t } = useTranslation();
   const canCreate = useCanCreate(ontology, ResourceEntity.ONTOLOGY_PROPERTY);
-  const { model, isError, refetch } = useOntologyStudioModel(ontology);
+  const { model, isError, refetch } = useOntologyStudioModel(
+    ontology,
+    releaseId
+  );
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<string>(ALL);
   const nameByIri = useMemo(

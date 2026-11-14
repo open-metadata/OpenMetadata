@@ -269,6 +269,7 @@ const OntologyAxiomWorkspace = ({
   onWorkingChange,
   onOpenConcept,
   isReadOnly,
+  releaseId,
   onRequestCreate,
   shouldOpenCreate,
   onCreateOpened,
@@ -276,6 +277,8 @@ const OntologyAxiomWorkspace = ({
   ontology: Ontology;
   /** View mode: constraints can be read and validated, not edited. */
   isReadOnly?: boolean;
+  /** Reads the constraints a published release froze; the working validation does not apply. */
+  releaseId?: string;
   /** View mode's Add, which switches to Edit. */
   onRequestCreate?: () => void;
   /** Opens the create form once, after View mode's Add switched to Edit. */
@@ -289,10 +292,14 @@ const OntologyAxiomWorkspace = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { model, isError, refetch } = useOntologyStudioModel(ontology);
+  const { model, isError, refetch } = useOntologyStudioModel(
+    ontology,
+    releaseId
+  );
   const validation = useQuery({
     queryKey: overviewValidationQueryKey(ontology.id),
     queryFn: () => getOntologyWorkingValidation(ontology.id),
+    enabled: !releaseId,
     retry: false,
   });
   const [axiomType, setAxiomType] = useState<string>(ALL);
@@ -610,7 +617,7 @@ const OntologyAxiomWorkspace = ({
   return (
     <OntologyDefinitionList
       hideNameColumn
-      actions={actions}
+      actions={releaseId ? undefined : actions}
       banner={banner}
       canCreate={canCreate}
       columns={columns}
