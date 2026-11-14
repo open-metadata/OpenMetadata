@@ -13,6 +13,7 @@ Salesforce Data 360 pipeline connection handler
 """
 
 from simple_salesforce.api import Salesforce
+from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -31,25 +32,49 @@ from metadata.ingestion.source.database.data360.client import (
     get_datastreams,
     get_datatransforms,
 )
+from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
+    InvalidDomainException,
+)
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 # The steps below prove the connected app can reach each API; they are not a dry
-# run of the ingestion, so they ask for the smallest page the endpoints allow.
+# run of the ingestion, so they read only the first page, of the smallest size the
+# endpoints allow.
 PROBE_LIMIT = 1
+
+# The OAuth client credentials flow only works on the org's My Domain. simple_salesforce
+# does not even try it on `login` or `test` and falls back to a password login, whose
+# error says nothing about the domain; any other wrong host gets this answer. See
+# ADR:2026-11-12-data360-pipeline-authenticates-on-the-org-my-domain.
+GENERIC_LOGIN_DOMAINS = ("login", "test")
+UNSUPPORTED_DOMAIN_ERROR = "request not supported on this domain"
+
+
+def _my_domain_hint(domain: str) -> str:
+    return f"Set the Salesforce Domain to the org's My Domain (e.g. `mycompany.my`), not `{domain}`."
 
 
 class Data360PipelineConnection(BaseConnection[Data360PipelineConnectionConfig, Salesforce]):
     def _get_client(self) -> Salesforce:
         connection = self.service_connection
-        client = Salesforce(
-            consumer_key=connection.consumerKey.get_secret_value(),
-            consumer_secret=connection.consumerSecret.get_secret_value(),
-            domain=connection.salesforceDomain,
-            version=connection.salesforceApiVersion,
-        )
+        if connection.salesforceDomain in GENERIC_LOGIN_DOMAINS:
+            raise InvalidDomainException(
+                f"Data 360 authenticates with OAuth client credentials. {_my_domain_hint(connection.salesforceDomain)}"
+            )
+        try:
+            client = Salesforce(
+                consumer_key=connection.consumerKey.get_secret_value(),
+                consumer_secret=connection.consumerSecret.get_secret_value(),
+                domain=connection.salesforceDomain,
+                version=connection.salesforceApiVersion,
+            )
+        except SalesforceAuthenticationFailed as exc:
+            if UNSUPPORTED_DOMAIN_ERROR in str(exc):
+                raise InvalidDomainException(f"{exc}. {_my_domain_hint(connection.salesforceDomain)}") from exc
+            raise
         # simple_salesforce opens a requests.Session per client. This one is ours,
         # so it is released with the connection rather than at interpreter exit.
         session = getattr(client, "session", None)
@@ -65,19 +90,30 @@ class Data360PipelineConnection(BaseConnection[Data360PipelineConnectionConfig, 
     ) -> TestConnectionResult:
         """Validates connectivity and that the connected app can list each object
         type ingested as a pipeline. Authenticating is not enough on its own, since
-        Data 360 grants its scopes per API."""
-        client = self.client
+        Data 360 grants its scopes per API.
+
+        The client logs in when it is first built, so it is built inside the steps: a
+        rejected login then fails ``CheckAccess`` with its reason instead of escaping
+        before any step result is written."""
         service_connection = self.service_connection
 
+        def probe(getter):
+            return lambda: getter(
+                self.client,
+                pagination_limit=PROBE_LIMIT,
+                log_warning=logger.warning,
+                first_page_only=True,
+            )
+
+        def check_access():
+            # Not `self.client.describe`: that would log in right here, outside the steps.
+            return self.client.describe()
+
         test_fn = {
-            "CheckAccess": client.describe,
-            "GetPipelines": lambda: get_datastreams(client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning),
-            "GetCalculatedInsights": lambda: get_calculated_insights(
-                client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
-            ),
-            "GetDataTransforms": lambda: get_datatransforms(
-                client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
-            ),
+            "CheckAccess": check_access,
+            "GetPipelines": probe(get_datastreams),
+            "GetCalculatedInsights": probe(get_calculated_insights),
+            "GetDataTransforms": probe(get_datatransforms),
         }
         return test_connection_steps(
             metadata=metadata,

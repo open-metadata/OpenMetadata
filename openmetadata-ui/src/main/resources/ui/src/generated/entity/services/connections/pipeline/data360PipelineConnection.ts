@@ -42,18 +42,26 @@ export interface Data360PipelineConnection {
      */
     salesforceApiVersion?: string;
     /**
-     * Domain of Salesforce instance
+     * My Domain of the Salesforce org, without `.salesforce.com`, e.g. `mycompany.my` or
+     * `mycompany--sandbox.sandbox.my`. The OAuth client credentials flow only works on the
+     * org's My Domain, so `login` and `test` are rejected.
      */
-    salesforceDomain?: string;
+    salesforceDomain: string;
     /**
      * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
      * {"S3_Connector": "my-s3-service"}
      */
-    serviceMapping?:             string;
+    serviceMapping?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsUsageExtraction?:    boolean;
+    /**
+     * Supports Usage Extraction.
+     */
+    supportsUsageExtraction?: boolean;
     /**
      * Service Type
      */
