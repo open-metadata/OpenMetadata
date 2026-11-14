@@ -39,6 +39,11 @@ export const DATA_ESTATE_CONNECTORS_QUERY_KEY = [
 export const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 
 const SERVICE_TYPE_FIELD = 'serviceType';
+// By id: service names are unique only within a service category.
+const SERVICE_ID_FIELD = 'service.id';
+const SERVICE_LABEL_SOURCES = ['service.displayName', 'service.name'];
+// Prefixed so a custom slice's key can never equal a serviceType or OTHER_CONNECTORS_KEY.
+const CUSTOM_SERVICE_KEY_PREFIX = 'service:';
 
 /**
  * Connectors the bar names individually. The rest fold into one "Other"
@@ -50,7 +55,10 @@ export const MAX_NAMED_CONNECTORS = 6;
 export const OTHER_CONNECTORS_KEY = '__other__';
 
 export interface ConnectorCount {
-  /** The raw `serviceType`, e.g. `BigQuery` — stable across locales. */
+  /**
+   * The raw `serviceType`, e.g. `BigQuery` — stable across locales. For a
+   * custom connector, `service:<service id>` instead.
+   */
   key: string;
   /** What the legend shows, e.g. `Big Query`. */
   name: string;
@@ -166,6 +174,68 @@ const coverageSeries = (
     });
 };
 
+/** `CustomDashboard`, `CustomDatabase`, ...: the types a custom connector registers under. */
+export const isCustomServiceType = (serviceType: string): boolean =>
+  serviceType.toLowerCase().startsWith('custom');
+
+type TopHitsBucket = Bucket & {
+  'top_hits#top'?: {
+    hits?: {
+      hits?: Array<{
+        _source?: { service?: { displayName?: string; name?: string } };
+      }>;
+    };
+  };
+};
+
+/**
+ * Every custom connector shares one `serviceType`, so its slice would read
+ * "Custom Dashboard" whatever the tool behind it. Split those slices by
+ * service and name each after the service's `displayName`, then its name.
+ * When the split fails or comes back incomplete, the unsplit slices stay, so
+ * the bar still adds up.
+ */
+const splitCustomConnectors = async (
+  custom: ConnectorCount[]
+): Promise<ConnectorCount[]> => {
+  if (custom.length === 0) {
+    return [];
+  }
+  try {
+    const response = await postAggregateFieldOptions({
+      deleted: false,
+      fieldName: SERVICE_ID_FIELD,
+      index: SearchIndex.DATA_ASSET,
+      query: JSON.stringify({
+        query: { terms: { [SERVICE_TYPE_FIELD]: custom.map((c) => c.key) } },
+      }),
+      size: AGGREGATE_PAGE_SIZE_LARGE,
+      sourceFields: SERVICE_LABEL_SOURCES,
+      topHits: { size: 1 },
+    });
+    const buckets: TopHitsBucket[] =
+      getAggregations(response.data.aggregations ?? {})[SERVICE_ID_FIELD]
+        ?.buckets ?? [];
+    const services = buckets.map((bucket) => {
+      const service = bucket['top_hits#top']?.hits?.hits?.[0]?._source?.service;
+
+      return {
+        count: bucket.doc_count,
+        key: `${CUSTOM_SERVICE_KEY_PREFIX}${bucket.key}`,
+        name: service?.displayName || service?.name || bucket.key,
+      };
+    });
+
+    // A response capped at the page size would drop assets from the bar.
+    const sum = (connectors: ConnectorCount[]) =>
+      connectors.reduce((total, connector) => total + connector.count, 0);
+
+    return sum(services) === sum(custom) ? services : custom;
+  } catch {
+    return custom;
+  }
+};
+
 /**
  * The estate's split by connector — Snowflake, Redshift, BigQuery — from a
  * `serviceType` terms aggregation over the data-asset index.
@@ -191,13 +261,17 @@ const fetchConnectorBreakdown = async (): Promise<ConnectorCount[]> => {
     getAggregations(response.data.aggregations ?? {})[SERVICE_TYPE_FIELD]
       ?.buckets ?? [];
 
-  return buckets
-    .map((bucket) => ({
-      count: bucket.doc_count,
-      key: bucket.key,
-      name: getFormattedDataAssetServiceType(bucket.key),
-    }))
-    .sort((a, b) => b.count - a.count);
+  const connectors = buckets.map((bucket) => ({
+    count: bucket.doc_count,
+    key: bucket.key,
+    name: getFormattedDataAssetServiceType(bucket.key),
+  }));
+  const custom = connectors.filter((c) => isCustomServiceType(c.key));
+  const named = connectors.filter((c) => !isCustomServiceType(c.key));
+
+  return [...named, ...(await splitCustomConnectors(custom))].sort(
+    (a, b) => b.count - a.count
+  );
 };
 
 /** Names the largest connectors and folds the tail into one "Other" entry. */

@@ -50,6 +50,23 @@ const serviceTypeBuckets = (...buckets: Array<[string, number]>) =>
     },
   } as never);
 
+const serviceIdBuckets = (
+  ...buckets: Array<[string, number, { displayName?: string; name?: string }]>
+) =>
+  ({
+    data: {
+      aggregations: {
+        'sterms#service.id': {
+          buckets: buckets.map(([key, doc_count, service]) => ({
+            doc_count,
+            key,
+            'top_hits#top': { hits: { hits: [{ _source: { service } }] } },
+          })),
+        },
+      },
+    },
+  } as never);
+
 const DAY_ONE = 1_700_000_000_000;
 const DAY_TWO = DAY_ONE + 86_400_000;
 
@@ -295,6 +312,119 @@ describe('useDataEstate', () => {
 
     expect(result.current.totalAssets).toBe(0);
     expect(result.current.connectors).toEqual([]);
+  });
+
+  // Every custom connector registers as e.g. `CustomDashboard`, so its slice
+  // read "Custom Dashboard" whatever the tool behind it was.
+  it('names custom connector slices after their services', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(
+        serviceTypeBuckets(['Snowflake', 100], ['CustomDashboard', 80])
+      )
+      .mockResolvedValueOnce(
+        serviceIdBuckets(
+          ['id-1', 60, { displayName: 'Semantic Layer', name: 'semantic' }],
+          ['id-2', 20, { name: 'in_house_bi' }]
+        )
+      );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.connectors).toEqual([
+      { count: 100, key: 'Snowflake', name: 'Snowflake' },
+      { count: 60, key: 'service:id-1', name: 'Semantic Layer' },
+      { count: 20, key: 'service:id-2', name: 'in_house_bi' },
+    ]);
+    expect(mockSearchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        fieldName: 'service.id',
+        query: JSON.stringify({
+          query: { terms: { serviceType: ['CustomDashboard'] } },
+        }),
+      })
+    );
+  });
+
+  // Service names are unique only within a category: a CustomDatabase and a
+  // CustomDashboard can both be `prod`, and must stay two slices.
+  it('keeps same-named services of different categories apart', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(
+        serviceTypeBuckets(['CustomDashboard', 30], ['CustomDatabase', 10])
+      )
+      .mockResolvedValueOnce(
+        serviceIdBuckets(
+          ['id-dash', 30, { name: 'prod' }],
+          ['id-db', 10, { name: 'prod' }]
+        )
+      );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.connectors.map((c) => c.key)).toEqual([
+      'service:id-dash',
+      'service:id-db',
+    ]);
+    expect(result.current.connectorCount).toBe(2);
+  });
+
+  // A custom service named after a built-in type must not share its key, or
+  // the bar renders two segments under one React key.
+  it('never gives a custom slice the key of a built-in type', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(
+        serviceTypeBuckets(['Looker', 50], ['CustomDashboard', 40])
+      )
+      .mockResolvedValueOnce(
+        serviceIdBuckets(['Looker', 40, { name: 'Looker' }])
+      );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const keys = result.current.connectors.map((c) => c.key);
+
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  // Past the page size the split comes back short; replacing the custom slice
+  // with it would drop assets from the bar.
+  it('keeps the unsplit custom slice when the split is incomplete', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(serviceTypeBuckets(['CustomDashboard', 80]))
+      .mockResolvedValueOnce(serviceIdBuckets(['id-1', 60, { name: 'a' }]));
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.connectors).toEqual([
+      { count: 80, key: 'CustomDashboard', name: 'Custom Dashboard' },
+    ]);
+  });
+
+  it('keeps the unsplit custom slice when the split fails', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(serviceTypeBuckets(['CustomDashboard', 80]))
+      .mockRejectedValueOnce(new Error('boom'));
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.connectors).toEqual([
+      { count: 80, key: 'CustomDashboard', name: 'Custom Dashboard' },
+    ]);
   });
 
   // The search query's built-in aggregation stops at the engine's default of
