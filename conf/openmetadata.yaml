@@ -757,7 +757,7 @@ pipelineServiceClientConfiguration:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
   logStorageConfiguration:
     type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
-    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Enable it for pipelines deployed in the server
+    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Deprecated and ignored. With type s3, every pipeline stores its logs in S3 from its next deploy
     # if type is s3, provide the following configuration
     bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
     # optional path within the bucket to store the logs

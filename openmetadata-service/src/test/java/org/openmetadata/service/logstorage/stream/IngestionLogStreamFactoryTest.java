@@ -14,13 +14,18 @@ package org.openmetadata.service.logstorage.stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -111,6 +116,7 @@ class IngestionLogStreamFactoryTest {
   void aRunNotNamedByUuidIsTailedFromThePipelineServiceRatherThanFailing() {
     IngestionPipelineRepository repository = mock(IngestionPipelineRepository.class);
     when(repository.isS3LogStorageEnabled()).thenReturn(true);
+    when(repository.readsRunLogsFromStorage(any(), any(), anyBoolean())).thenCallRealMethod();
     PipelineServiceClientInterface client = mock(PipelineServiceClientInterface.class);
     IngestionLogStreamFactory factory = new IngestionLogStreamFactory(repository, client);
     IngestionPipeline pipeline =
@@ -121,6 +127,44 @@ class IngestionLogStreamFactoryTest {
     LogStreamRequest request = factory.request(pipeline, "scheduled__2026-08-10T00:00:00", null);
 
     assertInstanceOf(PipelineServiceLogTailSource.class, request.run().source());
+  }
+
+  /**
+   * Whether a run's logs are still coming decides where they are tailed from when storage holds
+   * nothing yet, so the factory must hand the run's real state to that decision. A run with no
+   * status row at all was most likely just triggered, while one missing only from the recent rows
+   * is old, and its own row says whether it finished.
+   */
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("runStatesAndWhetherTheRunIsGoing")
+  void aRunIsTailedFromStorageWhenItsStateSaysItsLogsAreThere(
+      String scenario,
+      List<PipelineStatus> recentStatuses,
+      PipelineStatus ownRow,
+      boolean runGoing) {
+    IngestionPipelineRepository repository = mock(IngestionPipelineRepository.class);
+    IngestionPipeline pipeline = new IngestionPipeline().withFullyQualifiedName("svc.pipeline");
+    when(repository.getRecentPipelineStatuses("svc.pipeline")).thenReturn(recentStatuses);
+    when(repository.getPipelineStatus("svc.pipeline", RUN_ID)).thenReturn(ownRow);
+    when(repository.readsRunLogsFromStorage(pipeline, RUN_ID, runGoing)).thenReturn(true);
+    IngestionLogStreamFactory factory =
+        new IngestionLogStreamFactory(repository, mock(PipelineServiceClientInterface.class));
+
+    LogStreamRequest request = factory.request(pipeline, RUN_ID, null);
+
+    assertInstanceOf(StorageLogTailSource.class, request.run().source(), scenario);
+  }
+
+  private static Stream<Arguments> runStatesAndWhetherTheRunIsGoing() {
+    return Stream.of(
+        Arguments.of("running", List.of(status(RUN_ID, PipelineStatusType.RUNNING)), null, true),
+        Arguments.of("finished", List.of(status(RUN_ID, PipelineStatusType.SUCCESS)), null, false),
+        Arguments.of("no status row yet", List.of(), null, true),
+        Arguments.of(
+            "finished and older than the recent rows",
+            List.of(),
+            status(RUN_ID, PipelineStatusType.SUCCESS),
+            false));
   }
 
   private static PipelineStatus status(String runId, PipelineStatusType state) {
