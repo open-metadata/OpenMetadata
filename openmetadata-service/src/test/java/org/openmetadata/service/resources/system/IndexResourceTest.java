@@ -16,22 +16,30 @@ package org.openmetadata.service.resources.system;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Response;
+import java.lang.reflect.Field;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.CspNonceHandler;
 
+@Isolated
 class IndexResourceTest {
   private IndexResource resource;
 
@@ -193,5 +201,121 @@ class IndexResourceTest {
     assertFalse(
         etagRoot.equals(etagCustom),
         "ETag for two different basePaths must differ — they produce different bodies");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/openmetadata", "/team/catalog", "/Team/%E9%9B%AA", "/team//catalog"})
+  void testPrefixesWithAndWithoutTrailingSlashRenderTheSameAssets(String prefix) {
+    String html = IndexResource.getIndexFile(prefix);
+    assertEquals(IndexResource.getIndexFile(prefix + "/"), html);
+    assertEquals(IndexResource.getIndexFile(prefix + "///"), html);
+    assertTrue(html.contains("window.BASE_PATH = '" + prefix + "/'"));
+    assertTrue(html.contains("src=\"" + prefix + "/assets/test.js\""));
+    assertTrue(html.contains("href=\"" + prefix + "/assets/test.css\""));
+    assertTrue(html.contains("href=\"" + prefix + "/favicon.png\""));
+    assertTrue(html.contains("href=\"" + prefix + "/manifest.json\""));
+    assertTrue(html.contains("'" + prefix + "/images/governance.png'"));
+    assertFalse(html.contains("${basePath}"));
+    assertEquals(IndexResource.getIndexEtag(prefix + "/"), IndexResource.getIndexEtag(prefix));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"/", "////"})
+  void testEmptyAndRootPrefixesRenderRootAssets(String prefix) {
+    assertEquals(IndexResource.getIndexFile("/"), IndexResource.getIndexFile(prefix));
+    assertEquals(IndexResource.getIndexEtag("/"), IndexResource.getIndexEtag(prefix));
+    assertEquals(
+        IndexResource.getSilentCallbackFile("/"), IndexResource.getSilentCallbackFile(prefix));
+    assertEquals(
+        IndexResource.getSilentCallbackEtag("/"), IndexResource.getSilentCallbackEtag(prefix));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/openmetadata", "/team/catalog", "/Team/%E9%9B%AA"})
+  void testSilentCallbackUsesCanonicalPrefixAndIsolatedBundle(String prefix) {
+    String html = IndexResource.getSilentCallbackFile(prefix, "callback-nonce");
+    assertEquals(IndexResource.getSilentCallbackFile(prefix + "/", "callback-nonce"), html);
+    assertTrue(html.contains("src=\"" + prefix + "/assets/silent-callback.js\""));
+    assertTrue(html.contains("nonce=\"callback-nonce\""));
+    assertFalse(html.contains("${basePath}"));
+    assertFalse(html.contains("${cspNonce}"));
+    assertFalse(html.contains("id=\"root\""));
+    assertFalse(html.contains("assets/test.js"));
+    assertEquals(
+        IndexResource.getSilentCallbackEtag(prefix + "/"),
+        IndexResource.getSilentCallbackEtag(prefix));
+    assertFalse(
+        IndexResource.getIndexEtag(prefix).equals(IndexResource.getSilentCallbackEtag(prefix)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/openmetadata", "/openmetadata/", "/team/catalog"})
+  void testConfiguredPrefixIsCanonicalInResourceResponse(String prefix) {
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setBasePath(prefix);
+    try {
+      IndexResource.initialize(config);
+      Response response = resource.getIndex(mock(HttpServletRequest.class));
+      assertEquals(200, response.getStatus());
+      assertEquals(IndexResource.getIndexFile(prefix + "/"), response.getEntity());
+    } finally {
+      initIndex();
+    }
+  }
+
+  @Test
+  void testMissingIndexTemplateFailsClearly() throws ReflectiveOperationException {
+    Field template = IndexResource.class.getDeclaredField("configProcessedHtml");
+    template.setAccessible(true);
+    Object initializedTemplate = template.get(null);
+    try {
+      template.set(null, null);
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> IndexResource.getIndexFile("/openmetadata"));
+      assertEquals("IndexResource not initialized. Call initialize() first.", failure.getMessage());
+    } finally {
+      template.set(null, initializedTemplate);
+    }
+  }
+
+  @Test
+  void testMissingCallbackRemainsAbsentForEveryRenderingVariant()
+      throws ReflectiveOperationException {
+    Field template = IndexResource.class.getDeclaredField("silentCallbackRawHtml");
+    template.setAccessible(true);
+    Object initializedTemplate = template.get(null);
+    try {
+      template.set(null, null);
+      assertNull(IndexResource.getSilentCallbackFile("/openmetadata"));
+      assertNull(IndexResource.getSilentCallbackFile("/openmetadata", "nonce"));
+      assertNull(IndexResource.getSilentCallbackEtag("/openmetadata"));
+      assertNotNull(IndexResource.getIndexFile("/openmetadata"));
+    } finally {
+      template.set(null, initializedTemplate);
+    }
+  }
+
+  @Test
+  void testNullOptionalSentryValuesRenderAsEmptyStrings() {
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setSentryConfiguration(new SentryConfiguration().withUiDsn(null).withEnvironment(null));
+    try {
+      IndexResource.initialize(config);
+      String html = IndexResource.getIndexFile("/openmetadata");
+      assertTrue(html.contains("window.SENTRY_DSN = '';"));
+      assertTrue(html.contains("window.SENTRY_ENVIRONMENT = '';"));
+      assertFalse(html.contains("${sentry"));
+    } finally {
+      initIndex();
+    }
+  }
+
+  @Test
+  void testCanonicalEtagRemainsStableAfterCacheReset() {
+    String etag = IndexResource.getIndexEtag("/openmetadata");
+    IndexResource.clearEtagCacheForTesting();
+    assertEquals(etag, IndexResource.getIndexEtag("/openmetadata/"));
   }
 }

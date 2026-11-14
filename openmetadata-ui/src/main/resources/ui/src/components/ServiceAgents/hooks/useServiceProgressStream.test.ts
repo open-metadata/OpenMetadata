@@ -36,10 +36,6 @@ jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
   },
 }));
 
-jest.mock('../../../utils/HistoryUtils', () => ({
-  getBasePath: jest.fn().mockReturnValue(''),
-}));
-
 const mockFetchEventSource = fetchEventSource as jest.MockedFunction<
   typeof fetchEventSource
 >;
@@ -57,9 +53,46 @@ const flushAsync = async () => {
 const neverResolve = () => new Promise<void>(() => undefined);
 
 describe('useServiceProgressStream', () => {
+  const originalBasePath = Object.getOwnPropertyDescriptor(
+    globalThis,
+    'BASE_PATH'
+  );
+
   beforeEach(() => {
     jest.clearAllMocks();
+    Reflect.deleteProperty(globalThis, 'BASE_PATH');
   });
+
+  afterEach(() => {
+    if (originalBasePath) {
+      Object.defineProperty(globalThis, 'BASE_PATH', originalBasePath);
+    } else {
+      Reflect.deleteProperty(globalThis, 'BASE_PATH');
+    }
+  });
+
+  it.each(['/openmetadata', '/openmetadata/', '/team/catalog'])(
+    'connects to the complete %s service stream prefix',
+    async (basePath) => {
+      Reflect.set(globalThis, 'BASE_PATH', basePath);
+      mockFetchEventSource.mockImplementation(() => neverResolve());
+      renderHook(() =>
+        useServiceProgressStream({
+          serviceCategory: ServiceCategory.DATABASE_SERVICES,
+          serviceFqn: 'testSnowflake',
+          onEvent: jest.fn(),
+        })
+      );
+      await flushAsync();
+
+      expect(mockFetchEventSource.mock.calls[0][0]).toBe(
+        `${basePath.replace(
+          /\/$/,
+          ''
+        )}/api/v1/services/ingestionPipelines/progress/service/databaseService/testSnowflake/stream`
+      );
+    }
+  );
 
   it('connects with the service stream URL and bearer token', async () => {
     mockFetchEventSource.mockImplementation(() => neverResolve());

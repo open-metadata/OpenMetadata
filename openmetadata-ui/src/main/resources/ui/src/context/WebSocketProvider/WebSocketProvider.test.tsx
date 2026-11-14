@@ -32,10 +32,6 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
-jest.mock('../../utils/HistoryUtils', () => ({
-  getBasePath: jest.fn().mockReturnValue(''),
-}));
-
 type Handler = (...args: unknown[]) => void;
 
 // Stands in for socket.io-client's Socket: the handshake query lives on the manager
@@ -77,9 +73,14 @@ const PublishedSocketUser = () => {
 
 describe('WebSocketProvider', () => {
   let fake: ReturnType<typeof createFakeSocket>;
+  const originalBasePath = Object.getOwnPropertyDescriptor(
+    globalThis,
+    'BASE_PATH'
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Reflect.deleteProperty(globalThis, 'BASE_PATH');
     jest.useFakeTimers();
     mockCurrentUser = { id: 'user-1' };
     fake = createFakeSocket();
@@ -93,6 +94,11 @@ describe('WebSocketProvider', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    if (originalBasePath) {
+      Object.defineProperty(globalThis, 'BASE_PATH', originalBasePath);
+    } else {
+      Reflect.deleteProperty(globalThis, 'BASE_PATH');
+    }
   });
 
   const renderProvider = async () => {
@@ -105,6 +111,20 @@ describe('WebSocketProvider', () => {
 
     return view;
   };
+
+  it.each(['/openmetadata', '/openmetadata/', '/team/catalog'])(
+    'opens the socket under the complete %s deployment prefix',
+    async (basePath) => {
+      Reflect.set(globalThis, 'BASE_PATH', basePath);
+      await renderProvider();
+
+      expect(io).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: `${basePath.replace(/\/$/, '')}/api/v1/push/feed`,
+        })
+      );
+    }
+  );
 
   it('opens the socket with the stored token and the current user, reconnection off', async () => {
     await renderProvider();

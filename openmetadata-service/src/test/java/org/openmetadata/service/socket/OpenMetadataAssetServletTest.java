@@ -1,26 +1,41 @@
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
 
+@Isolated
 public class OpenMetadataAssetServletTest {
 
   private OpenMetadataAssetServlet servlet;
@@ -39,6 +54,7 @@ public class OpenMetadataAssetServletTest {
 
     // Initialize servlet with /assets as resource path
     servlet = new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration);
+    IndexResource.initialize(new OpenMetadataApplicationConfig());
   }
 
   private void assertFinalCacheControlHeader(String expectedValue) {
@@ -613,5 +629,92 @@ public class OpenMetadataAssetServletTest {
   public void testApiPathsAreNotSpaRoutes() {
     assertFalse(servlet.isSpaRoute("/api/v1/system/version"));
     assertFalse(servlet.isSpaRoute("/openapi.json"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"/, /", "/openmetadata, /", "/openmetadata/, /explore", "/team/catalog, /explore"})
+  void testPrefixedShellUsesRealRenderedAssets(String basePath, String route) throws Exception {
+    String prefix = basePath.equals("/") ? "" : basePath.replaceAll("/+$", "");
+    servlet =
+        new OpenMetadataAssetServlet(basePath, "/assets", "/", "index.html", webConfiguration);
+    mockStaticAssetRequest(prefix + route);
+    when(request.getContextPath()).thenReturn(prefix);
+    when(request.getPathInfo()).thenReturn(route);
+    when(response.getStatus()).thenReturn(404);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+    servlet.doGet(request, response);
+    assertTrue(body.toString().contains("src=\"" + prefix + "/assets/test.js\""));
+    assertTrue(body.toString().contains("href=\"" + prefix + "/assets/test.css\""));
+    assertFalse(body.toString().contains("${basePath}"));
+    verify(response).setContentType("text/html");
+    verify(response).setHeader("ETag", IndexResource.getIndexEtag(basePath));
+    assertFinalCacheControlHeader("no-cache, must-revalidate");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "/, /silent-callback",
+    "/openmetadata, /silent-callback",
+    "/team/catalog/, /silent-callback/"
+  })
+  void testPrefixedSilentCallbackKeepsItsDedicatedEntry(String basePath, String route)
+      throws Exception {
+    String prefix = basePath.equals("/") ? "" : basePath.replaceAll("/+$", "");
+    servlet =
+        new OpenMetadataAssetServlet(basePath, "/assets", "/", "index.html", webConfiguration);
+    mockStaticAssetRequest(prefix + route);
+    when(request.getContextPath()).thenReturn(prefix);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+    servlet.doGet(request, response);
+    assertTrue(body.toString().contains("src=\"" + prefix + "/assets/silent-callback.js\""));
+    assertFalse(body.toString().contains("id=\"root\""));
+    assertFalse(body.toString().contains("assets/test.js"));
+    verify(response).setStatus(HttpServletResponse.SC_OK);
+    verify(response).setHeader("ETag", IndexResource.getSilentCallbackEtag(basePath));
+    assertFinalCacheControlHeader("no-cache, must-revalidate");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "/, br, .br",
+    "/openmetadata, br, .br",
+    "/team/catalog, gzip, .gz",
+    "/team/catalog/, identity, ''"
+  })
+  void testPrefixedStaticAssetsKeepTheirActualBytes(String basePath, String encoding, String suffix)
+      throws Exception {
+    String prefix = basePath.equals("/") ? "" : basePath.replaceAll("/+$", "");
+    servlet =
+        new OpenMetadataAssetServlet(basePath, "/assets", "/", "index.html", webConfiguration);
+    mockStaticAssetRequest(prefix + "/test.js");
+    when(request.getContextPath()).thenReturn(prefix);
+    when(request.getPathInfo()).thenReturn("/test.js");
+    when(request.getHeader("Accept-Encoding")).thenReturn(encoding);
+    when(servletContext.getMimeType(anyString())).thenReturn("application/javascript");
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    when(response.getOutputStream())
+        .thenReturn(
+            new ServletOutputStream() {
+              @Override
+              public boolean isReady() {
+                return true;
+              }
+
+              @Override
+              public void setWriteListener(WriteListener listener) {}
+
+              @Override
+              public void write(int value) {
+                bytes.write(value);
+              }
+            });
+    servlet.doGet(request, response);
+    try (InputStream expected = getClass().getResourceAsStream("/assets/test.js" + suffix)) {
+      assertArrayEquals(expected.readAllBytes(), bytes.toByteArray());
+    }
+    verify(response).setContentType("application/javascript");
+    verify(response, never()).getWriter();
   }
 }

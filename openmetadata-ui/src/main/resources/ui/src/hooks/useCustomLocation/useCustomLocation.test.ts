@@ -19,6 +19,42 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('useCustomLocation', () => {
+  const originalBasePath = Object.getOwnPropertyDescriptor(
+    globalThis,
+    'BASE_PATH'
+  );
+
+  afterEach(() => {
+    if (originalBasePath) {
+      Object.defineProperty(globalThis, 'BASE_PATH', originalBasePath);
+    } else {
+      Reflect.deleteProperty(globalThis, 'BASE_PATH');
+    }
+  });
+
+  it.each(['/openmetadata', '/openmetadata/', '/team/catalog'])(
+    'removes the full %s prefix without changing route query and hash',
+    (basePath) => {
+      Reflect.set(globalThis, 'BASE_PATH', basePath);
+      (useLocation as jest.Mock).mockReturnValue({
+        pathname: `${basePath.replace(/\/$/, '')}/explore`,
+        search: '?query=table',
+        hash: '#result',
+        state: null,
+        key: 'prefixed',
+      });
+      const { result } = renderHook(() => useCustomLocation());
+
+      expect(result.current).toEqual({
+        pathname: '/explore',
+        search: '?query=table',
+        hash: '#result',
+        state: null,
+        key: 'prefixed',
+      });
+    }
+  );
+
   it('should modify the pathname correctly', () => {
     // Mock the environment variable
     window.BASE_PATH = '/app/';
