@@ -40,8 +40,9 @@ from metadata.ingestion.source.dashboard.microstrategy.client import (
     MicroStrategyClient,
     strip_engine_steps,
 )
+from metadata.ingestion.source.dashboard.microstrategy.column_lineage import read_columns, table_matches
 from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource
-from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard
+from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard, MstrDataset
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -318,6 +319,7 @@ def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategyS
     source.charts_unknown = False
     source._dialects = {}
     source._service_databases = {}
+    source._tables_with_columns = OrderedDict()
     source._source_tables = OrderedDict()
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(dashboard_service="mstr", charts=[])
@@ -755,7 +757,7 @@ class TestSource:
         source.parse_db_service_prefix = lambda prefix: (prefix, None, None, None)
         source.get_query_parser_type = MagicMock(return_value=None)
         service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
-        source.metadata.get_by_name.side_effect = lambda entity, fqn: service if "." not in fqn else None
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: service if "." not in fqn else None
         details = _details(source, OFFICE_ROYALE)
 
         with patch(
@@ -797,7 +799,7 @@ class TestSource:
         source = _source(client)
         source.get_query_parser_type = MagicMock(return_value=None)
         service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
-        source.metadata.get_by_name.side_effect = lambda entity, fqn: (
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: (
             service if "." not in fqn else SimpleNamespace(id=SimpleNamespace(root=USER_ID))
         )
         details = _details(source, OFFICE_ROYALE)
@@ -869,7 +871,7 @@ class TestSource:
         source.get_query_parser_type = MagicMock(return_value=None)
         datamodel = SimpleNamespace(id=SimpleNamespace(root="3f2a8a31-1c55-4f0e-9a1c-5f6e8f1f9a01"))
         service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
-        source.metadata.get_by_name.side_effect = lambda entity, fqn: service if "." not in fqn else datamodel
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: service if "." not in fqn else datamodel
 
         def table(name: str) -> SimpleNamespace:
             return SimpleNamespace(
@@ -895,3 +897,348 @@ class TestSource:
         assert sorted(searched) == ["<default>.order_detail", "tutorial_wh.lu_category", "tutorial_wh.lu_item"]
         assert len(edges) == 3
         assert all(edge.right.edge.toEntity.type == "dashboardDataModel" for edge in edges)
+
+
+# The SQL views of a schema-based Intelligent Cube and of a Data Import cube, as a MicroStrategy
+# server answers them for BigQuery (project renamed).
+SCHEMA_CUBE_SQL = """select\t`a11`.`order_id`  `order_id`,
+\t`a11`.`product_id`  `product_id`,
+\tmax(`a13`.`product_name`)  `product_name`,
+\t`a12`.`status`  `status`,
+\tsum(`a11`.`quantity`)  `WJXBFS1`
+from\t`project-x`.`sales`.`order_items`\t`a11`
+\tjoin\t`project-x`.`sales`.`orders`\t`a12`
+\t  on \t(`a11`.`order_id` = `a12`.`order_id`)
+\tjoin\t`project-x`.`sales`.`products`\t`a13`
+\t  on \t(`a11`.`product_id` = `a13`.`product_id`)
+group by\t1,
+\t2,
+\t4"""
+DATA_IMPORT_SQL = """
+select\t`orders`.`order_id` `order_id`,
+\t`orders`.`status` `status`
+from\t`project-x`.`sales`.`orders`\t `orders`
+
+
+select\t`order_items`.`order_item_id` `order_item_id`,
+\t`order_items`.`order_id` `order_id`,
+\t`order_items`.`unit_price` `unit_price`
+from\t`project-x`.`sales`.`order_items`\t `order_items`
+"""
+SCHEMA_CUBE = "E4793A9AC5455CFBE8106FA2B22D7AF6"
+IMPORT_CUBE = "F87325B1B54ECAF0E42113AD060B2300"
+ID_FORM = {"id": "45C11FA478E745FEA08D781CEA190FE5", "name": "ID"}
+NAME_FORM = {"id": "CCFBE2A5EADB4F50941FB879CCF1721C", "name": "Name"}
+LOGICAL_TABLES = {"T_OI": "order_items", "T_O": "orders", "T_P": "products"}
+MODEL_ATTRIBUTES = {
+    "A_ORDER": [(ID_FORM, "order_id", ["T_OI", "T_O"])],
+    "A_PRODUCT": [(ID_FORM, "product_id", ["T_OI", "T_P"]), (NAME_FORM, "product_name", ["T_P"])],
+    "A_STATUS": [(ID_FORM, "status", ["T_O"])],
+}
+
+
+def _model_routes(server: FakeMicroStrategy, cube_subtypes: dict[str, int]) -> None:
+    for cube, subtype in cube_subtypes.items():
+        server.overrides[f"/objects/{cube}"] = lambda subtype=subtype: (200, {"type": 3, "subtype": subtype})
+    for attribute, forms in MODEL_ATTRIBUTES.items():
+        body = {
+            "forms": [
+                {
+                    **form,
+                    "expressions": [
+                        {
+                            "expression": {"tree": {"type": "column_reference", "columnName": column}},
+                            "tables": [{"objectId": table, "subType": "logical_table"} for table in tables],
+                        }
+                    ],
+                }
+                for form, column, tables in forms
+            ]
+        }
+        server.overrides[f"/model/attributes/{attribute}"] = lambda body=body: (200, body)
+    for table_id, name in LOGICAL_TABLES.items():
+        server.overrides[f"/model/tables/{table_id}"] = lambda name=name: (
+            200,
+            {"physicalTable": {"namespace": "project-x.sales", "tableName": name}},
+        )
+
+
+def _dataset(cube_id: str, objects: list[dict]) -> MstrDataset:
+    return MstrDataset.model_validate({"id": cube_id, "name": "cube", "availableObjects": objects})
+
+
+def _table(name: str, columns: list[str]) -> SimpleNamespace:
+    fqn = f"bq.project-x.sales.{name}"
+    return SimpleNamespace(
+        id=SimpleNamespace(root="5a1f0e6a-5d3f-4c1b-8d7a-2b9e4f6a1c01"),
+        name=SimpleNamespace(root=name),
+        fullyQualifiedName=SimpleNamespace(root=fqn),
+        databaseSchema=SimpleNamespace(name="sales"),
+        database=SimpleNamespace(name="project-x"),
+        columns=[
+            SimpleNamespace(name=SimpleNamespace(root=c), fullyQualifiedName=SimpleNamespace(root=f"{fqn}.{c}"))
+            for c in columns
+        ],
+    )
+
+
+def _data_model(source: MicrostrategySource, dataset: MstrDataset) -> SimpleNamespace:
+    """The data model the source builds for the dataset, with FQNs as the server assigns them"""
+    model_fqn = f"mstr.model.{dataset.id}"
+
+    def column(built: Any) -> SimpleNamespace:
+        fqn = f"{model_fqn}.{built.name.root}"
+        children = [
+            SimpleNamespace(
+                name=child.name, fullyQualifiedName=SimpleNamespace(root=f"{fqn}.{child.name.root}"), children=None
+            )
+            for child in built.children or []
+        ]
+        return SimpleNamespace(name=built.name, fullyQualifiedName=SimpleNamespace(root=fqn), children=children)
+
+    return SimpleNamespace(
+        id=SimpleNamespace(root="3f2a8a31-1c55-4f0e-9a1c-5f6e8f1f9a01"),
+        columns=[column(built) for built in source._get_column_info(dataset)],
+    )
+
+
+def _pairs(lineage: list) -> list[tuple[list[str], str]]:
+    return sorted(
+        ([c.root.rsplit(".", 1)[-1] for c in pair.fromColumns], pair.toColumn.root.split(".model.", 1)[1])
+        for pair in lineage
+    )
+
+
+class TestColumnLineage:
+    def test_projections_are_matched_on_the_columns_they_read_not_their_aliases(self):
+        # CATEGORY0 and WJXBFS1 are aliases MicroStrategy generates.
+        reads = read_columns(CUBE_STATEMENT, Dialect.MYSQL)
+
+        assert ("tutorial_wh.lu_category", "category_desc") in reads
+        assert ("order_detail", "qty_sold") in reads
+        assert not any(column in {"category0", "wjxbfs1"} for _, column in reads)
+
+    def test_every_pass_of_a_multi_pass_sql_is_read(self):
+        reads = read_columns(DATA_IMPORT_SQL, Dialect.BIGQUERY)
+
+        assert {table for table, _ in reads} == {"project-x.sales.orders", "project-x.sales.order_items"}
+        assert ("project-x.sales.order_items", "unit_price") in reads
+
+    def test_a_note_or_an_unparsable_pass_is_skipped_and_the_other_passes_are_read(self):
+        sql = "[We could not obtain the source]\n\nselect a.x x from `p`.`d`.`t` a\n\nselect from ((\n"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x")}
+
+    def test_a_schema_attribute_form_maps_to_the_column_the_cube_reads(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_ORDER", "name": "Order", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_PRODUCT", "name": "Product", "type": "attribute", "forms": [NAME_FORM]},
+                {"id": "M_QTY", "name": "Total Quantity", "type": "metric"},
+            ],
+        )
+        reads = read_columns(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+        model = _data_model(source, dataset)
+
+        order_items = source._column_lineage(
+            "P", dataset, reads, _table("order_items", ["order_id", "product_id", "quantity"]), model
+        )
+        products = source._column_lineage(
+            "P", dataset, reads, _table("products", ["product_id", "product_name"]), model
+        )
+
+        # product_id is read from order_items, but the dataset holds only Product's Name form;
+        # the metric reads quantity, but nothing tells which fact column it aggregates.
+        # An attribute maps to its own column: the lineage view draws no edge to a nested form.
+        assert _pairs(order_items) == [(["order_id"], f"{SCHEMA_CUBE}.Order")]
+        assert _pairs(products) == [(["product_name"], f"{SCHEMA_CUBE}.Product")]
+
+    def test_every_form_of_an_attribute_maps_to_one_attribute_column(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [{"id": "A_PRODUCT", "name": "Product", "type": "attribute", "forms": [ID_FORM, NAME_FORM]}],
+        )
+        reads = read_columns(
+            "select a13.product_id product_id, a13.product_name product_name from `project-x`.`sales`.`products` a13",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P", dataset, reads, _table("products", ["product_id", "product_name"]), _data_model(source, dataset)
+        )
+
+        assert _pairs(lineage) == [(["product_id", "product_name"], f"{SCHEMA_CUBE}.Product")]
+
+    def test_a_data_import_cube_is_matched_on_the_names_it_derives_from_columns(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        source = _source(client)
+        dataset = _dataset(
+            IMPORT_CUBE,
+            [
+                {"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "M1", "name": "Unit Price", "type": "metric"},
+                {"id": "M2", "name": "Row Count - order_items", "type": "metric"},
+            ],
+        )
+        reads = read_columns(DATA_IMPORT_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            reads,
+            _table("order_items", ["order_item_id", "order_id", "unit_price"]),
+            _data_model(source, dataset),
+        )
+
+        assert _pairs(lineage) == [
+            (["order_id"], f"{IMPORT_CUBE}.Order Id"),
+            (["unit_price"], f"{IMPORT_CUBE}.Unit Price"),
+        ]
+        assert server.requests_to("/model/") == []
+
+    def test_without_modeling_privileges_a_schema_cube_keeps_table_lineage_and_warns_once(self, server, client, caplog):
+        server.overrides[f"/objects/{SCHEMA_CUBE}"] = lambda: (200, {"type": 3, "subtype": 776})
+        for attribute in MODEL_ATTRIBUTES:
+            server.overrides[f"/model/attributes/{attribute}"] = lambda: (
+                403,
+                {"code": "ERR014", "message": "You do not have Use Architect Editors privilege"},
+            )
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_ORDER", "name": "Order", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_STATUS", "name": "Status", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+        model = _data_model(source, dataset)
+
+        for name in ("order_items", "orders"):
+            assert source._column_lineage("P", dataset, reads, _table(name, ["order_id", "status"]), model) == []
+
+        assert caplog.text.count("column-level lineage needs the service account") == 1
+        assert len(server.requests_to("/model/attributes/")) == 1
+
+    def test_a_column_lineage_failure_keeps_the_table_lineage(self, client):
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
+        datamodel = SimpleNamespace(id=SimpleNamespace(root=USER_ID), columns=[])
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: service if "." not in fqn else datamodel
+        source._column_lineage = MagicMock(side_effect=RuntimeError("boom"))
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=lambda table_name, **_: [_table(table_name.rsplit(".", 1)[-1], [])],
+        ):
+            edges = list(source.yield_dashboard_lineage_details(_details(source, OFFICE_ROYALE), "bq"))
+
+        assert len(edges) == 3
+        assert all(edge.right and edge.right.edge.lineageDetails.columnsLineage is None for edge in edges)
+
+    def test_a_table_of_another_schema_or_project_is_never_linked(self):
+        assert table_matches("db1.public.orders", "orders", "public", "db1")
+        assert not table_matches("db2.public.orders", "orders", "public", "db1")
+        assert not table_matches("crm.customers", "customers", "sales", "project-x")
+        assert table_matches("orders", "orders", "public", "db1")
+
+    def test_a_form_on_a_same_named_table_of_another_namespace_is_not_linked(self, server, client):
+        # Lead reads crm.customers.id and Customer reads sales.customers.id; the SQL reads only the latter.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        server.overrides["/model/tables/T_CRM"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "project-x.crm", "tableName": "customers"}},
+        )
+        server.overrides["/model/tables/T_SALES"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "project-x.sales", "tableName": "customers"}},
+        )
+        same_named = {"A_LEAD": ("T_CRM",), "A_CUSTOMER": ("T_SALES",)}
+        for attribute, (table,) in same_named.items():
+            body = {
+                "forms": [
+                    {
+                        **ID_FORM,
+                        "expressions": [
+                            {
+                                "expression": {"tree": {"type": "column_reference", "columnName": "id"}},
+                                "tables": [{"objectId": table}],
+                            }
+                        ],
+                    }
+                ]
+            }
+            server.overrides[f"/model/attributes/{attribute}"] = lambda body=body: (200, body)
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_LEAD", "name": "Lead", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_CUSTOMER", "name": "Customer", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns("select a11.id id from `project-x`.`sales`.`customers` a11", Dialect.BIGQUERY)
+
+        lineage = source._column_lineage("P", dataset, reads, _table("customers", ["id"]), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(["id"], f"{SCHEMA_CUBE}.Customer")]
+
+    def test_the_table_prefix_names_the_physical_table_as_the_sql_does(self, server, client):
+        server.overrides["/model/tables/T_LU"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "tutorial", "tablePrefix": "tutorial_wh.", "tableName": "lu_category"}},
+        )
+
+        assert client.get_physical_table("P", "T_LU") == "tutorial_wh.lu_category"
+
+    def test_another_modeling_failure_is_not_read_as_a_missing_privilege(self, server, client, caplog):
+        for attribute in ("A1", "A2"):
+            server.overrides[f"/model/attributes/{attribute}"] = lambda: (
+                500,
+                {"code": "ERR001", "message": "Internal error"},
+            )
+
+        for attribute in ("A1", "A2", "A1"):
+            assert client.get_attribute_form_columns("P", attribute) is None
+
+        assert not client.modeling_denied
+        assert len(server.requests_to("/model/attributes/")) == 2
+        assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
+
+    def test_the_lineage_edge_carries_the_column_pairs(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        dataset = _dataset(IMPORT_CUBE, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
+        details = _details(source, OFFICE_ROYALE).model_copy(update={"datasets": [dataset]})
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        model = _data_model(source, dataset)
+        model.id = SimpleNamespace(root=USER_ID)
+        # The lineage search returns tables without columns; the source reads them once.
+        bare = _table("order_items", [])
+        bare.columns = None
+        full = _table("order_items", ["order_item_id", "order_id", "unit_price"])
+
+        def get_by_name(entity, fqn, **_):
+            return {"bq": service, f"mstr.model.{IMPORT_CUBE}": model, full.fullyQualifiedName.root: full}.get(fqn)
+
+        source.metadata.get_by_name.side_effect = get_by_name
+        source.metadata.list_all_entities.return_value = [SimpleNamespace(name=SimpleNamespace(root="project-x"))]
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=lambda table_name, **_: [bare] if table_name.endswith("order_items") else [],
+        ):
+            results = list(source.yield_dashboard_lineage_details(details, "bq"))
+
+        assert [either.left for either in results if either.left] == []
+        (edge,) = [either.right for either in results]
+        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{IMPORT_CUBE}.Order Id")]

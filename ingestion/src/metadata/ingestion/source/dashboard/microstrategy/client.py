@@ -52,6 +52,9 @@ AUTH_TOKEN_HEADER = "X-MSTR-AuthToken"
 PROJECT_HEADER = "X-MSTR-ProjectID"
 APPLICATION_TYPE = 35
 DOSSIER_TYPE = 55
+REPORT_TYPE = 3
+# Report subtypes of Data Import (EMMA) cubes, whose objects the modeling API does not serve
+DATA_IMPORT_CUBE_SUBTYPES = frozenset({779, 780})
 # ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
 SEARCH_PAGE_SIZE = 500
 CACHE_SIZE = 512
@@ -94,6 +97,10 @@ def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None
 class MicroStrategyApiError(Exception):
     """A MicroStrategy REST call failed or answered with an unexpected body"""
 
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
 
 class MicroStrategyClient:
     """
@@ -117,6 +124,12 @@ class MicroStrategyClient:
         self._api_version = f"{library_path}/api"
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
+        self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
+        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
+        self._attribute_failure_reported = False
+        self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
+        # Reading schema objects needs modeling privileges; their absence is reported once.
+        self.modeling_denied = False
         # Objects dropped for not matching the expected shape. The source reads it to tell a
         # complete listing from a partial one, since a dropped dossier would look deleted.
         self.skipped_objects = 0
@@ -182,13 +195,13 @@ class MicroStrategyClient:
             response = self.client.get(path, data=params, headers=dict(headers))
         except APIError as exc:
             if exc.status_code != 401:
-                raise MicroStrategyApiError(f"GET {path} failed: {exc}") from exc
+                raise MicroStrategyApiError(f"GET {path} failed: {exc}", exc.status_code) from exc
             logger.info("MicroStrategy session expired, logging in again")
             self.client = self._login()
             try:
                 response = self.client.get(path, data=params, headers=dict(headers))
             except APIError as retry_exc:
-                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}") from retry_exc
+                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}", retry_exc.status_code) from retry_exc
         if response is None:
             raise MicroStrategyApiError(f"GET {path} returned no response")
         return response
@@ -283,6 +296,97 @@ class MicroStrategyClient:
             return strip_engine_steps(response.get("sqlStatement"))
 
         return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
+
+    def get_dataset_subtype(self, project_id: str, dataset_id: str) -> int | None:
+        """The subtype of the report object behind a dossier dataset, e.g. 776 for an Intelligent Cube"""
+        return cached(
+            self._dataset_subtypes,
+            dataset_id,
+            lambda: self._get(f"/objects/{dataset_id}", params={"type": REPORT_TYPE}, project_id=project_id).get(
+                "subtype"
+            ),
+            f"the type of dataset {dataset_id}",
+        )
+
+    def get_attribute_form_columns(
+        self, project_id: str, attribute_id: str
+    ) -> dict[str, frozenset[tuple[str, str]]] | None:
+        """
+        For each form of a schema attribute, the (physical table, column) pairs its expressions read,
+        lowercased. None when the attribute cannot be read, for instance without modeling privileges.
+        """
+        if attribute_id in self._form_columns:
+            self._form_columns.move_to_end(attribute_id)
+            return self._form_columns[attribute_id]
+        if self.modeling_denied:
+            return None
+        try:
+            attribute = self._get(
+                f"/model/attributes/{attribute_id}", params={"showExpressionAs": "tree"}, project_id=project_id
+            )
+            forms = {
+                form["id"]: frozenset(self._form_expression_columns(project_id, form)) for form in attribute["forms"]
+            }
+        except MicroStrategyApiError as exc:
+            if exc.status_code == 403:
+                # Without the privilege every attribute fails alike, so none is asked for again.
+                logger.warning(
+                    "Schema cubes get table-level lineage only: column-level lineage needs the service account "
+                    "to read schema objects (Architect privileges): %s",
+                    exc,
+                )
+                self.modeling_denied = True
+                return None
+            self._attribute_failed(attribute_id, exc)
+            forms = None
+        except Exception as exc:
+            self._attribute_failed(attribute_id, exc)
+            forms = None
+        self._form_columns[attribute_id] = forms
+        if len(self._form_columns) > CACHE_SIZE:
+            self._form_columns.popitem(last=False)
+        return forms
+
+    def _attribute_failed(self, attribute_id: str, exc: Exception) -> None:
+        """One warning for the run, so a server refusing many attributes does not flood the log"""
+        logger.debug(traceback.format_exc())
+        if self._attribute_failure_reported:
+            logger.debug("Could not read schema attribute %s: %s", attribute_id, exc)
+            return
+        self._attribute_failure_reported = True
+        logger.warning(
+            "Could not read schema attribute %s, so its columns get no column-level lineage; further attributes "
+            "that cannot be read are logged at debug level: %s",
+            attribute_id,
+            exc,
+        )
+
+    def _form_expression_columns(self, project_id: str, form: dict[str, Any]) -> Iterable[tuple[str, str]]:
+        for expression in form.get("expressions") or []:
+            column = (expression.get("expression") or {}).get("tree", {}).get("columnName")
+            if not column:
+                continue
+            for table in expression.get("tables") or []:
+                physical = self.get_physical_table(project_id, table["objectId"])
+                if physical:
+                    yield physical, column.lower()
+
+    def get_physical_table(self, project_id: str, logical_table_id: str) -> str | None:
+        """
+        The name the SQL gives the physical table behind a logical table, lowercased: its table
+        prefix when one is set (that is what MicroStrategy writes into the SQL), else its namespace,
+        then the table name.
+        """
+
+        def fetch() -> str | None:
+            physical = self._get(f"/model/tables/{logical_table_id}", project_id=project_id).get("physicalTable") or {}
+            name = physical.get("tableName")
+            if not name:
+                return None
+            qualifier = (physical.get("tablePrefix") or "").strip(".") or physical.get("namespace") or ""
+            return ".".join(part for part in (qualifier, name) if part).lower()
+
+        return cached(self._physical_tables, logical_table_id, fetch, f"the physical table of {logical_table_id}")
 
     def get_owner_email(self, owner_id: str) -> str | None:
         """The default email address of a user, when the session may read it"""

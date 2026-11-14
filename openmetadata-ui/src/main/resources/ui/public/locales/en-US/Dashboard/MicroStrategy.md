@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the MicroStrategy conne
 
 You can find further information on the MicroStrategy connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/microstrategy" target="_blank">docs</a>.
 
-The connector ingests dossiers. Report Services documents, document templates and themes are skipped and reported as filtered. Lineage is read from the SQL of Intelligent Cubes; a dataset that is a report has no lineage yet.
+The connector ingests dossiers. Report Services documents, document templates and themes are skipped and reported as filtered. Lineage is read from the SQL of Intelligent Cubes; a dataset that is a report has no lineage yet. Column-level lineage of schema-based cubes needs the user to read schema objects (Architect privileges), and their metrics get table-level lineage only.
 
 ## Connection Details
 
