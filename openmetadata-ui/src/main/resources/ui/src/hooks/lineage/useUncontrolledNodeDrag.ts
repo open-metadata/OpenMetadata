@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   applyNodeChanges,
   Node,
@@ -105,6 +105,50 @@ export const useUncontrolledNodeDrag = <T extends Node>(
     },
     [onNodesChange, store]
   );
+
+  // A touch drag aborted by a second touch (e.g. a pinch-zoom attempt)
+  // never dispatches the drop change — React Flow's drag-end handler returns
+  // early when `abortDrag` is set, so `handleNodesChange` above is never called
+  // and `dragPositions` is never drained.  Without this listener the entry
+  // would persist indefinitely and the render-time overlay below would
+  // re-stamp `dragging: true` and the mid-drag position onto the node on
+  // every future re-render (pane clicks, selects, lineage refetches), leaving
+  // its edges hidden and its position diverged from the lineage state.
+  //
+  // d3-drag registers its touchend/touchcancel handler on the flow container
+  // (bubble phase); this listener is on `window`, so it runs *after* React
+  // Flow's handler.  For a normal drag the drop has already been dispatched
+  // and `dragPositions` drained by the time this fires, making the settlement
+  // a no-op.  For a cancelled drag the entry is still present and is settled
+  // here so the caller receives the final position and the overlay clears.
+  useEffect(() => {
+    const settleStale = () => {
+      if (dragPositions.current.size === 0) {
+        return;
+      }
+      const abandoned: NodeChange[] = [...dragPositions.current].map(
+        ([id, drag]) => ({
+          id,
+          type: 'position',
+          dragging: false,
+          ...drag,
+        })
+      );
+      dragPositions.current = new Map();
+      const { getNodes, setNodes } = store.getState();
+      setNodes(applyNodeChanges(abandoned, getNodes()));
+      onNodesChange(abandoned);
+    };
+    window.addEventListener('touchend', settleStale);
+    window.addEventListener('touchcancel', settleStale);
+    window.addEventListener('mouseup', settleStale);
+
+    return () => {
+      window.removeEventListener('touchend', settleStale);
+      window.removeEventListener('touchcancel', settleStale);
+      window.removeEventListener('mouseup', settleStale);
+    };
+  }, [onNodesChange, store]);
 
   const drags = dragPositions.current;
   const flowNodes = drags.size
