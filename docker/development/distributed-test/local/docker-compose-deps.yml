@@ -26,7 +26,7 @@ networks:
 services:
   # MySQL Database
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     container_name: distributed_test_mysql
     restart: unless-stopped
     environment:
