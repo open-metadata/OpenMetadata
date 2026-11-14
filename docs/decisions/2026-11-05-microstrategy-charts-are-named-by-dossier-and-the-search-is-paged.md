@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration) · v4 2026-11-13 (2.0 backport renames charts in 2.0.9) · v5 2026-11-13 (documents told apart by viewMedia; cube SQL parsed once) · v6 2026-11-14 (column-level lineage)
 - **Deciders:** OpenMetadata ingestion maintainers
-- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`, `test_documents_are_skipped_without_reading_their_definition`, `test_cube_sql_is_parsed_once_for_every_prefix_and_dossier`, `test_projections_are_matched_on_the_columns_they_read_not_their_aliases`, `test_a_schema_attribute_form_maps_to_the_column_the_cube_reads`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
+- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`, `test_documents_are_skipped_without_reading_their_definition`, `test_cube_sql_is_parsed_once_for_every_prefix_and_dossier`, `test_projections_are_matched_on_the_columns_they_read_not_their_aliases`, `test_a_schema_attribute_form_maps_to_the_column_the_cube_reads`, `test_every_form_of_an_attribute_maps_to_one_attribute_column`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing
 
 ## Context
@@ -124,8 +124,9 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
 - **Schema cube attribute:** its form's expression, read through the modeling API
   (`/model/attributes`, logical → physical table through `/model/tables`), gives the (table, column)
   pairs the form can read. The physical table is named as the SQL names it: its table prefix when
-  one is set, else its namespace. A pair the SQL also reads links that column to the form's child
-  column (`Order.ID`). Needs the service account to read schema objects; on HTTP 403, one warning,
+  one is set, else its namespace. A pair the SQL also reads links that column to the attribute's
+  own column (`Order`), not to the form's child (`Order.ID`): the lineage view draws no edge to a
+  nested data model column. Every form of an attribute maps to that one column. Needs the service account to read schema objects; on HTTP 403, one warning,
   no further modeling calls in the run, and table lineage only.
 - **Tables are compared on every qualifier both sides name** (table, schema, database or project).
   Two tables that share a name in different schemas or projects are never linked to each other's

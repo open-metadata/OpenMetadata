@@ -1052,8 +1052,27 @@ class TestColumnLineage:
 
         # product_id is read from order_items, but the dataset holds only Product's Name form;
         # the metric reads quantity, but nothing tells which fact column it aggregates.
-        assert _pairs(order_items) == [(["order_id"], f"{SCHEMA_CUBE}.Order.ID")]
-        assert _pairs(products) == [(["product_name"], f"{SCHEMA_CUBE}.Product.Name")]
+        # An attribute maps to its own column: the lineage view draws no edge to a nested form.
+        assert _pairs(order_items) == [(["order_id"], f"{SCHEMA_CUBE}.Order")]
+        assert _pairs(products) == [(["product_name"], f"{SCHEMA_CUBE}.Product")]
+
+    def test_every_form_of_an_attribute_maps_to_one_attribute_column(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [{"id": "A_PRODUCT", "name": "Product", "type": "attribute", "forms": [ID_FORM, NAME_FORM]}],
+        )
+        reads = read_columns(
+            "select a13.product_id product_id, a13.product_name product_name from `project-x`.`sales`.`products` a13",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P", dataset, reads, _table("products", ["product_id", "product_name"]), _data_model(source, dataset)
+        )
+
+        assert _pairs(lineage) == [(["product_id", "product_name"], f"{SCHEMA_CUBE}.Product")]
 
     def test_a_data_import_cube_is_matched_on_the_names_it_derives_from_columns(self, server, client):
         _model_routes(server, {IMPORT_CUBE: 779})
@@ -1169,7 +1188,7 @@ class TestColumnLineage:
 
         lineage = source._column_lineage("P", dataset, reads, _table("customers", ["id"]), _data_model(source, dataset))
 
-        assert _pairs(lineage) == [(["id"], f"{SCHEMA_CUBE}.Customer.ID")]
+        assert _pairs(lineage) == [(["id"], f"{SCHEMA_CUBE}.Customer")]
 
     def test_the_table_prefix_names_the_physical_table_as_the_sql_does(self, server, client):
         server.overrides["/model/tables/T_LU"] = lambda: (

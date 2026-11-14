@@ -490,47 +490,44 @@ class MicrostrategySource(DashboardServiceSource):
         available_object: MstrAvailableObject,
         data_import: bool,
         reads: set[SourceColumn],
-        targets: dict[tuple[str, str | None], str],
+        targets: dict[str, str],
     ) -> Iterable[tuple[str, set[str]]]:
-        """(data model column FQN, warehouse columns of this table it reads) for one dataset object"""
+        """
+        (data model column FQN, warehouse columns of this table it reads) for one dataset object.
+        An attribute maps to its own column, not to its forms: the lineage view draws no edge to a
+        nested column.
+        """
+        target = targets.get(available_object.id)
+        if not target:
+            return
         if data_import:
-            target = targets.get((available_object.id, None))
             columns = {column for _, column in reads if normalized(column) == normalized(available_object.name)}
-            if target and columns:
-                yield target, columns
-            return
-        if available_object.type != "attribute":
-            return
-        form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}
-        for form in available_object.forms or []:
-            target = targets.get((available_object.id, form.get("name")))
-            expression = form_columns.get(str(form.get("id")), frozenset())
+        elif available_object.type == "attribute":
+            form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}
+            expressions = [form_columns.get(str(form.get("id")), frozenset()) for form in available_object.forms or []]
             columns = {
                 column
                 for table, column in reads
+                for expression in expressions
                 for form_table, form_column in expression
                 if form_column == column and same_table(table, form_table)
             }
-            if target and columns:
-                yield target, columns
+        else:
+            columns = set()
+        if columns:
+            yield target, columns
 
-    def _data_model_columns(
-        self, dataset: MstrDataset, datamodel_entity: DashboardDataModel
-    ) -> dict[tuple[str, str | None], str]:
+    def _data_model_columns(self, dataset: MstrDataset, datamodel_entity: DashboardDataModel) -> dict[str, str]:
         """
-        The FQN of each data model column by (object id, form name), a None form naming the
-        object's own column. Names are rebuilt the way the data model was, suffixes included.
+        The FQN of each object's data model column by object id. Names are rebuilt the way the
+        data model was, suffixes included.
         """
         by_name = {column.name.root: column for column in datamodel_entity.columns or []}
         targets = {}
         for object_id, name in self._column_names(dataset).items():
             column = by_name.get(name)
-            if not column or not column.fullyQualifiedName:
-                continue
-            targets[(object_id, None)] = column.fullyQualifiedName.root
-            for child in column.children or []:
-                if child.fullyQualifiedName:
-                    targets[(object_id, child.name.root)] = child.fullyQualifiedName.root
+            if column and column.fullyQualifiedName:
+                targets[object_id] = column.fullyQualifiedName.root
         return targets
 
     def _with_columns(self, table_entity: Table) -> Table:
