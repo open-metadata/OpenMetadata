@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Box,
   Button,
   ButtonUtility,
@@ -100,30 +101,52 @@ const FilterSelect = ({
   </Select>
 );
 
-const ConflictsChip = ({
+const isBannerShown = (
+  hasResult: boolean,
+  count: number,
+  dismissedAt: number | undefined
+) => hasResult && count > 0 && dismissedAt !== count;
+
+/** Unresolved conflicts, announced above the table; Show filters to them, Resolve also opens each one. */
+const ConflictsBanner = ({
   count,
-  isOn,
-  onToggle,
+  onShow,
+  onResolve,
+  onDismiss,
 }: {
   count: number;
-  isOn: boolean;
-  onToggle: () => void;
+  onShow: () => void;
+  onResolve: () => void;
+  onDismiss: () => void;
 }) => {
   const { t } = useTranslation();
 
   return (
-    <Button
-      aria-pressed={isOn}
-      color={isOn ? 'secondary-destructive' : 'secondary'}
-      data-testid="ontology-constraints-conflicts-filter"
-      size="sm"
-      onPress={onToggle}>
-      <span
-        aria-hidden
-        className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-error-secondary"
-      />
-      {t('label.conflicts-count', { count })}
-    </Button>
+    <Alert
+      closable
+      data-testid="ontology-constraints-conflicts-banner"
+      rightContent={
+        <Box gap={2}>
+          <Button
+            color="secondary"
+            data-testid="ontology-constraints-conflicts-show"
+            size="sm"
+            onPress={onShow}>
+            {t('label.show')}
+          </Button>
+          <Button
+            color="primary-destructive"
+            data-testid="ontology-constraints-conflicts-resolve"
+            size="sm"
+            onPress={onResolve}>
+            {t('label.resolve')}
+          </Button>
+        </Box>
+      }
+      title={t('message.ontology-conflicts-need-resolving', { count })}
+      variant="error"
+      onClose={onDismiss}
+    />
   );
 };
 
@@ -153,7 +176,7 @@ const ConflictDetail = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-2 tw:rounded-lg tw:border tw:border-error_subtle tw:px-4 tw:py-3"
+      className="tw:flex tw:flex-col tw:gap-2 tw:rounded-lg tw:border tw:border-utility-error-300 tw:bg-surface tw:px-4 tw:py-3"
       data-testid="ontology-constraint-conflict-detail">
       <Typography color="danger" size="text-sm">
         {explanation}
@@ -245,8 +268,22 @@ const OntologyAxiomWorkspace = ({
   initialStatus,
   onWorkingChange,
   onOpenConcept,
+  isReadOnly,
+  releaseId,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
 }: {
   ontology: Ontology;
+  /** View mode: constraints can be read and validated, not edited. */
+  isReadOnly?: boolean;
+  /** Reads the constraints a published release froze; the working validation does not apply. */
+  releaseId?: string;
+  /** View mode's Add, which switches to Edit. */
+  onRequestCreate?: () => void;
+  /** Opens the create form once, after View mode's Add switched to Edit. */
+  shouldOpenCreate?: boolean;
+  onCreateOpened?: () => void;
   /** Opens the tab already filtered, e.g. to conflicts from the Overview. */
   initialStatus?: AxiomStatus;
   onWorkingChange?: () => void;
@@ -255,16 +292,21 @@ const OntologyAxiomWorkspace = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { model, isError, refetch } = useOntologyStudioModel(ontology);
+  const { model, isError, refetch } = useOntologyStudioModel(
+    ontology,
+    releaseId
+  );
   const validation = useQuery({
-    queryKey: overviewValidationQueryKey(ontology.id),
+    queryKey: overviewValidationQueryKey(ontology.id, releaseId),
     queryFn: () => getOntologyWorkingValidation(ontology.id),
+    enabled: !releaseId,
     retry: false,
   });
   const [axiomType, setAxiomType] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(initialStatus ?? ALL);
   const [provenance, setProvenance] = useState<string>(ALL);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [dismissedAt, setDismissedAt] = useState<number>();
   const references = useMemo(
     () =>
       model
@@ -516,15 +558,24 @@ const OntologyAxiomWorkspace = ({
   };
 
   const options = filterOptions(t, model?.axioms ?? []);
+  // Dismissing hides the banner until the number of conflicts changes.
+  const banner = isBannerShown(
+    Boolean(validation.data),
+    conflicts.size,
+    dismissedAt
+  ) ? (
+    <ConflictsBanner
+      count={conflicts.size}
+      onDismiss={() => setDismissedAt(conflicts.size)}
+      onResolve={() => {
+        setStatus('conflict');
+        setExpanded(new Set(conflicts.keys()));
+      }}
+      onShow={() => setStatus('conflict')}
+    />
+  ) : null;
   const toolbar = (
     <>
-      {validation.data ? (
-        <ConflictsChip
-          count={conflicts.size}
-          isOn={status === 'conflict'}
-          onToggle={() => setStatus(status === 'conflict' ? ALL : 'conflict')}
-        />
-      ) : null}
       <FilterSelect
         label={t('label.type')}
         options={options.type}
@@ -566,18 +617,21 @@ const OntologyAxiomWorkspace = ({
   return (
     <OntologyDefinitionList
       hideNameColumn
-      actions={actions}
+      actions={releaseId ? undefined : actions}
+      banner={banner}
       canCreate={canCreate}
       columns={columns}
       definitionType="axiom"
       filterKey={[axiomType, status, provenance].join('|')}
       isError={isError}
+      isReadOnly={isReadOnly}
       items={items}
       ontology={ontology}
       renderDetail={renderDetail}
       rowClassName={(axiom) =>
         conflicts.has(axiom.id) ? 'tw:bg-error-primary' : undefined
       }
+      shouldOpenCreate={shouldOpenCreate}
       summary={
         items
           ? t('label.n-of-m', {
@@ -587,6 +641,7 @@ const OntologyAxiomWorkspace = ({
           : undefined
       }
       toolbar={toolbar}
+      totalCount={model?.axioms.length}
       onChanged={() => {
         void refetch();
         // A saved or deleted constraint changes the verdict, so the shown result must not stay.
@@ -595,6 +650,8 @@ const OntologyAxiomWorkspace = ({
         });
         onWorkingChange?.();
       }}
+      onCreateOpened={onCreateOpened}
+      onRequestCreate={onRequestCreate}
       onRetry={() => void refetch()}>
       {(axiom, canEdit, onSaved, close) => (
         <OntologyAxiomEditor

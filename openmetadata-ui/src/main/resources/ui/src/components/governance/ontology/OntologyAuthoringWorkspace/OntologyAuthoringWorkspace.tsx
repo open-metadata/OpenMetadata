@@ -61,6 +61,15 @@ interface OntologyAuthoringWorkspaceProps {
   onWorkingChange?: () => void;
   /** Opens a concept in the graph's concept panel. */
   onOpenConcept?: (conceptId: string) => void;
+  /** View mode: the list is browsable but not editable. */
+  isReadOnly?: boolean;
+  /** Reads the definitions a published release froze instead of the working copy. */
+  releaseId?: string;
+  /** View mode's Add, which switches to Edit. */
+  onRequestCreate?: () => void;
+  /** Opens the create form once, after View mode's Add switched to Edit. */
+  shouldOpenCreate?: boolean;
+  onCreateOpened?: () => void;
 }
 
 const ALL = 'all';
@@ -130,11 +139,18 @@ const ConceptTab = ({
   ontology,
   onWorkingChange,
   onOpenConcept,
+  isReadOnly,
+  releaseId,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
 }: Omit<OntologyAuthoringWorkspaceProps, 'definitionType'>) => {
   const { t } = useTranslation();
   const canCreate = useCanCreate(ontology, ResourceEntity.ONTOLOGY_CONCEPT);
-  const { model, relations, isError, refetch } =
-    useOntologyStudioModel(ontology);
+  const { model, relations, isError, refetch } = useOntologyStudioModel(
+    ontology,
+    releaseId
+  );
   const [search, setSearch] = useState('');
   const [conceptType, setConceptType] = useState<string>(ALL);
   const [level, setLevel] = useState<ConceptLevelFilter>('any');
@@ -293,6 +309,7 @@ const ConceptTab = ({
       definitionType="concept"
       filterKey={[search, conceptType, level].join('|')}
       isError={isError}
+      isReadOnly={isReadOnly}
       items={items}
       key={ontology.id + ':concept'}
       ontology={ontology}
@@ -303,17 +320,21 @@ const ConceptTab = ({
           onCreated={onCreated}
         />
       )}
+      shouldOpenCreate={shouldOpenCreate}
       summary={
         items ? `${items.length} ${plural.toLocaleLowerCase()}` : undefined
       }
       toolbar={toolbar}
+      totalCount={model?.concepts.length}
       onChanged={() => {
         void refetch();
         onWorkingChange?.();
       }}
+      onCreateOpened={onCreateOpened}
       onOpen={
         onOpenConcept ? (concept) => onOpenConcept(concept.id) : undefined
       }
+      onRequestCreate={onRequestCreate}
       onRetry={() => void refetch()}>
       {(concept, canEdit, onSaved) =>
         concept ? (
@@ -333,13 +354,21 @@ const ConceptTab = ({
 const PropertyTab = ({
   ontology,
   onWorkingChange,
+  isReadOnly,
+  releaseId,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
 }: Omit<
   OntologyAuthoringWorkspaceProps,
   'definitionType' | 'onOpenConcept'
 >) => {
   const { t } = useTranslation();
   const canCreate = useCanCreate(ontology, ResourceEntity.ONTOLOGY_PROPERTY);
-  const { model, isError, refetch } = useOntologyStudioModel(ontology);
+  const { model, isError, refetch } = useOntologyStudioModel(
+    ontology,
+    releaseId
+  );
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<string>(ALL);
   const nameByIri = useMemo(
@@ -481,17 +510,22 @@ const PropertyTab = ({
       definitionType="property"
       filterKey={[kind, search].join('|')}
       isError={isError}
+      isReadOnly={isReadOnly}
       items={items}
       key={ontology.id + ':property'}
       ontology={ontology}
+      shouldOpenCreate={shouldOpenCreate}
       summary={
         items ? `${items.length} ${plural.toLocaleLowerCase()}` : undefined
       }
       toolbar={toolbar}
+      totalCount={model?.properties.length}
       onChanged={() => {
         void refetch();
         onWorkingChange?.();
       }}
+      onCreateOpened={onCreateOpened}
+      onRequestCreate={onRequestCreate}
       onRetry={() => void refetch()}>
       {(property, canEdit, onSaved, close) => (
         <OntologyPropertyEditor

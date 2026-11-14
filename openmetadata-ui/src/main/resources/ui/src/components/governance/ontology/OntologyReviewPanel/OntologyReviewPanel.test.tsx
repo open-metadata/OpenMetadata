@@ -29,6 +29,7 @@ import {
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import OntologyReviewPanel from './OntologyReviewPanel';
+import OntologyReviewRelease from './OntologyReviewRelease';
 
 jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
 const get = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
@@ -345,5 +346,38 @@ describe('OntologyReviewPanel', () => {
     expect(
       screen.queryByText('label.relationship-plural')
     ).not.toBeInTheDocument();
+  });
+
+  it('lists a release history row as plain text that opens no field changes', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: [
+          {
+            entity: {
+              id: 'concept-id',
+              name: 'Customer',
+              type: 'ontologyConcept',
+            },
+            memberKind: 'CONCEPT',
+            changeType: 'ADDED',
+            afterReleaseId: 'release-id',
+          },
+        ],
+        paging: { total: 1 },
+      },
+    });
+    renderWithQueryClient(
+      <OntologyReviewRelease inspectable={false} releaseId="release-id" />
+    );
+
+    fireEvent.click(await screen.findByText('Customer'));
+
+    expect(
+      screen.queryByRole('button', { name: 'Customer' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-review-field-changes')
+    ).not.toBeInTheDocument();
+    expect(get).toHaveBeenCalledTimes(1);
   });
 });

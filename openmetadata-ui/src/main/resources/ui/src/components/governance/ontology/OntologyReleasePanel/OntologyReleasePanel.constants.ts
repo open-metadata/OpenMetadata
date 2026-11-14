@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
+import type { ReleaseDisplayStatus } from './OntologyReleasePanel.utils';
 
 export const RELEASE_STAGE_LABELS: Record<Stage, string> = {
   [Stage.Draft]: 'label.draft',
@@ -28,3 +29,18 @@ export const RELEASE_STAGE_COLORS: Record<Stage, 'success' | 'error' | 'gray'> =
     [Stage.Approved]: 'success',
     [Stage.Published]: 'success',
   };
+
+type ReleaseBadgeColor = 'success' | 'gray' | 'blue' | 'error';
+
+export const RELEASE_DISPLAY_STATUS: Record<
+  ReleaseDisplayStatus,
+  { label: string; color: ReleaseBadgeColor }
+> = {
+  active: { label: 'label.active', color: 'success' },
+  superseded: { label: 'label.superseded', color: 'gray' },
+  approved: { label: 'label.approved', color: 'success' },
+  inReview: { label: 'label.ontology-in-review', color: 'blue' },
+  rejected: { label: 'label.rejected', color: 'error' },
+  withdrawn: { label: 'label.withdrawn', color: 'gray' },
+  draft: { label: 'label.draft', color: 'gray' },
+};

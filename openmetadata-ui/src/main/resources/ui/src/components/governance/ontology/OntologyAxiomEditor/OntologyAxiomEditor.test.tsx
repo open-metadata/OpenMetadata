@@ -523,6 +523,18 @@ describe('OntologyAxiomEditor quick and advanced forms', () => {
     );
   });
 
+  it('shows a saved rule read-only, without a form, when the user cannot edit', () => {
+    renderEditor({ axiom: savedAxiom(), canEdit: false });
+
+    expect(screen.getByTestId('ontology-axiom-read-only')).toHaveTextContent(
+      'Patient must have exactly 1 dateOfBirth'
+    );
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-axiom-submit')
+    ).not.toBeInTheDocument();
+  });
+
   it('opens a rule with a nested condition in the advanced form and explains why', () => {
     renderEditor({
       axiom: savedAxiom({

@@ -131,9 +131,9 @@ it('shows a SHACL warning separately from zero violations and never claims logic
   expect(screen.getByTestId('ontology-shacl-counts')).toHaveTextContent(
     '1 label.warning-plural'
   );
-  expect(
-    screen.getByText(/label.logical-consistency.*label.not-checked/)
-  ).toBeVisible();
+  expect(screen.getByTestId('ontology-logical-consistency')).toHaveTextContent(
+    /label.logical-consistency.*label.not-checked/
+  );
 });
 
 it('shows invalid structure and truncated SHACL findings without merging their counts', async () => {

@@ -126,7 +126,7 @@ const ActivationActions = ({
   );
 };
 
-const ReleaseActions = ({
+export const ReleaseActions = ({
   release,
   isActive,
   showExport,
@@ -134,7 +134,12 @@ const ReleaseActions = ({
   activeRelease,
   ontologyName,
   onActivate,
-}: OntologyReleaseDetailsProps & { showExport: boolean }) => {
+  onOpenTask,
+}: OntologyReleaseDetailsProps & {
+  showExport: boolean;
+  /** Opens the review task in place instead of navigating to it. */
+  onOpenTask?: (taskId: string) => void;
+}) => {
   const { t } = useTranslation();
   const isApproved = release.entityStatus === EntityStatus.Approved;
   const isRollback =
@@ -143,13 +148,23 @@ const ReleaseActions = ({
     release.releaseRevision < activeRelease.releaseRevision;
 
   return (
-    <Box gap={3} wrap="wrap">
+    <Box align="center" gap={3} wrap="wrap">
       {showExport && <OntologyReleaseExport releaseId={release.id} />}
-      {release.reviewTask && (
-        <Link to={`/tasks/${encodeURIComponent(release.reviewTask)}`}>
-          {t('label.approval')}
-        </Link>
-      )}
+      {release.reviewTask &&
+        (onOpenTask ? (
+          <Button
+            color="secondary"
+            data-testid="ontology-release-view-request"
+            onPress={() =>
+              release.reviewTask && onOpenTask(release.reviewTask)
+            }>
+            {t('label.view-request')}
+          </Button>
+        ) : (
+          <Link to={`/tasks/${encodeURIComponent(release.reviewTask)}`}>
+            {t('label.approval')}
+          </Link>
+        ))}
       {!isActive && (
         <ActivationActions
           activeRelease={isRollback ? activeRelease : undefined}
@@ -211,6 +226,7 @@ const OntologyReleaseDetails = ({
       <OntologyReleaseEvents releaseId={release.id} />
       <OntologyReviewRelease
         baseReleaseId={release.baseReleaseId}
+        inspectable={false}
         key={release.id}
         releaseId={release.id}
       />

@@ -914,13 +914,16 @@ test.describe(
         await expect(
           author.getByRole('button', { name: 'Activate release' })
         ).toHaveCount(0);
-        await author
-          .getByTestId('ontology-release-definition')
-          .getByRole('button', { name: 'Customer', exact: true })
-          .click();
+        // A release's history lists its changes; only a reviewer's task opens their fields.
+        const releaseChanges = author.getByTestId(
+          'ontology-release-definition'
+        );
         await expect(
-          author.getByTestId('ontology-review-field-changes')
-        ).toContainText('First published definition');
+          releaseChanges.getByText('Customer', { exact: true })
+        ).toBeVisible();
+        await expect(
+          releaseChanges.getByRole('button', { name: 'Customer', exact: true })
+        ).toHaveCount(0);
         await author.screenshot({
           path: testInfo.outputPath('studio-release-rollback.png'),
           fullPage: true,

@@ -35,6 +35,7 @@ import {
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -48,6 +49,7 @@ import {
   groupChangeCards,
   visibleWorkingChanges,
 } from './OntologyReleaseChanges.utils';
+import OntologyReleaseDetailPage from './OntologyReleaseDetailPage';
 import OntologyReleaseDetails from './OntologyReleaseDetails';
 import OntologyReleaseHistory from './OntologyReleaseHistory';
 import {
@@ -98,6 +100,15 @@ interface OntologyReleasePanelProps {
   /** Reports the version step and release count the dialog header shows. */
   onSummaryChange?: (summary: PublicationSummary) => void;
 }
+
+const hasMorePages = (
+  isCoherent: boolean,
+  pagesSeen: number,
+  after: string | undefined
+) => isCoherent && (pagesSeen > 1 || Boolean(after));
+
+const loadedPages = <T,>(pages?: { data: T[] }[]) =>
+  (pages ?? []).flatMap((entry) => entry.data);
 
 const versionTag = (version: string) =>
   /^\d/.test(version) ? 'v' + version : version;
@@ -203,6 +214,7 @@ const OntologyReleasePanel = ({
   onSummaryChange,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   // Shared with the graph through the query cache; only used to name concepts in validation messages.
   const { model: conceptModel } = useOntologyStudioModel(ontology);
   const validationConcepts = useMemo(
@@ -794,33 +806,41 @@ const OntologyReleasePanel = ({
       />
     );
 
+  // Paging belongs to a loaded list that has more than one page.
+  const hasChangePages = hasMorePages(
+    hasCoherentPreview,
+    cursors.length,
+    changes.data?.paging.after
+  );
   const renderChangesPagination = () =>
     hasNoChanges ? null : (
       <>
         <OntologyReleaseTruncationNote working={working.data} />
-        <Box gap={2}>
-          <Button
-            color="secondary"
-            data-testid="ontology-working-previous"
-            isDisabled={cursors.length === 1 || !hasCoherentPreview}
-            size="sm"
-            onPress={() => setCursors((previous) => previous.slice(0, -1))}>
-            {t('label.previous')}
-          </Button>
-          <Button
-            color="secondary"
-            data-testid="ontology-working-next"
-            isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
-            size="sm"
-            onPress={() =>
-              setCursors((previous) => [
-                ...previous,
-                changes.data?.paging.after,
-              ])
-            }>
-            {t('label.next')}
-          </Button>
-        </Box>
+        {hasChangePages ? (
+          <Box gap={2}>
+            <Button
+              color="secondary"
+              data-testid="ontology-working-previous"
+              isDisabled={cursors.length === 1 || !hasCoherentPreview}
+              size="sm"
+              onPress={() => setCursors((previous) => previous.slice(0, -1))}>
+              {t('label.previous')}
+            </Button>
+            <Button
+              color="secondary"
+              data-testid="ontology-working-next"
+              isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
+              size="sm"
+              onPress={() =>
+                setCursors((previous) => [
+                  ...previous,
+                  changes.data?.paging.after,
+                ])
+              }>
+              {t('label.next')}
+            </Button>
+          </Box>
+        ) : null}
       </>
     );
 
@@ -908,16 +928,64 @@ const OntologyReleasePanel = ({
     </Box>
   );
 
-  const renderReleases = () => (
-    <OntologyReleaseHistory
-      activeReleaseId={activeReleaseId}
-      history={history}
-      latestReleaseId={projection.data?.publicationStatus?.latest?.releaseId}
-      ontologyId={ontology.id}
-      selectedReleaseId={selectedId}
-      onSelect={setSelectedId}
-    />
-  );
+  // Only the requester of the open review may withdraw it, as the footer allows.
+  const withdrawableReleaseId = (() => {
+    const input = getActionInput();
+    const actions = input ? getPublicationActions(input) : undefined;
+    const canWithdraw =
+      actions?.secondary?.kind === 'withdraw' && !actions.secondary.isDisabled;
+
+    return canWithdraw ? currentStage?.candidate?.id : undefined;
+  })();
+  const loadedReleases = loadedPages(history.data?.pages);
+  const latestReleaseId = projection.data?.publicationStatus?.latest?.releaseId;
+
+  const renderReleaseDetail = () => {
+    if (displayed.isError) {
+      return (
+        <Alert variant="error">
+          {t('message.ontology-review-unavailable')}
+        </Alert>
+      );
+    }
+    if (!release) {
+      return <Loader size="small" />;
+    }
+
+    return (
+      <OntologyReleaseDetailPage
+        activeRelease={versionBase.data}
+        canPublish={canPublish}
+        canWithdraw={release.id === withdrawableReleaseId}
+        latestReleaseId={latestReleaseId}
+        ontologyName={getEntityName(ontology)}
+        release={release}
+        releases={loadedReleases}
+        onActivate={() => activate({ kind: 'selected' })}
+        onBack={() => setSelectedId(undefined)}
+        onOpenTask={onOpenTask}
+        onWithdraw={() => void withdraw()}
+      />
+    );
+  };
+
+  const renderReleases = () =>
+    isAiMode && selectedId ? (
+      renderReleaseDetail()
+    ) : (
+      <OntologyReleaseHistory
+        activeRelease={versionBase.data}
+        activeReleaseId={activeReleaseId}
+        history={history}
+        latestReleaseId={latestReleaseId}
+        ontologyId={ontology.id}
+        selectedReleaseId={selectedId}
+        withdrawableReleaseId={withdrawableReleaseId}
+        onOpenTask={onOpenTask}
+        onSelect={setSelectedId}
+        onWithdraw={() => void withdraw()}
+      />
+    );
 
   const renderStorageStatus = () =>
     receipt.kind === 'unavailable' && (
@@ -996,6 +1064,17 @@ const OntologyReleasePanel = ({
       </Alert>
     );
 
+  // The AI Releases tab has no stage footer; its rows and detail carry the status.
+  const renderReleasesFooter = () => {
+    if (isAiMode) {
+      return renderNotice();
+    }
+
+    return currentStage ? (
+      <div className="tw:mt-auto">{renderFooter()}</div>
+    ) : null;
+  };
+
   const renderAiPanel = () => {
     const isChanges = view === 'changes';
 
@@ -1006,14 +1085,11 @@ const OntologyReleasePanel = ({
         gap={4}>
         {renderStateError()}
         {isChanges ? renderAiChanges() : renderReleases()}
-        {renderRelease()}
+        {isAiMode ? null : renderRelease()}
         {renderStorageStatus()}
         {renderRecovery()}
         {currentStage || state.isError ? null : renderStageStatus()}
-        {isChanges ? renderAiFooter() : null}
-        {!isChanges && currentStage ? (
-          <div className="tw:mt-auto">{renderFooter()}</div>
-        ) : null}
+        {isChanges ? renderAiFooter() : renderReleasesFooter()}
       </Box>
     );
   };

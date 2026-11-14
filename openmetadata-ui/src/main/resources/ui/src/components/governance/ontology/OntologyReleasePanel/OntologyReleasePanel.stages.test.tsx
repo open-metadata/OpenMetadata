@@ -306,6 +306,14 @@ const setStage = (stage: Stage) => {
   }
 };
 
+/** The configured reviewer whose name matches, from the Reviewers card's list. */
+const reviewerItem = (name: RegExp) =>
+  Array.from(
+    screen
+      .queryByTestId('ontology-release-reviewer-list')
+      ?.querySelectorAll('li') ?? []
+  ).find((item) => name.test(item.textContent ?? '')) ?? null;
+
 it('keeps independent reviewer configuration and the review stage available in AI mode', async () => {
   (useIsAiMode as jest.Mock).mockReturnValue(true);
   setStage(Stage.Draft);
@@ -666,14 +674,16 @@ it('persists user addition and keyboard removal with the current ontology versio
   await waitFor(() =>
     expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([id(3), id(7)])
   );
-  const tags = within(
+  const list = within(
     screen.getByTestId('ontology-release-reviewers')
-  ).getByRole('grid', { name: 'label.reviewers' });
-  const row = within(tags).getByRole('row', { name: /New reviewer/ });
-  await waitFor(() => expect(row).not.toHaveAttribute('aria-disabled', 'true'));
+  ).getByRole('list', { name: 'label.reviewers' });
+  const remove = await within(
+    within(list).getByText('New reviewer').closest('li') as HTMLElement
+  ).findByRole('button');
   await act(async () => {
-    row.focus();
-    fireEvent.keyDown(row, { key: 'Delete' });
+    remove.focus();
+    fireEvent.keyDown(remove, { key: 'Enter' });
+    fireEvent.keyUp(remove, { key: 'Enter' });
   });
   await waitFor(() => expect(ontology.reviewers).toHaveLength(1));
 
@@ -687,9 +697,8 @@ it('persists user addition and keyboard removal with the current ontology versio
   await renderPanel();
 
   expect(
-    within(screen.getByTestId('ontology-release-reviewers')).queryByRole(
-      'row',
-      { name: /New reviewer/ }
+    within(screen.getByTestId('ontology-release-reviewer-list')).queryByText(
+      'New reviewer'
     )
   ).not.toBeInTheDocument();
 });
@@ -847,12 +856,7 @@ it('refreshes and shows an inline conflict when another editor locks settings du
   expect(
     screen.getByRole('combobox', { name: /label.add-reviewer/ })
   ).toBeDisabled();
-  expect(
-    within(screen.getByTestId('ontology-release-reviewers')).queryByRole(
-      'row',
-      { name: /New reviewer/ }
-    )
-  ).not.toBeInTheDocument();
+  expect(reviewerItem(/New reviewer/)).toBeNull();
   expect(ontology.reviewers).toHaveLength(1);
 });
 
@@ -1020,15 +1024,13 @@ it('clears visible reviewers and assignees when another user cannot read this on
   });
 
   expect(screen.queryAllByText('second reviewer')).toHaveLength(0);
-  expect(
-    screen.queryByRole('row', { name: /reviewer/ })
-  ).not.toBeInTheDocument();
+  expect(reviewerItem(/reviewer/)).toBeNull();
 });
 
 it('clears retained reviewer names when the panel changes to a denied ontology', async () => {
   const mounted = await renderPanel();
 
-  expect(screen.getByRole('row', { name: /reviewer/ })).toBeVisible();
+  expect(reviewerItem(/reviewer/)).toBeVisible();
 
   get.mockRejectedValue({ isAxiosError: true, response: { status: 403 } });
   await act(async () => {
@@ -1043,9 +1045,7 @@ it('clears retained reviewer names when the panel changes to a denied ontology',
     );
   });
 
-  expect(
-    screen.queryByRole('row', { name: /reviewer/ })
-  ).not.toBeInTheDocument();
+  expect(reviewerItem(/reviewer/)).toBeNull();
 });
 
 it.each(['projection', 'review'])(
@@ -1251,7 +1251,7 @@ it('reconciles a lost settings response from the fresh stored settings without a
     expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([id(3), id(7)])
   );
 
-  expect(screen.getByRole('row', { name: /New reviewer/ })).toBeVisible();
+  expect(reviewerItem(/New reviewer/)).toBeVisible();
   expect(
     screen.queryByText('message.ontology-review-settings-unavailable')
   ).not.toBeInTheDocument();

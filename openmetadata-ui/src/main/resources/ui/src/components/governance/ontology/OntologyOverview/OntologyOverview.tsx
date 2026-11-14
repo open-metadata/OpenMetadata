@@ -16,7 +16,6 @@ import {
   BadgeColors,
   Box,
   Button,
-  ButtonUtility,
   Card,
   FeaturedIcon,
   Typography,
@@ -256,7 +255,21 @@ const StatCard = ({
   isAlert,
   onOpen,
 }: StatCardProps) => (
-  <Card data-testid={testId}>
+  // The whole card opens its tab, as the design has it; the arrow only marks that.
+  <Card
+    aria-label={onOpen ? label : undefined}
+    data-testid={testId}
+    isClickable={Boolean(onOpen)}
+    role={onOpen ? 'button' : undefined}
+    tabIndex={onOpen ? 0 : undefined}
+    variant="stat"
+    onClick={onOpen}
+    onKeyDown={(event) => {
+      if (onOpen && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        onOpen();
+      }
+    }}>
     <Card.Content>
       <Box direction="col" gap={2}>
         <Box align="center" justify="between">
@@ -264,12 +277,9 @@ const StatCard = ({
             {label}
           </Typography>
           {onOpen ? (
-            <ButtonUtility
-              aria-label={label}
-              color="secondary"
-              icon={ArrowUpRight}
-              size="sm"
-              onPress={onOpen}
+            <ArrowUpRight
+              aria-hidden
+              className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
             />
           ) : null}
         </Box>
@@ -587,6 +597,11 @@ const conflictDetail = (
     ? t('message.ontology-overview-in-conflict', { count })
     : undefined;
 
+// Inside the draft's tabs the header names the ontology and Settings holds its details;
+// a published release keeps its version details, which Settings does not show.
+const showsDetails = (onOpenTab: unknown, releaseId?: string) =>
+  !onOpenTab || Boolean(releaseId);
+
 const OntologyOverview = ({
   ontology,
   releaseId,
@@ -600,7 +615,7 @@ const OntologyOverview = ({
   const validation = useQuery({
     enabled: !releaseId,
     queryFn: () => getOntologyWorkingValidation(ontology.id),
-    queryKey: overviewValidationQueryKey(ontology.id),
+    queryKey: overviewValidationQueryKey(ontology.id, releaseId),
     retry: false,
   });
   const treeIndex = useMemo(
@@ -657,8 +672,7 @@ const OntologyOverview = ({
     ],
   ] as const;
 
-  // Inside the Ontology tabs the header names the ontology and Settings holds its details.
-  const isStandalone = !onOpenTab;
+  const isStandalone = showsDetails(onOpenTab, releaseId);
 
   return (
     <Box
@@ -689,6 +703,7 @@ const OntologyOverview = ({
           })}
           label={t('label.relationship-plural')}
           testId="ontology-overview-count-relationships"
+          onOpen={openTab('axiom')}
         />
         <StatCard
           count={model.properties.length}

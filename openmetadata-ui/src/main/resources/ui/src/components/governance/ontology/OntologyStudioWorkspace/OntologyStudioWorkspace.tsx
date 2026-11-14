@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -22,6 +22,8 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
+import { getOntologyHealthSummary } from '../../../OntologyExplorer/OntologyStudio.utils';
+import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
 import { AxiomStatus } from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace.utils';
@@ -47,6 +49,10 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: (conceptId?: string) => void;
+  /** View mode's Add on an ontology tab: switches to Edit's Ontology surface; false when refused. */
+  onRequestDefinitionsEdit?: () => boolean;
+  /** View mode's "Show on graph": View's graph with the concept selected. */
+  onShowConceptOnGraph?: (conceptId: string) => void;
   onOpenPublication?: () => void;
   editConceptRequest?: string;
   onEditConceptRequestHandled?: () => void;
@@ -70,6 +76,14 @@ const getWorkspaceClassName = (
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
 };
 
+/** View mode's Ontology surface shows the tabs read-only, over the draft or a published release. */
+const showsReadOnlyTabs = (
+  mode: OntologyStudioWorkspaceProps['mode'],
+  viewSurface: OntologyStudioWorkspaceProps['viewSurface']
+) => mode === 'view' && viewSurface === 'ontology';
+
+type DefinitionTab = 'concept' | 'property' | 'axiom';
+
 const OntologyStudioWorkspace = ({
   ontology,
   releaseId,
@@ -85,6 +99,8 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onRequestDefinitionsEdit,
+  onShowConceptOnGraph,
   onOpenPublication,
   editConceptRequest,
   onEditConceptRequestHandled,
@@ -102,9 +118,45 @@ const OntologyStudioWorkspace = ({
   // Set only by the Overview's Review conflicts, so a plain visit opens Constraints unfiltered.
   const [axiomStatus, setAxiomStatus] = useState<AxiomStatus>();
   const [revision, setRevision] = useState(0);
-  const { model } = useOntologyStudioModel(
-    mode === 'definitions' ? ontology : undefined
+  // The tab whose Add was pressed in View mode; Edit opens that tab's create form.
+  const [createFor, setCreateFor] = useState<DefinitionTab>();
+  // A published release is frozen, so its tabs offer no Add.
+  const createProps = (tab: DefinitionTab, isReadOnly: boolean) => ({
+    shouldOpenCreate: !isReadOnly && createFor === tab,
+    onCreateOpened: () => setCreateFor(undefined),
+    onRequestCreate:
+      isReadOnly && !releaseId && onRequestDefinitionsEdit
+        ? () => {
+            if (onRequestDefinitionsEdit()) {
+              setCreateFor(tab);
+            }
+          }
+        : undefined,
+  });
+  // Edit can still bounce back to View (no edit rights); the intent must not outlive it.
+  useEffect(() => {
+    if (mode === 'view') {
+      setCreateFor(undefined);
+    }
+  }, [mode]);
+  const isReadOnlyTabs = showsReadOnlyTabs(mode, viewSurface);
+  const tabsReleaseId = isReadOnlyTabs ? releaseId : undefined;
+  const { model, graph, relations } = useOntologyStudioModel(
+    mode === 'definitions' || isReadOnlyTabs ? ontology : undefined,
+    tabsReleaseId
   );
+  // The header counts what the tabs show; without this it keeps the last graph's counts.
+  useEffect(() => {
+    if (model) {
+      onStatsChange?.({
+        conceptCount: model.concepts.length,
+        isolatedCount: getOntologyHealthSummary(graph, FILTERS).isolatedTerms
+          .length,
+        ontologyId: ontology.id,
+        relationCount: relations.length,
+      });
+    }
+  }, [graph, model, onStatsChange, ontology.id, relations.length]);
   // Leaving for the graph drops an open definition editor, so it asks first.
   const openConcept = onRequestEdit
     ? (conceptId: string) => guard(() => onRequestEdit(conceptId))
@@ -136,89 +188,103 @@ const OntologyStudioWorkspace = ({
     </Box>
   );
 
+  // The ontology's tabs; View mode shows them read-only, Edit's definitions can change them.
+  const renderDefinitionTabs = (isReadOnly: boolean) => (
+    <Tabs
+      className="tw:gap-5"
+      selectedKey={definitionTab}
+      onSelectionChange={(key) =>
+        guard(() => {
+          setAxiomStatus(undefined);
+          setDefinitionTab(key);
+        })
+      }>
+      {header}
+      <Tabs.List aria-label={t('label.definition')} type="underline">
+        <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
+        <Tabs.Item
+          aria-label={t('label.concept-plural')}
+          badge={model?.concepts.length}
+          id="concept">
+          {t('label.concept-plural')}
+        </Tabs.Item>
+        <Tabs.Item
+          aria-label={t('label.property-plural')}
+          badge={model?.properties.length}
+          id="property">
+          {t('label.property-plural')}
+        </Tabs.Item>
+        <Tabs.Item
+          aria-label={t('label.constraint-plural')}
+          badge={model?.axioms.length}
+          id="axiom">
+          {t('label.constraint-plural')}
+        </Tabs.Item>
+        <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
+      </Tabs.List>
+      <Tabs.Panel id="overview">
+        <OntologyOverview
+          ontology={ontology}
+          releaseId={tabsReleaseId}
+          status={publicationStatus}
+          onOpenPublication={isReadOnly ? undefined : onOpenPublication}
+          onOpenTab={(tab, status) =>
+            guard(() => {
+              setAxiomStatus(status);
+              setDefinitionTab(tab);
+            })
+          }
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="concept">
+        <OntologyAuthoringWorkspace
+          {...createProps('concept', isReadOnly)}
+          isReadOnly={isReadOnly}
+          ontology={ontology}
+          releaseId={tabsReleaseId}
+          // View mode opens the concept read-only here, as properties do.
+          onOpenConcept={isReadOnly ? undefined : openConcept}
+          onWorkingChange={onWorkingChange}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="property">
+        <OntologyAuthoringWorkspace
+          {...createProps('property', isReadOnly)}
+          definitionType="property"
+          isReadOnly={isReadOnly}
+          ontology={ontology}
+          releaseId={tabsReleaseId}
+          onWorkingChange={onWorkingChange}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="axiom">
+        <OntologyAxiomWorkspace
+          {...createProps('axiom', isReadOnly)}
+          initialStatus={axiomStatus}
+          isReadOnly={isReadOnly}
+          ontology={ontology}
+          releaseId={tabsReleaseId}
+          onOpenConcept={isReadOnly ? onShowConceptOnGraph : openConcept}
+          onWorkingChange={onWorkingChange}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="settings">
+        <OntologyCreateForm
+          canEdit={canEditAll && !isReadOnly}
+          ontology={ontology}
+          onSaved={(saved) => {
+            onSaved(saved);
+            onWorkingChange?.();
+          }}
+        />
+      </Tabs.Panel>
+    </Tabs>
+  );
+
   const renderContent = () => {
     switch (mode) {
       case 'definitions':
-        return (
-          <Tabs
-            className="tw:gap-5"
-            selectedKey={definitionTab}
-            onSelectionChange={(key) =>
-              guard(() => {
-                setAxiomStatus(undefined);
-                setDefinitionTab(key);
-              })
-            }>
-            {header}
-            <Tabs.List aria-label={t('label.definition')} type="underline">
-              <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
-              <Tabs.Item
-                aria-label={t('label.concept-plural')}
-                badge={model?.concepts.length}
-                id="concept">
-                {t('label.concept-plural')}
-              </Tabs.Item>
-              <Tabs.Item
-                aria-label={t('label.property-plural')}
-                badge={model?.properties.length}
-                id="property">
-                {t('label.property-plural')}
-              </Tabs.Item>
-              <Tabs.Item
-                aria-label={t('label.constraint-plural')}
-                badge={model?.axioms.length}
-                id="axiom">
-                {t('label.constraint-plural')}
-              </Tabs.Item>
-              <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
-            </Tabs.List>
-            <Tabs.Panel id="overview">
-              <OntologyOverview
-                ontology={ontology}
-                status={publicationStatus}
-                onOpenPublication={onOpenPublication}
-                onOpenTab={(tab, status) =>
-                  guard(() => {
-                    setAxiomStatus(status);
-                    setDefinitionTab(tab);
-                  })
-                }
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="concept">
-              <OntologyAuthoringWorkspace
-                ontology={ontology}
-                onOpenConcept={openConcept}
-                onWorkingChange={onWorkingChange}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="property">
-              <OntologyAuthoringWorkspace
-                definitionType="property"
-                ontology={ontology}
-                onWorkingChange={onWorkingChange}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="axiom">
-              <OntologyAxiomWorkspace
-                initialStatus={axiomStatus}
-                ontology={ontology}
-                onOpenConcept={openConcept}
-                onWorkingChange={onWorkingChange}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="settings">
-              <OntologyCreateForm
-                canEdit={canEditAll}
-                ontology={ontology}
-                onSaved={(saved) => {
-                  onSaved(saved);
-                  onWorkingChange?.();
-                }}
-              />
-            </Tabs.Panel>
-          </Tabs>
-        );
+        return renderDefinitionTabs(false);
       case 'view':
       case 'edit':
         if (viewSurface === 'ontology') {
@@ -226,17 +292,11 @@ const OntologyStudioWorkspace = ({
             <Box
               className={
                 isAiMode
-                  ? 'tw:h-full tw:overflow-auto tw:px-8 tw:pt-6'
+                  ? 'tw:h-full tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-24'
                   : 'tw:h-full tw:overflow-auto tw:p-6'
               }
-              direction="col"
-              gap={5}>
-              {header}
-              <OntologyOverview
-                ontology={ontology}
-                releaseId={releaseId}
-                status={publicationStatus}
-              />
+              direction="col">
+              {renderDefinitionTabs(true)}
             </Box>
           );
         }

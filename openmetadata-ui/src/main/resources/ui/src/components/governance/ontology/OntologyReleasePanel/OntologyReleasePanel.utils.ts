@@ -348,6 +348,73 @@ export const filterHistoryReleases = (
   );
 };
 
+/** The avatar letter for a person shown only by name. */
+export const initialsOf = (name: string) => name.trim().charAt(0).toUpperCase();
+
+export type ReleaseDisplayStatus =
+  | 'active'
+  | 'superseded'
+  | 'approved'
+  | 'inReview'
+  | 'rejected'
+  | 'withdrawn'
+  | 'draft';
+
+/**
+ * The lifecycle word a release row shows. The server keeps only the review
+ * status, so the rest is read from position: an approved release older than
+ * the active one was replaced by it, and a draft whose last review was
+ * withdrawn reads as withdrawn.
+ */
+export const releaseDisplayStatus = (
+  release: OntologyRelease,
+  activeRelease?: OntologyRelease,
+  /** Read from the release's events: a withdrawal clears its review task. */
+  isWithdrawn = false
+): ReleaseDisplayStatus => {
+  if (release.id === activeRelease?.id) {
+    return 'active';
+  }
+  switch (release.entityStatus) {
+    case EntityStatus.Approved:
+      return activeRelease &&
+        release.releaseRevision < activeRelease.releaseRevision
+        ? 'superseded'
+        : 'approved';
+    case EntityStatus.InReview:
+      return 'inReview';
+    case EntityStatus.Rejected:
+      return 'rejected';
+    default:
+      return isWithdrawn ? 'withdrawn' : 'draft';
+  }
+};
+
+const parseVersion = (version?: string) => {
+  const parts = version?.split('.').map(Number);
+
+  return parts?.length === 3 && parts.every(Number.isInteger)
+    ? parts
+    : undefined;
+};
+
+/** Which part of the version a release moved from its baseline; unknown when either has none. */
+export const releaseBump = (
+  version?: string,
+  baseVersion?: string
+): VersionBump | undefined => {
+  const next = parseVersion(version);
+  const base = parseVersion(baseVersion);
+  if (!next || !base) {
+    return undefined;
+  }
+  if (next[0] !== base[0]) {
+    return VersionBump.Major;
+  }
+
+  return next[1] === base[1] ? VersionBump.Patch : VersionBump.Minor;
+};
+
 /** Row counts by change type; a deprecation edits an existing concept. */
 export const releaseChangeBreakdown = (release: OntologyRelease) => {
   const summary = release.changeSummary;

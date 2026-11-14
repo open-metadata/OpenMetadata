@@ -189,7 +189,8 @@ const OntologyCreateForm = ({
         ontology.id,
         ontologyPatch(ontology, values)
       );
-      form.reset(ontologyFormValues(saved));
+      // The patch response leaves out owners and reviewers, so the form keeps what was saved.
+      form.reset(values);
       markSaved();
       onSaved(saved);
     } catch (error) {

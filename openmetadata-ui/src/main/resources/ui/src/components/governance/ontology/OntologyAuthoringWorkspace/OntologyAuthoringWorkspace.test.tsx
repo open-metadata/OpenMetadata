@@ -511,6 +511,24 @@ describe('OntologyAuthoringWorkspace', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers no Add in an empty read-only list, so it does not invite adding one', async () => {
+    routeLists({ concepts: [] });
+    renderWithQueryClient(
+      <OntologyAuthoringWorkspace isReadOnly ontology={ontology} />
+    );
+    await flushReactQuery();
+
+    expect(
+      await screen.findByTestId('ontology-concept-empty')
+    ).toHaveTextContent(/^label\.no-entity$/);
+    expect(
+      screen.queryByText('message.ontology-definitions-empty-description')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-empty-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
   describe('AI mode', () => {
     beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
 

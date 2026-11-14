@@ -1005,6 +1005,17 @@ const OntologyExplorerContent: React.FC = () => {
     },
     [setSearchParams]
   );
+  // One update: two separate ones would each start from the same URL and drop the other.
+  const showConceptOnGraph = useCallback(
+    (id: string) =>
+      setSearchParams((current) => {
+        const next = patchStudioUrlParams(current, { view: 'graph' });
+        next.set('concept', id);
+
+        return next;
+      }),
+    [setSearchParams]
+  );
   const selectedGlossaryId = getScopeGlossaryId(studioScope);
   const setSelectedGlossaryId = useCallback(
     (id?: string) => {
@@ -1660,8 +1671,10 @@ const OntologyExplorerContent: React.FC = () => {
     if (nextMode !== 'edit') {
       setConceptDraft(undefined);
     }
+    // Switching between View and Edit keeps the surface (Graph, Tree or Ontology) in view.
+    const keptSurface = mode === 'query' ? undefined : aggregateSurface;
     setMode(nextMode, {
-      view: nextMode === 'query' ? lastQuerySurface : editView,
+      view: nextMode === 'query' ? lastQuerySurface : editView ?? keptSurface,
     });
   }
 
@@ -2401,20 +2414,37 @@ const OntologyExplorerContent: React.FC = () => {
           setIsPublicationOpen(true);
         }}
         onRequestCreateConcept={() => guard(handleAddConcept)}
+        onRequestDefinitionsEdit={() => {
+          handleModeChange('edit', 'ontology');
+
+          // A locked draft refuses the switch with a toast.
+          return !nativeAuthoringLocked;
+        }}
         onRequestEdit={(conceptId) => {
           setEditConceptRequest(conceptId);
           handleModeChange('edit', 'graph');
         }}
         onRequestGraphSurface={() => setViewSurface('graph')}
         onRequestTreeSurface={() => setViewSurface('tree')}
-        onSaved={(ontology) => {
+        onSaved={(saved) => {
           void queryClient.invalidateQueries({
             queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
           });
           refreshNativeWorkingDiff();
-          selectOntology(ontology);
+          // Settings stay open after a save. The patch response leaves out owners,
+          // reviewers and publication status, so the full detail is read again in place.
+          setLoadedOntology((current) => ({ ...current, ...saved }));
+          void getOntology(saved.id, 'owners,reviewers,publicationStatus')
+            .then((full) =>
+              setLoadedOntology((current) =>
+                current?.id === full.id ? full : current
+              )
+            )
+            .catch(() => undefined);
+          showSuccessToast(t('message.ontology-settings-saved'));
         }}
         onSelectedConceptChange={selectNativeConcept}
+        onShowConceptOnGraph={showConceptOnGraph}
         onStatsChange={setNativeStats}
         onWorkingChange={refreshNativeWorkingDiff}
       />

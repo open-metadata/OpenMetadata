@@ -12,16 +12,16 @@
  */
 import {
   Alert,
+  Avatar,
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Select,
-  Tag,
-  TagGroup,
-  TagList,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
@@ -184,21 +184,82 @@ const OntologyReleaseReviewers = ({
     { id: OntologyApprovalRule.AnyReviewer, label: t('label.any-one') },
     { id: OntologyApprovalRule.AllReviewers, label: t('label.all') },
   ];
-  const renderAssignees = () =>
-    model.assignees.length > 0 && (
-      <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
-        {model.assignees.map(({ assignee, status }) => (
-          <li key={assignee.id}>
-            <Box gap={2} justify="between">
-              <Typography size="text-sm">{getEntityName(assignee)}</Typography>
-              <Badge color={ASSIGNEE_COLORS[status]}>
-                {t(`label.${status.toLowerCase()}`)}
-              </Badge>
-            </Box>
-          </li>
-        ))}
+  const statusById = new Map(
+    model.assignees.map(({ assignee, status }) => [assignee.id, status])
+  );
+  // Reviewers of the open review come from its assignees; otherwise the configured ones.
+  const people = model.assignees.length
+    ? model.assignees.map(({ assignee }) => assignee)
+    : settings.reviewers;
+  const removeReviewer = (id: string) =>
+    void save({
+      ...settings,
+      reviewers: settings.reviewers.filter((entry) => entry.id !== id),
+    });
+  const renderReviewers = () =>
+    people.length > 0 ? (
+      <ul
+        aria-label={t('label.reviewers')}
+        className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0"
+        data-testid="ontology-release-reviewer-list">
+        {people.map((person) => {
+          const name = getEntityName(person);
+          const status = statusById.get(person.id);
+          const canRemove =
+            editable &&
+            !status &&
+            settings.reviewers.some((entry) => entry.id === person.id);
+
+          return (
+            <li key={person.id}>
+              <Box align="center" gap={2}>
+                <Avatar initials={name.slice(0, 2).toUpperCase()} size="xs" />
+                <Typography
+                  className="tw:min-w-0 tw:flex-1 tw:truncate"
+                  size="text-sm">
+                  {name}
+                </Typography>
+                {status ? (
+                  <Badge color={ASSIGNEE_COLORS[status]} size="sm">
+                    {t(`label.${status.toLowerCase()}`)}
+                  </Badge>
+                ) : null}
+                {canRemove ? (
+                  <ButtonUtility
+                    aria-label={t('label.remove-entity', { entity: name })}
+                    color="tertiary"
+                    icon={XClose}
+                    size="xs"
+                    tooltip={t('label.remove')}
+                    onClick={() => removeReviewer(person.id)}
+                  />
+                ) : null}
+              </Box>
+            </li>
+          );
+        })}
       </ul>
+    ) : (
+      <Typography color="secondary" size="text-sm">
+        {t('message.ontology-no-reviewers')}
+      </Typography>
     );
+  const approvalHint = () => {
+    if (!settings.reviewers.length) {
+      return undefined;
+    }
+    if (settings.reviewers.length === 1) {
+      return t('message.ontology-reviewer-must-approve', {
+        name: getEntityName(settings.reviewers[0]),
+      });
+    }
+
+    return t(
+      settings.approvalRule === OntologyApprovalRule.AllReviewers
+        ? 'message.ontology-every-reviewer-must-approve'
+        : 'message.ontology-any-reviewer-can-approve'
+    );
+  };
   const renderOutcome = () => (
     <>
       {outcome?.kind === 'conflict' && (
@@ -241,6 +302,7 @@ const OntologyReleaseReviewers = ({
         isReadOnly={saving}
         items={options}
         label={t('label.add-reviewer')}
+        placeholder={t('label.search-or-pick-a-person')}
         selectedKey={null}
         shortcut={false}
         tooltip={lockHint}
@@ -305,34 +367,12 @@ const OntologyReleaseReviewers = ({
             weight="semibold">
             {t('label.reviewers')}
           </Typography>
-          <TagGroup
-            disabledKeys={
-              editable ? [] : settings.reviewers.map((entry) => entry.id)
-            }
-            label={t('label.reviewers')}
-            onRemove={
-              editable
-                ? (keys) =>
-                    void save({
-                      ...settings,
-                      reviewers: settings.reviewers.filter(
-                        (entry) => !keys.has(entry.id)
-                      ),
-                    })
-                : undefined
-            }>
-            <TagList items={settings.reviewers}>
-              {(entry) => <Tag id={entry.id}>{getEntityName(entry)}</Tag>}
-            </TagList>
-          </TagGroup>
-          {settings.reviewers.length === 0 && (
-            <Typography color="secondary" size="text-sm">
-              {t('message.ontology-no-reviewers')}
-            </Typography>
-          )}
+          {renderReviewers()}
           {renderReviewerSearch()}
           <Select
-            hint={hasTeam ? t('message.ontology-one-team-reviewer') : undefined}
+            hint={
+              hasTeam ? t('message.ontology-one-team-reviewer') : approvalHint()
+            }
             isDisabled={!interactive}
             items={ruleOptions}
             label={t('label.approval-rule')}
@@ -348,7 +388,6 @@ const OntologyReleaseReviewers = ({
             }}>
             {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
           </Select>
-          {renderAssignees()}
           {renderOutcome()}
         </Box>
       </Card.Content>

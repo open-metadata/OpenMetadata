@@ -95,7 +95,10 @@ describe('OntologyDataAssetPicker', () => {
         onSave={jest.fn()}
       />
     );
-    await screen.findByText('customers');
+    await screen.findByText('orders');
+
+    expect(screen.queryByText('customers')).not.toBeInTheDocument();
+
     fireEvent.click(
       screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
     );
@@ -452,8 +455,8 @@ describe('OntologyDataAssetPicker', () => {
     await screen.findByText('orders');
 
     expect(
-      screen.getByTestId('ontology-data-asset-option-t-1')
-    ).toHaveAttribute('data-disabled');
+      screen.queryByTestId('ontology-data-asset-option-t-1')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
@@ -503,7 +506,7 @@ describe('OntologyDataAssetPicker', () => {
       selectAllBar = selectAllBar.parentElement;
     }
 
-    expect(box).toHaveClass('tw:mt-1');
+    expect(box).toHaveClass('tw:mt-1.5');
     expect(selectAllBar).toHaveClass('tw:px-3.5');
     expect(selectAllBar).not.toHaveClass('tw:bg-secondary_alt');
 
@@ -590,8 +593,8 @@ describe('OntologyDataAssetPicker', () => {
         screen.queryByTestId('ontology-data-asset-reason-t-3')
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole('checkbox', { name: 'medication_events' })
-      ).toBeChecked();
+        screen.queryByRole('checkbox', { name: 'medication_events' })
+      ).not.toBeInTheDocument();
     });
 
     it('shows the list once, after suggestions arrive, instead of reordering it', async () => {
@@ -655,29 +658,15 @@ describe('OntologyDataAssetPicker', () => {
       );
     });
 
-    it('says why a linked row cannot be picked', async () => {
+    it('leaves an already linked asset out of the list', async () => {
       renderNative({ linkedIds: ['t-1'] });
 
-      const box = await screen.findByRole('checkbox', { name: 'customers' });
-
-      expect(box).toBeDisabled();
-      expect(box).toBeChecked();
       expect(
-        screen.getByTestId('ontology-data-asset-linked-t-1')
-      ).toHaveTextContent('message.ontology-asset-already-linked');
+        await screen.findByRole('checkbox', { name: 'medication_events' })
+      ).toBeEnabled();
       expect(
-        screen.queryByTestId('ontology-data-asset-linked-t-2')
+        screen.queryByRole('checkbox', { name: 'customers' })
       ).not.toBeInTheDocument();
-    });
-
-    it('states that a linked asset is already linked exactly once', async () => {
-      renderNative({ linkedIds: ['t-1'] });
-
-      await screen.findByRole('checkbox', { name: 'customers' });
-
-      expect(
-        screen.getAllByText('message.ontology-asset-already-linked')
-      ).toHaveLength(1);
     });
   });
 

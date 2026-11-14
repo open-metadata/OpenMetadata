@@ -117,6 +117,37 @@ describe('OntologyOverview validation', () => {
   });
 });
 
+describe('OntologyOverview published release', () => {
+  it('does not carry the draft validation conflicts into a release', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [{ code: 'DISJOINT_CLASH', conceptIds: ['med', 'clin'] }],
+    });
+    const onOpenTab = jest.fn();
+    const { rerender } = renderWithQueryClient(
+      <OntologyOverview ontology={ontology} onOpenTab={onOpenTab} />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-overview-count-constraints')
+      ).toHaveTextContent(/conflict/i)
+    );
+
+    rerender(
+      <OntologyOverview
+        ontology={ontology}
+        releaseId="release-id"
+        onOpenTab={onOpenTab}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-overview-count-constraints')
+    ).not.toHaveTextContent(/conflict/i);
+  });
+});
+
 describe('OntologyOverview validation breakdown', () => {
   it('counts constraints as valid, not checked and in conflict, and reviews the conflicts', async () => {
     (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({

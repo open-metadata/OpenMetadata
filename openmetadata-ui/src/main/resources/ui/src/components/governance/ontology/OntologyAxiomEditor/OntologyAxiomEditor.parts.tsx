@@ -220,6 +220,57 @@ export const AxiomPreview = ({ sentence }: { sentence: string }) => {
   );
 };
 
+/** A constraint as View mode shows it: how it reads, its type and description, nothing editable. */
+export const AxiomReadOnly = ({
+  axiom,
+  sentence,
+}: {
+  axiom: OntologyAxiom;
+  sentence: string;
+}) => {
+  const { t } = useTranslation();
+  const facts = [
+    {
+      key: 'type',
+      label: t('label.type'),
+      value: axiomTypeLabel(axiom.axiomType, t),
+    },
+    {
+      key: 'name',
+      label: t('label.name'),
+      value: axiom.displayName || axiom.name,
+    },
+    {
+      key: 'description',
+      label: t('label.description'),
+      value: axiom.description,
+    },
+  ].filter((fact) => fact.value);
+
+  return (
+    <section
+      className="tw:flex tw:flex-col tw:gap-4.5"
+      data-testid="ontology-axiom-read-only">
+      <AxiomPreview sentence={sentence} />
+      <dl className="tw:m-0 tw:flex tw:flex-col tw:gap-3">
+        {facts.map((fact) => (
+          <div className="tw:flex tw:flex-col tw:gap-1" key={fact.key}>
+            <Typography as="dt" color="secondary" size="text-xs">
+              {fact.label}
+            </Typography>
+            <Typography
+              as="dd"
+              className="tw:m-0 tw:whitespace-pre-wrap tw:break-words"
+              size="text-sm">
+              {fact.value}
+            </Typography>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+};
+
 export const axiomFormValues = (
   axiom?: OntologyAxiom
 ): OntologyAxiomFormState => {
@@ -641,17 +692,16 @@ const TypeAndHelp = ({
           <Select.Item id={item.id} key={item.id} label={item.label} />
         )}
       </Select>
-      <Card data-testid="ontology-axiom-help" size="sm" variant="muted">
-        <Card.Content>
-          <Typography color="secondary" size="text-sm">
-            {t(
-              `message.ontology-axiom-${axiomType
-                .toLowerCase()
-                .replaceAll('_', '-')}-help`
-            )}
-          </Typography>
-        </Card.Content>
-      </Card>
+      <Typography
+        color="secondary"
+        data-testid="ontology-axiom-help"
+        size="text-sm">
+        {t(
+          `message.ontology-axiom-${axiomType
+            .toLowerCase()
+            .replaceAll('_', '-')}-help`
+        )}
+      </Typography>
     </>
   );
 };

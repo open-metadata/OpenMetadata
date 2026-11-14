@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import {
   ApprovalBasis,
   EntityStatus,
@@ -245,21 +251,48 @@ describe('Releases tab', () => {
       }),
     ]);
 
-    expect(
-      await screen.findByTestId('ontology-release-decision-ai')
-    ).toHaveTextContent(
-      'message.ontology-release-approved-by {"reviewers":"qa.reviewer1"}'
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-release-decision-ai')
+      ).toHaveTextContent('qa.reviewer1label.approved')
+    );
+
+    expect(screen.getByTestId('ontology-release-status-ai')).toHaveTextContent(
+      'label.approved'
     );
     expect(screen.getByTestId('ontology-release-count-ai').textContent).toBe(
       '+3 ~2 −2'
     );
     expect(screen.getByText('author.one')).toBeVisible();
+    expect(screen.getByTestId('ontology-release-menu-ai')).toBeVisible();
     expect(
       screen.getByTestId('ontology-release-filter-published')
-    ).toHaveTextContent('label.published · 1');
+    ).toHaveTextContent('label.published1');
     expect(
       screen.getByTestId('ontology-release-filter-draft')
-    ).toHaveTextContent('label.draft · 0');
+    ).toHaveTextContent('label.drafts0');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('opens an AI release from its version button, with the row menu as its own control', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onSelect = jest.fn();
+    renderHistory([release('ai', '3.0.0', EntityStatus.Approved)], {
+      onSelect,
+    });
+
+    const open = screen.getByTestId('ontology-release-select-ai');
+
+    expect(open.tagName).toBe('BUTTON');
+    expect(open).toHaveTextContent('v3.0.0');
+    expect(open).not.toContainElement(
+      screen.getByTestId('ontology-release-menu-ai')
+    );
+
+    fireEvent.click(open);
+
+    expect(onSelect).toHaveBeenCalledWith('ai');
 
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });

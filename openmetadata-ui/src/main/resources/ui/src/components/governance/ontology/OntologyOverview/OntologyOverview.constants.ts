@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-/** One validation run the Overview and the Constraints tab share, so Validate all refreshes both. */
-export const overviewValidationQueryKey = (ontologyId: string) => [
-  'ontology-working-validation',
-  ontologyId,
-  'overview',
-];
+/**
+ * One validation run the Overview and the Constraints tab share, so Validate all refreshes both.
+ * A release never validates, and its own key keeps the draft's cached result out of it.
+ */
+export const overviewValidationQueryKey = (
+  ontologyId: string,
+  releaseId?: string
+) =>
+  releaseId
+    ? ['ontology-working-validation', ontologyId, 'release', releaseId]
+    : ['ontology-working-validation', ontologyId, 'overview'];
 
 export const RECENT_CHANGES_SHOWN = 5;

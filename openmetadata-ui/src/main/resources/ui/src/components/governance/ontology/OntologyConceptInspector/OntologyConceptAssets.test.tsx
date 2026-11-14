@@ -176,12 +176,13 @@ it('keeps confirmed and unattempted selections separate after a failed complete 
   );
 
   expect(http.put).toHaveBeenCalledTimes(1);
+  // Once the read confirms them, linked assets leave the list.
   expect(
-    within(picker).getByRole('checkbox', { name: 'new-one' })
-  ).toBeDisabled();
+    within(picker).queryByRole('checkbox', { name: 'new-one' })
+  ).not.toBeInTheDocument();
   expect(
-    within(picker).getByRole('checkbox', { name: 'old-table' })
-  ).toBeDisabled();
+    within(picker).queryByRole('checkbox', { name: 'old-table' })
+  ).not.toBeInTheDocument();
   expect(state.assets[0].columns).toEqual(retainedColumns);
 
   fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
@@ -246,8 +247,8 @@ it.each([
     expect(http.put).toHaveBeenCalledTimes(2);
     // new-one is linked now: ticked and locked, no longer a pending pick.
     expect(
-      within(picker).getByRole('checkbox', { name: 'new-one' })
-    ).toBeDisabled();
+      within(picker).queryByRole('checkbox', { name: 'new-one' })
+    ).not.toBeInTheDocument();
     expect(
       within(picker).getByRole('checkbox', { name: 'new-three' })
     ).toBeEnabled();

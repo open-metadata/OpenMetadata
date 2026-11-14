@@ -1750,7 +1750,7 @@ describe('OntologyExplorerPage', () => {
     useKeyEchoTranslations();
   });
 
-  it('keeps the native canvas in Edit and starts concept authoring from the shared header', async () => {
+  it('keeps the surface when switching to Edit and starts concept authoring from the shared header', async () => {
     renderNativeStudio('?ontology=native-sales');
 
     await screen.findByTestId('native-canvas');
@@ -1759,6 +1759,11 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-tree-view')).toBeVisible();
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    // Edit opens on the Tree the user was on, not back on the Graph.
+    expect(screen.getByTestId('ontology-tree-view')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('submode-tab-graph'));
 
     expect(screen.getByTestId('native-canvas')).toBeVisible();
     expect(
@@ -2273,6 +2278,9 @@ describe('OntologyExplorerPage', () => {
         'aria-selected',
         'true'
       );
+      expect(
+        screen.getByRole('tab', { name: 'label.constraint-plural' })
+      ).toBeInTheDocument();
     });
 
     it('says the ontology was not found for an unknown ontology id', async () => {
