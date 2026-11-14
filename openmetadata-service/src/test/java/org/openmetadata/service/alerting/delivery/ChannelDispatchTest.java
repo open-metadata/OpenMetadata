@@ -44,6 +44,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.audience.EmailRecipient;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.RecipientResolver;
@@ -182,7 +183,8 @@ class ChannelDispatchTest {
         new WebhookRecipient(
             new Webhook().withEndpoint(URI.create("https://hooks.example.com/ok")), "ops");
     Recipient unusable =
-        WebhookRecipient.unusable("data", UUID.randomUUID(), "enter it again on the team");
+        WebhookRecipient.unusable(
+            "data", Entity.TEAM, UUID.randomUUID(), "enter it again on the team");
 
     ChannelResult result = dispatch(Set.of(working, unusable), teams).send(EVENT, CONTENT);
 

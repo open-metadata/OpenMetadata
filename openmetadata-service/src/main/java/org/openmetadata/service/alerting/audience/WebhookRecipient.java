@@ -17,6 +17,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -43,12 +44,14 @@ public final class WebhookRecipient extends Recipient {
   private final Webhook webhook;
 
   @Getter(AccessLevel.NONE)
-  private final Object owner;
+  private final UnusableOwner owner;
 
   @Getter(AccessLevel.NONE)
   private final String whyUnusable;
 
   private record Identity(URI endpoint, Map<String, String> queryParams) {}
+
+  private record UnusableOwner(String entityType, UUID id) {}
 
   public WebhookRecipient(Webhook webhook) {
     this(webhook, CONFIGURED);
@@ -58,7 +61,7 @@ public final class WebhookRecipient extends Recipient {
     this(name, Objects.requireNonNull(webhook, "webhook cannot be null"), null, null);
   }
 
-  private WebhookRecipient(String name, Webhook webhook, Object owner, String whyUnusable) {
+  private WebhookRecipient(String name, Webhook webhook, UnusableOwner owner, String whyUnusable) {
     super(name);
     this.webhook = webhook;
     this.owner = owner;
@@ -69,8 +72,13 @@ public final class WebhookRecipient extends Recipient {
    * The webhook a user or a team saved, whose stored value cannot be used to send. It stays a
    * recipient, so the send to it fails with the reason and the alert reports it; nothing is sent.
    */
-  public static WebhookRecipient unusable(String name, Object owner, String reason) {
-    return new WebhookRecipient(name, null, Objects.requireNonNull(owner), reason);
+  public static WebhookRecipient unusable(
+      String name, String entityType, UUID ownerId, String reason) {
+    UnusableOwner owner =
+        new UnusableOwner(
+            Objects.requireNonNull(entityType, "entityType cannot be null"),
+            Objects.requireNonNull(ownerId, "ownerId cannot be null"));
+    return new WebhookRecipient(name, null, owner, reason);
   }
 
   /**

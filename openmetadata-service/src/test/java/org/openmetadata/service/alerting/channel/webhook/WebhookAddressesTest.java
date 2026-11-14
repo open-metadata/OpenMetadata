@@ -14,6 +14,7 @@
 package org.openmetadata.service.alerting.channel.webhook;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
@@ -63,6 +65,18 @@ class WebhookAddressesTest {
     assertEquals(
         Optional.of("the saved webhook value cannot be used; enter it again on the team"),
         recipient.unusableBecause());
+  }
+
+  // With no endpoint to tell them apart, the owner is what makes an unusable webhook one recipient.
+  @Test
+  void anUnusableWebhookIsOneRecipientPerOwner() {
+    UUID id = UUID.randomUUID();
+    Profile savedForAnotherOwner = savedFor(UUID.randomUUID());
+    Team team = new Team().withId(id).withName("data").withProfile(savedForAnotherOwner);
+    User user = new User().withId(id).withName("data").withProfile(savedForAnotherOwner);
+
+    assertEquals(addresses.ofTeam(team), addresses.ofTeam(team));
+    assertNotEquals(addresses.ofTeam(team), addresses.ofUser(user));
   }
 
   @Test

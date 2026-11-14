@@ -71,7 +71,8 @@ public final class WebhookAddresses implements AddressDirectory {
     Profile opened = ProfileWebhookSecrets.decrypted(holder, profile);
     boolean leftOut = webhookOf(profile) != null && webhookOf(opened) == null;
     return leftOut
-        ? WebhookRecipient.unusable(name, holder, unusableOn(holder.entityType()))
+        ? WebhookRecipient.unusable(
+            name, holder.entityType(), holder.id(), unusableOn(holder.entityType()))
         : WebhookRecipient.ofProfile(name, opened, onProfile);
   }
 
