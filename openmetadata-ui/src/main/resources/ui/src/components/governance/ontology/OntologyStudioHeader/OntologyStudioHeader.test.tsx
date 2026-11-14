@@ -61,28 +61,28 @@ describe('OntologyStudioHeader', () => {
     }
   );
 
-  it('shows the studio description only in AI mode', () => {
-    renderHeader();
+  it.each([false, true])(
+    'shows the studio description (AI mode: %s)',
+    (isAiMode) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+      renderHeader();
 
-    expect(
-      screen.queryByText('message.ontology-studio-description')
-    ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.ontology-studio-description')
+      ).toBeInTheDocument();
+    }
+  );
 
-    (useIsAiMode as jest.Mock).mockReturnValue(true);
-    renderHeader();
+  it.each([false, true])(
+    'switches mode from the tabs (AI mode: %s)',
+    (isAiMode) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+      const onModeChange = jest.fn();
+      renderHeader(onModeChange);
 
-    expect(
-      screen.getByText('message.ontology-studio-description')
-    ).toBeInTheDocument();
-  });
+      fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
-  it('switches mode from the AI-mode tabs', () => {
-    (useIsAiMode as jest.Mock).mockReturnValue(true);
-    const onModeChange = jest.fn();
-    renderHeader(onModeChange);
-
-    fireEvent.click(screen.getByTestId('mode-tab-edit'));
-
-    expect(onModeChange).toHaveBeenCalledWith('edit');
-  });
+      expect(onModeChange).toHaveBeenCalledWith('edit');
+    }
+  );
 });

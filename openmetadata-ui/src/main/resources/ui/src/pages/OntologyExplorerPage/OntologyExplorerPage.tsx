@@ -902,8 +902,6 @@ function isNativePermissionPending(
   return ontologyPending || (mode === 'edit' && conceptPending);
 }
 
-const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
-
 const OntologyExplorerContent: React.FC = () => {
   const guard = useOntologyDraftGuard();
   const { t } = useTranslation();
@@ -1752,7 +1750,6 @@ const OntologyExplorerContent: React.FC = () => {
 
   const publishReasonId = useId();
   const addConceptReasonId = useId();
-  const headerActionSize = getHeaderActionSize(isAiMode);
 
   // View on one ontology offers the step into Edit where Add concept would sit.
   function renderEditOntologyAction() {
@@ -1768,7 +1765,7 @@ const OntologyExplorerContent: React.FC = () => {
         color="primary"
         data-testid="ontology-edit-ontology"
         iconTrailing={ArrowRight}
-        size={headerActionSize}
+        size="sm"
         onPress={() => guard(() => handleModeChange('edit'))}>
         {t('label.edit-entity', { entity: t('label.ontology') })}
       </Button>
@@ -1786,7 +1783,7 @@ const OntologyExplorerContent: React.FC = () => {
         color="primary"
         data-testid="ontology-new-query"
         iconLeading={Plus}
-        size={headerActionSize}
+        size="sm"
         onPress={() => {
           // A query needs one ontology, so on All ontologies this only offers the choice.
           if (isAllOntologies) {
@@ -1830,7 +1827,7 @@ const OntologyExplorerContent: React.FC = () => {
             data-testid="ontology-add-concept"
             iconLeading={Plus}
             isDisabled={isDraftOpen}
-            size={headerActionSize}
+            size="sm"
             onPress={() => guard(handleAddConcept)}>
             {t('label.add-entity', {
               entity: t('label.concept').toLocaleLowerCase(),
@@ -1927,7 +1924,7 @@ const OntologyExplorerContent: React.FC = () => {
             data-testid="ontology-publication-trigger"
             iconLeading={GitBranch01}
             isDisabled={isAllOntologies}
-            size={headerActionSize}
+            size="sm"
             onPress={() => {
               setPublicationTab('changes');
               setIsPublicationOpen(true);
@@ -2912,14 +2909,9 @@ const OntologyExplorerContent: React.FC = () => {
           {({ tasksAction, banner }) => (
             <>
               {renderHeader(tasksAction)}
-              {/* The AI header is an inset card; the workspace below takes the
+              {/* The header is an inset card; the workspace below takes the
                   same inset and card frame so their edges line up. */}
-              <div
-                className={classNames(
-                  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
-                  isAiMode &&
-                    'tw:mx-2 tw:mb-2 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
-                )}>
+              <div className="tw:mx-2 tw:mb-2 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary">
                 <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
                   <OntologyStudioDrawerHostContext.Provider value={drawerHost}>
                     {renderWorkspace(tasksAction, banner)}
