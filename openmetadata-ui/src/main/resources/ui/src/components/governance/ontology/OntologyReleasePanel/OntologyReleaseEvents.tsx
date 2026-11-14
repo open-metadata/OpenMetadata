@@ -171,7 +171,9 @@ const OntologyReleaseEvents = ({
       {events.isPending && <Loader size="small" />}
       {events.isError && (
         <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
+          {t('server.entity-fetch-error', {
+            entity: t('label.release-events'),
+          })}
           <Button
             color="secondary"
             size="sm"

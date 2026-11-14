@@ -204,7 +204,9 @@ const OntologyReleaseCompare = ({
     if (diff.isError) {
       return (
         <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
+          {t('server.entity-fetch-error', {
+            entity: t('label.change-plural'),
+          })}
           <Button
             color="secondary"
             size="sm"

@@ -887,9 +887,7 @@ describe('OntologyReleasePanel', () => {
       fireEvent.click(screen.getByTestId('ontology-working-next'));
     });
 
-    expect(
-      await screen.findByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(await screen.findByText('server.entity-fetch-error')).toBeVisible();
     expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
     expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
     expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
@@ -937,9 +935,7 @@ describe('OntologyReleasePanel', () => {
 
     fireEvent.click(screen.getByTestId('ontology-working-next'));
 
-    expect(
-      await screen.findByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(await screen.findByText('server.entity-fetch-error')).toBeVisible();
     expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'label.save-as-release-draft' })
@@ -1416,15 +1412,13 @@ describe('OntologyReleasePanel', () => {
           'label.published'
         );
         expect(
-          screen.queryByText('message.ontology-review-unavailable')
+          screen.queryByText('server.entity-fetch-error')
         ).not.toBeInTheDocument();
       } else {
         expect(
           screen.queryByTestId('ontology-release-stage')
         ).not.toBeInTheDocument();
-        expect(
-          screen.getByText('message.ontology-review-unavailable')
-        ).toBeVisible();
+        expect(screen.getByText('server.entity-fetch-error')).toBeVisible();
       }
     }
   );
@@ -1607,9 +1601,7 @@ describe('OntologyReleasePanel', () => {
     );
     await renderPanel(true, 'changes');
 
-    expect(
-      await screen.findByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(await screen.findByText('server.entity-fetch-error')).toBeVisible();
     expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
     expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
 
@@ -1651,9 +1643,7 @@ describe('OntologyReleasePanel', () => {
       rejectState?.(new AxiosError('State unavailable', '403'));
     });
 
-    expect(
-      screen.getByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(screen.getByText('server.entity-fetch-error')).toBeVisible();
     expect(
       screen.getByTestId(
         'ontology-release-select-00000000-0000-4000-8000-000000000005'
@@ -1672,7 +1662,7 @@ describe('OntologyReleasePanel', () => {
     );
 
     expect(
-      screen.queryByText('message.ontology-review-unavailable')
+      screen.queryByText('server.entity-fetch-error')
     ).not.toBeInTheDocument();
     expect(activationButton()).toBeEnabled();
   });
@@ -2216,14 +2206,12 @@ describe('OntologyReleasePanel', () => {
       return defaultGet?.(url, config);
     });
     await renderPanel(true, 'changes');
-    await screen.findAllByText('message.ontology-review-unavailable');
+    await screen.findAllByText('server.entity-fetch-error');
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.getAllByText('message.ontology-review-unavailable')
-    ).toHaveLength(1);
+    expect(screen.getAllByText('server.entity-fetch-error')).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'label.retry' })).toHaveLength(
       1
     );

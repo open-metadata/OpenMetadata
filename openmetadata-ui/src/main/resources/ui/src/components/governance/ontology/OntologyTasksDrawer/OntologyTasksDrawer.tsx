@@ -487,7 +487,9 @@ const OntologyTasksDrawer = ({
       />
       {queue.isError && (
         <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
+          {t('server.entity-fetch-error', {
+            entity: t('label.task-plural'),
+          })}
         </Alert>
       )}
       {queue.isPending ? <Loader size="small" /> : null}

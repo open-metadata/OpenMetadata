@@ -392,7 +392,9 @@ const OntologyReleasePanel = ({
     if (changes.isError || !hasCoherentPreview) {
       return (
         <Alert variant={changes.isError ? 'error' : 'warning'}>
-          {t('message.ontology-review-unavailable')}
+          {t('server.entity-fetch-error', {
+            entity: t('label.change-plural'),
+          })}
           <Button color="secondary" size="sm" onPress={retryChanges}>
             {t('label.retry')}
           </Button>
@@ -424,7 +426,9 @@ const OntologyReleasePanel = ({
     if (displayed.isError) {
       return (
         <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
+          {t('server.entity-fetch-error', {
+            entity: t('label.release'),
+          })}
         </Alert>
       );
     }
@@ -690,7 +694,9 @@ const OntologyReleasePanel = ({
       <Loader size="small" />
     ) : (
       <Alert variant="error">
-        {t('message.ontology-review-unavailable')}
+        {t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
         <Button color="secondary" size="sm" onPress={() => void refresh()}>
           {t('label.retry')}
         </Button>
@@ -948,7 +954,9 @@ const OntologyReleasePanel = ({
     if (displayed.isError) {
       return (
         <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
+          {t('server.entity-fetch-error', {
+            entity: t('label.release'),
+          })}
         </Alert>
       );
     }
@@ -1058,7 +1066,9 @@ const OntologyReleasePanel = ({
   const renderStateError = () =>
     state.isError && (
       <Alert variant="error">
-        {t('message.ontology-review-unavailable')}
+        {t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
         <Button
           color="secondary"
           size="sm"

@@ -970,7 +970,7 @@ it.each(['projection', 'review'])(
 
     await waitFor(() =>
       expect(
-        screen.getAllByText('message.ontology-review-unavailable').length
+        screen.getAllByText('server.entity-fetch-error').length
       ).toBeGreaterThan(0)
     );
 

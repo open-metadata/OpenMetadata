@@ -578,7 +578,9 @@ const HistoryLoadStatus = ({ history }: { history: HistoryQuery }) => {
 
   return history.isError ? (
     <Alert variant="error">
-      {t('message.ontology-review-unavailable')}
+      {t('server.entity-fetch-error', {
+        entity: t('label.release-plural'),
+      })}
       <Button
         color="secondary"
         size="sm"
