@@ -28,6 +28,7 @@ import {
   previewNativeOntologyImport,
   previewNativeOntologyImportWithoutTarget,
 } from '../../../../rest/ontologyAPI';
+import { STUDIO_VERSION_PARAM } from '../../../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
@@ -566,6 +567,8 @@ export const landOnImportedOntology = (
   next.delete('concept');
   next.delete('scope');
   next.delete(DRAFT_SEARCH_PARAM);
+  // An import lands in the draft, which the Published view would not show.
+  next.delete(STUDIO_VERSION_PARAM);
 
   return next;
 };

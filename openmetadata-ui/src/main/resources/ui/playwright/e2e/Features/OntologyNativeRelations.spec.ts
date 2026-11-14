@@ -385,7 +385,8 @@ test.describe(
               new URL(response.url()).pathname === '/api/v1/ontologyAxioms' &&
               response.request().method() === 'POST'
           );
-          await dialog.getByTestId('relationship-type-submit').click();
+          // The footer actions sit outside the dialog's content box.
+          await page.getByTestId('relationship-type-submit').click();
           const axiom = await okJson<OntologyAxiom>(
             await axiomCreated,
             'Create the custom relation'

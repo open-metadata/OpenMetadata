@@ -894,8 +894,9 @@ const OntologyConceptInspector = ({
           propertyLabel={getPropertyLabel(property)}
         />
       </Box>
+      {/* Bindings stack under the name, so the type stays on the name's line. */}
       <Badge
-        className="tw:shrink-0"
+        className="tw:shrink-0 tw:self-start"
         color="success"
         data-testid="ontology-concept-property-datatype"
         size="sm"

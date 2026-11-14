@@ -80,13 +80,15 @@ const OntologyStudioDrawer = ({
       }
     };
     // Bubble phase: an open menu, list or dialog handles its own Escape first and stops it here.
+    // A combobox is skipped too: react-aria lets the Escape that closes its list bubble on, so
+    // dismissing a field's suggestions would otherwise raise the discard prompt.
     const closeOnEscape = (event: KeyboardEvent) => {
       if (
         event.key === 'Escape' &&
         !event.defaultPrevented &&
         !(
           event.target instanceof Element &&
-          event.target.closest(OWNED_OVERLAY_SELECTOR)
+          event.target.closest(`${OWNED_OVERLAY_SELECTOR},[role="combobox"]`)
         )
       ) {
         guard(onInteractOutside);

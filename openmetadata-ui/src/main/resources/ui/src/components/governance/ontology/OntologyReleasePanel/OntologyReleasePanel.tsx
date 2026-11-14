@@ -865,7 +865,6 @@ const OntologyReleasePanel = ({
   const renderReviewers = () => (
     <OntologyReleaseReviewers
       key={scopeKey}
-      scopeKey={scopeKey}
       view={panelView}
       onChange={updateReviewSettings}
       onRefresh={refresh}
@@ -909,7 +908,7 @@ const OntologyReleasePanel = ({
         <Box className="tw:min-w-0" direction="col" gap={4}>
           {renderChangesHeading()}
           {renderChangeStatus()}
-          {hasCoherentPreview && changes.data && (
+          {hasCoherentPreview && changes.data && !hasNoChanges && (
             <OntologyReleaseChangeCards
               cards={groupChangeCards(
                 filterConceptChanges(

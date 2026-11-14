@@ -196,7 +196,7 @@ const OntologyDataConceptPicker = ({
       <div
         aria-selected={position === active}
         className={classNames(
-          'tw:flex tw:cursor-pointer tw:items-center tw:gap-2.5 tw:rounded-md tw:px-3 tw:py-2.5',
+          'tw:flex tw:cursor-pointer tw:items-center tw:gap-2.5 tw:rounded-md tw:px-3 tw:py-2',
           position === active ? 'tw:bg-active' : 'tw:hover:bg-primary_hover'
         )}
         data-testid={`ontology-data-concept-option-${concept.id}`}
@@ -216,7 +216,7 @@ const OntologyDataConceptPicker = ({
         <Typography
           ellipsis
           className={hasData ? 'tw:text-primary' : 'tw:text-tertiary'}
-          size="text-md"
+          size="text-sm"
           weight="medium">
           {concept.name}
         </Typography>
@@ -301,9 +301,9 @@ const OntologyDataConceptPicker = ({
         ])}
       </div>
       {onLinkData && selectedName ? (
-        <div className="tw:border-t tw:border-secondary tw:p-1">
+        // Same 16px inset as the search, the rows and the key hints.
+        <div className="tw:border-t tw:border-secondary tw:px-4 tw:py-2.5">
           <Button
-            className="tw:w-full tw:justify-start"
             color="link-color"
             data-testid="ontology-data-concept-link-data"
             iconLeading={Plus}
@@ -315,7 +315,7 @@ const OntologyDataConceptPicker = ({
       ) : null}
       <Box
         aria-hidden="true"
-        className="tw:border-t tw:border-secondary tw:px-3 tw:py-2"
+        className="tw:border-t tw:border-secondary tw:px-4 tw:py-2"
         gap={4}>
         <Typography color="secondary" size="text-xs">
           {t('label.ontology-key-move')}
@@ -372,7 +372,7 @@ const OntologyDataConceptPicker = ({
         </>
       ) : (
         <>
-          <div className="tw:border-b tw:border-secondary tw:px-1 tw:py-1.5">
+          <div className="tw:border-b tw:border-secondary tw:px-0.5 tw:py-1.5">
             {search}
           </div>
           {results}

@@ -288,7 +288,7 @@ test.describe(
           author.getByRole('radio', { name: /Major/ })
         ).toBeChecked();
         await expect(author.getByTestId('ontology-version-reason')).toHaveText(
-          'You removed definitions that readers may rely on, so a Major version is suggested.'
+          'Suggested: Major (v2.0.0). Something was removed or renamed, which can break bound assets and queries.'
         );
         await expect(
           author
@@ -377,7 +377,7 @@ test.describe(
         ).toContainText('Customer is its own ancestor');
         await expect(
           author.getByTestId('ontology-release-validation')
-        ).toContainText('Structural validation: Failed');
+        ).toContainText('Structural validationFailed');
         expect(releases).toEqual([]);
         await g7Shot(author, testInfo, 'validate-open');
       } finally {
@@ -399,7 +399,7 @@ test.describe(
 
         await expect(
           author.getByTestId('ontology-logical-consistency')
-        ).toHaveText('Logical consistency: Not applicable');
+        ).toHaveText('Logical consistencyNot applicable');
         await expect(
           author.getByTestId('ontology-release-validation').getByRole('alert')
         ).toHaveCount(0);
@@ -517,7 +517,10 @@ test.describe(
         await reviewer.getByTestId('ontology-tasks-trigger').click();
         for (const title of titles) {
           await expect(
-            reviewer.getByRole('button', { name: new RegExp(`${title}$`) })
+            // The row's name continues with its requester and status after the title.
+            reviewer
+              .getByTestId('ontology-tasks-queue')
+              .getByRole('button', { name: title })
           ).toBeVisible();
         }
         await g7Shot(reviewer, testInfo, 'task-titles');
@@ -660,7 +663,7 @@ test.describe(
           firstPaint.push(Date.now() - started);
           await expect(
             author.getByTestId('ontology-release-validation')
-          ).toContainText('Structural validation: Passed', { timeout: 30_000 });
+          ).toContainText('Structural validationPassed', { timeout: 30_000 });
           validation.push(Date.now() - started);
         }
         const median = (values: number[]) =>

@@ -274,7 +274,7 @@ test.describe(
             );
             await expect(
               page.getByTestId('ontology-publication-trigger')
-            ).toContainText('(3)');
+            ).toContainText('(2)');
             const positions = await readNodePositions(page);
             expect(positions).toEqual(
               expect.objectContaining({
@@ -331,7 +331,7 @@ test.describe(
           );
           await expect(
             page.getByTestId('ontology-publication-trigger')
-          ).toContainText('(4)');
+          ).toContainText('(3)');
           await expect(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('customer number');

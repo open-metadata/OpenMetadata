@@ -889,8 +889,6 @@ function isNativePermissionPending(
   return ontologyPending || (mode === 'edit' && conceptPending);
 }
 
-const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
-
 const OntologyExplorerContent: React.FC = () => {
   const guard = useOntologyDraftGuard();
   const { t } = useTranslation();
@@ -1739,7 +1737,6 @@ const OntologyExplorerContent: React.FC = () => {
 
   const publishReasonId = useId();
   const addConceptReasonId = useId();
-  const headerActionSize = getHeaderActionSize(isAiMode);
 
   // View on one ontology offers the step into Edit where Add concept would sit.
   function renderEditOntologyAction() {
@@ -1755,7 +1752,7 @@ const OntologyExplorerContent: React.FC = () => {
         color="primary"
         data-testid="ontology-edit-ontology"
         iconTrailing={ArrowRight}
-        size={headerActionSize}
+        size="sm"
         onPress={() => guard(() => handleModeChange('edit'))}>
         {t('label.edit-entity', { entity: t('label.ontology') })}
       </Button>
@@ -1773,7 +1770,7 @@ const OntologyExplorerContent: React.FC = () => {
         color="primary"
         data-testid="ontology-new-query"
         iconLeading={Plus}
-        size={headerActionSize}
+        size="sm"
         onPress={() => {
           // A query needs one ontology, so on All ontologies this only offers the choice.
           if (isAllOntologies) {
@@ -1817,7 +1814,7 @@ const OntologyExplorerContent: React.FC = () => {
             data-testid="ontology-add-concept"
             iconLeading={Plus}
             isDisabled={isDraftOpen}
-            size={headerActionSize}
+            size="sm"
             onPress={() => guard(handleAddConcept)}>
             {t('label.add-entity', {
               entity: t('label.concept').toLocaleLowerCase(),
@@ -1914,7 +1911,7 @@ const OntologyExplorerContent: React.FC = () => {
             data-testid="ontology-publication-trigger"
             iconLeading={GitBranch01}
             isDisabled={isAllOntologies}
-            size={headerActionSize}
+            size="sm"
             onPress={() => {
               setPublicationTab('changes');
               setIsPublicationOpen(true);
@@ -2017,10 +2014,9 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
-  // In AI mode Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
+  // Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
   function showsTasksInSubBar() {
     return [
-      isAiMode,
       mode !== 'ai' && mode !== 'review',
       !(ontologyId && !selectedOntology),
       !isCatalogEmpty,
@@ -2622,7 +2618,12 @@ const OntologyExplorerContent: React.FC = () => {
     content: React.ReactNode,
     banner: React.ReactNode
   ) => (
-    <div className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
+    <div
+      className={classNames(
+        'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+        !isAiMode &&
+          'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+      )}>
       {banner ? (
         <div className="tw:flex tw:shrink-0 tw:justify-center tw:px-4 tw:pt-3">
           {banner}
@@ -2883,13 +2884,14 @@ const OntologyExplorerContent: React.FC = () => {
           {({ tasksAction, banner }) => (
             <>
               {renderHeader(tasksAction)}
-              {/* The AI header is an inset card; the workspace below takes the
-                  same inset and card frame so their edges line up. */}
+              {/* The header is an inset card and the workspace takes the same inset. AI mode frames
+                  the sub-bar and canvas together; classic gives each its own card. */}
               <div
                 className={classNames(
-                  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
-                  isAiMode &&
-                    'tw:mx-2 tw:mb-2 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                  'tw:mx-2 tw:mb-2 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+                  isAiMode
+                    ? 'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                    : 'tw:gap-2'
                 )}>
                 <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
                   <OntologyStudioDrawerHostContext.Provider value={drawerHost}>

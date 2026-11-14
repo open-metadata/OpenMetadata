@@ -44,3 +44,9 @@ export const RELEASE_DISPLAY_STATUS: Record<
   withdrawn: { label: 'label.withdrawn', color: 'gray' },
   draft: { label: 'label.draft', color: 'gray' },
 };
+
+/**
+ * Rows each change card shows before Load more.
+ * ADR:2026-11-14-review-and-publish-change-cards-reveal-thirty-rows-at-a-time
+ */
+export const CHANGE_ROWS_PAGE_SIZE = 30;

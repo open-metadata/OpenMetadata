@@ -1930,13 +1930,11 @@ describe('OntologyConceptInspector relationship authoring', () => {
       } as OntologyProfileReport);
       renderEditable({ onRuleCreated });
       const form = await fillNeverAlsoBeParty();
-      await act(async () => {
-        fireEvent.click(within(form).getByTestId('ontology-rule-submit'));
-      });
 
       expect(
         await within(form).findByText('The statement is not valid OWL')
       ).toBeInTheDocument();
+      expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
       expect(validateOntologyAxiom).toHaveBeenCalledWith(
         expect.objectContaining({ subjectIri: concept.iri })
       );
@@ -1954,7 +1952,13 @@ describe('OntologyConceptInspector relationship authoring', () => {
       jest.mocked(createOntologyAxiom).mockResolvedValue(customerIsParty);
       renderEditable({ onRuleCreated });
       const form = await fillNeverAlsoBeParty();
-      fireEvent.click(within(form).getByTestId('ontology-rule-submit'));
+      const submit = within(form).getByTestId('ontology-rule-submit');
+
+      // Disabled until the live check passes for these values.
+      expect(submit).toBeDisabled();
+
+      await waitFor(() => expect(submit).toBeEnabled());
+      fireEvent.click(submit);
 
       await waitFor(() => expect(onRuleCreated).toHaveBeenCalledTimes(1));
 

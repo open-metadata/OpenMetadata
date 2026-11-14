@@ -411,7 +411,9 @@ describe('Releases tab', () => {
       fireEvent.change(search, { target: { value: 'nothing matches' } });
 
       expect(screen.queryAllByTestId('ontology-release-row')).toHaveLength(0);
-      expect(screen.getByText('message.no-data-available')).toBeVisible();
+      expect(
+        screen.getByText('label.no-result-for-these-filter-plural')
+      ).toBeVisible();
     });
 
     it('filters rows by status', () => {

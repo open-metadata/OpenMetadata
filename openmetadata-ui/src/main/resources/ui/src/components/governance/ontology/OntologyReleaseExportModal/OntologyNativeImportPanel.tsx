@@ -468,6 +468,9 @@ const useNativeImportInstall = ({
     },
     onInstalled: (installed) => {
       showSuccessToast(t('label.ontology-applied'));
+      // A functional setSearchParams reads the params of the last render, so a URL write in
+      // onApplied would undo the move to the new ontology; the move goes last.
+      onApplied();
       if (isNewTarget) {
         void queryClient.invalidateQueries({
           queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
@@ -476,7 +479,6 @@ const useNativeImportInstall = ({
           landOnImportedOntology(current, installed.id)
         );
       }
-      onApplied();
     },
   });
 };

@@ -21,23 +21,23 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
-import { useEffect, useRef, useState } from 'react';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
+import { lazy, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyApprovalRule } from '../../../../generated/entity/data/ontology';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import type {
   ReviewSettings,
   SettingsOutcome,
 } from '../../../../hooks/governance/ontology/useOntologyPublication.types';
 import { useSettlingReviewEdits } from '../../../../hooks/governance/ontology/useSettlingReviewEdits';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
-import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import type { ReleasePanelView } from './OntologyReleasePanel.types';
 
 interface OntologyReleaseReviewersProps {
-  scopeKey: string;
   view: ReleasePanelView;
   onChange: (settings: ReviewSettings) => Promise<SettingsOutcome>;
   onRefresh: () => Promise<void>;
@@ -49,30 +49,14 @@ const ASSIGNEE_COLORS: Record<AssigneeStatus, 'success' | 'error' | 'warning'> =
     [AssigneeStatus.Rejected]: 'error',
     [AssigneeStatus.Pending]: 'warning',
   };
-const availableReviewerOptions = (
-  options: ReturnType<typeof useUserTeamOptions>['options'],
-  model: Extract<ReleasePanelView, { kind: 'ready' }>['value']
-) => {
-  const { settings } = model;
-  if (settings.reviewers.some((entry) => entry.type === 'team')) {
-    return [];
-  }
-
-  return options.filter(({ value }) => {
-    if (settings.reviewers.some((entry) => entry.id === value.id)) {
-      return false;
-    }
-    if (value.type === 'team') {
-      return settings.reviewers.length === 0;
-    }
-
-    return (
-      value.type === 'user' &&
-      !model.excludedIds.includes(value.id) &&
-      !model.excludedNames.includes(value.name ?? '')
-    );
-  });
-};
+const UserTeamSelectableList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((m) => ({ default: m.UserTeamSelectableList }))
+  ),
+  null
+);
 
 type ReadyReviewerModel = Extract<ReleasePanelView, { kind: 'ready' }>['value'];
 
@@ -92,15 +76,11 @@ const retainReadableModel = (
 };
 
 const OntologyReleaseReviewers = ({
-  scopeKey,
   view,
   onChange,
   onRefresh,
 }: OntologyReleaseReviewersProps) => {
   const { t } = useTranslation();
-  const search = useUserTeamOptions(scopeKey);
-  const onSearchChange = search.onSearchChange;
-  const [searchText, setSearchText] = useState('');
   const [saving, setSaving] = useState(false);
   const [outcome, setOutcome] = useState<SettingsOutcome>();
   const readEpoch = useRef(0);
@@ -108,12 +88,10 @@ const OntologyReleaseReviewers = ({
   const model = retainReadableModel(view, retained, readEpoch);
   useEffect(() => {
     if (view.kind === 'unavailable') {
-      setSearchText('');
-      onSearchChange('');
       setOutcome(undefined);
       setSaving(false);
     }
-  }, [view.kind, onSearchChange]);
+  }, [view.kind]);
   const save = async (next: ReviewSettings) => {
     const epoch = readEpoch.current;
     setSaving(true);
@@ -148,14 +126,6 @@ const OntologyReleaseReviewers = ({
   const { settings, lock } = model;
   const editable = view.kind === 'ready' && model.canEditSettings && !saving;
   const hasTeam = settings.reviewers.some((entry) => entry.type === 'team');
-  // Clearing the input after a pick reopens React Aria's list while it still
-  // has items, and the pick stays in them until the save returns.
-  const options = saving ? [] : availableReviewerOptions(search.options, model);
-  const searchUnavailable = [
-    search.isFetching,
-    search.isPlaceholderData,
-    search.error,
-  ].some(Boolean);
   const getLockHint = () => {
     if (lock.kind !== 'ready') {
       return t('message.ontology-review-lock-unavailable');
@@ -173,13 +143,6 @@ const OntologyReleaseReviewers = ({
     });
   };
   const lockHint = getLockHint();
-  const searchEmptyState = () => {
-    if (search.error) {
-      return t('message.ontology-reviewer-search-unavailable');
-    }
-
-    return t(searchUnavailable ? 'label.loading' : 'label.no-data-found');
-  };
   const ruleOptions = [
     { id: OntologyApprovalRule.AnyReviewer, label: t('label.any-one') },
     { id: OntologyApprovalRule.AllReviewers, label: t('label.all') },
@@ -278,82 +241,53 @@ const OntologyReleaseReviewers = ({
     </>
   );
 
-  const renderReviewerSearch = () => (
-    <>
-      <Select.ComboBox
-        // Focus opens the list before the first search returns. Closing it then
-        // for being empty races text typed right after the focus (Chrome runs
-        // the input first), and that text no longer reopens it, so stay open
-        // while a search is pending. Not while saving: the pick clears the
-        // text and starts a search, which must not reopen the list.
-        allowsEmptyCollection={
-          !saving && (searchText !== '' || search.isFetching)
-        }
-        disabledKeys={
-          searchUnavailable ? options.map((option) => option.id) : []
-        }
-        emptyState={searchEmptyState()}
-        hint={lockHint}
-        inputValue={searchText}
-        // The save marks the publication busy, which clears canEditSettings.
-        // Disabling the focused input then blurs it, and the focus restored
-        // after the save reopens the list over the dialog; stay read-only.
-        isDisabled={(!interactive && !saving) || hasTeam}
-        isReadOnly={saving}
-        items={options}
-        label={t('label.add-reviewer')}
-        placeholder={t('label.search-or-pick-a-person')}
-        selectedKey={null}
-        shortcut={false}
-        tooltip={lockHint}
-        onFocus={search.onFocus}
-        onInputChange={(value) => {
-          setSearchText(value);
-          search.onSearchChange(value);
-        }}
-        onSelectionChange={(key) => {
-          if (!interactive || searchUnavailable) {
-            return;
-          }
-          const selected = options.find((option) => option.id === key);
-          if (!selected) {
-            return;
-          }
-          change((latest) => ({
-            ...latest,
-            reviewers: latest.reviewers.some(
-              ({ id }) => id === selected.value.id
-            )
-              ? latest.reviewers
-              : [...latest.reviewers, selected.value],
-          }));
-          setSearchText('');
-          search.onSearchChange('');
-        }}>
-        {(item) => (
-          <Select.Item id={item.id} supportingText={item.supportingText}>
-            {item.label}
-          </Select.Item>
-        )}
-      </Select.ComboBox>
-      {search.isFetching && <Loader size="small" />}
-      {search.error && (
-        <Alert variant="error">
-          {t('message.ontology-reviewer-search-unavailable')}
+  // A new pick cannot be the caller or the capture's author; reviewers already configured stay.
+  const isEligible = ({ id, name }: EntityReference) =>
+    !model.excludedIds.includes(id) &&
+    !model.excludedNames.includes(name ?? '');
+  const keepsReviewer =
+    (current: EntityReference[]) => (entry: EntityReference) =>
+      current.some(({ id }) => id === entry.id) || isEligible(entry);
+  // One team, or any number of users: the shared picker swaps the selection when the tab changes.
+  // Closed while a save is in flight, so a second pick cannot race the first.
+  const canPick = interactive && !saving;
+  const renderReviewerPicker = () => (
+    <Box direction="col" gap={2}>
+      <Box>
+        <UserTeamSelectableList
+          previewSelected
+          hasPermission={canPick}
+          label={t('label.reviewer-plural')}
+          listHeight={200}
+          multiple={{ user: true, team: false }}
+          owner={settings.reviewers}
+          onUpdate={(next = []) =>
+            change((latest) => ({
+              ...latest,
+              reviewers: next.filter(keepsReviewer(latest.reviewers)),
+            }))
+          }>
           <Button
             color="secondary"
-            size="sm"
-            onPress={() => void search.refetch()}>
-            {t('label.retry')}
+            data-testid="ontology-release-add-reviewer"
+            iconLeading={Plus}
+            isDisabled={!canPick}
+            size="sm">
+            {t('label.add-reviewer')}
           </Button>
-        </Alert>
-      )}
+        </UserTeamSelectableList>
+      </Box>
+      {lockHint ? (
+        <Typography color="secondary" size="text-xs">
+          {lockHint}
+        </Typography>
+      ) : null}
       {lock.kind !== 'ready' && (
         <Button color="secondary" size="sm" onPress={() => void onRefresh()}>
           {t('label.retry')}
         </Button>
       )}
-    </>
+    </Box>
   );
 
   return (
@@ -368,7 +302,7 @@ const OntologyReleaseReviewers = ({
             {t('label.reviewers')}
           </Typography>
           {renderReviewers()}
-          {renderReviewerSearch()}
+          {renderReviewerPicker()}
           <Select
             hint={
               hasTeam ? t('message.ontology-one-team-reviewer') : approvalHint()

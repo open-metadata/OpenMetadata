@@ -141,9 +141,11 @@ const OntologyConflictsPanel = ({
     return null;
   }
 
+  // The height cap keeps the card above the health panel below it (72px up from the canvas
+  // bottom on narrower screens, about 150px tall), so its Resolve buttons are never covered.
   return (
     <Card
-      className="tw:absolute tw:top-16 tw:right-4 tw:z-6 tw:flex tw:max-h-[calc(100%-16rem)] tw:w-86 tw:max-w-[calc(100%-2rem)] tw:flex-col tw:overflow-hidden"
+      className="tw:absolute tw:top-16 tw:right-4 tw:z-6 tw:flex tw:max-h-[calc(100%-19rem)] tw:w-86 tw:max-w-[calc(100%-2rem)] tw:flex-col tw:overflow-hidden"
       data-testid="ontology-conflicts-panel"
       variant="elevated">
       <Box align="center" className="tw:px-4 tw:py-3" gap={2}>

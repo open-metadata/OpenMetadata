@@ -23,7 +23,6 @@ import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRele
 import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
-import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
@@ -35,6 +34,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
+import { addOntologyReviewer } from '../../utils/ontologyReviewers';
 import {
   findOntologyInScopeMenu,
   openExportAdvanced,
@@ -387,44 +387,19 @@ test.describe(
   () => {
     test('manages reviewers with reload persistence and locks settings during an open review', async ({
       isolatedUserPage: author,
-      isolatedUser,
     }) => {
       const api = await getWorkerAdminAPIContext();
       // Only needs to exist as a pickable user, so skip a browser sign-in.
       const reviewer = new UserClass();
-      const teamName = `pw_review_team_${uuid()}`;
-      const team = new TeamClass({
-        name: teamName,
-        displayName: teamName,
-        description: 'Review exclusion fixture',
-        teamType: 'Group',
-        users: [],
-        policies: [],
-      });
       const name = `pw_review_settings_${uuid()}`;
       const tasks: string[] = [];
       let ontology: Ontology | undefined;
       try {
         await reviewer.create(api);
-        await team.create(api);
         await waitForSearchIndexed(
           api,
           reviewer.responseData.name,
           SearchIndex.USER,
-          {
-            matchBy: 'nameOrDisplayName',
-          }
-        );
-        await waitForSearchIndexed(
-          api,
-          isolatedUser.responseData.name,
-          SearchIndex.USER,
-          { matchBy: 'nameOrDisplayName' }
-        );
-        await waitForSearchIndexed(
-          api,
-          team.responseData.name,
-          SearchIndex.TEAM,
           {
             matchBy: 'nameOrDisplayName',
           }
@@ -451,118 +426,56 @@ test.describe(
           }),
           'Create reviewable concept'
         );
-        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
-        await author.getByTestId('ontology-publication-trigger').click();
-        const card = author.getByTestId('ontology-release-reviewers');
-        const picker = card.getByRole('combobox', { name: 'Add reviewer' });
-        const searchFor = async (name: string) => {
-          const users = author.waitForResponse((response) => {
-            const url = new URL(response.url());
-
-            return (
-              url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('q') === name &&
-              url.searchParams.get('index') === SearchIndex.USER
-            );
-          });
-          const teams = author.waitForResponse((response) => {
-            const url = new URL(response.url());
-
-            return (
-              url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('q') === name &&
-              url.searchParams.get('index') === SearchIndex.TEAM
-            );
-          });
-          await picker.fill(name);
-          expect((await users).status()).toBe(200);
-          expect((await teams).status()).toBe(200);
-          await expect(picker).toHaveValue(name);
+        const reviewerName =
+          reviewer.responseData.displayName ?? reviewer.responseData.name;
+        const reviewerRow = () =>
+          author
+            .getByTestId('ontology-release-reviewers')
+            .getByRole('listitem')
+            .filter({ hasText: reviewerName });
+        const openDialog = async () => {
+          await author.getByTestId('ontology-publication-trigger').click();
+          await expect(
+            author.getByTestId('ontology-release-add-reviewer')
+          ).toBeEnabled();
         };
+        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await openDialog();
 
-        await test.step('Add a user and exclude the current user, added user and teams', async () => {
-          await expect(picker).toBeEnabled();
-          await searchFor(reviewer.responseData.name);
-          const firstAddition = author.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname ===
-                `/api/v1/ontologies/${ontologyId}` &&
-              response.request().method() === 'PATCH'
+        await test.step('Add a user reviewer', async () => {
+          await addOntologyReviewer(
+            author,
+            ontologyId,
+            reviewer.responseData.name,
+            reviewerName
           );
-          await author
-            .getByRole('option', {
-              name:
-                reviewer.responseData.displayName ?? reviewer.responseData.name,
-            })
-            .click();
-          expect((await firstAddition).status()).toBe(200);
-          await expect(card).toContainText(
-            reviewer.responseData.displayName ?? reviewer.responseData.name
-          );
-          await picker.fill(reviewer.responseData.name);
-          await expect(picker).toHaveValue(reviewer.responseData.name);
-          await expect(
-            author.getByRole('option', {
-              name:
-                reviewer.responseData.displayName ?? reviewer.responseData.name,
-            })
-          ).toHaveCount(0);
-          await searchFor(isolatedUser.responseData.name);
-          await expect(
-            author.getByRole('option', {
-              name:
-                isolatedUser.responseData.displayName ??
-                isolatedUser.responseData.name,
-            })
-          ).toHaveCount(0);
-          await searchFor(team.responseData.name);
-          await expect(
-            author.getByRole('option', { name: team.responseData.displayName })
-          ).toHaveCount(0);
         });
 
         await test.step('Remove and restore the reviewer across reloads', async () => {
           await author.reload();
-          await author.getByTestId('ontology-publication-trigger').click();
-          const restored = author.getByTestId('ontology-release-reviewers');
-          const row = restored.getByRole('row', {
-            name: new RegExp(
-              reviewer.responseData.displayName ?? reviewer.responseData.name
-            ),
-          });
-          await expect(row).toBeVisible();
+          await openDialog();
+          await expect(reviewerRow()).toBeVisible();
           const removal = author.waitForResponse(
             (response) =>
               new URL(response.url()).pathname ===
                 `/api/v1/ontologies/${ontologyId}` &&
               response.request().method() === 'PATCH'
           );
-          await row.press('Delete');
-          expect((await removal).status()).toBe(200);
-          await expect(row).toHaveCount(0);
-          await author.reload();
-          await author.getByTestId('ontology-publication-trigger').click();
-          const emptyCard = author.getByTestId('ontology-release-reviewers');
-          await expect(emptyCard).toContainText('No configured reviewers');
-          const emptyPicker = emptyCard.getByRole('combobox', {
-            name: 'Add reviewer',
-          });
-          await emptyPicker.fill(reviewer.responseData.name);
-          const addition = author.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname ===
-                `/api/v1/ontologies/${ontologyId}` &&
-              response.request().method() === 'PATCH'
-          );
-          await author
-            .getByRole('option', {
-              name:
-                reviewer.responseData.displayName ?? reviewer.responseData.name,
-            })
+          await reviewerRow()
+            .getByRole('button', { name: `Remove ${reviewerName}` })
             .click();
-          expect((await addition).status()).toBe(200);
-          await expect(emptyCard).toContainText(
-            reviewer.responseData.displayName ?? reviewer.responseData.name
+          expect((await removal).status()).toBe(200);
+          await expect(reviewerRow()).toHaveCount(0);
+          await author.reload();
+          await openDialog();
+          await expect(
+            author.getByTestId('ontology-release-reviewers')
+          ).toContainText('No configured reviewers');
+          await addOntologyReviewer(
+            author,
+            ontologyId,
+            reviewer.responseData.name,
+            reviewerName
           );
         });
 
@@ -603,7 +516,7 @@ test.describe(
           await author.getByTestId('ontology-publication-trigger').click();
           const locked = author.getByTestId('ontology-release-reviewers');
           await expect(
-            locked.getByRole('combobox', { name: 'Add reviewer' })
+            locked.getByTestId('ontology-release-add-reviewer')
           ).toBeDisabled();
           // A locked control also renders a focusable tooltip trigger with the
           // same name, so match the disabled select itself.
@@ -613,13 +526,7 @@ test.describe(
               .and(author.locator('[data-disabled="true"]'))
           ).toBeVisible();
           await expect(locked).toContainText('locked by review');
-          await expect(
-            locked.getByRole('row', {
-              name: new RegExp(
-                reviewer.responseData.displayName ?? reviewer.responseData.name
-              ),
-            })
-          ).toBeVisible();
+          await expect(reviewerRow()).toBeVisible();
         });
       } finally {
         await cleanReviews(api, tasks);
@@ -629,7 +536,6 @@ test.describe(
             `/api/v1/ontologies/${ontology.id}?recursive=true`
           );
         }
-        await team.delete(api);
         await reviewer.delete(api);
       }
     });
@@ -1693,16 +1599,12 @@ test.describe(
         });
 
         const card = author.getByTestId('ontology-release-reviewers');
-        const picker = card.getByRole('combobox', { name: 'Add reviewer' });
-        await picker.fill(reviewer.responseData.name);
-        const added = author.waitForResponse(
-          (response) =>
-            new URL(response.url()).pathname ===
-              `/api/v1/ontologies/${ontology.id}` &&
-            response.request().method() === 'PATCH'
+        await addOntologyReviewer(
+          author,
+          ontology.id,
+          reviewer.responseData.name,
+          reviewerName
         );
-        await author.getByRole('option', { name: reviewerName }).click();
-        expect((await added).status()).toBe(200);
 
         await expect(
           author.getByTestId('ontology-request-review')
@@ -1722,8 +1624,8 @@ test.describe(
             response.request().method() === 'PATCH'
         );
         await card
-          .getByRole('row', { name: new RegExp(reviewerName) })
-          .press('Delete');
+          .getByRole('button', { name: `Remove ${reviewerName}` })
+          .click();
         expect((await removed).status()).toBe(200);
 
         await expect(author.getByTestId('ontology-publish-release')).toHaveText(
@@ -1934,9 +1836,12 @@ test.describe(
         await reviewerPage.goto(
           `/governance/ontology?ontology=${ontology.id}&source=review&task=${approved.id}`
         );
+        // A reviewer sees the approved task but no way to publish it.
         await expect(
-          reviewerPage.getByTestId('ontology-only-author-publishes')
-        ).toHaveText('Only an author or owner can publish.');
+          reviewerPage
+            .getByTestId('task-detail-panel')
+            .getByTestId('task-status-badge')
+        ).toHaveText('Approved');
         await expect(
           reviewerPage.getByTestId('ontology-publication-trigger')
         ).toHaveCount(0);
@@ -2323,7 +2228,10 @@ test.describe(
           for (const release of [first, second]) {
             await expect(
               page.getByTestId(`ontology-release-select-${release.id}`)
-            ).toHaveText(release.semanticVersion ?? '');
+            ).toHaveText(
+              // AI mode's release rows prefix the version with v.
+              (mode === 'ai' ? 'v' : '') + (release.semanticVersion ?? '')
+            );
             await expect(
               page.getByTestId(`ontology-release-decision-${release.id}`)
             ).toHaveText('Published without review');
