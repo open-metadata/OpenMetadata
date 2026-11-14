@@ -21,7 +21,7 @@ import {
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
 import { useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useSearchParams } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import {
   Code,
@@ -757,6 +757,58 @@ describe('OntologyGraphView', () => {
     }
   );
 
+  it('opens an isolated concept from Connect when the selection lives in the URL', async () => {
+    // Mirrors the Studio page: selection and the edit request both write the URL, and
+    // react-router's functional setSearchParams does not queue, so a second write in the
+    // same tick would replace the first.
+    const writeParam =
+      (
+        setParams: ReturnType<typeof useSearchParams>[1],
+        key: string,
+        value?: string
+      ) =>
+      () =>
+        setParams((current) => {
+          const next = new URLSearchParams(current);
+          if (value) {
+            next.set(key, value);
+          } else {
+            next.delete(key);
+          }
+
+          return next;
+        });
+    const UrlStudio = () => {
+      const [params, setParams] = useSearchParams();
+
+      return (
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          selectedConceptId={params.get('concept') ?? undefined}
+          surface="graph"
+          onRequestEdit={writeParam(setParams, 'mode', 'edit')}
+          onRequestGraphSurface={jest.fn()}
+          onSelectedConceptChange={(id) =>
+            writeParam(setParams, 'concept', id)()
+          }
+        />
+      );
+    };
+    render(
+      <MemoryRouter>
+        <UrlStudio />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+    fireEvent.click(await screen.findByTestId(`ontology-connect-${orphan.id}`));
+
+    expect(
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toHaveTextContent('Orphan');
+  });
+
   it('renders the full native model, health, search, and concept inspector', async () => {
     const onStatsChange = jest.fn();
     render(
@@ -1020,6 +1072,59 @@ describe('OntologyGraphView', () => {
       expect(patchOntologyAxiom).toHaveBeenCalledWith(customerIsParty.id, [
         { op: 'add', path: '/description', value: 'Every buyer is a party' },
       ])
+    );
+  });
+
+  it('asks before the close button drops an unsaved relationship description', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyDraftProvider>
+          <OntologyGraphView
+            isEditing
+            ontology={ontology}
+            surface="graph"
+            onRequestGraphSurface={jest.fn()}
+          />
+        </OntologyDraftProvider>
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-relation-concept-party')
+    );
+    const detail = screen.getByTestId('ontology-relation-detail');
+    fireEvent.change(await within(detail).findByRole('textbox'), {
+      target: { value: 'Every buyer is a party' },
+    });
+
+    fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-close')
+    );
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'label.cancel',
+      })
+    );
+
+    expect(screen.getByTestId('ontology-relation-detail')).toBeInTheDocument();
+    expect(within(detail).getByRole('textbox')).toHaveValue(
+      'Every buyer is a party'
+    );
+
+    fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-close')
+    );
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'label.discard',
+      })
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-relation-detail')
+      ).not.toBeInTheDocument()
     );
   });
 
@@ -1542,6 +1647,64 @@ describe('OntologyGraphView', () => {
       })
     );
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the relationship delete action in sentence case', async () => {
+    useEnUsTranslations();
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-relation-concept-party')
+    );
+
+    expect(
+      within(screen.getByTestId('ontology-relation-detail')).getByTestId(
+        'ontology-relation-delete'
+      )
+    ).toHaveTextContent('Delete relationship');
+  });
+
+  it('asks for a new relationship type in a sentence-case dialog that the close button dismisses', async () => {
+    useEnUsTranslations();
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    act(() => {
+      void latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
+      );
+    });
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(
+      within(dialog).getByRole('heading', { name: 'Add relationship type' })
+    ).toBeVisible();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /close/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('relationship-type-dialog')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('creates a custom registry type with its inverse from the picker, then instantiates it', async () => {

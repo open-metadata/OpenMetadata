@@ -49,7 +49,9 @@ const OntologyRelationControls = ({
       />
       <InspectorRemoveButton
         isDisabled={isBusy}
-        label={t('label.delete-entity', { entity: t('label.relationship') })}
+        label={t('label.delete-entity', {
+          entity: t('label.relationship').toLocaleLowerCase(),
+        })}
         testId="ontology-relation-delete"
         onRemove={() => void remove()}
       />

@@ -42,6 +42,7 @@ import org.openmetadata.service.util.FreshReadScope;
 @Repository
 public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   public static final String COLLECTION_PATH = "/v1/ontologies/";
+  private static final String ARCHIVED_REVIEW_COMMENT = "Closed because the ontology was archived";
 
   private static final String PUBLICATION_STATUS = "publicationStatus";
   private final OntologyPublicationStatusResolver publication;
@@ -239,6 +240,36 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   @Override
   protected void entitySpecificCleanup(final Ontology entity) {
     requireNoRetainedReleases(entity.getId());
+  }
+
+  /**
+   * Archiving keeps the ontology's releases, so it withdraws their open review here: after the
+   * children check and cascade, so a refused delete (non-recursive with children) leaves the review
+   * open, and before the ontology is marked deleted, so the review closes the way Withdraw closes it.
+   * A hard delete never gets this far with a review open: an in-review release is retained.
+   */
+  @Override
+  protected void deleteChildren(
+      final UUID id, final boolean recursive, final boolean hardDelete, final String updatedBy) {
+    super.deleteChildren(id, recursive, hardDelete, updatedBy);
+    if (!hardDelete) {
+      withdrawOpenReviews(id, updatedBy);
+    }
+  }
+
+  /** Closing the review task runs the review's cancellation, which returns the release to Draft. */
+  private void withdrawOpenReviews(final UUID ontologyId, final String user) {
+    final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    daoCollection
+        .ontologyReleaseDAO()
+        .listByStatus(ontologyId, EntityStatus.IN_REVIEW.value())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class).getReviewTask())
+        .filter(Objects::nonNull)
+        .map(tasks::findCommittedTask)
+        .filter(task -> task != null && !TaskRepository.isTerminalStatus(task.getStatus()))
+        .forEach(
+            task -> tasks.closeTask(tasks.hydrateStoredTask(task), user, ARCHIVED_REVIEW_COMMENT));
   }
 
   private void requireNoRetainedReleases(final UUID id) {

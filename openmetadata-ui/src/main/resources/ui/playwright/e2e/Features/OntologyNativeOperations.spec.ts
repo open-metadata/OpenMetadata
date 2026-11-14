@@ -140,11 +140,11 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
-          const columnSelect = editor.getByRole('button', {
-            name: /profile › customer_id/,
+          const columnSelect = editor.getByRole('combobox', {
+            name: /Column/,
           });
           // The editor pre-selects the column whose name matches the property.
-          await expect(columnSelect).toBeVisible();
+          await expect(columnSelect).toHaveValue(/profile › customer_id/);
           await selectOptionWithRetry(
             columnSelect,
             page.getByRole('option', { name: /profile › customer_id/ })
@@ -176,6 +176,13 @@ test.describe(
           await inspector.getByTestId('ontology-concept-close').click();
           await expect(inspector).toHaveCount(0);
           await page.getByTestId('ontology-graph-mode-data').click();
+          // Data mounts on first open, so the concept closed in Model is picked again here.
+          await page
+            .getByTestId('ontology-data-concept-picker-trigger')
+            .click();
+          await page
+            .getByTestId(`ontology-data-concept-option-${concept.id}`)
+            .click();
           const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
             dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
@@ -212,7 +219,12 @@ test.describe(
             `ontology-native-asset-remove-${table.entityResponseData.id}`
           );
           await clickIgnoringToasts(removeTable);
-          await page.getByTestId('ontology-unlink-cancel').click();
+          // The unlink confirm is a centred page modal (#37780); its Cancel has no test id.
+          const unlinkDialog = page.getByRole('dialog');
+          await unlinkDialog
+            .getByRole('button', { name: 'Cancel', exact: true })
+            .click();
+          await expect(unlinkDialog).toHaveCount(0);
           const retained = await okJson<OntologyConceptBindingsResponse>(
             await api.get(bindingPath),
             'Read cancelled unlink'

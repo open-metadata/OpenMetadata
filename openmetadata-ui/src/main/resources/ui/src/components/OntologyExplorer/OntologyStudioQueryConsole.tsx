@@ -184,8 +184,10 @@ const QueryGroup = ({
                 <Button
                   noTextPadding
                   aria-pressed={isActive}
+                  // The row owns the hover background; a button hover fill would stack a second one.
+                  // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
                   className={classNames(
-                    'tw:min-w-0 tw:flex-1 tw:justify-start tw:py-2 tw:pl-2.5 tw:text-left',
+                    'tw:min-w-0 tw:flex-1 tw:justify-start tw:py-2 tw:pl-2.5 tw:text-left tw:hover:bg-transparent',
                     'tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:truncate',
                     isActive
                       ? 'tw:font-medium tw:text-brand-secondary'

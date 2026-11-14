@@ -234,6 +234,7 @@ const OntologyConceptDeleteDialog = ({
       <Modal>
         <Dialog
           data-testid="ontology-concept-delete-dialog"
+          dividers="scroll"
           title={t('label.delete-entity', { entity: name })}
           width={520}
           onClose={onCancel}>

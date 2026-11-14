@@ -111,7 +111,9 @@ const ConceptPickerEmptyState = ({
           className="not-prose tw:m-0"
           size="text-lg"
           weight="semibold">
-          {t('label.select-entity', { entity: t('label.concept') })}
+          {t('label.select-entity', {
+            entity: t('label.concept').toLocaleLowerCase(),
+          })}
         </Typography>
         <Typography color="secondary" size="text-sm">
           {t('message.ontology-data-graph-scope')}
@@ -119,7 +121,7 @@ const ConceptPickerEmptyState = ({
         {onSelectConcept ? (
           <Select.ComboBox
             aria-label={t('label.select-entity', {
-              entity: t('label.concept'),
+              entity: t('label.concept').toLocaleLowerCase(),
             })}
             className="tw:mt-3 tw:w-full"
             data-testid="ontology-data-concept-picker"
@@ -284,7 +286,9 @@ const AllOntologiesGraphView = ({
         />
       ) : (
         <Typography className="tw:relative tw:m-4" size="text-sm">
-          {t('label.select-entity', { entity: t('label.concept') })}
+          {t('label.select-entity', {
+            entity: t('label.concept').toLocaleLowerCase(),
+          })}
         </Typography>
       );
     }

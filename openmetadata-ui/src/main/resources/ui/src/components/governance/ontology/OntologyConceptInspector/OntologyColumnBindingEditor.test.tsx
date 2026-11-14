@@ -79,11 +79,13 @@ const columnPage = {
   ],
   paging: { total: 1 },
 };
-const selectColumn = async (editor: HTMLElement) => {
-  const button = within(editor).getByRole('button', { name: /label.column/ });
-  await waitFor(() => expect(button).toBeEnabled());
-  fireEvent.click(button);
-  fireEvent.click(await screen.findByRole('option', { name: /id.code/ }));
+const columnInput = (editor: HTMLElement) =>
+  within(editor).getByRole('combobox', { name: /label.column/ });
+const selectColumn = async (editor: HTMLElement, name = /id.code/) => {
+  const input = columnInput(editor);
+  await waitFor(() => expect(input).toBeEnabled());
+  fireEvent.click(within(editor).getByRole('button', { name: /Show options/ }));
+  fireEvent.click(await screen.findByRole('option', { name }));
 };
 
 beforeEach(() => {
@@ -148,7 +150,7 @@ it('recovers from a real 409 and preserves concurrently added assignments on exp
   const editor = screen.getByTestId('ontology-column-binding-editor');
   await waitFor(() =>
     expect(
-      within(editor).queryByRole('button', { name: /label.column/ })
+      within(editor).queryByRole('combobox', { name: /label.column/ })
     ).toBeInTheDocument()
   );
   fireEvent.click(within(editor).getByRole('button', { name: /label.table/ }));
@@ -283,7 +285,7 @@ it('does not close a different concept when an origin write completes', async ()
   expect(screen.getByTestId('ontology-column-binding-editor')).toBeVisible();
 });
 
-it('retries column search and preserves existing assignments while paging to an exact column', async () => {
+it('retries column search, searches as the person types and preserves existing assignments', async () => {
   let failSearch = true;
   http.get.mockImplementation(async (url, config) => {
     if (!url.includes('/columns/search')) {
@@ -292,13 +294,14 @@ it('retries column search and preserves existing assignments while paging to an 
     if (failSearch) {
       throw new Error('column search unavailable');
     }
-    const offset = (config?.params as { offset?: number } | undefined)?.offset;
-    const name = offset === 25 ? 'id.code' : 'other';
+    const q = (config?.params as { q?: string } | undefined)?.q;
 
     return {
       data: {
-        data: [{ name, dataType: DataType.String }],
-        paging: { total: 26 },
+        data: [
+          { name: q === 'id' ? 'id.code' : 'other', dataType: DataType.String },
+        ],
+        paging: { total: 1 },
       },
     };
   });
@@ -322,29 +325,22 @@ it('retries column search and preserves existing assignments while paging to an 
 
   failSearch = false;
   fireEvent.click(retry);
-  fireEvent.click(await screen.findByRole('button', { name: 'label.next' }));
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'label.previous' })).toBeEnabled()
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'label.previous' }));
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'label.previous' })
-    ).toBeDisabled()
-  );
-  fireEvent.change(screen.getByTestId('ontology-binding-column-search'), {
-    target: { value: 'id' },
-  });
+  const editor = screen.getByTestId('ontology-column-binding-editor');
+  await waitFor(() => expect(columnInput(editor)).toBeEnabled());
+  fireEvent.change(columnInput(editor), { target: { value: 'id' } });
   await waitFor(() =>
     expect(http.get).toHaveBeenLastCalledWith('/tables/table/columns/search', {
       params: expect.objectContaining({ q: 'id', offset: 0 }),
     })
   );
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'label.next' })).toBeEnabled()
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
-  await selectColumn(screen.getByTestId('ontology-column-binding-editor'));
+
+  expect(columnInput(editor)).toBeEnabled();
+
+  fireEvent.click(within(editor).getByRole('button', { name: /Show options/ }));
+  fireEvent.click(await screen.findByRole('option', { name: /id.code/ }));
+
+  expect(columnInput(editor)).toHaveValue('id.code');
+
   fireEvent.click(screen.getByTestId('ontology-binding-save'));
   await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 
@@ -408,14 +404,12 @@ it('binds a column and cancels from the AI-mode card', async () => {
     />
   );
 
-  expect(screen.getByTestId('ontology-binding-column-search')).toBeVisible();
   expect(screen.getByTestId('ontology-binding-save')).toBeDisabled();
 
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: /label.column/ })).toBeEnabled()
+  await selectColumn(
+    screen.getByTestId('ontology-column-binding-editor'),
+    /email/
   );
-  fireEvent.click(screen.getByRole('button', { name: /label.column/ }));
-  fireEvent.click(await screen.findByRole('option', { name: /email/ }));
   fireEvent.click(screen.getByTestId('ontology-binding-save'));
   await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 
@@ -470,10 +464,10 @@ it('holds the column that matches the property and saves it without a further ch
     />
   );
   const editor = screen.getByTestId('ontology-column-binding-editor');
-  const button = within(editor).getByRole('button', { name: /label.column/ });
-  await waitFor(() => expect(button).toHaveTextContent('dosage'));
+  const input = columnInput(editor);
+  await waitFor(() => expect(input).toHaveValue('dosage'));
 
-  fireEvent.click(button);
+  fireEvent.click(within(editor).getByRole('button', { name: /Show options/ }));
 
   expect(
     await screen.findByRole('option', { name: /dosage/ })
@@ -492,6 +486,76 @@ it('holds the column that matches the property and saves it without a further ch
       assetId: 'table',
       assetType: 'table',
       columns: [{ propertyId: 'dosage-property', columnPath: ['dosage'] }],
+    },
+  });
+});
+
+it('keeps the typed search and binds another column while a suggestion exists', async () => {
+  const patient = {
+    name: 'patient_id',
+    dataType: DataType.String,
+    fullyQualifiedName: 'service.db.schema.customers.patient_id',
+  };
+  const dosage = {
+    name: 'dosage',
+    dataType: DataType.Int,
+    fullyQualifiedName: 'service.db.schema.customers.dosage',
+  };
+  http.get.mockImplementation(async (url, config) => {
+    if (!url.includes('/columns/search')) {
+      return { data: response(0) };
+    }
+    const q = (config?.params as { q?: string } | undefined)?.q;
+    const data = q ? [patient] : [patient, dosage];
+
+    return { data: { data, paging: { total: data.length } } };
+  });
+  http.put.mockResolvedValue({ data: response(1) });
+  const { queryClient, rerender } = renderWithQueryClient(<div />);
+  queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
+    kind: 'complete',
+    ...response(0),
+  });
+  rerender(
+    <OntologyColumnBindingEditor
+      conceptId="concept"
+      propertyId="dosage-property"
+      propertyLabel="dosage"
+      onClose={jest.fn()}
+    />
+  );
+  const editor = screen.getByTestId('ontology-column-binding-editor');
+  const input = columnInput(editor);
+  await waitFor(() => expect(input).toHaveValue('dosage'));
+
+  act(() => input.focus());
+  fireEvent.change(input, { target: { value: 'pat' } });
+  await waitFor(() =>
+    expect(http.get).toHaveBeenLastCalledWith('/tables/table/columns/search', {
+      params: expect.objectContaining({ q: 'pat' }),
+    })
+  );
+  await screen.findByRole('option', { name: /patient_id/ });
+  // Outlast the 250 ms search debounce so a reset of the typed text would land.
+  await act(async () => {
+    jest.advanceTimersByTime(400);
+  });
+
+  expect(input).toHaveValue('pat');
+  expect(http.get).toHaveBeenLastCalledWith('/tables/table/columns/search', {
+    params: expect.objectContaining({ q: 'pat' }),
+  });
+
+  fireEvent.click(await screen.findByRole('option', { name: /patient_id/ }));
+  fireEvent.click(screen.getByTestId('ontology-binding-save'));
+  await waitFor(() => expect(http.put).toHaveBeenCalledTimes(1));
+
+  expect(http.put.mock.calls[0][1]).toEqual({
+    expectedRevision: 0,
+    asset: {
+      assetId: 'table',
+      assetType: 'table',
+      columns: [{ propertyId: 'dosage-property', columnPath: ['patient_id'] }],
     },
   });
 });

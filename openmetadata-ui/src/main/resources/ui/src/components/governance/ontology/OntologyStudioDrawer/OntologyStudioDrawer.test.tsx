@@ -99,4 +99,35 @@ describe('OntologyStudioDrawer', () => {
 
     expect(onInteractOutside).toHaveBeenCalledTimes(1);
   });
+
+  it('closes on Escape, but not on one its own overlays or controls already handled', () => {
+    const onInteractOutside = jest.fn();
+    render(
+      <>
+        <div role="listbox">
+          <span data-testid="owned-option">Option</span>
+        </div>
+        <button
+          data-testid="handled"
+          type="button"
+          onKeyDown={(event) => event.preventDefault()}>
+          Handled
+        </button>
+        <OntologyStudioDrawer
+          testId="drawer"
+          onInteractOutside={onInteractOutside}>
+          <span data-testid="inside">content</span>
+        </OntologyStudioDrawer>
+      </>
+    );
+
+    fireEvent.keyDown(screen.getByTestId('owned-option'), { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('handled'), { key: 'Escape' });
+
+    expect(onInteractOutside).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(onInteractOutside).toHaveBeenCalledTimes(1);
+  });
 });

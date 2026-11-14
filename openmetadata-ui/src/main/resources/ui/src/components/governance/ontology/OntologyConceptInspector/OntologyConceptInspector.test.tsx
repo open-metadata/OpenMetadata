@@ -456,9 +456,12 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     renderInspector([property, annotation]);
     await screen.findByTestId('ontology-native-assets');
 
-    expect(
-      await screen.findByTestId(`ontology-bind-property-${property.id}`)
-    ).toBeEnabled();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(`ontology-bind-property-${property.id}`)
+      ).toBeVisible()
+    );
+
     expect(
       screen.getByTestId(`ontology-property-bindings-${annotation.id}`)
     ).toBeInTheDocument();
@@ -1958,6 +1961,83 @@ describe('OntologyConceptInspector relationship authoring', () => {
       expect(
         screen.queryByTestId('ontology-rule-form')
       ).not.toBeInTheDocument();
+    });
+
+    it('offers only the concept’s properties and blocks a count that contradicts one', async () => {
+      jest.mocked(validateOntologyAxiom).mockResolvedValue({
+        valid: true,
+        violations: [],
+      } as OntologyProfileReport);
+      const email = {
+        ...property,
+        id: 'email',
+        iri: 'urn:sales:email',
+        isIdentifier: true,
+        name: 'email',
+      };
+      const inherited = {
+        ...property,
+        domain: [party.iri],
+        id: 'party-name',
+        iri: 'urn:sales:partyName',
+        name: 'partyName',
+      };
+      const unscoped = {
+        ...property,
+        domain: [],
+        id: 'note',
+        iri: 'urn:sales:note',
+        name: 'note',
+      };
+      const elsewhere = {
+        ...unavailableProperty,
+        iri: 'urn:sales:placedBy',
+        kind: Kind.Object,
+        name: 'placedBy',
+      };
+      const rulesModel = {
+        ...authoringModel,
+        properties: [email, inherited, unscoped, elsewhere],
+      };
+      renderEditable({
+        model: rulesModel,
+        relations: getModelRelations(rulesModel),
+      });
+      fireEvent.click(await screen.findByTestId('ontology-add-rule'));
+      const form = screen.getByTestId('ontology-rule-form');
+      const picker = within(form).getByRole('combobox', {
+        name: /label.property/,
+      });
+      fireEvent.focus(picker);
+      fireEvent.keyDown(picker, { key: 'ArrowDown' });
+
+      expect(
+        (await screen.findAllByRole('option')).map((option) =>
+          option.textContent?.trim()
+        )
+      ).toEqual(['email', 'party name', 'note']);
+
+      fireEvent.click(screen.getByRole('option', { name: 'email' }));
+      const count = within(form).getByRole('spinbutton', {
+        name: /label.count/,
+      });
+      fireEvent.change(count, { target: { value: '-1' } });
+
+      expect(count).toHaveValue(-1);
+      expect(count).toHaveAccessibleDescription(
+        'message.ontology-rule-count-negative'
+      );
+      expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
+
+      fireEvent.change(count, { target: { value: '0' } });
+      // The server accepts the shape; the passing result must still not show.
+      await waitFor(() => expect(validateOntologyAxiom).toHaveBeenCalled());
+
+      expect(form).toHaveTextContent(
+        'message.ontology-rule-identifier-count-zero'
+      );
+      expect(form).not.toHaveTextContent('label.validation-passed');
+      expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
     });
 
     it('asks before a press outside the drawer drops a rule being written', async () => {

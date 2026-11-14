@@ -299,84 +299,77 @@ const RelationshipTypeDialog = ({
       }}>
       <Modal>
         <Dialog
-          aria-labelledby="relationship-type-dialog-title"
+          showCloseButton
+          dividers="scroll"
+          title={t('label.add-entity', {
+            entity: t('label.relationship-type').toLocaleLowerCase(),
+          })}
           width={480}
           onClose={onCancel}>
-          <Box
-            className="tw:p-5"
-            data-testid="relationship-type-dialog"
-            direction="col"
-            gap={4}>
-            <Typography
-              id="relationship-type-dialog-title"
-              role="heading"
-              size="text-md"
-              weight="bold">
-              {t('label.add-entity', { entity: t('label.relationship-type') })}
-            </Typography>
-            <Input
-              inputDataTestId="relationship-type-name"
-              label={t('label.name')}
-              size="sm"
-              value={name}
-              onChange={setName}
-            />
-            <Checkbox
-              data-testid="relationship-type-symmetric"
-              isSelected={symmetric}
-              label={t('label.symmetric')}
-              onChange={setSymmetric}
-            />
-            {symmetric ? (
-              <Typography color="secondary" size="text-xs">
-                {t('message.symmetric-relationship-type')}
-              </Typography>
-            ) : (
+          <Dialog.Content>
+            <Box data-testid="relationship-type-dialog" direction="col" gap={4}>
               <Input
-                hint={
-                  canLinkInverse
-                    ? undefined
-                    : t('message.no-permission-for-action')
-                }
-                inputDataTestId="relationship-type-inverse"
-                isDisabled={!canLinkInverse}
-                label={t('label.inverse-name')}
+                inputDataTestId="relationship-type-name"
+                label={t('label.name')}
                 size="sm"
-                value={inverseName}
-                onChange={setInverseName}
+                value={name}
+                onChange={setName}
               />
-            )}
-            <Input
-              inputDataTestId="relationship-type-description"
-              label={t('label.description')}
-              size="sm"
-              value={description}
-              onChange={setDescription}
-            />
-            <Box gap={2} justify="end">
-              <Button
-                color="secondary"
-                data-testid="relationship-type-cancel"
+              <Checkbox
+                data-testid="relationship-type-symmetric"
+                isSelected={symmetric}
+                label={t('label.symmetric')}
+                onChange={setSymmetric}
+              />
+              {symmetric ? (
+                <Typography color="secondary" size="text-xs">
+                  {t('message.symmetric-relationship-type')}
+                </Typography>
+              ) : (
+                <Input
+                  hint={
+                    canLinkInverse
+                      ? undefined
+                      : t('message.no-permission-for-action')
+                  }
+                  inputDataTestId="relationship-type-inverse"
+                  isDisabled={!canLinkInverse}
+                  label={t('label.inverse-name')}
+                  size="sm"
+                  value={inverseName}
+                  onChange={setInverseName}
+                />
+              )}
+              <Input
+                inputDataTestId="relationship-type-description"
+                label={t('label.description')}
                 size="sm"
-                onPress={onCancel}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="relationship-type-submit"
-                isDisabled={name.trim().length === 0}
-                size="sm"
-                onPress={() =>
-                  onSubmit({
-                    description,
-                    inverseLabel: inverseName,
-                    label: name,
-                    symmetric,
-                  })
-                }>
-                {t('label.create')}
-              </Button>
+                value={description}
+                onChange={setDescription}
+              />
             </Box>
-          </Box>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="relationship-type-cancel"
+              onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="relationship-type-submit"
+              isDisabled={name.trim().length === 0}
+              onPress={() =>
+                onSubmit({
+                  description,
+                  inverseLabel: inverseName,
+                  label: name,
+                  symmetric,
+                })
+              }>
+              {t('label.create')}
+            </Button>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>
@@ -1335,12 +1328,18 @@ const OntologyGraphView = ({
   const selectedRelation = relations.find(
     (relation) => relation.key === selectedEdgeKey
   );
-  const selectNode = ({ id }: { id: string }) => {
-    setConflictReviewId(undefined);
-    setSelectedEdgeKey(undefined);
-    graphRef.current?.clearEdgeSelection();
-    setSelectedId(id);
-  };
+  // Behind the discard prompt, so Cancel keeps an open relationship and its unsaved edits.
+  const closeRelation = (then?: () => void) =>
+    guard(() => {
+      setSelectedEdgeKey(undefined);
+      graphRef.current?.clearEdgeSelection();
+      then?.();
+    });
+  const selectNode = ({ id }: { id: string }) =>
+    closeRelation(() => {
+      setConflictReviewId(undefined);
+      setSelectedId(id);
+    });
   const placeConceptAt = (position: { x: number; y: number }) => {
     runConfirmed(() =>
       (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
@@ -1364,9 +1363,13 @@ const OntologyGraphView = ({
       }
       graphRef.current?.focusNode(conceptId);
     });
+  // Already in Edit, a mode switch would rewrite the URL from stale params and drop the selection.
+  // From View, pass the id so the edit request reselects it after the switch.
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
-    onRequestEdit?.();
+    if (!isEditing) {
+      onRequestEdit?.(id);
+    }
   };
   const openRelationFrom = (
     conceptId: string,
@@ -1521,10 +1524,7 @@ const OntologyGraphView = ({
         key={selectedRelation.key}
         relation={selectedRelation}
         status={relationStatusOf(selectedRelation)}
-        onClose={() => {
-          setSelectedEdgeKey(undefined);
-          graphRef.current?.clearEdgeSelection();
-        }}
+        onClose={() => closeRelation()}
         onDelete={async () => {
           const isDeleted = await deleteRelation(selectedRelation);
           if (isDeleted) {
@@ -1918,14 +1918,17 @@ const OntologyGraphView = ({
                   return;
                 }
                 reportedEdgeId.current = edge?.id;
-                if (edge?.id) {
-                  runConfirmed(() =>
-                    (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
-                  );
-                  setRelationBackId(undefined);
-                  setSelectedEdgeKey(edge.id);
+                const edgeId = edge?.id;
+                if (edgeId) {
+                  guard(() => {
+                    runConfirmed(() =>
+                      (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
+                    );
+                    setRelationBackId(undefined);
+                    setSelectedEdgeKey(edgeId);
+                  });
                 } else {
-                  setSelectedEdgeKey(undefined);
+                  guard(() => setSelectedEdgeKey(undefined));
                 }
               }}
               onNodeClick={selectNode}

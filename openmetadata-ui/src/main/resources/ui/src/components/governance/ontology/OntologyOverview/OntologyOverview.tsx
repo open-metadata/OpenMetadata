@@ -46,6 +46,7 @@ import {
   getOntologyWorkingValidation,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { OntologyModelRelation } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import Loader from '../../../common/Loader/Loader';
 import { buildNativeTreeIndex } from '../../../OntologyExplorer/OntologyStudio.utils';
 import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
@@ -88,9 +89,18 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   [ChangeType.Deprecated]: 'label.deprecated',
 };
 
-const ChangeRow = ({ change }: { change: MemberChange }) => {
+const HIERARCHY_KIND = { label: 'label.hierarchy', color: 'gray' } as const;
+
+const ChangeRow = ({
+  change,
+  hierarchy,
+}: {
+  change: MemberChange;
+  /** The subclass relation a changed axiom asserts, which reads better than the axiom's name. */
+  hierarchy?: OntologyModelRelation;
+}) => {
   const { t } = useTranslation();
-  const kind = MEMBER_KINDS[change.memberKind];
+  const kind = hierarchy ? HIERARCHY_KIND : MEMBER_KINDS[change.memberKind];
 
   return (
     <Box
@@ -107,7 +117,12 @@ const ChangeRow = ({ change }: { change: MemberChange }) => {
       </div>
       <Box className="tw:min-w-0 tw:flex-1">
         <Typography ellipsis size="text-sm">
-          {getEntityName(change.entity)}
+          {hierarchy
+            ? t('message.ontology-concept-is-a-kind-of', {
+                child: getEntityName(hierarchy.from),
+                parent: getEntityName(hierarchy.to),
+              })
+            : getEntityName(change.entity)}
         </Typography>
       </Box>
       <Typography color="secondary" size="text-xs">
@@ -117,12 +132,20 @@ const ChangeRow = ({ change }: { change: MemberChange }) => {
   );
 };
 
+const isBeforeFirstRelease = (status?: OntologyPublicationStatus) =>
+  Boolean(status && !status.active);
+
 /** The newest unpublished changes; hidden for a reader who may not see the draft. */
 const RecentChangesCard = ({
+  isFirstRelease,
   ontologyId,
+  relations,
   onOpenPublication,
 }: {
+  /** Before the first release the ontology's own row is the container, not a change. */
+  isFirstRelease: boolean;
   ontologyId: string;
+  relations: readonly OntologyModelRelation[];
   onOpenPublication: () => void;
 }) => {
   const { t } = useTranslation();
@@ -141,7 +164,15 @@ const RecentChangesCard = ({
   if (!diff.data) {
     return null;
   }
-  const total = diff.data.paging.total ?? diff.data.data.length;
+  const changes = isFirstRelease
+    ? diff.data.data.filter(
+        ({ memberKind }) => memberKind !== MemberKind.Ontology
+      )
+    : diff.data.data;
+  const total = Math.max(
+    (diff.data.paging.total ?? diff.data.data.length) - Number(isFirstRelease),
+    0
+  );
 
   return (
     <Card data-testid="ontology-overview-recent-changes">
@@ -172,9 +203,14 @@ const RecentChangesCard = ({
         </Card.Content>
       ) : (
         <Box direction="col">
-          {diff.data.data.map((change) => (
+          {changes.map((change) => (
             <ChangeRow
               change={change}
+              hierarchy={relations.find(
+                (relation) =>
+                  relation.kind === 'subClassOf' &&
+                  relation.axiom?.id === change.entity.id
+              )}
               key={`${change.memberKind}-${change.entity.id}`}
             />
           ))}
@@ -701,7 +737,9 @@ const OntologyOverview = ({
       </div>
       {releaseId || !onOpenPublication ? null : (
         <RecentChangesCard
+          isFirstRelease={isBeforeFirstRelease(status)}
           ontologyId={ontology.id}
+          relations={relations}
           onOpenPublication={onOpenPublication}
         />
       )}

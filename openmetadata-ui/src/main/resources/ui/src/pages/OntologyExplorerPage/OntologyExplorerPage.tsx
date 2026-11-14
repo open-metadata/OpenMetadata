@@ -127,6 +127,7 @@ import {
   StudioUrlVersion,
   StudioUrlView,
 } from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
+import { getUnpublishedCount } from '../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   checkPermission,
@@ -496,6 +497,19 @@ function resolveStudioRead({
   };
 }
 
+/** An editor asked for the release, and there is none yet: the workspace is not shown. */
+const hasNothingToPublish = (
+  isAllOntologies: boolean,
+  status: Ontology['publicationStatus']
+) =>
+  !isAllOntologies && status !== undefined && getUnpublishedCount(status) === 0;
+
+const isNothingPublishedFor = (
+  mode: StudioMode,
+  version: StudioUrlVersion,
+  publishedReleaseId?: string
+) => mode === 'view' && version === 'published' && !publishedReleaseId;
+
 /**
  * Edit needs edit rights on the ontology, or on the concept the URL selects: a concept
  * owner enters Edit from that concept's panel and stays only while it is selected.
@@ -675,6 +689,7 @@ function getStudioStatsLabel(
   aggregateGraph: OntologyGraphData | null,
   ontologyId: string | null,
   nativeStats: OntologyModelStats | undefined,
+  isNothingPublished: boolean,
   termCount: string,
   relationCount: string,
   t: TFunction
@@ -694,14 +709,15 @@ function getStudioStatsLabel(
     const currentStats =
       nativeStats?.ontologyId === ontologyId ? nativeStats : undefined;
 
-    if (!currentStats) {
+    if (!currentStats && !isNothingPublished) {
       return '';
     }
 
+    // With no release the workspace is not mounted, so the last stats it reported are the draft's.
     return `${t('message.native-concept-count', {
-      count: currentStats.conceptCount,
+      count: isNothingPublished ? 0 : currentStats?.conceptCount,
     })} · ${t('message.native-relation-count', {
-      count: currentStats.relationCount,
+      count: isNothingPublished ? 0 : currentStats?.relationCount,
     })}`;
   }
 
@@ -1350,15 +1366,6 @@ const OntologyExplorerContent: React.FC = () => {
   );
   const termCount = getStatCount(stats, t('label.term-plural'));
   const relationCount = getStatCount(stats, t('label.relation-plural'));
-  const statsLabel = getStudioStatsLabel(
-    studioScope,
-    allModels.graph,
-    ontologyId,
-    nativeStats,
-    termCount,
-    relationCount,
-    t
-  );
 
   const explorerSurface = getExplorerSurface(
     mode,
@@ -1418,6 +1425,21 @@ const OntologyExplorerContent: React.FC = () => {
     selectedOntology,
     showEditTab,
   });
+  const isNothingPublished = isNothingPublishedFor(
+    mode,
+    version,
+    publishedReleaseId
+  );
+  const statsLabel = getStudioStatsLabel(
+    studioScope,
+    allModels.graph,
+    ontologyId,
+    nativeStats,
+    isNothingPublished,
+    termCount,
+    relationCount,
+    t
+  );
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
   const modeTabs = computeModeTabs(t, canOfferEdit, isOntologyAiAvailable);
 
@@ -1840,7 +1862,7 @@ const OntologyExplorerContent: React.FC = () => {
 
     return publicationStatus?.unpublishedChanges === undefined
       ? t('label.unavailable')
-      : String(publicationStatus.unpublishedChanges);
+      : String(getUnpublishedCount(publicationStatus));
   }
 
   function renderPublicationLabel() {
@@ -1883,7 +1905,12 @@ const OntologyExplorerContent: React.FC = () => {
           title={t('message.ontology-choose-ontology-to-publish')}>
           <Button
             aria-describedby={isAllOntologies ? publishReasonId : undefined}
-            color="primary"
+            // Nothing to publish: the dialog still holds releases and reviews, so it stays reachable but secondary.
+            color={
+              hasNothingToPublish(isAllOntologies, publicationStatus)
+                ? 'secondary'
+                : 'primary'
+            }
             data-testid="ontology-publication-trigger"
             iconLeading={GitBranch01}
             isDisabled={isAllOntologies}
@@ -1926,14 +1953,7 @@ const OntologyExplorerContent: React.FC = () => {
         size="lg"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
-        onPress={() =>
-          guard(() => {
-            if (isNativeOntology) {
-              handleModeChange('view');
-            }
-            setIsLibraryOpen(true);
-          })
-        }
+        onPress={() => setIsLibraryOpen(true)}
       />
     );
   }
@@ -1965,8 +1985,9 @@ const OntologyExplorerContent: React.FC = () => {
               setNativeStats(undefined);
               setNativeRefresh((value) => value + 1);
               refreshNativeWorkingDiff();
+              // An import lands in the draft, so the Published view would not show it.
+              setStudioUrl({ version: undefined });
             }}
-            onOpen={() => handleModeChange('view')}
           />
         ) : null}
         {isAllOntologies ? (
@@ -2336,9 +2357,7 @@ const OntologyExplorerContent: React.FC = () => {
       return <Loader />;
     }
 
-    return mode === 'view' && version === 'published' && !publishedReleaseId
-      ? renderNothingPublished()
-      : null;
+    return isNothingPublished ? renderNothingPublished() : null;
   };
 
   const renderNativeContent = (ontology: Ontology) => {
@@ -2414,7 +2433,7 @@ const OntologyExplorerContent: React.FC = () => {
             footer={
               <Select
                 aria-label={t('label.select-entity', {
-                  entity: t('label.ontology'),
+                  entity: t('label.ontology').toLocaleLowerCase(),
                 })}
                 className="tw:w-64"
                 data-testid="all-ontologies-capacity-select"
@@ -2423,7 +2442,7 @@ const OntologyExplorerContent: React.FC = () => {
                   label: getEntityName(ontology),
                 }))}
                 placeholder={t('label.select-entity', {
-                  entity: t('label.ontology'),
+                  entity: t('label.ontology').toLocaleLowerCase(),
                 })}
                 size="sm"
                 onSelectionChange={(ontologyId) =>

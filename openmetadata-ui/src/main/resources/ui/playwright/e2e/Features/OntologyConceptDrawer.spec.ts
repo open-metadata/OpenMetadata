@@ -679,7 +679,7 @@ for (const mode of ['classic', 'ai'] as const) {
           await page.goto('/governance/ontology');
           await page.getByTestId('mode-tab-edit').click();
           await expect(
-            page.getByRole('button', { name: /Select Ontology/ })
+            page.getByRole('button', { name: /Select ontology/i })
           ).toHaveCount(0);
           // All ontologies lists every worker's ontologies, and the drawer
           // preselects the first unless one is remembered. A parallel worker

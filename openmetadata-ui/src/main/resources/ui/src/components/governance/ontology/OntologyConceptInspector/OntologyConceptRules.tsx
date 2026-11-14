@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEqual } from 'lodash';
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
@@ -32,6 +32,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  getConceptAncestors,
   getPropertyLabel,
   OntologyModelRelation,
   OntologyStudioModel,
@@ -57,6 +58,7 @@ import {
   isQuickRuleReady,
   QuickQuantifier,
   QuickRule,
+  quickRuleCountProblem,
   QuickRuleKind,
   quickRuleToForm,
   QUICK_QUANTIFIERS,
@@ -103,6 +105,7 @@ const ConceptRuleFields = ({
   readonly onChange: (patch: Partial<QuickRule>) => void;
 }) => {
   const { t } = useTranslation();
+  const countErrorId = useId();
 
   return (
     <>
@@ -122,41 +125,53 @@ const ConceptRuleFields = ({
         )}
       </Select>
       {rule.kind === QuickRuleKind.MustHave ? (
-        <div className="tw:grid tw:grid-cols-[1.4fr_0.6fr_2fr] tw:items-start tw:gap-3">
-          <Select
-            items={QUICK_QUANTIFIERS.map((quantifier) => ({
-              id: quantifier,
-              label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
-            }))}
-            label={t('label.quantity')}
-            value={rule.quantifier}
-            onChange={(key) =>
-              key && onChange({ quantifier: String(key) as QuickQuantifier })
-            }>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-          <Input
-            hint={problems.count}
-            isInvalid={Boolean(problems.count)}
-            label={t('label.count')}
-            type="number"
-            value={String(rule.count)}
-            onChange={(count) =>
-              onChange({ count: Math.max(0, Math.floor(Number(count) || 0)) })
-            }
-          />
-          <OntologyIriInput
-            isNameOnly
-            error={problems.property}
-            label={t('label.property')}
-            options={references.properties}
-            testId="ontology-rule-property"
-            value={rule.propertyIri}
-            onChange={(propertyIri) => onChange({ propertyIri })}
-          />
-        </div>
+        <Box direction="col" gap={1}>
+          <div className="tw:grid tw:grid-cols-[1.2fr_0.9fr_2fr] tw:items-start tw:gap-3">
+            <Select
+              items={QUICK_QUANTIFIERS.map((quantifier) => ({
+                id: quantifier,
+                label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
+              }))}
+              label={t('label.quantity')}
+              value={rule.quantifier}
+              onChange={(key) =>
+                key && onChange({ quantifier: String(key) as QuickQuantifier })
+              }>
+              {(item) => (
+                <Select.Item id={item.id} key={item.id} label={item.label} />
+              )}
+            </Select>
+            <Input
+              aria-describedby={problems.count ? countErrorId : undefined}
+              isInvalid={Boolean(problems.count)}
+              label={t('label.count')}
+              type="number"
+              value={String(rule.count)}
+              onChange={(count) =>
+                onChange({ count: Math.floor(Number(count) || 0) })
+              }
+            />
+            <OntologyIriInput
+              isNameOnly
+              error={problems.property}
+              label={t('label.property')}
+              options={references.properties}
+              testId="ontology-rule-property"
+              value={rule.propertyIri}
+              onChange={(propertyIri) => onChange({ propertyIri })}
+            />
+          </div>
+          {/* Under the whole row: the Count column is too narrow to hold a sentence. */}
+          {problems.count ? (
+            <Typography
+              color="danger"
+              id={countErrorId}
+              role="alert"
+              size="text-sm">
+              {problems.count}
+            </Typography>
+          ) : null}
+        </Box>
       ) : (
         <OntologyIriInput
           isNameOnly
@@ -176,11 +191,13 @@ const ConceptRuleFields = ({
 const ConceptRuleForm = ({
   concept,
   model,
+  relations,
   onClose,
   onCreated,
 }: {
   readonly concept: OntologyConcept;
   readonly model: OntologyStudioModel;
+  readonly relations: readonly OntologyModelRelation[];
   readonly onClose: () => void;
   readonly onCreated: () => void;
 }) => {
@@ -195,21 +212,34 @@ const ConceptRuleForm = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const nameSuffix = useRef(generateUUID().slice(0, 6));
+  // A rule can only constrain what this concept has: properties whose domain is it or an
+  // ancestor, and properties with no declared domain.
+  const ownProperties = useMemo(() => {
+    const domains = new Set([
+      concept.iri,
+      ...getConceptAncestors([...relations], concept.id).map(({ iri }) => iri),
+    ]);
+
+    return model.properties.filter(
+      (property) =>
+        !property.deleted &&
+        (!property.domain?.length ||
+          property.domain.some((iri) => domains.has(iri)))
+    );
+  }, [concept.id, concept.iri, model.properties, relations]);
   const references = useMemo(
     () => ({
       concepts: model.concepts.map((candidate) => ({
         iri: candidate.iri,
         label: getEntityName(candidate),
       })),
-      properties: model.properties
-        .filter((property) => !property.deleted)
-        .map((property) => ({
-          iri: property.iri,
-          kind: property.kind,
-          label: getPropertyLabel(property),
-        })),
+      properties: ownProperties.map((property) => ({
+        iri: property.iri,
+        kind: property.kind,
+        label: getPropertyLabel(property),
+      })),
     }),
-    [model]
+    [model.concepts, ownProperties]
   );
   const ontologyFqn = model.ontology.fullyQualifiedName ?? model.ontology.name;
   const base = quickRuleToForm(rule, axiomFormValues());
@@ -220,9 +250,19 @@ const ConceptRuleForm = ({
   };
   const validation = useOntologyAxiomValidation(values, ontologyFqn, sentence);
   const problems = collectAxiomProblems(validation.current, true);
+  const countProblem = quickRuleCountProblem(
+    rule,
+    Boolean(
+      ownProperties.find((property) => property.iri === rule.propertyIri)
+        ?.isIdentifier
+    )
+  );
 
   // Same gate as the Constraints editor: the server must accept the rule before it is written.
   const save = async () => {
+    if (countProblem) {
+      return;
+    }
     setIsSaving(true);
     try {
       const report = await validation.validate(values);
@@ -255,24 +295,32 @@ const ConceptRuleForm = ({
         </Typography>
       ) : null}
       <ConceptRuleFields
-        problems={problems.routed.byField}
+        problems={{
+          ...problems.routed.byField,
+          ...(countProblem ? { count: t(countProblem) } : {}),
+        }}
         references={references}
         rule={rule}
         onChange={(patch) => setRule((current) => ({ ...current, ...patch }))}
       />
-      <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
-        <Card.Content className="tw:flex tw:flex-col tw:gap-1">
-          <Typography color="secondary" size="text-xs" weight="medium">
-            {t('label.preview')}
-          </Typography>
-          <Typography size="text-sm">
-            {isQuickRuleReady(rule)
-              ? sentence
-              : t('message.ontology-rule-preview-empty')}
-          </Typography>
-        </Card.Content>
-      </Card>
-      <AxiomOutcome problems={problems} validation={validation.current} />
+      {countProblem ? null : (
+        <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
+          <Card.Content className="tw:flex tw:flex-col tw:gap-1">
+            <Typography color="secondary" size="text-xs" weight="medium">
+              {t('label.preview')}
+            </Typography>
+            <Typography size="text-sm">
+              {isQuickRuleReady(rule)
+                ? sentence
+                : t('message.ontology-rule-preview-empty')}
+            </Typography>
+          </Card.Content>
+        </Card>
+      )}
+      {/* The server checks OWL shape only; a count it accepts can still contradict the property. */}
+      {countProblem ? null : (
+        <AxiomOutcome problems={problems} validation={validation.current} />
+      )}
       <Box gap={2} justify="end">
         <Button
           color="secondary"
@@ -284,7 +332,7 @@ const ConceptRuleForm = ({
         <Button
           color="primary"
           data-testid="ontology-rule-submit"
-          isDisabled={!isQuickRuleReady(rule)}
+          isDisabled={!isQuickRuleReady(rule) || Boolean(countProblem)}
           isLoading={isSaving}
           size="sm"
           onPress={() => void save()}>
@@ -365,6 +413,7 @@ const OntologyConceptRules = ({
         <ConceptRuleForm
           concept={concept}
           model={model}
+          relations={relations}
           onClose={() => setIsAdding(false)}
           onCreated={onCreated}
         />
@@ -382,7 +431,9 @@ const OntologyConceptRules = ({
               {canDelete ? (
                 <InspectorRemoveButton
                   isDisabled={deletingId === rule.id}
-                  label={t('label.delete-entity', { entity: t('label.rule') })}
+                  label={t('label.delete-entity', {
+                    entity: t('label.rule').toLocaleLowerCase(),
+                  })}
                   testId={`ontology-concept-rule-delete-${rule.id}`}
                   onRemove={() => setPendingRule(rule)}
                 />

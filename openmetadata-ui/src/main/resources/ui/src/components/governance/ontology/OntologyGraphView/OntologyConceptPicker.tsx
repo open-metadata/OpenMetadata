@@ -107,7 +107,10 @@ const OntologyConceptPicker = ({
         data-testid="ontology-graph-concept-picker"
         iconTrailing={ChevronDown}
         size="sm">
-        {label ?? t('label.select-entity', { entity: t('label.concept') })}
+        {label ??
+          t('label.select-entity', {
+            entity: t('label.concept').toLocaleLowerCase(),
+          })}
       </Button>
       <Popover
         aria-label={t('label.concept-plural')}
