@@ -45,5 +45,5 @@ export const RELEASE_DISPLAY_STATUS: Record<
   draft: { label: 'label.draft', color: 'gray' },
 };
 
-/** Rows each change card shows before Load more; a large draft lists thousands. */
+/** Rows each change card shows before Load more (ADR:2026-11-14-review-and-publish-change-cards-reveal-thirty-rows-at-a-time). */
 export const CHANGE_ROWS_PAGE_SIZE = 30;
