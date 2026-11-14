@@ -42,9 +42,11 @@ export interface Data360PipelineConnection {
      */
     salesforceApiVersion?: string;
     /**
-     * Domain of Salesforce instance
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
-    salesforceDomain?: string;
+    salesforceDomain: string;
     /**
      * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
