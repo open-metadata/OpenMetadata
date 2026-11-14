@@ -38,7 +38,12 @@ const owner = (id: string, count?: number): Ontology => ({
   iri: `urn:${id}`,
   namespace: `urn:${id}:`,
   publicationStatus:
-    count === undefined ? undefined : { unpublishedChanges: count },
+    count === undefined
+      ? undefined
+      : {
+          active: { releaseId: `${id}-release`, releaseRevision: 1 },
+          unpublishedChanges: count,
+        },
 });
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider

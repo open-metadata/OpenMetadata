@@ -14,6 +14,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
+import { useTranslation } from 'react-i18next';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
   CreateOntologyChangeSet,
@@ -38,6 +39,11 @@ import {
   previewNativeOntologyImport,
   previewNativeOntologyImportWithoutTarget,
 } from '../../../../rest/ontologyAPI';
+import {
+  MISSING_TRANSLATION_MARKER,
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
@@ -213,6 +219,33 @@ describe('OntologyNativeImportPanel', () => {
       ...draft,
       state: OntologyChangeSetState.Applied,
     });
+  });
+
+  it('asks for no translation the locale lacks before a file is chosen', () => {
+    useEnUsTranslations();
+    const { t } = (useTranslation as jest.Mock)();
+    const missing: string[] = [];
+    (useTranslation as jest.Mock).mockReturnValue({
+      i18n: { language: 'en-US', dir: () => 'ltr' },
+      t: (key: string, options?: Record<string, unknown>) => {
+        const text = t(key, options);
+        if (String(text).startsWith(MISSING_TRANSLATION_MARKER)) {
+          missing.push(key);
+        }
+
+        return text;
+      },
+    });
+    try {
+      renderPanel();
+
+      expect(
+        screen.getByTestId('ontology-native-import-apply')
+      ).toHaveTextContent('Import');
+      expect(missing).toEqual([]);
+    } finally {
+      useKeyEchoTranslations();
+    }
   });
 
   it('names the detected format and dry-runs the file as soon as it is chosen', async () => {
@@ -582,6 +615,25 @@ describe('OntologyNativeImportPanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
     expect(createOntology).not.toHaveBeenCalled();
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('offers no Retry when the server rejects the file, since the same file fails again', async () => {
+    const message = 'The file is not valid RDF: Undefined prefix: owl';
+    (previewNativeOntologyImport as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new AxiosError('Request failed'), {
+        response: { status: 400, data: { message } },
+      })
+    );
+    renderPanel();
+    dropFile();
+
+    const alert = await screen.findByRole('alert');
+
+    expect(alert).toHaveTextContent('message.invalid-file');
+    expect(alert).toHaveTextContent(message);
+    expect(
+      screen.queryByTestId('ontology-native-import-retry')
+    ).not.toBeInTheDocument();
   });
 
   it('offers Retry when the dry run fails and previews the same file again', async () => {

@@ -142,7 +142,7 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(
           page.getByTestId('ontology-publication-trigger')
-        ).toContainText('(1)');
+        ).toContainText('(0)');
         await openImportTab(page);
         // The dry run starts as soon as the format is known, so its response is awaited from the file choice.
         const preview = page.waitForResponse(
@@ -174,7 +174,7 @@ test.describe(
         expect((await applied).status()).toBe(200);
         await expect(
           page.getByTestId('ontology-publication-trigger')
-        ).toContainText('(3)');
+        ).toContainText('(2)');
 
         await page.getByTestId('ontology-publication-trigger').click();
         await expect(

@@ -433,7 +433,7 @@ const OntologyNativeLibraryDetail = ({
                 },
                 {
                   count: totals.relationships,
-                  label: 'label.relation-plural',
+                  label: 'label.hierarchy-link-plural',
                   id: 'relationship',
                 },
               ].map((item) => (

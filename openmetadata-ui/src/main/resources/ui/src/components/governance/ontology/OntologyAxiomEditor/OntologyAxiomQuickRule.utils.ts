@@ -222,6 +222,28 @@ export const isQuickRuleReady = (rule: QuickRule) =>
         : rule.otherIri.trim())
   );
 
+/**
+ * Why a must-have count cannot be saved, as a message key: a negative count, or an identifier
+ * limited to none, which contradicts every instance carrying one.
+ */
+export const quickRuleCountProblem = (
+  rule: QuickRule,
+  isIdentifier: boolean
+): string | undefined => {
+  if (rule.kind !== QuickRuleKind.MustHave) {
+    return undefined;
+  }
+  if (rule.count < 0) {
+    return 'message.ontology-rule-count-negative';
+  }
+
+  return isIdentifier &&
+    rule.count === 0 &&
+    rule.quantifier !== RestrictionKind.Min
+    ? 'message.ontology-rule-identifier-count-zero'
+    : undefined;
+};
+
 export const ruleNameFromSentence = (sentence: string, suffix: string) => {
   const slug = sentence
     .toLowerCase()

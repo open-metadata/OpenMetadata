@@ -240,9 +240,11 @@ describe('nativeImportOntologyRequest', () => {
 });
 
 describe('landOnImportedOntology', () => {
-  it('selects the ontology and clears the concept, scope, and draft', () => {
+  it('selects the ontology and clears the concept, scope, draft, and version', () => {
     const next = landOnImportedOntology(
-      new URLSearchParams('concept=c&scope=all&draft=d&mode=edit'),
+      new URLSearchParams(
+        'concept=c&scope=all&draft=d&mode=edit&version=published'
+      ),
       'o1'
     );
 

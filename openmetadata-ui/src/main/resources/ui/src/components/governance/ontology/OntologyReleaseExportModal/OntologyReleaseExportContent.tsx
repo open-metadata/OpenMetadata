@@ -31,6 +31,7 @@ import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelea
 import { ONTOLOGY_DRAFT_EXPORT_SCOPE } from '../../../../hooks/governance/ontology/useOntologyReleaseExport';
 import { NATIVE_EXPORT_EXTENSIONS } from '../../../../rest/ontologyExport.constants';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import {
   ONTOLOGY_RELEASE_EXPORT_FORMATS,
   ONTOLOGY_RELEASE_PREVIEW_LIMIT,
@@ -77,7 +78,9 @@ const ExportPreview = ({
   readonly content?: string;
   readonly isLoading?: boolean;
 }) => {
-  const { t } = useTranslation();
+  if (isLoading) {
+    return <Loader size="small" />;
+  }
 
   return (
     <pre
@@ -86,9 +89,7 @@ const ExportPreview = ({
         'tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-secondary'
       }
       data-testid="ontology-release-export-preview">
-      {isLoading
-        ? t('label.loading')
-        : content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ?? '—'}
+      {content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ?? '—'}
     </pre>
   );
 };
@@ -101,7 +102,7 @@ const ExportLoadState = ({
   const { t } = useTranslation();
 
   if (state.kind === 'loading') {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader size="small" />;
   }
   if (state.kind !== 'error') {
     return null;
@@ -151,6 +152,12 @@ const ExportScopeSelect = ({
 
 const PUBLISHED_CONTENTS = 'published';
 
+// The Studio names a release by its version; the stored name ("release-1") is only a fallback.
+const releaseLabel = (release: OntologyRelease) =>
+  release.semanticVersion
+    ? `v${release.semanticVersion}`
+    : getEntityName(release);
+
 const ExportContentsChoice = ({
   activeRelease,
   scopeKey,
@@ -183,7 +190,7 @@ const ExportContentsChoice = ({
         data-testid="ontology-export-contents-published"
         hint={
           activeRelease
-            ? getEntityName(activeRelease)
+            ? releaseLabel(activeRelease)
             : t('message.ontology-export-no-published-release')
         }
         isDisabled={!activeRelease}
@@ -337,7 +344,8 @@ const OntologyReleaseExportContent = ({
   const { t } = useTranslation();
 
   return (
-    <Box direction="col" gap={5}>
+    // The dialog body scrolls without bottom padding; this keeps Advanced's border clear of the edge.
+    <Box className="tw:pb-1" direction="col" gap={5}>
       <Typography color="secondary" size="text-sm">
         {t('message.ontology-export-help')}
       </Typography>

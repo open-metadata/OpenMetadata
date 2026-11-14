@@ -78,6 +78,10 @@ const PREFIX_LENGTH = 8;
 const PREFIX_FALLBACK = 'onto';
 const PREFIX_PATTERN = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 
+/** `Ümlauts` reads `umlauts`, not `mlauts`: accents are folded before the ASCII filter. */
+const foldAccents = (value: string) =>
+  value.normalize('NFKD').replaceAll(/\p{M}/gu, '');
+
 /**
  * Letters and digits of the name, so `VF Guard 1` and `VF Guard 2` stay apart.
  * A prefix already in use gets a number appended until it is free.
@@ -87,7 +91,7 @@ export const derivePrefix = (
   isTaken: (prefix: string) => boolean = () => false
 ): string => {
   const base =
-    name
+    foldAccents(name)
       .toLowerCase()
       .replaceAll(/[^a-z0-9]/g, '')
       .slice(0, PREFIX_LENGTH) || PREFIX_FALLBACK;
@@ -122,7 +126,7 @@ export type OntologyNameError =
 
 /** Kebab-cased display name, the default for the immutable ontology ID. */
 export const deriveOntologyId = (displayName: string): string =>
-  displayName
+  foldAccents(displayName)
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, '-')
     .replaceAll(/^-+|-+$/g, '');

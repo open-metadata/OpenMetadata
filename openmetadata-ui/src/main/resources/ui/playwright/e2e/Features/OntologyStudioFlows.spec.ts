@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Browser, Page } from '@playwright/test';
+import { APIRequestContext, Browser, Locator, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
@@ -25,6 +25,7 @@ import {
   getWorkerAdminAPIContext,
   uuid,
 } from '../../utils/common';
+import { addOntologyReviewer } from '../../utils/ontologyReviewers';
 import {
   attachStudioShot,
   clickGraphNode,
@@ -410,8 +411,13 @@ test.describe(
           await attachStudioShot(page, testInfo, `p1-guard-${mode}`);
           await answer('Cancel');
           await expect(description).toHaveValue('Unsaved first');
+          // The press outside the drawer asks first; Discard only closes the drawer.
           await clickGraphNode(page, second.id);
           await answer('Discard');
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
+          await clickGraphNode(page, second.id);
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText('Second');
@@ -538,24 +544,34 @@ test.describe(
     const reviewNow = async (page: Page, ontology: Ontology) => {
       await openOntologyInStudio(page, ontology.id);
       await page
-        .getByRole('button', { name: 'Review now', exact: true })
+        .getByTestId(/^ontology-(open-reviews|review)-banner$/)
+        .getByRole('button', { name: 'Review', exact: true })
         .click();
-      await expect(page.getByTestId('ontology-task-detail')).toBeVisible();
+      await expect(
+        page
+          .getByTestId('task-detail-panel')
+          .getByTestId('ontology-review-panel')
+      ).toBeVisible();
     };
 
-    const decide = async (page: Page, button: string) => {
+    // The Studio Tasks dialog shows the Inbox task panel.
+    const decide = async (page: Page, button: Locator) => {
       const resolved = page.waitForResponse(
         (response) =>
           /\/api\/v1\/tasks\/[^/]+\/resolve$/.test(response.url()) &&
           response.request().method() === 'POST'
       );
-      await clickIgnoringToasts(
-        page
-          .getByTestId('ontology-task-detail')
-          .getByRole('button', { name: button, exact: true })
-      );
+      await clickIgnoringToasts(button);
       expect((await resolved).status()).toBe(200);
     };
+
+    const taskAction = (page: Page, name: string) =>
+      page
+        .getByTestId('task-detail-panel')
+        .getByRole('button', { name, exact: true });
+
+    const taskStatus = (page: Page) =>
+      page.getByTestId('task-detail-panel').getByTestId('task-status-badge');
 
     for (const mode of MODES) {
       test(`flow 5: an author publishes in one click when no reviewers are set and View shows the new version, in ${mode} mode`, async ({
@@ -625,19 +641,12 @@ test.describe(
           await expect(
             author.getByTestId('ontology-publish-release')
           ).toBeVisible();
-          const picker = author
-            .getByTestId('ontology-release-reviewers')
-            .getByRole('combobox', { name: 'Add reviewer' });
-          const option = author
-            .getByRole('option')
-            .filter({ hasText: reviewerName });
-          await expect(async () => {
-            await picker.click();
-            await picker.fill('');
-            await picker.fill(reviewerName);
-            await expect(option).toBeVisible({ timeout: 5_000 });
-          }).toPass({ timeout: 30_000 });
-          await option.click();
+          await addOntologyReviewer(
+            author,
+            ontology.id,
+            actors.reviewer.responseData.name,
+            reviewerName
+          );
           await expect(
             author.getByTestId('ontology-request-review')
           ).toBeEnabled();
@@ -655,10 +664,8 @@ test.describe(
           await expect(
             reviewer.getByTestId('ontology-review-panel')
           ).toBeVisible();
-          await decide(reviewer, 'Approve');
-          await expect(
-            reviewer.getByTestId('ontology-task-detail')
-          ).toContainText('Approved');
+          await decide(reviewer, taskAction(reviewer, 'Approve'));
+          await expect(taskStatus(reviewer)).toHaveText('Approved');
           expect(
             (
               await okJson<Task>(
@@ -756,15 +763,13 @@ test.describe(
           ).toBeVisible();
 
           await reviewNow(reviewer, ontology);
-          await reviewer
-            .getByTestId('ontology-task-detail')
-            .getByRole('button', { name: 'Reject', exact: true })
-            .click();
-          await reviewer.getByLabel('Reason').fill(reason);
-          await decide(reviewer, 'Reject with comment');
-          await expect(
-            reviewer.getByTestId('ontology-task-detail')
-          ).toContainText(reason);
+          await taskAction(reviewer, 'Reject').click();
+          await reviewer.getByTestId('task-action-comment').fill(reason);
+          await decide(
+            reviewer,
+            reviewer.getByTestId('task-action-comment-confirm')
+          );
+          await expect(taskStatus(reviewer)).toHaveText('Rejected');
 
           await openPublicationDialog(author, ontology);
           await expect(
@@ -1076,7 +1081,10 @@ test.describe(
             }
           }
           for (const concept of [concepts[0], concepts[1]]) {
-            await rowOf(concept.id).click();
+            // The open drawer covers the right of the row; its name sits clear of it.
+            await rowOf(concept.id)
+              .getByText(concept.name, { exact: true })
+              .click();
             await expect(inspector).toContainText(concept.name);
             await expect(page).toHaveURL(
               new RegExp(`[?&]concept=${concept.id}(&|$)`)

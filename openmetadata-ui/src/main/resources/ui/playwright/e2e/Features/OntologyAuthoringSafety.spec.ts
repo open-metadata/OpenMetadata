@@ -203,11 +203,12 @@ test.describe(
               );
               expect(updated.description).toBe(text);
               if (tab === 'Settings') {
-                await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+                // Settings stay open in Edit after a save.
+                await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
                   'aria-selected',
                   'true'
                 );
-                await page.getByTestId('mode-tab-edit').click();
+                await expect(editor).toBeVisible();
                 await page.getByTestId('submode-tab-definitions').click();
               }
               if (tab === 'Concepts') {
@@ -288,7 +289,7 @@ test.describe(
             const editor = page.getByTestId('ontology-axiom-panel');
             await expect(
               editor.getByTestId('ontology-axiom-mode-quick')
-            ).toHaveAttribute('aria-checked', 'true');
+            ).toHaveAttribute('aria-selected', 'true');
             await editor.getByTestId('ontology-axiom-mode-advanced').click();
             await selectOptionWithRetry(
               editor
@@ -298,12 +299,12 @@ test.describe(
             );
             await editor
               .getByRole('textbox', {
-                name: /^Display Name \(optional\)$/i,
+                name: /^Display Name$/i,
               })
               .fill('Customer is a Person');
             await editor
               .getByRole('textbox', {
-                name: /^Description \(optional\)$/i,
+                name: /^Description$/i,
               })
               .fill('Every customer is a person.');
             for (const [label, name] of [
@@ -343,7 +344,7 @@ test.describe(
               .click();
             await expect(
               editor.getByRole('textbox', {
-                name: /^Display Name \(optional\)$/i,
+                name: /^Display Name$/i,
               })
             ).toHaveValue('Customer is a Person');
             const created = page.waitForResponse(
@@ -364,10 +365,15 @@ test.describe(
               expressions: [{ kind: 'NAMED_CLASS', classIri: concepts[1].iri }],
             });
             await expect(
-              page.getByRole('button', {
-                name: 'Customer is a Person',
+              page.getByRole('row', {
+                name: 'Customer Subclass of Person',
                 exact: true,
               })
+            ).toBeVisible();
+            await expect(
+              page
+                .getByTestId('ontology-definition-drawer')
+                .getByRole('heading', { name: 'Customer is a Person' })
             ).toBeVisible();
             await testInfo.attach('axiom-' + mode, {
               body: await page.screenshot(),

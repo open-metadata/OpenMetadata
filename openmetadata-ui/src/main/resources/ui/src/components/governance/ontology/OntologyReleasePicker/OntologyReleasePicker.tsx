@@ -77,6 +77,8 @@ const OntologyReleasePicker = ({
       label={label}
       multiple={false}
       pageSize={25}
+      // Fits the release names instead of the default 20rem.
+      popoverClassName="tw:w-max tw:min-w-48 tw:max-w-sm"
       renderTrigger={({ toggle }) => (
         <Button aria-label={label} color="secondary" size="sm" onPress={toggle}>
           {value ? `${label}: ${releaseName(value)}` : label}

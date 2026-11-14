@@ -41,6 +41,7 @@ import {
   getObjectProperties,
   humanizeName,
   OntologyStudioModel,
+  withSuperClasses,
 } from './OntologyStudioModel.utils';
 
 const NS = 'https://example.org/retail/';
@@ -209,6 +210,32 @@ describe('OntologyStudioModel utils', () => {
       property: placedBy,
       restriction: { cardinality: 1, kind: RestrictionKind.Exact },
     });
+  });
+
+  it('sets superclasses from named SubClassOf parents, skipping restrictions and deleted axioms', () => {
+    const concepts = withSuperClasses(model.concepts, [
+      ...model.axioms,
+      axiom('ExternalParent', AxiomType.SubclassOf, customer.iri, [
+        named('https://schema.org/Person'),
+      ]),
+      {
+        ...axiom('Gone', AxiomType.SubclassOf, shipment.iri, [
+          named(party.iri),
+        ]),
+        deleted: true,
+      },
+    ]);
+    const parentsOf = (iri: string) =>
+      concepts.find((concept) => concept.iri === iri)?.superClasses;
+
+    expect(parentsOf(customer.iri)).toEqual([
+      party.iri,
+      'https://schema.org/Person',
+    ]);
+    expect(parentsOf(premiumCustomer.iri)).toEqual([customer.iri]);
+    expect(parentsOf(order.iri)).toEqual([]);
+    expect(parentsOf(shipment.iri)).toEqual([]);
+    expect(parentsOf(physicalProduct.iri)).toEqual([product.iri]);
   });
 
   it('ignores definitions pointing outside the model and deleted ones', () => {

@@ -196,6 +196,35 @@ const namedClassesOf = (axiom: OntologyAxiom): string[] =>
       : []
   );
 
+/**
+ * Sets each concept's named superclasses from the SubClassOf axioms, as the server's
+ * `superClasses` field would. The server caps that lookup at 10,000 axioms per page and counts
+ * restrictions too, so a large ontology (HL7 FHIR) fails it while its axioms load fine.
+ */
+export const withSuperClasses = (
+  concepts: readonly OntologyConcept[],
+  axioms: readonly OntologyAxiom[]
+): OntologyConcept[] => {
+  const parents = new Map<string, Set<string>>();
+  axioms
+    .filter(
+      (axiom) => axiom.axiomType === AxiomType.SubclassOf && !axiom.deleted
+    )
+    .forEach((axiom) =>
+      namedClassesOf(axiom).forEach((iri) =>
+        parents.set(
+          axiom.subjectIri,
+          (parents.get(axiom.subjectIri) ?? new Set()).add(iri)
+        )
+      )
+    );
+
+  return concepts.map((concept) => ({
+    ...concept,
+    superClasses: [...(parents.get(concept.iri) ?? [])].sort(),
+  }));
+};
+
 const NAMED_AXIOM_KINDS: Partial<Record<AxiomType, OntologyRelationKind>> = {
   [AxiomType.SubclassOf]: 'subClassOf',
   [AxiomType.DisjointWith]: 'disjointWith',

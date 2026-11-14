@@ -29,6 +29,7 @@ import { MemberKind as WorkingMemberKind } from '../../../../generated/api/data/
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getOntologyReleaseDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleasePicker from '../OntologyReleasePicker/OntologyReleasePicker';
 import {
   ChangeKindCounts,
@@ -114,10 +115,17 @@ const useReleaseCompare = (from?: OntologyRelease, to?: OntologyRelease) => {
   };
 };
 
-const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
+const OntologyReleaseCompare = ({
+  ontologyId,
+  initialTo,
+}: {
+  ontologyId: string;
+  /** Preselects the newer side, as when a release row asks to compare itself. */
+  initialTo?: OntologyRelease;
+}) => {
   const { t } = useTranslation();
   const [from, setFrom] = useState<OntologyRelease>();
-  const [to, setTo] = useState<OntologyRelease>();
+  const [to, setTo] = useState<OntologyRelease | undefined>(initialTo);
   const { diff, changes, counts, total, hasResult, noDifferences } =
     useReleaseCompare(from, to);
 
@@ -207,7 +215,7 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
       );
     }
     if (!hasResult) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (

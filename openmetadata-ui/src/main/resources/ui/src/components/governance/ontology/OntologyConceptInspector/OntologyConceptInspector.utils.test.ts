@@ -14,6 +14,7 @@ import { ConceptMappingType } from '../../../../generated/entity/data/ontologyCo
 import {
   countFilledSections,
   getCompletenessCounts,
+  pinToTopOfScrollParent,
   shortenIri,
 } from './OntologyConceptInspector.utils';
 
@@ -56,5 +57,27 @@ describe('getCompletenessCounts', () => {
         { relations: 2, properties: 0, assets: 1 }
       )
     ).toEqual([0, 2, 0, 1, 1]);
+  });
+});
+
+describe('pinToTopOfScrollParent', () => {
+  it('scrolls the nearest scrolling body and leaves the overflow-hidden frame alone', () => {
+    const frame = document.createElement('aside');
+    frame.style.overflowY = 'hidden';
+    const body = document.createElement('div');
+    body.style.overflowY = 'auto';
+    const section = document.createElement('section');
+    body.appendChild(section);
+    frame.appendChild(body);
+    document.body.appendChild(frame);
+    const rect = (top: number) => ({ top } as DOMRect);
+    body.getBoundingClientRect = () => rect(100);
+    section.getBoundingClientRect = () => rect(700);
+    body.scrollTop = 50;
+
+    pinToTopOfScrollParent(section)();
+
+    expect(body.scrollTop).toBe(650);
+    expect(frame.scrollTop).toBe(0);
   });
 });

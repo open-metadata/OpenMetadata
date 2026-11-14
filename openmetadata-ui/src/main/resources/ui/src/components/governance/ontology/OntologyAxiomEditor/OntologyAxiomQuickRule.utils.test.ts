@@ -20,7 +20,9 @@ import { EMPTY_AXIOM_FORM } from './OntologyAxiomEditor.utils';
 import {
   EMPTY_QUICK_RULE,
   formToQuickRule,
+  QuickQuantifier,
   QuickRule,
+  quickRuleCountProblem,
   QuickRuleKind,
   quickRuleToForm,
   routeAxiomProblems,
@@ -203,5 +205,31 @@ describe('routing server problems to fields', () => {
         true
       ).byField.subject
     ).toBe('subjectIri must be an absolute IRI');
+  });
+});
+
+describe('quickRuleCountProblem', () => {
+  it('rejects a negative count', () => {
+    expect(quickRuleCountProblem({ ...mustHave, count: -1 }, false)).toBe(
+      'message.ontology-rule-count-negative'
+    );
+  });
+
+  it.each<QuickQuantifier>([RestrictionKind.Exact, RestrictionKind.Max])(
+    'rejects %s 0 on an identifier',
+    (quantifier) => {
+      expect(
+        quickRuleCountProblem({ ...mustHave, count: 0, quantifier }, true)
+      ).toBe('message.ontology-rule-identifier-count-zero');
+    }
+  );
+
+  it.each<[QuickRule, boolean]>([
+    [{ ...mustHave, count: 0, quantifier: RestrictionKind.Min }, true],
+    [{ ...mustHave, count: 0, quantifier: RestrictionKind.Exact }, false],
+    [{ ...mustHave, count: 1, quantifier: RestrictionKind.Exact }, true],
+    [{ ...mustHave, count: -1, kind: QuickRuleKind.SameAs }, false],
+  ])('accepts %o (identifier: %s)', (rule, isIdentifier) => {
+    expect(quickRuleCountProblem(rule, isIdentifier)).toBeUndefined();
   });
 });

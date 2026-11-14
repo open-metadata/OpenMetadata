@@ -211,11 +211,14 @@ jest.mock(
   () => ({
     __esModule: true,
     default: ({
+      deleted,
       onPipelinesChange,
     }: {
+      deleted?: boolean;
       onPipelinesChange?: (total: number) => void;
     }) => (
       <button
+        data-deleted={String(deleted)}
         data-testid="pipeline-tab-body"
         onClick={() => onPipelinesChange?.(3)}>
         pipeline-tab
@@ -348,6 +351,21 @@ describe('TestSuiteDetail', () => {
     expect(screen.getByTestId('pipeline-tab-body')).toBeInTheDocument();
     expect(screen.queryByTestId('data-quality-tab')).not.toBeInTheDocument();
     expect(screen.queryByTestId('description-v1')).not.toBeInTheDocument();
+  });
+
+  it('should tell the pipeline tab a deleted suite is deleted', () => {
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      activeTab: 'pipeline',
+      testSuite: { ...baseHookReturn.testSuite, deleted: true },
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('pipeline-tab-body')).toHaveAttribute(
+      'data-deleted',
+      'true'
+    );
   });
 
   it('should keep the Pipelines badge on the total the pipeline tab reports', () => {

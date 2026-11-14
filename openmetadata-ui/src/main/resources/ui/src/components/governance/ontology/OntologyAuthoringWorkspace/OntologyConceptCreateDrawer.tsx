@@ -23,6 +23,7 @@ import Loader from '../../../common/Loader/Loader';
 import OntologyNewClassPanel, {
   OntologyFieldProps,
 } from '../OntologyNewClassPanel/OntologyNewClassPanel';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 
 interface Props {
   ontology: Ontology;
@@ -55,7 +56,11 @@ const OntologyConceptCreateDrawer = ({
   }, [refetch]);
 
   if (!model) {
-    return <Loader />;
+    return (
+      <OntologyStudioDrawer testId="ontology-concept-create-loading">
+        <Loader />
+      </OntologyStudioDrawer>
+    );
   }
 
   return (

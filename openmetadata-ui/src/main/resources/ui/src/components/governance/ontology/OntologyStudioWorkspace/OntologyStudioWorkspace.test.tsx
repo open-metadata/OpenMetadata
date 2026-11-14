@@ -44,8 +44,25 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
 jest.mock(
   '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace',
   () =>
-    ({ definitionType = 'concept' }: { definitionType?: string }) =>
-      <div data-testid={`authoring-${definitionType}`} />
+    ({
+      definitionType = 'concept',
+      onRequestCreate,
+      shouldOpenCreate,
+    }: {
+      definitionType?: string;
+      onRequestCreate?: () => void;
+      shouldOpenCreate?: boolean;
+    }) =>
+      (
+        <div data-testid={`authoring-${definitionType}`}>
+          <button
+            data-testid={`add-${definitionType}`}
+            onClick={onRequestCreate}>
+            add
+          </button>
+          {shouldOpenCreate ? <span data-testid="opens-create" /> : null}
+        </div>
+      )
 );
 const mockGuard = jest.fn((action: () => void) => action());
 jest.mock(
@@ -135,6 +152,41 @@ describe('OntologyStudioWorkspace', () => {
     ).toHaveTextContent('2');
     expect(mockConcepts).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    [true, 'opens'],
+    [false, 'does not open'],
+  ])(
+    "View's Add when the switch to Edit is accepted=%s %s the create form in Edit",
+    async (accepted) => {
+      const onRequestDefinitionsEdit = jest.fn(() => accepted);
+      const props = {
+        ontology,
+        viewSurface: 'ontology' as const,
+        onRequestDefinitionsEdit,
+        onRequestGraphSurface: jest.fn(),
+        onSaved: jest.fn(),
+      };
+      const { rerender } = renderWithQueryClient(
+        <OntologyStudioWorkspace mode="view" {...props} />
+      );
+      await flushReactQuery();
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.concept-plural/ })
+        );
+      });
+      fireEvent.click(screen.getByTestId('add-concept'));
+
+      expect(onRequestDefinitionsEdit).toHaveBeenCalledTimes(1);
+
+      rerender(<OntologyStudioWorkspace mode="definitions" {...props} />);
+
+      expect(screen.queryAllByTestId('opens-create')).toHaveLength(
+        accepted ? 1 : 0
+      );
+    }
+  );
 
   describe('AI mode', () => {
     beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));

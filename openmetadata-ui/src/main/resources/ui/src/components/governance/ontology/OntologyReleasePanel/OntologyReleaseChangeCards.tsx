@@ -10,20 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChangeType,
   ConceptChange,
 } from '../../../../generated/api/data/ontologyWorkingDiff';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import {
   ChangeCard,
   ChangeCardKind,
   ChangeRow,
   conceptChangeLabel,
 } from './OntologyReleaseChanges.utils';
+import { CHANGE_ROWS_PAGE_SIZE } from './OntologyReleasePanel.constants';
 
 const CHANGE_BADGE_COLOR = {
   [ChangeType.Added]: 'success',
@@ -83,47 +91,83 @@ const ChangeRowItem = ({ row }: { row: ChangeRow }) => {
   );
 };
 
+const ChangeCardSection = ({ kind, rows }: ChangeCard) => {
+  const { t } = useTranslation();
+  const [shownCount, setShownCount] = useState(CHANGE_ROWS_PAGE_SIZE);
+  const shownRows = rows.slice(0, shownCount);
+
+  return (
+    <details
+      open
+      className="tw:group tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+      data-testid={`ontology-change-card-${kind}`}>
+      <summary className="tw:flex tw:cursor-pointer tw:list-none tw:items-center tw:gap-2 tw:bg-secondary_alt tw:px-4 tw:py-3">
+        <ChevronDown
+          aria-hidden="true"
+          className="tw:size-4 tw:shrink-0 tw:-rotate-90 tw:text-fg-quaternary tw:group-open:rotate-0"
+        />
+        <Typography
+          as="span"
+          className="tw:flex-1"
+          size="text-sm"
+          weight="semibold">
+          {t(CARD_TITLES[kind])}
+        </Typography>
+        <Badge color="gray" size="sm" type="pill-color">
+          {rows.length}
+        </Badge>
+      </summary>
+      <ul className="tw:m-0 tw:list-none tw:p-0">
+        {shownRows.map((row) => (
+          <ChangeRowItem key={row.key} row={row} />
+        ))}
+      </ul>
+      {rows.length > shownRows.length ? (
+        <Box
+          align="center"
+          className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
+          gap={3}
+          justify="between">
+          <Typography color="secondary" size="text-xs">
+            {t('label.kg-showing-of', {
+              shown: shownRows.length,
+              total: rows.length,
+            })}
+          </Typography>
+          <Button
+            color="secondary"
+            data-testid={`ontology-change-card-${kind}-load-more`}
+            size="sm"
+            onPress={() =>
+              setShownCount((count) => count + CHANGE_ROWS_PAGE_SIZE)
+            }>
+            {t('label.load-more-lowercase')}
+          </Button>
+        </Box>
+      ) : null}
+    </details>
+  );
+};
+
 /** The review dialog's changes, one collapsible card per kind of definition. */
 const OntologyReleaseChangeCards = ({
   cards,
 }: {
   readonly cards: ChangeCard[];
-}) => {
-  const { t } = useTranslation();
-
-  return (
+}) =>
+  cards.length === 0 ? (
+    // A filter or search that matches nothing, e.g. Changed · 0.
+    <div
+      className="tw:relative tw:min-h-80"
+      data-testid="ontology-change-groups-empty">
+      <NoFilteredResultsPlaceholder />
+    </div>
+  ) : (
     <Box data-testid="ontology-change-groups" direction="col" gap={3}>
-      {cards.map(({ kind, rows }) => (
-        <details
-          open
-          className="tw:group tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
-          data-testid={`ontology-change-card-${kind}`}
-          key={kind}>
-          <summary className="tw:flex tw:cursor-pointer tw:list-none tw:items-center tw:gap-2 tw:bg-secondary_alt tw:px-4 tw:py-3">
-            <ChevronDown
-              aria-hidden="true"
-              className="tw:size-4 tw:shrink-0 tw:-rotate-90 tw:text-fg-quaternary tw:group-open:rotate-0"
-            />
-            <Typography
-              as="span"
-              className="tw:flex-1"
-              size="text-sm"
-              weight="semibold">
-              {t(CARD_TITLES[kind])}
-            </Typography>
-            <Badge color="gray" size="sm" type="pill-color">
-              {rows.length}
-            </Badge>
-          </summary>
-          <ul className="tw:m-0 tw:list-none tw:p-0">
-            {rows.map((row) => (
-              <ChangeRowItem key={row.key} row={row} />
-            ))}
-          </ul>
-        </details>
+      {cards.map((card) => (
+        <ChangeCardSection key={card.kind} {...card} />
       ))}
     </Box>
   );
-};
 
 export default OntologyReleaseChangeCards;

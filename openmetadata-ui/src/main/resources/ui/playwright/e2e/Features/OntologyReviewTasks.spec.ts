@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Locator, Page } from '@playwright/test';
 import { VersionBump } from '../../../src/generated/api/data/captureOntologyRelease';
 import {
   Ontology,
@@ -165,20 +165,25 @@ const openTask = async (page: Page, task: Task, ontology: Ontology) => {
       '&source=review-test&task=' +
       task.id
   );
-  await expect(page.getByTestId('ontology-task-detail')).toContainText(
-    task.name
-  );
-  await expect(page.getByTestId('ontology-review-panel')).toBeVisible();
+  await expect(
+    page.getByTestId('task-detail-panel').getByTestId('ontology-review-panel')
+  ).toBeVisible();
 };
 
-const vote = async (page: Page, task: Task, name: string) => {
+// The Studio Tasks dialog shows the Inbox task panel.
+const taskDetail = (page: Page) => page.getByTestId('task-detail-panel');
+
+const actionButton = (page: Page, name: string) =>
+  taskDetail(page).getByRole('button', { name, exact: true });
+
+const vote = async (page: Page, task: Task, button: Locator) => {
   const resolved = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname ===
         '/api/v1/tasks/' + task.id + '/resolve' &&
       response.request().method() === 'POST'
   );
-  await clickIgnoringToasts(page.getByRole('button', { name, exact: true }));
+  await clickIgnoringToasts(button);
   const response = await resolved;
   expect(response.status()).toBe(200);
   return response;
@@ -222,26 +227,18 @@ test.describe(
             );
             await test.step('The requester sees frozen pending reviewers without vote actions', async () => {
               await openTask(authorPage, fixture.task, fixture.ontology);
-              const detail = authorPage.getByTestId('ontology-task-detail');
-              await expect(detail).toContainText(
-                'You created this task. Waiting on reviewers.'
-              );
-              await expect(detail).toContainText(
-                first.user.getUserDisplayName()
-              );
-              await expect(detail).toContainText(second.getUserDisplayName());
               await expect(
-                detail.getByRole('button', { name: 'Approve', exact: true })
-              ).toHaveCount(0);
-              await expect(
-                detail.getByRole('button', { name: 'Reject', exact: true })
-              ).toHaveCount(0);
+                taskDetail(authorPage).getByTestId('task-status-badge')
+              ).toBeVisible();
+              await expect(actionButton(authorPage, 'Approve')).toHaveCount(0);
+              await expect(actionButton(authorPage, 'Reject')).toHaveCount(0);
               await authorPage.getByTestId('ontology-tasks-close').click();
               await expect(authorPage).toHaveURL(/source=review-test/);
               await expect(authorPage).not.toHaveURL(/[?&]task=/);
+              // The banner announces only reviews waiting on the viewer's vote.
               await expect(
                 authorPage.getByTestId('ontology-review-banner')
-              ).toContainText('waiting on');
+              ).toHaveCount(0);
             });
             await first.page.goto(
               '/governance/ontology?ontology=' + fixture.ontology.id
@@ -249,11 +246,12 @@ test.describe(
             await expect(
               first.page.getByTestId('ontology-tasks-trigger')
             ).toContainText('1');
-            await expect(
-              first.page.getByTestId('ontology-review-banner')
-            ).toContainText('waiting for your review');
-            await first.page
-              .getByRole('button', { name: 'Review now', exact: true })
+            const firstBanner = first.page.getByTestId(
+              'ontology-review-banner'
+            );
+            await expect(firstBanner).toContainText('asked you to review');
+            await firstBanner
+              .getByRole('button', { name: 'Review', exact: true })
               .click();
             await expect(first.page).toHaveURL(
               new RegExp('task=' + fixture.task.id)
@@ -261,17 +259,19 @@ test.describe(
             let finalPage = first.page;
             if (rule === OntologyApprovalRule.AllReviewers) {
               await test.step('The first All vote remains a green partial approval', async () => {
-                await vote(first.page, fixture.task, 'Approve');
-                await expect(
-                  first.page
-                    .getByTestId('ontology-task-detail')
-                    .getByText('Pending', { exact: true })
-                ).toHaveCount(1);
-                await expect(
-                  first.page
-                    .getByTestId('ontology-task-detail')
-                    .getByText('Approved', { exact: true })
-                ).toHaveCount(2);
+                await vote(
+                  first.page,
+                  fixture.task,
+                  actionButton(first.page, 'Approve')
+                );
+                await expect(actionButton(first.page, 'Approve')).toHaveCount(
+                  0
+                );
+                const partial = await okJson<Task>(
+                  await admin.get('/api/v1/tasks/' + fixture.task.id),
+                  'Read partially approved task'
+                );
+                expect(partial.status).toBe(TaskStatus.Open);
                 // The approval toast can sit over the dialog's close button.
                 await clickIgnoringToasts(
                   first.page.getByTestId('ontology-tasks-close')
@@ -287,50 +287,52 @@ test.describe(
               await secondPage.goto(
                 '/governance/ontology?ontology=' + fixture.ontology.id
               );
-              await expect(
-                secondPage.getByTestId('ontology-review-banner')
-              ).toContainText('waiting for your review');
-              await secondPage
-                .getByRole('button', { name: 'Review now', exact: true })
+              const secondBanner = secondPage.getByTestId(
+                'ontology-review-banner'
+              );
+              await expect(secondBanner).toContainText('asked you to review');
+              await secondBanner
+                .getByRole('button', { name: 'Review', exact: true })
                 .click();
             }
-            await test.step('Final approval publishes and survives a UUID reload', async () => {
-              const activation = finalPage.waitForResponse(
+            await test.step('Final approval survives a UUID reload', async () => {
+              await vote(
+                finalPage,
+                fixture.task,
+                actionButton(finalPage, 'Approve')
+              );
+              const status =
+                taskDetail(finalPage).getByTestId('task-status-badge');
+              await expect(status).toHaveText('Approved');
+              await finalPage.reload();
+              await expect(
+                taskDetail(finalPage).getByTestId('ontology-review-panel')
+              ).toBeVisible();
+              await expect(status).toHaveText('Approved');
+              await expect(actionButton(finalPage, 'Approve')).toHaveCount(0);
+            });
+            await test.step('The author publishes the approved version', async () => {
+              await authorPage.goto(
+                '/governance/ontology?ontology=' + fixture.ontology.id
+              );
+              await authorPage
+                .getByTestId('ontology-publication-trigger')
+                .click();
+              const activation = authorPage.waitForResponse(
                 (response) =>
                   new URL(response.url()).pathname ===
                     '/api/v1/ontologies/' +
                       fixture.ontology.id +
                       '/activation' && response.request().method() === 'PUT'
               );
-              await vote(
-                finalPage,
-                fixture.task,
-                'Approve & publish ' + fixture.release.semanticVersion
+              await clickIgnoringToasts(
+                authorPage.getByTestId('ontology-publish-release')
               );
               const activated = await okJson<OntologyState>(
                 await activation,
                 'Publish reviewed release'
               );
               expect(activated.activeReleaseId).toBe(fixture.release.id);
-              await expect(
-                finalPage
-                  .getByTestId('ontology-task-detail')
-                  .getByText('Published', { exact: true })
-              ).toBeVisible();
-              await finalPage.reload();
-              await expect(
-                finalPage.getByTestId('ontology-task-detail')
-              ).toContainText(fixture.task.name);
-              await expect(
-                finalPage
-                  .getByTestId('ontology-task-detail')
-                  .getByRole('button', { name: 'Approve', exact: true })
-              ).toHaveCount(0);
-              await expect(
-                finalPage
-                  .getByTestId('ontology-task-detail')
-                  .getByText('Published', { exact: true })
-              ).toBeVisible();
             });
           } finally {
             await clean(admin, tasks, ontologies);
@@ -362,44 +364,31 @@ test.describe(
           tasks
         );
         await openTask(reviewer.page, fixture.task, fixture.ontology);
-        await reviewer.page
-          .getByRole('button', { name: 'Reject', exact: true })
-          .click();
-        const reject = reviewer.page.getByRole('button', {
-          name: 'Reject with comment',
-          exact: true,
-        });
-        const reason = reviewer.page.getByLabel('Reason');
+        await actionButton(reviewer.page, 'Reject').click();
+        const reject = reviewer.page.getByTestId('task-action-comment-confirm');
+        const reason = reviewer.page.getByTestId('task-action-comment');
         await reason.fill('   ');
         await expect(reject).toBeDisabled();
         const original =
           '  Correct the customer definition.\nKeep the captured scope.  ';
         await reason.fill(original);
-        const response = await vote(
-          reviewer.page,
-          fixture.task,
-          'Reject with comment'
+        const response = await vote(reviewer.page, fixture.task, reject);
+        // The comment dialog trims what it sends.
+        expect(response.request().postDataJSON().comment).toBe(original.trim());
+        const status = taskDetail(reviewer.page).getByTestId(
+          'task-status-badge'
         );
-        expect(response.request().postDataJSON().comment).toBe(original);
-        await expect(
-          reviewer.page.getByTestId('ontology-task-detail')
-        ).toContainText('Correct the customer definition.');
-        await expect(
-          reviewer.page
-            .getByTestId('ontology-task-detail')
-            .getByRole('button', { name: 'Approve', exact: true })
-        ).toHaveCount(0);
+        await expect(status).toHaveText('Rejected');
+        await expect(actionButton(reviewer.page, 'Approve')).toHaveCount(0);
         const review = await okJson<{ latestDecision: { reason: string } }>(
           await author.get(
             '/api/v1/ontologyReleases/' + fixture.release.id + '/review'
           ),
           'Read rejected review'
         );
-        expect(review.latestDecision.reason).toBe(original);
+        expect(review.latestDecision.reason).toBe(original.trim());
         await reviewer.page.reload();
-        await expect(
-          reviewer.page.getByTestId('ontology-task-detail')
-        ).toContainText('Correct the customer definition.');
+        await expect(status).toHaveText('Rejected');
       } finally {
         await clean(admin, tasks, ontologies);
         await author.dispose();

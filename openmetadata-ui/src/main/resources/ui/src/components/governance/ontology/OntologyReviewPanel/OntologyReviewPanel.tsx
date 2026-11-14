@@ -25,6 +25,7 @@ import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelea
 import { Task } from '../../../../generated/entity/tasks/task';
 import { getOntologyReleaseVersion } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import {
   releaseChangeCount,
   releaseKindCounts,
@@ -69,11 +70,11 @@ const PanelHeader = ({
         weight="semibold">
         {t('label.submitted-definition')}
       </Typography>
+      {/* The release's own name (release-1) is internal; a version is what a reviewer knows. */}
       <Typography>
-        {getEntityName(release)} ·{' '}
         {release.semanticVersion
           ? 'v' + release.semanticVersion
-          : t('label.draft')}
+          : `${getEntityName(release)} · ${t('label.draft')}`}
       </Typography>
     </>
   );
@@ -139,7 +140,7 @@ const OntologyReviewPanel = ({
   }
 
   if (isPending || !data) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader size="small" />;
   }
 
   return (

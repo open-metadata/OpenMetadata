@@ -12,6 +12,7 @@
  */
 import {
   STUDIO_FOCUS_DEPTH,
+  STUDIO_FOCUS_HUB_DEGREE,
   STUDIO_FOCUS_NODE_CAP,
   STUDIO_GRAPH_NODE_LIMIT,
 } from '../OntologyExplorer.constants';
@@ -61,7 +62,16 @@ export function buildStudioGraphScope(
   });
   for (let depth = 0; depth < STUDIO_FOCUS_DEPTH; depth++) {
     const next: string[] = [];
-    frontier.forEach((id) => {
+    // A hub reached through the seed (a base class like DomainResource) would pull in every
+    // sibling of the seed, so only the seeds themselves expand however linked they are.
+    const expandable =
+      depth === 0
+        ? frontier
+        : frontier.filter(
+            (id) =>
+              new Set(neighbours.get(id) ?? []).size <= STUDIO_FOCUS_HUB_DEGREE
+          );
+    expandable.forEach((id) => {
       [...new Set(neighbours.get(id) ?? [])]
         .sort((left, right) =>
           (nodeById.get(left)?.label ?? '').localeCompare(

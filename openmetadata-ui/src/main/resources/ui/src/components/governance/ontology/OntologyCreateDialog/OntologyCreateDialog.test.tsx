@@ -113,6 +113,14 @@ describe('OntologyCreateDialog', () => {
     mockFetchRdfConfig.mockResolvedValue(status('https://open-metadata.org/'));
   });
 
+  it('says nothing about Request review until a reviewer is chosen', async () => {
+    await renderDialog();
+
+    expect(
+      screen.queryByText('message.ontology-reviewers-create-hint')
+    ).not.toBeInTheDocument();
+  });
+
   it('orders the fields display name, description, owners, reviewers, then a collapsed Advanced section', async () => {
     const user = userEvent.setup();
     await renderDialog();

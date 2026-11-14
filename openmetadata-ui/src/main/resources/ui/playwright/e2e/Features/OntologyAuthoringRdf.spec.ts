@@ -333,8 +333,8 @@ test.describe(
 
         await page.mouse.click(portCenterX, portCenterY);
         await expect(
-          page.getByTestId('ontology-connect-instruction')
-        ).toBeVisible();
+          page.getByTestId('ontology-connection-line')
+        ).toBeAttached();
         await page.mouse.click(targetPosition.x, targetPosition.y);
         await expect(
           page.getByTestId('relationship-type-picker')

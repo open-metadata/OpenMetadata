@@ -15,9 +15,18 @@ import { KeyboardEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { OntologyIriOption } from './OntologyIriInput.types';
+import {
+  comboBoxLabelProps,
+  fieldLabelProps,
+  optionSupportingText,
+} from './OntologyIriInput.utils';
 
 interface OntologyIriInputProps {
   label: string;
+  /** For a field in a row whose section heading already names it; the label stays as its accessible name. */
+  hideLabel?: boolean;
+  /** Options show only their name, not the context and IRI under it. */
+  isNameOnly?: boolean;
   value: string;
   options?: ReadonlyArray<OntologyIriOption>;
   isRequired?: boolean;
@@ -38,6 +47,8 @@ const LOADING_KEY = '\u0000loading';
 
 const OntologyIriInput = ({
   label,
+  hideLabel,
+  isNameOnly,
   value,
   options,
   isRequired,
@@ -72,9 +83,7 @@ const OntologyIriInput = ({
       .map((option) => ({
         id: option.iri,
         label: option.label,
-        supportingText: option.context
-          ? `${option.context} · ${option.iri}`
-          : option.iri,
+        supportingText: isNameOnly ? undefined : optionSupportingText(option),
       }));
 
     return isLoading
@@ -83,7 +92,7 @@ const OntologyIriInput = ({
           { id: LOADING_KEY, label: t('label.loading'), supportingText: '' },
         ]
       : matches;
-  }, [options, search, isLoading, t]);
+  }, [options, search, isLoading, isNameOnly, t]);
   const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
     if (
       event.key !== 'Enter' ||
@@ -107,13 +116,13 @@ const OntologyIriInput = ({
   if (!options) {
     return (
       <Input
+        {...fieldLabelProps(label, hideLabel)}
         data-testid={testId}
         hideRequiredIndicator={!isRequired}
         hint={error ?? hint}
         isDisabled={isDisabled}
         isInvalid={Boolean(error)}
         isRequired={isRequired ?? false}
-        label={label}
         value={value}
         onChange={onChange}
       />
@@ -123,6 +132,10 @@ const OntologyIriInput = ({
   return (
     <Select.ComboBox
       allowsCustomValue
+      {...comboBoxLabelProps(label, hideLabel)}
+      // The empty list tells an opened field there is nothing to pick; once the person types their
+      // own IRI, "no match" is noise over the fields below, so the list closes instead.
+      allowsEmptyCollection={!search}
       data-testid={testId}
       disabledKeys={isLoading ? [LOADING_KEY] : undefined}
       hint={error ?? hint}
@@ -131,8 +144,8 @@ const OntologyIriInput = ({
       isInvalid={Boolean(error)}
       isRequired={isRequired ?? false}
       items={items}
-      label={label}
       selectedKey={selected?.iri ?? null}
+      shortcut={false}
       onBlur={() => {
         setSearch(undefined);
         if (value.trim() && !selected && !isAbsoluteOntologyIri(value.trim())) {

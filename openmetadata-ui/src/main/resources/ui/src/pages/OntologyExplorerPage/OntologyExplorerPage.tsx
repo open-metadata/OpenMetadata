@@ -15,7 +15,9 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  ButtonUtility,
   Divider,
+  Select,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -125,6 +127,7 @@ import {
   StudioUrlVersion,
   StudioUrlView,
 } from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
+import { getUnpublishedCount } from '../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   checkPermission,
@@ -494,6 +497,19 @@ function resolveStudioRead({
   };
 }
 
+/** An editor asked for the release, and there is none yet: the workspace is not shown. */
+const hasNothingToPublish = (
+  isAllOntologies: boolean,
+  status: Ontology['publicationStatus']
+) =>
+  !isAllOntologies && status !== undefined && getUnpublishedCount(status) === 0;
+
+const isNothingPublishedFor = (
+  mode: StudioMode,
+  version: StudioUrlVersion,
+  publishedReleaseId?: string
+) => mode === 'view' && version === 'published' && !publishedReleaseId;
+
 /**
  * Edit needs edit rights on the ontology, or on the concept the URL selects: a concept
  * owner enters Edit from that concept's panel and stays only while it is selected.
@@ -520,19 +536,6 @@ function getExplorerSurface(
   }
 
   return mode === 'edit' && editSurface === 'tree' ? 'tree' : 'graph';
-}
-
-/** One ontology shows its graph canvas in View and Edit, except on the Ontology tab. */
-function isNativeGraphCanvas(
-  mode: StudioMode,
-  explorerSurface: ViewSurface,
-  editSurface: EditSurface
-): boolean {
-  if (mode === 'edit') {
-    return explorerSurface === 'graph' && editSurface !== 'definitions';
-  }
-
-  return mode === 'view' && explorerSurface === 'graph';
 }
 
 function getShellClassName(isFullScreen: boolean) {
@@ -673,6 +676,7 @@ function getStudioStatsLabel(
   aggregateGraph: OntologyGraphData | null,
   ontologyId: string | null,
   nativeStats: OntologyModelStats | undefined,
+  isNothingPublished: boolean,
   termCount: string,
   relationCount: string,
   t: TFunction
@@ -692,14 +696,15 @@ function getStudioStatsLabel(
     const currentStats =
       nativeStats?.ontologyId === ontologyId ? nativeStats : undefined;
 
-    if (!currentStats) {
+    if (!currentStats && !isNothingPublished) {
       return '';
     }
 
+    // With no release the workspace is not mounted, so the last stats it reported are the draft's.
     return `${t('message.native-concept-count', {
-      count: currentStats.conceptCount,
+      count: isNothingPublished ? 0 : currentStats?.conceptCount,
     })} · ${t('message.native-relation-count', {
-      count: currentStats.relationCount,
+      count: isNothingPublished ? 0 : currentStats?.relationCount,
     })}`;
   }
 
@@ -884,8 +889,6 @@ function isNativePermissionPending(
   return ontologyPending || (mode === 'edit' && conceptPending);
 }
 
-const getHeaderActionSize = (isAiMode: boolean) => (isAiMode ? 'sm' : 'xs');
-
 const OntologyExplorerContent: React.FC = () => {
   const guard = useOntologyDraftGuard();
   const { t } = useTranslation();
@@ -939,14 +942,26 @@ const OntologyExplorerContent: React.FC = () => {
     },
     [setStudioUrl]
   );
+  // Switching between Graph, Tree and Ontology closes the concept drawer: a concept opened on
+  // one surface is not carried to the next, which is also what a press outside the drawer does.
+  const setSurfaceView = useCallback(
+    (view: StudioUrlView) =>
+      setSearchParams((current) => {
+        const next = patchStudioUrlParams(current, { view });
+        next.delete('concept');
+
+        return next;
+      }),
+    [setSearchParams]
+  );
   const setViewSurface = useCallback(
-    (surface: ViewSurface) => setStudioUrl({ view: surface }),
-    [setStudioUrl]
+    (surface: ViewSurface) => setSurfaceView(surface),
+    [setSurfaceView]
   );
   const setEditSurface = useCallback(
     (surface: EditSurface) =>
-      setStudioUrl({ view: surface === 'definitions' ? 'ontology' : surface }),
-    [setStudioUrl]
+      setSurfaceView(surface === 'definitions' ? 'ontology' : surface),
+    [setSurfaceView]
   );
   const setQuerySurface = useCallback(
     (surface: QuerySurface) => setStudioUrl({ view: surface }),
@@ -973,6 +988,17 @@ const OntologyExplorerContent: React.FC = () => {
         { replace: true }
       );
     },
+    [setSearchParams]
+  );
+  // One update: two separate ones would each start from the same URL and drop the other.
+  const showConceptOnGraph = useCallback(
+    (id: string) =>
+      setSearchParams((current) => {
+        const next = patchStudioUrlParams(current, { view: 'graph' });
+        next.set('concept', id);
+
+        return next;
+      }),
     [setSearchParams]
   );
   const selectedGlossaryId = getScopeGlossaryId(studioScope);
@@ -1336,15 +1362,6 @@ const OntologyExplorerContent: React.FC = () => {
   );
   const termCount = getStatCount(stats, t('label.term-plural'));
   const relationCount = getStatCount(stats, t('label.relation-plural'));
-  const statsLabel = getStudioStatsLabel(
-    studioScope,
-    allModels.graph,
-    ontologyId,
-    nativeStats,
-    termCount,
-    relationCount,
-    t
-  );
 
   const explorerSurface = getExplorerSurface(
     mode,
@@ -1404,6 +1421,21 @@ const OntologyExplorerContent: React.FC = () => {
     selectedOntology,
     showEditTab,
   });
+  const isNothingPublished = isNothingPublishedFor(
+    mode,
+    version,
+    publishedReleaseId
+  );
+  const statsLabel = getStudioStatsLabel(
+    studioScope,
+    allModels.graph,
+    ontologyId,
+    nativeStats,
+    isNothingPublished,
+    termCount,
+    relationCount,
+    t
+  );
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
   const modeTabs = computeModeTabs(t, canOfferEdit, isOntologyAiAvailable);
 
@@ -1624,8 +1656,10 @@ const OntologyExplorerContent: React.FC = () => {
     if (nextMode !== 'edit') {
       setConceptDraft(undefined);
     }
+    // Switching between View and Edit keeps the surface (Graph, Tree or Ontology) in view.
+    const keptSurface = mode === 'query' ? undefined : aggregateSurface;
     setMode(nextMode, {
-      view: nextMode === 'query' ? lastQuerySurface : editView,
+      view: nextMode === 'query' ? lastQuerySurface : editView ?? keptSurface,
     });
   }
 
@@ -1703,7 +1737,6 @@ const OntologyExplorerContent: React.FC = () => {
 
   const publishReasonId = useId();
   const addConceptReasonId = useId();
-  const headerActionSize = getHeaderActionSize(isAiMode);
 
   // View on one ontology offers the step into Edit where Add concept would sit.
   function renderEditOntologyAction() {
@@ -1719,7 +1752,7 @@ const OntologyExplorerContent: React.FC = () => {
         color="primary"
         data-testid="ontology-edit-ontology"
         iconTrailing={ArrowRight}
-        size={headerActionSize}
+        size="sm"
         onPress={() => guard(() => handleModeChange('edit'))}>
         {t('label.edit-entity', { entity: t('label.ontology') })}
       </Button>
@@ -1737,7 +1770,7 @@ const OntologyExplorerContent: React.FC = () => {
         color="primary"
         data-testid="ontology-new-query"
         iconLeading={Plus}
-        size={headerActionSize}
+        size="sm"
         onPress={() => {
           // A query needs one ontology, so on All ontologies this only offers the choice.
           if (isAllOntologies) {
@@ -1781,7 +1814,7 @@ const OntologyExplorerContent: React.FC = () => {
             data-testid="ontology-add-concept"
             iconLeading={Plus}
             isDisabled={isDraftOpen}
-            size={headerActionSize}
+            size="sm"
             onPress={() => guard(handleAddConcept)}>
             {t('label.add-entity', {
               entity: t('label.concept').toLocaleLowerCase(),
@@ -1826,7 +1859,7 @@ const OntologyExplorerContent: React.FC = () => {
 
     return publicationStatus?.unpublishedChanges === undefined
       ? t('label.unavailable')
-      : String(publicationStatus.unpublishedChanges);
+      : String(getUnpublishedCount(publicationStatus));
   }
 
   function renderPublicationLabel() {
@@ -1869,11 +1902,16 @@ const OntologyExplorerContent: React.FC = () => {
           title={t('message.ontology-choose-ontology-to-publish')}>
           <Button
             aria-describedby={isAllOntologies ? publishReasonId : undefined}
-            color="primary"
+            // Nothing to publish: the dialog still holds releases and reviews, so it stays reachable but secondary.
+            color={
+              hasNothingToPublish(isAllOntologies, publicationStatus)
+                ? 'secondary'
+                : 'primary'
+            }
             data-testid="ontology-publication-trigger"
             iconLeading={GitBranch01}
             isDisabled={isAllOntologies}
-            size={headerActionSize}
+            size="sm"
             onPress={() => {
               setPublicationTab('changes');
               setIsPublicationOpen(true);
@@ -1901,25 +1939,18 @@ const OntologyExplorerContent: React.FC = () => {
 
   function renderLibraryTrigger() {
     return (
-      <Button
+      <ButtonUtility
         aria-haspopup="dialog"
         aria-label={t('label.library')}
         color="secondary"
         data-testid="ontology-library-trigger"
-        iconLeading={
+        icon={
           isAiMode ? Grid01 : <Grid01 className="tw:text-fg-brand-primary" />
         }
-        size="sm"
+        size="lg"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
-        onPress={() =>
-          guard(() => {
-            if (isNativeOntology) {
-              handleModeChange('view');
-            }
-            setIsLibraryOpen(true);
-          })
-        }
+        onPress={() => setIsLibraryOpen(true)}
       />
     );
   }
@@ -1951,8 +1982,9 @@ const OntologyExplorerContent: React.FC = () => {
               setNativeStats(undefined);
               setNativeRefresh((value) => value + 1);
               refreshNativeWorkingDiff();
+              // An import lands in the draft, so the Published view would not show it.
+              setStudioUrl({ version: undefined });
             }}
-            onOpen={() => handleModeChange('view')}
           />
         ) : null}
         {isAllOntologies ? (
@@ -1982,10 +2014,9 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
-  // In AI mode Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
+  // Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
   function showsTasksInSubBar() {
     return [
-      isAiMode,
       mode !== 'ai' && mode !== 'review',
       !(ontologyId && !selectedOntology),
       !isCatalogEmpty,
@@ -2092,9 +2123,26 @@ const OntologyExplorerContent: React.FC = () => {
     });
   }
 
+  // All ontologies that failed or is too large to draw renders no canvas, so nothing fills the toolbar.
+  function isAggregateCanvasEmpty() {
+    return (
+      isAllOntologies && (studioScopes.isOntologyError || allModels.isError)
+    );
+  }
+
+  // Full screen only helps a graph; the tree, the Ontology tab and an empty or failed canvas skip
+  // it, though a canvas already in full screen keeps its way out.
+  function showsFullScreenToggle() {
+    const surface = mode === 'view' ? viewSurface : editSurface;
+
+    return isFullScreen || (surface === 'graph' && !isAggregateCanvasEmpty());
+  }
+
   // The floating toolbar along the canvas bottom: version, search and full screen.
   function renderCanvasToolbar() {
-    if (mode !== 'view' && mode !== 'edit') {
+    const isEmpty =
+      !selectedOntology && isAggregateCanvasEmpty() && !isFullScreen;
+    if ((mode !== 'view' && mode !== 'edit') || isEmpty) {
       return null;
     }
     const fullScreenLabel = t(
@@ -2104,9 +2152,8 @@ const OntologyExplorerContent: React.FC = () => {
     return (
       <div
         className={classNames(
-          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4 tw:pr-4',
-          // An open Studio drawer covers the canvas's right; centre in what is left so full screen stays reachable.
-          'tw:group-has-[[data-studio-drawer]]/studio:pr-[calc(max(40vw,26.25rem)+1rem)]'
+          // Stays put when a Studio drawer opens; the drawer overlays, nothing under it moves.
+          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4 tw:pr-4'
         )}
         data-testid="ontology-canvas-toolbar">
         <Box
@@ -2115,15 +2162,17 @@ const OntologyExplorerContent: React.FC = () => {
           gap={2}>
           {renderVersionChip()}
           {renderSearchSlot()}
-          <Button
-            aria-label={fullScreenLabel}
-            color="secondary"
-            data-testid="ontology-full-screen"
-            iconLeading={isFullScreen ? Minimize02 : Expand05}
-            size="sm"
-            tooltip={fullScreenLabel}
-            onPress={toggleFullScreen}
-          />
+          {showsFullScreenToggle() ? (
+            <ButtonUtility
+              aria-label={fullScreenLabel}
+              color="secondary"
+              data-testid="ontology-full-screen"
+              icon={isFullScreen ? Minimize02 : Expand05}
+              size="lg"
+              tooltip={fullScreenLabel}
+              onPress={toggleFullScreen}
+            />
+          ) : null}
         </Box>
       </div>
     );
@@ -2304,9 +2353,7 @@ const OntologyExplorerContent: React.FC = () => {
       return <Loader />;
     }
 
-    return mode === 'view' && version === 'published' && !publishedReleaseId
-      ? renderNothingPublished()
-      : null;
+    return isNothingPublished ? renderNothingPublished() : null;
   };
 
   const renderNativeContent = (ontology: Ontology) => {
@@ -2350,20 +2397,37 @@ const OntologyExplorerContent: React.FC = () => {
           setIsPublicationOpen(true);
         }}
         onRequestCreateConcept={() => guard(handleAddConcept)}
+        onRequestDefinitionsEdit={() => {
+          handleModeChange('edit', 'ontology');
+
+          // A locked draft refuses the switch with a toast.
+          return !nativeAuthoringLocked;
+        }}
         onRequestEdit={(conceptId) => {
           setEditConceptRequest(conceptId);
           handleModeChange('edit', 'graph');
         }}
         onRequestGraphSurface={() => setViewSurface('graph')}
         onRequestTreeSurface={() => setViewSurface('tree')}
-        onSaved={(ontology) => {
+        onSaved={(saved) => {
           void queryClient.invalidateQueries({
             queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
           });
           refreshNativeWorkingDiff();
-          selectOntology(ontology);
+          // Settings stay open after a save. The patch response leaves out owners,
+          // reviewers and publication status, so the full detail is read again in place.
+          setLoadedOntology((current) => ({ ...current, ...saved }));
+          void getOntology(saved.id, 'owners,reviewers,publicationStatus')
+            .then((full) =>
+              setLoadedOntology((current) =>
+                current?.id === full.id ? full : current
+              )
+            )
+            .catch(() => undefined);
+          showSuccessToast(t('message.ontology-settings-saved'));
         }}
         onSelectedConceptChange={selectNativeConcept}
+        onShowConceptOnGraph={showConceptOnGraph}
         onStatsChange={setNativeStats}
         onWorkingChange={refreshNativeWorkingDiff}
       />
@@ -2379,6 +2443,33 @@ const OntologyExplorerContent: React.FC = () => {
         {allModels.isTooLarge ? (
           <NoDataPlaceholder
             description={t('message.ontology-aggregate-capacity')}
+            footer={
+              <Select
+                aria-label={t('label.select-entity', {
+                  entity: t('label.ontology').toLocaleLowerCase(),
+                })}
+                className="tw:w-64"
+                data-testid="all-ontologies-capacity-select"
+                items={availableOntologies.map((ontology) => ({
+                  id: ontology.id,
+                  label: getEntityName(ontology),
+                }))}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.ontology').toLocaleLowerCase(),
+                })}
+                size="sm"
+                onSelectionChange={(ontologyId) =>
+                  guard(() =>
+                    handleScopeChange({
+                      kind: 'ontology',
+                      ontologyId: String(ontologyId),
+                    })
+                  )
+                }>
+                {(item) => <Select.Item id={item.id} label={item.label} />}
+              </Select>
+            }
+            title={t('label.choose-an-ontology-to-view')}
           />
         ) : (
           <SomethingWentWrongPlaceholder
@@ -2409,9 +2500,6 @@ const OntologyExplorerContent: React.FC = () => {
           onClose={() => selectNativeConcept(undefined)}
           onEditConcept={(ontology, conceptId) =>
             selectOntology(ontology, conceptId, 'edit')
-          }
-          onOpenOwner={(ontology, conceptId) =>
-            selectOntology(ontology, conceptId)
           }
           onSelectConcept={selectNativeConcept}
         />
@@ -2458,7 +2546,6 @@ const OntologyExplorerContent: React.FC = () => {
           void studioScopes.refetchOntologies();
           void allModels.refetch();
         }}
-        onRequestGraphSurface={() => setViewSurface('graph')}
         onSelectedConceptChange={(id) => {
           if (mode === 'edit' && id) {
             const owner = allModels.models?.find((model) =>
@@ -2525,20 +2612,20 @@ const OntologyExplorerContent: React.FC = () => {
     );
   };
 
-  // The review banner floats over a graph canvas and sits above any other surface.
+  // The review banner sits above the surface, never over it: floating on the graph it covered
+  // the top nodes and the Model/Data switch.
   const renderCanvasArea = (
     content: React.ReactNode,
-    banner: React.ReactNode,
-    isGraphCanvas: boolean
+    banner: React.ReactNode
   ) => (
-    <div className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
+    <div
+      className={classNames(
+        'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+        !isAiMode &&
+          'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+      )}>
       {banner ? (
-        <div
-          className={
-            isGraphCanvas
-              ? 'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:top-3 tw:z-20 tw:flex tw:justify-center tw:px-4 tw:*:pointer-events-auto'
-              : 'tw:flex tw:shrink-0 tw:justify-center tw:px-4 tw:pt-3'
-          }>
+        <div className="tw:flex tw:shrink-0 tw:justify-center tw:px-4 tw:pt-3">
           {banner}
         </div>
       ) : null}
@@ -2592,8 +2679,7 @@ const OntologyExplorerContent: React.FC = () => {
               </div>
               {renderAggregateCreateDrawer()}
             </div>,
-            banner,
-            false
+            banner
           )
         : null}
       {mode === 'query' || aggregateSurface === 'ontology'
@@ -2605,8 +2691,7 @@ const OntologyExplorerContent: React.FC = () => {
               </div>
               {renderAggregateCreateDrawer()}
             </div>,
-            banner,
-            aggregateSurface === 'graph'
+            banner
           )}
     </>
   );
@@ -2635,8 +2720,7 @@ const OntologyExplorerContent: React.FC = () => {
             <section className="tw:flex tw:min-h-0 tw:flex-1 tw:bg-primary">
               {renderNativeContent(selectedOntology)}
             </section>,
-            banner,
-            isNativeGraphCanvas(mode, explorerSurface, editSurface)
+            banner
           )}
         </>
       );
@@ -2645,15 +2729,7 @@ const OntologyExplorerContent: React.FC = () => {
     return (
       <>
         {renderSubModeNav(tasksAction)}
-        {renderCanvasArea(
-          renderMainSection(),
-          banner,
-          [
-            isGlossaryScope,
-            showDefaultSurface,
-            explorerSurface === 'graph',
-          ].every(Boolean)
-        )}
+        {renderCanvasArea(renderMainSection(), banner)}
       </>
     );
   };
@@ -2808,13 +2884,14 @@ const OntologyExplorerContent: React.FC = () => {
           {({ tasksAction, banner }) => (
             <>
               {renderHeader(tasksAction)}
-              {/* The AI header is an inset card; the workspace below takes the
-                  same inset and card frame so their edges line up. */}
+              {/* The header is an inset card and the workspace takes the same inset. AI mode frames
+                  the sub-bar and canvas together; classic gives each its own card. */}
               <div
                 className={classNames(
-                  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
-                  isAiMode &&
-                    'tw:mx-2 tw:mb-2 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                  'tw:mx-2 tw:mb-2 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+                  isAiMode
+                    ? 'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                    : 'tw:gap-2'
                 )}>
                 <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
                   <OntologyStudioDrawerHostContext.Provider value={drawerHost}>

@@ -149,7 +149,7 @@ const OntologyPackCard = ({
             <Typography color="secondary" size="text-sm">
               {totals.concepts} {t('label.concept-plural').toLocaleLowerCase()}{' '}
               · {totals.relationships}{' '}
-              {t('label.relation-plural').toLocaleLowerCase()}
+              {t('label.hierarchy-link-plural').toLocaleLowerCase()}
             </Typography>
             {action}
           </Box>
