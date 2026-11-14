@@ -653,8 +653,10 @@ export const AutocompleteBase = ({
   // left it on the old query, so the reopened list showed that query's results.
   const clearFilter = useCallback(() => {
     setFilterText('');
-    onSearchChange?.('');
-  }, [onSearchChange]);
+    if (filterText) {
+      onSearchChange?.('');
+    }
+  }, [filterText, onSearchChange]);
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
