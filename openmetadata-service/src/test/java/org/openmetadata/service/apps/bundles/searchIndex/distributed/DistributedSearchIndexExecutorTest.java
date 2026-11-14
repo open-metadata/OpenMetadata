@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1087,15 +1086,13 @@ class DistributedSearchIndexExecutorTest {
   }
 
   @Test
-  void runWorkerLoopAggregatesPartitionResults() throws Exception {
+  void runWorkerLoopProcessesPartitionAndCleansUpState() throws Exception {
     UUID jobId = UUID.randomUUID();
     SearchIndexJob runningJob =
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
     SearchIndexJob completedJob = runningJob.withStatus(IndexJobStatus.COMPLETED);
     SearchIndexPartition partition = partition(jobId, "table", PartitionStatus.PENDING);
     BulkSink bulkSink = mock(BulkSink.class);
-    AtomicLong totalSuccess = new AtomicLong();
-    AtomicLong totalFailed = new AtomicLong();
 
     setField("currentJob", runningJob);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(runningJob), Optional.of(completedJob));
@@ -1115,24 +1112,14 @@ class DistributedSearchIndexExecutorTest {
             BulkSink.class,
             int.class,
             ReindexContext.class,
-            AtomicLong.class,
-            AtomicLong.class,
             ReindexingConfiguration.class
           },
           0,
           bulkSink,
           100,
           stagedContext("table"),
-          totalSuccess,
-          totalFailed,
           ReindexingConfiguration.builder().build());
 
-      assertEquals(5L, totalSuccess.get());
-      assertEquals(2L, totalFailed.get());
-      assertEquals(5L, ((AtomicLong) getField("coordinatorReaderSuccess")).get());
-      assertEquals(1L, ((AtomicLong) getField("coordinatorReaderFailed")).get());
-      assertEquals(1L, ((AtomicLong) getField("coordinatorReaderWarnings")).get());
-      assertEquals(1, ((AtomicInteger) getField("coordinatorPartitionsCompleted")).get());
       assertTrue(((Set<?>) getField("activePartitions")).isEmpty());
       assertTrue(((List<?>) getField("activeWorkers")).isEmpty());
       verify(workerConstruction.constructed().get(0)).processPartition(partition);
@@ -1169,16 +1156,12 @@ class DistributedSearchIndexExecutorTest {
                           BulkSink.class,
                           int.class,
                           ReindexContext.class,
-                          AtomicLong.class,
-                          AtomicLong.class,
                           ReindexingConfiguration.class
                         },
                         2,
                         mock(BulkSink.class),
                         100,
                         stagedContext("table"),
-                        new AtomicLong(),
-                        new AtomicLong(),
                         ReindexingConfiguration.builder().build());
                   } catch (Throwable t) {
                     failure.set(t);
@@ -1221,21 +1204,16 @@ class DistributedSearchIndexExecutorTest {
             BulkSink.class,
             int.class,
             ReindexContext.class,
-            AtomicLong.class,
-            AtomicLong.class,
             ReindexingConfiguration.class
           },
           1,
           mock(BulkSink.class),
           100,
           stagedContext("table"),
-          new AtomicLong(),
-          new AtomicLong(),
           ReindexingConfiguration.builder().build());
 
       assertTrue(((Set<?>) getField("activePartitions")).isEmpty());
       assertTrue(((List<?>) getField("activeWorkers")).isEmpty());
-      assertEquals(0, ((AtomicInteger) getField("coordinatorPartitionsCompleted")).get());
       verify(workerConstruction.constructed().get(0)).processPartition(partition);
     }
   }
