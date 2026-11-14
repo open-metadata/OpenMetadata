@@ -36,15 +36,42 @@ public final class SafeRdfModelParser {
           MAX_INPUT_BYTES,
           MAX_TRIPLES,
           PARSE_NANOS,
+          "Native ontology RDF is empty",
           "Native ontology RDF must contain at most 10 MiB of data");
   private static final Limits TRUSTED =
       new Limits(
           TRUSTED_MAX_INPUT_BYTES,
           TRUSTED_MAX_TRIPLES,
           TRUSTED_PARSE_NANOS,
+          "Bundled ontology RDF is empty",
           "Bundled ontology RDF must contain at most 64 MiB of data");
 
-  private record Limits(int maxBytes, int maxTriples, long parseNanos, String tooLarge) {}
+  private record Limits(
+      int maxBytes, int maxTriples, long parseNanos, String empty, String tooLarge) {}
+
+  /**
+   * Refuses blank content and content over {@code maxBytes} of UTF-8 with separate messages, so an
+   * empty upload is not reported as too large.
+   */
+  public static void requireContent(
+      final String data, final int maxBytes, final String empty, final String tooLarge) {
+    if (data == null || data.isBlank()) {
+      throw new BadRequestException(empty);
+    }
+    if (exceedsUtf8Bytes(data, maxBytes)) {
+      throw new BadRequestException(tooLarge);
+    }
+  }
+
+  // Each UTF-16 unit encodes to one to three UTF-8 bytes, so only lengths between the two bounds
+  // need the encoded copy that a 10 MiB upload would otherwise allocate on every import.
+  private static boolean exceedsUtf8Bytes(final String data, final int maxBytes) {
+    if (data.length() > maxBytes) {
+      return true;
+    }
+    return (long) data.length() * 3 > maxBytes
+        && data.getBytes(StandardCharsets.UTF_8).length > maxBytes;
+  }
 
   public Model parse(final String data, final RdfSerializationFormat format) {
     return parse(data, format, UNTRUSTED);
@@ -77,11 +104,7 @@ public final class SafeRdfModelParser {
   }
 
   private Model parse(final String data, final RdfSerializationFormat format, final Limits limits) {
-    if (data == null
-        || data.isBlank()
-        || data.getBytes(StandardCharsets.UTF_8).length > limits.maxBytes()) {
-      throw new BadRequestException(limits.tooLarge());
-    }
+    requireContent(data, limits.maxBytes(), limits.empty(), limits.tooLarge());
     if (format == RdfSerializationFormat.RDF_XML
         && data.toUpperCase(Locale.ROOT).contains("<!DOCTYPE")) {
       throw new BadRequestException("RDF/XML DOCTYPE declarations are not allowed");
@@ -105,7 +128,7 @@ public final class SafeRdfModelParser {
                 @Override
                 public void triple(final Triple triple) {
                   if (++count > limits.maxTriples() || System.nanoTime() >= deadline) {
-                    throw new BadRequestException("Native RDF exceeds its triple or time budget");
+                    throw new BadRequestException("The file exceeds its statement or time budget");
                   }
                   requireAbsolute(triple.getSubject());
                   requireAbsolute(triple.getPredicate());
@@ -126,7 +149,7 @@ public final class SafeRdfModelParser {
       }
       final String message = String.valueOf(exception.getMessage());
       throw new BadRequestException(
-          "Failed to parse native RDF: " + message.substring(0, Math.min(200, message.length())));
+          "The file is not valid RDF: " + message.substring(0, Math.min(200, message.length())));
     }
   }
 

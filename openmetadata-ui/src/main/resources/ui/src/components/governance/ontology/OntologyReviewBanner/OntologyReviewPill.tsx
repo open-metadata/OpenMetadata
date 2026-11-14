@@ -62,7 +62,7 @@ const OntologyReviewPill = ({
   return (
     <div
       className={classNames(
-        'tw:flex tw:max-w-full tw:items-center tw:gap-3 tw:rounded-2xl tw:border tw:py-2 tw:pr-2 tw:pl-4 tw:shadow-xs',
+        'tw:flex tw:max-w-full tw:items-center tw:gap-3 tw:rounded-full tw:border tw:py-2 tw:pr-2 tw:pl-4 tw:shadow-xs',
         TONE_CLASS[tone]
       )}
       data-testid={testId}

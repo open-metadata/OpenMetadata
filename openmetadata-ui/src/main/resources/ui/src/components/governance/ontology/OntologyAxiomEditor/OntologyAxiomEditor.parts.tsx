@@ -15,17 +15,18 @@ import {
   Alert,
   Box,
   Button,
-  ButtonGroup,
-  ButtonGroupItem,
   Card,
   FieldTypes,
   getField,
   Input,
+  Label,
   Select,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { pick } from 'lodash';
-import { Key } from 'react';
+import { Key, ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -72,6 +73,32 @@ import {
 import { AxiomEditorMode } from './useOntologyAxiomRule';
 
 type TranslateFn = ReturnType<typeof useTranslation>['t'];
+
+/**
+ * A field as the design lays it out: label, a one-line description under it, then the control.
+ * The control carries its own accessible name, since this label is not bound to it.
+ */
+const DescribedField = ({
+  children,
+  description,
+  isRequired,
+  label,
+}: {
+  readonly children: ReactNode;
+  readonly description: string;
+  readonly isRequired?: boolean;
+  readonly label: string;
+}) => (
+  <div className="tw:flex tw:flex-col tw:gap-1.5">
+    <div className="tw:flex tw:flex-col">
+      <Label isRequired={isRequired}>{label}</Label>
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {description}
+      </Typography>
+    </div>
+    {children}
+  </div>
+);
 
 export const resetShape = (
   form: UseFormReturn<OntologyAxiomFormState>,
@@ -177,10 +204,15 @@ export const AxiomPreview = ({ sentence }: { sentence: string }) => {
   return (
     <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
       <Card.Content className="tw:flex tw:flex-col tw:gap-1">
-        <Typography color="secondary" size="text-xs" weight="medium">
+        <Typography
+          className="tw:text-tertiary"
+          size="text-xs"
+          weight="semibold">
           {t('label.reads-as')}
         </Typography>
-        <Typography size="text-sm">
+        <Typography
+          className={sentence ? 'tw:text-primary' : 'tw:text-tertiary'}
+          size="text-sm">
           {sentence || t('message.ontology-axiom-preview-empty')}
         </Typography>
       </Card.Content>
@@ -311,66 +343,87 @@ export const QuickRuleFields = ({
     <div
       className="tw:flex tw:flex-col tw:gap-4"
       data-testid="ontology-rule-quick">
-      <OntologyIriInput
+      <DescribedField
         isRequired
-        error={problems.subject}
-        hint={t('message.ontology-picker-paste-hint')}
-        label={t('label.subject')}
-        options={references?.concepts}
-        testId="ontology-rule-subject"
-        value={rule.subjectIri}
-        onChange={(subjectIri) => onChange({ subjectIri })}
-      />
-      <Select
-        items={Object.values(QuickRuleKind).map((kind) => ({
-          id: kind,
-          label: t(QUICK_RULE_LABELS[kind]),
-        }))}
-        label={t('label.rule')}
-        value={rule.kind}
-        onChange={(key) =>
-          key && onChange({ kind: String(key) as QuickRuleKind })
-        }>
-        {(item) => (
-          <Select.Item id={item.id} key={item.id} label={item.label} />
-        )}
-      </Select>
-      <Card data-testid="ontology-rule-quick-help" size="sm" variant="muted">
-        <Card.Content>
-          <Typography color="secondary" size="text-sm">
-            {t(QUICK_RULE_HELP[rule.kind])}
-          </Typography>
-        </Card.Content>
-      </Card>
+        description={t('message.ontology-rule-subject-help')}
+        label={t('label.subject')}>
+        <OntologyIriInput
+          hideLabel
+          isRequired
+          error={problems.subject}
+          label={t('label.subject')}
+          options={references?.concepts}
+          testId="ontology-rule-subject"
+          value={rule.subjectIri}
+          onChange={(subjectIri) => onChange({ subjectIri })}
+        />
+      </DescribedField>
+      <DescribedField
+        description={t('message.ontology-rule-kind-help')}
+        label={t('label.rule')}>
+        <Select
+          aria-label={t('label.rule')}
+          items={Object.values(QuickRuleKind).map((kind) => ({
+            id: kind,
+            label: t(QUICK_RULE_LABELS[kind]),
+          }))}
+          value={rule.kind}
+          onChange={(key) =>
+            key && onChange({ kind: String(key) as QuickRuleKind })
+          }>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="ontology-rule-quick-help"
+          size="text-xs">
+          {t(QUICK_RULE_HELP[rule.kind])}
+        </Typography>
+      </DescribedField>
       {isMustHave ? (
-        <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
-          <Select
-            items={QUICK_QUANTIFIERS.map((quantifier) => ({
-              id: quantifier,
-              label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
-            }))}
-            label={t('label.quantity')}
-            value={rule.quantifier}
-            onChange={(key) =>
-              key && onChange({ quantifier: String(key) as QuickQuantifier })
-            }>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-          <Input
+        <>
+          <DescribedField
+            description={t('message.ontology-rule-quantity-help')}
+            label={t('label.quantity')}>
+            <Select
+              aria-label={t('label.quantity')}
+              items={QUICK_QUANTIFIERS.map((quantifier) => ({
+                id: quantifier,
+                label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
+              }))}
+              value={rule.quantifier}
+              onChange={(key) =>
+                key && onChange({ quantifier: String(key) as QuickQuantifier })
+              }>
+              {(item) => (
+                <Select.Item id={item.id} key={item.id} label={item.label} />
+              )}
+            </Select>
+          </DescribedField>
+          <DescribedField
             isRequired
-            hint={problems.count}
-            isInvalid={Boolean(problems.count)}
-            label={t('label.cardinality')}
-            type="number"
-            value={String(rule.count)}
-            onChange={(count) =>
-              onChange({ count: Math.max(0, Math.floor(Number(count) || 0)) })
-            }
-          />
-          <div className="tw:md:col-span-2">
+            description={t('message.ontology-rule-count-help')}
+            label={t('label.cardinality')}>
+            <Input
+              isRequired
+              aria-label={t('label.cardinality')}
+              hint={problems.count}
+              isInvalid={Boolean(problems.count)}
+              type="number"
+              value={String(rule.count)}
+              onChange={(count) =>
+                onChange({ count: Math.max(0, Math.floor(Number(count) || 0)) })
+              }
+            />
+          </DescribedField>
+          <DescribedField
+            isRequired
+            description={t('message.ontology-rule-property-help')}
+            label={t('label.property')}>
             <OntologyIriInput
+              hideLabel
               isRequired
               error={problems.property}
               label={t('label.property')}
@@ -379,19 +432,24 @@ export const QuickRuleFields = ({
               value={rule.propertyIri}
               onChange={(propertyIri) => onChange({ propertyIri })}
             />
-          </div>
-        </div>
+          </DescribedField>
+        </>
       ) : (
-        <OntologyIriInput
+        <DescribedField
           isRequired
-          error={problems.other}
-          hint={t('message.ontology-picker-paste-hint')}
-          label={t('label.concept')}
-          options={references?.concepts}
-          testId="ontology-rule-other"
-          value={rule.otherIri}
-          onChange={(otherIri) => onChange({ otherIri })}
-        />
+          description={t('message.ontology-picker-paste-hint')}
+          label={t('label.concept')}>
+          <OntologyIriInput
+            hideLabel
+            isRequired
+            error={problems.other}
+            label={t('label.concept')}
+            options={references?.concepts}
+            testId="ontology-rule-other"
+            value={rule.otherIri}
+            onChange={(otherIri) => onChange({ otherIri })}
+          />
+        </DescribedField>
       )}
     </div>
   );
@@ -409,28 +467,28 @@ export const AxiomModeSwitch = ({
   // A grey band across the drawer, whose body pads 24px on each side.
   return (
     <div className="tw:-mx-6 tw:-mt-6 tw:mb-1 tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:border-b tw:border-secondary tw:bg-secondary tw:px-6 tw:py-3">
-      <ButtonGroup
-        disallowEmptySelection
-        aria-label={t('label.rule')}
+      {/* The design's segmented control; the panels are empty because the form below follows the mode. */}
+      <Tabs
+        className="tw:w-fit"
         data-testid="ontology-axiom-mode"
-        selectedKeys={[mode]}
-        size="sm"
-        onSelectionChange={(keys) => {
-          const [next] = [...keys];
-          if (next) {
-            onChange(next as AxiomEditorMode);
-          }
-        }}>
-        <ButtonGroupItem data-testid="ontology-axiom-mode-quick" id="quick">
-          {t('label.quick')}
-        </ButtonGroupItem>
-        <ButtonGroupItem
-          data-testid="ontology-axiom-mode-advanced"
-          id="advanced">
-          {t('label.advanced')}
-        </ButtonGroupItem>
-      </ButtonGroup>
-      <Typography color="secondary" size="text-sm">
+        selectedKey={mode}
+        onSelectionChange={(key) => onChange(key as AxiomEditorMode)}>
+        <Tabs.List aria-label={t('label.rule')} size="sm" type="button-minimal">
+          <Tabs.Item
+            data-testid="ontology-axiom-mode-quick"
+            id="quick"
+            label={t('label.quick')}
+          />
+          <Tabs.Item
+            data-testid="ontology-axiom-mode-advanced"
+            id="advanced"
+            label={t('label.advanced')}
+          />
+        </Tabs.List>
+        <Tabs.Panel className="tw:hidden" id="quick" />
+        <Tabs.Panel className="tw:hidden" id="advanced" />
+      </Tabs>
+      <Typography className="tw:text-tertiary" size="text-sm">
         {t(
           mode === 'quick'
             ? 'message.ontology-axiom-quick-help'
@@ -443,21 +501,48 @@ export const AxiomModeSwitch = ({
 
 export const AxiomDetailFields = () => {
   const { t } = useTranslation();
-  const optional = (label: string) => `${label} (${t('label.optional')})`;
 
   return (
-    <div className="tw:grid tw:grid-cols-1 tw:gap-4">
-      {getField({
-        label: optional(t('label.display-name')),
-        name: 'displayName',
-        type: FieldTypes.TEXT,
-      })}
-      {getField({
-        label: optional(t('label.description')),
-        name: 'description',
-        type: FieldTypes.TEXTAREA,
-      })}
+    <div className="tw:flex tw:flex-col tw:gap-4">
+      <DescribedField
+        description={t('message.ontology-rule-display-name-help')}
+        label={t('label.display-name')}>
+        {getField({
+          label: '',
+          name: 'displayName',
+          type: FieldTypes.TEXT,
+          placeholder: t('message.ontology-rule-display-name-placeholder'),
+          props: { 'aria-label': t('label.display-name') },
+        })}
+      </DescribedField>
+      <DescribedField
+        description={t('message.ontology-rule-description-help')}
+        label={t('label.description')}>
+        {getField({
+          label: '',
+          name: 'description',
+          type: FieldTypes.TEXTAREA,
+          props: { 'aria-label': t('label.description'), size: 'sm' },
+        })}
+      </DescribedField>
     </div>
+  );
+};
+
+/** The design's closing note: saving records the rule, publishing makes it live. */
+export const AxiomPublishNote = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" gap={2}>
+      <InfoCircle
+        aria-hidden
+        className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+      />
+      <Typography className="tw:text-tertiary" size="text-xs">
+        {t('message.ontology-rule-publish-note')}
+      </Typography>
+    </Box>
   );
 };
 
@@ -510,12 +595,15 @@ export const AxiomOutcome = ({
     ) : null;
   }
 
+  const listed = [...general, ...problems.warnings];
+  // A failure whose every error already sits under its field adds nothing.
+  if (!validation.report.valid && !listed.length) {
+    return null;
+  }
+
   return (
     <Box direction="col" gap={2}>
-      <ProfileResult
-        problems={[...general, ...problems.warnings]}
-        profile={validation.report}
-      />
+      <ProfileResult problems={listed} profile={validation.report} />
       <Typography color="secondary" size="text-xs">
         {t('message.ontology-profile-validation-help')}
       </Typography>

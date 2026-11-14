@@ -180,7 +180,7 @@ describe('OntologyLibrary', () => {
       FIBO_PACK.standard
     );
     expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
-      '5 label.concept-plural · 3 label.relation-plural'
+      '5 label.concept-plural · 3 label.hierarchy-link-plural'
     );
     expect(screen.getByTestId('ontology-pack-new-pack')).toHaveTextContent(
       UNKNOWN_PACK.name
@@ -201,6 +201,24 @@ describe('OntologyLibrary', () => {
 
     expect(screen.getByTestId('ontology-pack-fibo')).toBeVisible();
     expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
+  });
+
+  it('keeps one dialog height when a domain filter shortens the list', async () => {
+    mockListPacks.mockResolvedValue({
+      packs: [EXTERNAL_PACK, FHIR_PACK, FIBO_PACK],
+    });
+    render(<OntologyLibrary />);
+    const pane = (await screen.findByTestId('ontology-pack-fibo')).closest(
+      '[class*="tw:h-[60vh]"]'
+    );
+
+    expect(pane).not.toBeNull();
+
+    fireEvent.click(screen.getByTestId('ontology-library-filter-healthcare'));
+
+    expect(
+      screen.getByTestId('ontology-pack-fhir').closest('[class*="tw:h-[60vh]"]')
+    ).toBe(pane);
   });
 
   it('shows the vocabulary catalogue without glossary installation metadata', async () => {

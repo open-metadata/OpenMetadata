@@ -1836,6 +1836,27 @@ describe('OntologyReleasePanel', () => {
     );
   });
 
+  it('says the draft is empty instead of showing an empty list with paging', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) =>
+      url.endsWith('/working/diff')
+        ? { data: { state: currentState, data: [], paging: { total: 0 } } }
+        : defaultGet?.(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByTestId('ontology-working-empty')
+    ).toHaveTextContent('message.ontology-no-unpublished-changes');
+    expect(
+      screen.queryByTestId('ontology-working-previous')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-working-next')
+    ).not.toBeInTheDocument();
+  });
+
   it('counts the same changes in the AI footer as in the summary, with one row per changed class', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     useEnUsTranslations();

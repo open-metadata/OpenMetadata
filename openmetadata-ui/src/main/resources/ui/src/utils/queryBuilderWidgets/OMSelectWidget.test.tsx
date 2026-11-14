@@ -29,15 +29,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ComboBox?: (props: {
       isDisabled?: boolean;
       items?: { id: string; label: string }[];
+      selectedKey?: string | null;
       onOpenChange?: (isOpen: boolean) => void;
       onInputChange?: (value: string) => void;
     }) => JSX.Element;
   } = ({ isDisabled }) =>
     ReactModule.createElement('button', { disabled: isDisabled }, 'select');
-  Select.ComboBox = ({ isDisabled, items, onOpenChange, onInputChange }) =>
+  Select.ComboBox = ({
+    isDisabled,
+    items,
+    selectedKey,
+    onOpenChange,
+    onInputChange,
+  }) =>
     ReactModule.createElement(
       'div',
-      null,
+      // String() keeps null and undefined apart: they are a controlled empty selection and an uncontrolled one.
+      { 'data-selected-key': String(selectedKey) },
       ReactModule.createElement(
         'button',
         {
@@ -183,6 +191,38 @@ describe('OMSelectWidget', () => {
 
     expect(screen.getByTestId('options').children).toHaveLength(2);
     expect(asyncFetch).toHaveBeenCalledTimes(callsBeforeReopen);
+  });
+
+  it('keeps the async select controlled when its value is cleared', async () => {
+    const asyncProps = {
+      ...baseProps,
+      useAsyncSearch: true,
+      asyncFetch: jest
+        .fn()
+        .mockResolvedValue({ values: [{ value: 'opt1', title: 'Option 1' }] }),
+      listValues: undefined,
+    } as unknown as SelectWidgetProps;
+    const { container, rerender } = render(
+      <OMSelectWidget {...asyncProps} value="opt1" />
+    );
+    const comboBox = () =>
+      container.querySelector('[data-selected-key]') as HTMLElement;
+
+    await waitFor(() =>
+      expect(screen.getByTestId('options').children).toHaveLength(1)
+    );
+
+    expect(comboBox()).toHaveAttribute('data-selected-key', 'opt1');
+
+    // An undefined selectedKey makes React Aria own the selection, and clearing the input (Cmd+Delete) then looped
+    // until React threw "Maximum update depth exceeded".
+    rerender(<OMSelectWidget {...asyncProps} value={null} />);
+
+    expect(comboBox()).toHaveAttribute('data-selected-key', 'null');
+
+    rerender(<OMSelectWidget {...asyncProps} value={undefined} />);
+
+    expect(comboBox()).toHaveAttribute('data-selected-key', 'null');
   });
 
   it('still searches when the user types something other than the selection', async () => {

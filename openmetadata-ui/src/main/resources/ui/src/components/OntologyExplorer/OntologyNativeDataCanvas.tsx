@@ -328,7 +328,7 @@ function AssetCard({
   return (
     <div
       className={classNames(
-        'tw:absolute tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-surface tw:pr-2 tw:shadow-xs',
+        'tw:absolute tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-surface tw:pr-2 tw:shadow-xs tw:transition-colors tw:hover:bg-primary_hover',
         isSelected
           ? 'tw:border-brand tw:outline-3 tw:outline-utility-blue-100'
           : 'tw:border-secondary'
@@ -341,7 +341,9 @@ function AssetCard({
           noTextPadding
           aria-describedby={lineageNotes.length > 0 ? lineageId : undefined}
           className={classNames(
-            'tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3 tw:rounded-lg tw:py-2 tw:pl-2.5 tw:text-left',
+            // The card owns the hover background; a button hover fill would stack a second one.
+            // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
+            'tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3 tw:rounded-lg tw:py-2 tw:pl-2.5 tw:text-left tw:hover:bg-transparent',
             'tw:*:data-text:flex tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3'
           )}
           color="tertiary"
@@ -930,10 +932,12 @@ const OntologyNativeDataCanvas = ({
           }}>
           {hiddenCount > 0 || concept.isLoadingAssets ? (
             <Button
+              showTextWhileLoading
               color="link-color"
               data-testid={`ontology-load-more-assets-${concept.id}`}
               iconLeading={ChevronDown}
               isDisabled={concept.isLoadingAssets}
+              isLoading={concept.isLoadingAssets}
               size="sm"
               onPress={() => {
                 if (assets.length < totalCount) {
@@ -941,9 +945,7 @@ const OntologyNativeDataCanvas = ({
                 }
                 setIsExpanded(true);
               }}>
-              {concept.isLoadingAssets
-                ? t('label.loading')
-                : t('label.load-more-count', { count: hiddenCount })}
+              {t('label.load-more-count', { count: hiddenCount })}
             </Button>
           ) : null}
           {canShowLess ? (
@@ -959,20 +961,25 @@ const OntologyNativeDataCanvas = ({
         </Box>
       ) : null}
       {onLinkData ? (
-        <Button
-          className="tw:absolute tw:border-dashed"
-          color="secondary"
-          data-testid="ontology-data-link-more"
-          iconLeading={Plus}
-          size="sm"
+        // The design's dashed drop slot under the last source group; the frame is layout, the
+        // action is a plain link-colour button inside it.
+        <div
+          className="tw:absolute tw:flex tw:h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:bg-surface"
           style={{
             left: layout.groupLeft,
             top: linkTop,
             width: layout.width - layout.groupLeft - 40,
-          }}
-          onPress={onLinkData}>
-          {t('label.link-data')}
-        </Button>
+          }}>
+          <Button
+            className="tw:w-full tw:justify-center"
+            color="link-color"
+            data-testid="ontology-data-link-more"
+            iconLeading={Plus}
+            size="sm"
+            onPress={onLinkData}>
+            {t('label.link-data')}
+          </Button>
+        </div>
       ) : null}
     </>
   );

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -23,7 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ontology } from '../../../../generated/entity/data/ontology';
+import { Ontology, Stage } from '../../../../generated/entity/data/ontology';
 import {
   deleteOntology,
   listOntologyConcepts,
@@ -31,6 +32,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 
 interface OntologyDeleteDialogProps {
   readonly ontology: Ontology;
@@ -47,6 +49,8 @@ const OntologyDeleteDialog = ({
   const name = getEntityName(ontology);
   const [typedName, setTypedName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const isInReview =
+    ontology.publicationStatus?.latest?.stage === Stage.InReview;
   const counts = useQuery({
     queryKey: ['ontology-delete-counts', ontology.id],
     queryFn: async () => {
@@ -99,7 +103,9 @@ const OntologyDeleteDialog = ({
             <li>{`${t('label.release-plural')}: ${counts.data.releases}`}</li>
           </>
         ) : (
-          <li>{t('label.loading')}</li>
+          <li>
+            <Loader size="x-small" />
+          </li>
         )}
       </ul>
     );
@@ -118,7 +124,9 @@ const OntologyDeleteDialog = ({
       <Modal>
         <Dialog
           dividers="scroll"
-          title={t('label.delete-entity', { entity: t('label.ontology') })}
+          title={t('label.delete-entity', {
+            entity: t('label.ontology').toLocaleLowerCase(),
+          })}
           width={480}
           onClose={onClose}>
           <Dialog.Content>
@@ -126,6 +134,13 @@ const OntologyDeleteDialog = ({
               <Typography size="text-sm">
                 {t('message.ontology-delete-removes', { name })}
               </Typography>
+              {isInReview ? (
+                <Alert
+                  data-testid="ontology-delete-withdraws-review"
+                  variant="warning">
+                  {t('message.ontology-delete-withdraws-review')}
+                </Alert>
+              ) : null}
               {renderCounts()}
               <Input
                 isRequired

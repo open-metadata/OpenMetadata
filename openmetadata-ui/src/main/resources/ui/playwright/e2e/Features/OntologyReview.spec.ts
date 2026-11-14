@@ -2386,9 +2386,12 @@ test.describe(
 
     test('lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed', async ({
       isolatedUserPage: page,
+      isolatedUser,
     }) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
+      // The worded counts are the classic row; AI mode shows +n ~n −n instead.
+      await setMode(api, isolatedUser.responseData.id, 'classic');
       const { ontology } = await createPublicationFixture(
         api,
         'pw_g8_kinds',

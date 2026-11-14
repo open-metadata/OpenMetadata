@@ -194,6 +194,27 @@ describe('OntologyReleaseExportModal', () => {
     mockExportOntologyRelease.mockResolvedValue('<rdf>sealed release</rdf>');
   });
 
+  it('names the published release by its version, as the rest of the Studio does', async () => {
+    const versioned = { ...release, semanticVersion: '0.1.0' };
+    mockGetOntologyRelease.mockResolvedValue(versioned);
+    mockListHistory.mockResolvedValue({
+      data: [versioned],
+      paging: { total: 1 },
+    });
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('ontology-export-contents-published')
+    ).toHaveTextContent('v0.1.0');
+    expect(
+      screen.getByTestId('ontology-export-contents-published')
+    ).not.toHaveTextContent('Release 1');
+  });
+
   it('previews the active immutable release in the chosen format and downloads the selected format', async () => {
     const onClose = jest.fn();
     renderWithQueryClient(

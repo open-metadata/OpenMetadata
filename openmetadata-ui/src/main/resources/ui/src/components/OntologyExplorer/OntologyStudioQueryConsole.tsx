@@ -62,6 +62,7 @@ import {
 import { NavigatorHelper } from '../../utils/NavigatorUtils';
 import { generateUUID } from '../../utils/StringUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import SchemaEditor from '../Database/SchemaEditor/SchemaEditor';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import {
@@ -157,9 +158,9 @@ const QueryGroup = ({
         </Badge>
       </Box>
       {isLoading && items.length === 0 ? (
-        <Typography className="tw:px-1" color="secondary" size="text-xs">
-          {t('label.loading')}
-        </Typography>
+        <div className="tw:px-1">
+          <Loader size="small" />
+        </div>
       ) : null}
       {!isLoading && items.length === 0 ? (
         <Typography className="tw:px-1" color="quaternary" size="text-xs">
@@ -183,8 +184,10 @@ const QueryGroup = ({
                 <Button
                   noTextPadding
                   aria-pressed={isActive}
+                  // The row owns the hover background; a button hover fill would stack a second one.
+                  // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
                   className={classNames(
-                    'tw:min-w-0 tw:flex-1 tw:justify-start tw:py-2 tw:pl-2.5 tw:text-left',
+                    'tw:min-w-0 tw:flex-1 tw:justify-start tw:py-2 tw:pl-2.5 tw:text-left tw:hover:bg-transparent',
                     'tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:truncate',
                     isActive
                       ? 'tw:font-medium tw:text-brand-secondary'
@@ -297,7 +300,8 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
         ref={rename.inputRef}
         size="sm"
         value={rename.isRenaming ? rename.value : savedQuery.name}
-        wrapperClassName="tw:w-80 tw:max-w-full"
+        // The input pads its text by tw:px-3; pulling it back lines the name up with the badge below.
+        wrapperClassName="tw:-ml-3 tw:w-80 tw:max-w-full"
         onBlur={commitOrCancel}
         onChange={(value) => {
           if (!rename.isRenaming) {
@@ -1238,7 +1242,7 @@ const OntologyStudioQueryConsole = ({
       );
     }
 
-    return <QueryResultsEmptyState />;
+    return <QueryResultsEmptyState isRunning={running} />;
   };
 
   return (

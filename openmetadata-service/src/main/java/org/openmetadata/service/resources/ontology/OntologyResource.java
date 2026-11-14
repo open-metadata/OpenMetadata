@@ -114,6 +114,7 @@ import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.OntologyExportFormat;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -204,7 +205,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       operationId = "queryActiveOntologyRelease",
       summary = "Query the active ontology release",
       description =
-          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded unless scope=draft, which queries the working draft and requires EditAll on the ontology.")
+          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded unless scope=draft, which queries the working draft and requires EditAll on the ontology. A release too large to evaluate in memory is answered from its served knowledge-graph copy, without statement sources or inference.")
   public Response query(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext context,
@@ -226,7 +227,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final var release =
         new OntologyReleaseQuery(
             repository,
-            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
+            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE),
+            RdfRepository::getInstanceOrNull);
     try {
       final var result =
           SparqlQueryExecutionGuard.shared()

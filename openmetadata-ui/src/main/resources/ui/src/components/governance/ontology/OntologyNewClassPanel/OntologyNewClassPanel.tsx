@@ -23,15 +23,15 @@ import {
   getField,
   HookForm,
   Input,
+  Label,
   Select,
+  Tag,
+  TagGroup,
+  TagList,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  ChevronRight,
-  XClose,
-} from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import {
   Fragment,
@@ -85,6 +85,7 @@ import {
 } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import { useMappingTargetOptions } from '../OntologyConceptEditor/useReadableConceptOptions';
+import OntologyAdvancedToggle from '../OntologyCreateForm/OntologyAdvancedToggle';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import {
@@ -202,6 +203,11 @@ const hasOwlOnlyContent = (
 ) =>
   type === OntologyConceptType.SkosConcept && (hasAxioms || propertyCount > 0);
 const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
+// An empty Display name takes the Name, so a clashing label is the Name's problem.
+const fieldIssues = (displayName: string) =>
+  displayName.trim()
+    ? { name: NAME_ISSUES, label: ['label-taken'] as ClassIdentityIssue[] }
+    : { name: [...NAME_ISSUES, 'label-taken' as const], label: [] };
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
   'name-invalid': 'message.ontology-concept-name-invalid',
@@ -288,8 +294,6 @@ const OntologyNewClassPanel = ({
   const [synonyms, setSynonyms] = useState<string[]>(start.synonyms);
   const [synonym, setSynonym] = useState('');
   const [mappings, setMappings] = useState<MappingInput[]>(start.mappings);
-  const [mappingType, setMappingType] = useState(ConceptMappingType.ExactMatch);
-  const [mappingIri, setMappingIri] = useState('');
   const [properties, setProperties] = useState<OwnPropertyDraft[]>([]);
   const [propertyName, setPropertyName] = useState('');
   const [datatype, setDatatype] = useState<StudioDatatype | 'object'>('string');
@@ -355,18 +359,26 @@ const OntologyNewClassPanel = ({
     needsAxioms,
     properties.length
   );
-  const pendingMapping: MappingInput = {
-    mappingType,
-    conceptIri: mappingIri,
-  };
-  const mappingRowValid = isValidMapping(mappings, pendingMapping);
-  const mappingRowUnresolved =
-    Boolean(mappingIri.trim()) && !isAbsoluteOntologyIri(mappingIri.trim());
-  const isDuplicateMapping =
-    isAbsoluteOntologyIri(mappingIri.trim()) && !mappingRowValid;
+  // Each mapping is an editable row, as the design draws them; a row left empty is skipped.
+  const isUnresolvedRow = ({ conceptIri }: MappingInput) =>
+    Boolean(conceptIri.trim()) && !isAbsoluteOntologyIri(conceptIri.trim());
+  const isDuplicateRow = (index: number) =>
+    isAbsoluteOntologyIri(mappings[index].conceptIri.trim()) &&
+    !isValidMapping(
+      mappings.slice(0, index).map((row) => ({
+        ...row,
+        conceptIri: row.conceptIri.trim(),
+      })),
+      mappings[index]
+    );
+  const mappingRowUnresolved = mappings.some(isUnresolvedRow);
   const [mappingCommitTried, setMappingCommitTried] = useState(false);
-  const changeMappingIri = (iri: string) => {
-    setMappingIri(iri);
+  const changeMapping = (index: number, change: Partial<MappingInput>) => {
+    setMappings((previous) =>
+      previous.map((row, position) =>
+        position === index ? { ...row, ...change } : row
+      )
+    );
     setMappingCommitTried(false);
   };
   const [restoring, setRestoring] = useState(false);
@@ -381,7 +393,10 @@ const OntologyNewClassPanel = ({
   const has = (...found: ClassIdentityIssue[]) =>
     found.some((issue) => issues.includes(issue));
   const issueText = (issue: ClassIdentityIssue) =>
-    t(ISSUE_MESSAGES[issue], { name: localName.trim(), label: label.trim() });
+    t(ISSUE_MESSAGES[issue], {
+      name: localName.trim(),
+      label: label.trim() || localName.trim(),
+    });
   const fieldHint = (
     fallback: string | undefined,
     ...found: ClassIdentityIssue[]
@@ -390,27 +405,42 @@ const OntologyNewClassPanel = ({
 
     return issue ? issueText(issue) : fallback;
   };
-  const blockedReason = (() => {
+  const { name: nameFieldIssues, label: labelFieldIssues } = fieldIssues(label);
+  // A reason a field already shows under itself is not repeated beside the buttons.
+  const createBlock = (() => {
     if (ontologyField && !ontologyField.value) {
-      return t('message.ontology-concept-ontology-required');
+      return {
+        isOnField: false,
+        reason: t('message.ontology-concept-ontology-required'),
+      };
     }
     if (!permitted) {
-      return t('message.no-permission-for-action');
+      return {
+        isOnField: false,
+        reason: t('message.no-permission-for-action'),
+      };
     }
     if (issues.length > 0) {
-      return issueText(issues[0]);
+      return {
+        isOnField: issues[0] !== 'name-required',
+        reason: issueText(issues[0]),
+      };
     }
     if (deletedConcept) {
-      return t('message.ontology-concept-name-deleted', {
-        name: localName.trim(),
-      });
+      return {
+        isOnField: true,
+        reason: t('message.ontology-concept-name-deleted', {
+          name: localName.trim(),
+        }),
+      };
     }
     if (mappingRowUnresolved && mappingCommitTried) {
-      return t('message.invalid-concept-iri');
+      return { isOnField: true, reason: t('message.invalid-concept-iri') };
     }
 
     return undefined;
   })();
+  const blockedReason = createBlock?.reason;
   const valid = [blockedReason === undefined, !skosWithOwlOnly].every(Boolean);
   const effectiveIri = classIri(ontology.namespace ?? '', localName, customIri);
 
@@ -425,7 +455,6 @@ const OntologyNewClassPanel = ({
     synonyms.length,
     synonym,
     mappings.length,
-    mappingIri,
     properties.length,
     propertyName,
     range,
@@ -462,8 +491,7 @@ const OntologyNewClassPanel = ({
     setSynonyms([]);
     setSynonym('');
     setMappings([]);
-    setMappingType(ConceptMappingType.ExactMatch);
-    changeMappingIri('');
+    setMappingCommitTried(false);
     setProperties([]);
     setPropertyName('');
     setDatatype('string');
@@ -543,10 +571,14 @@ const OntologyNewClassPanel = ({
 
     return () => onLockChange?.(false);
   }, [leaveLocked, onLockChange]);
+  const removeSynonym = (value: string) =>
+    setSynonyms((previous) => previous.filter((v) => v !== value));
   const removeProperty = (property: OwnPropertyDraft) =>
     setProperties((previous) => previous.filter((p) => p !== property));
-  const removeMapping = (mapping: MappingInput) =>
-    setMappings((previous) => previous.filter((m) => m !== mapping));
+  const removeMapping = (index: number) =>
+    setMappings((previous) =>
+      previous.filter((_row, position) => position !== index)
+    );
   const propertyInput = {
     name: propertyName,
     datatype,
@@ -560,8 +592,9 @@ const OntologyNewClassPanel = ({
     localName,
     propertyInput
   );
+  const canAddProperty = rowValid && !locked && canCreateProperty;
   const addProperty = () => {
-    if (!rowValid || locked || !canCreateProperty) {
+    if (!canAddProperty) {
       return;
     }
     setProperties((previous) => [...previous, ownPropertyDraft(propertyInput)]);
@@ -570,21 +603,11 @@ const OntologyNewClassPanel = ({
     setEnumInput('');
     setIdentifier(false);
   };
-  const addMapping = () => {
-    if (locked) {
-      return;
-    }
-    if (!mappingRowValid) {
-      setMappingCommitTried(true);
-
-      return;
-    }
+  const addMapping = () =>
     setMappings((previous) => [
       ...previous,
-      { mappingType, conceptIri: mappingIri.trim() },
+      { mappingType: ConceptMappingType.ExactMatch, conceptIri: '' },
     ]);
-    changeMappingIri('');
-  };
   const restoreDeleted = async () => {
     if (!deletedConcept || restoring) {
       return;
@@ -610,7 +633,7 @@ const OntologyNewClassPanel = ({
         </span>
       );
     }
-    if (deletedConcept && !has(...NAME_ISSUES)) {
+    if (deletedConcept && !has(...nameFieldIssues)) {
       return (
         <span data-testid="new-class-name-deleted">
           {restoreFailed
@@ -631,7 +654,7 @@ const OntologyNewClassPanel = ({
       );
     }
 
-    return fieldHint(undefined, ...NAME_ISSUES);
+    return fieldHint(undefined, ...nameFieldIssues);
   };
   const canSubmit = [permitted, !locked].every(Boolean);
   const create = async (keepOpen: boolean) => {
@@ -653,9 +676,11 @@ const OntologyNewClassPanel = ({
     setError(false);
     try {
       const state = await getOntologyState(ontology.id);
-      const pending = mappingRowValid
-        ? [...mappings, { mappingType, conceptIri: mappingIri.trim() }]
-        : mappings;
+      const pending = mappings.reduce<MappingInput[]>((kept, row) => {
+        const candidate = { ...row, conceptIri: row.conceptIri.trim() };
+
+        return isValidMapping(kept, candidate) ? [...kept, candidate] : kept;
+      }, []);
       const draft: NewClassDraft = {
         label: label.trim() || localName.trim(),
         localName,
@@ -780,93 +805,117 @@ const OntologyNewClassPanel = ({
       </Box>
     );
   };
-  const mappingFieldError = (() => {
-    if (isDuplicateMapping) {
+  const mappingRowError = (index: number) => {
+    if (isDuplicateRow(index)) {
       return t('message.ontology-mapping-already-added');
     }
 
-    return mappingRowUnresolved && mappingCommitTried
+    return isUnresolvedRow(mappings[index]) && mappingCommitTried
       ? t('message.invalid-concept-iri')
       : undefined;
-  })();
+  };
   const renderMappings = () => (
-    <>
-      <Typography size="text-sm" weight="semibold">
-        {t('label.mapping-plural')}
-      </Typography>
-      <Typography size="text-xs">
-        {t('message.ontology-concept-mappings-hint')}
-      </Typography>
-      {mappings.map((mapping) => (
-        <Box
-          align="center"
-          gap={2}
-          justify="between"
-          key={mapping.mappingType + mapping.conceptIri}>
-          <Typography
-            className="tw:break-all"
-            data-testid="new-class-mapping"
-            size="text-xs">
-            {mappingTypeLabel(mapping.mappingType)} · {mapping.conceptIri}
+    <Box direction="col" gap={3}>
+      <Box align="start" gap={2} justify="between">
+        <Box direction="col">
+          <Typography size="text-sm" weight="semibold">
+            {t('label.mapping-plural')}
           </Typography>
-          <ButtonUtility
-            color="tertiary"
-            icon={XClose}
+          <Typography color="secondary" size="text-xs">
+            {t('message.ontology-concept-mappings-hint')}
+          </Typography>
+        </Box>
+        <Button
+          className="tw:shrink-0"
+          color="link-color"
+          data-testid="new-class-add-mapping"
+          iconLeading={Plus}
+          isDisabled={locked}
+          size="sm"
+          onPress={addMapping}>
+          {t('label.add-mapping')}
+        </Button>
+      </Box>
+      {mappings.map((mapping, index) => (
+        <Box
+          align="start"
+          data-row={index}
+          data-testid="new-class-mapping"
+          gap={2}
+          // Rows have no identity of their own until filled in; position is their key.
+          // eslint-disable-next-line react/no-array-index-key
+          key={index}>
+          <Select
+            aria-label={t('label.mapping-type')}
+            className="tw:w-36 tw:shrink-0"
             isDisabled={locked}
-            size="xs"
-            tooltip={t('label.remove-entity', { entity: mapping.conceptIri })}
-            onClick={() => removeMapping(mapping)}
+            items={Object.values(ConceptMappingType).map((id) => ({
+              id,
+              label: mappingTypeLabel(id),
+            }))}
+            value={mapping.mappingType}
+            onChange={(key) =>
+              changeMapping(index, {
+                mappingType: String(key) as ConceptMappingType,
+              })
+            }>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col">
+            <OntologyIriInput
+              hideLabel
+              error={mappingRowError(index)}
+              isDisabled={locked}
+              isLoading={mappingTargetsLoading}
+              label={t('label.concept-iri')}
+              options={mappingTargets}
+              testId="new-class-mapping-iri"
+              value={mapping.conceptIri}
+              onChange={(conceptIri) => changeMapping(index, { conceptIri })}
+              onInvalidCommit={() => setMappingCommitTried(true)}
+            />
+          </Box>
+          <ButtonUtility
+            className="tw:mt-1.5 tw:shrink-0"
+            color="tertiary"
+            data-testid="new-class-remove-mapping"
+            icon={Trash01}
+            isDisabled={locked}
+            size="sm"
+            tooltip={t('label.remove-entity', {
+              entity: mapping.conceptIri || t('label.mapping'),
+            })}
+            onClick={() => removeMapping(index)}
           />
         </Box>
       ))}
-      <Select
-        isDisabled={locked}
-        items={Object.values(ConceptMappingType).map((id) => ({
-          id,
-          label: mappingTypeLabel(id),
-        }))}
-        label={t('label.mapping-type')}
-        value={mappingType}
-        onChange={(key) => setMappingType(String(key) as ConceptMappingType)}>
-        {(item) => <Select.Item id={item.id} label={item.label} />}
-      </Select>
-      <OntologyIriInput
-        error={mappingFieldError}
-        isDisabled={locked}
-        isLoading={mappingTargetsLoading}
-        label={t('label.concept-iri')}
-        options={mappingTargets}
-        testId="new-class-mapping-iri"
-        value={mappingIri}
-        onChange={changeMappingIri}
-        onInvalidCommit={() => setMappingCommitTried(true)}
-        onSubmit={addMapping}
-      />
-      <Button
-        color="secondary"
-        data-testid="new-class-add-mapping"
-        isDisabled={!mappingIri.trim() || isDuplicateMapping || locked}
-        size="sm"
-        onPress={addMapping}>
-        {t('label.add-mapping')}
-      </Button>
-    </>
+    </Box>
   );
   const renderProperties = () => (
     <>
-      <Typography size="text-sm" weight="semibold">
+      <Typography className="tw:text-secondary" size="text-sm" weight="medium">
         {t('label.own-property-plural')}
       </Typography>
+      {/* The design's rows: name, then its type in grey, removed with ×. */}
       {properties.map((property) => (
-        <Box align="center" gap={2} justify="between" key={property.name}>
-          <Typography size="text-xs">
-            {property.name} ·{' '}
+        <Box
+          align="center"
+          className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:py-2 tw:pr-2 tw:pl-4"
+          data-testid="new-class-own-property"
+          gap={2}
+          key={property.name}>
+          <Typography ellipsis className="tw:text-primary" size="text-md">
+            {property.name}
+          </Typography>
+          <Typography className="tw:shrink-0 tw:text-tertiary" size="text-sm">
             {property.kind === 'data'
               ? t(DATATYPE_LABEL_KEYS[property.datatype])
               : ownPropertyTypeLabel(property)}
             {property.isIdentifier ? ' · ' + t('label.identifier') : ''}
           </Typography>
           <ButtonUtility
+            className="tw:ml-auto"
+            color="tertiary"
             icon={XClose}
             isDisabled={locked}
             size="xs"
@@ -875,94 +924,108 @@ const OntologyNewClassPanel = ({
           />
         </Box>
       ))}
-      <Input
-        inputDataTestId="new-class-property-name"
-        isDisabled={locked || !canCreateProperty}
-        label={t('label.property-name')}
-        value={propertyName}
-        onChange={setPropertyName}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            addProperty();
-          }
-        }}
-      />
-      <Select
-        isDisabled={locked || !canCreateProperty}
-        items={[...STUDIO_DATATYPES, 'object' as const].map((id) => ({
-          id,
-          label: t(DATATYPE_LABEL_KEYS[id]),
-        }))}
-        label={t('label.type')}
-        value={datatype}
-        onChange={(key) =>
-          setDatatype(String(key) as StudioDatatype | 'object')
-        }>
-        {(item) => <Select.Item id={item.id} label={item.label} />}
-      </Select>
-      {datatype === 'object' ? (
-        <Select
-          isDisabled={locked}
-          items={conceptOptions}
-          label={t('label.range')}
-          value={range}
-          onChange={(key) => setRange(String(key))}>
-          {(item) => <Select.Item id={item.id} label={item.label} />}
-        </Select>
-      ) : null}
-      {datatype === 'enum' ? (
-        <>
+      {/* The design's grey card: name and type on one row, Identifier and Add under them. */}
+      <Box
+        className="tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-3"
+        data-testid="new-class-own-property-form"
+        direction="col"
+        gap={3}>
+        <Box align="start" gap={2}>
           <Input
-            inputDataTestId="new-class-enum-values"
-            isDisabled={locked}
-            label={t('label.allowed-values')}
-            value={enumInput}
-            onChange={(value) => {
-              if (value.includes(',')) {
-                const parts = value.split(',');
-                setEnumValues((previous) =>
-                  distinctChipValues([...previous, ...parts.slice(0, -1)])
-                );
-                setEnumInput(parts.at(-1) ?? '');
-              } else {
-                setEnumInput(value);
-              }
-            }}
+            aria-label={t('label.property-name')}
+            className="tw:min-w-0 tw:flex-1"
+            inputDataTestId="new-class-property-name"
+            isDisabled={locked || !canCreateProperty}
+            placeholder={t('label.property-name')}
+            value={propertyName}
+            onChange={setPropertyName}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                setEnumValues((previous) =>
-                  distinctChipValues([...previous, enumInput])
-                );
-                setEnumInput('');
+                addProperty();
               }
             }}
           />
-          <Box className="tw:flex-wrap" gap={1}>
-            {renderChips(enumValues, (value) =>
-              setEnumValues((previous) => previous.filter((v) => v !== value))
-            )}
-          </Box>
-          <Typography size="text-xs">
-            {t('message.ontology-enum-minimum')}
-          </Typography>
-        </>
-      ) : null}
-      <Checkbox
-        isDisabled={locked || !canCreateProperty}
-        isSelected={identifier}
-        label={t('label.identifier')}
-        onChange={setIdentifier}
-      />
-      <Button
-        color="secondary"
-        data-testid="new-class-add-property"
-        isDisabled={!rowValid || locked || !canCreateProperty}
-        size="sm"
-        onPress={addProperty}>
-        {t('label.add')}
-      </Button>
+          <Select
+            aria-label={t('label.type')}
+            className="tw:w-36 tw:shrink-0"
+            isDisabled={locked || !canCreateProperty}
+            items={[...STUDIO_DATATYPES, 'object' as const].map((id) => ({
+              id,
+              label: t(DATATYPE_LABEL_KEYS[id]),
+            }))}
+            value={datatype}
+            onChange={(key) =>
+              setDatatype(String(key) as StudioDatatype | 'object')
+            }>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+        </Box>
+        {datatype === 'object' ? (
+          <Select
+            isDisabled={locked}
+            items={conceptOptions}
+            label={t('label.range')}
+            value={range}
+            onChange={(key) => setRange(String(key))}>
+            {(item) => <Select.Item id={item.id} label={item.label} />}
+          </Select>
+        ) : null}
+        {datatype === 'enum' ? (
+          <>
+            <Input
+              inputDataTestId="new-class-enum-values"
+              isDisabled={locked}
+              label={t('label.allowed-values')}
+              value={enumInput}
+              onChange={(value) => {
+                if (value.includes(',')) {
+                  const parts = value.split(',');
+                  setEnumValues((previous) =>
+                    distinctChipValues([...previous, ...parts.slice(0, -1)])
+                  );
+                  setEnumInput(parts.at(-1) ?? '');
+                } else {
+                  setEnumInput(value);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  setEnumValues((previous) =>
+                    distinctChipValues([...previous, enumInput])
+                  );
+                  setEnumInput('');
+                }
+              }}
+            />
+            <Box className="tw:flex-wrap" gap={1}>
+              {renderChips(enumValues, (value) =>
+                setEnumValues((previous) => previous.filter((v) => v !== value))
+              )}
+            </Box>
+            <Typography size="text-xs">
+              {t('message.ontology-enum-minimum')}
+            </Typography>
+          </>
+        ) : null}
+        <Box align="center" gap={2} justify="between">
+          <Checkbox
+            isDisabled={locked || !canCreateProperty}
+            isSelected={identifier}
+            label={t('label.identifier')}
+            onChange={setIdentifier}
+          />
+          <Button
+            color={canAddProperty ? 'primary' : 'secondary'}
+            data-testid="new-class-add-property"
+            isDisabled={!canAddProperty}
+            size="sm"
+            onPress={addProperty}>
+            {t('label.add')}
+          </Button>
+        </Box>
+      </Box>
     </>
   );
   const renderStatus = () => {
@@ -989,14 +1052,6 @@ const OntologyNewClassPanel = ({
       {apply.status.kind === 'blocked' && !apply.status.conflict ? (
         <Alert variant="error">{apply.status.message}</Alert>
       ) : null}
-      {blockedReason && apply.status.kind !== 'applied' ? (
-        <Typography
-          color="secondary"
-          data-testid="new-class-create-reason"
-          size="text-xs">
-          {blockedReason}
-        </Typography>
-      ) : null}
       <Box align="center" gap={3}>
         <Button
           color="tertiary"
@@ -1005,31 +1060,50 @@ const OntologyNewClassPanel = ({
           onPress={onClose}>
           {t('label.cancel')}
         </Button>
-        <Typography
-          className="tw:min-w-0 tw:flex-1 tw:text-right"
-          color="secondary"
-          data-testid="new-class-save-status"
-          role="status"
-          size="text-xs">
-          {renderStatus()}
-        </Typography>
+        {/* The design names what blocks Create beside the buttons, before the save status. */}
+        <Box
+          align="center"
+          className="tw:min-w-0 tw:flex-1"
+          gap={2}
+          justify="end">
+          {createBlock &&
+          !createBlock.isOnField &&
+          apply.status.kind !== 'applied' ? (
+            <Typography
+              color="secondary"
+              data-testid="new-class-create-reason"
+              size="text-sm">
+              {createBlock.reason}
+            </Typography>
+          ) : null}
+          <Typography
+            color="secondary"
+            data-testid="new-class-save-status"
+            role="status"
+            size="text-xs">
+            {renderStatus()}
+          </Typography>
+        </Box>
         {renderSubmit()}
       </Box>
     </Box>
   );
   const renderAdvanced = () => (
     <>
-      <Button
-        aria-expanded={advancedOpen}
-        color="link-gray"
-        data-testid="new-class-advanced-toggle"
-        iconLeading={advancedOpen ? ChevronDown : ChevronRight}
-        size="sm"
-        onPress={() => setAdvancedOpen((open) => !open)}>
-        {t('label.advanced')}
-      </Button>
+      <OntologyAdvancedToggle
+        hideHint
+        controls="new-class-advanced"
+        isOpen={advancedOpen}
+        testId="new-class-advanced-toggle"
+        onToggle={() => setAdvancedOpen((open) => !open)}
+      />
       {advancedOpen ? (
-        <Box data-testid="new-class-advanced" direction="col" gap={4}>
+        <Box
+          data-testid="new-class-advanced"
+          direction="col"
+          gap={4}
+          id="new-class-advanced">
+          <SectionCaption>{t('label.axiom-plural')}</SectionCaption>
           {(
             [
               { name: 'parents', label: t('label.subclass-of') },
@@ -1056,16 +1130,12 @@ const OntologyNewClassPanel = ({
             label={t('label.abstract')}
             onChange={setAbstract}
           />
-          <Input
-            hint={fieldHint(undefined, 'source-invalid')}
-            inputDataTestId="new-class-source"
-            isDisabled={locked}
-            isInvalid={has('source-invalid')}
-            label={t('label.definition-source')}
-            value={source}
-            onChange={setSource}
-          />
-          <Typography size="text-sm" weight="semibold">
+          <Divider />
+          <SectionCaption>{t('label.property-plural')}</SectionCaption>
+          <Typography
+            className="tw:text-secondary"
+            size="text-sm"
+            weight="medium">
             {t('label.inherited-property-plural')}
           </Typography>
           {inherited.map(({ property, parent }) => (
@@ -1077,9 +1147,8 @@ const OntologyNewClassPanel = ({
             </Typography>
           ))}
           {renderProperties()}
-          <Typography size="text-sm" weight="semibold">
-            {t('label.governance')}
-          </Typography>
+          <Divider />
+          <SectionCaption>{t('label.governance')}</SectionCaption>
           <Input
             isReadOnly
             label={t('label.layer')}
@@ -1109,7 +1178,8 @@ const OntologyNewClassPanel = ({
       ariaLabel={t('label.new-entity', {
         entity: t('label.concept').toLocaleLowerCase(),
       })}
-      testId="ontology-new-class-panel">
+      testId="ontology-new-class-panel"
+      onInteractOutside={onClose}>
       <Box
         align="center"
         className="tw:sticky tw:top-0 tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-4"
@@ -1118,12 +1188,13 @@ const OntologyNewClassPanel = ({
           <Typography
             color="secondary"
             data-testid="new-class-in-ontology"
-            size="text-sm">
+            size="text-sm"
+            weight="medium">
             {t('label.in-entity', { entity: getEntityName(ontology) })}
           </Typography>
           <Typography
             as="h2"
-            className="not-prose tw:m-0"
+            className="not-prose tw:m-0 tw:text-primary"
             size="text-lg"
             weight="semibold">
             {t('label.new-entity', {
@@ -1163,7 +1234,7 @@ const OntologyNewClassPanel = ({
               inputDataTestId="new-class-local-name"
               isDisabled={locked}
               isInvalid={
-                has(...NAME_ISSUES) ||
+                has(...nameFieldIssues) ||
                 Boolean(deletedConcept) ||
                 (apply.status.kind === 'blocked' && apply.status.conflict)
               }
@@ -1175,47 +1246,82 @@ const OntologyNewClassPanel = ({
             <Input
               hint={fieldHint(
                 t('message.ontology-concept-display-name-hint'),
-                'label-taken'
+                ...labelFieldIssues
               )}
               inputDataTestId="new-class-label"
               isDisabled={locked}
-              isInvalid={has('label-taken')}
+              isInvalid={has(...labelFieldIssues)}
               label={t('label.ontology-display-name')}
               placeholder={localName}
               value={label}
               onChange={setLabel}
             />
-            <Input
-              inputDataTestId="new-class-synonyms"
-              isDisabled={locked}
-              label={t('label.synonym-plural')}
-              placeholder={t('message.ontology-synonym-placeholder')}
-              value={synonym}
-              onChange={(value) => {
-                if (value.includes(',')) {
-                  const parts = value.split(',');
-                  setSynonyms((previous) =>
-                    distinctChipValues([...previous, ...parts.slice(0, -1)])
-                  );
-                  setSynonym(parts.at(-1) ?? '');
-                } else {
-                  setSynonym(value);
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  setSynonyms((previous) =>
-                    distinctChipValues([...previous, synonym])
-                  );
-                  setSynonym('');
-                }
-              }}
-            />
-            <Box className="tw:flex-wrap" gap={1}>
-              {renderChips(synonyms, (value) =>
-                setSynonyms((previous) => previous.filter((v) => v !== value))
-              )}
+            {/* Chips sit inside the field, as the design draws it; the frame is layout around a
+                borderless core Input. */}
+            <Box direction="col" gap={2}>
+              <Label id="new-class-synonyms-label">
+                {t('label.synonym-plural')}
+              </Label>
+              <Box
+                align="center"
+                className="tw:min-h-10 tw:flex-wrap tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-2 tw:py-1 tw:shadow-xs tw:focus-within:border-brand"
+                data-testid="new-class-synonym-field"
+                gap={2}>
+                {synonyms.length > 0 ? (
+                  <TagGroup label={t('label.synonym-plural')} size="md">
+                    <TagList className="tw:flex tw:flex-wrap tw:gap-1.5">
+                      {synonyms.map((value) => (
+                        <Tag
+                          id={value}
+                          isDisabled={locked}
+                          key={value}
+                          onClose={() => removeSynonym(value)}>
+                          {value}
+                        </Tag>
+                      ))}
+                    </TagList>
+                  </TagGroup>
+                ) : null}
+                <Input
+                  borderless
+                  aria-labelledby="new-class-synonyms-label"
+                  className="tw:min-w-24 tw:flex-1"
+                  inputDataTestId="new-class-synonyms"
+                  isDisabled={locked}
+                  placeholder={
+                    synonyms.length > 0
+                      ? undefined
+                      : t('message.ontology-synonym-placeholder')
+                  }
+                  value={synonym}
+                  onChange={(value) => {
+                    if (value.includes(',')) {
+                      const parts = value.split(',');
+                      setSynonyms((previous) =>
+                        distinctChipValues([...previous, ...parts.slice(0, -1)])
+                      );
+                      setSynonym(parts.at(-1) ?? '');
+                    } else {
+                      setSynonym(value);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      setSynonyms((previous) =>
+                        distinctChipValues([...previous, synonym])
+                      );
+                      setSynonym('');
+                    } else if (
+                      event.key === 'Backspace' &&
+                      !synonym &&
+                      synonyms.length > 0
+                    ) {
+                      setSynonyms((previous) => previous.slice(0, -1));
+                    }
+                  }}
+                />
+              </Box>
             </Box>
             <div data-testid="new-class-type">
               <Select
@@ -1275,13 +1381,23 @@ const OntologyNewClassPanel = ({
               label={t('label.description')}
               placeholder={t('message.concept-description-placeholder')}
               rows={3}
+              size="sm"
               textAreaRef={tagDescriptionField}
               value={description}
               onChange={setDescription}
             />
+            <Input
+              hint={fieldHint(undefined, 'source-invalid')}
+              inputDataTestId="new-class-source"
+              isDisabled={locked}
+              isInvalid={has('source-invalid')}
+              label={t('label.definition-source')}
+              value={source}
+              onChange={setSource}
+            />
             {renderMappings()}
             {renderAdvanced()}
-            <Alert variant="gray">
+            <Alert variant="brand">
               {t('message.ontology-class-draft-notice')}
             </Alert>
           </Box>

@@ -36,6 +36,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import { splitUnfitRelationOptions } from '../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import {
   NEW_RELATION_TYPE_PREFIX,
   RELATION_PALETTE_SWATCH_CLASSES,
@@ -325,19 +326,21 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   const renderRelationTypeList = () => {
     if (isLoading) {
       return (
-        <span className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary">
-          {t('label.loading')}
+        <span className="tw:p-2">
+          <Loader size="x-small" />
         </span>
       );
     }
 
     return (
       <>
-        {hasResults ? (
-          visibleGroups.map((group) =>
-            renderGroup(group, select, t('label.inverse'), isAiMode)
-          )
-        ) : (
+        {hasResults
+          ? visibleGroups.map((group) =>
+              renderGroup(group, select, t('label.inverse'), isAiMode)
+            )
+          : null}
+        {/* With a typed name the create option is the answer, so no empty message beside it. */}
+        {hasResults || (canCreateType && term) ? null : (
           <span
             className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary"
             data-testid="no-relation-types">
@@ -346,14 +349,15 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         )}
         {canCreateType ? (
           <Button
-            className="tw:mt-1 tw:justify-start"
+            wrap
+            className="tw:mt-1"
             color="link-color"
             data-testid="relation-type-create"
             iconLeading={Plus}
             size="sm"
             onClick={() => select(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
             {term
-              ? t('label.new-relationship-type-name', { name: term })
+              ? t('label.create-relationship-type-name', { name: term })
               : t('label.new-link')}
             <span className="tw:ml-1 tw:font-normal tw:text-tertiary">
               {t('message.creates-a-property')}

@@ -15,6 +15,7 @@ import { Search } from '@openmetadata/ui-core-components/icons';
 import { KeyboardEvent, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import OntologySearchClearButton from '../../../OntologyExplorer/OntologySearchClearButton';
 
 interface OntologyConceptSearchProps {
   readonly onChange: (value: string) => void;
@@ -84,6 +85,12 @@ const OntologyConceptSearch = ({
         inputDataTestId="ontology-graph-search"
         placeholder={`${t('label.find-concept')}…`}
         size="sm"
+        trailingSlot={
+          <OntologySearchClearButton
+            value={value}
+            onClear={() => onChange('')}
+          />
+        }
         value={value}
         onChange={onChange}
       />

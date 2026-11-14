@@ -128,6 +128,26 @@ describe('OntologyPublicationModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('keeps one modal height whichever tab is open', () => {
+    render(
+      <OntologyPublicationModal
+        canEdit
+        ontology={ontology}
+        onClose={jest.fn()}
+      />
+    );
+    const modal = screen.getByTestId('ontology-publication-modal');
+
+    expect(modal).toHaveClass('tw:h-[88vh]');
+    expect(modal).not.toHaveClass('tw:max-h-[88vh]');
+
+    fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
+
+    expect(screen.getByTestId('ontology-publication-modal')).toHaveClass(
+      'tw:h-[88vh]'
+    );
+  });
+
   it('shows the version step and the release count the panel reports in AI mode', () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     render(

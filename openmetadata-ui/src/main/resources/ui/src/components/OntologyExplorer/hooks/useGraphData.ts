@@ -710,9 +710,10 @@ function computeNodeSelectionState(
     ctx.selectedNodeId !== null && !isSelected && !ctx.neighborSet.has(node.id);
   const isDimmedBySearch =
     ctx.searchNodeSet != null && !ctx.searchNodeSet.has(node.id);
+  // Studio marks a selection with its border only; fading the rest read as disabled.
   const isDimmed = ctx.searchHighlightActive
     ? isDimmedBySearch
-    : isDimmedBySelection;
+    : !ctx.studioMode && isDimmedBySelection;
 
   return { isSelected, isHighlighted, isDimmed };
 }
@@ -1142,7 +1143,9 @@ function computeEdgeIsDimmed(
   const isDimmedBySearch =
     ctx.searchEdgeSet != null && !ctx.searchEdgeSet.has(edgeKeyStr);
 
-  return ctx.searchHighlightActive ? isDimmedBySearch : isDimmedBySelection;
+  return ctx.searchHighlightActive
+    ? isDimmedBySearch
+    : !ctx.studioMode && isDimmedBySelection;
 }
 
 function computeEdgeLabelVisibility(

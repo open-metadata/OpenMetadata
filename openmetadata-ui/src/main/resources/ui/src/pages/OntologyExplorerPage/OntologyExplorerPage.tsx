@@ -15,7 +15,9 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  ButtonUtility,
   Divider,
+  Select,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -125,6 +127,7 @@ import {
   StudioUrlVersion,
   StudioUrlView,
 } from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
+import { getUnpublishedCount } from '../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   checkPermission,
@@ -494,6 +497,19 @@ function resolveStudioRead({
   };
 }
 
+/** An editor asked for the release, and there is none yet: the workspace is not shown. */
+const hasNothingToPublish = (
+  isAllOntologies: boolean,
+  status: Ontology['publicationStatus']
+) =>
+  !isAllOntologies && status !== undefined && getUnpublishedCount(status) === 0;
+
+const isNothingPublishedFor = (
+  mode: StudioMode,
+  version: StudioUrlVersion,
+  publishedReleaseId?: string
+) => mode === 'view' && version === 'published' && !publishedReleaseId;
+
 /**
  * Edit needs edit rights on the ontology, or on the concept the URL selects: a concept
  * owner enters Edit from that concept's panel and stays only while it is selected.
@@ -673,6 +689,7 @@ function getStudioStatsLabel(
   aggregateGraph: OntologyGraphData | null,
   ontologyId: string | null,
   nativeStats: OntologyModelStats | undefined,
+  isNothingPublished: boolean,
   termCount: string,
   relationCount: string,
   t: TFunction
@@ -692,14 +709,15 @@ function getStudioStatsLabel(
     const currentStats =
       nativeStats?.ontologyId === ontologyId ? nativeStats : undefined;
 
-    if (!currentStats) {
+    if (!currentStats && !isNothingPublished) {
       return '';
     }
 
+    // With no release the workspace is not mounted, so the last stats it reported are the draft's.
     return `${t('message.native-concept-count', {
-      count: currentStats.conceptCount,
+      count: isNothingPublished ? 0 : currentStats?.conceptCount,
     })} · ${t('message.native-relation-count', {
-      count: currentStats.relationCount,
+      count: isNothingPublished ? 0 : currentStats?.relationCount,
     })}`;
   }
 
@@ -939,14 +957,26 @@ const OntologyExplorerContent: React.FC = () => {
     },
     [setStudioUrl]
   );
+  // Switching between Graph, Tree and Ontology closes the concept drawer: a concept opened on
+  // one surface is not carried to the next, which is also what a press outside the drawer does.
+  const setSurfaceView = useCallback(
+    (view: StudioUrlView) =>
+      setSearchParams((current) => {
+        const next = patchStudioUrlParams(current, { view });
+        next.delete('concept');
+
+        return next;
+      }),
+    [setSearchParams]
+  );
   const setViewSurface = useCallback(
-    (surface: ViewSurface) => setStudioUrl({ view: surface }),
-    [setStudioUrl]
+    (surface: ViewSurface) => setSurfaceView(surface),
+    [setSurfaceView]
   );
   const setEditSurface = useCallback(
     (surface: EditSurface) =>
-      setStudioUrl({ view: surface === 'definitions' ? 'ontology' : surface }),
-    [setStudioUrl]
+      setSurfaceView(surface === 'definitions' ? 'ontology' : surface),
+    [setSurfaceView]
   );
   const setQuerySurface = useCallback(
     (surface: QuerySurface) => setStudioUrl({ view: surface }),
@@ -1336,15 +1366,6 @@ const OntologyExplorerContent: React.FC = () => {
   );
   const termCount = getStatCount(stats, t('label.term-plural'));
   const relationCount = getStatCount(stats, t('label.relation-plural'));
-  const statsLabel = getStudioStatsLabel(
-    studioScope,
-    allModels.graph,
-    ontologyId,
-    nativeStats,
-    termCount,
-    relationCount,
-    t
-  );
 
   const explorerSurface = getExplorerSurface(
     mode,
@@ -1404,6 +1425,21 @@ const OntologyExplorerContent: React.FC = () => {
     selectedOntology,
     showEditTab,
   });
+  const isNothingPublished = isNothingPublishedFor(
+    mode,
+    version,
+    publishedReleaseId
+  );
+  const statsLabel = getStudioStatsLabel(
+    studioScope,
+    allModels.graph,
+    ontologyId,
+    nativeStats,
+    isNothingPublished,
+    termCount,
+    relationCount,
+    t
+  );
   const isOntologyAiAvailable = isGlossaryScope && isOntologyAiEnabled;
   const modeTabs = computeModeTabs(t, canOfferEdit, isOntologyAiAvailable);
 
@@ -1826,7 +1862,7 @@ const OntologyExplorerContent: React.FC = () => {
 
     return publicationStatus?.unpublishedChanges === undefined
       ? t('label.unavailable')
-      : String(publicationStatus.unpublishedChanges);
+      : String(getUnpublishedCount(publicationStatus));
   }
 
   function renderPublicationLabel() {
@@ -1869,7 +1905,12 @@ const OntologyExplorerContent: React.FC = () => {
           title={t('message.ontology-choose-ontology-to-publish')}>
           <Button
             aria-describedby={isAllOntologies ? publishReasonId : undefined}
-            color="primary"
+            // Nothing to publish: the dialog still holds releases and reviews, so it stays reachable but secondary.
+            color={
+              hasNothingToPublish(isAllOntologies, publicationStatus)
+                ? 'secondary'
+                : 'primary'
+            }
             data-testid="ontology-publication-trigger"
             iconLeading={GitBranch01}
             isDisabled={isAllOntologies}
@@ -1901,25 +1942,18 @@ const OntologyExplorerContent: React.FC = () => {
 
   function renderLibraryTrigger() {
     return (
-      <Button
+      <ButtonUtility
         aria-haspopup="dialog"
         aria-label={t('label.library')}
         color="secondary"
         data-testid="ontology-library-trigger"
-        iconLeading={
+        icon={
           isAiMode ? Grid01 : <Grid01 className="tw:text-fg-brand-primary" />
         }
-        size="sm"
+        size="lg"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
-        onPress={() =>
-          guard(() => {
-            if (isNativeOntology) {
-              handleModeChange('view');
-            }
-            setIsLibraryOpen(true);
-          })
-        }
+        onPress={() => setIsLibraryOpen(true)}
       />
     );
   }
@@ -1951,8 +1985,9 @@ const OntologyExplorerContent: React.FC = () => {
               setNativeStats(undefined);
               setNativeRefresh((value) => value + 1);
               refreshNativeWorkingDiff();
+              // An import lands in the draft, so the Published view would not show it.
+              setStudioUrl({ version: undefined });
             }}
-            onOpen={() => handleModeChange('view')}
           />
         ) : null}
         {isAllOntologies ? (
@@ -2092,9 +2127,26 @@ const OntologyExplorerContent: React.FC = () => {
     });
   }
 
+  // All ontologies that failed or is too large to draw renders no canvas, so nothing fills the toolbar.
+  function isAggregateCanvasEmpty() {
+    return (
+      isAllOntologies && (studioScopes.isOntologyError || allModels.isError)
+    );
+  }
+
+  // Full screen only helps a graph; the tree, the Ontology tab and an empty or failed canvas skip
+  // it, though a canvas already in full screen keeps its way out.
+  function showsFullScreenToggle() {
+    const surface = mode === 'view' ? viewSurface : editSurface;
+
+    return isFullScreen || (surface === 'graph' && !isAggregateCanvasEmpty());
+  }
+
   // The floating toolbar along the canvas bottom: version, search and full screen.
   function renderCanvasToolbar() {
-    if (mode !== 'view' && mode !== 'edit') {
+    const isEmpty =
+      !selectedOntology && isAggregateCanvasEmpty() && !isFullScreen;
+    if ((mode !== 'view' && mode !== 'edit') || isEmpty) {
       return null;
     }
     const fullScreenLabel = t(
@@ -2104,9 +2156,8 @@ const OntologyExplorerContent: React.FC = () => {
     return (
       <div
         className={classNames(
-          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4 tw:pr-4',
-          // An open Studio drawer covers the canvas's right; centre in what is left so full screen stays reachable.
-          'tw:group-has-[[data-studio-drawer]]/studio:pr-[calc(max(40vw,26.25rem)+1rem)]'
+          // Stays put when a Studio drawer opens; the drawer overlays, nothing under it moves.
+          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4 tw:pr-4'
         )}
         data-testid="ontology-canvas-toolbar">
         <Box
@@ -2115,15 +2166,17 @@ const OntologyExplorerContent: React.FC = () => {
           gap={2}>
           {renderVersionChip()}
           {renderSearchSlot()}
-          <Button
-            aria-label={fullScreenLabel}
-            color="secondary"
-            data-testid="ontology-full-screen"
-            iconLeading={isFullScreen ? Minimize02 : Expand05}
-            size="sm"
-            tooltip={fullScreenLabel}
-            onPress={toggleFullScreen}
-          />
+          {showsFullScreenToggle() ? (
+            <ButtonUtility
+              aria-label={fullScreenLabel}
+              color="secondary"
+              data-testid="ontology-full-screen"
+              icon={isFullScreen ? Minimize02 : Expand05}
+              size="lg"
+              tooltip={fullScreenLabel}
+              onPress={toggleFullScreen}
+            />
+          ) : null}
         </Box>
       </div>
     );
@@ -2304,9 +2357,7 @@ const OntologyExplorerContent: React.FC = () => {
       return <Loader />;
     }
 
-    return mode === 'view' && version === 'published' && !publishedReleaseId
-      ? renderNothingPublished()
-      : null;
+    return isNothingPublished ? renderNothingPublished() : null;
   };
 
   const renderNativeContent = (ontology: Ontology) => {
@@ -2379,6 +2430,33 @@ const OntologyExplorerContent: React.FC = () => {
         {allModels.isTooLarge ? (
           <NoDataPlaceholder
             description={t('message.ontology-aggregate-capacity')}
+            footer={
+              <Select
+                aria-label={t('label.select-entity', {
+                  entity: t('label.ontology').toLocaleLowerCase(),
+                })}
+                className="tw:w-64"
+                data-testid="all-ontologies-capacity-select"
+                items={availableOntologies.map((ontology) => ({
+                  id: ontology.id,
+                  label: getEntityName(ontology),
+                }))}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.ontology').toLocaleLowerCase(),
+                })}
+                size="sm"
+                onSelectionChange={(ontologyId) =>
+                  guard(() =>
+                    handleScopeChange({
+                      kind: 'ontology',
+                      ontologyId: String(ontologyId),
+                    })
+                  )
+                }>
+                {(item) => <Select.Item id={item.id} label={item.label} />}
+              </Select>
+            }
+            title={t('label.choose-an-ontology-to-view')}
           />
         ) : (
           <SomethingWentWrongPlaceholder
@@ -2409,9 +2487,6 @@ const OntologyExplorerContent: React.FC = () => {
           onClose={() => selectNativeConcept(undefined)}
           onEditConcept={(ontology, conceptId) =>
             selectOntology(ontology, conceptId, 'edit')
-          }
-          onOpenOwner={(ontology, conceptId) =>
-            selectOntology(ontology, conceptId)
           }
           onSelectConcept={selectNativeConcept}
         />
@@ -2458,7 +2533,6 @@ const OntologyExplorerContent: React.FC = () => {
           void studioScopes.refetchOntologies();
           void allModels.refetch();
         }}
-        onRequestGraphSurface={() => setViewSurface('graph')}
         onSelectedConceptChange={(id) => {
           if (mode === 'edit' && id) {
             const owner = allModels.models?.find((model) =>

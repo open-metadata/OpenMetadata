@@ -283,6 +283,14 @@ describe('Button — numeric label', () => {
     expect(button).not.toHaveAttribute('data-icon-only');
     expect(button.querySelector('[data-text]')).toHaveTextContent('0');
   });
+
+  it('lets the label follow the root colour transition instead of running its own', () => {
+    render(<Button>Add</Button>);
+    const label = screen.getByRole('button').querySelector('[data-text]');
+
+    expect(label).not.toHaveClass('tw:transition-inherit-all');
+    expect(label).toHaveClass('tw:transition-[text-decoration-color]');
+  });
 });
 
 describe('ButtonUtility — icon size and color', () => {

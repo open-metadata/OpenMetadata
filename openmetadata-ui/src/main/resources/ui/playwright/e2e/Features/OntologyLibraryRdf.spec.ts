@@ -104,7 +104,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
       );
       await expect(
         page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('7 Relations');
+      ).toHaveText('7 Hierarchy links');
 
       await page
         .getByTestId('ontology-pack-target-glossary')

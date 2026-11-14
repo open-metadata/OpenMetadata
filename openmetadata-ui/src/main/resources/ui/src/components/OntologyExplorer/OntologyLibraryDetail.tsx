@@ -212,7 +212,7 @@ const OntologyPackStatCards = ({
         },
         {
           count: relationships,
-          label: 'label.relation-plural',
+          label: 'label.hierarchy-link-plural',
           testId: 'ontology-pack-relationship-count',
         },
       ].map((item) => (
@@ -412,7 +412,7 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
                     {totals.concepts} {t('label.concept-plural')}
                   </Typography>
                   <Typography data-testid="ontology-pack-relationship-count">
-                    {totals.relationships} {t('label.relation-plural')}
+                    {totals.relationships} {t('label.hierarchy-link-plural')}
                   </Typography>
                 </Box>
               )}

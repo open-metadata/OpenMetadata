@@ -102,6 +102,42 @@ describe('buildStudioGraphScope', () => {
     expect(scope.graph.nodes[0].id).toBe('hub');
   });
 
+  it('does not expand a hub it reaches past the seed, so a leaf shows only its own links', () => {
+    const hub = {
+      nodes: [
+        { id: 'base', label: 'Base', type: 'ontologyConcept' },
+        { id: 'leaf-child', label: 'Leaf child', type: 'ontologyConcept' },
+        ...Array.from({ length: 600 }, (_, index) => ({
+          id: `s${index}`,
+          label: `Sibling ${index}`,
+          type: 'ontologyConcept',
+        })),
+      ],
+      edges: [
+        ...Array.from({ length: 600 }, (_, index) => ({
+          from: `s${index}`,
+          to: 'base',
+          label: 'is a',
+          relationType: 'subClassOf',
+        })),
+        {
+          from: 'leaf-child',
+          to: 's7',
+          label: 'is a',
+          relationType: 'subClassOf',
+        },
+      ],
+    };
+
+    const scope = buildStudioGraphScope(hub, { seedIds: ['s7'] });
+
+    expect(scope.graph.nodes.map(({ id }) => id).sort()).toEqual([
+      'base',
+      'leaf-child',
+      's7',
+    ]);
+  });
+
   it('ignores seeds that are not in the graph', () => {
     const scope = buildStudioGraphScope(chain(600), { seedIds: ['gone'] });
 

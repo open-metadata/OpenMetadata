@@ -522,6 +522,9 @@ jest.mock(
   })
 );
 
+// A released ontology: the server count is shown as is, with no first-release adjustment.
+const RELEASED = { releaseId: 'release-1', releaseRevision: 1 };
+
 describe('OntologyExplorerPage', () => {
   beforeEach(() => {
     (useIsAiMode as jest.Mock).mockReturnValue(false);
@@ -1223,7 +1226,10 @@ describe('OntologyExplorerPage', () => {
     mockUseRealScopes = true;
     (listOntologies as jest.Mock).mockResolvedValueOnce({
       data: [
-        { ...nativeOntology, publicationStatus: { unpublishedChanges: 3 } },
+        {
+          ...nativeOntology,
+          publicationStatus: { active: RELEASED, unpublishedChanges: 3 },
+        },
       ],
       paging: { total: 1 },
     });
@@ -1237,6 +1243,37 @@ describe('OntologyExplorerPage', () => {
 
     expect(listOntologies).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    // Before the first release the server also counts the ontology itself, which is not a change.
+    [1, 0, false],
+    [9, 8, true],
+  ])(
+    'counts Publish as the Draft badge does and leads with it only with something to publish (server %s)',
+    async (unpublishedChanges, shown, isPrimary) => {
+      mockUseRealScopes = true;
+      (listOntologies as jest.Mock).mockResolvedValueOnce({
+        data: [
+          { ...nativeOntology, publicationStatus: { unpublishedChanges } },
+        ],
+        paging: { total: 1 },
+      });
+      renderNativeStudio('?ontology=native-sales');
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('ontology-publication-trigger')
+        ).toHaveTextContent(`label.publish (${shown})`)
+      );
+
+      expect(
+        screen
+          .getByTestId('ontology-publication-trigger')
+          .className.includes('tw:bg-brand-solid')
+      ).toBe(isPrimary);
+      expect(screen.getByTestId('ontology-publication-trigger')).toBeEnabled();
+    }
+  );
 
   it.each([
     [false, 'ontology-publication-trigger', 'label.publish (label.loading)'],
@@ -1360,7 +1397,7 @@ describe('OntologyExplorerPage', () => {
     expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
   });
 
-  it('shows only the message that points to the All ontologies menu when the catalog passes the aggregate limit', async () => {
+  it('lets the user pick an ontology from the empty state when the catalog passes the aggregate limit', async () => {
     const longName = 'L'.repeat(243);
     const ontologies: Ontology[] = Array.from({ length: 21 }, (_, index) => ({
       ...nativeOntology,
@@ -1372,8 +1409,8 @@ describe('OntologyExplorerPage', () => {
 
     const message = await screen.findByTestId('all-ontologies-load-error');
 
+    expect(message).toHaveTextContent('label.choose-an-ontology-to-view');
     expect(message).toHaveTextContent('message.ontology-aggregate-capacity');
-    expect(within(message).queryAllByRole('button')).toHaveLength(0);
     expect(
       screen.queryByTestId('ontology-shortcut-list')
     ).not.toBeInTheDocument();
@@ -1383,6 +1420,17 @@ describe('OntologyExplorerPage', () => {
     expect(
       screen.queryByText(/0 label\.concept-plural/i)
     ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(message).getByRole('button', { name: /label.select-entity/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Ontology 5' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'ontology=ontology-5'
+      )
+    );
   });
 
   it('defaults to a read-only native graph and opens the owning ontology', async () => {
@@ -1571,7 +1619,10 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(await screen.findByTestId('ontology-add-concept'));
     (listOntologies as jest.Mock).mockResolvedValue({
       data: [
-        { ...nativeOntology, publicationStatus: { unpublishedChanges: 1 } },
+        {
+          ...nativeOntology,
+          publicationStatus: { active: RELEASED, unpublishedChanges: 1 },
+        },
       ],
       paging: { total: 1 },
     });
@@ -1644,6 +1695,46 @@ describe('OntologyExplorerPage', () => {
     expect(screen.queryByTestId('mode-tab-releases')).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-import-export')).toBeVisible();
     expect(screen.getByText('2 label.isolated')).toBeVisible();
+  });
+
+  it('counts nothing in the header when an editor views a release that does not exist yet', async () => {
+    useEnUsTranslations();
+    try {
+      renderNativeStudio('?ontology=native-sales', {
+        ...nativeOntology,
+        publicationStatus: { unpublishedChanges: 3 },
+      });
+      await screen.findByTestId('native-canvas');
+
+      expect(screen.getByTestId('ontology-explorer-stats')).toHaveTextContent(
+        '2 concepts · 0 relations'
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-version-published'));
+      await screen.findByTestId('ontology-nothing-published');
+
+      expect(screen.getByTestId('ontology-explorer-stats')).toHaveTextContent(
+        '0 concepts · 0 relations'
+      );
+    } finally {
+      useKeyEchoTranslations();
+    }
+  });
+
+  it('opens the draft after an import applied from the published view', async () => {
+    renderNativeStudio('?ontology=native-sales&version=published');
+    await screen.findByTestId('native-canvas');
+    const menuProps = (
+      jest.requireMock(
+        '../../components/OntologyExplorer/OntologyImportExportMenu'
+      ).default as jest.Mock
+    ).mock.calls.at(-1)?.[0];
+
+    act(() => menuProps?.onApplied());
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).not.toHaveTextContent('version')
+    );
   });
 
   it('counts the native ontology in the header with the singular and plural forms', async () => {
@@ -1843,6 +1934,25 @@ describe('OntologyExplorerPage', () => {
         'true'
       );
       expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
+    });
+
+    it('stays in Edit after the library is opened and closed', async () => {
+      asConceptOwner('Customer');
+      renderNativeStudio('?ontology=native-sales&mode=edit&concept=Customer');
+      await screen.findByTestId('native-canvas');
+
+      fireEvent.click(screen.getByTestId('ontology-library-trigger'));
+      fireEvent.click(screen.getByRole('button', { name: 'Close library' }));
+
+      expect(screen.queryByTestId('ontology-library')).not.toBeInTheDocument();
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'concept=Customer'
+      );
     });
 
     it('returns a concept owner to View when the concept is deselected in Edit', async () => {
@@ -2063,6 +2173,22 @@ describe('OntologyExplorerPage', () => {
 
         expect(screen.getByTestId('location')).toHaveTextContent(
           search.slice(1)
+        );
+      }
+    );
+
+    it.each([
+      ['the graph', '?ontology=native-sales', true],
+      ['the tree', '?ontology=native-sales&view=tree', false],
+    ])(
+      'offers full screen only on the graph: %s',
+      async (_name, search, offered) => {
+        renderNativeStudio(search);
+
+        await screen.findByTestId('ontology-canvas-toolbar');
+
+        expect(Boolean(screen.queryByTestId('ontology-full-screen'))).toBe(
+          offered
         );
       }
     );
@@ -3007,7 +3133,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it.each(['?ontology=native-sales', ''])(
-    'opens the selected concept Data graph from the Tree rail in %s',
+    'lists every linked asset in place from the Tree rail in %s',
     async (search) => {
       (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
         revision: 0,
@@ -3027,14 +3153,15 @@ describe('OntologyExplorerPage', () => {
       await screen.findByTestId('native-canvas');
       fireEvent.click(screen.getByTestId('submode-tab-tree'));
       fireEvent.click(await screen.findByTestId('ontology-tree-term-Customer'));
-      fireEvent.click(await screen.findByTestId('ontology-assets-more'));
+      const more = await screen.findByTestId('ontology-assets-more');
 
-      expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
+      expect(screen.queryByText('Asset 6')).not.toBeInTheDocument();
+
+      fireEvent.click(more);
+
+      expect(await screen.findByText('Asset 6')).toBeInTheDocument();
+      expect(screen.getByTestId('submode-tab-tree')).toHaveAttribute(
         'aria-selected',
-        'true'
-      );
-      expect(screen.getByTestId('ontology-graph-mode-data')).toHaveAttribute(
-        'aria-pressed',
         'true'
       );
       expect(
@@ -3159,7 +3286,10 @@ describe('OntologyExplorerPage', () => {
     await screen.findByTestId('ontology-memory-review-panel');
     (listOntologies as jest.Mock).mockResolvedValue({
       data: [
-        { ...nativeOntology, publicationStatus: { unpublishedChanges: 2 } },
+        {
+          ...nativeOntology,
+          publicationStatus: { active: RELEASED, unpublishedChanges: 2 },
+        },
       ],
       paging: { total: 1 },
     });

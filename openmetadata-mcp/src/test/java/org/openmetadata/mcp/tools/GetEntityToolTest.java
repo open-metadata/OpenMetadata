@@ -214,6 +214,7 @@ class GetEntityToolTest {
     ContextMemory memory = privateMemoryOwnedBy("alice", fqn).withRelatedEntities(List.of(query));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
         MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      CitedQueries.stillExist(entities);
       entities
           .when(
               () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))

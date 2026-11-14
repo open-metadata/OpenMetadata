@@ -2,6 +2,8 @@ package org.openmetadata.it.tests.search;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import java.math.BigDecimal;
+import java.util.UUID;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -15,17 +17,18 @@ public final class DataQualityTableTotal {
 
   private DataQualityTableTotal() {}
 
-  public static String scopedQuery(String databaseSchemaFqn) {
+  public static String scopedQuery(UUID databaseSchemaId) {
     return """
-        {"query":{"bool":{"must":[{"term":{"databaseSchema.fullyQualifiedName":"%s"}},{"term":{"deleted":false}}]}}}"""
-        .formatted(databaseSchemaFqn);
+        {"query":{"bool":{"must":[{"term":{"databaseSchema.id":"%s"}},{"term":{"deleted":false}}]}}}"""
+        .formatted(databaseSchemaId);
   }
 
   public static long tableTotal(String q, String aggregationQuery) {
     DataQualityReport report = dataQualityReport(q, aggregationQuery);
     assertFalse(report.getData().isEmpty(), "Expected the aggregation to return a row");
-    return Long.parseLong(
-        report.getData().getFirst().getAdditionalProperties().get("fullyQualifiedName"));
+    return new BigDecimal(
+            report.getData().getFirst().getAdditionalProperties().get("fullyQualifiedName"))
+        .longValueExact();
   }
 
   private static DataQualityReport dataQualityReport(String q, String aggregationQuery) {

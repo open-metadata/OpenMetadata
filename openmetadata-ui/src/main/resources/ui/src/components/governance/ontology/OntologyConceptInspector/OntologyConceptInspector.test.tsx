@@ -13,11 +13,13 @@
 import {
   act,
   fireEvent,
+  render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import {
   Code,
   OntologyProfileReport,
@@ -52,6 +54,7 @@ import {
   generateOntologyConceptQuery,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
+  softDeleteOntologyDefinition,
   validateOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
@@ -68,6 +71,7 @@ import {
 } from '../../../OntologyExplorer/RelationWarning.context';
 import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from './OntologyConceptInspector';
+import OntologyConceptRules from './OntologyConceptRules';
 
 /** The relationship type is a select in the inline form; this opens it and picks one. */
 const chooseRelationType = async (id: string) => {
@@ -190,7 +194,6 @@ const renderInspector = (
         model={{ ...model, properties }}
         relations={[]}
         onClose={jest.fn()}
-        onOpenData={jest.fn()}
         onSelectConcept={jest.fn()}
       />
     </MemoryRouter>
@@ -355,7 +358,7 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
         await within(assets).findByRole('link', { name: 'customers' })
       ).toBeVisible();
       expect(
-        within(assets).getByText(/label.ontology-column-binding-count/)
+        within(assets).getByText(/label.ontology-column-count/)
       ).toBeVisible();
       expect(
         await screen.findByText(/former_id.*label.unavailable/)
@@ -453,9 +456,12 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     renderInspector([property, annotation]);
     await screen.findByTestId('ontology-native-assets');
 
-    expect(
-      await screen.findByTestId(`ontology-bind-property-${property.id}`)
-    ).toBeEnabled();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(`ontology-bind-property-${property.id}`)
+      ).toBeVisible()
+    );
+
     expect(
       screen.getByTestId(`ontology-property-bindings-${annotation.id}`)
     ).toBeInTheDocument();
@@ -509,7 +515,6 @@ describe('OntologyConceptInspector relationships', () => {
           model={relationModel}
           relations={getModelRelations(relationModel)}
           onClose={jest.fn()}
-          onOpenData={jest.fn()}
           onSelectConcept={jest.fn()}
         />
       </MemoryRouter>
@@ -534,12 +539,16 @@ describe('OntologyConceptInspector relationships', () => {
     ).toHaveTextContent(/has part\s*Account/);
   });
 
-  it('reads an incoming relation backwards when no inverse is declared', () => {
+  it('marks an incoming relation as read backwards when no inverse is declared', () => {
     renderRelations([partOf]);
 
     expect(
       screen.getByTestId('ontology-concept-relationships')
-    ).toHaveTextContent(/Account\s*part of/);
+    ).toHaveTextContent(/part of\s*Account/);
+    expect(screen.getByTestId('ontology-concept-relation-row')).toHaveAttribute(
+      'data-direction',
+      'backward'
+    );
   });
 });
 
@@ -563,7 +572,6 @@ describe('OntologyConceptInspector header and empty sections', () => {
           model={{ ...model, concepts: [concept, parent] }}
           relations={relations}
           onClose={jest.fn()}
-          onOpenData={jest.fn()}
           onSelectConcept={onSelectConcept}
         />
       </MemoryRouter>
@@ -644,9 +652,8 @@ describe('OntologyConceptInspector view rail', () => {
     [OntologyDefinitionStatus.InReview, 'label.in-review'],
     [OntologyDefinitionStatus.Approved, 'label.approved'],
   ])(
-    'shows %s, owner and three assets with a Data handoff',
+    'shows %s, owner and three assets, and expands the rest in place',
     async (lifecycleStatus, label) => {
-      const onOpenData = jest.fn();
       renderWithQueryClient(
         <MemoryRouter>
           <OntologyConceptInspector
@@ -654,7 +661,6 @@ describe('OntologyConceptInspector view rail', () => {
             model={model}
             relations={[]}
             onClose={jest.fn()}
-            onOpenData={onOpenData}
             onSelectConcept={jest.fn()}
           />
         </MemoryRouter>
@@ -680,7 +686,11 @@ describe('OntologyConceptInspector view rail', () => {
 
       fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
 
-      expect(onOpenData).toHaveBeenCalledTimes(1);
+      expect(within(assets).getByText('Asset 3')).toBeInTheDocument();
+
+      fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
+
+      expect(within(assets).queryByText('Asset 3')).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('ontology-native-link-assets')
       ).not.toBeInTheDocument();
@@ -761,7 +771,6 @@ it('adds a relationship from the rail, changes its type and retries a refused sa
         relations={[]}
         onAddRelation={save}
         onClose={jest.fn()}
-        onOpenData={jest.fn()}
         onSelectConcept={jest.fn()}
       />
     </MemoryRouter>
@@ -845,7 +854,6 @@ describe('OntologyConceptInspector in AI mode', () => {
       onClose: jest.fn(),
       onEdit: jest.fn(),
       onEditMappings: jest.fn(),
-      onOpenData: jest.fn(),
       onSelectConcept: jest.fn(),
     };
     renderWithQueryClient(
@@ -890,7 +898,7 @@ describe('OntologyConceptInspector in AI mode', () => {
     ).parentElement;
 
     expect(header).not.toContainElement(description);
-    expect(description.closest('.tw\\:overflow-auto')).toContainElement(
+    expect(description.closest('.tw\\:overflow-y-auto')).toContainElement(
       screen.getByTestId(`ontology-concept-relation-${party.id}`)
     );
   });
@@ -1041,12 +1049,12 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-property'));
 
-    expect(
-      screen.queryByTestId('ontology-property-kind-annotation')
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('ontology-property-kind-more'));
-    fireEvent.click(screen.getByTestId('ontology-property-kind-annotation'));
+    fireEvent.click(
+      within(screen.getByTestId('ontology-property-kind')).getByRole('button')
+    );
+    fireEvent.click(
+      await screen.findByTestId('ontology-property-kind-annotation')
+    );
 
     expect(
       screen.queryByRole('button', { name: /label.range/ })
@@ -1136,7 +1144,6 @@ describe('OntologyConceptInspector in AI mode', () => {
           model={relationModel}
           relations={getModelRelations(relationModel)}
           onClose={jest.fn()}
-          onOpenData={jest.fn()}
           onSelectConcept={jest.fn()}
         />
       </MemoryRouter>
@@ -1165,7 +1172,7 @@ describe('OntologyConceptInspector in AI mode', () => {
         },
       })),
     });
-    const handlers = renderAiInspector();
+    renderAiInspector();
     const assets = screen.getByTestId('ontology-native-assets');
     await within(assets).findByRole('link', { name: 'Asset 0' });
 
@@ -1177,7 +1184,7 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     fireEvent.click(within(assets).getByTestId('ontology-assets-more'));
 
-    expect(handlers.onOpenData).toHaveBeenCalledTimes(1);
+    expect(within(assets).getByText('Asset 3')).toBeInTheDocument();
   });
 
   it('retries a failed bindings read and removes an asset from the AI section', async () => {
@@ -1273,7 +1280,6 @@ describe('OntologyConceptInspector relationship authoring', () => {
             onClose={jest.fn()}
             onDeleteRelation={jest.fn().mockResolvedValue(true)}
             onEditRelation={jest.fn().mockResolvedValue(true)}
-            onOpenData={jest.fn()}
             onSelectConcept={jest.fn()}
             {...props}
           />
@@ -1420,7 +1426,6 @@ describe('OntologyConceptInspector relationship authoring', () => {
               onClose={jest.fn()}
               onDeleteRelation={jest.fn().mockResolvedValue(true)}
               onEditRelation={onEditRelation}
-              onOpenData={jest.fn()}
               onSelectConcept={jest.fn()}
             />
           </MemoryRouter>
@@ -1532,6 +1537,81 @@ describe('OntologyConceptInspector relationship authoring', () => {
     );
   });
 
+  it('opens the relationship from anywhere on its card, but not from its edit and delete controls', () => {
+    const onOpenRelation = jest.fn();
+    const onDeleteRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onDeleteRelation, onOpenRelation });
+    const card = screen.getByTestId('ontology-concept-relation-row');
+
+    fireEvent.click(card);
+
+    expect(onOpenRelation).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    );
+
+    expect(onOpenRelation).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(within(card).getByTestId('ontology-relation-delete'));
+
+    expect(onDeleteRelation).toHaveBeenCalledTimes(1);
+    expect(onOpenRelation).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(within(card).getByTestId('ontology-relation-edit'));
+
+    expect(onOpenRelation).toHaveBeenCalledTimes(2);
+  });
+
+  it('lists ten relationships at a time and loads the next ten on demand', () => {
+    const parents = Array.from({ length: 23 }, (_, index) => ({
+      ...concept,
+      id: `parent-${index}`,
+      iri: `urn:sales:Parent${index}`,
+      name: `Parent ${index}`,
+    }));
+    const manyRelationsModel: OntologyStudioModel = {
+      ...model,
+      axioms: parents.map((parent) => ({
+        ...customerIsParty,
+        expressions: [
+          { classIri: parent.iri, kind: ExpressionKind.NamedClass },
+        ],
+        id: `axiom-${parent.id}`,
+        name: `CustomerIs${parent.id}`,
+      })),
+      concepts: [concept, ...parents],
+    };
+    renderAuthoring({
+      model: manyRelationsModel,
+      relations: getModelRelations(manyRelationsModel),
+    });
+    const rows = () => screen.getAllByTestId('ontology-concept-relation-row');
+    const loadMore = 'ontology-concept-relations-load-more';
+
+    expect(rows()).toHaveLength(10);
+
+    fireEvent.click(screen.getByTestId(loadMore));
+
+    expect(rows()).toHaveLength(20);
+
+    fireEvent.click(screen.getByTestId(loadMore));
+
+    expect(rows()).toHaveLength(23);
+    expect(screen.queryByTestId(loadMore)).not.toBeInTheDocument();
+  });
+
+  it('truncates a long related concept name instead of running under its controls', () => {
+    renderAuthoring();
+    const target = screen.getByTestId(`ontology-concept-relation-${party.id}`);
+
+    expect(target.querySelector('[data-text]')).toHaveClass(
+      'tw:truncate',
+      'tw:min-w-0'
+    );
+    expect(target).toHaveTextContent('Party');
+  });
+
   it('lists the rules about the concept apart from its relationships', () => {
     const rule: OntologyAxiom = {
       ...customerIsParty,
@@ -1559,6 +1639,55 @@ describe('OntologyConceptInspector relationship authoring', () => {
     expect(
       within(rules).queryByTestId('ontology-add-rule')
     ).not.toBeInTheDocument();
+  });
+
+  it('greys the concept a rule is about, and deletes a rule while editing after confirming', async () => {
+    const rule: OntologyAxiom = {
+      ...customerIsParty,
+      axiomType: AxiomType.SubclassOf,
+      displayName: 'Customer must have exactly 1 name',
+      expressions: [],
+      id: 'axiom-rule',
+      name: 'CustomerMustHaveName',
+    };
+    const rulesModel = { ...authoringModel, axioms: [rule] };
+    const onCreated = jest.fn();
+    render(
+      <OntologyConceptRules
+        canAdd
+        isEditing
+        concept={concept}
+        model={rulesModel}
+        relations={[]}
+        onCreated={onCreated}
+      />
+    );
+    const row = screen.getByTestId('ontology-concept-rule-axiom-rule');
+
+    expect(within(row).getByText('Customer')).toHaveClass('tw:text-tertiary');
+
+    fireEvent.click(
+      screen.getByTestId('ontology-concept-rule-delete-axiom-rule')
+    );
+
+    // Nothing is deleted until the person confirms.
+    expect(await screen.findByTestId('delete-modal')).toBeInTheDocument();
+    expect(softDeleteOntologyDefinition).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(softDeleteOntologyDefinition).toHaveBeenCalledWith(
+        'axiom',
+        'axiom-rule'
+      )
+    );
+
+    expect(onCreated).toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument()
+    );
   });
 
   it('flags a synonym that reads like a relationship, read-only in View', () => {
@@ -1605,7 +1734,6 @@ describe('OntologyConceptInspector relationship authoring', () => {
             onAddProperty={jest.fn().mockResolvedValue(true)}
             onAddRelation={jest.fn().mockResolvedValue(true)}
             onClose={jest.fn()}
-            onOpenData={jest.fn()}
             onRuleCreated={jest.fn()}
             onSelectConcept={jest.fn()}
             {...props}
@@ -1727,7 +1855,12 @@ describe('OntologyConceptInspector relationship authoring', () => {
       renderEditable({ onAddProperty });
 
       fireEvent.click(await screen.findByTestId('ontology-add-property'));
-      fireEvent.click(screen.getByTestId('ontology-property-kind-object'));
+      fireEvent.click(
+        within(screen.getByTestId('ontology-property-kind')).getByRole('button')
+      );
+      fireEvent.click(
+        await screen.findByTestId('ontology-property-kind-object')
+      );
       fireEvent.change(screen.getByTestId('ontology-property-name'), {
         target: { value: 'servedBy' },
       });
@@ -1828,6 +1961,118 @@ describe('OntologyConceptInspector relationship authoring', () => {
       expect(
         screen.queryByTestId('ontology-rule-form')
       ).not.toBeInTheDocument();
+    });
+
+    it('offers only the concept’s properties and blocks a count that contradicts one', async () => {
+      jest.mocked(validateOntologyAxiom).mockResolvedValue({
+        valid: true,
+        violations: [],
+      } as OntologyProfileReport);
+      const email = {
+        ...property,
+        id: 'email',
+        iri: 'urn:sales:email',
+        isIdentifier: true,
+        name: 'email',
+      };
+      const inherited = {
+        ...property,
+        domain: [party.iri],
+        id: 'party-name',
+        iri: 'urn:sales:partyName',
+        name: 'partyName',
+      };
+      const unscoped = {
+        ...property,
+        domain: [],
+        id: 'note',
+        iri: 'urn:sales:note',
+        name: 'note',
+      };
+      const elsewhere = {
+        ...unavailableProperty,
+        iri: 'urn:sales:placedBy',
+        kind: Kind.Object,
+        name: 'placedBy',
+      };
+      const rulesModel = {
+        ...authoringModel,
+        properties: [email, inherited, unscoped, elsewhere],
+      };
+      renderEditable({
+        model: rulesModel,
+        relations: getModelRelations(rulesModel),
+      });
+      fireEvent.click(await screen.findByTestId('ontology-add-rule'));
+      const form = screen.getByTestId('ontology-rule-form');
+      const picker = within(form).getByRole('combobox', {
+        name: /label.property/,
+      });
+      fireEvent.focus(picker);
+      fireEvent.keyDown(picker, { key: 'ArrowDown' });
+
+      expect(
+        (await screen.findAllByRole('option')).map((option) =>
+          option.textContent?.trim()
+        )
+      ).toEqual(['email', 'party name', 'note']);
+
+      fireEvent.click(screen.getByRole('option', { name: 'email' }));
+      const count = within(form).getByRole('spinbutton', {
+        name: /label.count/,
+      });
+      fireEvent.change(count, { target: { value: '-1' } });
+
+      expect(count).toHaveValue(-1);
+      expect(count).toHaveAccessibleDescription(
+        'message.ontology-rule-count-negative'
+      );
+      expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
+
+      fireEvent.change(count, { target: { value: '0' } });
+      // The server accepts the shape; the passing result must still not show.
+      await waitFor(() => expect(validateOntologyAxiom).toHaveBeenCalled());
+
+      expect(form).toHaveTextContent(
+        'message.ontology-rule-identifier-count-zero'
+      );
+      expect(form).not.toHaveTextContent('label.validation-passed');
+      expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
+    });
+
+    it('asks before a press outside the drawer drops a rule being written', async () => {
+      const onClose = jest.fn();
+      renderWithQueryClient(
+        <MemoryRouter>
+          <OntologyDraftProvider>
+            <button data-testid="outside-the-drawer" type="button">
+              canvas
+            </button>
+            <EditableInspector
+              canAddProperty
+              canAddRelation
+              canAddRule
+              concept={concept}
+              model={authoringModel}
+              relationTypeGroups={relationTypeGroups}
+              relations={getModelRelations(authoringModel)}
+              onAddProperty={jest.fn().mockResolvedValue(true)}
+              onAddRelation={jest.fn().mockResolvedValue(true)}
+              onClose={onClose}
+              onRuleCreated={jest.fn()}
+              onSelectConcept={jest.fn()}
+            />
+          </OntologyDraftProvider>
+        </MemoryRouter>
+      );
+      await fillNeverAlsoBeParty();
+
+      fireEvent.pointerDown(screen.getByTestId('outside-the-drawer'));
+
+      expect(
+        await screen.findByText('message.discard-your-changes')
+      ).toBeInTheDocument();
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });
