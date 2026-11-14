@@ -1009,7 +1009,13 @@ const DomainDetails = ({
   const statusBadge =
     entityUtilClassBase.shouldShowEntityStatus(EntityType.DOMAIN) &&
     domain.entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={domain.entityStatus} />
+      <EntityStatusBadge
+        entityId={domain.id}
+        entityType={EntityType.DOMAIN}
+        fqn={domain.fullyQualifiedName}
+        showDivider={false}
+        status={domain.entityStatus}
+      />
     ) : null;
 
   if (isLoading) {

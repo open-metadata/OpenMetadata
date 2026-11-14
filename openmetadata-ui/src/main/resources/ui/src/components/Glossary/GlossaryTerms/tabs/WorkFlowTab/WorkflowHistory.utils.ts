@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { compact, keyBy, orderBy, uniq } from 'lodash';
+import { ApprovalOutcome } from '../../../../../generated/governance/workflows/approvalOutcome';
 import { WorkflowDefinition } from '../../../../../generated/governance/workflows/workflowDefinition';
 import { WorkflowInstance } from '../../../../../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../../../../../generated/governance/workflows/workflowInstanceState';
@@ -20,10 +21,12 @@ import {
 } from '../../../../../rest/workflowAPI';
 import { WorkflowInstanceStateParams } from '../../../../../rest/workflowAPI.interface';
 import { getWorkflowDefinitionById } from '../../../../../rest/workflowDefinitionsAPI';
+import { getRunApprovals } from '../../../../../utils/WorkflowApprovalOutcomeUtils';
 
 export interface LatestWorkflowRun {
   definition: WorkflowDefinition;
   states: WorkflowInstanceState[];
+  approvals: ApprovalOutcome[];
 }
 
 const RECENT_INSTANCES_LIMIT = 25;
@@ -52,7 +55,7 @@ const getInstanceStart = ({ startedAt, timestamp }: WorkflowInstance) =>
 
 // Definitions are resolved together and a run whose definition cannot be read (deleted, or hidden
 // from the user by a conditional rule) is skipped, so an older readable run still shows.
-const getReadableDefinitions = async (instances: WorkflowInstance[]) => {
+export const getReadableDefinitions = async (instances: WorkflowInstance[]) => {
   const ids = uniq(
     compact(instances.map(({ workflowDefinitionId }) => workflowDefinitionId))
   );
@@ -123,7 +126,11 @@ export const getLatestWorkflowRun = async (
       run.instance.id,
       timeRange
     );
-    latestRun = { definition: run.definition, states: [...states].reverse() };
+    latestRun = {
+      definition: run.definition,
+      states: [...states].reverse(),
+      approvals: getRunApprovals(run.instance),
+    };
   }
 
   return latestRun;

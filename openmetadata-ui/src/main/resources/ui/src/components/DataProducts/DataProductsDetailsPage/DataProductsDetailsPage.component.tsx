@@ -977,7 +977,13 @@ const DataProductsDetailsPage = ({
         : EntityStatus.Unprocessed;
 
     return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
+      <EntityStatusBadge
+        entityId={dataProduct.id}
+        entityType={EntityType.DATA_PRODUCT}
+        fqn={dataProduct.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
     ) : null;
   }, [dataProduct]);
 

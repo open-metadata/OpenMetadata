@@ -238,6 +238,58 @@ describe('WorkflowHistory Component', () => {
       });
     });
 
+    it('shows under an approval step how it was decided, and nothing under other steps', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            ...mockWorkflowInstances.data[0],
+            variables: {
+              approvals: [
+                {
+                  id: 'auto',
+                  node: 'ReviewTerm',
+                  decision: 'Approved',
+                  automaticReason: 'NoAssignees',
+                  decidedBy: [],
+                  decidedAt: 1647931273100,
+                },
+              ],
+            },
+          },
+        ],
+      });
+      (getWorkflowInstanceStateById as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            id: 'approve-step',
+            status: WorkflowStatus.Finished,
+            timestamp: 1647931273100,
+            stage: { name: 'ReviewTerm', displayName: 'Review term' },
+          },
+          {
+            id: 'start-step',
+            status: WorkflowStatus.Finished,
+            timestamp: 1647931273000,
+            stage: { name: 'Start', displayName: 'Start' },
+          },
+        ],
+      });
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('workflow-history-approval-outcome')
+        ).toHaveTextContent('message.workflow-run-auto-approved');
+      });
+
+      expect(
+        screen.getAllByTestId('workflow-history-approval-outcome')
+      ).toHaveLength(1);
+    });
+
     it('should use context glossary term when prop is not provided', async () => {
       (useGenericContext as jest.Mock).mockReturnValueOnce({
         data: mockGlossaryTerm,

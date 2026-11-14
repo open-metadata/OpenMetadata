@@ -11,10 +11,44 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import { Decision } from '../../../generated/governance/workflows/approvalOutcome';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { EntityStatusBadge } from './EntityStatusBadge.component';
+import { getStatusChange } from './EntityStatusDecision.utils';
+
+// Only the lookup is mocked; the wording runs for real.
+jest.mock('./EntityStatusDecision.utils', () => ({
+  ...jest.requireActual('./EntityStatusDecision.utils'),
+  getStatusChange: jest.fn(),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  getShortRelativeTime: jest.fn().mockReturnValue('5 mins ago'),
+}));
+
+const hoverableBadge = () => (
+  <EntityStatusBadge
+    entityId="product-id"
+    entityType="dataProduct"
+    fqn="Finance.Invoices"
+    showDivider={false}
+    status={EntityStatus.Approved}
+  />
+);
+
+// Keyboard focus opens the tooltip at once; a hover opens it after its delay. The badge is the
+// only focusable element, so each Tab moves focus onto it or off it.
+// Jest runs on fake timers, so user-event advances them itself.
+const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+const toggleTooltip = () => user.tab();
 
 describe('EntityStatusBadge', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render status badge with divider by default', () => {
     render(<EntityStatusBadge status={EntityStatus.Approved} />);
 
@@ -50,5 +84,109 @@ describe('EntityStatusBadge', () => {
 
       unmount();
     });
+  });
+
+  it('only looks up who set the status once the badge is hovered', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'Approved',
+      changedAt: 1,
+      workflowName: 'Data product approval',
+      outcome: {
+        id: 'outcome',
+        node: 'Review',
+        decision: Decision.Approved,
+        decidedBy: ['ana.lopez', 'ben.carter'],
+        decidedAt: 1,
+      },
+    });
+    renderWithQueryClient(hoverableBadge());
+
+    expect(getStatusChange).not.toHaveBeenCalled();
+
+    await toggleTooltip();
+
+    expect(getStatusChange).toHaveBeenCalledWith(
+      'dataProduct',
+      'product-id',
+      '<#E::dataProduct::Finance.Invoices>'
+    );
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.workflow-run-approved-by');
+    expect(
+      screen.getByTestId('entity-status-decision-detail')
+    ).toHaveTextContent('Data product approval');
+  });
+
+  it('names the workflow and whose change started it when it set the status without an approval', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'In Review',
+      changedAt: 1,
+      workflowName: 'Data product lifecycle',
+      triggeredBy: 'ana.lopez',
+    });
+    renderWithQueryClient(hoverableBadge());
+
+    await toggleTooltip();
+
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.entity-status-set-by');
+    expect(
+      screen.getByTestId('entity-status-decision-detail')
+    ).toHaveTextContent('message.entity-status-after-change-by');
+  });
+
+  it('names the person who set the status by hand', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'Deprecated',
+      changedAt: 1,
+      changedBy: 'ana.lopez',
+    });
+    renderWithQueryClient(hoverableBadge());
+
+    await toggleTooltip();
+
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.entity-status-set-by');
+    expect(
+      screen.queryByTestId('entity-status-decision-detail')
+    ).not.toBeInTheDocument();
+  });
+
+  it('looks the status up again once it changes on the page', async () => {
+    (getStatusChange as jest.Mock).mockResolvedValue({
+      status: 'In Review',
+      changedAt: 1,
+      changedBy: 'ana.lopez',
+    });
+    const { rerender } = renderWithQueryClient(hoverableBadge());
+    await toggleTooltip();
+    await screen.findByTestId('entity-status-decision-outcome');
+
+    rerender(
+      <EntityStatusBadge
+        entityId="product-id"
+        entityType="dataProduct"
+        fqn="Finance.Invoices"
+        showDivider={false}
+        status={EntityStatus.InReview}
+      />
+    );
+    await screen.findByTestId('entity-status-decision-outcome');
+
+    // The tooltip stays open; the new status is a new lookup, made once for title and description.
+    expect(getStatusChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders a plain badge without a tooltip when it does not know the entity', () => {
+    render(
+      <EntityStatusBadge showDivider={false} status={EntityStatus.Draft} />
+    );
+
+    expect(
+      screen.queryByTestId('entity-status-badge-trigger')
+    ).not.toBeInTheDocument();
   });
 });
