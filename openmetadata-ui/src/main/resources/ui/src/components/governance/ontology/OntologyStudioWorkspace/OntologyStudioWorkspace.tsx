@@ -21,8 +21,8 @@ import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getOntologyHealthSummary } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
+import { getOntologyHealthSummary } from '../../../OntologyExplorer/OntologyStudio.utils';
 import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';

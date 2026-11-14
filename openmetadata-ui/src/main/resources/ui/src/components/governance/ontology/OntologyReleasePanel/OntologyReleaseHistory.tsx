@@ -39,17 +39,17 @@ import {
 } from '../../../../generated/entity/data/ontologyRelease';
 import { EventType } from '../../../../generated/type/ontologyReleaseEvent';
 import { useOntologyPublication } from '../../../../hooks/governance/ontology/useOntologyPublication';
+import { useOntologyReleaseDownload } from '../../../../hooks/governance/ontology/useOntologyReleaseDownload';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
-import { useOntologyReleaseDownload } from '../../../../hooks/governance/ontology/useOntologyReleaseDownload';
 import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
-import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseBadges from './OntologyReleaseBadges';
+import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseCompare from './OntologyReleaseCompare';
 import OntologyReleaseExport from './OntologyReleaseExport';
 import {
