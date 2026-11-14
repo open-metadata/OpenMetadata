@@ -16,6 +16,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,
@@ -263,9 +264,15 @@ describe('Knowledge Card', () => {
   it('should render owner name via UserPopOverCard', () => {
     render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    // component passes getEntityName(owners[0]) which returns displayName ?? name
     expect(screen.getByTestId('owner-name')).toHaveTextContent(
       KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0]?.name as string
+    );
+    // Only a real display name is passed, so UserPopOverCard can resolve the rest.
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0]?.displayName,
+      }),
+      expect.anything()
     );
   });
 
