@@ -31,11 +31,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.JwtFilter;
@@ -180,6 +183,16 @@ class OAuthHttpStatelessServerTransportProviderTest {
       when(clientRepo.findByClientId(CLIENT_ID)).thenReturn(client);
       UserSSOOAuthProvider provider =
           (UserSSOOAuthProvider) unsafe().allocateInstance(UserSSOOAuthProvider.class);
+      setField(
+          provider,
+          "grantTransaction",
+          new McpGrantTransaction() {
+            @Override
+            public <T, E extends Exception> T execute(String clientId, Operation<T, E> operation)
+                throws E {
+              return operation.get();
+            }
+          });
       setField(provider, "pendingAuthRepository", pendingRepo);
       setField(provider, "clientRepository", clientRepo);
       setField(provider, "codeRepository", codeRepo);
@@ -321,6 +334,117 @@ class OAuthHttpStatelessServerTransportProviderTest {
     when(request.getParameterMap()).thenReturn(Map.of());
 
     transport.doGet(request, response);
+  }
+
+  @Test
+  void disabledRegistrationRejectsPostBeforeReadingBody() throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withDynamicClientRegistrationEnabled(false));
+      transport.doPost(request, response);
+    }
+    verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+    verify(request, never()).getInputStream();
+  }
+
+  @Test
+  void discoveryRemovesDisabledRegistrationWithoutMutatingSharedMetadata() throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "objectMapper", new ObjectMapper());
+    var metadata = new org.openmetadata.mcp.auth.OAuthMetadata();
+    metadata.setRegistrationEndpoint(URI.create("https://om.test/mcp/register"));
+    putField(transport, "oauthMetadata", metadata);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+    ServletOutputStream stream = mock(ServletOutputStream.class);
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              output.write(
+                  inv.<byte[]>getArgument(0),
+                  inv.<Integer>getArgument(1),
+                  inv.<Integer>getArgument(2));
+              return null;
+            })
+        .when(stream)
+        .write(any(byte[].class), anyInt(), anyInt());
+    when(response.getOutputStream()).thenReturn(stream);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withDynamicClientRegistrationEnabled(false));
+      transport.handleMetadata(mock(HttpServletRequest.class), response);
+    }
+    assertThat(new ObjectMapper().readTree(output.toByteArray()).has("registration_endpoint"))
+        .isFalse();
+    assertThat(metadata.getRegistrationEndpoint()).isNotNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void registrationLimitCannotBeResetBySpoofedForwardedPrefixes(boolean separateHeaders)
+      throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    var registration = mock(RegistrationHandler.class);
+    when(registration.handle(any()))
+        .thenReturn(CompletableFuture.completedFuture(new OAuthClientInformation()));
+    putField(transport, "registrationHandler", registration);
+    var attempts = new ConcurrentHashMap<String, AtomicInteger>();
+    putField(transport, "registrationAttempts", attempts);
+    putField(transport, "objectMapper", new ObjectMapper());
+    for (int attempt = 1; attempt <= 11; attempt++) {
+      var request = mock(HttpServletRequest.class);
+      when(request.getContextPath()).thenReturn("");
+      when(request.getRequestURI()).thenReturn("/mcp/register");
+      when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+      var headers =
+          separateHeaders
+              ? List.of("192.0.2." + attempt, "203.0.113.7")
+              : List.of("192.0.2." + attempt + ", 203.0.113.7");
+      when(request.getHeaders("X-Forwarded-For")).thenReturn(Collections.enumeration(headers));
+      when(request.getInputStream())
+          .thenReturn(
+              HttpServletStatelessServerTransportTest.bodyOf(
+                  new ByteArrayInputStream(new byte[] {'{', '}'})));
+      var response = mock(HttpServletResponse.class);
+      when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+      transport.doPost(request, response);
+      verify(response).setStatus(attempt <= 10 ? 201 : 429);
+    }
+    assertThat(attempts).containsOnlyKeys("203.0.113.7");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"203.0.113.7, garbage", "203.0.113.7,", "203.0.113.7, 999.1.1.1"})
+  void malformedProxyAddressFallsBackToPeer(String forwarded) throws Exception {
+    assertThat(clientIp("127.0.0.1", forwarded)).isEqualTo("127.0.0.1");
+  }
+
+  @Test
+  void forwardedAddressRequiresLocalPeerAndCanonicalizesIpv6() throws Exception {
+    assertThat(clientIp("203.0.113.7", "192.0.2.1")).isEqualTo("203.0.113.7");
+    assertThat(clientIp("127.0.0.1", "192.0.2.1, 2001:0db8:0:0:0:0:0:1")).isEqualTo("2001:db8::1");
+    assertThat(clientIp("::1", "203.0.113.7")).isEqualTo("203.0.113.7");
+    assertThat(clientIp("127.0.0.1", null)).isEqualTo("127.0.0.1");
+  }
+
+  private String clientIp(String peer, String forwarded) throws Exception {
+    var request = mock(HttpServletRequest.class);
+    when(request.getRemoteAddr()).thenReturn(peer);
+    when(request.getHeaders("X-Forwarded-For"))
+        .thenReturn(Collections.enumeration(forwarded == null ? List.of() : List.of(forwarded)));
+    var method =
+        OAuthHttpStatelessServerTransportProvider.class.getDeclaredMethod(
+            "getClientIp", HttpServletRequest.class);
+    method.setAccessible(true);
+    return (String) method.invoke(transportWith(mock(UserSSOOAuthProvider.class)), request);
   }
 
   // ── registration body limit ───────────────────────────────────────────────

@@ -90,6 +90,17 @@
   ],
   "mappings": [
     {
+      "_comment": "MCP administrator controls and client revocation.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/mcp/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/McpApplicationConfiguration/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/mcpConfigAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/McpApplication.json"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/McpAdministration.spec.ts"]
+    },
+    {
       "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/**",

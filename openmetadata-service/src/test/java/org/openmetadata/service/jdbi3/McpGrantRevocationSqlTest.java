@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -23,6 +24,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -130,6 +134,116 @@ class McpGrantRevocationSqlTest {
     }
     assertGrantEnded(jdbi, DELETED_USER_AS_STORED);
     assertGrantKept(jdbi, OTHER_USER);
+    assertClientTokenRevocation(jdbi);
+    assertRevocationSerializesWithIssuance(jdbi);
+    assertClientRemoval(jdbi);
+  }
+
+  private void assertClientTokenRevocation(Jdbi jdbi) {
+    OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    final var before = clients.listClients("", 100, NOW).getFirst();
+    assertEquals(1, before.getActiveAccessTokens());
+    assertEquals(MORE_USERS + 1, before.getActiveRefreshTokens());
+    jdbi.onDemand(OAuthDAOs.OAuthAccessTokenDAO.class)
+        .insert("expired", "encrypted", CLIENT, OTHER_USER, "[]", NOW);
+    assertEquals(1, clients.listClients("", 100, NOW).getFirst().getActiveAccessTokens());
+    assertTrue(clients.revokeGrants(CLIENT));
+    assertNotNull(clients.findByClientId(CLIENT));
+    assertEquals(0, clients.listClients("", 100, NOW).getFirst().getActiveAccessTokens());
+    assertEquals(0, clients.listClients("", 100, NOW).getFirst().getActiveRefreshTokens());
+    assertNull(
+        jdbi.onDemand(OAuthDAOs.OAuthAuthorizationCodeDAO.class).findByCode("code-" + OTHER_USER));
+    assertNull(
+        jdbi.onDemand(OAuthDAOs.McpPendingAuthRequestDAO.class)
+            .findByAuthRequestId("consent-" + OTHER_USER));
+    assertTrue(clients.revokeGrants(CLIENT));
+    assertEquals(false, clients.revokeGrants("missing"));
+  }
+
+  private void assertRevocationSerializesWithIssuance(Jdbi jdbi) {
+    final McpGrantTransaction transaction =
+        new McpGrantTransaction(() -> jdbi.onDemand(CollectionDAO.class));
+    final OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    final CountDownLatch issued = new CountDownLatch(1);
+    final CountDownLatch revokeStarted = new CountDownLatch(1);
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var issuing =
+          executor.submit(
+              () ->
+                  transaction.execute(
+                      CLIENT,
+                      () -> {
+                        final var tokens =
+                            McpGrantTransaction.resolve(
+                                OAuthDAOs::oauthAccessTokenDAO,
+                                jdbi.onDemand(OAuthDAOs.OAuthAccessTokenDAO.class));
+                        tokens.insert(
+                            "concurrent-access", "encrypted", CLIENT, OTHER_USER, "[]", LATER);
+                        issued.countDown();
+                        assertTrue(revokeStarted.await(5, TimeUnit.SECONDS));
+                        return null;
+                      }));
+      assertTrue(issued.await(5, TimeUnit.SECONDS));
+      final var revoking =
+          executor.submit(
+              () -> {
+                revokeStarted.countDown();
+                return clients.revokeGrants(CLIENT);
+              });
+      issuing.get(10, TimeUnit.SECONDS);
+      assertTrue(revoking.get(10, TimeUnit.SECONDS));
+      assertNull(
+          jdbi.onDemand(OAuthDAOs.OAuthAccessTokenDAO.class).findByTokenHash("concurrent-access"));
+      transaction.execute(
+          CLIENT,
+          () -> {
+            assertNull(
+                McpGrantTransaction.resolve(
+                        OAuthDAOs::oauthRefreshTokenDAO,
+                        jdbi.onDemand(OAuthDAOs.OAuthRefreshTokenDAO.class))
+                    .findByTokenHash("rotated-" + OTHER_USER));
+            return null;
+          });
+    } catch (Exception exception) {
+      throw new AssertionError("Grant issuance and revocation must serialize", exception);
+    }
+  }
+
+  private void assertClientRemoval(Jdbi jdbi) {
+    OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    clients.insert("unrelated", null, "Unaffected", "[]", "[]", "none", "[]");
+    assertEquals(2, clients.listClients("", 100).size());
+    assertEquals("unrelated", clients.listClients(CLIENT, 100).getFirst().getClientId());
+    assertTrue(clients.listClients("", 100).getFirst().getIssuedAt() > 0);
+    assertEquals(1, clients.deleteWithGrants(CLIENT));
+    assertNull(clients.findByClientId(CLIENT));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new McpGrantTransaction(() -> jdbi.onDemand(CollectionDAO.class))
+                .execute(
+                    CLIENT,
+                    () -> {
+                      throw new AssertionError("Deleted client must not issue grants");
+                    }));
+    assertNotNull(clients.findByClientId("unrelated"));
+    for (String table :
+        List.of(
+            "oauth_authorization_codes",
+            "oauth_access_tokens",
+            "oauth_refresh_tokens",
+            "mcp_pending_auth_requests")) {
+      final int remaining =
+          jdbi.withHandle(
+              handle ->
+                  handle
+                      .createQuery("SELECT COUNT(*) FROM " + table + " WHERE client_id = :client")
+                      .bind("client", CLIENT)
+                      .mapTo(Integer.class)
+                      .one());
+      assertEquals(0, remaining);
+    }
+    assertEquals(0, clients.deleteWithGrants(CLIENT));
   }
 
   /** The statements of OAuthTokenRepository.rotateRefreshToken, in its order. */

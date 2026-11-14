@@ -46,7 +46,11 @@
       "items": {
         "type": "string"
       },
-      "default": ["http://localhost:3000", "http://localhost:8585", "http://localhost:9090"]
+      "default": [
+        "http://localhost:3000",
+        "http://localhost:8585",
+        "http://localhost:9090"
+      ]
     },
     "connectTimeout": {
       "description": "HTTP connection timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms (30 seconds)",
@@ -78,6 +82,30 @@
       },
       "uniqueItems": true,
       "default": []
+    },
+    "dynamicClientRegistrationEnabled": {
+      "description": "Allow anonymous OAuth client registration. Disabling it stops new registrations but preserves existing clients and grants.",
+      "type": "boolean",
+      "default": true
+    },
+    "allowedRedirectHosts": {
+      "description": "Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No wildcards or suffix matching. Loopback and native redirects are controlled separately. Applies to new registration and new authorization flows.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "allowLoopbackRedirects": {
+      "description": "Allow HTTP or HTTPS loopback callbacks for desktop clients.",
+      "type": "boolean",
+      "default": true
+    },
+    "allowNativeRedirects": {
+      "description": "Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or enabled loopback callbacks.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

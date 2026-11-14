@@ -44,9 +44,11 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.McpClientPolicy;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -130,6 +132,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Sent as the "iss" parameter on authorization responses. Volatile because the transport provider
   // sets it again whenever the configured base URL changes while the server is running.
   private volatile String issuer;
+
+  private final McpGrantTransaction grantTransaction = new McpGrantTransaction();
 
   public UserSSOOAuthProvider(JWTTokenGenerator jwtGenerator) {
     this.jwtGenerator = jwtGenerator;
@@ -297,6 +301,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     URI validatedRedirectUri;
     try {
       validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
+      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+          .validateRedirect(validatedRedirectUri);
     } catch (Exception e) {
       LOG.error(
           "Redirect URI validation failed for client {}: {}", client.getClientId(), e.getMessage());
@@ -598,6 +604,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
     // Validate redirect URI against registered URIs to prevent open redirect attacks
     try {
+      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+          .validateRedirect(URI.create(pendingRequest.redirectUri()));
       client.validateRedirectUri(URI.create(pendingRequest.redirectUri()));
     } catch (Exception e) {
       LOG.error(
@@ -651,40 +659,51 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    */
   public void handleConsentDecision(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    final McpPendingAuthRequest pending =
+        pendingAuthRepository.findByAuthRequestId(request.getParameter(AUTH_REQUEST_ID_PARAM));
+    if (pending == null) {
+      response.sendError(
+          HttpServletResponse.SC_FORBIDDEN,
+          "This approval is no longer valid. Please restart the authorization flow.");
+      return;
+    }
+    final ConsentOutcome outcome =
+        grantTransaction.execute(pending.clientId(), () -> completeConsent(request));
+    if (outcome.redirectUrl() == null) {
+      response.sendError(outcome.status(), outcome.error());
+    } else {
+      serveConsentOutcome(response, outcome.redirectUrl(), outcome.approved(), pending.clientId());
+    }
+  }
+
+  private record ConsentOutcome(String redirectUrl, boolean approved, int status, String error) {}
+
+  private ConsentOutcome completeConsent(HttpServletRequest request) {
     final String authRequestId = request.getParameter(AUTH_REQUEST_ID_PARAM);
     final String userName =
         pendingAuthRepository.takeConsent(authRequestId, request.getParameter(CONSENT_TOKEN_PARAM));
     if (userName == null) {
-      LOG.warn("No waiting MCP client approval matches the submitted consent");
-      response.sendError(
+      return new ConsentOutcome(
+          null,
+          false,
           HttpServletResponse.SC_FORBIDDEN,
           "This approval is no longer valid. Please restart the authorization flow.");
-    } else {
-      final boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
-      relayConsentDecision(authRequestId, userName, approved, response);
     }
-  }
-
-  private void relayConsentDecision(
-      String authRequestId, String userName, boolean approved, HttpServletResponse response)
-      throws IOException {
-    final McpPendingAuthRequest pendingRequest =
-        pendingAuthRepository.findByAuthRequestId(authRequestId);
-    if (pendingRequest == null) {
-      response.sendError(
+    final McpPendingAuthRequest pending = pendingAuthRepository.findByAuthRequestId(authRequestId);
+    if (pending == null) {
+      return new ConsentOutcome(
+          null,
+          false,
           HttpServletResponse.SC_BAD_REQUEST,
           "Authorization request expired. Please restart the flow.");
-    } else {
-      // The client may have been removed or changed since the consent page was served.
-      requireRegisteredRedirect(pendingRequest);
-      final String redirectUrl =
-          UriUtils.constructAuthorizationResponseUri(
-              pendingRequest.redirectUri(),
-              consentResponseParams(userName, pendingRequest, approved),
-              issuer);
-      serveConsentOutcome(response, redirectUrl, approved, pendingRequest.clientId());
-      deletePendingRequest(authRequestId);
     }
+    requireRegisteredRedirect(pending);
+    final boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
+    final String redirectUrl =
+        UriUtils.constructAuthorizationResponseUri(
+            pending.redirectUri(), consentResponseParams(userName, pending, approved), issuer);
+    pendingAuthRepository.delete(authRequestId);
+    return new ConsentOutcome(redirectUrl, approved, HttpServletResponse.SC_OK, null);
   }
 
   /** The client callback's query: a code on approval, {@code access_denied} otherwise. */
@@ -724,18 +743,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           redirectUrl,
           "Access Denied",
           "You did not approve access for the application.");
-    }
-  }
-
-  private void deletePendingRequest(String authRequestId) {
-    // Best-effort cleanup — failure here doesn't affect the user
-    try {
-      pendingAuthRepository.delete(authRequestId);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
-          authRequestId,
-          e.getMessage());
     }
   }
 
@@ -782,25 +789,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
-    // Re-validate the redirect URI against the registered client (defense-in-depth against
-    // open redirect; mirrors handleSSOCallbackWithDbState). Even an error redirect must not
-    // be sent to an unregistered URI.
-    OAuthClientInformation client = clientRepository.findByClientId(pendingRequest.clientId());
-    if (client == null) {
-      throw new IllegalStateException(
-          "Client not found for pending auth request: " + pendingRequest.clientId());
-    }
-    URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
-    try {
-      client.validateRedirectUri(requestedRedirectUri);
-    } catch (Exception e) {
-      LOG.error(
-          "SECURITY ALERT: Redirect URI validation failed in MCP error callback for client "
-              + "{}: {}",
-          client.getClientId(),
-          e.getMessage());
-      throw new IllegalStateException("Redirect URI validation failed: " + e.getMessage(), e);
-    }
+    requireRegisteredRedirect(pendingRequest);
+    final URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
 
     // Build the OAuth error response per RFC 6749 §4.1.2.1 and the MCP spec, plus the RFC 9207
     // iss parameter (added by constructAuthorizationResponseUri when issuer is set).
@@ -852,6 +842,40 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   @Override
   public CompletableFuture<OAuthToken> exchangeAuthorizationCode(
+      OAuthClientInformation client, AuthorizationCode authCode) throws TokenException {
+    try {
+      return exchangeWithGrantLock(
+          client.getClientId(), () -> exchangeAuthorizationCodeLocked(client, authCode));
+    } catch (RuntimeException exception) {
+      return CompletableFuture.failedFuture(exception);
+    }
+  }
+
+  private record GrantExchangeResult(CompletableFuture<OAuthToken> token, TokenException error) {}
+
+  private CompletableFuture<OAuthToken> exchangeWithGrantLock(
+      String clientId,
+      McpGrantTransaction.Operation<CompletableFuture<OAuthToken>, TokenException> operation)
+      throws TokenException {
+    final GrantExchangeResult result =
+        grantTransaction.execute(
+            clientId,
+            () -> {
+              try {
+                return new GrantExchangeResult(operation.get(), null);
+              } catch (TokenException exception) {
+                // Invalid PKCE must still consume the code; protocol errors commit that
+                // consumption.
+                return new GrantExchangeResult(null, exception);
+              }
+            });
+    if (result.error() != null) {
+      throw result.error();
+    }
+    return result.token();
+  }
+
+  private CompletableFuture<OAuthToken> exchangeAuthorizationCodeLocked(
       OAuthClientInformation client, AuthorizationCode authCode) throws TokenException {
     try {
       LOG.info("Exchanging authorization code for JWT token with PKCE validation");
@@ -1070,6 +1094,17 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException {
     try {
+      return exchangeWithGrantLock(
+          client.getClientId(), () -> exchangeRefreshTokenLocked(client, refreshToken, scopes));
+    } catch (RuntimeException exception) {
+      return CompletableFuture.failedFuture(exception);
+    }
+  }
+
+  private CompletableFuture<OAuthToken> exchangeRefreshTokenLocked(
+      OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
+      throws TokenException {
+    try {
       LOG.info("Exchanging refresh token for new access token (client: {})", client.getClientId());
 
       String refreshTokenValue = refreshToken.getToken();
@@ -1208,6 +1243,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       String codeChallenge,
       URI redirectUri,
       List<String> scopes) {
+    new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+        .validateRedirect(redirectUri);
     // Generate cryptographically secure authorization code (32 bytes = 256 bits)
     String code = generateSecureToken(32);
     long expiresAt = System.currentTimeMillis() + (AUTH_CODE_EXPIRY_SECONDS * 1000);
