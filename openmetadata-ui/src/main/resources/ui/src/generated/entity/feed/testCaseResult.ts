@@ -79,6 +79,21 @@ export interface TestCaseParameterValue {
  */
 export interface TestCaseResultElement {
     /**
+     * Failure threshold the run was judged by, as configured when it executed. Absent for a run
+     * recorded before the snapshot existed, whose threshold cannot be recovered.
+     */
+    appliedThreshold?: TestCaseAppliedThreshold;
+    /**
+     * Upper bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `maxBound`. Absent for a run that recorded no threshold snapshot.
+     */
+    configuredMaxBound?: number;
+    /**
+     * Lower bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `minBound`. Absent for a run that recorded no threshold snapshot.
+     */
+    configuredMinBound?: number;
+    /**
      * List of dimensional test results. Only populated when the test case has dimensionColumns
      * specified.
      */
@@ -161,10 +176,54 @@ export interface TestCaseResultElement {
 }
 
 /**
+ * Failure threshold the run was judged by, as configured when it executed. Absent for a run
+ * recorded before the snapshot existed, whose threshold cannot be recovered.
+ *
+ * The failure threshold a test case run was judged by, as the evaluator read it while the
+ * run executed. Recorded by the agent that ran the test and never re-read from the test
+ * case afterwards: an edit between the run and the result being stored would otherwise be
+ * attributed to the run.
+ *
+ * Failure threshold the parent run was judged by, as configured when it executed. Every
+ * dimension of a run shares it.
+ */
+export interface TestCaseAppliedThreshold {
+    unit?: ThresholdUnit;
+    /**
+     * Deviation the run tolerated before it was reported as failed. `0` tolerated nothing.
+     */
+    value?: number;
+}
+
+/**
+ * How a failure threshold reads: `ABSOLUTE` for a raw deviation, `PERCENTAGE` for a share
+ * of what it applies to.
+ */
+export enum ThresholdUnit {
+    Absolute = "ABSOLUTE",
+    Percentage = "PERCENTAGE",
+}
+
+/**
  * Test case result for dimensional analysis - supports both single and multi-dimensional
  * groupings
  */
 export interface TestCaseDimensionResult {
+    /**
+     * Failure threshold the parent run was judged by, as configured when it executed. Every
+     * dimension of a run shares it.
+     */
+    appliedThreshold?: TestCaseAppliedThreshold;
+    /**
+     * Upper bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `maxBound`.
+     */
+    configuredMaxBound?: number;
+    /**
+     * Lower bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `minBound`.
+     */
+    configuredMinBound?: number;
     /**
      * Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'
      */

@@ -304,8 +304,10 @@ const getStatisticalCells = ({
       configuredRange
     ),
   ];
-  // Without a tolerance the effective range is the configured one.
-  if (threshold > 0) {
+  // Without a tolerance the effective range is the configured one. A run that
+  // recorded no tolerance may have widened its range, so the range it was
+  // judged against is shown rather than guessed at.
+  if (isUndefined(threshold) || threshold > 0) {
     cells.push(
       knownOrQuiet(
         'label.effective-range',
@@ -316,6 +318,25 @@ const getStatisticalCells = ({
   }
 
   return cells;
+};
+
+/**
+ * The tolerance the run applied, as the run itself recorded it. A run from an
+ * agent that predates the snapshot recorded none, and the test case's current
+ * setting is not the one that run was judged by, so the cell says so rather
+ * than naming a number.
+ */
+const formatRunThreshold = (
+  { threshold, isPercentage, noun }: RunThresholdData,
+  t: TFunction
+): string | undefined => {
+  if (isUndefined(threshold)) {
+    return undefined;
+  }
+
+  return threshold > 0
+    ? formatThresholdAmount(threshold, isPercentage, noun, t)
+    : t('label.no-tolerance');
 };
 
 /**
@@ -340,16 +361,16 @@ const RunThreshold = ({
     return null;
   }
 
-  const { semantic, threshold, isPercentage, noun } = data;
+  const { semantic } = data;
+  const appliedThreshold = formatRunThreshold(data, t);
   const cells: DetailCell[] = [
     {
-      className: PRIMARY_VALUE,
+      className: isUndefined(appliedThreshold)
+        ? 'tw:text-quaternary'
+        : PRIMARY_VALUE,
       labelKey: 'label.threshold',
       testId: 'run-details-threshold',
-      value:
-        threshold > 0
-          ? formatThresholdAmount(threshold, isPercentage, noun, t)
-          : t('label.no-tolerance'),
+      value: appliedThreshold ?? t('label.unavailable'),
     },
     ...(semantic === ThresholdTestSemantic.RowCountable
       ? getRowCountableCells(data, valueClassName, t)

@@ -62,6 +62,18 @@
       "description": "Lower bound limit for the test case result as defined in the test definition.",
       "type": "number"
     },
+    "configuredMaxBound": {
+      "description": "Upper bound the test case asked for when the run executed, before the failure threshold widened it into `maxBound`.",
+      "type": "number"
+    },
+    "configuredMinBound": {
+      "description": "Lower bound the test case asked for when the run executed, before the failure threshold widened it into `minBound`.",
+      "type": "number"
+    },
+    "appliedThreshold": {
+      "description": "Failure threshold the run was judged by, as configured when it executed.",
+      "$ref": "../../tests/basic.json#/definitions/testCaseAppliedThreshold"
+    },
     "dimensionResults": {
       "description": "List of dimensional test results. Only populated when the test case has dimensionColumns specified.",
       "type": "array",

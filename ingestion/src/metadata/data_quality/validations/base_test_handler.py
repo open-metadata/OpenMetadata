@@ -54,6 +54,7 @@ from metadata.data_quality.validations.thresholds import (
 )
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
+    TestCaseAppliedThreshold,
     TestCaseDimensionResult,
     TestCaseErrorDetails,
     TestCaseEvaluationScope,
@@ -61,6 +62,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.basic import ThresholdUnit as ResultThresholdUnit
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
 from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
@@ -204,6 +206,11 @@ class BaseTestValidator(ABC):
     # dataset. Rule-library and custom SQL tests do, and the message has to say so.
     BYPASSES_SAMPLER: bool = False
 
+    # Whether this validator reads `threshold` as a deviation the verdict tolerates. Overridden
+    # by the validators whose `threshold` means something else, so their results do not record a
+    # tolerance they never applied.
+    THRESHOLD_IS_TOLERANCE: bool = True
+
     def __init__(
         self,
         runner: QueryRunner | PandasRunner,
@@ -250,6 +257,7 @@ class BaseTestValidator(ABC):
         if test_result.result:
             test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
         test_result.evaluationScope = self.result_evaluation_scope(test_result.testCaseStatus)
+        test_result.appliedThreshold = self.result_applied_threshold(test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -845,6 +853,30 @@ class BaseTestValidator(ABC):
             logger.debug("Could not record the evaluation scope of %s: %s", self.test_case, exc)
             return None
 
+    def result_applied_threshold(self, status: TestCaseStatus | None) -> TestCaseAppliedThreshold | None:
+        """The threshold to record on the result, as this run read it
+
+        The verdict is only readable next to the tolerance it was taken under, and the test case
+        can be edited between this run and the next one. The snapshot is taken here, from the
+        parameters the evaluator itself read, rather than left for the server to re-read from the
+        test case: an edit landing in between would otherwise be attributed to this run.
+
+        An aborted run took no verdict, so it applied no threshold, and neither did a test whose
+        `threshold` is not a tolerance. Like the evaluation scope, this is reporting: a threshold
+        that cannot be read is left off rather than failing the run.
+        """
+        if status is TestCaseStatus.Aborted or not self.THRESHOLD_IS_TOLERANCE:
+            return None
+        try:
+            threshold = self.get_failure_threshold()
+            return TestCaseAppliedThreshold(
+                value=threshold.value,
+                unit=ResultThresholdUnit(threshold.unit.value),
+            )
+        except Exception as exc:
+            logger.debug("Could not record the applied threshold of %s: %s", self.test_case, exc)
+            return None
+
     @staticmethod
     def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:
         """`Dimension country=Spain: ` for a dimensional row, nothing for the overall result"""
@@ -1156,6 +1188,7 @@ class BaseTestValidator(ABC):
         Returns:
             TestCaseResult:
         """
+        configured_min, configured_max = self.configured_bounds((min_bound, max_bound))
         test_case_result = TestCaseResult(
             timestamp=execution_date,  # type: ignore
             testCaseStatus=status,
@@ -1165,6 +1198,10 @@ class BaseTestValidator(ABC):
             # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
             minBound=None if min_bound == float("-inf") else min_bound,
             maxBound=None if max_bound == float("inf") else max_bound,
+            # The window the test case asked for, kept beside the one the threshold widened it
+            # into: an edit to either can no longer be read back onto this run.
+            configuredMinBound=reportable_bound(configured_min),
+            configuredMaxBound=reportable_bound(configured_max),
             # Validators build their Aborted result inside the `except` block that caught the error,
             # so without an explicit `exc` the exception being handled is the cause; that spares each
             # of them from threading it through.
@@ -1195,9 +1232,12 @@ class BaseTestValidator(ABC):
     ) -> list[TestCaseDimensionResult]:
         """Convert DimensionResult objects to TestCaseDimensionResult objects"""
         test_case_dimension_results = []
+        # Every group of a run was judged by the same threshold, so they share the run's snapshot.
+        applied_threshold = test_result.appliedThreshold
 
         for dim_result in dimension_results:
             dimension_key = ",".join([f"{dim_val.name}={dim_val.value}" for dim_val in dim_result.dimensionValues])
+            configured_min, configured_max = self.configured_bounds((dim_result.minBound, dim_result.maxBound))
 
             test_case_dim_result = TestCaseDimensionResult(
                 id=str(uuid4()),
@@ -1216,6 +1256,9 @@ class BaseTestValidator(ABC):
                 impactScore=dim_result.impactScore,  # Include the impact score
                 minBound=dim_result.minBound,
                 maxBound=dim_result.maxBound,
+                configuredMinBound=reportable_bound(configured_min),
+                configuredMaxBound=reportable_bound(configured_max),
+                appliedThreshold=applied_threshold,
                 excludedFromRollUp=dim_result.excludedFromRollUp,
             )
 
