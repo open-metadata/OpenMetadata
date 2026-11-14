@@ -393,7 +393,10 @@ const OntologyNewClassPanel = ({
   const has = (...found: ClassIdentityIssue[]) =>
     found.some((issue) => issues.includes(issue));
   const issueText = (issue: ClassIdentityIssue) =>
-    t(ISSUE_MESSAGES[issue], { name: localName.trim(), label: label.trim() });
+    t(ISSUE_MESSAGES[issue], {
+      name: localName.trim(),
+      label: label.trim() || localName.trim(),
+    });
   const fieldHint = (
     fallback: string | undefined,
     ...found: ClassIdentityIssue[]

@@ -132,12 +132,18 @@ const ChangeRow = ({
   );
 };
 
+const isBeforeFirstRelease = (status?: OntologyPublicationStatus) =>
+  Boolean(status && !status.active);
+
 /** The newest unpublished changes; hidden for a reader who may not see the draft. */
 const RecentChangesCard = ({
+  isFirstRelease,
   ontologyId,
   relations,
   onOpenPublication,
 }: {
+  /** Before the first release the ontology's own row is the container, not a change. */
+  isFirstRelease: boolean;
   ontologyId: string;
   relations: readonly OntologyModelRelation[];
   onOpenPublication: () => void;
@@ -158,7 +164,15 @@ const RecentChangesCard = ({
   if (!diff.data) {
     return null;
   }
-  const total = diff.data.paging.total ?? diff.data.data.length;
+  const changes = isFirstRelease
+    ? diff.data.data.filter(
+        ({ memberKind }) => memberKind !== MemberKind.Ontology
+      )
+    : diff.data.data;
+  const total = Math.max(
+    (diff.data.paging.total ?? diff.data.data.length) - Number(isFirstRelease),
+    0
+  );
 
   return (
     <Card data-testid="ontology-overview-recent-changes">
@@ -189,7 +203,7 @@ const RecentChangesCard = ({
         </Card.Content>
       ) : (
         <Box direction="col">
-          {diff.data.data.map((change) => (
+          {changes.map((change) => (
             <ChangeRow
               change={change}
               hierarchy={relations.find(
@@ -723,6 +737,7 @@ const OntologyOverview = ({
       </div>
       {releaseId || !onOpenPublication ? null : (
         <RecentChangesCard
+          isFirstRelease={isBeforeFirstRelease(status)}
           ontologyId={ontology.id}
           relations={relations}
           onOpenPublication={onOpenPublication}

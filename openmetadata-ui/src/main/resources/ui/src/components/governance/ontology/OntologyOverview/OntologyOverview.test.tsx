@@ -165,6 +165,38 @@ describe('OntologyOverview recent changes', () => {
     });
   });
 
+  it('leaves the ontology itself out of the changes before the first release', async () => {
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          changeType: ChangeType.Added,
+          memberKind: MemberKind.Ontology,
+          entity: { id: ontology.id, type: 'ontology', name: ontology.name },
+        },
+        {
+          changeType: ChangeType.Added,
+          memberKind: MemberKind.Concept,
+          entity: { id: 'c1', type: 'ontologyConcept', name: 'Nurse' },
+        },
+      ],
+      paging: { total: 2 },
+    });
+    renderWithQueryClient(
+      <OntologyOverview
+        ontology={ontology}
+        status={{ unpublishedChanges: 2 }}
+        onOpenPublication={jest.fn()}
+      />
+    );
+
+    await screen.findByTestId('ontology-overview-recent-changes');
+
+    expect(screen.getAllByTestId('ontology-overview-change')).toHaveLength(1);
+    expect(screen.getByTestId('ontology-overview-change')).toHaveTextContent(
+      'Nurse'
+    );
+  });
+
   it('lists the newest unpublished changes and opens Review & publish', async () => {
     const onOpenPublication = jest.fn();
     (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({

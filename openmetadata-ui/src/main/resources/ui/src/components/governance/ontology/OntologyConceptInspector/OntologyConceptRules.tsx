@@ -124,41 +124,48 @@ const ConceptRuleFields = ({
         )}
       </Select>
       {rule.kind === QuickRuleKind.MustHave ? (
-        <div className="tw:grid tw:grid-cols-[1.4fr_0.6fr_2fr] tw:items-start tw:gap-3">
-          <Select
-            items={QUICK_QUANTIFIERS.map((quantifier) => ({
-              id: quantifier,
-              label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
-            }))}
-            label={t('label.quantity')}
-            value={rule.quantifier}
-            onChange={(key) =>
-              key && onChange({ quantifier: String(key) as QuickQuantifier })
-            }>
-            {(item) => (
-              <Select.Item id={item.id} key={item.id} label={item.label} />
-            )}
-          </Select>
-          <Input
-            hint={problems.count}
-            isInvalid={Boolean(problems.count)}
-            label={t('label.count')}
-            type="number"
-            value={String(rule.count)}
-            onChange={(count) =>
-              onChange({ count: Math.floor(Number(count) || 0) })
-            }
-          />
-          <OntologyIriInput
-            isNameOnly
-            error={problems.property}
-            label={t('label.property')}
-            options={references.properties}
-            testId="ontology-rule-property"
-            value={rule.propertyIri}
-            onChange={(propertyIri) => onChange({ propertyIri })}
-          />
-        </div>
+        <Box direction="col" gap={1}>
+          <div className="tw:grid tw:grid-cols-[1.2fr_0.9fr_2fr] tw:items-start tw:gap-3">
+            <Select
+              items={QUICK_QUANTIFIERS.map((quantifier) => ({
+                id: quantifier,
+                label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
+              }))}
+              label={t('label.quantity')}
+              value={rule.quantifier}
+              onChange={(key) =>
+                key && onChange({ quantifier: String(key) as QuickQuantifier })
+              }>
+              {(item) => (
+                <Select.Item id={item.id} key={item.id} label={item.label} />
+              )}
+            </Select>
+            <Input
+              isInvalid={Boolean(problems.count)}
+              label={t('label.count')}
+              type="number"
+              value={String(rule.count)}
+              onChange={(count) =>
+                onChange({ count: Math.floor(Number(count) || 0) })
+              }
+            />
+            <OntologyIriInput
+              isNameOnly
+              error={problems.property}
+              label={t('label.property')}
+              options={references.properties}
+              testId="ontology-rule-property"
+              value={rule.propertyIri}
+              onChange={(propertyIri) => onChange({ propertyIri })}
+            />
+          </div>
+          {/* Under the whole row: the Count column is too narrow to hold a sentence. */}
+          {problems.count ? (
+            <Typography color="danger" role="alert" size="text-sm">
+              {problems.count}
+            </Typography>
+          ) : null}
+        </Box>
       ) : (
         <OntologyIriInput
           isNameOnly
@@ -290,18 +297,20 @@ const ConceptRuleForm = ({
         rule={rule}
         onChange={(patch) => setRule((current) => ({ ...current, ...patch }))}
       />
-      <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
-        <Card.Content className="tw:flex tw:flex-col tw:gap-1">
-          <Typography color="secondary" size="text-xs" weight="medium">
-            {t('label.preview')}
-          </Typography>
-          <Typography size="text-sm">
-            {isQuickRuleReady(rule)
-              ? sentence
-              : t('message.ontology-rule-preview-empty')}
-          </Typography>
-        </Card.Content>
-      </Card>
+      {countProblem ? null : (
+        <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
+          <Card.Content className="tw:flex tw:flex-col tw:gap-1">
+            <Typography color="secondary" size="text-xs" weight="medium">
+              {t('label.preview')}
+            </Typography>
+            <Typography size="text-sm">
+              {isQuickRuleReady(rule)
+                ? sentence
+                : t('message.ontology-rule-preview-empty')}
+            </Typography>
+          </Card.Content>
+        </Card>
+      )}
       {/* The server checks OWL shape only; a count it accepts can still contradict the property. */}
       {countProblem ? null : (
         <AxiomOutcome problems={problems} validation={validation.current} />
