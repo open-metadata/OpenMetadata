@@ -33,6 +33,9 @@ public final class TaskAssigneeCleanup {
         repository.findTo(entityId, entityType, Relationship.ASSIGNED_TO, Entity.TASK, Include.ALL);
     Fields fields = repository.getFields("assignees,about,createdBy,reviewers,watchers");
     for (EntityReference taskReference : taskReferences) {
+      if (Boolean.TRUE.equals(taskReference.getDeleted())) {
+        continue;
+      }
       removeAssignee(
           repository, repository.get(null, taskReference.getId(), fields), entityId, entityType);
     }
