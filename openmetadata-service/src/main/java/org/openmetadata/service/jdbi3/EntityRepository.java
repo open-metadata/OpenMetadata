@@ -5264,6 +5264,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * already carries them.
    */
   private PatchResponse<T> withInheritedTags(final PatchResponse<T> response) {
+    // ADR:2026-11-14-a-patch-answers-with-the-tags-a-read-returns
     if (supportsTags && response.status() == Status.OK && response.entity() != null) {
       setInheritedFields(response.entity(), getFields(FIELD_TAGS));
     }
