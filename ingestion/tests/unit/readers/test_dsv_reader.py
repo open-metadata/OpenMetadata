@@ -16,9 +16,10 @@ Tests for DSVDataFrameReader (CSV/TSV)
 import gzip
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -465,6 +466,121 @@ class TestDSVReader(unittest.TestCase):
             import os
 
             os.unlink(tmp_path)  # noqa: PTH108
+
+
+class TestAzureSovereignDSVReader:
+    @patch("pandas.read_csv")
+    def test_azure_us_gov_csv_reading_uses_gov_abfs_url_and_authority(self, mock_read_csv):
+        mock_df = pd.DataFrame({"id": [1], "agency": ["DoD"]})
+        captured: dict = {}
+
+        def mock_read_csv_impl(*args, **kwargs):
+            captured["args"] = args
+            captured["kwargs"] = kwargs
+
+            class ChunkReader:
+                def __enter__(self):
+                    return iter([mock_df])
+
+                def __exit__(self, *exc_args):
+                    pass
+
+            return ChunkReader()
+
+        mock_read_csv.side_effect = mock_read_csv_impl
+
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="govdsvacct",
+                clientId="gov-client",
+                clientSecret="gov-secret",
+                tenantId="11111111-2222-3333-4444-555555555555",
+                endpointSuffix="core.usgovcloudapi.net",
+            )
+        )
+        reader = CSVDataFrameReader(config, None)
+
+        result = reader._read(key="agency/report.csv", bucket_name="gov-bucket")
+        chunks = list(result.dataframes())
+
+        assert len(chunks) == 1
+        assert captured["args"][0] == "abfs://gov-bucket@govdsvacct.dfs.core.usgovcloudapi.net/agency/report.csv"
+        storage_opts = captured["kwargs"]["storage_options"]
+        assert storage_opts["account_host"] == "govdsvacct.blob.core.usgovcloudapi.net"
+        assert storage_opts["account_name"] == "govdsvacct"
+        assert storage_opts["credential"]._authority == "https://login.microsoftonline.us"
+
+    @patch("azure.identity.DefaultAzureCredential")
+    @patch("pandas.read_csv")
+    def test_azure_default_credential_gzip_csv_reading(self, mock_read_csv, mock_default_cred):
+        sentinel_cred = MagicMock(name="DefaultAzureCredentialInstance")
+        mock_default_cred.return_value = sentinel_cred
+        mock_df = pd.DataFrame({"id": [1], "agency": ["Treasury"]})
+        captured: dict = {}
+
+        def mock_read_csv_impl(*args, **kwargs):
+            captured["args"] = args
+            captured["kwargs"] = kwargs
+
+            class ChunkReader:
+                def __enter__(self):
+                    return iter([mock_df])
+
+                def __exit__(self, *exc_args):
+                    pass
+
+            return ChunkReader()
+
+        mock_read_csv.side_effect = mock_read_csv_impl
+
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="govdsvacct",
+                endpointSuffix="core.usgovcloudapi.net",
+            )
+        )
+        reader = CSVDataFrameReader(config, None)
+        result = reader._read(key="agency/report.csv.gz", bucket_name="gov-bucket")
+        chunks = list(result.dataframes())
+
+        assert len(chunks) == 1
+        mock_default_cred.assert_called_once_with(authority="https://login.microsoftonline.us")
+        assert captured["kwargs"]["compression"] == "gzip"
+        assert captured["kwargs"]["storage_options"]["credential"] is sentinel_cred
+        assert captured["kwargs"]["storage_options"]["account_host"] == "govdsvacct.blob.core.usgovcloudapi.net"
+
+    def test_azure_missing_security_config_raises(self):
+        reader = CSVDataFrameReader(AzureConfig(securityConfig=None), None)
+        with pytest.raises(ValueError, match="Azure securityConfig is required"):
+            reader._read(key="report.csv", bucket_name="gov-bucket")
+
+
+class TestDSVMalformedChunkHelpers:
+    @patch("pandas.read_csv")
+    def test_read_from_pandas_gz_detection_and_malformed_helpers(self, mock_read_csv):
+        captured: dict = {}
+
+        def mock_read_csv_impl(*args, **kwargs):
+            captured["kwargs"] = kwargs
+
+            class ChunkReader:
+                def __enter__(self):
+                    return iter([pd.DataFrame({"a,b": ["1,2"]})])
+
+                def __exit__(self, *exc_args):
+                    pass
+
+            return ChunkReader()
+
+        mock_read_csv.side_effect = mock_read_csv_impl
+        reader = CSVDataFrameReader(LocalConfig(), None)
+        assert reader._fix_malformed_quoted_chunk([], ",") == []
+
+        wrapper = reader.read_from_pandas("abfs://b@acct.dfs.core.windows.net/data.csv.gz")
+        chunks = list(wrapper.dataframes())
+        assert captured["kwargs"]["compression"] == "gzip"
+        assert list(chunks[0].columns) == ["a", "b"]
+        assert chunks[0].iloc[0].tolist() == ["1", "2"]
 
 
 if __name__ == "__main__":

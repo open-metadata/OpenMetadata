@@ -19,6 +19,7 @@ import os  # noqa: F401
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -38,7 +39,11 @@ from metadata.readers.dataframe.base import (
 )
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.adls import (
+    build_azure_abfs_path,
+    ensure_azure_pandas_storage_options,
+    return_azure_storage_options,
+)
 from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource  # noqa: TC001
 from metadata.utils.constants import CHUNKSIZE
@@ -251,27 +256,35 @@ class ParquetDataFrameReader(DataFrameReader):
         return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
     @_read_parquet_dispatch.register
-    def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _(self, azure_config: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
         from adlfs import AzureBlobFileSystem
         from pyarrow.fs import FSSpecHandler, PyFileSystem
         from pyarrow.parquet import ParquetFile
 
-        storage_options = return_azure_storage_options(self.config_source)
-        account_url = AZURE_PATH.format(
-            bucket_name=bucket_name,
-            account_name=self.config_source.securityConfig.accountName,
+        security_config = azure_config.securityConfig
+        if security_config is None:
+            raise ValueError("Azure securityConfig is required")
+
+        account_name = AzureClient.validate_resource_name(security_config.accountName, "Account Name")
+        validated_bucket = AzureClient.validate_container_name(bucket_name)
+        storage_options = return_azure_storage_options(azure_config)
+        pandas_storage_options = ensure_azure_pandas_storage_options(storage_options, account_name)
+        account_url = build_azure_abfs_path(
+            bucket_name=validated_bucket,
+            account_name=account_name,
             key=key,
+            endpoint_suffix=security_config.endpointSuffix,
         )
 
         # Check file size to determine reading strategy
         try:
             # Use adlfs (fsspec-based) filesystem which supports service principal auth
             adlfs_fs = AzureBlobFileSystem(
-                account_name=self.config_source.securityConfig.accountName,
+                account_name=account_name,
                 **storage_options,
             )
-            file_path = f"{bucket_name}/{key}"
+            file_path = f"{validated_bucket}/{key}"
             file_info = adlfs_fs.info(file_path)
             file_size = file_info.get("size", 0)
 
@@ -279,8 +292,10 @@ class ParquetDataFrameReader(DataFrameReader):
 
                 def arrow_chunk_generator():
                     logger.info(
-                        f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
-                        f"Using batched reading for file: {account_url}"
+                        "Large parquet file detected (%s bytes > %s bytes). Using batched reading for file: %s",
+                        file_size,
+                        MAX_FILE_SIZE_FOR_PREVIEW,
+                        account_url,
                     )
                     arrow_fs = PyFileSystem(FSSpecHandler(adlfs_fs))
                     parquet_file = ParquetFile(file_path, filesystem=arrow_fs)
@@ -291,18 +306,20 @@ class ParquetDataFrameReader(DataFrameReader):
 
                 def chunk_generator():
                     # Use pandas for regular reading of smaller files
-                    dataframe = pd.read_parquet(account_url, storage_options=storage_options)
+                    dataframe = pd.read_parquet(account_url, storage_options=pandas_storage_options)
                     yield from dataframe_to_chunks(dataframe)
 
                 return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
         except Exception as exc:
             logger.warning(
-                f"Error reading parquet file from Azure '{account_url}': {exc}. Falling back to pandas reading"
+                "Error reading parquet file from Azure '%s': %s. Falling back to pandas reading",
+                account_url,
+                exc,
             )
 
             def chunk_generator():
-                dataframe = pd.read_parquet(account_url, storage_options=storage_options)
+                dataframe = pd.read_parquet(account_url, storage_options=pandas_storage_options)
                 yield from dataframe_to_chunks(dataframe)
 
             return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)

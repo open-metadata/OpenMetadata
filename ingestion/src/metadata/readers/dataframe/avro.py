@@ -17,6 +17,7 @@ import traceback
 from collections.abc import Iterator
 from functools import singledispatchmethod
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -144,16 +145,22 @@ class AvroDataFrameReader(DataFrameReader):
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
     @_read_avro_dispatch.register
-    def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _(self, azure_config: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from Azure without loading entire file into memory."""
         from adlfs import AzureBlobFileSystem
 
-        storage_options = return_azure_storage_options(self.config_source)
+        security_config = azure_config.securityConfig
+        if security_config is None:
+            raise ValueError("Azure securityConfig is required")
+
+        account_name = AzureClient.validate_resource_name(security_config.accountName, "Account Name")
+        validated_bucket = AzureClient.validate_container_name(bucket_name)
+        storage_options = return_azure_storage_options(azure_config)
         adlfs_fs = AzureBlobFileSystem(
-            account_name=self.config_source.securityConfig.accountName,
+            account_name=account_name,
             **storage_options,
         )
-        file_path = f"{bucket_name}/{key}"
+        file_path = f"{validated_bucket}/{key}"
 
         with adlfs_fs.open(file_path, "rb") as f:
             columns = self._get_avro_columns(f)

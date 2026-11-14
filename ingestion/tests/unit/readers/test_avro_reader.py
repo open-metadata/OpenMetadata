@@ -186,5 +186,75 @@ class TestAvroReader(unittest.TestCase):
             os.unlink(tmp_path)  # noqa: PTH108
 
 
+class TestAzureSovereignAvroReader:
+    @patch("adlfs.AzureBlobFileSystem")
+    def test_azure_us_gov_avro_strips_account_name_and_uses_sovereign_options(self, mock_adlfs):
+        import fastavro
+
+        schema = {
+            "type": "record",
+            "name": "GovEvent",
+            "fields": [{"name": "id", "type": "int"}],
+        }
+
+        def make_avro_bytes():
+            buf = io.BytesIO()
+            fastavro.writer(buf, schema, [{"id": 1}, {"id": 2}])
+            buf.seek(0)
+            return buf
+
+        mock_fs = Mock()
+        mock_adlfs.return_value = mock_fs
+        mock_fs.open.return_value.__enter__ = Mock(side_effect=make_avro_bytes)
+        mock_fs.open.return_value.__exit__ = Mock(return_value=False)
+
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="  govavroacct  ",
+                clientId="gov-client",
+                clientSecret="gov-secret",
+                tenantId="11111111-2222-3333-4444-555555555555",
+                endpointSuffix="core.usgovcloudapi.net",
+            )
+        )
+        reader = AvroDataFrameReader(config, None)
+        result = reader._read(key="telemetry/events.avro", bucket_name="$logs")
+        chunks = list(result.dataframes())
+
+        assert result.columns is not None
+        assert len(chunks) == 1
+        assert len(chunks[0]) == 2
+        fs_kwargs = mock_adlfs.call_args.kwargs
+        assert fs_kwargs["account_name"] == "govavroacct"
+        assert fs_kwargs["account_host"] == "govavroacct.blob.core.usgovcloudapi.net"
+        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        mock_fs.open.assert_called_with("$logs/telemetry/events.avro", "rb")
+
+    def test_azure_avro_missing_security_config_and_missing_account_name_raise(self):
+        import pytest
+
+        from metadata.readers.dataframe.base import DataFrameReadException
+
+        missing_sec_reader = AvroDataFrameReader(AzureConfig(securityConfig=None), None)
+        with pytest.raises(ValueError, match="Azure securityConfig is required"):
+            missing_sec_reader._read(key="events.avro", bucket_name="container")
+        with pytest.raises(DataFrameReadException, match="Azure securityConfig is required"):
+            missing_sec_reader.read(key="events.avro", bucket_name="container")
+
+        missing_acct_reader = AvroDataFrameReader(
+            AzureConfig(
+                securityConfig=AzureCredentials(
+                    accountName=None,
+                    clientId="cid",
+                    clientSecret="sec",
+                    tenantId="11111111-2222-3333-4444-555555555555",
+                )
+            ),
+            None,
+        )
+        with pytest.raises(ValueError, match="Account Name is required"):
+            missing_acct_reader._read(key="events.avro", bucket_name="container")
+
+
 if __name__ == "__main__":
     unittest.main()
