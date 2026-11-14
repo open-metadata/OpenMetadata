@@ -37,6 +37,7 @@ import {
   AxiomOutcome,
   AxiomPreview,
   AxiomPublishNote,
+  AxiomReadOnly,
   collectAxiomProblems,
   previewSentence,
   QuickRuleFields,
@@ -80,7 +81,7 @@ const isRuleSavable = (checks: {
   isQuickReady: boolean;
 }) => Object.values(checks).every(Boolean);
 
-const OntologyAxiomEditor = ({
+const AxiomEditorForm = ({
   ontology,
   references,
   axiom,
@@ -248,6 +249,21 @@ const OntologyAxiomEditor = ({
         </OntologyFormFooter>
       </section>
     </HookForm>
+  );
+};
+
+/** View mode reads a constraint; only a user who can edit it gets the form. */
+const OntologyAxiomEditor = (props: OntologyAxiomEditorProps) => {
+  const { t } = useTranslation();
+  const { axiom, canEdit, references } = props;
+
+  return !canEdit && axiom ? (
+    <AxiomReadOnly
+      axiom={axiom}
+      sentence={previewSentence(axiomFormValues(axiom), t, references)}
+    />
+  ) : (
+    <AxiomEditorForm {...props} />
   );
 };
 

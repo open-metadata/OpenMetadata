@@ -307,7 +307,8 @@ const OntologyDefinitionList = <
   };
 
   const renderDeleteAction = () =>
-    definition && permission.canDelete ? (
+    // View mode reads definitions; deleting is an Edit action.
+    definition && permission.canDelete && !isReadOnly ? (
       <ButtonUtility
         aria-label={t('label.delete')}
         color="tertiary"

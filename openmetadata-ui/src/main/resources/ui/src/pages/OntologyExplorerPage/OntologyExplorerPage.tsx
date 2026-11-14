@@ -1005,6 +1005,17 @@ const OntologyExplorerContent: React.FC = () => {
     },
     [setSearchParams]
   );
+  // One update: two separate ones would each start from the same URL and drop the other.
+  const showConceptOnGraph = useCallback(
+    (id: string) =>
+      setSearchParams((current) => {
+        const next = patchStudioUrlParams(current, { view: 'graph' });
+        next.set('concept', id);
+
+        return next;
+      }),
+    [setSearchParams]
+  );
   const selectedGlossaryId = getScopeGlossaryId(studioScope);
   const setSelectedGlossaryId = useCallback(
     (id?: string) => {
@@ -2428,6 +2439,7 @@ const OntologyExplorerContent: React.FC = () => {
           showSuccessToast(t('message.ontology-settings-saved'));
         }}
         onSelectedConceptChange={selectNativeConcept}
+        onShowConceptOnGraph={showConceptOnGraph}
         onStatsChange={setNativeStats}
         onWorkingChange={refreshNativeWorkingDiff}
       />

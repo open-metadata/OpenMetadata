@@ -49,6 +49,8 @@ interface OntologyStudioWorkspaceProps {
   onRequestEdit?: (conceptId?: string) => void;
   /** View mode's Add on an ontology tab: switches to Edit's Ontology surface. */
   onRequestDefinitionsEdit?: () => void;
+  /** View mode's "Show on graph": View's graph with the concept selected. */
+  onShowConceptOnGraph?: (conceptId: string) => void;
   onOpenPublication?: () => void;
   editConceptRequest?: string;
   onEditConceptRequestHandled?: () => void;
@@ -97,6 +99,7 @@ const OntologyStudioWorkspace = ({
   onSaved,
   onRequestEdit,
   onRequestDefinitionsEdit,
+  onShowConceptOnGraph,
   onOpenPublication,
   editConceptRequest,
   onEditConceptRequestHandled,
@@ -215,7 +218,8 @@ const OntologyStudioWorkspace = ({
           {...createProps('concept', isReadOnly)}
           isReadOnly={isReadOnly}
           ontology={ontology}
-          onOpenConcept={openConcept}
+          // View mode opens the concept read-only here, as properties do.
+          onOpenConcept={isReadOnly ? undefined : openConcept}
           onWorkingChange={onWorkingChange}
         />
       </Tabs.Panel>
@@ -234,7 +238,7 @@ const OntologyStudioWorkspace = ({
           initialStatus={axiomStatus}
           isReadOnly={isReadOnly}
           ontology={ontology}
-          onOpenConcept={openConcept}
+          onOpenConcept={isReadOnly ? onShowConceptOnGraph : openConcept}
           onWorkingChange={onWorkingChange}
         />
       </Tabs.Panel>
