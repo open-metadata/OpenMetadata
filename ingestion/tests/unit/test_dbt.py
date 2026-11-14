@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.type import entityReference
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.status import EntityStatus
@@ -44,10 +45,12 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageBySource, OMetaLineageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
     build_upstream_node,
@@ -4446,6 +4449,94 @@ class TestDbtLineageReusesParsedUpstream:
         assert len(results) == 1
         assert results[0].right.lineage_request.edge.fromEntity.id.root == catalog[self.RAW_FQN].id.root
         source.status.warning.assert_not_called()
+
+
+class TestDbtOverrideLineageWithoutUpstream:
+    """Issue #37092.
+
+    overrideLineage only cleared a model's old DbtLineage edges while writing a new one, so a
+    model whose manifest no longer lists any parent kept them all. raw_orders declares no parent
+    and orders depends on raw_orders, run through the real yield and lineage path.
+    """
+
+    parsed = TestDbtLineageReusesParsedUpstream
+
+    def _lineage(self, override_lineage, catalog=None, edit_manifest=None):
+        catalog = self.parsed._catalog() if catalog is None else catalog
+        manifest = json.loads(self.parsed.MANIFEST.read_text(encoding="utf-8"))
+        if edit_manifest:
+            edit_manifest(manifest)
+        harness = self.parsed()
+        harness._ctx = SimpleNamespace()
+        source = harness._source(catalog, [])
+        source.source_config.overrideLineage = override_lineage
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=parse_manifest(manifest)))]
+        return {
+            model_str(link.table_entity.fullyQualifiedName): [
+                result.right for result in source.create_dbt_lineage(link)
+            ]
+            for link in links
+        }
+
+    def test_a_model_declaring_no_parent_clears_its_dbt_lineage(self):
+        catalog = self.parsed._catalog()
+
+        lineage = self._lineage(override_lineage=True, catalog=catalog)
+
+        assert lineage[self.parsed.RAW_FQN] == [
+            OMetaDeleteLineageBySource(
+                entity=EntityReference(id=catalog[self.parsed.RAW_FQN].id, type="table"),
+                source=LineageSource.DbtLineage,
+            )
+        ]
+
+    def test_a_model_with_a_parent_gets_its_edge_and_no_delete(self):
+        records = self._lineage(override_lineage=True)[self.parsed.ORDERS_FQN]
+
+        assert [type(record) for record in records] == [OMetaLineageRequest]
+
+    def test_nothing_is_deleted_without_override(self):
+        lineage = self._lineage(override_lineage=False)
+
+        assert lineage[self.parsed.RAW_FQN] == []
+        assert not any(isinstance(r, OMetaDeleteLineageBySource) for records in lineage.values() for r in records)
+
+    def test_a_parent_missing_from_openmetadata_keeps_the_prior_lineage(self):
+        """The model still declares the parent, so an empty upstream here is not a change in dbt."""
+        catalog = self.parsed._catalog()
+        del catalog[self.parsed.RAW_FQN]
+
+        assert self._lineage(override_lineage=True, catalog=catalog)[self.parsed.ORDERS_FQN] == []
+
+    def test_a_seed_is_left_alone(self):
+        """A seed never lists parents, and the table may be another project's model."""
+
+        def as_seed(manifest):
+            node = manifest["nodes"].pop("model.jaffle_shop.raw_orders")
+            for model_only in (
+                "compiled",
+                "language",
+                "refs",
+                "sources",
+                "metrics",
+                "compiled_path",
+                "compiled_code",
+                "extra_ctes_injected",
+                "extra_ctes",
+            ):
+                node.pop(model_only, None)
+            node.update(resource_type="seed", unique_id="seed.jaffle_shop.raw_orders", depends_on={"macros": []})
+            manifest["nodes"]["seed.jaffle_shop.raw_orders"] = node
+            manifest["nodes"]["model.jaffle_shop.orders"]["depends_on"]["nodes"] = ["seed.jaffle_shop.raw_orders"]
+
+        assert self._lineage(override_lineage=True, edit_manifest=as_seed)[self.parsed.RAW_FQN] == []
+
+    def test_the_delete_runs_before_query_lineage(self):
+        """Query lineage writes DbtLineage edges from the compiled SQL into the same table; the
+        delete has to come first or it would wipe them."""
+        stages = [stage.processor for stage in DbtServiceTopology().process_dbt_entities.stages]
+
+        assert stages.index("create_dbt_lineage") < stages.index("create_dbt_query_lineage")
 
 
 class TestAddDbtTestResultFailureReporting:

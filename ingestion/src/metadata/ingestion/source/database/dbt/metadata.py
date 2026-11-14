@@ -87,7 +87,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    LineageRequest,
+    OMetaDeleteLineageBySource,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -1117,6 +1121,11 @@ class DbtSource(DbtServiceSource):
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
+                            # Sources and seeds never list parents, and the table may be another
+                            # project's model, so only nodes dbt builds from refs qualify.
+                            # ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
+                            declared_no_upstream=resource_type in ("model", "snapshot")
+                            and not getattr(getattr(manifest_node, "depends_on", None), "nodes", None),
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
@@ -1480,6 +1489,14 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
+
+        if self.source_config.overrideLineage and data_model_link.declared_no_upstream:
+            yield Either(
+                right=OMetaDeleteLineageBySource(
+                    entity=EntityReference(id=to_entity.id, type="table"),
+                    source=LineageSource.DbtLineage,
+                )
+            )
 
     def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
