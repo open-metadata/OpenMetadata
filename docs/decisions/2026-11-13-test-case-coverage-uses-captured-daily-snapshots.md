@@ -1,9 +1,9 @@
 # Test case coverage uses captured daily snapshots
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-13 (shared enrichment pipeline)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** TestCaseSnapshotTest, TestCaseSnapshotStoreTest, DataInsightTestCaseCoverageIT, DataAssetTypeCoverageTest
+- **Guard:** TestCaseSnapshotEnrichmentTest, EnrichmentPipelineTest, VersionResolverTest, TestCaseSnapshotStoreTest, DataInsightTestCaseCoverageIT, DataAssetTypeCoverageTest
 - **Related:** [#33432](https://github.com/open-metadata/OpenMetadata/issues/33432), [#37699 review](https://github.com/open-metadata/OpenMetadata/pull/37699#discussion_r4561712399), ADR:2026-11-12-test-case-insights-use-the-last-update-timestamp
 
 ## Context
@@ -54,3 +54,20 @@ coverage without combining different entity populations. Storage and capture wor
 number of tests and retained days. A rerun replaces that day's captured state. Days when collection
 did not run, failed, or predates deployment remain unknown. This is daily captured state, not an
 exact transactionally consistent catalog snapshot; definitions can change while a scan runs.
+
+## Amendment v2: shared snapshot enrichment
+
+Test cases use the same `DataInsightsEntityEnricherProcessor`, enrichment pipeline and
+`SnapshotMaterializer` as other assets. An explicit collection timestamp in the enrichment
+context asks `VersionResolver` for one window of the current hydrated entity, without reading
+version history. Other sources retain their existing version-history behavior. Backfill still
+reads captured test-case history rather than recapturing definitions.
+
+`TestCaseParentStep` receives immutable parent-table IDs resolved once per batch. The shared
+identity step supplies the entity type and the materializer supplies the daily timestamp;
+parent-table linkage and service fields are the test-case-specific enrichment.
+
+Optional enrichment failures remain isolated. A required step failure records its statistics
+and rejects the snapshot. Parent linkage is required: emitting an unlinked test definition
+would let a completed capture certify an incorrect zero count for its table. Such a failure
+therefore also prevents the workflow from writing the capture completion marker.

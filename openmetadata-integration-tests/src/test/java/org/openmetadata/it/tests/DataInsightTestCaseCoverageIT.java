@@ -99,6 +99,7 @@ class DataInsightTestCaseCoverageIT {
     assertCoverage(covered, firstDay, 2, 1);
     assertCoverage(uncovered, firstDay, 0, 0);
     assertEquals(2, testCaseSnapshots(covered, firstDay));
+    assertSharedEnrichment(tableTest, firstDay);
     assertEquals(50.0, uncoveredPercentage(covered, firstDay));
     assertEquals(2.0, testCountChart(covered, firstDay));
     assertEquals(2.0, summaryTestCount(covered, firstDay));
@@ -308,7 +309,8 @@ class DataInsightTestCaseCoverageIT {
   private TestCase testCase(TestNamespace ns, Table table, boolean column) {
     final TestCaseBuilder builder =
         TestCaseBuilder.create(client)
-            .name((column ? "column_test_" : "table_test_") + ns.uniqueShortId());
+            .name((column ? "column_test_" : "table_test_") + ns.uniqueShortId())
+            .description("Checks the captured table");
     return column
         ? builder.forColumn(table, "id").testDefinition("columnValuesToBeNotNull").create()
         : builder
@@ -321,6 +323,27 @@ class DataInsightTestCaseCoverageIT {
   private static void makeOld(TestCase testCase, long day) {
     testCase.setUpdatedAt(TimestampUtils.subtractDays(day, 90));
     Entity.getCollectionDAO().testCaseDAO().update(testCase);
+  }
+
+  private static void assertSharedEnrichment(TestCase testCase, long day) throws IOException {
+    final JsonNode result =
+        request(
+            "POST",
+            "/" + stream(Entity.TEST_CASE) + "/_search",
+            Map.of(
+                "query",
+                Map.of(
+                    "bool",
+                    Map.of(
+                        "filter",
+                        List.of(
+                            Map.of("term", Map.of("id.keyword", testCase.getId().toString())),
+                            Map.of("term", Map.of("@timestamp", day)))))));
+    assertEquals(1, result.path("hits").path("total").path("value").asInt());
+    final JsonNode snapshot = result.path("hits").path("hits").get(0).path("_source");
+    assertEquals(1, snapshot.path("hasDescription").asInt());
+    assertTrue(snapshot.has("originEntityId"));
+    assertEquals("testCase", snapshot.path("entityType").asText());
   }
 
   private static void assertCoverage(Table table, long day, long count, int hasTests)

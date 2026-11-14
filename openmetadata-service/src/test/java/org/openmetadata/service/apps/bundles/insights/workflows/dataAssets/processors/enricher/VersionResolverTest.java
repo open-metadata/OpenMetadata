@@ -42,6 +42,22 @@ class VersionResolverTest {
   }
 
   @Test
+  void explicitCaptureUsesOneCollectionDayAndSkipsVersionHistory() {
+    final Table latest = table(0.2, TODAY + 1000, TODAY - 10 * ONE_DAY);
+    final VersionResolver captureResolver =
+        new VersionResolver(
+            type -> {
+              throw new AssertionError("A current capture must not read historical versions");
+            });
+    final EnrichmentContext capture =
+        new EnrichmentContext(
+            "table", List.of("id", "version"), TODAY - 30 * ONE_DAY, END, TODAY + 2000, Map.of());
+    final List<VersionedWindow> windows = captureResolver.resolve(latest, capture);
+    assertSame(latest, windows.getFirst().entity());
+    assertEquals(List.of(TODAY), days(windows));
+  }
+
+  @Test
   void entityUnchangedBeforeWindow_returnsOneWindowCoveringFullRange() {
     Table entity = table(0.1, TODAY - 5 * ONE_DAY, TODAY - 5 * ONE_DAY);
     List<VersionedWindow> windows = resolver.resolve(entity, context(TODAY - ONE_DAY));

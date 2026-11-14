@@ -3,6 +3,8 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext.PARENT_TABLE_IDS_KEY;
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext.SNAPSHOT_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields;
@@ -293,7 +295,9 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       }
       if (testCases) {
         beginTestCaseCapture();
+        contextData.put(SNAPSHOT_TIMESTAMP_KEY, snapshotTimestamp);
       } else {
+        contextData.remove(SNAPSHOT_TIMESTAMP_KEY);
         deleteBasedOnDataRetentionPolicy(
             getDataStreamName(searchRepository.getClusterAlias(), source.getEntityType()));
         deleteDataBeforeInserting(
@@ -350,7 +354,9 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
           }
 
           final TestCaseSnapshotStore.Coverage coverage = loadTestCaseCoverage(source, batch);
-          final Map<String, UUID> parentIds = testCaseParentIds(source, batch);
+          final Map<String, Object> batchContext = new HashMap<>(contextData);
+          batchContext.put(PARENT_TABLE_IDS_KEY, testCaseParentIds(source, batch));
+          final Map<String, Object> enrichmentContext = Map.copyOf(batchContext);
           extensions.beforeBatch(batch.getData());
           record EntityFuture(EntityInterface<?> entity, Future<Void> future) {}
           List<EntityFuture> entityFutures = new ArrayList<>();
@@ -363,7 +369,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
                           concurrencyLimit.acquire();
                           try {
                             List<Map<String, Object>> enriched =
-                                snapshotEntity(entity, contextData, parentIds);
+                                entityEnricher.enrichSingle(entity, enrichmentContext);
                             if (Entity.TABLE.equals(source.getEntityType())) {
                               enriched.forEach(coverage::enrich);
                             }
@@ -468,21 +474,6 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     } catch (IOException e) {
       throw snapshotFailure(e);
     }
-  }
-
-  private List<Map<String, Object>> snapshotEntity(
-      EntityInterface<?> entity, Map<String, Object> contextData, Map<String, UUID> parentIds)
-      throws SearchIndexException {
-    if (entity instanceof TestCase testCase) {
-      return List.of(
-          TestCaseSnapshot.capture(
-              testCase,
-              snapshotTimestamp,
-              searchInterface.getEntityAttributeFields(
-                  dataInsightsSearchConfiguration, Entity.TEST_CASE),
-              parentIds.get(EntityLink.parse(testCase.getEntityLink()).getEntityFQN())));
-    }
-    return entityEnricher.enrichSingle(entity, contextData);
   }
 
   private Map<String, UUID> testCaseParentIds(

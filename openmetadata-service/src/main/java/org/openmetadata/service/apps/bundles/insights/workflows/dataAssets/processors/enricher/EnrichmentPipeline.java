@@ -25,7 +25,8 @@ import org.openmetadata.schema.system.StepStats;
 /**
  * Runs an ordered list of {@link EnrichmentStep}s against an {@link EnrichmentTarget} with
  * per-step failure isolation. A step throwing only affects that step's contribution to the
- * snapshot: sibling steps still run, the entity is still emitted, and the failure is reflected in
+ * snapshot unless the step is required. Optional failures leave sibling steps running and the
+ * entity emitted; a required failure rejects the snapshot. Either failure is reflected in
  * per-step {@link StepStats} counters.
  *
  * <p>Thread-safe — the same pipeline instance is invoked concurrently from per-entity virtual
@@ -68,7 +69,7 @@ public class EnrichmentPipeline {
 
   /**
    * Run every step against {@code target}. Step failures are caught individually — the returned
-   * list contains one {@link StepFailure} per step that threw. The target's entity map reflects
+   * list contains one {@link StepFailure} per optional step that threw. Required failures propagate. The target's entity map reflects
    * the contributions of all steps that succeeded.
    */
   public List<StepFailure> run(EnrichmentTarget target) {
@@ -82,6 +83,9 @@ public class EnrichmentPipeline {
         StepFailure failure = new StepFailure(step.name(), entityFqnOf(target), e);
         failures.add(failure);
         logRateLimited(failure);
+        if (step.required()) {
+          throw new IllegalStateException("Required enrichment step failed: " + step.name(), e);
+        }
       }
     }
     return failures;
