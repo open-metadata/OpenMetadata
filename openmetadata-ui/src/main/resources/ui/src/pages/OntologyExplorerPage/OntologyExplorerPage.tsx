@@ -2027,10 +2027,9 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
-  // In AI mode Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
+  // Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
   function showsTasksInSubBar() {
     return [
-      isAiMode,
       mode !== 'ai' && mode !== 'review',
       !(ontologyId && !selectedOntology),
       !isCatalogEmpty,
@@ -2632,7 +2631,12 @@ const OntologyExplorerContent: React.FC = () => {
     banner: React.ReactNode,
     isGraphCanvas: boolean
   ) => (
-    <div className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
+    <div
+      className={classNames(
+        'tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+        !isAiMode &&
+          'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+      )}>
       {banner ? (
         <div
           className={
@@ -2909,9 +2913,15 @@ const OntologyExplorerContent: React.FC = () => {
           {({ tasksAction, banner }) => (
             <>
               {renderHeader(tasksAction)}
-              {/* The header is an inset card; the workspace below takes the
-                  same inset and card frame so their edges line up. */}
-              <div className="tw:mx-2 tw:mb-2 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary">
+              {/* The header is an inset card and the workspace takes the same inset. AI mode frames
+                  the sub-bar and canvas together; classic gives each its own card. */}
+              <div
+                className={classNames(
+                  'tw:mx-2 tw:mb-2 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+                  isAiMode
+                    ? 'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
+                    : 'tw:gap-2'
+                )}>
                 <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
                   <OntologyStudioDrawerHostContext.Provider value={drawerHost}>
                     {renderWorkspace(tasksAction, banner)}

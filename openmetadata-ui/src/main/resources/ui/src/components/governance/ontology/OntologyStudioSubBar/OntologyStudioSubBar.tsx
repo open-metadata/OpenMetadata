@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Key, ReactNode } from 'react';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { OntologyStudioTab } from '../OntologyStudioHeader/OntologyStudioHeader.types';
 
 interface OntologyStudioSubBarProps<S extends string> {
@@ -31,6 +32,50 @@ const OntologyStudioSubBar = <S extends string>({
   children,
   trailing,
 }: OntologyStudioSubBarProps<S>) => {
+  const isAiMode = useIsAiMode();
+
+  const handleSelectionChange = (key: Key) => {
+    const nextSurface = surfaces.find((item) => item.id === key)?.id;
+    if (nextSurface) {
+      onSurfaceChange(nextSurface);
+    }
+  };
+
+  const tabItems = surfaces.map((tab) => (
+    <Tabs.Item data-testid={`submode-tab-${tab.id}`} id={tab.id} key={tab.id}>
+      {tab.label}
+    </Tabs.Item>
+  ));
+
+  // Classic mode: the core card of underline tabs. Stats and Tasks sit over its right edge rather
+  // than in its `actions` slot: react-aria renders everything inside Tabs into a window-less
+  // document to collect the tabs, and the Tasks button's focus effects throw there.
+  if (!isAiMode) {
+    return (
+      <nav
+        aria-label={caption}
+        className="tw:relative tw:shrink-0"
+        data-testid="ontology-studio-subbar">
+        <Tabs selectedKey={surface} onSelectionChange={handleSelectionChange}>
+          <Tabs.List
+            aria-label={caption}
+            size="sm"
+            type="underline"
+            variant="card">
+            {tabItems}
+          </Tabs.List>
+        </Tabs>
+        <Box
+          align="center"
+          className="tw:absolute tw:inset-y-0 tw:right-5"
+          gap={3}>
+          {children}
+          {trailing}
+        </Box>
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label={caption}
@@ -40,21 +85,9 @@ const OntologyStudioSubBar = <S extends string>({
         <Tabs
           className="tw:w-auto tw:shrink-0"
           selectedKey={surface}
-          onSelectionChange={(key) => {
-            const nextSurface = surfaces.find((item) => item.id === key)?.id;
-            if (nextSurface) {
-              onSurfaceChange(nextSurface);
-            }
-          }}>
+          onSelectionChange={handleSelectionChange}>
           <Tabs.List aria-label={caption} size="sm" type="button-border">
-            {surfaces.map((tab) => (
-              <Tabs.Item
-                data-testid={`submode-tab-${tab.id}`}
-                id={tab.id}
-                key={tab.id}>
-                {tab.label}
-              </Tabs.Item>
-            ))}
+            {tabItems}
           </Tabs.List>
         </Tabs>
       ) : null}
