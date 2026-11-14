@@ -18,7 +18,10 @@ import { viewToSubPath as membersViewToSubPath } from '../components/discovery/p
 import { viewToSubPath as personasViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { UserPageTabs } from '../components/Settings/Users/Users.interface';
 import { AI_APP_MODE } from '../constants/appMode.constants';
-import { ENTITY_PATH } from '../constants/constants';
+import {
+  ENTITY_PATH,
+  FULLSCREEN_QUERY_PARAM_KEY,
+} from '../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -384,5 +387,20 @@ export const getSettingsLink = (path: string): string => {
     );
   }
 
-  return hash === undefined ? path : `${globalThis.location.search}#${hash}`;
+  if (hash === undefined) {
+    return path;
+  }
+  // A fullscreen view (knowledge graph, lineage) stacks above the settings
+  // modal, so keeping `?fullscreen=true` would open the modal hidden behind it.
+  const params = new URLSearchParams(globalThis.location.search);
+  if (!params.has(FULLSCREEN_QUERY_PARAM_KEY)) {
+    return `${globalThis.location.search}#${hash}`;
+  }
+  params.delete(FULLSCREEN_QUERY_PARAM_KEY);
+  const search = params.toString();
+
+  // A bare `#hash` href would keep the current query, fullscreen included.
+  return search
+    ? `?${search}#${hash}`
+    : `${globalThis.location.pathname}#${hash}`;
 };

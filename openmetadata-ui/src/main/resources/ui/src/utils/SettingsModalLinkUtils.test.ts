@@ -280,6 +280,17 @@ describe('getSettingsLink', () => {
     );
   });
 
+  it('drops the fullscreen flag so the modal is not hidden behind a fullscreen view', () => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+    globalThis.history.replaceState(null, '', '/x?a=1&fullscreen=true');
+
+    expect(getSettingsLink('/settings/bots')).toBe('?a=1#bots');
+
+    globalThis.history.replaceState(null, '', '/x?fullscreen=true');
+
+    expect(getSettingsLink('/settings/bots')).toBe('/x#bots');
+  });
+
   // The builders feed `pathname:` targets (PersonaDetailsCard, TeamDetailsV1,
   // UserTab, ImportTeamsPage), so they must stay paths in every mode.
   it('leaves the route builders pure paths in AI mode', () => {
