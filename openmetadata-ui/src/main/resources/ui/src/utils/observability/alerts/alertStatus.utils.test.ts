@@ -18,9 +18,9 @@ import {
   Status,
   SubscriptionCategory,
   SubscriptionType,
-  TionStatus,
 } from '../../../generated/events/eventSubscription';
 import {
+  DestinationStatus,
   getAlertListStatus,
   getDestinationProblem,
   getDestinationProblemAlertProps,
@@ -31,7 +31,7 @@ const UNUSABLE = "The value at '/authType/secretKey' must be entered again";
 const REFUSED = 'Webhook failed with status: 503';
 
 const alertWith = (
-  statuses: TionStatus[],
+  statuses: DestinationStatus[],
   enabled = true
 ): EventSubscription => ({
   alertType: AlertType.Notification,
