@@ -16,23 +16,27 @@ package org.openmetadata.service.migration.utils.v210;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 
 /**
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
  * form new writes store: in the entity row, each secret encrypted with the configured Fernet keys,
  * and in its versions, the change descriptions recorded with them and the stored change events, the
- * mask, since nothing sends from those. Plaintext is encrypted, Fernet ciphertext is kept as
- * stored, and a value a 2.1 pre-release encrypted for its holder is encrypted again with the
- * configured keys. Values already in that form are kept, so running it again changes nothing. The
- * rules it applies are frozen in {@link StoredWebhookSecrets}; a row it cannot read stops the step
- * with an error that names the row.
+ * mask, since nothing sends from those. The rules it applies are frozen in {@link
+ * StoredWebhookSecrets}; a row it cannot read stops the step with an error that names the row.
+ *
+ * <p>A value at a field releases before 2.1 sent as stored is encrypted as it is, so encrypting
+ * again what a run already wrote would change it: each step runs once, in one transaction with the
+ * marker that records it, and a run that stops part way leaves nothing behind.
  */
 @Slf4j
 public final class WebhookSecretsMigration {
@@ -46,7 +50,38 @@ public final class WebhookSecretsMigration {
 
   private WebhookSecretsMigration() {}
 
-  public static void encryptProfileWebhookSecrets(Handle handle, ConnectionType connectionType) {
+  /** Runs the profile step once for {@code version}, in one transaction with its marker. */
+  public static void encryptProfileWebhookSecrets(
+      Handle handle, String version, ConnectionType connectionType) {
+    onceInOneTransaction(
+        handle,
+        version,
+        PROFILE_STEP_NAME,
+        transaction -> encryptProfiles(transaction, connectionType));
+  }
+
+  /** Runs the alert step once for {@code version}, in one transaction with its marker. */
+  public static void encryptAlertDestinationSecrets(
+      Handle handle, String version, ConnectionType connectionType) {
+    onceInOneTransaction(
+        handle,
+        version,
+        ALERT_STEP_NAME,
+        transaction -> encryptAlertDestinations(transaction, connectionType));
+  }
+
+  private static void onceInOneTransaction(
+      Handle handle, String version, String stepName, Consumer<Handle> step) {
+    handle.useTransaction(
+        transaction ->
+            DataMigrationStep.runOnce(
+                transaction.attach(MigrationDAO.class),
+                version,
+                stepName,
+                () -> step.accept(transaction)));
+  }
+
+  private static void encryptProfiles(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
@@ -59,7 +94,7 @@ public final class WebhookSecretsMigration {
     }
   }
 
-  public static void encryptAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
+  private static void encryptAlertDestinations(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());

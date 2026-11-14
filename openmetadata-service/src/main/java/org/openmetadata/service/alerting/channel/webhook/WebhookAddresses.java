@@ -60,7 +60,8 @@ public final class WebhookAddresses implements AddressDirectory {
 
   // A profile webhook whose secrets do not decrypt is left out, as one without an address.
   private Recipient ofProfile(String name, Profile profile) {
-    return WebhookRecipient.ofProfile(name, ProfileWebhookSecrets.decrypted(profile), onProfile);
+    return WebhookRecipient.ofProfile(
+        name, ProfileWebhookSecrets.decrypted(name, profile), onProfile);
   }
 
   @Override

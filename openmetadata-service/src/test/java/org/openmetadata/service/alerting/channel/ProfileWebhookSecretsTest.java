@@ -266,7 +266,7 @@ class ProfileWebhookSecretsTest {
   void deliveryReadsTheSecretsDecrypted() {
     Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(bearer("the key")));
 
-    Webhook sent = ProfileWebhookSecrets.decrypted(stored).getSubscription().getGeneric();
+    Webhook sent = ProfileWebhookSecrets.decrypted("a team", stored).getSubscription().getGeneric();
 
     assertEquals(URI.create(ENDPOINT), sent.getEndpoint());
     assertEquals("the key", ((Map<?, ?>) sent.getAuthType()).get("secretKey"));
@@ -292,7 +292,7 @@ class ProfileWebhookSecretsTest {
         .getMsTeams()
         .withAuthType(oauth2Map(TOKEN_URL, "fernet:bound:" + token));
 
-    SubscriptionConfig sent = ProfileWebhookSecrets.decrypted(stored).getSubscription();
+    SubscriptionConfig sent = ProfileWebhookSecrets.decrypted("a team", stored).getSubscription();
 
     assertNull(sent.getGeneric());
     assertNull(sent.getMsTeams());

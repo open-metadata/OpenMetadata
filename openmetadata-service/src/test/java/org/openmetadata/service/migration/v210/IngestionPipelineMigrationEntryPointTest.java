@@ -159,10 +159,14 @@ class IngestionPipelineMigrationEntryPointTest {
           () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, connectionType));
+          () ->
+              WebhookSecretsMigration.encryptProfileWebhookSecrets(
+                  handle, migration.getVersion(), connectionType));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, connectionType));
+          () ->
+              WebhookSecretsMigration.encryptAlertDestinationSecrets(
+                  handle, migration.getVersion(), connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->

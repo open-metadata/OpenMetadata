@@ -137,9 +137,7 @@ class WebhookSecretsIT {
                           Fernet.getInstance().encrypt(OLD_CLIENT_SECRET)))));
       AlertFixtures.writeBehindTheServer(alert);
 
-      TestSuiteBootstrap.getJdbi()
-          .useHandle(
-              handle -> WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, dialect()));
+      runTheUpgradeStep(ns);
       EventSubscription upgraded = AlertFixtures.stored(alert.getId());
       FixtureEvents.insert(FixtureEvents.tableEvents());
       DirectTick.run(upgraded);
@@ -194,6 +192,8 @@ class WebhookSecretsIT {
                   "/hook-header",
                   Map.of("headers", Map.of("X-Legacy", encryptedWithAnotherKey("old")))));
       AlertFixtures.writeBehindTheServer(alert);
+      // As after the upgrade: what was stored in plain text is encrypted.
+      runTheUpgradeStep(ns);
 
       HttpResponse<String> testSend = postTestDestination(readAsAdmin(alert.getId()));
       HttpResponse<String> renamed =
@@ -458,6 +458,27 @@ class WebhookSecretsIT {
         .withBatchSize(100)
         .withPollInterval(ONE_DAY_SECONDS)
         .withDestinations(destinations);
+  }
+
+  // The 2.1.0 alert step under a version of the test's own, whose marker it removes afterwards.
+  private static void runTheUpgradeStep(TestNamespace ns) {
+    String version = "2.1.0-webhooksecretsit" + ns.shortPrefix();
+    try {
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle ->
+                  WebhookSecretsMigration.encryptAlertDestinationSecrets(
+                      handle, version, dialect()));
+    } finally {
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle ->
+                  handle
+                      .createUpdate(
+                          "DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                      .bind("version", version)
+                      .execute());
+    }
   }
 
   private static ConnectionType dialect() {

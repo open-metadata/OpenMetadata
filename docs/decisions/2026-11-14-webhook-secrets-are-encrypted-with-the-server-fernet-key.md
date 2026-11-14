@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-14 (initial)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `DestinationSecretsTest`, `ProfileWebhookSecretsTest`, `DestinationValidationTest`, `StoredWebhookSecretsTest`, `IngestionPipelineMigrationEntryPointTest`, `WebhookSecretsMigrationIT`, `WebhookSecretsIT`, `ProfileWebhookSecretsIT`
+- **Guard:** `DestinationSecretsTest`, `ProfileWebhookSecretsTest`, `DestinationValidationTest`, `StoredWebhookSecretsTest`, `IngestionPipelineMigrationEntryPointTest`, `WebhookSecretsMigrationIT` (`#aStepThatStopsPartWayLeavesNothingBehind` among them), `WebhookSecretsIT`, `ProfileWebhookSecretsIT`
 - **Related:** supersedes ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written; ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored
 
 ## Context
@@ -16,8 +16,10 @@ once, so a wrong key at that moment left those credentials unusable even after t
 
 Since ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored, no response
 carries a webhook secret, encrypted or not, and a save refuses an encrypted value that is not the
-one already stored at that field. A stored secret therefore reaches a webhook's configuration only
-through the server.
+one already stored at that field. From 2.1 on, a stored secret therefore reaches a webhook's
+configuration only through the server. Releases before 2.1 encrypted and decrypted only the bearer
+signing key and the OAuth2 client id and secret; they stored and sent every other field, the
+endpoint and header values included, as it was written.
 
 ## Decision
 
@@ -33,11 +35,16 @@ through the server.
   profile webhook holding one is left out of the send while the profile's other webhooks still
   send.
 - The 2.1.0 data steps `encryptAlertDestinationSecrets` and `encryptProfileWebhookSecrets`, whose
-  rules are frozen in `StoredWebhookSecrets`, encrypt what is stored in plain text, keep Fernet
-  ciphertext as stored, and encrypt again with the configured keys a value a 2.1 pre-release bound
-  to its holder, when it opens for that holder; one that does not open stays as stored. Versions,
-  change descriptions and stored change events keep the mask. Running the steps again changes
-  nothing.
+  rules are frozen in `StoredWebhookSecrets`:
+  - keep Fernet ciphertext as stored at the fields releases before 2.1 encrypted;
+  - encrypt every other value as it is stored, whatever it reads as, so a webhook is sent what
+    those releases sent it;
+  - encrypt again with the configured keys a value a 2.1 pre-release bound to its holder, when it
+    opens for that holder; one that does not open stays as stored;
+  - leave versions, change descriptions and stored change events with the mask.
+- Encrypting again what a step wrote would change it, so each step runs once: in one transaction
+  with the marker that records it, so a run that stops part way leaves nothing behind and the next
+  run starts from what was stored.
 - The steps carry names the pre-release did not record, so a database that ran its `bind*` steps
   runs them too. They run after the destination id step, because a bound value opens only for its
   destination's id.
@@ -47,10 +54,13 @@ through the server.
 ## Consequences
 
 - An upgrade from 2.0 keeps every credential 2.0 stored encrypted as it was; nothing has to be
-  entered again. A wrong key during the upgrade costs what it costs any other stored secret: those
-  values fail with a reason until the right key is configured, and then send again.
+  entered again. Those credentials do not depend on the key configured during the upgrade: with a
+  wrong one they fail with a reason until the right key is configured, then send again. A value the
+  upgrade encrypts with a wrong key is entered again, as for any other secret the server encrypts.
 - A destination's id carries no secret, so assigning or changing ids touches no stored value.
 - A database that ran a 2.1 pre-release with a different key than the one it upgrades with keeps
-  those values as stored, to be entered again.
+  those values as stored, to be entered again. An endpoint or header value a pre-release built
+  before the bound format stored encrypted is encrypted again as it is, so it is entered again too.
+- Each step's transaction holds every row it rewrites until it ends.
 - Revisit if a response or a save could again carry a webhook secret's ciphertext: the guarantee
   rests on ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored.

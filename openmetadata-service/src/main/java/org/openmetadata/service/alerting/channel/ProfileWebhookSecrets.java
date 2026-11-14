@@ -127,9 +127,10 @@ public final class ProfileWebhookSecrets {
   /**
    * A copy of the profile with every webhook secret decrypted: the profile as it is used to send. A
    * webhook holding a value the configured keys do not decrypt is left out of the copy until the
-   * value is entered again, and the profile's other webhooks still send.
+   * value is entered again, and the profile's other webhooks still send. {@code ownerName} names the
+   * user or team in the warning that says so.
    */
-  public static Profile decrypted(Profile profile) {
+  public static Profile decrypted(String ownerName, Profile profile) {
     Profile result = profile;
     if (hasWebhooks(profile)) {
       JsonNode tree = JsonUtils.valueToTree(profile);
@@ -140,7 +141,7 @@ public final class ProfileWebhookSecrets {
           .forEach(
               webhook -> {
                 if (webhook.getValue().isObject()
-                    && !opened(webhook.getKey(), webhook.getValue())) {
+                    && !opened(ownerName, webhook.getKey(), webhook.getValue())) {
                   leftOut.add(webhook.getKey());
                 }
               });
@@ -150,12 +151,12 @@ public final class ProfileWebhookSecrets {
     return result;
   }
 
-  private static boolean opened(String slot, JsonNode config) {
+  private static boolean opened(String ownerName, String slot, JsonNode config) {
     boolean opened = true;
     try {
       ConfigSecrets.decrypt(config, WebhookSecrets.fieldsIn(config));
     } catch (BadRequestException e) {
-      LOG.warn("A {} profile webhook is left out of the send: {}", slot, e.getMessage());
+      LOG.warn("The {} webhook of {} is left out of the send: {}", slot, ownerName, e.getMessage());
       opened = false;
     }
     return opened;

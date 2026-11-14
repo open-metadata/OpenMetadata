@@ -82,7 +82,9 @@ final class StoredWebhookSecrets {
       List.of("Webhook", "Slack", "MsTeams", "GChat");
   private static final JsonPointer ENDPOINT = JsonPointer.compile("/endpoint");
   private static final JsonPointer HEADERS = JsonPointer.compile("/headers");
-  private static final List<JsonPointer> CREDENTIALS =
+  // The fields releases before 2.1 encrypted and decrypted to send. Every other field they sent as
+  // stored.
+  private static final List<JsonPointer> ENCRYPTED_BEFORE_2_1 =
       List.of(
           JsonPointer.compile("/authType/secretKey"),
           JsonPointer.compile("/authType/clientId"),
@@ -110,7 +112,7 @@ final class StoredWebhookSecrets {
       for (Map.Entry<String, JsonNode> header : config.at(HEADERS).properties()) {
         addIfScalar(fields, config, HEADERS.appendProperty(header.getKey()));
       }
-      CREDENTIALS.forEach(pointer -> addIfScalar(fields, config, pointer));
+      ENCRYPTED_BEFORE_2_1.forEach(pointer -> addIfScalar(fields, config, pointer));
     }
     return List.copyOf(fields);
   }
@@ -132,9 +134,11 @@ final class StoredWebhookSecrets {
 
   /**
    * Encrypts, in place, the webhook secrets of a stored alert's destinations and masks its change
-   * descriptions. Plaintext is encrypted, Fernet ciphertext is kept as stored, and a bound value is
-   * encrypted again as it opens for its destination; one that does not open stays as stored and is
-   * entered again before the destination sends. Returns whether it changed.
+   * descriptions. Plaintext is encrypted, and so is any value at a field releases before 2.1 sent
+   * as stored, as it is, so it is sent as it was; Fernet ciphertext at a field they encrypted stays
+   * as stored. A bound value is encrypted again as it opens for its destination; one that does not
+   * open stays as stored and is entered again before the destination sends. Encrypting again what
+   * this wrote would change it, so it runs once. Returns whether it changed.
    */
   boolean encryptAlert(JsonNode alert) {
     JsonNode before = alert.deepCopy();
@@ -224,16 +228,21 @@ final class StoredWebhookSecrets {
     }
   }
 
-  // Plaintext is encrypted as entered and a bound value as it opens; Fernet ciphertext stays.
+  // A bound value is encrypted as it opens, and Fernet ciphertext where releases before 2.1
+  // decrypted it stays; anything else is encrypted as it is stored.
   private Optional<String> secretToEncrypt(
       Supplier<String> owner, JsonPointer field, String value) {
     Optional<String> secret = Optional.empty();
     if (value.startsWith(BOUND_PREFIX)) {
       secret = openBound(owner.get(), field.toString(), value);
-    } else if (!value.isEmpty() && !value.startsWith(FERNET_PREFIX)) {
+    } else if (!value.isEmpty() && !keptAsStored(field, value)) {
       secret = Optional.of(value);
     }
     return secret;
+  }
+
+  private static boolean keptAsStored(JsonPointer field, String value) {
+    return value.startsWith(FERNET_PREFIX) && ENCRYPTED_BEFORE_2_1.contains(field);
   }
 
   private String encrypt(String secret) {

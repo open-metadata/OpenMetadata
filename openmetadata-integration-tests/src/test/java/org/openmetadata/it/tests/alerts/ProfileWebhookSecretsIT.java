@@ -308,7 +308,7 @@ class ProfileWebhookSecretsIT {
     String value = row.at("/profile/subscription/" + slot + field).asText();
     assertTrue(Fernet.isTokenized(value), "not encrypted: " + value);
     Profile profile = JsonUtils.treeToValue(row.path("profile"), Profile.class);
-    Profile sendable = ProfileWebhookSecrets.decrypted(profile);
+    Profile sendable = ProfileWebhookSecrets.decrypted("a team", profile);
     return JsonUtils.valueToTree(sendable).at("/subscription/" + slot + field).asText();
   }
 

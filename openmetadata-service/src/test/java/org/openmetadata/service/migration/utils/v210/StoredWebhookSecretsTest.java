@@ -67,9 +67,6 @@ class StoredWebhookSecretsTest {
                     UUID.randomUUID()));
 
     assertTrue(secrets.encryptAlert(alert));
-    String once = JsonUtils.pojoToJson(alert);
-    assertFalse(secrets.encryptAlert(alert));
-    assertEquals(once, JsonUtils.pojoToJson(alert));
 
     assertEquals("https://hooks.slack.com/x", opened(configAt(alert, 0, "/endpoint")));
     assertEquals("a token", opened(configAt(alert, 1, "/headers/Authorization")));
@@ -80,6 +77,28 @@ class StoredWebhookSecretsTest {
     String recorded = alert.at("/changeDescription/fieldsUpdated/0/newValue").asText();
     assertTrue(recorded.contains(StoredWebhookSecrets.MASK), recorded);
     assertFalse(recorded.contains("a token"), recorded);
+  }
+
+  // Releases before 2.1 sent the endpoint and header values as stored, so whatever is stored there
+  // is encrypted as it is and still sent as it was; only the credentials they encrypted stay.
+  @Test
+  void ciphertextAtAFieldSentAsStoredIsEncryptedAsItIs() {
+    String endpoint = Fernet.getInstance().encrypt("https://hooks.example.com/x");
+    String header = Fernet.getInstance().encrypt("a header value");
+    String signingKey = Fernet.getInstance().encrypt("hmac-key");
+    JsonNode alert =
+        alert(
+            """
+            [{"id": "%s", "type": "Webhook", "enabled": true,
+              "config": {"endpoint": "%s", "headers": {"Authorization": "%s"},
+                         "authType": {"type": "bearer", "secretKey": "%s"}}}]"""
+                .formatted(UUID.randomUUID(), endpoint, header, signingKey));
+
+    assertTrue(secrets.encryptAlert(alert));
+
+    assertEquals(endpoint, opened(configAt(alert, 0, "/endpoint")));
+    assertEquals(header, opened(configAt(alert, 0, "/headers/Authorization")));
+    assertEquals(signingKey, configAt(alert, 0, "/authType/secretKey"));
   }
 
   @Test
@@ -109,7 +128,7 @@ class StoredWebhookSecretsTest {
   }
 
   @Test
-  void aProfileStoredInTheClearOrBoundIsEncryptedWithTheServerKey() {
+  void aProfileIsEncryptedWithTheServerKeyAsAnAlertIs() {
     String header = Fernet.getInstance().encrypt("a header value");
     String profile =
         """
@@ -133,7 +152,7 @@ class StoredWebhookSecretsTest {
     assertTrue(secrets.encryptProfileEntity("user", user));
 
     assertEquals("a signing key", opened(webhookAt(user, "generic", "/authType/secretKey")));
-    assertEquals(header, webhookAt(user, "slack", "/headers/Authorization"));
+    assertEquals(header, opened(webhookAt(user, "slack", "/headers/Authorization")));
     assertEquals(
         "entered in the clear", opened(webhookAt(user, "msTeams", "/authType/clientSecret")));
     String recorded = user.at("/changeDescription/fieldsUpdated/0/newValue").asText();
