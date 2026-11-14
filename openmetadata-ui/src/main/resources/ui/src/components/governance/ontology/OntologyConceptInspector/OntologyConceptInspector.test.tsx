@@ -1017,9 +1017,18 @@ describe('OntologyConceptInspector in AI mode', () => {
     expect(form).toHaveTextContent('message.ontology-property-preview-empty');
 
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
+      target: { value: 'loyalty tier' },
+    });
+
+    // The name becomes the IRI local name, so a space blocks the add.
+    expect(form).toHaveTextContent('message.ontology-property-name-help');
+    expect(within(form).getByTestId('ontology-property-submit')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'loyaltyTier' },
     });
 
+    expect(form).not.toHaveTextContent('message.ontology-property-name-help');
     expect(form).toHaveTextContent('message.ontology-property-preview-data');
 
     fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
@@ -2026,7 +2035,7 @@ describe('OntologyConceptInspector relationship authoring', () => {
         (await screen.findAllByRole('option')).map((option) =>
           option.textContent?.trim()
         )
-      ).toEqual(['email', 'party name', 'note']);
+      ).toEqual(['email', 'partyName', 'note']);
 
       fireEvent.click(screen.getByRole('option', { name: 'email' }));
       const count = within(form).getByRole('spinbutton', {
