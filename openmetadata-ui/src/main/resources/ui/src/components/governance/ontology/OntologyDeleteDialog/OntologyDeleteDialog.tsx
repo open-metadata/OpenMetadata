@@ -124,7 +124,9 @@ const OntologyDeleteDialog = ({
       <Modal>
         <Dialog
           dividers="scroll"
-          title={t('label.delete-entity', { entity: t('label.ontology') })}
+          title={t('label.delete-entity', {
+            entity: t('label.ontology').toLocaleLowerCase(),
+          })}
           width={480}
           onClose={onClose}>
           <Dialog.Content>

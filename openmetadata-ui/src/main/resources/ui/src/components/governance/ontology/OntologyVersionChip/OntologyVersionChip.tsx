@@ -23,6 +23,7 @@ import {
   Stage,
 } from '../../../../generated/type/ontologyPublicationStatus';
 import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
+import { getUnpublishedCount } from '../../../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 
 interface OntologyVersionChipProps {
   readonly status?: OntologyPublicationStatus;
@@ -48,14 +49,6 @@ const getVersionLabel = (
   }
 
   return version;
-};
-
-// Before the first release the server counts the ontology itself as an added
-// member; a user did not make that a change, so it is not part of the count.
-const getUnpublishedCount = (status: OntologyPublicationStatus | undefined) => {
-  const count = status?.unpublishedChanges ?? 0;
-
-  return status?.active ? count : Math.max(count - 1, 0);
 };
 
 const getChipParts = (

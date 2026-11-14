@@ -29,6 +29,7 @@ import {
   Search,
   Table,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -372,7 +373,11 @@ const OntologyNativeDataMode = ({
 
   const renderNoPick = () => (
     <div
-      className="tw:absolute tw:top-1/2 tw:left-1/2 tw:z-10 tw:flex tw:w-105 tw:max-w-[calc(100%-2rem)] tw:-translate-x-1/2 tw:-translate-y-1/2 tw:flex-col tw:items-center tw:gap-4 tw:text-center"
+      className={classNames(
+        'tw:absolute tw:top-1/2 tw:left-1/2 tw:flex tw:w-105 tw:max-w-[calc(100%-2rem)] tw:-translate-x-1/2 tw:-translate-y-1/2 tw:flex-col tw:items-center tw:gap-4 tw:text-center',
+        // The open list drops out of this box; it must sit over the canvas toolbar (z-20) below.
+        isPicking ? 'tw:z-30' : 'tw:z-10'
+      )}
       data-testid="ontology-data-no-pick">
       <span className={ICON_TILE_CLASS}>
         <Table aria-hidden="true" className="tw:size-5" />

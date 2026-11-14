@@ -47,6 +47,8 @@ const mockModel = {
   properties: [],
 };
 
+const mockRelations: unknown[] = [];
+
 jest.mock(
   '../../../../hooks/governance/ontology/useOntologyStudioModel',
   () => ({
@@ -55,7 +57,7 @@ jest.mock(
       isError: false,
       isLoading: false,
       model: mockModel,
-      relations: [],
+      relations: mockRelations,
     }),
   })
 );
@@ -250,6 +252,41 @@ describe('OntologyOverview recent changes', () => {
     const badge = await screen.findByText('label.rule');
 
     expect(badge.parentElement?.className).toContain('orange');
+  });
+
+  it('reads a changed subclass axiom as the hierarchy it asserts', async () => {
+    mockRelations.push({
+      axiom: { id: 'a-sub' },
+      from: { id: 'ship', name: 'Shipment' },
+      key: 'axiom:a-sub:0',
+      kind: 'subClassOf',
+      to: { id: 'order', name: 'Order' },
+    });
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          changeType: ChangeType.Added,
+          memberKind: MemberKind.Axiom,
+          entity: {
+            id: 'a-sub',
+            type: 'ontologyAxiom',
+            displayName: 'Imported subclass of',
+          },
+        },
+      ],
+      paging: { total: 1 },
+    });
+    renderWithQueryClient(
+      <OntologyOverview ontology={ontology} onOpenPublication={jest.fn()} />
+    );
+
+    const row = await screen.findByTestId('ontology-overview-change');
+    mockRelations.length = 0;
+
+    expect(row).toHaveTextContent(
+      /label\.hierarchy.*message\.ontology-concept-is-a-kind-of/
+    );
+    expect(row).not.toHaveTextContent('label.rule');
   });
 });
 

@@ -12,7 +12,7 @@
  */
 import {
   suggestColumnForProperty,
-  suggestPropertyForColumn,
+  suggestPropertiesForColumns,
 } from './OntologyBindingSuggestion.utils';
 
 const column = (name: string) => ({ id: JSON.stringify([name]) });
@@ -56,40 +56,55 @@ describe('suggestColumnForProperty', () => {
   });
 });
 
-describe('suggestPropertyForColumn', () => {
+describe('suggestPropertiesForColumns', () => {
   const properties = [
     { id: 'p-id', label: 'Patient Key', isIdentifier: true },
     { id: 'p-dob', label: 'dateOfBirth' },
     { id: 'p-name', label: 'Patient Name' },
     { id: 'p-unit', label: 'unit' },
   ];
+  const suggest = (names: string[], props: typeof properties = properties) =>
+    Object.fromEntries(
+      [...suggestPropertiesForColumns(names.map(column), props)].map(
+        ([id, property]) => [JSON.parse(id)[0], property.id]
+      )
+    );
 
-  it('maps a column to the property with the same words', () => {
-    expect(suggestPropertyForColumn('date_of_birth', properties)?.id).toBe(
-      'p-dob'
-    );
-    expect(suggestPropertyForColumn('PatientName', properties)?.id).toBe(
-      'p-name'
-    );
+  it('maps each column to the property with the same words, or one its name holds', () => {
+    expect(
+      suggest(['date_of_birth', 'PatientName', 'dosage_unit', 'created_at'])
+    ).toEqual({
+      PatientName: 'p-name',
+      date_of_birth: 'p-dob',
+      dosage_unit: 'p-unit',
+    });
   });
 
-  it('maps an id column to the identifier property', () => {
-    expect(suggestPropertyForColumn('patient_id', properties)?.id).toBe('p-id');
-  });
-
-  it('maps a column whose name holds the property name', () => {
-    expect(suggestPropertyForColumn('dosage_unit', properties)?.id).toBe(
-      'p-unit'
-    );
-  });
-
-  it('suggests nothing for an unmatched column', () => {
-    expect(suggestPropertyForColumn('created_at', properties)).toBeUndefined();
+  it('maps an id column to a key-like identifier property', () => {
+    expect(suggest(['patient_id'])).toEqual({ patient_id: 'p-id' });
   });
 
   it('does not offer an id column to a concept with no identifier property', () => {
+    expect(suggest(['row_id'], [{ id: 'p-name', label: 'Name' }])).toEqual({});
+  });
+
+  it('gives each property to its best column only', () => {
+    const email = [{ id: 'p-email', label: 'email', isIdentifier: true }];
+
+    expect(suggest(['customer_id', 'customer_email'], email)).toEqual({
+      customer_email: 'p-email',
+    });
+  });
+
+  it('does not offer an id column to an identifier not named like a key', () => {
+    const email = [{ id: 'p-email', label: 'email', isIdentifier: true }];
+
+    expect(suggest(['customer_id'], email)).toEqual({});
+  });
+
+  it('gives a property to the first of two equally good columns', () => {
     expect(
-      suggestPropertyForColumn('row_id', [{ id: 'p-name', label: 'Name' }])
-    ).toBeUndefined();
+      suggest(['unit', 'unit'.toUpperCase()], [{ id: 'p-unit', label: 'unit' }])
+    ).toEqual({ unit: 'p-unit' });
   });
 });

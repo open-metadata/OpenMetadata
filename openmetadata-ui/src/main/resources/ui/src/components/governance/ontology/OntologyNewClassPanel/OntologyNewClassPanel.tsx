@@ -203,6 +203,11 @@ const hasOwlOnlyContent = (
 ) =>
   type === OntologyConceptType.SkosConcept && (hasAxioms || propertyCount > 0);
 const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
+// An empty Display name takes the Name, so a clashing label is the Name's problem.
+const fieldIssues = (displayName: string) =>
+  displayName.trim()
+    ? { name: NAME_ISSUES, label: ['label-taken'] as ClassIdentityIssue[] }
+    : { name: [...NAME_ISSUES, 'label-taken' as const], label: [] };
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
   'name-invalid': 'message.ontology-concept-name-invalid',
@@ -397,27 +402,42 @@ const OntologyNewClassPanel = ({
 
     return issue ? issueText(issue) : fallback;
   };
-  const blockedReason = (() => {
+  const { name: nameFieldIssues, label: labelFieldIssues } = fieldIssues(label);
+  // A reason a field already shows under itself is not repeated beside the buttons.
+  const createBlock = (() => {
     if (ontologyField && !ontologyField.value) {
-      return t('message.ontology-concept-ontology-required');
+      return {
+        isOnField: false,
+        reason: t('message.ontology-concept-ontology-required'),
+      };
     }
     if (!permitted) {
-      return t('message.no-permission-for-action');
+      return {
+        isOnField: false,
+        reason: t('message.no-permission-for-action'),
+      };
     }
     if (issues.length > 0) {
-      return issueText(issues[0]);
+      return {
+        isOnField: issues[0] !== 'name-required',
+        reason: issueText(issues[0]),
+      };
     }
     if (deletedConcept) {
-      return t('message.ontology-concept-name-deleted', {
-        name: localName.trim(),
-      });
+      return {
+        isOnField: true,
+        reason: t('message.ontology-concept-name-deleted', {
+          name: localName.trim(),
+        }),
+      };
     }
     if (mappingRowUnresolved && mappingCommitTried) {
-      return t('message.invalid-concept-iri');
+      return { isOnField: true, reason: t('message.invalid-concept-iri') };
     }
 
     return undefined;
   })();
+  const blockedReason = createBlock?.reason;
   const valid = [blockedReason === undefined, !skosWithOwlOnly].every(Boolean);
   const effectiveIri = classIri(ontology.namespace ?? '', localName, customIri);
 
@@ -610,7 +630,7 @@ const OntologyNewClassPanel = ({
         </span>
       );
     }
-    if (deletedConcept && !has(...NAME_ISSUES)) {
+    if (deletedConcept && !has(...nameFieldIssues)) {
       return (
         <span data-testid="new-class-name-deleted">
           {restoreFailed
@@ -631,7 +651,7 @@ const OntologyNewClassPanel = ({
       );
     }
 
-    return fieldHint(undefined, ...NAME_ISSUES);
+    return fieldHint(undefined, ...nameFieldIssues);
   };
   const canSubmit = [permitted, !locked].every(Boolean);
   const create = async (keepOpen: boolean) => {
@@ -1043,12 +1063,14 @@ const OntologyNewClassPanel = ({
           className="tw:min-w-0 tw:flex-1"
           gap={2}
           justify="end">
-          {blockedReason && apply.status.kind !== 'applied' ? (
+          {createBlock &&
+          !createBlock.isOnField &&
+          apply.status.kind !== 'applied' ? (
             <Typography
               color="secondary"
               data-testid="new-class-create-reason"
               size="text-sm">
-              {blockedReason}
+              {createBlock.reason}
             </Typography>
           ) : null}
           <Typography
@@ -1209,7 +1231,7 @@ const OntologyNewClassPanel = ({
               inputDataTestId="new-class-local-name"
               isDisabled={locked}
               isInvalid={
-                has(...NAME_ISSUES) ||
+                has(...nameFieldIssues) ||
                 Boolean(deletedConcept) ||
                 (apply.status.kind === 'blocked' && apply.status.conflict)
               }
@@ -1221,11 +1243,11 @@ const OntologyNewClassPanel = ({
             <Input
               hint={fieldHint(
                 t('message.ontology-concept-display-name-hint'),
-                'label-taken'
+                ...labelFieldIssues
               )}
               inputDataTestId="new-class-label"
               isDisabled={locked}
-              isInvalid={has('label-taken')}
+              isInvalid={has(...labelFieldIssues)}
               label={t('label.ontology-display-name')}
               placeholder={localName}
               value={label}

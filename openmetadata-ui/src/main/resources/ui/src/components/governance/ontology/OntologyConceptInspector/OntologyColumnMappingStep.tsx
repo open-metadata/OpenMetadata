@@ -34,7 +34,7 @@ import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   SuggestableProperty,
-  suggestPropertyForColumn,
+  suggestPropertiesForColumns,
 } from '../../../../utils/governance/ontology/OntologyBindingSuggestion.utils';
 import {
   getOntologyBindingWriteMessage,
@@ -128,26 +128,31 @@ const OntologyColumnMappingStep = ({
             )
           : [];
 
+        const resolvedBindings = (bound?.columns ?? []).filter(
+          (column) => column.state === State.Resolved
+        );
+        const boundColumnIds = new Set(
+          resolvedBindings.map((column) => JSON.stringify(column.columnPath))
+        );
+        // A bound column shows its binding, so only unbound columns compete for a suggestion.
+        const suggestions = suggestPropertiesForColumns(
+          options.filter((option) => !boundColumnIds.has(option.id)),
+          properties
+        );
+
         return {
           asset,
           bound,
           options: options.map((option) => {
-            const resolved = (bound?.columns ?? []).filter(
-              (column) =>
-                column.state === State.Resolved &&
-                JSON.stringify(column.columnPath) === option.id
-            );
-            const existing = resolved[0];
-            const suggestion = suggestPropertyForColumn(
-              option.path[option.path.length - 1],
-              properties
+            const resolved = resolvedBindings.filter(
+              (column) => JSON.stringify(column.columnPath) === option.id
             );
 
             return {
               ...option,
-              existingPropertyId: existing?.propertyId,
+              existingPropertyId: resolved[0]?.propertyId,
               extraBindings: Math.max(resolved.length - 1, 0),
-              suggestedPropertyId: suggestion?.id,
+              suggestedPropertyId: suggestions.get(option.id)?.id,
             };
           }),
           query: columnQueries[index],

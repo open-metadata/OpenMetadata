@@ -72,6 +72,7 @@ import {
   landOnImportedOntology,
   NativeImportAction,
   nativeImportErrorMessage,
+  nativeImportParseFailure,
   nativeImportOntologyRequest,
   NativeImportParse,
   nativeImportReducer,
@@ -286,11 +287,12 @@ const ImportButton = ({
   readonly onImport: () => void;
 }) => {
   const { t } = useTranslation();
-  let label = t('label.import-change-count', { count: importCount });
+  // Only the plural keys exist, so the count label is built only once there is a count.
+  let label = t('label.import');
   if (isLocked) {
     label = t('label.retry');
-  } else if (importCount === undefined) {
-    label = t('label.import');
+  } else if (importCount !== undefined) {
+    label = t('label.import-change-count', { count: importCount });
   }
 
   return (
@@ -627,27 +629,34 @@ const ImportReview = ({
   );
 };
 
+// The Review panel's error layout: title, the detail on its own lines, then the action.
 const ImportErrors = ({
+  isFileRejected,
   message,
   onRetry,
 }: {
+  readonly isFileRejected?: boolean;
   readonly message?: string;
   readonly onRetry?: () => void;
 }) => {
   const { t } = useTranslation();
 
   return message ? (
-    <Alert variant="error">
-      {message}
-      {onRetry ? (
-        <Button
-          color="secondary"
-          data-testid="ontology-native-import-retry"
-          size="sm"
-          onPress={onRetry}>
-          {t('label.retry')}
-        </Button>
-      ) : null}
+    <Alert
+      title={isFileRejected ? t('message.invalid-file') : undefined}
+      variant="error">
+      <Box align="start" direction="col" gap={2}>
+        <span className="tw:break-words">{message}</span>
+        {onRetry ? (
+          <Button
+            color="secondary"
+            data-testid="ontology-native-import-retry"
+            size="sm"
+            onPress={onRetry}>
+            {t('label.retry')}
+          </Button>
+        ) : null}
+      </Box>
     </Alert>
   ) : null;
 };
@@ -716,6 +725,7 @@ const OntologyNativeImportPanel = ({
   }, [isBusy, onBusyChange]);
 
   const describe = (error: unknown) => describeError(error, unexpected);
+  const parseFailure = nativeImportParseFailure(state);
 
   // The preview is a dry run, so it starts as soon as the file's format is known.
   const parse = async (fileName: string, isNew: boolean) => {
@@ -810,9 +820,10 @@ const OntologyNativeImportPanel = ({
           />
         )}
         <ImportErrors
+          isFileRejected={parseFailure === 'rejected'}
           message={nativeImportErrorMessage(state, install.error)}
           onRetry={
-            state.parse.kind === 'failed' && state.fileName && !isLockedOrBusy
+            parseFailure === 'retryable' && !isLockedOrBusy
               ? () => void parse(state.fileName ?? '', isNewTarget)
               : undefined
           }

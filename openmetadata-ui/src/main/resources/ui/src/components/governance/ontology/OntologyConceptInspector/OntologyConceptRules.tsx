@@ -32,6 +32,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  getConceptAncestors,
   getPropertyLabel,
   OntologyModelRelation,
   OntologyStudioModel,
@@ -58,6 +59,7 @@ import {
   QuickQuantifier,
   QuickRule,
   QuickRuleKind,
+  quickRuleCountProblem,
   quickRuleToForm,
   QUICK_QUANTIFIERS,
   QUICK_QUANTIFIER_LABELS,
@@ -144,7 +146,7 @@ const ConceptRuleFields = ({
             type="number"
             value={String(rule.count)}
             onChange={(count) =>
-              onChange({ count: Math.max(0, Math.floor(Number(count) || 0)) })
+              onChange({ count: Math.floor(Number(count) || 0) })
             }
           />
           <OntologyIriInput
@@ -176,11 +178,13 @@ const ConceptRuleFields = ({
 const ConceptRuleForm = ({
   concept,
   model,
+  relations,
   onClose,
   onCreated,
 }: {
   readonly concept: OntologyConcept;
   readonly model: OntologyStudioModel;
+  readonly relations: readonly OntologyModelRelation[];
   readonly onClose: () => void;
   readonly onCreated: () => void;
 }) => {
@@ -195,21 +199,34 @@ const ConceptRuleForm = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const nameSuffix = useRef(generateUUID().slice(0, 6));
+  // A rule can only constrain what this concept has: properties whose domain is it or an
+  // ancestor, and properties with no declared domain.
+  const ownProperties = useMemo(() => {
+    const domains = new Set([
+      concept.iri,
+      ...getConceptAncestors([...relations], concept.id).map(({ iri }) => iri),
+    ]);
+
+    return model.properties.filter(
+      (property) =>
+        !property.deleted &&
+        (!property.domain?.length ||
+          property.domain.some((iri) => domains.has(iri)))
+    );
+  }, [concept.id, concept.iri, model.properties, relations]);
   const references = useMemo(
     () => ({
       concepts: model.concepts.map((candidate) => ({
         iri: candidate.iri,
         label: getEntityName(candidate),
       })),
-      properties: model.properties
-        .filter((property) => !property.deleted)
-        .map((property) => ({
-          iri: property.iri,
-          kind: property.kind,
-          label: getPropertyLabel(property),
-        })),
+      properties: ownProperties.map((property) => ({
+        iri: property.iri,
+        kind: property.kind,
+        label: getPropertyLabel(property),
+      })),
     }),
-    [model]
+    [model.concepts, ownProperties]
   );
   const ontologyFqn = model.ontology.fullyQualifiedName ?? model.ontology.name;
   const base = quickRuleToForm(rule, axiomFormValues());
@@ -220,9 +237,19 @@ const ConceptRuleForm = ({
   };
   const validation = useOntologyAxiomValidation(values, ontologyFqn, sentence);
   const problems = collectAxiomProblems(validation.current, true);
+  const countProblem = quickRuleCountProblem(
+    rule,
+    Boolean(
+      ownProperties.find((property) => property.iri === rule.propertyIri)
+        ?.isIdentifier
+    )
+  );
 
   // Same gate as the Constraints editor: the server must accept the rule before it is written.
   const save = async () => {
+    if (countProblem) {
+      return;
+    }
     setIsSaving(true);
     try {
       const report = await validation.validate(values);
@@ -255,7 +282,10 @@ const ConceptRuleForm = ({
         </Typography>
       ) : null}
       <ConceptRuleFields
-        problems={problems.routed.byField}
+        problems={{
+          ...problems.routed.byField,
+          ...(countProblem ? { count: t(countProblem) } : {}),
+        }}
         references={references}
         rule={rule}
         onChange={(patch) => setRule((current) => ({ ...current, ...patch }))}
@@ -272,7 +302,10 @@ const ConceptRuleForm = ({
           </Typography>
         </Card.Content>
       </Card>
-      <AxiomOutcome problems={problems} validation={validation.current} />
+      {/* The server checks OWL shape only; a count it accepts can still contradict the property. */}
+      {countProblem ? null : (
+        <AxiomOutcome problems={problems} validation={validation.current} />
+      )}
       <Box gap={2} justify="end">
         <Button
           color="secondary"
@@ -284,7 +317,7 @@ const ConceptRuleForm = ({
         <Button
           color="primary"
           data-testid="ontology-rule-submit"
-          isDisabled={!isQuickRuleReady(rule)}
+          isDisabled={!isQuickRuleReady(rule) || Boolean(countProblem)}
           isLoading={isSaving}
           size="sm"
           onPress={() => void save()}>
@@ -365,6 +398,7 @@ const OntologyConceptRules = ({
         <ConceptRuleForm
           concept={concept}
           model={model}
+          relations={relations}
           onClose={() => setIsAdding(false)}
           onCreated={onCreated}
         />
@@ -382,7 +416,9 @@ const OntologyConceptRules = ({
               {canDelete ? (
                 <InspectorRemoveButton
                   isDisabled={deletingId === rule.id}
-                  label={t('label.delete-entity', { entity: t('label.rule') })}
+                  label={t('label.delete-entity', {
+                    entity: t('label.rule').toLocaleLowerCase(),
+                  })}
                   testId={`ontology-concept-rule-delete-${rule.id}`}
                   onRemove={() => setPendingRule(rule)}
                 />

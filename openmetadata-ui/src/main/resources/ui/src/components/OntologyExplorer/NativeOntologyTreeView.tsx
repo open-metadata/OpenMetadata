@@ -292,6 +292,22 @@ const NativeOntologyTreeView = ({
     [rows]
   );
   const { isVirtual, layout } = treeLayout(rows.length);
+  // A paging button disables itself on the last page, which would drop focus to the page;
+  // focus stays on it while it can still page, and moves to the other one once it cannot.
+  const pagedDirection = useRef<'previous' | 'next'>();
+  useEffect(() => {
+    const direction = pagedDirection.current;
+    if (!direction) {
+      return;
+    }
+    pagedDirection.current = undefined;
+    const other = direction === 'next' ? 'previous' : 'next';
+    navigation.current
+      ?.querySelector<HTMLButtonElement>(
+        `[data-tree-direction="${page[direction] ? direction : other}"]`
+      )
+      ?.focus();
+  }, [page]);
   const expandedKeys = useMemo(
     () =>
       rows
@@ -474,20 +490,13 @@ const NativeOntologyTreeView = ({
       {page.previous || page.next ? (
         <Box gap={2} ref={navigation}>
           <Button
-            aria-disabled={!page.previous}
             color="secondary"
             data-testid="ontology-tree-previous"
             data-tree-direction="previous"
+            isDisabled={!page.previous}
             size="sm"
             onPress={() => {
-              if (!page.previous) {
-                return;
-              }
-              navigation.current
-                ?.querySelector<HTMLButtonElement>(
-                  '[data-tree-direction="previous"]'
-                )
-                ?.focus();
+              pagedDirection.current = 'previous';
               setState({
                 ...state,
                 anchor: page.previous,
@@ -498,20 +507,13 @@ const NativeOntologyTreeView = ({
             {t('label.previous')}
           </Button>
           <Button
-            aria-disabled={!page.next}
             color="secondary"
             data-testid="ontology-tree-next"
             data-tree-direction="next"
+            isDisabled={!page.next}
             size="sm"
             onPress={() => {
-              if (!page.next) {
-                return;
-              }
-              navigation.current
-                ?.querySelector<HTMLButtonElement>(
-                  '[data-tree-direction="next"]'
-                )
-                ?.focus();
+              pagedDirection.current = 'next';
               setState({
                 ...state,
                 anchor: page.next,

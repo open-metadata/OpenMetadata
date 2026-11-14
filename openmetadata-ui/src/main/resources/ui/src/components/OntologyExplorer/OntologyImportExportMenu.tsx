@@ -54,7 +54,6 @@ interface NativeOntologyExportProps {
   readonly ontology: Ontology;
   readonly canImport: boolean;
   readonly onApplied: () => void;
-  readonly onOpen?: () => void;
 }
 
 type OntologyImportExportMenuProps =
@@ -147,7 +146,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
               data-testid="ontology-import-target-picker"
               items={options}
               label={t('label.select-entity', {
-                entity: t('label.ontology'),
+                entity: t('label.ontology').toLocaleLowerCase(),
               })}
               selectedKey={null}
               onSelectionChange={(key) =>
@@ -196,13 +195,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
     );
   };
 
-  const open = (kind: TransferKind) =>
-    guard(() => {
-      if (props.kind === 'ontology') {
-        props.onOpen?.();
-      }
-      setOpenKind(kind);
-    });
+  const open = (kind: TransferKind) => guard(() => setOpenKind(kind));
 
   // Ontologies offer Import and Export as two actions, each opening its own dialog.
   const hasMenu =

@@ -357,7 +357,7 @@ test.describe(
             await page.getByTestId('ontology-export-menu-item').click();
             if (scope === 'aggregate') {
               const target = page.getByTestId('ontology-import-target-picker');
-              await expect(target).toContainText('Select Ontology');
+              await expect(target).toContainText('Select ontology');
               // evaluate() does not retry, and the Import / Export menu popover is still a dialog while it animates out.
               await expectNativeStudioCopy(
                 page.getByRole('dialog', { name: 'Export ontology' })

@@ -750,8 +750,12 @@ describe('the concept picker', () => {
       screen.queryByTestId('ontology-data-concept-picker-trigger')
     ).not.toBeInTheDocument();
     expect(search).toHaveAttribute('placeholder', 'label.search-concepts…');
+    // The open list drops out of the box; above the canvas toolbar's z-20, not under it.
+    expect(screen.getByTestId('ontology-data-no-pick')).toHaveClass('tw:z-30');
 
     fireEvent.keyDown(search, { key: 'Escape' });
+
+    expect(screen.getByTestId('ontology-data-no-pick')).toHaveClass('tw:z-10');
 
     expect(
       screen.getByTestId('ontology-data-concept-picker-trigger')

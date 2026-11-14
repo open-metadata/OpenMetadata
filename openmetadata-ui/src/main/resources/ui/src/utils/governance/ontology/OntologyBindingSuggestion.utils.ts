@@ -13,6 +13,8 @@
 
 const MIN_PART_LENGTH = 3;
 const IDENTIFIER_COLUMN = /^(id|.*_id|.*id)$/;
+// Only an identifier named like a key takes an `*_id` column; an `email` identifier does not.
+const KEY_LIKE_LABEL = /\b(id|key|code|number|no|uuid|identifier)\b/;
 
 /** Splits `dosageMg`, `dosage_mg` and `Dosage Mg` into `dosage mg`. */
 const normalize = (name: string): string =>
@@ -69,6 +71,7 @@ const scoreMatch = (
   }
 
   return property.isIdentifier &&
+    KEY_LIKE_LABEL.test(wanted) &&
     IDENTIFIER_COLUMN.test(name.replace(/ /g, '_'))
     ? MATCH_IDENTIFIER
     : 0;
@@ -89,7 +92,7 @@ const pickBest = <T>(
 
 /**
  * The column most likely meant for a property: the same words first, then one name
- * holding the other, and an identifier property takes an `id` or `*_id` column.
+ * holding the other, and a key-like identifier property takes an `id` or `*_id` column.
  */
 export const suggestColumnForProperty = <T extends SuggestableColumn>(
   property: ColumnSuggestionProperty,
@@ -97,9 +100,36 @@ export const suggestColumnForProperty = <T extends SuggestableColumn>(
 ): T | undefined =>
   pickBest(columns, (column) => scoreMatch(property, lastSegment(column.id)));
 
-/** The property a column most likely holds, by the same rules as `suggestColumnForProperty`. */
-export const suggestPropertyForColumn = <T extends SuggestableProperty>(
-  columnName: string,
-  properties: readonly T[]
-): T | undefined =>
-  pickBest(properties, (property) => scoreMatch(property, columnName));
+/**
+ * The property each column of one table most likely holds, keyed by column id. Each property goes
+ * to at most one column, the best-matching one.
+ */
+export const suggestPropertiesForColumns = <
+  C extends SuggestableColumn,
+  P extends SuggestableProperty
+>(
+  columns: readonly C[],
+  properties: readonly P[]
+): Map<string, P> => {
+  const candidates = columns
+    .flatMap((column) =>
+      properties.map((property) => ({
+        column,
+        property,
+        score: scoreMatch(property, lastSegment(column.id)),
+      }))
+    )
+    .filter(({ score }) => score > 0)
+    // Stable sort: equal scores keep column order, so the first matching column wins a tie.
+    .sort((a, b) => b.score - a.score);
+  const suggestions = new Map<string, P>();
+  const usedProperties = new Set<string>();
+  for (const { column, property } of candidates) {
+    if (!suggestions.has(column.id) && !usedProperties.has(property.id)) {
+      suggestions.set(column.id, property);
+      usedProperties.add(property.id);
+    }
+  }
+
+  return suggestions;
+};

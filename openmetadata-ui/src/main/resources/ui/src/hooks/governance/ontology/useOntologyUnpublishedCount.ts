@@ -20,6 +20,7 @@ import {
 import { getEntityPermissionById } from '../../../rest/permissionAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getOperationPermissions } from '../../../utils/PermissionsUtils';
+import { getUnpublishedCount } from '../../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 import { useApplicationStore } from '../../useApplicationStore';
 
 type UnpublishedCount =
@@ -59,7 +60,7 @@ async function readOwnerUnpublishedCount(
   const changes = owner.publicationStatus?.unpublishedChanges;
 
   return changes !== undefined && Number.isSafeInteger(changes) && changes >= 0
-    ? changes
+    ? getUnpublishedCount(owner.publicationStatus)
     : undefined;
 }
 
