@@ -19,11 +19,13 @@ from pydoris.sqlalchemy import datatype
 from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy import sql
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
+from sqlalchemy.engine import Row
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.compiler import IdentifierPreparer
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     TableConstraint,
@@ -47,8 +49,9 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.ingestion.source.database.doris.queries import (
+    DORIS_GET_PARTITIONS,
     DORIS_GET_TABLE_NAMES,
-    DORIS_PARTITION_DETAILS,
+    DORIS_SHOW_CREATE_TABLE,
     DORIS_SHOW_FULL_COLUMNS,
 )
 from metadata.ingestion.source.database.doris.utils import (
@@ -57,6 +60,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
@@ -71,6 +75,18 @@ RELKIND_MAP = {
     "Iceberg": TableType.Iceberg,
     "ICEBERG": TableType.Iceberg,
 }
+
+# Engine of an OLAP table in information_schema.tables. SHOW CREATE TABLE refuses a materialized view.
+OLAP_ENGINE = "Doris"
+
+# A RANGE partition column is an integer, a DATE or a DATETIME
+TIME_PARTITION_DATA_TYPES = {DataType.DATE.value, DataType.DATETIME.value}
+
+# SHOW CREATE TABLE prints the partition clause on a line of its own: PARTITION BY RANGE(`dt`),
+# PARTITION BY LIST (`region`, `city`), AUTO PARTITION BY RANGE (date_trunc(`ts`, 'day'))
+PARTITION_CLAUSE = re.compile(r"^(?:AUTO )?PARTITION BY (RANGE|LIST) ?\((.+)\)$", re.MULTILINE)
+DATE_TRUNC_UNIT = re.compile(r"date_trunc\(.*'(\w+)'", re.IGNORECASE)
+DYNAMIC_PARTITION_UNIT = re.compile(r'^"dynamic_partition\.time_unit" = "(\w+)"', re.MULTILINE)
 
 DorisDialect.get_table_names_and_type = get_table_names_and_type
 DorisDialect.get_table_comment = get_table_comment
@@ -170,6 +186,8 @@ class DorisSource(CommonDbSourceService):
         if self.ssl_manager:
             service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
+        # One entry per schema in progress: each of the `threads` workers ingests its own schema
+        self.partitions_cache: LRUCache[dict[str, Row]] = LRUCache(capacity=self.source_config.threads or 1)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -283,6 +301,33 @@ class DorisSource(CommonDbSourceService):
             table_columns.append(om_column)
         return table_columns, [], []
 
+    def _get_schema_partitions(self, schema_name: str) -> dict[str, Row]:
+        """Partition method and columns of every table and view of the schema, read once per schema"""
+        try:
+            # Read once rather than checking for membership first: an eviction by another
+            # worker thread between the two calls would raise here
+            return self.partitions_cache.get(schema_name)
+        except KeyError:
+            try:
+                partitions = {
+                    row.TABLE_NAME: row
+                    for row in self.connection.execute(sql.text(DORIS_GET_PARTITIONS), {"schema": schema_name})
+                }
+            except Exception as exc:
+                # Ingest the schema's tables without partition details rather than fail each of them
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not read the partitions of schema [%s]: %s", schema_name, exc)
+                partitions = {}
+            self.partitions_cache.put(schema_name, partitions)
+            return partitions
+
+    def _get_create_table(self, schema_name: str, table_name: str) -> str:
+        preparer = self.engine.dialect.identifier_preparer
+        qualified_table_name = _qualified_identifier(preparer, schema_name, table_name)
+        query = DORIS_SHOW_CREATE_TABLE.format(table_name=qualified_table_name)
+        # row schema: Table, Create Table
+        return self.connection.execute(sql.text(query)).one()[1]
+
     def get_table_partition_details(
         self,
         table_name: str,
@@ -290,31 +335,59 @@ class DorisSource(CommonDbSourceService):
         inspector: Inspector,
     ) -> tuple[bool, TablePartition | None]:
         """
-        check if the table is partitioned table and return the partition details
+        Partitioning from information_schema.partitions, read once per schema. The DDL is read for an
+        OLAP table that is RANGE partitioned or has no partition row: it gives the unit of an
+        AUTO PARTITION BY RANGE (date_trunc(...)) or of a dynamic partition, and the partition columns
+        of a table without partition rows.
         """
-        try:
-            preparer = self.engine.dialect.identifier_preparer
-            qualified_table_name = _qualified_identifier(
-                preparer,
-                schema_name,
-                table_name,
-            )
-            with self.engine.connect() as conn:
-                result = conn.execute(sql.text(DORIS_PARTITION_DETAILS.format(table_name=qualified_table_name))).all()
-
-            if result and result[0].PartitionKey != "":
-                partition_details = TablePartition(
-                    columns=[
-                        PartitionColumnDetails(
-                            columnName=partition_key,
-                            intervalType=PartitionIntervalTypes.TIME_UNIT,
-                            interval=None,
-                        )
-                        for partition_key in result[0].PartitionKey.split(", ")
-                    ]
-                )
-
-                return True, partition_details
-            return False, None  # noqa: TRY300
-        except Exception:
+        table = self._get_schema_partitions(schema_name).get(table_name)
+        if table is None:
             return False, None
+        method = table.PARTITION_METHOD
+        if method == "UNPARTITIONED" or (method is None and table.ENGINE != OLAP_ENGINE):
+            # A view, or a materialized view without partitions: its DDL does not say RANGE or LIST
+            return False, None
+
+        interval = None
+        if table.ENGINE == OLAP_ENGINE and method != "LIST":
+            create_table = self._get_create_table(schema_name, table_name)
+            clause = PARTITION_CLAUSE.search(create_table)
+            if clause is None:
+                # An unpartitioned table: before Doris 2.1.7 and 3.0.2, information_schema.partitions has no rows
+                return False, None
+            method, expression = clause.groups()
+            column_names = re.findall(r"`([^`]+)`", expression)
+            unit = DATE_TRUNC_UNIT.search(expression) or DYNAMIC_PARTITION_UNIT.search(create_table)
+            interval = unit.group(1).upper() if unit else None
+        else:
+            column_names = table.PARTITION_EXPRESSION.split(", ")
+
+        if method == "LIST":
+            return True, TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=column_name,
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                    for column_name in column_names
+                ]
+            )
+        columns, _ = self._get_columns(table_name, schema_name)
+        column_types = {column["name"]: column["system_data_type"] for column in columns}
+        return True, TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName=column_name,
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval=interval,
+                )
+                if column_types[column_name] in TIME_PARTITION_DATA_TYPES
+                else PartitionColumnDetails(
+                    columnName=column_name,
+                    intervalType=PartitionIntervalTypes.INTEGER_RANGE,
+                    interval=None,
+                )
+                for column_name in column_names
+            ]
+        )
