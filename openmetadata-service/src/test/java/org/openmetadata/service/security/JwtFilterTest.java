@@ -837,6 +837,53 @@ class JwtFilterTest {
     assertEquals(email, principal.getEmail());
   }
 
+  /**
+   * tokenValidationAlgorithm names the identity provider's algorithm: the tokens OpenMetadata
+   * issued keep verifying with the one it signed them with when it changes.
+   */
+  @Test
+  void ownTokensStayValidUnderAnotherProviderAlgorithm() throws Exception {
+    String userName = "algorithm_user";
+    String token =
+        generator
+            .generateJWTToken(
+                userName,
+                new HashSet<>(),
+                false,
+                emailOf(userName),
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken();
+    credentials.withPats(Map.of(userName, List.of(token)));
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), null, false, VERIFIER);
+    Field providerAlgorithm = JwtFilter.class.getDeclaredField("tokenValidationAlgorithm");
+    providerAlgorithm.setAccessible(true);
+    providerAlgorithm.set(filter, AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+
+    CatalogPrincipal principal =
+        (CatalogPrincipal) filter.getCatalogSecurityContext(token).getUserPrincipal();
+
+    assertEquals(userName, principal.getName());
+  }
+
+  @Test
+  void ownKeyIdWithoutAnRsaSignatureIsRejected() {
+    String forged =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer(OpenMetadataSigningKey.ISSUER)
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim("email", emailOf(USER))
+            .sign(Algorithm.HMAC256(generator.getPublicKey().getEncoded()));
+
+    assertRejectedBy(
+        omFilter, forged, "Not Authorized! Invalid token. Unsupported signing algorithm.");
+  }
+
   /** OpenMetadata never issues these: each one is rejected even when its token is stored. */
   @ParameterizedTest
   @CsvSource({"false, BOT", "true, PERSONAL_ACCESS", "true, OM_USER"})

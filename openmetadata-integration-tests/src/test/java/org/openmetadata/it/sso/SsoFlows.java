@@ -18,6 +18,11 @@ import org.openmetadata.service.security.session.UserSession;
 public final class SsoFlows {
   public static final String SESSION_COOKIE = "OM_SESSION";
   public static final String ID_TOKEN = "id_token";
+  public static final String SIGNIN_PATH = "/signin";
+
+  /** The query parameter that tells the sign-in page why the last sign-in failed. */
+  public static final String SIGN_IN_ERROR = "error";
+
   private static final int SERVER_ERROR = 500;
 
   private SsoFlows() {}
@@ -79,6 +84,30 @@ public final class SsoFlows {
     assertLoginRefused(browser, navigation);
   }
 
+  /**
+   * The login ended back on the sign-in page, which names {@code reason} so it can tell the person
+   * why, and {@link #assertLoginRefused} holds.
+   */
+  public static void assertLoginEndsOnSignIn(
+      SsoBrowser browser, SsoNavigation navigation, String reason) {
+    URI landing = navigation.finalUrl();
+    boolean isSignInWithReason =
+        SIGNIN_PATH.equals(landing.getPath())
+            && reason.equals(MockHttp.decode(landing.getRawQuery()).get(SIGN_IN_ERROR));
+    if (!isSignInWithReason) {
+      throw new AssertionError(
+          "Expected the login to end on the sign-in page with "
+              + SIGN_IN_ERROR
+              + "="
+              + reason
+              + ":\n"
+              + navigation.describe()
+              + "\n"
+              + abbreviated(navigation.last().body()));
+    }
+    assertLoginRefused(browser, navigation);
+  }
+
   /** The browser ended without a token, and the session its cookie names (if any) is not live. */
   public static void assertLoginRefused(SsoBrowser browser, SsoNavigation navigation) {
     if (navigation.fragmentParameter(ID_TOKEN).isPresent()) {
@@ -92,6 +121,11 @@ public final class SsoFlows {
               throw new AssertionError(
                   "A refused login left session " + session.getId() + " ACTIVE");
             });
+  }
+
+  private static String abbreviated(String body) {
+    int limit = 500;
+    return body == null || body.length() <= limit ? body : body.substring(0, limit) + "...";
   }
 
   public static HttpResponse<String> loggedInUser(SsoBrowser browser, String bearerToken) {

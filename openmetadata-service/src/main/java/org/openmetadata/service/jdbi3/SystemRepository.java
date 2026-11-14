@@ -16,8 +16,13 @@ import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
@@ -178,6 +183,16 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
   private static final String PUBLIC_KEY_URLS_PATH = "/publicKeyUrls";
+  private static final String PATCH_OPERATION = "op";
+  private static final String PATCH_PATH = "path";
+  private static final String PATCH_VALUE = "value";
+  private static final String REMOVE_OPERATION = "remove";
+  private static final Set<String> PROVIDER_SETTING_OPERATIONS = Set.of("add", "replace");
+  private static final String PROVIDER_PATCH_PATH = "/authenticationConfiguration/provider";
+  private static final String SAML_PROVIDER = AuthProvider.SAML.value();
+  private static final String CLIENT_TYPE_FIELD = "clientType";
+  private static final String OIDC_CONFIGURATION_FIELD = "oidcConfiguration";
+  private static final String SAML_CONFIGURATION_FIELD = "samlConfiguration";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
   private final BotTokenCheck botTokenCheck = BotTokenCheck.forSystemBots();
@@ -1889,79 +1904,107 @@ public class SystemRepository implements DeploymentSettingPreparer {
                 missingVersions, unexpectedVersions));
   }
 
+  /**
+   * Drops the operations of a security configuration patch that the provider the patch leaves in
+   * place does not use: a block of another provider, or a client type for SAML. That provider is
+   * the one the patch switches to, if it switches. A patch none of whose changes apply is refused,
+   * since saving it would report success for nothing (ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused).
+   */
   public JsonPatch filterInvalidPatchOperations(
       JsonPatch patch, SecurityConfiguration currentConfig) {
-    try {
-      String provider =
-          currentConfig.getAuthenticationConfiguration() != null
-                  && currentConfig.getAuthenticationConfiguration().getProvider() != null
-              ? currentConfig.getAuthenticationConfiguration().getProvider().value()
-              : null;
-
-      LOG.info("Current provider for patch filtering: {}", provider);
-
-      jakarta.json.JsonArrayBuilder filteredPatchBuilder = jakarta.json.Json.createArrayBuilder();
-      jakarta.json.JsonArray patchArray = patch.toJsonArray();
-      LOG.info("Original patch has {} operations", patchArray.size());
-
-      int filteredCount = 0;
-
-      for (int i = 0; i < patchArray.size(); i++) {
-        jakarta.json.JsonObject operation = patchArray.getJsonObject(i);
-
-        String path = operation.getString("path", "");
-        String op = operation.getString("op", "");
-
-        boolean shouldFilter = false;
-
-        if ("saml".equalsIgnoreCase(provider)) {
-          // clientType is not applicable for SAML
-          if (path.contains("clientType")) {
-            LOG.info(
-                "Filtering out clientType patch operation for SAML provider: op={}, path={}",
-                op,
-                path);
-            shouldFilter = true;
-          } else if (path.contains("oidcConfiguration")) {
-            LOG.info(
-                "Filtering out OIDC configuration patch operation for SAML provider: op={}, path={}",
-                op,
-                path);
-            shouldFilter = true;
-          }
-        } else if (!"saml".equalsIgnoreCase(provider) && path.contains("samlConfiguration")) {
-          LOG.info(
-              "Filtering out SAML configuration patch operation for non-SAML provider: op={}, path={}",
-              op,
-              path);
-          shouldFilter = true;
-        } else if (!isOidcProvider(provider) && path.contains("oidcConfiguration")) {
-          LOG.info(
-              "Filtering out OIDC configuration patch operation for non-OIDC provider: op={}, path={}",
-              op,
-              path);
-          shouldFilter = true;
-        }
-
-        if (!shouldFilter) {
-          filteredPatchBuilder.add(operation);
-          filteredCount++;
-        }
+    JsonArray operations = patch.toJsonArray();
+    String provider = providerAfter(operations, currentConfig);
+    JsonArrayBuilder kept = Json.createArrayBuilder();
+    List<JsonObject> dropped = new ArrayList<>();
+    for (JsonValue value : operations) {
+      if (value instanceof JsonObject operation
+          && !appliesToProvider(provider, operation.getString(PATCH_PATH, ""))) {
+        dropped.add(operation);
+      } else {
+        kept.add(value);
       }
-
-      LOG.info(
-          "Patch filtering complete: {} operations -> {} operations",
-          patchArray.size(),
-          filteredCount);
-
-      jakarta.json.JsonArray filteredArray = filteredPatchBuilder.build();
-      return jakarta.json.Json.createPatch(filteredArray);
-
-    } catch (Exception e) {
-      LOG.error("Error filtering patch operations, returning original patch", e);
-      // Return original patch if filtering fails
-      return patch;
     }
+    LOG.debug(
+        "Security config patch for provider {}: {} operations, {} dropped",
+        provider,
+        operations.size(),
+        dropped.size());
+    requireSomethingApplies(provider, operations.size(), dropped);
+    return Json.createPatch(kept.build());
+  }
+
+  /** The provider the patched configuration will have. */
+  private static String providerAfter(JsonArray operations, SecurityConfiguration currentConfig) {
+    AuthenticationConfiguration current = currentConfig.getAuthenticationConfiguration();
+    String provider =
+        current == null || current.getProvider() == null ? null : current.getProvider().value();
+    for (JsonValue value : operations) {
+      if (value instanceof JsonObject operation && setsTheProvider(operation)) {
+        provider = operation.getString(PATCH_VALUE);
+      }
+    }
+    return provider;
+  }
+
+  private static boolean setsTheProvider(JsonObject operation) {
+    return PROVIDER_PATCH_PATH.equals(operation.getString(PATCH_PATH, ""))
+        && PROVIDER_SETTING_OPERATIONS.contains(operation.getString(PATCH_OPERATION, ""))
+        && operation.get(PATCH_VALUE) instanceof JsonString;
+  }
+
+  private boolean appliesToProvider(String provider, String path) {
+    boolean isSaml = SAML_PROVIDER.equalsIgnoreCase(provider);
+    boolean appliesToSaml =
+        !path.contains(CLIENT_TYPE_FIELD) && !path.contains(OIDC_CONFIGURATION_FIELD);
+    boolean isForAnotherProvider =
+        path.contains(SAML_CONFIGURATION_FIELD)
+            || (!isOidcProvider(provider) && path.contains(OIDC_CONFIGURATION_FIELD));
+    return isSaml ? appliesToSaml : !isForAnotherProvider;
+  }
+
+  /**
+   * Removing another provider's block changes nothing, which is how the SSO page tidies a saved
+   * configuration; asking for a value the provider ignores is refused when nothing else applies.
+   */
+  private static void requireSomethingApplies(
+      String provider, int operationCount, List<JsonObject> dropped) {
+    boolean asksForIgnoredValues =
+        dropped.stream()
+            .anyMatch(
+                operation -> !REMOVE_OPERATION.equals(operation.getString(PATCH_OPERATION, "")));
+    if (dropped.size() == operationCount && asksForIgnoredValues) {
+      // A web-application error, which the security config endpoints answer with its own status.
+      throw new jakarta.ws.rs.BadRequestException(
+          String.format(
+              "The %s provider does not use %s, so the patch changes nothing",
+              provider,
+              dropped.stream()
+                  .map(operation -> operation.getString(PATCH_PATH, ""))
+                  .collect(Collectors.joining(", "))));
+    }
+  }
+
+  /**
+   * The checks of {@link #validateSecurityConfiguration} that need no network: settings the active
+   * provider can never apply. A PUT, which skips the full validation, still makes these.
+   */
+  public FieldError applicabilityError(SecurityConfiguration config) {
+    AuthenticationConfiguration authConfig = config.getAuthenticationConfiguration();
+    AuthProvider provider = authConfig == null ? null : authConfig.getProvider();
+    FieldError error = null;
+    if (provider == AuthProvider.SAML && authConfig.getSamlConfiguration() != null) {
+      error = SamlValidator.validateSecurityConfiguration(authConfig.getSamlConfiguration());
+    } else if (provider != null && authConfig.getClientType() == ClientType.CONFIDENTIAL) {
+      error =
+          AuthenticationCodeFlowHandler.unusableClientAuthentication(
+                  authConfig.getOidcConfiguration())
+              .map(
+                  reason ->
+                      ValidationErrorBuilder.createFieldError(
+                          FieldPaths.OIDC_CLIENT_AUTHENTICATION_METHOD, reason))
+              .orElse(null);
+    }
+    return error;
   }
 
   private boolean isOidcProvider(String provider) {

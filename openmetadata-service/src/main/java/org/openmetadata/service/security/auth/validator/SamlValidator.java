@@ -267,7 +267,11 @@ public class SamlValidator {
     }
   }
 
-  private FieldError validateSecurityConfiguration(SamlSSOClientConfig samlConfig) {
+  /**
+   * The signing settings' requirements, which need no network: a PUT, which skips the full check,
+   * makes this one too.
+   */
+  public static FieldError validateSecurityConfiguration(SamlSSOClientConfig samlConfig) {
     try {
       if (samlConfig.getSecurity() == null) {
         return null; // Success - No security configuration provided, using defaults

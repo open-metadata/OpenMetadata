@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.JdbiException;
@@ -39,12 +38,11 @@ import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Extended transport provider that handles both MCP messages and OAuth routes. This class
@@ -510,13 +508,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
   private static void addOpenIdDiscoveryFields(final OAuthMetadata metadata, final String baseUrl) {
-    final TokenValidationAlgorithm signingAlgorithm =
-        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthConfig())
-            .map(AuthenticationConfiguration::getTokenValidationAlgorithm)
-            .orElse(TokenValidationAlgorithm.RS_256);
     metadata.setJwksUri(URI.create(baseUrl + JWKS_PATH));
     metadata.setSubjectTypesSupported(List.of("public"));
-    metadata.setIdTokenSigningAlgValuesSupported(List.of(signingAlgorithm.value()));
+    // The tokens this server issues are signed with its own key, whatever the identity provider
+    // uses (ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256).
+    metadata.setIdTokenSigningAlgValuesSupported(
+        List.of(JWTTokenGenerator.SIGNING_ALGORITHM.value()));
   }
 
   /**

@@ -32,7 +32,9 @@ import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -235,6 +237,32 @@ class SsoOidcPublicBearerIT {
   }
 
   @Test
+  @DisplayName("OP-13 another token validation algorithm leaves the server's own tokens working")
+  void serverIssuedTokensSurviveAnotherValidationAlgorithm(TestNamespace ns) throws Throwable {
+    User bot = CredentialFixtures.createBot(ns, "algobot");
+    String botToken = CredentialFixtures.botToken(bot);
+    User owner = CredentialFixtures.createUser(ns, "algopat");
+    String personalAccessToken = CredentialFixtures.createPat(owner, "algorithm").getJwtToken();
+    MockOidcIdentity uma = existingUser(ns, "uma");
+
+    securityConfig.withVariant(
+        config -> {
+          config
+              .getAuthenticationConfiguration()
+              .withTokenValidationAlgorithm(TokenValidationAlgorithm.RS_512);
+          return config;
+        },
+        () -> {
+          assertAccepted(botToken, "a bot token issued before the change");
+          assertAccepted(personalAccessToken, "a personal access token issued before the change");
+          assertAccepted(CredentialFixtures.botToken(bot), "a bot token issued after the change");
+          assertAccepted(
+              provider.issueForgedIdToken(uma, TokenForgery.RS512_SIGNATURE),
+              "the provider's RS512 token");
+        });
+  }
+
+  @Test
   @DisplayName("OP-14 a public client has no server-side login")
   void publicClientHasNoServerSideLogin() {
     HttpResponse<String> response = new SsoBrowser().get(SsoServer.loginUrl());
@@ -261,6 +289,12 @@ class SsoOidcPublicBearerIT {
                     "X-Impersonate-User",
                     "admin"));
     assertEquals(403, impersonating.statusCode(), impersonating.body());
+  }
+
+  private static void assertAccepted(String token, String what) {
+    HttpResponse<String> response =
+        CredentialFixtures.get(CredentialFixtures.LOGGED_IN_USER, token);
+    assertEquals(200, response.statusCode(), what + " was refused: " + response.body());
   }
 
   private static void assertUnauthorized(String token, String expectedMessage) {
