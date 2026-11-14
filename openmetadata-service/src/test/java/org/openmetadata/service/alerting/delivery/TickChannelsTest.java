@@ -16,9 +16,14 @@ package org.openmetadata.service.alerting.delivery;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
@@ -37,6 +43,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerting.channel.Delivery;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.channel.DestinationFingerprint;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.events.consumer.ledger.DestinationOutcome;
 
 class TickChannelsTest {
@@ -66,12 +73,7 @@ class TickChannelsTest {
   // A configuration saved under older rules must cost this destination only, never the tick.
   @Test
   void destinationWhoseStoredConfigurationIsUnusableIsNotAttempted() {
-    SubscriptionDestination savedLongAgo =
-        new SubscriptionDestination()
-            .withId(UUID.randomUUID())
-            .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
-            .withEnabled(true)
-            .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
+    SubscriptionDestination savedLongAgo = refusedEndpoint();
     Destination<ChangeEvent> unusable = AlertFactory.getAlert(ALERT, savedLongAgo);
 
     Delivery delivery = deliverThrough(List.of(unusable));
@@ -88,6 +90,24 @@ class TickChannelsTest {
         DestinationFingerprint.of(savedLongAgo),
         outcomeOf(unusable).configurationFingerprint(),
         "the settings it found unusable");
+  }
+
+  // A test send builds the destination from what the user typed, secrets in the clear: only a
+  // tick, which builds from what is stored, takes a fingerprint of it.
+  @Test
+  void anUnusableDestinationIsFingerprintedOnlyWhenATickRecordsIt() {
+    SubscriptionDestination typed = refusedEndpoint();
+    try (MockedStatic<DestinationFingerprint> fingerprints =
+        mockStatic(DestinationFingerprint.class, CALLS_REAL_METHODS)) {
+      Destination<ChangeEvent> unusable = AlertFactory.getAlert(new EventSubscription(), typed);
+      assertThrows(EventPublisherException.class, unusable::sendTestMessage);
+      fingerprints.verify(() -> DestinationFingerprint.of(any()), never());
+
+      deliverThrough(List.of(unusable));
+
+      fingerprints.verify(() -> DestinationFingerprint.of(typed), times(1));
+      assertNotNull(outcomeOf(unusable).configurationFingerprint());
+    }
   }
 
   // Before, the first destination of a channel answered for all of them: an unusable one first
@@ -161,6 +181,14 @@ class TickChannelsTest {
     Map<UUID, DestinationOutcome> reported = new HashMap<>();
     health.reportTo(reported::put);
     return reported.get(destination.getSubscriptionDestination().getId());
+  }
+
+  private static SubscriptionDestination refusedEndpoint() {
+    return new SubscriptionDestination()
+        .withId(UUID.randomUUID())
+        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+        .withEnabled(true)
+        .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
   }
 
   private static SubscriptionDestination emailDestination() {
