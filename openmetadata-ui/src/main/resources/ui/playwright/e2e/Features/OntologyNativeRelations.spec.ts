@@ -150,7 +150,7 @@ const chooseRelationType = async (page: Page, typeIri: string) => {
 const connectByClick = async (page: Page, fromId: string, toId: string) => {
   const ports = await waitForGraphPoints(page, 'port', [fromId]);
   await page.mouse.click(ports[fromId].x, ports[fromId].y);
-  await expect(page.getByTestId('ontology-connect-instruction')).toBeVisible();
+  await expect(page.getByTestId('ontology-connection-line')).toBeAttached();
   const nodes = await readGraphPoints(page, 'node');
   await page.mouse.click(nodes[toId].x, nodes[toId].y);
 };

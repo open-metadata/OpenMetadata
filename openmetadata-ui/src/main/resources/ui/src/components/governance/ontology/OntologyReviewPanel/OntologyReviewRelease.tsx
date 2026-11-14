@@ -74,14 +74,11 @@ const KIND_LABELS: Record<MemberKind, string> = {
   [MemberKind.Ontology]: 'label.ontology',
 };
 
-const CHANGE_GLYPHS: Record<
-  ChangeType,
-  ['success' | 'warning' | 'danger', string]
-> = {
-  [ChangeType.Added]: ['success', '+'],
-  [ChangeType.Changed]: ['warning', '~'],
-  [ChangeType.Deprecated]: ['warning', '~'],
-  [ChangeType.Removed]: ['danger', '−'],
+const CHANGE_TEXT_COLORS: Record<ChangeType, string> = {
+  [ChangeType.Added]: 'tw:text-tertiary',
+  [ChangeType.Changed]: 'tw:text-warning-primary',
+  [ChangeType.Deprecated]: 'tw:text-warning-primary',
+  [ChangeType.Removed]: 'tw:text-error-primary',
 };
 
 const filterChanges = (
@@ -223,29 +220,25 @@ const OntologyReviewRelease = ({
         onSearchChange={setSearch}
       />
     );
-  const renderRow = (change: Change) => {
-    const [color, glyph] = CHANGE_GLYPHS[change.changeType];
-
-    return (
-      <li
-        className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
-        key={`${change.memberKind}:${change.entity.id}`}>
-        <Typography aria-hidden color={color} size="text-sm" weight="semibold">
-          {glyph}
-        </Typography>
-        <Button
-          className="tw:min-w-0 tw:flex-1 tw:justify-start"
-          color="link-color"
-          size="sm"
-          onPress={() => setSelected(change)}>
-          {getEntityName(change.entity)}
-        </Button>
-        <Typography as="span" color={color} size="text-xs">
-          {t(`label.${change.changeType.toLowerCase()}`)}
-        </Typography>
-      </li>
-    );
-  };
+  const renderRow = (change: Change) => (
+    <li
+      className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
+      key={`${change.memberKind}:${change.entity.id}`}>
+      <Button
+        className="tw:min-w-0 tw:flex-1 tw:justify-start"
+        color="link-gray"
+        size="sm"
+        onPress={() => setSelected(change)}>
+        {getEntityName(change.entity)}
+      </Button>
+      <Typography
+        as="span"
+        className={CHANGE_TEXT_COLORS[change.changeType]}
+        size="text-xs">
+        {t(`label.${change.changeType.toLowerCase()}`)}
+      </Typography>
+    </li>
+  );
   const renderChanges = () => {
     if (page.isPending) {
       return <Loader size="small" />;
@@ -265,15 +258,11 @@ const OntologyReviewRelease = ({
                 <Box
                   align="center"
                   className={classNames(
-                    'tw:px-4 tw:py-2',
+                    'tw:bg-secondary tw:px-4 tw:py-2.5',
                     index > 0 && 'tw:border-t tw:border-secondary'
                   )}
                   justify="between">
-                  <Typography
-                    className="tw:uppercase tw:tracking-wide"
-                    color="secondary"
-                    size="text-xs"
-                    weight="semibold">
+                  <Typography size="text-sm" weight="medium">
                     {t(label)}
                   </Typography>
                   <Typography color="secondary" size="text-xs">
@@ -294,28 +283,30 @@ const OntologyReviewRelease = ({
   return (
     <Box direction="col" gap={3}>
       {renderChanges()}
-      <Box gap={2}>
-        <Button
-          color="secondary"
-          isDisabled={page.isPending || cursors.length === 1}
-          size="sm"
-          onPress={() => {
-            setSelected(undefined);
-            setCursors((current) => current.slice(0, -1));
-          }}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={page.isPending || !page.data?.paging.after}
-          size="sm"
-          onPress={() => {
-            setSelected(undefined);
-            setCursors((current) => [...current, page.data?.paging.after]);
-          }}>
-          {t('label.next')}
-        </Button>
-      </Box>
+      {(cursors.length > 1 || page.data?.paging.after) && (
+        <Box gap={2}>
+          <Button
+            color="secondary"
+            isDisabled={page.isPending || cursors.length === 1}
+            size="sm"
+            onPress={() => {
+              setSelected(undefined);
+              setCursors((current) => current.slice(0, -1));
+            }}>
+            {t('label.previous')}
+          </Button>
+          <Button
+            color="secondary"
+            isDisabled={page.isPending || !page.data?.paging.after}
+            size="sm"
+            onPress={() => {
+              setSelected(undefined);
+              setCursors((current) => [...current, page.data?.paging.after]);
+            }}>
+            {t('label.next')}
+          </Button>
+        </Box>
+      )}
       {renderMember()}
     </Box>
   );

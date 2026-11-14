@@ -154,7 +154,8 @@ export const useOntologyPublication = (
   }, [scopeKey]);
   const [selection, setSelection] = useState<{ owner: string; id: string }>();
   const selectedId = selection?.owner === scopeKey ? selection.id : undefined;
-  const setSelectedId = (id: string) => setSelection({ owner: scopeKey, id });
+  const setSelectedId = (id?: string) =>
+    setSelection(id ? { owner: scopeKey, id } : undefined);
   const [receiptState, setReceiptState] = useState<{
     owner: string;
     read: ReceiptRead;

@@ -115,10 +115,17 @@ const useReleaseCompare = (from?: OntologyRelease, to?: OntologyRelease) => {
   };
 };
 
-const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
+const OntologyReleaseCompare = ({
+  ontologyId,
+  initialTo,
+}: {
+  ontologyId: string;
+  /** Preselects the newer side, as when a release row asks to compare itself. */
+  initialTo?: OntologyRelease;
+}) => {
   const { t } = useTranslation();
   const [from, setFrom] = useState<OntologyRelease>();
-  const [to, setTo] = useState<OntologyRelease>();
+  const [to, setTo] = useState<OntologyRelease | undefined>(initialTo);
   const { diff, changes, counts, total, hasResult, noDifferences } =
     useReleaseCompare(from, to);
 

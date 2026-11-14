@@ -134,9 +134,7 @@ describe('PortOverlay', () => {
     });
 
     expect(sourceEvent.defaultPrevented).toBe(true);
-    expect(
-      screen.getByTestId('ontology-connect-instruction')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-connection-line')).toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-port-source')
     ).not.toBeInTheDocument();
@@ -218,9 +216,6 @@ describe('PortOverlay', () => {
         .dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
     });
 
-    expect(
-      screen.queryByTestId('ontology-connect-instruction')
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-connection-line')
     ).not.toBeInTheDocument();
@@ -373,30 +368,6 @@ describe('PortOverlay', () => {
 
     expect(
       screen.queryByTestId('ontology-port-overlay')
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows the connect pill and cancels the connection from its close button', () => {
-    render(<Harness onCreateRelation={jest.fn()} />);
-
-    dispatchNodeClick({
-      clientX: 600,
-      clientY: 180,
-      isPort: true,
-      nodeId: 'source',
-    });
-
-    expect(
-      screen.getByTestId('ontology-connect-instruction')
-    ).toHaveTextContent('label.esc');
-
-    fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
-
-    expect(
-      screen.queryByTestId('ontology-connect-instruction')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('ontology-connection-line')
     ).not.toBeInTheDocument();
   });
 });

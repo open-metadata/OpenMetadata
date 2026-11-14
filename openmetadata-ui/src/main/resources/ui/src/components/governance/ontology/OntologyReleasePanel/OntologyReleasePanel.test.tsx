@@ -839,11 +839,11 @@ describe('OntologyReleasePanel', () => {
     );
 
     expect(
-      await screen.findByText(/label.structural-validation.*label.failed/)
-    ).toBeVisible();
+      await screen.findByTestId('ontology-structural-validation')
+    ).toHaveTextContent(/label.structural-validation.*label.failed/);
     expect(
-      screen.getByText(/label.logical-consistency.*label.not-checked/)
-    ).toBeVisible();
+      screen.getByTestId('ontology-logical-consistency')
+    ).toHaveTextContent(/label.logical-consistency.*label.not-checked/);
     expect(screen.getByTestId('ontology-shacl-counts')).toHaveTextContent(
       '0 label.violation-plural'
     );
@@ -1988,7 +1988,13 @@ describe('OntologyReleasePanel', () => {
     expect(
       await screen.findByTestId('ontology-release-definition')
     ).toBeVisible();
-    expect(screen.getByTestId('ontology-active-release')).toBeVisible();
+    // The detail replaces the list, and the back link returns to it.
+    expect(
+      screen.queryByTestId('ontology-release-row')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId(`ontology-release-status-${release.id}`)
+    ).toHaveTextContent('label.active');
     expect(
       screen.getByTestId(`ontology-release-export-${release.id}`)
     ).toBeEnabled();
@@ -1999,6 +2005,16 @@ describe('OntologyReleasePanel', () => {
       screen.queryByTestId('ontology-rollback-release')
     ).not.toBeInTheDocument();
     expect(screen.getByText('label.release-events')).toBeVisible();
+    expect(screen.getByText('label.changes-in-this-release')).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-release-back'));
+    });
+
+    expect(
+      screen.queryByTestId('ontology-release-definition')
+    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('ontology-release-row')).toBeVisible();
   });
 
   it('publishes an approved release from the AI footer', async () => {
@@ -2359,7 +2375,7 @@ describe('reviewing what changed (G7)', () => {
 
     expect(await screen.findByRole('radio', { name: /Major/ })).toBeChecked();
     expect(screen.getByTestId('ontology-version-reason')).toHaveTextContent(
-      'You removed definitions that readers may rely on, so a Major version is suggested.'
+      'Suggested: Major (v2.0.0). Something was removed or renamed, which can break bound assets and queries.'
     );
     expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
       'v1.2.3 → v2.0.0'
@@ -2375,7 +2391,7 @@ describe('reviewing what changed (G7)', () => {
 
     expect(await screen.findByRole('radio', { name: /Minor/ })).toBeChecked();
     expect(screen.getByTestId('ontology-version-reason')).toHaveTextContent(
-      'a Minor version is suggested'
+      'Only additions, nothing removed or renamed.'
     );
   });
 

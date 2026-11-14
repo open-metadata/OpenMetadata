@@ -27,7 +27,10 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getUnlinkDescription } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import { getAssetPath } from '../OntologyConceptInspector/OntologyConceptInspector.utils';
-import { CLEAR_OF_STUDIO_DRAWER } from '../OntologyStudioDrawer/OntologyStudioDrawer.constants';
+import {
+  DATA_PANEL_CLASS,
+  DATA_PANEL_SECTION_CLASS,
+} from './OntologyGraphView.constants';
 
 interface AssetUnlinkConfirmProps {
   readonly assetName: string;
@@ -81,24 +84,24 @@ export const AssetUnlinkConfirm = ({
   );
 };
 
-// Sized to its content and capped above the canvas's bottom toolbar, so Open asset is never covered.
-const PANEL_CLASS = [
-  'tw:absolute tw:top-16 tw:right-3.5 tw:z-20 tw:flex tw:max-h-[calc(100%-9rem)] tw:w-80 tw:flex-col',
-  CLEAR_OF_STUDIO_DRAWER,
-  'tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-lg',
-].join(' ');
-const SECTION_CLASS = 'tw:border-t tw:border-secondary tw:px-4 tw:py-3';
-
 /** Path, name, type and service of the asset, with the close button. */
-const AssetPanelHeader = ({
+export const AssetPanelHeader = ({
   fullyQualifiedName,
   name,
   path,
   serviceLabel,
   type,
+  testIdPrefix = 'ontology-data-asset-panel',
+  nameTestId = `${testIdPrefix}-name`,
+  typeLabel,
   onClose,
 }: {
   readonly fullyQualifiedName?: string;
+  /** Prefix of the header's test ids, so the column panel keeps its own. */
+  readonly testIdPrefix?: string;
+  readonly nameTestId?: string;
+  /** Overrides the badge text, as the column panel's "Column". */
+  readonly typeLabel?: string;
   readonly name: string;
   readonly path: string;
   readonly serviceLabel?: string;
@@ -114,7 +117,7 @@ const AssetPanelHeader = ({
           <Typography
             ellipsis
             className="tw:text-tertiary"
-            data-testid="ontology-data-asset-panel-fqn"
+            data-testid={`${testIdPrefix}-fqn`}
             size="text-xs"
             title={fullyQualifiedName}>
             {path}
@@ -124,19 +127,26 @@ const AssetPanelHeader = ({
           ellipsis
           as="h3"
           className="not-prose tw:m-0 tw:text-primary"
-          data-testid="ontology-data-asset-panel-name"
+          data-testid={nameTestId}
           size="text-md"
           weight="semibold">
           {name}
         </Typography>
-        <Box align="center" className="tw:pt-1" gap={2} wrap="wrap">
-          {type ? (
+        <Box align="center" className="tw:min-w-0 tw:pt-1" gap={2}>
+          {typeLabel || type ? (
             <Badge color="blue" size="sm" type="pill-color">
-              {entityUtilClassBase.getFormattedEntityType(type)}
+              {typeLabel ??
+                entityUtilClassBase.getFormattedEntityType(type ?? '')}
             </Badge>
           ) : null}
           {serviceLabel ? (
-            <Typography color="secondary" size="text-xs">
+            // A column's nested type (struct<…>) can be longer than the panel.
+            <Typography
+              ellipsis
+              className="tw:min-w-0 tw:flex-1"
+              color="secondary"
+              size="text-xs"
+              title={serviceLabel}>
               {serviceLabel}
             </Typography>
           ) : null}
@@ -144,7 +154,7 @@ const AssetPanelHeader = ({
       </Box>
       <ButtonUtility
         color="tertiary"
-        data-testid="ontology-data-asset-panel-close"
+        data-testid={`${testIdPrefix}-close`}
         icon={XClose}
         size="xs"
         tooltip={t('label.close')}
@@ -201,7 +211,7 @@ const OntologyDataAssetPanel = ({
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <aside
       aria-label={name}
-      className={PANEL_CLASS}
+      className={DATA_PANEL_CLASS}
       data-testid="ontology-data-asset-panel"
       onKeyDown={handleKeyDown}>
       <AssetPanelHeader
@@ -213,7 +223,7 @@ const OntologyDataAssetPanel = ({
         onClose={onClose}
       />
       <Box
-        className={`${SECTION_CLASS} tw:min-h-0 tw:flex-1 tw:overflow-y-auto`}
+        className={`${DATA_PANEL_SECTION_CLASS} tw:min-h-0 tw:flex-1 tw:overflow-y-auto`}
         direction="col"
         gap={2}>
         <Typography size="text-sm" weight="semibold">
@@ -264,7 +274,11 @@ const OntologyDataAssetPanel = ({
         ) : null}
       </Box>
       {/* One footer row, as the drawers do: the destructive action reads as secondary, Open leads. */}
-      <Box align="center" className={SECTION_CLASS} gap={2} justify="end">
+      <Box
+        align="center"
+        className={DATA_PANEL_SECTION_CLASS}
+        gap={2}
+        justify="end">
         {canUnlink && binding ? (
           <AssetUnlinkConfirm
             assetName={name}

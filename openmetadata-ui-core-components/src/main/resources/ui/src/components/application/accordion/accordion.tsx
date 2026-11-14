@@ -102,7 +102,7 @@ export const Accordion = ({
     <AriaDisclosureGroup
       {...props}
       className={cx(
-        'tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:outline-1 tw:outline-border-secondary tw:overflow-hidden',
+        'tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:outline-1 tw:-outline-offset-1 tw:outline-border-secondary tw:overflow-hidden',
         className
       )}>
       {children}

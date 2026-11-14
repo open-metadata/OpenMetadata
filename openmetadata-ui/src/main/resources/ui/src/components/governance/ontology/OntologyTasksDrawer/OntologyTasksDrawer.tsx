@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   Alert,
-  Avatar,
   Badge,
   Box,
   Button,
@@ -28,67 +26,43 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  CheckCircle,
   ClipboardCheck,
   Inbox01,
   Search,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
-import classNames from 'classnames';
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
-  EntityStatus,
-  OntologyReleaseReview,
-} from '../../../../generated/api/data/ontologyReleaseReview';
-import {
-  EntityStatus as ReleaseStatus,
-  OntologyRelease,
-} from '../../../../generated/entity/data/ontologyRelease';
-import { Task, TaskType } from '../../../../generated/entity/tasks/task';
+  Task,
+  TaskCategory,
+  TaskStatus,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-  activateOntologyRelease,
   getOntology,
   getOntologyRelease,
-  getOntologyReleaseEvents,
   getOntologyReleaseReview,
   getOntologyReleaseReviews,
-  getOntologyState,
 } from '../../../../rest/ontologyAPI';
-import { getEntityPermissionById } from '../../../../rest/permissionAPI';
-import {
-  addTaskComment,
-  getTaskById,
-  resolveTask,
-} from '../../../../rest/tasksAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
-import { showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../../common/Loader/Loader';
-import {
-  buildResolveBody,
-  getTaskResolveActions,
-} from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
+import InboxTaskListItem from '../../../discovery/personal-space/InboxPage/components/InboxTaskListItem';
+import TaskDetailPanel from '../../../discovery/personal-space/InboxPage/components/TaskDetailPanel';
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
-import OntologyTaskDetail from './OntologyTaskDetail';
 import { ONTOLOGY_REVIEW_QUEUES_QUERY_KEY } from './OntologyTasksDrawer.constants';
 import {
   CURSOR_HISTORY_LIMIT,
   filterReviews,
   hasMorePages,
 } from './OntologyTasksDrawer.utils';
-import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
   /** The ontology in view; its latest decided review is announced to the requester. */
@@ -99,15 +73,6 @@ type Props = {
     tasksAction: ReactNode;
     banner: ReactNode;
   }) => ReactNode;
-};
-type ReviewWrite =
-  | { kind: 'comment'; message: string }
-  | { kind: 'reject'; reason: string }
-  | { kind: 'approve' | 'approve-and-publish' | 'publish' };
-type Detail = {
-  task: Task;
-  review: OntologyReleaseReview;
-  release: OntologyRelease;
 };
 
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
@@ -185,10 +150,23 @@ const getBannerKey = (
 const reviewsOf = (page?: { data: OntologyReleaseReview[] }) =>
   page?.data ?? [];
 
-/** A transient state failure still allows a vote; a 404 means the ontology was archived. */
-const isReviewUnvotable = (detailFailed: boolean, stateError: unknown) =>
-  detailFailed ||
-  (isAxiosError(stateError) && stateError.response?.status === 404);
+/**
+ * The review's approval task as the Inbox list row reads it. The queue lists
+ * reviews, not tasks, so the row is built from what the review carries rather
+ * than fetching every task on the page; the detail pane loads the full task.
+ */
+export const reviewAsTask = (review: OntologyReleaseReview): Task =>
+  ({
+    id: review.task.id,
+    name: review.task.name ?? review.taskId ?? review.task.id,
+    displayName: review.task.displayName,
+    taskId: review.taskId,
+    type: TaskType.RequestApproval,
+    category: TaskCategory.Approval,
+    status: TaskStatus.Open,
+    about: { ...review.release, type: 'ontologyRelease' },
+    createdBy: review.requester,
+  } as Task);
 
 const OntologyTasksDrawer = ({
   ontologyId,
@@ -199,7 +177,6 @@ const OntologyTasksDrawer = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queuesKey = [ONTOLOGY_REVIEW_QUEUES_QUERY_KEY];
-  const combinedApproval = 'approve-and-publish';
   const currentUser = useApplicationStore((store) => store.currentUser);
   const account = currentUser?.id ?? '';
   const [listOpen, setListOpen] = useState(false);
@@ -215,28 +192,6 @@ const OntologyTasksDrawer = ({
   const queueScope = account + ':' + view;
   const queueCursors =
     queueHistory.key === queueScope ? queueHistory.cursors : [undefined];
-  const [eventHistory, setEventHistory] = useState<{
-    key: string;
-    cursors: (string | undefined)[];
-  }>({ key: '', cursors: [undefined] });
-  const selection = account + ':' + (taskId ?? '') + ':' + isOpen;
-  const eventCursors =
-    eventHistory.key === selection ? eventHistory.cursors : [undefined];
-  const [readCycle, setReadCycle] = useState(0);
-  const identity = selection + ':' + readCycle;
-  const generation = useRef({ identity, value: 0 });
-  if (generation.current.identity !== identity) {
-    generation.current = { identity, value: generation.current.value + 1 };
-  }
-  const currentGeneration = generation.current.value;
-  const [readyGeneration, setReadyGeneration] = useState<number>();
-  const admission = useRef(false);
-  const [writing, setWriting] = useState(false);
-  const [writeError, setWriteError] = useState<{
-    selection: string;
-    kind: 'uncertain' | 'activation';
-  }>();
-  const [permissionSelection, setPermissionSelection] = useState<string>();
   const taskButton = useRef<HTMLButtonElement>(null);
   // A disabled trigger can't take focus; its Tooltip wrapper (tabIndex 0) can.
   const focusTrigger = () => {
@@ -245,11 +200,6 @@ const OntologyTasksDrawer = ({
   };
   useEffect(() => {
     setQueueHistory({ key: '', cursors: [undefined] });
-    setEventHistory({ key: '', cursors: [undefined] });
-  }, [account, taskId]);
-  useEffect(() => {
-    setPermissionSelection(undefined);
-    setWriteError(undefined);
   }, [account]);
   const wasOpen = useRef(isOpen);
   useEffect(() => {
@@ -315,133 +265,8 @@ const OntologyTasksDrawer = ({
     queryFn: ({ signal }) =>
       getOntologyRelease(bannerReview?.release.id ?? '', signal),
   });
-  const detailKey = ['ontology-review-task', account, taskId, isOpen];
-  const detail = useQuery({
-    queryKey: detailKey,
-    gcTime: 0,
-    retry: false,
-    enabled: [isOpen, Boolean(taskId)].every(Boolean),
-    queryFn: async ({ signal }): Promise<Detail> => {
-      const { data: task } = await getTaskById(taskId ?? '', {
-        fields: 'about,comments',
-      });
-      const target = task.ontologyReview;
-      if (!target || !task.about) {
-        throw new Error('Missing ontology review target');
-      }
-      const validTask = [
-        !signal.aborted,
-        task.id === taskId,
-        task.type === TaskType.RequestApproval,
-        task.about.type === 'ontologyRelease',
-        target.entityId === task.about.id,
-      ].every(Boolean);
-      if (!validTask) {
-        throw new Error('Invalid ontology review task');
-      }
-      const [review, release] = await Promise.all([
-        getOntologyReleaseReview(target.entityId, signal),
-        getOntologyRelease(target.entityId, signal),
-      ]);
-      const validIdentity = [
-        !signal.aborted,
-        review.task.id === taskId,
-        review.release.id === release.id,
-        release.id === task.about.id,
-        review.ontology.id === release.ontology.id,
-        target.ontologyId === release.ontology.id,
-      ].every(Boolean);
-      if (!validIdentity) {
-        throw new Error('Mismatched ontology review identity');
-      }
-
-      return { task, review, release };
-    },
-  });
-  const selected = detail.data;
-  const ownerId = selected?.review.ontology.id ?? '';
-  const state = useQuery({
-    queryKey: ['ontology-review-state', account, ownerId],
-    gcTime: 0,
-    retry: false,
-    enabled: [isOpen, Boolean(ownerId)].every(Boolean),
-    queryFn: ({ signal }) => getOntologyState(ownerId, signal),
-  });
-  const isVoteBlocked = isReviewUnvotable(detail.isError, state.error);
-  const permission = useEntityPermissions(
-    ResourceEntity.ONTOLOGY,
-    { id: ownerId },
-    {
-      enabled: [isOpen, Boolean(ownerId)].every(Boolean),
-      deleted: selected?.release.ontology.deleted,
-    }
-  );
-  const refreshPermission = permission.refresh;
-  useEffect(() => {
-    let current = true;
-    if (ownerId && isOpen) {
-      refreshPermission()
-        .then(() => {
-          if (current) {
-            setPermissionSelection(selection);
-          }
-        })
-        .catch(() => {
-          if (current) {
-            setPermissionSelection(undefined);
-          }
-        });
-    }
-
-    return () => {
-      current = false;
-    };
-  }, [ownerId, isOpen, selection, refreshPermission]);
-  const events = useQuery({
-    queryKey: [
-      'ontology-review-events',
-      account,
-      selected?.release.id,
-      eventCursors[eventCursors.length - 1],
-    ],
-    gcTime: 0,
-    retry: false,
-    enabled: [isOpen, Boolean(selected)].every(Boolean),
-    queryFn: ({ signal }) =>
-      getOntologyReleaseEvents(
-        selected?.release.id ?? '',
-        { limit: PAGE_SIZE, after: eventCursors[eventCursors.length - 1] },
-        signal
-      ),
-  });
-  const canPublish = [
-    permissionSelection === selection,
-    permission.canEditAll,
-    !permission.error,
-    !permission.isLoading,
-  ].every(Boolean);
-  const activationReady = [
-    state.isSuccess,
-    !state.isFetching,
-    state.data?.ontologyId === ownerId,
-  ].every(Boolean);
-  const onContentReadyChange = useCallback(
-    (ready: boolean) => {
-      if (generation.current.value === currentGeneration) {
-        setReadyGeneration(ready ? currentGeneration : undefined);
-      }
-    },
-    [currentGeneration]
-  );
-  const contentReady = [
-    readyGeneration === currentGeneration,
-    !detail.isFetching,
-    !detail.isError,
-  ].every(Boolean);
 
   const close = () => {
-    generation.current = { identity: '', value: generation.current.value + 1 };
-    setReadyGeneration(undefined);
     setListOpen(false);
     // Every open starts on the reviewer's own queue, unfiltered.
     setView('assigned');
@@ -450,248 +275,57 @@ const OntologyTasksDrawer = ({
     onTaskChange(undefined);
     focusTrigger();
   };
-  const refresh = async () => {
-    setReadyGeneration(undefined);
-    setReadCycle((cycle) => cycle + 1);
-    await Promise.allSettled([
-      detail.refetch(),
-      state.refetch(),
-      events.refetch(),
-      permission.refresh(),
-    ]);
+  // A vote or comment can move the task between queues and change the release's stage.
+  const refreshQueues = () => {
+    void queryClient.invalidateQueries({ queryKey: queuesKey });
+    void queryClient.invalidateQueries({
+      queryKey: ['ontology-review-state'],
+    });
   };
-  const writeAllowed = (write: ReviewWrite, current: Detail) => {
-    switch (write.kind) {
-      case 'comment':
-        return Boolean(write.message.trim());
-      case 'publish':
-        return [
-          canPublish,
-          activationReady,
-          current.review.status === EntityStatus.Approved,
-        ].every(Boolean);
-      case 'reject':
-        return [
-          contentReady,
-          current.review.callerCanVote,
-          Boolean(write.reason.trim()),
-        ].every(Boolean);
-      case 'approve':
-        return contentReady && current.review.callerCanVote;
-      case combinedApproval:
-        return [
-          contentReady,
-          current.review.callerCanVote,
-          current.review.callerCompletesRule,
-          canPublish,
-          activationReady,
-        ].every(Boolean);
-    }
-  };
-  const announce = (kind: ReviewWrite['kind'], current: Detail) => {
-    const version = 'v' + (current.release.semanticVersion ?? '');
-    const messages: Partial<Record<ReviewWrite['kind'], string>> = {
-      // Under an all-reviewers rule one approval may leave others pending.
-      approve: current.review.callerCompletesRule
-        ? t('message.ontology-task-approved', { version })
-        : t('message.vote-recorded-waiting-for-other-approvers'),
-      [combinedApproval]: t('message.ontology-task-approved-published', {
-        version,
-        ontology: getEntityName(current.review.ontology),
-      }),
-    };
-    const message = messages[kind];
-    if (message) {
-      showSuccessToast(message);
-    }
-  };
-  const submit = async (write: ReviewWrite): Promise<boolean> => {
-    if (
-      !selected ||
-      [admission.current, detail.isFetching, detail.isError].some(Boolean)
-    ) {
-      return false;
-    }
-    if (!writeAllowed(write, selected)) {
-      return false;
-    }
-    const captured = selected;
-    const capturedGeneration = currentGeneration;
-    const capturedSelection = selection;
-    const revision = state.data?.activationRevision;
-    admission.current = true;
-    setWriting(true);
-    const phase: { value: 'write' | 'activation' } = { value: 'write' };
-    const saveCurrent = (value: Detail) => {
-      if (generation.current.value === capturedGeneration) {
-        queryClient.setQueryData<Detail>(detailKey, value);
-      }
-    };
-    const activate = async (activationRevision: number) => {
-      phase.value = 'activation';
-      await activateOntologyRelease(captured.review.ontology.id, {
-        releaseId: captured.release.id,
-        expectedActivationRevision: activationRevision,
-      });
-    };
-    const publishApproved = async () => {
-      phase.value = 'activation';
-      const [freshState, freshPermission] = await Promise.all([
-        getOntologyState(captured.review.ontology.id),
-        getEntityPermissionById(
-          ResourceEntity.ONTOLOGY,
-          captured.review.ontology.id
-        ),
-      ]);
-      const permitted = getDerivedPermissionFlags(
-        getOperationPermissions(freshPermission),
-        Boolean(captured.release.ontology.deleted)
-      ).canEditAll;
-      if (freshState.ontologyId !== captured.review.ontology.id || !permitted) {
-        throw new Error('Publication permission unavailable');
-      }
-      await activate(freshState.activationRevision);
-    };
-    const resolveVote = async () => {
-      const kind = write.kind === 'reject' ? 'reject' : 'approve';
-      const action = getTaskResolveActions(captured.task, {
-        approve: t('label.approve'),
-        reject: t('label.reject'),
-      }).find((candidate) => candidate.kind === kind);
-      if (!action) {
-        throw new Error('Review transition unavailable');
-      }
-      const task = await resolveTask(
-        captured.task.id,
-        buildResolveBody(
-          action,
-          captured.task,
-          write.kind === 'reject' ? { comment: write.reason } : undefined
-        )
-      );
-      let status = captured.review.status;
-      if (write.kind === 'reject') {
-        status = EntityStatus.Rejected;
-      } else if (captured.review.callerCompletesRule) {
-        status = EntityStatus.Approved;
-      }
-      saveCurrent({
-        ...captured,
-        task,
-        review: {
-          ...captured.review,
-          callerCanVote: false,
-          callerCompletesRule: false,
-          status,
-        },
-        release: {
-          ...captured.release,
-          entityStatus:
-            status === EntityStatus.Approved
-              ? ReleaseStatus.Approved
-              : captured.release.entityStatus,
-        },
-      });
-      if (write.kind === combinedApproval && revision !== undefined) {
-        await activate(revision);
-      }
-    };
-    let succeeded = false;
-    try {
-      switch (write.kind) {
-        case 'comment':
-          saveCurrent({
-            ...captured,
-            task: await addTaskComment(captured.task.id, write.message),
-          });
-
-          break;
-        case 'publish':
-          await publishApproved();
-
-          break;
-        default:
-          await resolveVote();
-      }
-      succeeded = true;
-      announce(write.kind, captured);
-      setWriteError((previous) =>
-        previous?.selection === capturedSelection ? undefined : previous
-      );
-    } catch {
-      setWriteError({
-        selection: capturedSelection,
-        kind: phase.value === 'activation' ? 'activation' : 'uncertain',
-      });
-    } finally {
-      const reads: Promise<unknown>[] = [
-        queryClient.invalidateQueries({ queryKey: queuesKey }),
-        queryClient.invalidateQueries({ queryKey: ['ontology-review-state'] }),
-        queryClient.invalidateQueries({
-          queryKey: ['ontology-review-task', account, captured.task.id],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ['ontology-review-events', account, captured.release.id],
-        }),
-      ];
-      if (generation.current.value === capturedGeneration) {
-        setReadyGeneration(undefined);
-        setReadCycle((cycle) => cycle + 1);
-      }
-      await Promise.allSettled(reads);
-      admission.current = false;
-      setWriting(false);
-    }
-
-    return succeeded;
-  };
-  const pageControls = (kind: 'queue' | 'events') => {
-    const response = kind === 'queue' ? queue : events;
-    const cursors = kind === 'queue' ? queueCursors : eventCursors;
-    const key = kind === 'queue' ? queueScope : selection;
-    const setHistory = kind === 'queue' ? setQueueHistory : setEventHistory;
-
-    return (
-      <Box
-        aria-label={t(
-          kind === 'queue' ? 'label.task-plural' : 'label.event-plural'
-        )}
-        gap={2}>
-        <Button
-          color="secondary"
-          isDisabled={
-            response.isFetching || cursors[cursors.length - 1] === undefined
-          }
-          size="sm"
-          onPress={() => setHistory({ key, cursors: [undefined] })}>
-          {t('label.first')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={response.isFetching || cursors.length === 1}
-          size="sm"
-          onPress={() => setHistory({ key, cursors: cursors.slice(0, -1) })}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={
-            response.isFetching ||
-            !response.data?.data.length ||
-            !response.data?.paging?.after
-          }
-          size="sm"
-          onPress={() =>
-            setHistory({
-              key,
-              cursors: pushCursor(cursors, response.data?.paging?.after),
-            })
-          }>
-          {t('label.next')}
-        </Button>
-      </Box>
-    );
-  };
+  const queueControls = () => (
+    <Box aria-label={t('label.task-plural')} gap={2}>
+      <Button
+        color="secondary"
+        isDisabled={
+          queue.isFetching ||
+          queueCursors[queueCursors.length - 1] === undefined
+        }
+        size="sm"
+        onPress={() =>
+          setQueueHistory({ key: queueScope, cursors: [undefined] })
+        }>
+        {t('label.first')}
+      </Button>
+      <Button
+        color="secondary"
+        isDisabled={queue.isFetching || queueCursors.length === 1}
+        size="sm"
+        onPress={() =>
+          setQueueHistory({
+            key: queueScope,
+            cursors: queueCursors.slice(0, -1),
+          })
+        }>
+        {t('label.previous')}
+      </Button>
+      <Button
+        color="secondary"
+        isDisabled={
+          queue.isFetching ||
+          !queue.data?.data.length ||
+          !queue.data?.paging?.after
+        }
+        size="sm"
+        onPress={() =>
+          setQueueHistory({
+            key: queueScope,
+            cursors: pushCursor(queueCursors, queue.data?.paging?.after),
+          })
+        }>
+        {t('label.next')}
+      </Button>
+    </Box>
+  );
 
   const renderTasksAction = () => {
     // Unknown totals (loading/error) keep the trigger enabled.
@@ -759,66 +393,21 @@ const OntologyTasksDrawer = ({
     ) : null;
   };
   const changeView = (key: Key) => {
-    if (key === 'assigned' || key === 'created') {
+    if ((key === 'assigned' || key === 'created') && key !== view) {
       setView(key);
       setQueueHistory({ key: '', cursors: [undefined] });
+      // The open task belongs to the tab being left; the new tab opens its own first task.
+      onTaskChange(undefined);
     }
   };
-  const renderTaskCard = (entry: OntologyReleaseReview) => {
-    const isSelected = entry.task.id === taskId;
-    const requester = getEntityName(entry.requester);
-
-    return (
-      <Button
-        noTextPadding
-        aria-current={isSelected || undefined}
-        aria-label={`${entry.taskId ?? entry.task.id} · ${
-          entry.task.displayName ?? getEntityName(entry.ontology)
-        }`}
-        className={classNames(
-          'tw:w-full tw:justify-start tw:rounded-xl tw:border tw:p-3 tw:text-left',
-          isSelected
-            ? 'tw:border-brand tw:bg-brand-primary_alt'
-            : 'tw:border-transparent'
-        )}
-        color="tertiary"
-        key={entry.task.id}
-        onPress={() => onTaskChange(entry.task.id)}>
-        <Box align="start" className="tw:min-w-0" gap={3}>
-          <span className="tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-surface">
-            <CheckCircle className="tw:size-3.5 tw:text-fg-brand-primary" />
-          </span>
-          <Box className="tw:min-w-0" direction="col" gap={1}>
-            <Typography size="text-sm" weight="medium">
-              {entry.task.displayName ?? getEntityName(entry.ontology)}
-            </Typography>
-            <Box align="center" gap={2} wrap="wrap">
-              <Typography
-                className="tw:font-mono"
-                color="secondary"
-                size="text-xs">
-                {entry.taskId ?? entry.task.id}
-              </Typography>
-              {requester && (
-                <Box align="center" gap={1}>
-                  <Avatar
-                    initials={requester.slice(0, 2).toUpperCase()}
-                    size="xxs"
-                  />
-                  <Typography color="secondary" size="text-xs">
-                    {requester}
-                  </Typography>
-                </Box>
-              )}
-              <Badge color="gray" size="sm">
-                {getEntityName(entry.ontology)}
-              </Badge>
-            </Box>
-          </Box>
-        </Box>
-      </Button>
-    );
-  };
+  const queueTasks = (queue.data?.data ?? []).map(reviewAsTask);
+  // As in the Inbox, an open list with nothing selected shows its first task.
+  const firstTaskId = queueTasks[0]?.id;
+  useEffect(() => {
+    if (isOpen && !taskId && firstTaskId && !queue.isFetching) {
+      onTaskChange(firstTaskId);
+    }
+  }, [isOpen, taskId, firstTaskId, queue.isFetching, onTaskChange]);
   const renderQueueList = () => {
     const entries = queue.data?.data ?? [];
     if (queue.isPending || queue.isError) {
@@ -873,7 +462,14 @@ const OntologyTasksDrawer = ({
               : queue.data?.paging?.total ?? visible.length}
           </Typography>
         </Box>
-        {visible.map(renderTaskCard)}
+        {visible.map((entry) => (
+          <InboxTaskListItem
+            isActive={entry.task.id === taskId}
+            key={entry.task.id}
+            task={reviewAsTask(entry)}
+            onClick={(selected) => onTaskChange(selected.id)}
+          />
+        ))}
       </>
     );
   };
@@ -897,103 +493,29 @@ const OntologyTasksDrawer = ({
       {queue.isPending ? <Loader size="small" /> : null}
       {renderQueueList()}
       {hasMorePages(queue.data?.paging?.after, queueCursors.length)
-        ? pageControls('queue')
+        ? queueControls()
         : null}
     </Box>
   );
-  const renderSelected = () =>
-    detail.isPending ? (
-      <div className="tw:p-6">
-        <Loader />
-      </div>
+  const renderDetail = () =>
+    taskId ? (
+      // The same task screen as the Inbox: it loads the full task and acts on it.
+      <TaskDetailPanel
+        fallbackTask={queueTasks.find((task) => task.id === taskId)}
+        key={taskId}
+        taskId={taskId}
+        onCommentsChanged={refreshQueues}
+        onResolved={refreshQueues}
+        onTaskUpdated={refreshQueues}
+      />
     ) : (
-      selected && (
-        <OntologyTaskDetail
-          activationError={
-            writeError?.selection === selection &&
-            writeError.kind === 'activation'
-          }
-          activationReady={activationReady}
-          canPublish={canPublish && !isVoteBlocked}
-          contentGeneration={currentGeneration}
-          contentReady={contentReady}
-          isPublished={state.data?.activeReleaseId === selected.release.id}
-          isRequester={
-            selected.review.requester?.id === currentUser?.id ||
-            selected.task.ontologyReview?.author === currentUser?.name
-          }
-          isWriting={writing || isVoteBlocked || detail.isFetching}
-          key={selection}
-          release={selected.release}
-          review={selected.review}
-          task={selected.task}
-          onApprove={() => {
-            void submit({ kind: 'approve' });
-          }}
-          onApproveAndPublish={() => {
-            void submit({ kind: combinedApproval });
-          }}
-          onComment={(message) => submit({ kind: 'comment', message })}
-          onContentReadyChange={onContentReadyChange}
-          onPublish={() => {
-            void submit({ kind: 'publish' });
-          }}
-          onReject={(reason) => {
-            void submit({ kind: 'reject', reason });
-          }}>
-          <OntologyTaskThread
-            events={events.data?.data ?? []}
-            review={selected.review}
-            task={selected.task}
-            onCommentChanged={() => void detail.refetch()}
-          />
-          {hasMorePages(events.data?.paging?.after, eventCursors.length) && (
-            <>
-              <Typography color="secondary" size="text-sm">
-                {t('message.ontology-review-event-window')}
-              </Typography>
-              {pageControls('events')}
-            </>
-          )}
-        </OntologyTaskDetail>
-      )
+      <div className="tw:relative tw:h-full">
+        <NoDataPlaceholder
+          description={t('message.ontology-select-task-description')}
+          title={t('message.ontology-select-task')}
+        />
+      </div>
     );
-  const renderDetail = () => {
-    if (!taskId) {
-      return null;
-    }
-
-    return (
-      <>
-        <div className="tw:flex tw:flex-col tw:gap-2 tw:px-6 tw:pt-4 tw:empty:hidden">
-          {(detail.isError || state.isError || events.isError) && (
-            <Alert
-              rightContent={
-                <Button
-                  color="secondary"
-                  isDisabled={writing}
-                  size="sm"
-                  onPress={() => {
-                    void refresh();
-                  }}>
-                  {t('label.retry')}
-                </Button>
-              }
-              variant="error">
-              {t('message.ontology-review-unavailable')}
-            </Alert>
-          )}
-          {writeError?.selection === selection &&
-            writeError.kind === 'uncertain' && (
-              <Alert variant="warning">
-                {t('message.ontology-review-write-uncertain')}
-              </Alert>
-            )}
-        </div>
-        {renderSelected()}
-      </>
-    );
-  };
   const renderDrawer = () => {
     if (!isOpen) {
       return null;
@@ -1072,19 +594,8 @@ const OntologyTasksDrawer = ({
                   data-testid="ontology-tasks-queue">
                   {renderQueue()}
                 </div>
-                <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto">
-                  {taskId ? (
-                    renderDetail()
-                  ) : (
-                    <div className="tw:relative tw:h-full">
-                      <NoDataPlaceholder
-                        description={t(
-                          'message.ontology-select-task-description'
-                        )}
-                        title={t('message.ontology-select-task')}
-                      />
-                    </div>
-                  )}
+                <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
+                  {renderDetail()}
                 </div>
               </Tabs.Panel>
             </Tabs>

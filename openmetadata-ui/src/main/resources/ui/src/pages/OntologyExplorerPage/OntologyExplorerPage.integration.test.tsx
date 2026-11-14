@@ -1070,7 +1070,7 @@ describe('Ontology Studio mode-switch integration', () => {
     }
   );
 
-  it('reloads complete Settings detail after saving the same ontology ID', async () => {
+  it('stays on Settings with the complete detail after saving', async () => {
     const header: Ontology = {
       id: 'retail',
       name: 'Retail',
@@ -1123,15 +1123,19 @@ describe('Ontology Studio mode-switch integration', () => {
         screen.getByTestId('ontology-scope-menu-trigger')
       ).toHaveTextContent('Retail model')
     );
-    fireEvent.click(screen.getByTestId('mode-tab-edit'));
-    fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
-    fireEvent.click(
-      await screen.findByRole('tab', { name: 'label.setting-plural' })
-    );
 
-    expect(await screen.findByText('Saved owner')).toBeVisible();
-    expect(screen.getByText('Saved reviewer')).toBeVisible();
-    expect(mockGetOntology).toHaveBeenCalledTimes(2);
+    // The save keeps the Settings form open, keeps the owners and reviewers the
+    // patch response leaves out, and reads the full detail again in place.
+    const saved = within(screen.getByTestId('ontology-create-form'));
+
+    expect(saved.getByText('Saved owner')).toBeVisible();
+    expect(saved.getByText('Saved reviewer')).toBeVisible();
+
+    await waitFor(() => expect(mockGetOntology).toHaveBeenCalledTimes(2));
+
+    expect(
+      saved.getByRole('textbox', { name: 'label.display-name' })
+    ).toHaveValue('Retail model');
   });
 
   it.each([403, 404])(

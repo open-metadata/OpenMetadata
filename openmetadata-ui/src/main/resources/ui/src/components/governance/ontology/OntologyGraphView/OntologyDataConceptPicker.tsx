@@ -27,14 +27,18 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
+  CSSProperties,
   FocusEvent,
   KeyboardEvent,
   RefObject,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   buildDataPickerGroups,
@@ -61,6 +65,9 @@ interface OntologyDataConceptPickerProps {
 }
 
 const MOVE_KEYS: Record<string, number> = { ArrowDown: 1, ArrowUp: -1 };
+const LIST_GAP_PX = 4;
+// Below this much room under the input, the list opens above it instead.
+const LIST_MIN_HEIGHT_PX = 240;
 
 /** The concept chooser of Data mode: recents, concepts with data by count, then the rest. */
 const OntologyDataConceptPicker = ({
@@ -105,6 +112,41 @@ const OntologyDataConceptPicker = ({
     setActive(0);
   }, [query]);
 
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const listPanelRef = useRef<HTMLDivElement>(null);
+  const [listPosition, setListPosition] = useState<CSSProperties>();
+  // Follows the input as the page scrolls or resizes; the list sits just under it.
+  useLayoutEffect(() => {
+    if (!isInline) {
+      return undefined;
+    }
+    const place = () => {
+      const rect = anchorRef.current?.getBoundingClientRect();
+      if (rect) {
+        const below = window.innerHeight - rect.bottom - LIST_GAP_PX * 3;
+        const above = rect.top - LIST_GAP_PX * 3;
+        // Opens upward when the window leaves too little room under the input.
+        const opensUp = below < LIST_MIN_HEIGHT_PX && above > below;
+        setListPosition({
+          left: rect.left,
+          width: rect.width,
+          maxHeight: opensUp ? above : below,
+          ...(opensUp
+            ? { bottom: window.innerHeight - rect.top + LIST_GAP_PX }
+            : { top: rect.bottom + LIST_GAP_PX }),
+        });
+      }
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [isInline]);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key in MOVE_KEYS && options.length > 0) {
       event.preventDefault();
@@ -121,9 +163,15 @@ const OntologyDataConceptPicker = ({
     }
   };
 
-  // An inline picker has no popover to dismiss it, so leaving it closes it.
+  // An inline picker has no popover to dismiss it, so leaving it closes it;
+  // focus moving into its portalled list still counts as inside.
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
-    if (isInline && !event.currentTarget.contains(event.relatedTarget)) {
+    const next = event.relatedTarget;
+    if (
+      isInline &&
+      !event.currentTarget.contains(next) &&
+      !listPanelRef.current?.contains(next)
+    ) {
       onClose?.();
     }
   };
@@ -221,7 +269,7 @@ const OntologyDataConceptPicker = ({
     <>
       <div
         aria-label={t('label.concept-plural')}
-        className="tw:max-h-72 tw:overflow-auto tw:p-1"
+        className="tw:max-h-72 tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-1"
         id={listId}
         role="listbox">
         {options.length === 0 ? (
@@ -295,7 +343,7 @@ const OntologyDataConceptPicker = ({
       onKeyDown={handleKeyDown}>
       {isInline ? (
         <>
-          <div className="tw:relative">
+          <div className="tw:relative" ref={anchorRef}>
             {search}
             <ButtonUtility
               className="tw:absolute tw:top-1/2 tw:right-2 tw:-translate-y-1/2"
@@ -307,9 +355,20 @@ const OntologyDataConceptPicker = ({
               onClick={onClose}
             />
           </div>
-          <div className="tw:absolute tw:top-full tw:z-20 tw:mt-1 tw:w-full tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-lg">
-            {results}
-          </div>
+          {/* Portalled: the canvas is its own stacking context, and the list
+              must open over the canvas's floating bottom toolbar. */}
+          {listPosition
+            ? createPortal(
+                <div
+                  className="tw:fixed tw:z-50 tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-lg"
+                  data-testid="ontology-data-concept-picker-list"
+                  ref={listPanelRef}
+                  style={listPosition}>
+                  {results}
+                </div>,
+                document.body
+              )
+            : null}
         </>
       ) : (
         <>

@@ -61,6 +61,8 @@ interface OntologyAuthoringWorkspaceProps {
   onWorkingChange?: () => void;
   /** Opens a concept in the graph's concept panel. */
   onOpenConcept?: (conceptId: string) => void;
+  /** View mode: the list is browsable but not editable. */
+  isReadOnly?: boolean;
 }
 
 const ALL = 'all';
@@ -130,6 +132,7 @@ const ConceptTab = ({
   ontology,
   onWorkingChange,
   onOpenConcept,
+  isReadOnly,
 }: Omit<OntologyAuthoringWorkspaceProps, 'definitionType'>) => {
   const { t } = useTranslation();
   const canCreate = useCanCreate(ontology, ResourceEntity.ONTOLOGY_CONCEPT);
@@ -293,6 +296,7 @@ const ConceptTab = ({
       definitionType="concept"
       filterKey={[search, conceptType, level].join('|')}
       isError={isError}
+      isReadOnly={isReadOnly}
       items={items}
       key={ontology.id + ':concept'}
       ontology={ontology}
@@ -307,6 +311,7 @@ const ConceptTab = ({
         items ? `${items.length} ${plural.toLocaleLowerCase()}` : undefined
       }
       toolbar={toolbar}
+      totalCount={model?.concepts.length}
       onChanged={() => {
         void refetch();
         onWorkingChange?.();
@@ -333,6 +338,7 @@ const ConceptTab = ({
 const PropertyTab = ({
   ontology,
   onWorkingChange,
+  isReadOnly,
 }: Omit<
   OntologyAuthoringWorkspaceProps,
   'definitionType' | 'onOpenConcept'
@@ -481,6 +487,7 @@ const PropertyTab = ({
       definitionType="property"
       filterKey={[kind, search].join('|')}
       isError={isError}
+      isReadOnly={isReadOnly}
       items={items}
       key={ontology.id + ':property'}
       ontology={ontology}
@@ -488,6 +495,7 @@ const PropertyTab = ({
         items ? `${items.length} ${plural.toLocaleLowerCase()}` : undefined
       }
       toolbar={toolbar}
+      totalCount={model?.properties.length}
       onChanged={() => {
         void refetch();
         onWorkingChange?.();

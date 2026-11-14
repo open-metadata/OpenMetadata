@@ -128,7 +128,7 @@ const OntologyVersionEditor = ({
                     key={option}
                     label={`${t(
                       `label.version-${option}`
-                    )} · ${nextSemanticVersion(baseVersion, option)}`}
+                    )} · v${nextSemanticVersion(baseVersion, option)}`}
                     value={option}
                     variant="card"
                   />

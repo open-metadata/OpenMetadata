@@ -2407,12 +2407,22 @@ const OntologyExplorerContent: React.FC = () => {
         }}
         onRequestGraphSurface={() => setViewSurface('graph')}
         onRequestTreeSurface={() => setViewSurface('tree')}
-        onSaved={(ontology) => {
+        onSaved={(saved) => {
           void queryClient.invalidateQueries({
             queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
           });
           refreshNativeWorkingDiff();
-          selectOntology(ontology);
+          // Settings stay open after a save. The patch response leaves out owners,
+          // reviewers and publication status, so the full detail is read again in place.
+          setLoadedOntology((current) => ({ ...current, ...saved }));
+          void getOntology(saved.id, 'owners,reviewers,publicationStatus')
+            .then((full) =>
+              setLoadedOntology((current) =>
+                current?.id === full.id ? full : current
+              )
+            )
+            .catch(() => undefined);
+          showSuccessToast(t('message.ontology-settings-saved'));
         }}
         onSelectedConceptChange={selectNativeConcept}
         onStatsChange={setNativeStats}

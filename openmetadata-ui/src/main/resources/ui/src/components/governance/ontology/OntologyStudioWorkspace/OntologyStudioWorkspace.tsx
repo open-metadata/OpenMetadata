@@ -70,6 +70,13 @@ const getWorkspaceClassName = (
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
 };
 
+/** View mode's Ontology surface on the draft shows the tabs read-only; a release shows its Overview. */
+const showsReadOnlyTabs = (
+  mode: OntologyStudioWorkspaceProps['mode'],
+  viewSurface: OntologyStudioWorkspaceProps['viewSurface'],
+  releaseId?: string
+) => mode === 'view' && viewSurface === 'ontology' && !releaseId;
+
 const OntologyStudioWorkspace = ({
   ontology,
   releaseId,
@@ -103,7 +110,9 @@ const OntologyStudioWorkspace = ({
   const [axiomStatus, setAxiomStatus] = useState<AxiomStatus>();
   const [revision, setRevision] = useState(0);
   const { model } = useOntologyStudioModel(
-    mode === 'definitions' ? ontology : undefined
+    mode === 'definitions' || showsReadOnlyTabs(mode, viewSurface, releaseId)
+      ? ontology
+      : undefined
   );
   // Leaving for the graph drops an open definition editor, so it asks first.
   const openConcept = onRequestEdit
@@ -136,91 +145,111 @@ const OntologyStudioWorkspace = ({
     </Box>
   );
 
+  // The ontology's tabs; View mode shows them read-only, Edit's definitions can change them.
+  const renderDefinitionTabs = (isReadOnly: boolean) => (
+    <Tabs
+      className="tw:gap-5"
+      selectedKey={definitionTab}
+      onSelectionChange={(key) =>
+        guard(() => {
+          setAxiomStatus(undefined);
+          setDefinitionTab(key);
+        })
+      }>
+      {header}
+      <Tabs.List aria-label={t('label.definition')} type="underline">
+        <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
+        <Tabs.Item
+          aria-label={t('label.concept-plural')}
+          badge={model?.concepts.length}
+          id="concept">
+          {t('label.concept-plural')}
+        </Tabs.Item>
+        <Tabs.Item
+          aria-label={t('label.property-plural')}
+          badge={model?.properties.length}
+          id="property">
+          {t('label.property-plural')}
+        </Tabs.Item>
+        <Tabs.Item
+          aria-label={t('label.constraint-plural')}
+          badge={model?.axioms.length}
+          id="axiom">
+          {t('label.constraint-plural')}
+        </Tabs.Item>
+        <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
+      </Tabs.List>
+      <Tabs.Panel id="overview">
+        <OntologyOverview
+          ontology={ontology}
+          status={publicationStatus}
+          onOpenPublication={isReadOnly ? undefined : onOpenPublication}
+          onOpenTab={(tab, status) =>
+            guard(() => {
+              setAxiomStatus(status);
+              setDefinitionTab(tab);
+            })
+          }
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="concept">
+        <OntologyAuthoringWorkspace
+          isReadOnly={isReadOnly}
+          ontology={ontology}
+          onOpenConcept={openConcept}
+          onWorkingChange={onWorkingChange}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="property">
+        <OntologyAuthoringWorkspace
+          definitionType="property"
+          isReadOnly={isReadOnly}
+          ontology={ontology}
+          onWorkingChange={onWorkingChange}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="axiom">
+        <OntologyAxiomWorkspace
+          initialStatus={axiomStatus}
+          isReadOnly={isReadOnly}
+          ontology={ontology}
+          onOpenConcept={openConcept}
+          onWorkingChange={onWorkingChange}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel id="settings">
+        <OntologyCreateForm
+          canEdit={canEditAll && !isReadOnly}
+          ontology={ontology}
+          onSaved={(saved) => {
+            onSaved(saved);
+            onWorkingChange?.();
+          }}
+        />
+      </Tabs.Panel>
+    </Tabs>
+  );
+
   const renderContent = () => {
     switch (mode) {
       case 'definitions':
-        return (
-          <Tabs
-            className="tw:gap-5"
-            selectedKey={definitionTab}
-            onSelectionChange={(key) =>
-              guard(() => {
-                setAxiomStatus(undefined);
-                setDefinitionTab(key);
-              })
-            }>
-            {header}
-            <Tabs.List aria-label={t('label.definition')} type="underline">
-              <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
-              <Tabs.Item
-                aria-label={t('label.concept-plural')}
-                badge={model?.concepts.length}
-                id="concept">
-                {t('label.concept-plural')}
-              </Tabs.Item>
-              <Tabs.Item
-                aria-label={t('label.property-plural')}
-                badge={model?.properties.length}
-                id="property">
-                {t('label.property-plural')}
-              </Tabs.Item>
-              <Tabs.Item
-                aria-label={t('label.constraint-plural')}
-                badge={model?.axioms.length}
-                id="axiom">
-                {t('label.constraint-plural')}
-              </Tabs.Item>
-              <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
-            </Tabs.List>
-            <Tabs.Panel id="overview">
-              <OntologyOverview
-                ontology={ontology}
-                status={publicationStatus}
-                onOpenPublication={onOpenPublication}
-                onOpenTab={(tab, status) =>
-                  guard(() => {
-                    setAxiomStatus(status);
-                    setDefinitionTab(tab);
-                  })
-                }
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="concept">
-              <OntologyAuthoringWorkspace
-                ontology={ontology}
-                onOpenConcept={openConcept}
-                onWorkingChange={onWorkingChange}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="property">
-              <OntologyAuthoringWorkspace
-                definitionType="property"
-                ontology={ontology}
-                onWorkingChange={onWorkingChange}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="axiom">
-              <OntologyAxiomWorkspace
-                initialStatus={axiomStatus}
-                ontology={ontology}
-                onOpenConcept={openConcept}
-                onWorkingChange={onWorkingChange}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel id="settings">
-              <OntologyCreateForm
-                canEdit={canEditAll}
-                ontology={ontology}
-                onSaved={(saved) => {
-                  onSaved(saved);
-                  onWorkingChange?.();
-                }}
-              />
-            </Tabs.Panel>
-          </Tabs>
-        );
+        return renderDefinitionTabs(false);
       case 'view':
       case 'edit':
+        // A published release is read from its snapshot, which only the Overview shows.
+        if (showsReadOnlyTabs(mode, viewSurface, releaseId)) {
+          return (
+            <Box
+              className={
+                isAiMode
+                  ? 'tw:h-full tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-24'
+                  : 'tw:h-full tw:overflow-auto tw:p-6'
+              }
+              direction="col">
+              {renderDefinitionTabs(true)}
+            </Box>
+          );
+        }
         if (viewSurface === 'ontology') {
           return (
             <Box

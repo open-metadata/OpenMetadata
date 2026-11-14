@@ -16,7 +16,6 @@ import {
   BadgeColors,
   Box,
   Button,
-  ButtonUtility,
   Card,
   FeaturedIcon,
   Typography,
@@ -256,7 +255,20 @@ const StatCard = ({
   isAlert,
   onOpen,
 }: StatCardProps) => (
-  <Card data-testid={testId}>
+  // The whole card opens its tab, as the design has it; the arrow only marks that.
+  <Card
+    aria-label={onOpen ? label : undefined}
+    data-testid={testId}
+    isClickable={Boolean(onOpen)}
+    role={onOpen ? 'button' : undefined}
+    tabIndex={onOpen ? 0 : undefined}
+    onClick={onOpen}
+    onKeyDown={(event) => {
+      if (onOpen && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        onOpen();
+      }
+    }}>
     <Card.Content>
       <Box direction="col" gap={2}>
         <Box align="center" justify="between">
@@ -264,12 +276,9 @@ const StatCard = ({
             {label}
           </Typography>
           {onOpen ? (
-            <ButtonUtility
-              aria-label={label}
-              color="secondary"
-              icon={ArrowUpRight}
-              size="sm"
-              onPress={onOpen}
+            <ArrowUpRight
+              aria-hidden
+              className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
             />
           ) : null}
         </Box>
@@ -689,6 +698,7 @@ const OntologyOverview = ({
           })}
           label={t('label.relationship-plural')}
           testId="ontology-overview-count-relationships"
+          onOpen={openTab('axiom')}
         />
         <StatCard
           count={model.properties.length}

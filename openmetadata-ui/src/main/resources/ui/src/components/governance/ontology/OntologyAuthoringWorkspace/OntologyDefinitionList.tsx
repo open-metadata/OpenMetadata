@@ -40,6 +40,8 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
@@ -57,9 +59,21 @@ export interface DefinitionColumn<T> {
   readonly isRowHeader?: boolean;
 }
 
+/** Whether the open editor may change its definition; view mode never can. */
+const editorCanEdit = (
+  isReadOnly: boolean,
+  isNew: boolean,
+  canCreate: boolean,
+  canEditAll: boolean
+) => !isReadOnly && (isNew ? canCreate : canEditAll);
+
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
   canCreate: boolean;
+  /** View mode: rows open read-only and nothing can be added. */
+  isReadOnly?: boolean;
+  /** Every definition of this kind before filters, so an empty list can say why it is empty. */
+  totalCount?: number;
   definitionType: 'concept' | 'property' | 'axiom';
   /** The rows after the tab's search and filters; undefined while the model loads. */
   items?: readonly T[];
@@ -78,6 +92,8 @@ interface OntologyDefinitionListProps<T> {
   actions?: ReactNode;
   /** Search and filters, left of the count. */
   toolbar?: ReactNode;
+  /** A notice between the controls and the table, such as unresolved conflicts. */
+  banner?: ReactNode;
   /** "6 concepts" or "3 of 8", right of the filters. */
   summary?: ReactNode;
   /** Changes whenever the tab's search or filters change, which sends the list back to its first page. */
@@ -137,7 +153,9 @@ const OntologyDefinitionList = <
   >
 >({
   ontology,
-  canCreate,
+  canCreate: canCreateProp,
+  isReadOnly = false,
+  totalCount,
   definitionType,
   items,
   isError,
@@ -149,12 +167,14 @@ const OntologyDefinitionList = <
   renderDetail,
   actions,
   toolbar,
+  banner,
   summary,
   filterKey,
   onOpen,
   children,
   renderCreate,
 }: OntologyDefinitionListProps<T>) => {
+  const canCreate = editorCanEdit(isReadOnly, true, canCreateProp, false);
   const { t } = useTranslation();
   const guard = useOntologyDraftGuard();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
@@ -268,7 +288,12 @@ const OntologyDefinitionList = <
       key={definition ? definition.id + ':' + definition.version : 'new'}>
       {children(
         definition,
-        selected === 'new' ? canCreate : permission.canEditAll,
+        editorCanEdit(
+          isReadOnly,
+          selected === 'new',
+          canCreate,
+          permission.canEditAll
+        ),
         (saved) => {
           setSelected(saved);
           onChanged?.();
@@ -472,6 +497,40 @@ const OntologyDefinitionList = <
       </Table.Row>
     );
 
+  // The shared placeholders, as the glossary terms table uses: nothing yet, or nothing matching.
+  const renderEmpty = () => (
+    <div
+      className="tw:relative tw:min-h-80"
+      data-testid={`ontology-${definitionType}-empty`}>
+      {totalCount ? (
+        <NoFilteredResultsPlaceholder
+          description={t('message.ontology-definitions-no-match', {
+            entity: pluralLabel.toLocaleLowerCase(),
+          })}
+        />
+      ) : (
+        <NoDataPlaceholder
+          description={t('message.ontology-definitions-empty-description', {
+            entity: entityText,
+          })}
+          footer={
+            canCreate ? (
+              <Button
+                color="primary"
+                data-testid={`ontology-empty-add-${definitionType}`}
+                iconLeading={Plus}
+                size="sm"
+                onPress={() => guard(() => setSelected('new'))}>
+                {t('label.add-entity', { entity: entityText })}
+              </Button>
+            ) : undefined
+          }
+          title={t('label.no-entity', { entity: pluralLabel })}
+        />
+      )}
+    </div>
+  );
+
   const renderTable = (rows: readonly T[]) => (
     <TableCard.Root
       data-testid={`ontology-definition-group-${definitionType}`}
@@ -497,15 +556,7 @@ const OntologyDefinitionList = <
             />
           ))}
         </Table.Header>
-        <Table.Body
-          items={toRows(rows)}
-          renderEmptyState={() => (
-            <div className="tw:m-4 tw:rounded-lg tw:bg-secondary_alt tw:p-4">
-              <Typography as="p" size="text-sm" weight="medium">
-                {t('label.no-entity', { entity: pluralLabel })}
-              </Typography>
-            </div>
-          )}>
+        <Table.Body items={toRows(rows)} renderEmptyState={renderEmpty}>
           {renderRow}
         </Table.Body>
       </Table>
@@ -538,7 +589,7 @@ const OntologyDefinitionList = <
         {actions}
         {canCreate && (
           <Button
-            color={definitionType === 'axiom' ? 'primary' : 'secondary'}
+            color="primary"
             data-testid={`ontology-add-${definitionType}`}
             iconLeading={Plus}
             size="sm"
@@ -547,6 +598,7 @@ const OntologyDefinitionList = <
           </Button>
         )}
       </Box>
+      {banner}
       {items ? (
         renderTable(pageOf(items, currentPage))
       ) : (

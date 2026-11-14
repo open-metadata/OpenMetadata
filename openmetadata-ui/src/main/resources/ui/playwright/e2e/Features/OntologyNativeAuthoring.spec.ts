@@ -318,18 +318,18 @@ test.describe(
           const port = await stablePoint('port', concepts[0].id);
           await page.mouse.click(port.x, port.y);
           await expect(
-            page.getByTestId('ontology-connect-instruction')
-          ).toBeVisible();
+            page.getByTestId('ontology-connection-line')
+          ).toBeAttached();
           // Clicking the armed source's own handle cancels; its body would pick the concept as the target.
           await page.mouse.click(port.x, port.y);
           await expect(
-            page.getByTestId('ontology-connect-instruction')
+            page.getByTestId('ontology-connection-line')
           ).toHaveCount(0);
           const secondPort = await stablePoint('port', concepts[0].id);
           await page.mouse.click(secondPort.x, secondPort.y);
           await expect(
-            page.getByTestId('ontology-connect-instruction')
-          ).toBeVisible();
+            page.getByTestId('ontology-connection-line')
+          ).toBeAttached();
           const target = await stablePoint('node', concepts[1].id);
           await page.mouse.click(target.x, target.y);
           await expect(

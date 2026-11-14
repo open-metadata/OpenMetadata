@@ -310,7 +310,12 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     await screen.findByText('existing-topic');
     fireEvent.click(await screen.findByTestId('ontology-native-link-assets'));
     const picker = await screen.findByTestId('ontology-data-asset-picker');
-    await within(picker).findByRole('checkbox', { name: 'customers' });
+    await within(picker).findByRole('checkbox', { name: 'new-topic' });
+
+    // The off-page table is already linked, so the picker leaves it out.
+    expect(
+      within(picker).queryByRole('checkbox', { name: 'customers' })
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
       within(picker).getByRole('checkbox', {
@@ -334,12 +339,14 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
 
     fireEvent.click(screen.getByTestId('ontology-native-link-assets'));
 
+    const reopened = await screen.findByTestId('ontology-data-asset-picker');
+    await within(reopened).findByRole('checkbox', {
+      name: 'label.select-all-lowercase',
+    });
+
     expect(
-      await within(screen.getByTestId('ontology-data-asset-picker')).findByRole(
-        'checkbox',
-        { name: 'customers' }
-      )
-    ).toBeDisabled();
+      within(reopened).queryByRole('checkbox', { name: 'customers' })
+    ).not.toBeInTheDocument();
   });
 
   it.each<{ description: string; properties: OntologyProperty[] }>([

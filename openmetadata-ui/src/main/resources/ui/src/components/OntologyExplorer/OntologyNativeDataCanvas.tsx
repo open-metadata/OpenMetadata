@@ -780,18 +780,19 @@ const OntologyNativeDataCanvas = ({
           className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
         />
         <Typography
-          ellipsis
-          className="tw:min-w-0 tw:flex-1 tw:text-primary"
+          className="tw:min-w-0 tw:shrink tw:truncate tw:text-primary"
           size="text-xs"
           title={column.path.join('.')}
           weight="medium">
           {column.path.join('.')}
         </Typography>
         {column.type ? (
+          // A nested type (struct<…>) can run longer than the node, so it truncates too.
           <Typography
-            className="tw:shrink-0"
+            className="tw:min-w-0 tw:max-w-1/2 tw:shrink-[4] tw:truncate"
             color={column.isResolved ? 'secondary' : 'danger'}
-            size="text-xs">
+            size="text-xs"
+            title={column.type}>
             {column.type}
           </Typography>
         ) : null}

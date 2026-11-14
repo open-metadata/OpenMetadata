@@ -641,17 +641,16 @@ const TypeAndHelp = ({
           <Select.Item id={item.id} key={item.id} label={item.label} />
         )}
       </Select>
-      <Card data-testid="ontology-axiom-help" size="sm" variant="muted">
-        <Card.Content>
-          <Typography color="secondary" size="text-sm">
-            {t(
-              `message.ontology-axiom-${axiomType
-                .toLowerCase()
-                .replaceAll('_', '-')}-help`
-            )}
-          </Typography>
-        </Card.Content>
-      </Card>
+      <Typography
+        color="secondary"
+        data-testid="ontology-axiom-help"
+        size="text-sm">
+        {t(
+          `message.ontology-axiom-${axiomType
+            .toLowerCase()
+            .replaceAll('_', '-')}-help`
+        )}
+      </Typography>
     </>
   );
 };
