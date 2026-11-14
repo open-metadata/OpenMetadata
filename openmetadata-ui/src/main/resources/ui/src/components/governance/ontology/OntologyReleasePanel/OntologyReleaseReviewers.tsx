@@ -231,11 +231,17 @@ const OntologyReleaseReviewers = ({
         </Alert>
       )}
       {outcome?.kind === 'unavailable' && (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={() => void onRefresh()}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('message.ontology-review-settings-unavailable')}
-          <Button color="secondary" size="sm" onPress={() => void onRefresh()}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       )}
     </>

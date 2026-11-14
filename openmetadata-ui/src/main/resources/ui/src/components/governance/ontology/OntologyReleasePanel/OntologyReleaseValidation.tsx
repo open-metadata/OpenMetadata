@@ -197,11 +197,14 @@ const QueryNotice = ({
     <>
       {showLoading && isFetching && <Loader size="small" />}
       {isError && (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button color="secondary" size="sm" onPress={onRetry}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('message.ontology-validation-unavailable')}
-          <Button color="secondary" size="sm" onPress={onRetry}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       )}
     </>

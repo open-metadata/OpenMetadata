@@ -486,7 +486,16 @@ const OntologyTasksDrawer = ({
         onChange={setSearch}
       />
       {queue.isError && (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={() => void queue.refetch()}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('server.entity-fetch-error', {
             entity: t('label.task-plural'),
           })}
@@ -511,12 +520,15 @@ const OntologyTasksDrawer = ({
         onTaskUpdated={refreshQueues}
       />
     ) : (
-      <div className="tw:relative tw:h-full">
-        <NoDataPlaceholder
-          description={t('message.ontology-select-task-description')}
-          title={t('message.ontology-select-task')}
-        />
-      </div>
+      // A queue that failed to load has nothing to pick, so the list's error stands alone.
+      !queue.isError && (
+        <div className="tw:relative tw:h-full">
+          <NoDataPlaceholder
+            description={t('message.ontology-select-task-description')}
+            title={t('message.ontology-select-task')}
+          />
+        </div>
+      )
     );
   const renderDrawer = () => {
     if (!isOpen) {

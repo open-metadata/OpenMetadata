@@ -2299,6 +2299,37 @@ describe('OntologyReleasePanel', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('reports a release that cannot be opened once, with Retry, not again as the publication status', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    let releaseFails = true;
+    get.mockImplementation(async (url, config) => {
+      if (releaseFails && url === `/ontologyReleases/${currentRelease.id}`) {
+        throw new AxiosError('Release unavailable', '500');
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'releases');
+    await selectRelease();
+
+    const alert = await screen.findByRole('alert');
+
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert).toHaveTextContent('server.entity-fetch-error');
+
+    releaseFails = false;
+    await act(async () =>
+      fireEvent.click(
+        within(alert).getByRole('button', { name: 'label.retry' })
+      )
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    );
+  });
+
   it('shows the storage-unavailable alert in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     const setItem = jest

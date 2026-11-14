@@ -577,16 +577,19 @@ const HistoryLoadStatus = ({ history }: { history: HistoryQuery }) => {
   }
 
   return history.isError ? (
-    <Alert variant="error">
+    <Alert
+      rightContent={
+        <Button
+          color="secondary"
+          size="sm"
+          onPress={() => void history.refetch()}>
+          {t('label.retry')}
+        </Button>
+      }
+      variant="error">
       {t('server.entity-fetch-error', {
         entity: t('label.release-plural'),
       })}
-      <Button
-        color="secondary"
-        size="sm"
-        onPress={() => void history.refetch()}>
-        {t('label.retry')}
-      </Button>
     </Alert>
   ) : null;
 };

@@ -170,16 +170,19 @@ const OntologyReleaseEvents = ({
       </Typography>
       {events.isPending && <Loader size="small" />}
       {events.isError && (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={() => void events.refetch()}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('server.entity-fetch-error', {
             entity: t('label.release-events'),
           })}
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => void events.refetch()}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       )}
       <ol className="tw:m-0 tw:list-none tw:p-0">{list.map(renderEvent)}</ol>

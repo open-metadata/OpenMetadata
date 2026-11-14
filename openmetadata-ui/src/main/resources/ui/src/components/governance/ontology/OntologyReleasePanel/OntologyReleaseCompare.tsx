@@ -203,16 +203,19 @@ const OntologyReleaseCompare = ({
     }
     if (diff.isError) {
       return (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={() => void diff.refetch()}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('server.entity-fetch-error', {
             entity: t('label.change-plural'),
           })}
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => void diff.refetch()}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       );
     }
