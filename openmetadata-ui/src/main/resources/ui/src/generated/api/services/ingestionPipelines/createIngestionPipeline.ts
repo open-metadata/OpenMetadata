@@ -487,6 +487,11 @@ export interface Pipeline {
      */
     incrementalLineageProcessing?: boolean;
     /**
+     * List of Messaging Service names to resolve Kafka/streaming topic lineage for streaming
+     * table engines (e.g., ClickHouse Kafka engine).
+     */
+    messagingServiceNames?: string[];
+    /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.
      */

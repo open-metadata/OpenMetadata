@@ -151,6 +151,7 @@ public class WorkflowConfigBuilderTest extends WorkflowConfigTest {
             + "      threads: 1\n"
             + "      processCrossDatabaseLineage: false\n"
             + "      crossDatabaseServiceNames: []\n"
+            + "      messagingServiceNames: []\n"
             + "      enableTempTableLineage: false\n"
             + "      incrementalLineageProcessing: true\n"
             + "sink:\n"
