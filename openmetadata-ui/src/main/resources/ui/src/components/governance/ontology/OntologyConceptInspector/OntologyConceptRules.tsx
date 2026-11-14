@@ -449,8 +449,8 @@ const OntologyConceptRules = ({
       ) : (
         <InlineEmptyPlaceholder
           data-testid="ontology-concept-empty"
-          title={t('message.ontology-no-rules-yet-hint')}
-          variant="text"
+          description={t('message.ontology-rules-empty-hint')}
+          title={t('message.ontology-no-rules-yet')}
         />
       )}
       <DeleteModal
