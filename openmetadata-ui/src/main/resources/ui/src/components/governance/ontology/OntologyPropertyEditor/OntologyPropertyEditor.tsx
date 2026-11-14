@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Divider,
   FieldProp,
   FieldTypes,
   FormField,
@@ -25,6 +26,11 @@ import {
   RadioGroup,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import { keyBy } from 'lodash';
 import { Fragment, useEffect, useState } from 'react';
@@ -32,6 +38,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
+  Characteristic,
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
@@ -55,6 +62,7 @@ import {
 } from './OntologyPropertyEditor.utils';
 
 const ADVANCED_FIELDS = [
+  'superProperties',
   'characteristics',
   'inverse',
   'disjointWith',
@@ -72,6 +80,40 @@ const BASIC_FIELD_HELP: Record<string, string> = {
   name: 'message.ontology-property-name-help',
   displayName: 'message.ontology-property-display-name-help',
   description: 'message.ontology-property-description-help',
+};
+
+// The design's order: the common ones first, the rarely needed reflexive pair last.
+const CHARACTERISTIC_ORDER = [
+  Characteristic.Functional,
+  Characteristic.InverseFunctional,
+  Characteristic.Symmetric,
+  Characteristic.Asymmetric,
+  Characteristic.Transitive,
+  Characteristic.Reflexive,
+  Characteristic.Irreflexive,
+];
+const CHARACTERISTIC_LABELS: Record<Characteristic, string> = {
+  [Characteristic.Functional]: 'label.functional',
+  [Characteristic.InverseFunctional]: 'label.inverse-functional',
+  [Characteristic.Symmetric]: 'label.symmetric',
+  [Characteristic.Asymmetric]: 'label.asymmetric',
+  [Characteristic.Transitive]: 'label.transitive',
+  [Characteristic.Reflexive]: 'label.reflexive',
+  [Characteristic.Irreflexive]: 'label.irreflexive',
+};
+const CHARACTERISTIC_HINTS: Record<Characteristic, string> = {
+  [Characteristic.Functional]:
+    'message.ontology-characteristic-functional-hint',
+  [Characteristic.InverseFunctional]:
+    'message.ontology-characteristic-inverse-functional-hint',
+  [Characteristic.Symmetric]: 'message.ontology-characteristic-symmetric-hint',
+  [Characteristic.Asymmetric]:
+    'message.ontology-characteristic-asymmetric-hint',
+  [Characteristic.Transitive]:
+    'message.ontology-characteristic-transitive-hint',
+  [Characteristic.Reflexive]: 'message.ontology-characteristic-reflexive-hint',
+  [Characteristic.Irreflexive]:
+    'message.ontology-characteristic-irreflexive-hint',
 };
 
 const isSelectedItem = (value: { id: string }[], item: { id: string }) =>
@@ -103,6 +145,11 @@ const IRI_LIST_LABEL_KEYS: Record<IriListField, string> = {
   domain: 'label.property-domain',
   range: 'label.range',
   superProperties: 'label.super-property-plural',
+};
+const IRI_LIST_HINT_KEYS: Record<IriListField, string> = {
+  domain: 'message.ontology-property-domain-help',
+  range: 'message.ontology-property-range-help',
+  superProperties: 'message.ontology-property-super-help',
 };
 
 const OntologyPropertyEditor = ({
@@ -173,6 +220,7 @@ const OntologyPropertyEditor = ({
     <FormField control={form.control} name={name}>
       {({ field }) => (
         <OntologyIriListInput
+          hint={t(IRI_LIST_HINT_KEYS[name])}
           isDisabled={disabled}
           label={t(IRI_LIST_LABEL_KEYS[name])}
           options={iriListOptions(name)}
@@ -266,33 +314,64 @@ const OntologyPropertyEditor = ({
     </FormField>
   );
 
-  const renderCharacteristics = (field?: FieldProp) =>
-    field ? (
+  // The design's bordered list: each characteristic says what it means in one line.
+  const renderCharacteristics = (field?: FieldProp) => {
+    if (!field) {
+      return null;
+    }
+    const offered = new Set(
+      (field.props?.items ?? []).map((item: { id: string }) => item.id)
+    );
+
+    return (
       <FormField control={form.control} name="characteristics">
         {({ field: { value, onChange } }) => (
           <Box
             aria-label={t('label.characteristic-plural')}
             direction="col"
-            gap={3}
+            gap={2}
             role="group">
-            <Typography size="text-sm" weight="medium">
-              {t('label.characteristic-plural')}
-            </Typography>
-            {(field.props?.items ?? []).map((item) => (
-              <Checkbox
-                isDisabled={disabled}
-                isSelected={isSelectedItem(value, item)}
-                key={item.id}
-                label={item.label}
-                onChange={(checked) =>
-                  onChange(toggleSelection(value, item, checked))
-                }
-              />
-            ))}
+            <Box direction="col">
+              <Typography
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
+                {t('label.characteristic-plural')}
+              </Typography>
+              <Typography color="secondary" size="text-sm">
+                {t('message.ontology-property-characteristics-help')}
+              </Typography>
+            </Box>
+            <Box
+              className="tw:divide-y tw:divide-secondary tw:rounded-lg tw:border tw:border-secondary"
+              direction="col">
+              {CHARACTERISTIC_ORDER.filter((id) => offered.has(id)).map(
+                (id) => (
+                  <div className="tw:px-3.5 tw:py-3" key={id}>
+                    <Checkbox
+                      hint={t(CHARACTERISTIC_HINTS[id])}
+                      isDisabled={disabled}
+                      isSelected={isSelectedItem(value, { id })}
+                      label={t(CHARACTERISTIC_LABELS[id])}
+                      onChange={(checked) =>
+                        onChange(
+                          toggleSelection(
+                            value,
+                            { id, label: id } as { id: string },
+                            checked
+                          )
+                        )
+                      }
+                    />
+                  </div>
+                )
+              )}
+            </Box>
           </Box>
         )}
       </FormField>
-    ) : null;
+    );
+  };
 
   const fields = keyBy(
     propertyFormFields(t, kind, Boolean(property), disabled),
@@ -323,6 +402,37 @@ const OntologyPropertyEditor = ({
       ) : null
     );
 
+  const labelsOf = (iris: string, options?: ReadonlyArray<OntologyIriOption>) =>
+    iris
+      .split('\n')
+      .filter(Boolean)
+      .map((iri) => options?.find((option) => option.iri === iri)?.label ?? iri)
+      .join(', ');
+  // A sentence of what the property links, once it has a name and a range to read.
+  const renderPreview = () => {
+    const name = form.watch('name').trim();
+    const range = labelsOf(form.watch('range'), iriListOptions('range'));
+    const domain = labelsOf(form.watch('domain'), concepts);
+
+    return (
+      <Box
+        align="center"
+        className="tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5"
+        data-testid="ontology-property-preview"
+        gap={2}>
+        <ArrowRight
+          aria-hidden
+          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+        />
+        <Typography color="secondary" size="text-sm">
+          {name && range
+            ? [domain, name, range].filter(Boolean).join(' → ')
+            : t('message.ontology-property-preview-empty')}
+        </Typography>
+      </Box>
+    );
+  };
+
   return (
     <HookForm
       data-testid="ontology-property-editor"
@@ -340,25 +450,57 @@ const OntologyPropertyEditor = ({
           renderWithHelp(fields[name])
         )}
         {renderKind(fields.kind)}
+        <Divider />
+        <Typography
+          className="tw:uppercase tw:tracking-wide"
+          color="secondary"
+          size="text-xs"
+          weight="semibold">
+          {t('label.meaning')}
+        </Typography>
         {renderIriList('domain')}
         {renderIriList('range')}
-        {renderIriList('superProperties')}
+        {renderPreview()}
         {renderEnumValues()}
         {renderFields(['unit', 'isIdentifier'])}
-        <details
-          className="tw:border-t tw:border-secondary tw:pt-4"
-          open={isAdvancedOpen}
-          onToggle={(event) => setIsAdvancedOpen(event.currentTarget.open)}>
-          <summary className="tw:cursor-pointer">
-            <Typography as="span" size="text-sm" weight="semibold">
-              {t('label.advanced')}
-            </Typography>
-          </summary>
-          <Box className="tw:mt-4" direction="col" gap={4}>
-            {renderCharacteristics(fields.characteristics)}
-            {renderFields(ADVANCED_FIELDS.slice(1))}
-          </Box>
-        </details>
+        <Divider />
+        {/* Same disclosure as the create and settings dialogs: chevron, "Advanced", what it holds. */}
+        <button
+          aria-controls="ontology-property-advanced"
+          aria-expanded={isAdvancedOpen}
+          className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
+          data-testid="ontology-property-advanced-toggle"
+          type="button"
+          onClick={() => setIsAdvancedOpen((open) => !open)}>
+          {isAdvancedOpen ? (
+            <ChevronDown
+              aria-hidden
+              className="tw:size-4 tw:shrink-0 tw:text-secondary"
+            />
+          ) : (
+            <ChevronRight
+              aria-hidden
+              className="tw:size-4 tw:shrink-0 tw:text-secondary"
+            />
+          )}
+          <Typography size="text-sm" weight="semibold">
+            {t('label.advanced')}
+          </Typography>
+          <Typography color="quaternary" size="text-sm">
+            {t('message.ontology-property-advanced-fields')}
+          </Typography>
+        </button>
+        {/* Kept mounted while collapsed, as a closed <details> was, so its fields still validate. */}
+        <Box
+          className={isAdvancedOpen ? undefined : 'tw:hidden'}
+          data-testid="ontology-property-advanced"
+          direction="col"
+          gap={4}
+          id="ontology-property-advanced">
+          {renderIriList('superProperties')}
+          {renderCharacteristics(fields.characteristics)}
+          {renderFields(ADVANCED_FIELDS.slice(2))}
+        </Box>
         <OntologyFormFooter
           canSubmit={
             canEdit &&

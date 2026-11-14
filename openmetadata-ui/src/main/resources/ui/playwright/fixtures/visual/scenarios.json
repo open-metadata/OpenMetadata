@@ -1852,7 +1852,7 @@
       }
     ],
     "ready": {
-      "text": "Search Index Settings",
+      "testId": "no-data-placeholder",
       "within": {
         "role": "tabpanel"
       }
@@ -5513,7 +5513,8 @@
       },
       {
         "action": "click",
-        "testId": "children-info-dropdown-btn"
+        "testId": "children-info-dropdown-btn",
+        "within": "lineage-node-visual_warehouse.finance.public.orders"
       }
     ],
     "ready": {

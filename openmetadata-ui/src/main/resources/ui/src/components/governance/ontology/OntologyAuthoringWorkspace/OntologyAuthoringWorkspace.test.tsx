@@ -192,8 +192,8 @@ describe('OntologyAuthoringWorkspace', () => {
     });
 
     expect(
-      screen.getAllByText('message.ontology-concept-name-invalid')
-    ).toHaveLength(2);
+      screen.getByText('message.ontology-concept-name-invalid')
+    ).toBeVisible();
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
 
@@ -202,8 +202,8 @@ describe('OntologyAuthoringWorkspace', () => {
     });
 
     expect(
-      screen.getAllByText('message.ontology-concept-name-taken')
-    ).toHaveLength(2);
+      screen.getByText('message.ontology-concept-name-taken')
+    ).toBeVisible();
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
     fireEvent.change(screen.getByTestId('new-class-local-name'), {
@@ -409,12 +409,15 @@ describe('OntologyAuthoringWorkspace', () => {
     routeLists({
       concepts: [
         { ...concept, description: 'A buyer' },
+        { ...concept, id: 'vip', name: 'Vip', iri: 'urn:sales:vip' },
+      ],
+      axioms: [
         {
-          ...concept,
-          id: 'vip',
-          name: 'Vip',
-          iri: 'urn:sales:vip',
-          superClasses: [concept.iri],
+          id: 'vip-is-customer',
+          name: 'VipIsCustomer',
+          axiomType: 'SUBCLASS_OF',
+          subjectIri: 'urn:sales:vip',
+          expressions: [{ kind: 'NAMED_CLASS', classIri: concept.iri }],
         },
       ],
     });
@@ -505,6 +508,24 @@ describe('OntologyAuthoringWorkspace', () => {
 
     expect(
       screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no Add in an empty read-only list, so it does not invite adding one', async () => {
+    routeLists({ concepts: [] });
+    renderWithQueryClient(
+      <OntologyAuthoringWorkspace isReadOnly ontology={ontology} />
+    );
+    await flushReactQuery();
+
+    expect(
+      await screen.findByTestId('ontology-concept-empty')
+    ).toHaveTextContent(/^label\.no-entity$/);
+    expect(
+      screen.queryByText('message.ontology-definitions-empty-description')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-empty-add-concept')
     ).not.toBeInTheDocument();
   });
 

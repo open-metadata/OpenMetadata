@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   AxiomType,
@@ -46,13 +46,36 @@ const axiom = (id: string, provenance: Provenance): OntologyAxiom =>
     provenance,
   } as unknown as OntologyAxiom);
 
+const disjoint = {
+  id: 'rule',
+  name: 'rule',
+  axiomType: AxiomType.DisjointWith,
+  subjectIri: 'https://x.org/fhir/Patient',
+  expressions: [
+    { kind: 'NAMED_CLASS', classIri: 'https://x.org/fhir/Clinical' },
+  ],
+  provenance: Provenance.Manual,
+  description: '',
+} as unknown as OntologyAxiom;
+
 const mockModel = {
   concepts: [concept('Patient'), concept('Clinical')],
   properties: [],
   axioms: [
     axiom('imported', Provenance.Imported),
     axiom('manual', Provenance.Manual),
+    disjoint,
+    {
+      ...axiom('unrelated', Provenance.Manual),
+      subjectIri: 'https://x.org/fhir/Unknown',
+    },
   ],
+};
+
+const clash = {
+  code: 'DISJOINT_CLASH',
+  message: 'Patient is disjoint with its ancestor Clinical',
+  conceptIds: ['Patient', 'Clinical'],
 };
 
 jest.mock(
@@ -71,6 +94,17 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
     permissions: { ontologyAxiom: { Create: true } },
   }),
 }));
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: () => ({
+      isLoading: false,
+      hasViewAccess: true,
+      canEditAll: true,
+      canDelete: false,
+    }),
+  })
+);
 jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyWorkingValidation: jest.fn(),
   restoreOntologyDefinition: jest.fn(),
@@ -100,11 +134,21 @@ describe('OntologyAxiomWorkspace', () => {
   it('reads each constraint as a sentence with names, not IRIs', async () => {
     renderWithQueryClient(<OntologyAxiomWorkspace ontology={ontology} />);
 
-    const first = await screen.findByRole('row', { name: /imported/ });
+    const [, first, , rule] = await screen.findAllByRole('row');
 
-    expect(first).toHaveTextContent('Patient Record');
-    expect(first).toHaveTextContent('broader');
+    expect(first).toHaveTextContent(
+      'Patient Record → broader → Clinical Record'
+    );
+    expect(first).toHaveTextContent('label.imported-from-rdf');
     expect(first).not.toHaveTextContent('https://');
+    expect(rule).toHaveTextContent(
+      'Patient Record label.can-never-also-be-lowercase Clinical Record'
+    );
+    expect(rule).toHaveTextContent('label.created-by-user');
+    expect(rule).toHaveTextContent('—');
+    expect(
+      screen.queryByRole('columnheader', { name: 'label.name' })
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-definition-summary')).toHaveTextContent(
       'label.n-of-m'
     );
@@ -126,18 +170,28 @@ describe('OntologyAxiomWorkspace', () => {
     expect(onOpenConcept).toHaveBeenCalledWith('Patient');
   });
 
-  it('shares the Overview validation run and reports a clean draft', async () => {
+  it('marks every constraint valid once a clean run answers', async () => {
     renderWithQueryClient(<OntologyAxiomWorkspace ontology={ontology} />);
 
-    expect(
-      await screen.findByText('message.ontology-validate-all-clean')
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      screen
+        .getAllByTestId('ontology-constraint-status')
+        .forEach((cell) => expect(cell).toHaveTextContent('label.valid'))
+    );
+
     expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByTestId('ontology-constraint-expand')
+    ).not.toBeInTheDocument();
   });
 
   it('re-runs validation after a constraint is saved, so the result never goes stale', async () => {
     renderWithQueryClient(<OntologyAxiomWorkspace ontology={ontology} />);
-    await screen.findByText('message.ontology-validate-all-clean');
+    await waitFor(() =>
+      screen
+        .getAllByTestId('ontology-constraint-status')
+        .forEach((cell) => expect(cell).toHaveTextContent('label.valid'))
+    );
 
     fireEvent.click(screen.getByTestId('ontology-add-axiom'));
     fireEvent.click(await screen.findByTestId('axiom-editor'));
@@ -145,5 +199,157 @@ describe('OntologyAxiomWorkspace', () => {
     await waitFor(() =>
       expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(2)
     );
+  });
+
+  it('offers Add in View mode and hands it to Edit instead of opening the form', async () => {
+    const onRequestCreate = jest.fn();
+    renderWithQueryClient(
+      <OntologyAxiomWorkspace
+        isReadOnly
+        ontology={ontology}
+        onRequestCreate={onRequestCreate}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('ontology-add-axiom'));
+
+    expect(onRequestCreate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('axiom-editor')).not.toBeInTheDocument();
+  });
+
+  it('hides Add in View mode when there is no way to switch to Edit', async () => {
+    renderWithQueryClient(
+      <OntologyAxiomWorkspace isReadOnly ontology={ontology} />
+    );
+    await screen.findAllByTestId('ontology-constraint-status');
+
+    expect(screen.queryByTestId('ontology-add-axiom')).not.toBeInTheDocument();
+  });
+
+  it('opens the create form once when Edit was entered from View mode Add', async () => {
+    const onCreateOpened = jest.fn();
+    renderWithQueryClient(
+      <OntologyAxiomWorkspace
+        shouldOpenCreate
+        ontology={ontology}
+        onCreateOpened={onCreateOpened}
+      />
+    );
+
+    expect(await screen.findByTestId('axiom-editor')).toBeInTheDocument();
+    expect(onCreateOpened).toHaveBeenCalledTimes(1);
+  });
+
+  describe('with a clash', () => {
+    beforeEach(() => {
+      (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+        valid: false,
+        violations: [clash],
+      });
+    });
+
+    it('marks the clashing relationships and rule as conflicts', async () => {
+      renderWithQueryClient(<OntologyAxiomWorkspace ontology={ontology} />);
+
+      await waitFor(() =>
+        expect(
+          screen.getAllByTestId('ontology-constraint-expand')
+        ).toHaveLength(3)
+      );
+
+      expect(
+        screen
+          .getAllByTestId('ontology-constraint-status')
+          .map((cell) => cell.textContent)
+      ).toEqual([
+        'label.conflict',
+        'label.conflict',
+        'label.conflict',
+        'label.valid',
+      ]);
+
+      expect(
+        screen.getByTestId('ontology-constraints-conflicts-banner')
+      ).toHaveTextContent('message.ontology-conflicts-need-resolving');
+    });
+
+    it('explains a clash and opens the rule and the relationship', async () => {
+      const onOpenConcept = jest.fn();
+      renderWithQueryClient(
+        <OntologyAxiomWorkspace
+          ontology={ontology}
+          onOpenConcept={onOpenConcept}
+        />
+      );
+
+      fireEvent.click(
+        (await screen.findAllByTestId('ontology-constraint-expand'))[0]
+      );
+      const detail = screen.getByTestId('ontology-constraint-conflict-detail');
+
+      expect(detail).toHaveTextContent(
+        'message.ontology-constraint-clashes-with'
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.open-the-relationship' })
+      );
+
+      expect(onOpenConcept).toHaveBeenCalledWith('Patient');
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.open-the-rule' })
+      );
+
+      expect(await screen.findByTestId('axiom-editor')).toBeInTheDocument();
+    });
+
+    it('opens filtered to conflicts when asked', async () => {
+      renderWithQueryClient(
+        <OntologyAxiomWorkspace initialStatus="conflict" ontology={ontology} />
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryAllByTestId('ontology-constraint-status')
+        ).toHaveLength(3)
+      );
+    });
+
+    it('announces the conflicts in a banner that shows, opens and dismisses them', async () => {
+      renderWithQueryClient(<OntologyAxiomWorkspace ontology={ontology} />);
+      const banner = await screen.findByTestId(
+        'ontology-constraints-conflicts-banner'
+      );
+
+      expect(screen.getAllByTestId('ontology-constraint-status')).toHaveLength(
+        4
+      );
+
+      fireEvent.click(
+        within(banner).getByTestId('ontology-constraints-conflicts-show')
+      );
+
+      expect(screen.getAllByTestId('ontology-constraint-status')).toHaveLength(
+        3
+      );
+      expect(
+        screen.queryByTestId('ontology-constraint-conflict-detail')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(
+        within(banner).getByTestId('ontology-constraints-conflicts-resolve')
+      );
+
+      expect(
+        screen.getAllByTestId('ontology-constraint-conflict-detail')
+      ).toHaveLength(3);
+
+      fireEvent.click(within(banner).getByRole('button', { name: /close/i }));
+
+      expect(
+        screen.queryByTestId('ontology-constraints-conflicts-banner')
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Link01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
@@ -48,6 +49,9 @@ const OntologyPropertyBindings = ({
 }: OntologyPropertyBindingsProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const hasTable = Boolean(
+    bindings.data?.assets.some(({ assetType }) => assetType === AssetType.Table)
+  );
   const columns =
     bindings.data?.assets.flatMap((asset) =>
       asset.columns
@@ -60,6 +64,18 @@ const OntologyPropertyBindings = ({
       return null;
     }
 
+    const bindButton = (
+      <Button
+        color="link-color"
+        data-testid={`ontology-bind-property-${propertyId}`}
+        iconLeading={Plus}
+        isDisabled={!bindings.editableSnapshot || !hasTable}
+        size="xs"
+        onPress={() => setIsOpen(true)}>
+        {t('label.ontology-bind-to-column')}
+      </Button>
+    );
+
     return isOpen ? (
       <OntologyColumnBindingEditor
         conceptId={conceptId}
@@ -70,15 +86,14 @@ const OntologyPropertyBindings = ({
         onClose={() => setIsOpen(false)}
       />
     ) : (
-      <Button
-        color="link-color"
-        data-testid={`ontology-bind-property-${propertyId}`}
-        iconLeading={Plus}
-        isDisabled={!bindings.editableSnapshot}
-        size="xs"
-        onPress={() => setIsOpen(true)}>
-        {t('label.ontology-bind-to-column')}
-      </Button>
+      // Without a linked table there is nothing to bind yet: the button reads as disabled,
+      // and the tooltip on its focusable wrapper says why.
+      <Tooltip
+        isDisabled={hasTable}
+        placement="bottom start"
+        title={t('message.ontology-link-table-before-binding')}>
+        {bindButton}
+      </Tooltip>
     );
   };
 

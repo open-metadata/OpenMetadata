@@ -113,10 +113,23 @@ const openData = async (
   ontology: Ontology,
   concept: OntologyConcept
 ) => {
-  await page.goto(
-    `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}`
-  );
+  // A concept in the URL opens its drawer over the Model/Data switch, so Data is opened first and
+  // the concept is picked there, as a person reaches it.
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await page.getByTestId('ontology-graph-mode-data').click();
+  await pickConcept(page, concept);
+};
+
+const pickConcept = async (page: Page, concept: OntologyConcept) => {
+  await page.getByTestId('ontology-data-concept-picker-trigger').click();
+  await page.getByTestId(`ontology-data-concept-option-${concept.id}`).click();
+  await expect(page.getByTestId('ontology-data-concept-chip')).toContainText(
+    concept.name
+  );
+  // Picking opens the concept's drawer over the right of the canvas; Data keeps the pick once it closes.
+  const inspector = page.getByTestId('ontology-concept-inspector');
+  await inspector.getByTestId('ontology-concept-close').click();
+  await expect(inspector).toHaveCount(0);
 };
 
 const cleanUp = async (
@@ -426,12 +439,15 @@ test.describe(
         const more = page.getByTestId(/^ontology-data-column-more-/);
 
         await expect(more).toContainText(`${WIDE_COLUMN_COUNT - CAP} more`);
-        await more.click();
+        // The slot sits at the bottom of the column lane, where the canvas toolbar floats over it.
+        await more.focus();
+        await page.keyboard.press('Enter');
 
         await expect(columnNodes(page)).toHaveCount(WIDE_COLUMN_COUNT);
         await expect(columnEdges(page)).toHaveCount(WIDE_COLUMN_COUNT);
 
-        await page.getByTestId(/^ontology-data-column-fewer-/).click();
+        await page.getByTestId(/^ontology-data-column-fewer-/).focus();
+        await page.keyboard.press('Enter');
 
         await expect(columnNodes(page)).toHaveCount(CAP);
       } finally {

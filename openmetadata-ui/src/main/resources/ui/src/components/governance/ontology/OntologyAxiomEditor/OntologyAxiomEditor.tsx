@@ -36,6 +36,8 @@ import {
   AxiomModeSwitch,
   AxiomOutcome,
   AxiomPreview,
+  AxiomPublishNote,
+  AxiomReadOnly,
   collectAxiomProblems,
   previewSentence,
   QuickRuleFields,
@@ -79,7 +81,7 @@ const isRuleSavable = (checks: {
   isQuickReady: boolean;
 }) => Object.values(checks).every(Boolean);
 
-const OntologyAxiomEditor = ({
+const AxiomEditorForm = ({
   ontology,
   references,
   axiom,
@@ -216,9 +218,10 @@ const OntologyAxiomEditor = ({
             values={values}
           />
         )}
-        <AxiomDetailFields />
         <AxiomPreview sentence={sentence} />
         <AxiomOutcome problems={problems} validation={validation.current} />
+        <AxiomDetailFields />
+        <AxiomPublishNote />
         {created ? (
           <Alert
             title={created.displayName ?? created.name}
@@ -230,7 +233,7 @@ const OntologyAxiomEditor = ({
           isDirty={form.formState.isDirty}
           isSaving={form.formState.isSubmitting}
           status={t(validationStatusKey(validation.current?.report?.valid))}
-          submitLabel={t('label.save')}
+          submitLabel={t(axiom ? 'label.save' : 'label.add-rule')}
           submitTestId="ontology-axiom-submit"
           testId="ontology-axiom-footer"
           onCancel={onCancel ?? cancel}>
@@ -246,6 +249,21 @@ const OntologyAxiomEditor = ({
         </OntologyFormFooter>
       </section>
     </HookForm>
+  );
+};
+
+/** View mode reads a constraint; only a user who can edit it gets the form. */
+const OntologyAxiomEditor = (props: OntologyAxiomEditorProps) => {
+  const { t } = useTranslation();
+  const { axiom, canEdit, references } = props;
+
+  return !canEdit && axiom ? (
+    <AxiomReadOnly
+      axiom={axiom}
+      sentence={previewSentence(axiomFormValues(axiom), t, references)}
+    />
+  ) : (
+    <AxiomEditorForm {...props} />
   );
 };
 

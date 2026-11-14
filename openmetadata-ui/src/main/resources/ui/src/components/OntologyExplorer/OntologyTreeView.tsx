@@ -482,6 +482,7 @@ const OntologyTreeView = ({
         title?: string;
         /** Shown inside the tree's card, above its rows, e.g. the draft's conflicts. */
         notice?: ReactNode;
+        conflicts?: ReadonlyMap<string, readonly string[]>;
       }
     | { kind: 'glossary'; groups: OntologyTreeGroup[] };
   readonly metrics?: OntologyTreeMetric[];
@@ -489,6 +490,7 @@ const OntologyTreeView = ({
   source.kind === 'native' ? (
     <NativeOntologyTreeView
       {...props}
+      conflicts={source.conflicts}
       index={source.index}
       notice={source.notice}
       title={source.title}

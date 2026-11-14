@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Dialog,
   Dropdown,
   Modal,
@@ -54,7 +55,6 @@ interface NativeOntologyExportProps {
   readonly ontology: Ontology;
   readonly canImport: boolean;
   readonly onApplied: () => void;
-  readonly onOpen?: () => void;
 }
 
 type OntologyImportExportMenuProps =
@@ -147,7 +147,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
               data-testid="ontology-import-target-picker"
               items={options}
               label={t('label.select-entity', {
-                entity: t('label.ontology'),
+                entity: t('label.ontology').toLocaleLowerCase(),
               })}
               selectedKey={null}
               onSelectionChange={(key) =>
@@ -162,6 +162,14 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
               )}
             </Select>
           </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="ontology-owner-picker-cancel"
+              onPress={close}>
+              {t('label.cancel')}
+            </Button>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>
@@ -196,13 +204,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
     );
   };
 
-  const open = (kind: TransferKind) =>
-    guard(() => {
-      if (props.kind === 'ontology') {
-        props.onOpen?.();
-      }
-      setOpenKind(kind);
-    });
+  const open = (kind: TransferKind) => guard(() => setOpenKind(kind));
 
   // Ontologies offer Import and Export as two actions, each opening its own dialog.
   const hasMenu =
@@ -214,12 +216,12 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
     return (
       <>
         <Dropdown.Root>
-          <Button
+          <ButtonUtility
             aria-label={t('label.import-export')}
             color="secondary"
             data-testid="ontology-import-export-trigger"
-            iconLeading={Download01}
-            size="sm"
+            icon={Download01}
+            size="lg"
             tooltip={t('label.import-export')}
           />
           <Dropdown.Popover className="tw:w-60" placement="bottom end">
@@ -258,12 +260,12 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
 
   return (
     <>
-      <Button
+      <ButtonUtility
         aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={isAiMode ? Download01 : SwitchVertical01}
-        size="sm"
+        icon={isAiMode ? Download01 : SwitchVertical01}
+        size="lg"
         tooltip={t('label.import-export')}
         onPress={() =>
           guard(() =>

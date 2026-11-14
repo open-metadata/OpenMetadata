@@ -357,7 +357,7 @@ test.describe(
             await page.getByTestId('ontology-export-menu-item').click();
             if (scope === 'aggregate') {
               const target = page.getByTestId('ontology-import-target-picker');
-              await expect(target).toContainText('Select Ontology');
+              await expect(target).toContainText('Select ontology');
               // evaluate() does not retry, and the Import / Export menu popover is still a dialog while it animates out.
               await expectNativeStudioCopy(
                 page.getByRole('dialog', { name: 'Export ontology' })
@@ -439,6 +439,11 @@ test.describe(
           await expect(
             page.getByTestId('ontology-tree-term-' + leaf.id)
           ).toHaveCount(2);
+          // Collapse and expand before a row opens the drawer, which covers the tree's header.
+          await page.getByTestId('ontology-tree-collapse-all').click();
+          await expect(sharedRows).toHaveCount(0);
+          await page.getByTestId('ontology-tree-expand-all').click();
+          await expect(sharedRows).toHaveCount(2);
           const path = JSON.stringify([owner.id, a.id, shared.id]);
           const selectedPlacement = sharedRows
             .filter({ has: page.locator('[data-testid="tree-expand-btn"]') })
@@ -454,21 +459,28 @@ test.describe(
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText(shared.iri);
-          await page.getByTestId('ontology-tree-collapse-all').click();
-          await expect(sharedRows).toHaveCount(0);
-          await page.getByTestId('ontology-tree-expand-all').click();
-          await expect(sharedRows).toHaveCount(2);
+          // The URL keeps the Tree view; pressing its tab would close the reopened drawer.
+          await expect(page).toHaveURL(/[?&]view=tree(&|$)/);
           await page.reload();
-          await page.getByTestId('submode-tab-tree').click();
           await expect(page.getByRole('row', { selected: true })).toHaveCount(
             1
           );
         });
         await test.step('Return the rail to Health after an empty canvas click', async () => {
+          // Switching surfaces closes the drawer, so Graph is reopened with the concept in the URL.
           await page.getByTestId('submode-tab-graph').click();
           await expect(
             page.getByTestId('ontology-concept-inspector')
-          ).toBeVisible();
+          ).toHaveCount(0);
+          await page.goto(
+            '/governance/ontology?ontology=' +
+              owner.id +
+              '&concept=' +
+              shared.id
+          );
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText(shared.iri);
           await page.locator('.ontology-g6-container').click({
             position: { x: 5, y: 5 },
           });
@@ -507,7 +519,7 @@ test.describe(
       }
     });
 
-    test('shows three of seven linked assets and opens their Data graph from Tree', async ({
+    test('shows three of seven linked assets and expands the rest in Tree', async ({
       isolatedUserPage: page,
     }) => {
       const api = await getWorkerAdminAPIContext();
@@ -538,10 +550,14 @@ test.describe(
           );
           revision = response.revision;
         }
+        // Pressing the Tree tab would close the concept's drawer, so the URL opens it in Tree.
         await page.goto(
-          '/governance/ontology?ontology=' + owner.id + '&concept=' + concept.id
+          '/governance/ontology?ontology=' +
+            owner.id +
+            '&concept=' +
+            concept.id +
+            '&view=tree'
         );
-        await page.getByTestId('submode-tab-tree').click();
         await test.step('Show the lifecycle, owner and capped asset list', async () => {
           const rail = page.getByTestId('ontology-concept-inspector');
           await rail.getByTestId('ontology-concept-advanced-toggle').click();
@@ -572,26 +588,13 @@ test.describe(
                 )
             );
           }
-          await expect(assets.getByTestId('ontology-assets-more')).toHaveText(
-            '+4 more'
-          );
-          await assets.getByTestId('ontology-assets-more').click();
-        });
-        await test.step('Switch both surfaces and retain the selected concept', async () => {
-          await expect(page.getByTestId('submode-tab-graph')).toHaveAttribute(
-            'aria-selected',
-            'true'
-          );
-          await expect(
-            page.getByTestId('ontology-graph-mode-data')
-          ).toHaveAttribute('aria-pressed', 'true');
-          await expect(
-            page.getByTestId('ontology-native-data-graph')
-          ).toBeVisible();
-          await expect(
-            page.getByTestId('ontology-concept-inspector')
-          ).toContainText(concept.iri);
-          await expect(page).toHaveURL(new RegExp('concept=' + concept.id));
+          const more = assets.getByTestId('ontology-assets-more');
+          await expect(more).toHaveText('Show all (7)');
+          await more.click();
+          await expect(assetLinks).toHaveCount(7);
+          await expect(more).toHaveText('Show less');
+          await more.click();
+          await expect(assetLinks).toHaveCount(3);
         });
       } finally {
         await deleteFixtureEntity(

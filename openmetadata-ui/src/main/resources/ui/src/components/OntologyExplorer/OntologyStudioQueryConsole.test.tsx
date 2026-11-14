@@ -34,6 +34,7 @@ import {
   runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
+  SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { OntologyGraphData } from './OntologyExplorer.interface';
@@ -309,6 +310,47 @@ describe('OntologyStudioQueryConsole', () => {
     expect(
       screen.getByTestId('ontology-sparql-result-ran-at')
     ).toHaveTextContent('label.ran-time');
+  });
+
+  it('shows a loader, not the no-results prompt, while a run is in flight', async () => {
+    let finish: ((value: SparqlPlaygroundResult) => void) | undefined;
+    mockRunGlossarySparqlQuery.mockReturnValueOnce(
+      new Promise<SparqlPlaygroundResult>((resolve) => {
+        finish = resolve;
+      })
+    );
+    renderConsole();
+
+    expect(
+      screen.getByTestId('ontology-sparql-results-empty')
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+
+    expect(
+      await screen.findByTestId('ontology-sparql-results-loading')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-sparql-results-empty')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      finish?.({
+        format: 'json',
+        body: '',
+        contentType: 'application/sparql-results+json',
+        durationMs: 12,
+        parsed: { head: { vars: ['c'] }, results: { bindings: [] } },
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-sparql-results-loading')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('renders an RDF 1.2 triple term instead of crashing the results panel', async () => {

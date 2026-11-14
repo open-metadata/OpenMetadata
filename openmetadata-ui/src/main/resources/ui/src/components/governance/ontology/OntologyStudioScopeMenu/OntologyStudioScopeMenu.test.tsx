@@ -12,7 +12,7 @@
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { Glossary } from '../../../../generated/entity/data/glossary';
-import { Ontology } from '../../../../generated/entity/data/ontology';
+import { Ontology, Stage } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   deleteOntology,
@@ -91,7 +91,7 @@ const renderMenu = (
     onOpenSettings: jest.fn(),
     onOntologyDeleted: jest.fn(),
   };
-  renderWithQueryClient(
+  const { queryClient } = renderWithQueryClient(
     <OntologyStudioScopeMenu
       glossaries={[glossary]}
       label="All ontologies"
@@ -103,7 +103,20 @@ const renderMenu = (
   );
   fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
 
-  return handlers;
+  return { ...handlers, queryClient };
+};
+
+const openDeleteDialog = async (ontologyId: string) => {
+  fireEvent.click(
+    await screen.findByTestId(`ontology-scope-actions-${ontologyId}`)
+  );
+  const remove = await screen.findByTestId(
+    `ontology-scope-delete-${ontologyId}`
+  );
+  await waitFor(() => expect(remove).not.toHaveAttribute('aria-disabled'));
+  fireEvent.click(remove);
+
+  return screen.findByTestId('ontology-delete-dialog');
 };
 
 beforeEach(() => {
@@ -212,7 +225,9 @@ describe.each([
       scope: { kind: 'glossaries' },
     });
 
-    expect(await screen.findByText('label.loading')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('status', { name: 'label.loading' })
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId('ontology-scope-all-glossaries')
     ).toBeInTheDocument();
@@ -303,6 +318,73 @@ describe.each([
     expect(deleteOntology).toHaveBeenCalledWith('ont-1');
     expect(
       screen.queryByTestId('ontology-delete-dialog')
+    ).not.toBeInTheDocument();
+  });
+
+  it('refreshes the review queues, since archiving withdraws the open review', async () => {
+    grant('EditAll', 'Delete');
+    (listOntologyConcepts as jest.Mock).mockResolvedValue({
+      paging: { total: 0 },
+    });
+    (listOntologyReleases as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 1 },
+    });
+    (deleteOntology as jest.Mock).mockResolvedValue(undefined);
+    const { onOntologyDeleted, queryClient } = renderMenu();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+    await openDeleteDialog('ont-1');
+    fireEvent.change(screen.getByTestId('ontology-delete-confirm-name'), {
+      target: { value: 'HL7 FHIR Starter' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-delete-confirm'));
+
+    await waitFor(() => expect(onOntologyDeleted).toHaveBeenCalled());
+
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ['ontology-review-queues'],
+    });
+  });
+
+  it('warns that an open review is withdrawn only for an ontology in review', async () => {
+    grant('EditAll', 'Delete');
+    (listOntologyConcepts as jest.Mock).mockResolvedValue({
+      paging: { total: 0 },
+    });
+    (listOntologyReleases as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 1 },
+    });
+    renderMenu({
+      ontologies: [
+        {
+          ...ontology,
+          publicationStatus: {
+            latest: { stage: Stage.InReview },
+          },
+        } as Ontology,
+        second,
+      ],
+    });
+
+    const dialog = await openDeleteDialog('ont-1');
+
+    expect(
+      within(dialog).getByTestId('ontology-delete-withdraws-review')
+    ).toHaveTextContent('message.ontology-delete-withdraws-review');
+
+    fireEvent.click(screen.getByTestId('ontology-delete-cancel'));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-delete-dialog')
+      ).not.toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+
+    expect(
+      within(await openDeleteDialog('ont-2')).queryByTestId(
+        'ontology-delete-withdraws-review'
+      )
     ).not.toBeInTheDocument();
   });
 

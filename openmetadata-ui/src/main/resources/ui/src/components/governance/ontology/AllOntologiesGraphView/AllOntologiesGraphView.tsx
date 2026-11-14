@@ -43,6 +43,7 @@ import {
   OntologyNode,
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
+import OntologySearchClearButton from '../../../OntologyExplorer/OntologySearchClearButton';
 import {
   buildNativeTreeIndex,
   getOntologyHealthSummary,
@@ -72,7 +73,6 @@ interface AllOntologiesGraphViewProps {
   readonly models: OntologyStudioModel[];
   readonly selectedConceptId?: string;
   readonly surface: 'graph' | 'tree';
-  readonly onRequestGraphSurface: () => void;
   readonly isFetching: boolean;
   readonly onRefresh: () => void;
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
@@ -111,7 +111,9 @@ const ConceptPickerEmptyState = ({
           className="not-prose tw:m-0"
           size="text-lg"
           weight="semibold">
-          {t('label.select-entity', { entity: t('label.concept') })}
+          {t('label.select-entity', {
+            entity: t('label.concept').toLocaleLowerCase(),
+          })}
         </Typography>
         <Typography color="secondary" size="text-sm">
           {t('message.ontology-data-graph-scope')}
@@ -119,7 +121,7 @@ const ConceptPickerEmptyState = ({
         {onSelectConcept ? (
           <Select.ComboBox
             aria-label={t('label.select-entity', {
-              entity: t('label.concept'),
+              entity: t('label.concept').toLocaleLowerCase(),
             })}
             className="tw:mt-3 tw:w-full"
             data-testid="ontology-data-concept-picker"
@@ -149,7 +151,6 @@ const AllOntologiesGraphView = ({
   models,
   selectedConceptId,
   surface,
-  onRequestGraphSurface,
   isFetching,
   onRefresh,
   onEditConcept,
@@ -285,7 +286,9 @@ const AllOntologiesGraphView = ({
         />
       ) : (
         <Typography className="tw:relative tw:m-4" size="text-sm">
-          {t('label.select-entity', { entity: t('label.concept') })}
+          {t('label.select-entity', {
+            entity: t('label.concept').toLocaleLowerCase(),
+          })}
         </Typography>
       );
     }
@@ -311,6 +314,10 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  const clearSearchButton = (
+    <OntologySearchClearButton value={search} onClear={() => setSearch('')} />
+  );
+
   const renderSearch = () => {
     if (searchSlot) {
       return createPortal(
@@ -321,6 +328,7 @@ const AllOntologiesGraphView = ({
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />,
@@ -343,6 +351,7 @@ const AllOntologiesGraphView = ({
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
           size="sm"
+          trailingSlot={clearSearchButton}
           value={search}
           onChange={setSearch}
         />
@@ -423,10 +432,6 @@ const AllOntologiesGraphView = ({
               ? () => onEditConcept(model.ontology, selected.id)
               : undefined
           }
-          onOpenData={() => {
-            onRequestGraphSurface();
-            setGraphMode('data');
-          }}
           onSelectConcept={selectNode}
         />
       ) : null}

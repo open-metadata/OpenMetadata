@@ -49,6 +49,7 @@ import {
 } from '../OntologyConceptInspector/OntologyConceptSection';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
+import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -164,7 +165,7 @@ const useEditorParts = (editor: OntologyConceptEditorState) => {
       conceptIri: '',
       mappingType: {
         id: ConceptMappingType.ExactMatch,
-        label: ConceptMappingType.ExactMatch,
+        label: mappingTypeLabel(ConceptMappingType.ExactMatch),
       },
       schemeIri: '',
       source: '',
@@ -315,7 +316,7 @@ const MappingRow = ({
         {mapping.mappingType.label}
       </Badge>
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography ellipsis className="tw:font-mono" size="text-xs">
+        <Typography ellipsis size="text-sm">
           {mapping.conceptIri}
         </Typography>
         {meta ? (
@@ -561,16 +562,18 @@ const OntologyConceptEditor = (props: OntologyConceptEditorProps) => {
               <Badge color="gray" size="sm" type="pill-color">
                 {mappings.fields.length}
               </Badge>
-              <Button
-                className="tw:ml-auto"
-                color="link-color"
-                iconLeading={Plus}
-                isDisabled={disabled}
-                ref={addMappingButton}
-                size="sm"
-                onPress={appendMapping}>
-                {t('label.add-mapping')}
-              </Button>
+              {canEdit ? (
+                <Button
+                  className="tw:ml-auto"
+                  color="link-color"
+                  iconLeading={Plus}
+                  isDisabled={disabled}
+                  ref={addMappingButton}
+                  size="sm"
+                  onPress={appendMapping}>
+                  {t('label.add-mapping')}
+                </Button>
+              ) : null}
             </Box>
             {mappings.fields.map((mapping, index) => (
               <fieldset
@@ -582,39 +585,43 @@ const OntologyConceptEditor = (props: OntologyConceptEditorProps) => {
                 </legend>
                 <Box direction="col" gap={3}>
                   {renderMappingFields(index)}
-                  <Box justify="end">
-                    <Button
-                      color="secondary"
-                      isDisabled={disabled}
-                      size="sm"
-                      onPress={() => removeMapping(index)}>
-                      {t('label.remove')}
-                    </Button>
-                  </Box>
+                  {canEdit ? (
+                    <Box justify="end">
+                      <Button
+                        color="secondary"
+                        isDisabled={disabled}
+                        size="sm"
+                        onPress={() => removeMapping(index)}>
+                        {t('label.remove')}
+                      </Button>
+                    </Box>
+                  ) : null}
                 </Box>
               </fieldset>
             ))}
           </Box>
-          <Box
-            align="center"
-            className="tw:sticky tw:bottom-0 tw:border-t tw:border-secondary tw:bg-surface tw:py-3"
-            gap={2}>
-            <Typography
-              className="tw:flex-1 tw:text-tertiary"
-              data-testid="concept-save-status"
-              role="status"
-              size="text-xs">
-              {saveStatus}
-            </Typography>
-            <Button
-              color="primary"
-              isDisabled={!canEdit}
-              isLoading={isSaving}
-              size="sm"
-              type="submit">
-              {t('label.save')}
-            </Button>
-          </Box>
+          {canEdit ? (
+            <Box
+              align="center"
+              className="tw:sticky tw:bottom-0 tw:border-t tw:border-secondary tw:bg-surface tw:py-3"
+              gap={2}>
+              <Typography
+                className="tw:flex-1 tw:text-tertiary"
+                data-testid="concept-save-status"
+                role="status"
+                size="text-xs">
+                {saveStatus}
+              </Typography>
+              <Button
+                color="primary"
+                isDisabled={!canEdit}
+                isLoading={isSaving}
+                size="sm"
+                type="submit">
+                {t('label.save')}
+              </Button>
+            </Box>
+          ) : null}
         </Box>
       </HookForm>
     );

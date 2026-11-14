@@ -22,6 +22,7 @@ import {
 import {
   Check,
   Copy01,
+  InfoCircle,
   SearchRefraction,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -213,32 +214,35 @@ const OntologyConceptLiveData = ({
     );
   };
 
-  const renderSearchAround = () => {
-    if (hops.length >= MAX_HOPS) {
-      return null;
-    }
-    if (!isPicking) {
-      return (
-        <Button
-          color="secondary"
-          data-testid="ontology-live-data-search-around"
-          iconLeading={SearchRefraction}
-          size="xs"
-          onPress={() => setIsPicking(true)}>
-          {t('label.search-around')}
-        </Button>
-      );
-    }
+  const canSearchAround = hops.length < MAX_HOPS;
 
-    return (
+  // The hop picker opens from the header action as a compact card; the person closes it with ×.
+  const renderSearchAround = () =>
+    canSearchAround && isPicking ? (
       <Card
         data-testid="ontology-live-data-search-around-options"
         size="sm"
         variant="muted">
-        <Card.Content>
-          <Box direction="col" gap={1}>
-            {steps.length > 0 ? (
-              steps.map((step) => (
+        <Card.Content className="tw:flex tw:flex-col tw:gap-2">
+          <Box align="center" gap={2} justify="between">
+            <Typography
+              className="tw:text-secondary"
+              size="text-xs"
+              weight="semibold">
+              {t('label.search-around')}
+            </Typography>
+            <ButtonUtility
+              color="tertiary"
+              data-testid="ontology-live-data-search-around-close"
+              icon={XClose}
+              size="xs"
+              tooltip={t('label.close')}
+              onClick={() => setIsPicking(false)}
+            />
+          </Box>
+          {steps.length > 0 ? (
+            <Box direction="col" gap={1}>
+              {steps.map((step) => (
                 <Button
                   noTextPadding
                   className="tw:justify-start"
@@ -249,25 +253,24 @@ const OntologyConceptLiveData = ({
                   onPress={() => addHop(step)}>
                   {step.label} · {conceptName(step.target)}
                 </Button>
-              ))
-            ) : (
-              <Typography color="secondary" size="text-xs">
+              ))}
+            </Box>
+          ) : (
+            <Box align="start" gap={2}>
+              <InfoCircle
+                aria-hidden
+                className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+              />
+              <Typography className="tw:text-tertiary" size="text-sm">
                 {t('message.ontology-search-around-unavailable', {
                   concept: conceptName(lastConcept),
                 })}
               </Typography>
-            )}
-            <Button
-              color="link-gray"
-              size="xs"
-              onPress={() => setIsPicking(false)}>
-              {t('label.cancel')}
-            </Button>
-          </Box>
+            </Box>
+          )}
         </Card.Content>
       </Card>
-    );
-  };
+    ) : null;
 
   return (
     <InspectorSection testId="ontology-concept-live-data">
@@ -290,8 +293,19 @@ const OntologyConceptLiveData = ({
           type="pill-color">
           {t('label.not-stored')}
         </Badge>
+        <span className="tw:flex-1" />
+        {canSearchAround ? (
+          <Button
+            color="link-color"
+            data-testid="ontology-live-data-search-around"
+            iconLeading={SearchRefraction}
+            isDisabled={isPicking}
+            size="sm"
+            onPress={() => setIsPicking(true)}>
+            {t('label.search-around')}
+          </Button>
+        ) : null}
         <ButtonUtility
-          className="tw:ml-auto"
           data-testid="ontology-live-data-copy"
           icon={hasCopied ? Check : Copy01}
           isDisabled={!sql}

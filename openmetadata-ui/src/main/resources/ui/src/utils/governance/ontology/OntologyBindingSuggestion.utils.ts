@@ -13,6 +13,8 @@
 
 const MIN_PART_LENGTH = 3;
 const IDENTIFIER_COLUMN = /^(id|.*_id|.*id)$/;
+// Only an identifier named like a key takes an `*_id` column; an `email` identifier does not.
+const KEY_LIKE_LABEL = /\b(id|key|code|number|no|uuid|identifier)\b/;
 
 /** Splits `dosageMg`, `dosage_mg` and `Dosage Mg` into `dosage mg`. */
 const normalize = (name: string): string =>
@@ -69,6 +71,7 @@ const scoreMatch = (
   }
 
   return property.isIdentifier &&
+    KEY_LIKE_LABEL.test(wanted) &&
     IDENTIFIER_COLUMN.test(name.replace(/ /g, '_'))
     ? MATCH_IDENTIFIER
     : 0;
@@ -89,7 +92,7 @@ const pickBest = <T>(
 
 /**
  * The column most likely meant for a property: the same words first, then one name
- * holding the other, and an identifier property takes an `id` or `*_id` column.
+ * holding the other, and a key-like identifier property takes an `id` or `*_id` column.
  */
 export const suggestColumnForProperty = <T extends SuggestableColumn>(
   property: ColumnSuggestionProperty,
@@ -97,9 +100,64 @@ export const suggestColumnForProperty = <T extends SuggestableColumn>(
 ): T | undefined =>
   pickBest(columns, (column) => scoreMatch(property, lastSegment(column.id)));
 
-/** The property a column most likely holds, by the same rules as `suggestColumnForProperty`. */
-export const suggestPropertyForColumn = <T extends SuggestableProperty>(
-  columnName: string,
-  properties: readonly T[]
-): T | undefined =>
-  pickBest(properties, (property) => scoreMatch(property, columnName));
+export interface ColumnSuggestion<P> {
+  property: P;
+  /** The column matches this property better than any other column; only it is ticked. */
+  isBest: boolean;
+}
+
+/**
+ * The property each column of one table most likely holds, keyed by column id. Every column gets
+ * its own best match; when several columns match one property, only the best of them is `isBest`,
+ * so a save binds a property to one column unless the user ticks more. A column that loses its
+ * top property falls back to its best property no other column holds.
+ */
+export const suggestPropertiesForColumns = <
+  C extends SuggestableColumn,
+  P extends SuggestableProperty
+>(
+  columns: readonly C[],
+  properties: readonly P[]
+): Map<string, ColumnSuggestion<P>> => {
+  const bestColumn = new Map<string, { columnId: string; score: number }>();
+  const suggestions = new Map<string, ColumnSuggestion<P>>();
+  for (const column of columns) {
+    const name = lastSegment(column.id);
+    const property = pickBest(properties, (candidate) =>
+      scoreMatch(candidate, name)
+    );
+    if (property) {
+      const score = scoreMatch(property, name);
+      suggestions.set(column.id, { property, isBest: false });
+      // Strictly greater: on a tie the first column keeps the property.
+      if (score > (bestColumn.get(property.id)?.score ?? 0)) {
+        bestColumn.set(property.id, { columnId: column.id, score });
+      }
+    }
+  }
+  bestColumn.forEach(({ columnId }) => {
+    const suggestion = suggestions.get(columnId);
+    if (suggestion) {
+      suggestion.isBest = true;
+    }
+  });
+  // A column outbid on its top property takes its best property no column holds yet,
+  // so a property is not left unsuggested only because its column preferred another.
+  const takenProperties = new Set(bestColumn.keys());
+  for (const column of columns) {
+    const suggestion = suggestions.get(column.id);
+    if (suggestion && !suggestion.isBest) {
+      const name = lastSegment(column.id);
+      const free = pickBest(
+        properties.filter((candidate) => !takenProperties.has(candidate.id)),
+        (candidate) => scoreMatch(candidate, name)
+      );
+      if (free) {
+        suggestions.set(column.id, { property: free, isBest: true });
+        takenProperties.add(free.id);
+      }
+    }
+  }
+
+  return suggestions;
+};

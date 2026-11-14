@@ -875,7 +875,9 @@ const OntologyVisualQueryBuilder = ({
       );
     }
 
-    return <QueryResultsEmptyState meta={incompleteNote} />;
+    return (
+      <QueryResultsEmptyState isRunning={isRunning} meta={incompleteNote} />
+    );
   };
 
   const sparqlLines = generatedQuery.split('\n');

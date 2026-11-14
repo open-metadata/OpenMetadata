@@ -116,8 +116,10 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           items={items}
           placeholder={placeholder}
           popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
+          // `null`, not `undefined`: `undefined` hands the selection to React Aria, and clearing the input then loops
+          // between its internal state and this prop until React throws "Maximum update depth exceeded".
           selectedKey={
-            value !== null && value !== undefined ? String(value) : undefined
+            value !== null && value !== undefined ? String(value) : null
           }
           shortcut={false}
           showSearchIcon={false}

@@ -1,10 +1,10 @@
 # Data mode's asset rows and legend labels are styled at the call site until core ships a list-row button and text colours
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-14 (rows whose container paints the hover drop the button's own hover fill)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** reviewer
-- **Related:** ADR:2026-10-11-migrated-antd-components-adopt-core-styling, ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site, ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox, open-metadata/OpenMetadata#36714, open-metadata/OpenMetadata#36724
+- **Related:** ADR:2026-10-11-migrated-antd-components-adopt-core-styling, ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site, ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox, open-metadata/OpenMetadata#36714, open-metadata/OpenMetadata#36724, open-metadata/OpenMetadata#37798
 
 ## Context
 Ontology Studio's Data mode lists a concept's bound assets as full-width rows inside a card, divided
@@ -37,3 +37,13 @@ These rows can drift when core changes `Button` radius or padding or the `tertia
 core change to them is checked against Data mode in both themes. When core ships a full-bleed
 list-row variant and a primary and a secondary text colour, these call sites move to them and this
 record is superseded.
+
+## Amendment
+
+**v2 2026-11-14.** Three Ontology Studio rows paint their hover on the row, not on the `tertiary`
+`Button` inside it. Here the button's own hover fill stacks a second, visible box, because the
+dark `primary_hover` step is translucent. The rows are the native Data canvas asset card
+(`OntologyNativeDataCanvas.tsx`), the query console's query rows (`OntologyStudioQueryConsole.tsx`)
+and the concept inspector's relation rows (`OntologyConceptInspector.tsx`). Their `Button` may set
+`tw:hover:bg-transparent` from the call site, and nothing else on these buttons changes. When core
+ships the list-row variant, these buttons move to it with the rest.

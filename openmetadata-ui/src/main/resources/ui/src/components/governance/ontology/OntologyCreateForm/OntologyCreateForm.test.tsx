@@ -79,13 +79,19 @@ describe('OntologyCreateForm', () => {
       <OntologyCreateForm canEdit ontology={ontology} onSaved={saved} />
     );
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
+    // Identifiers are read-only values with a copy button, not inputs.
+    expect(screen.getByTestId('ontology-settings-name')).toHaveTextContent(
       'Sales'
     );
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toBeDisabled();
+    expect(screen.getByTestId('ontology-settings-namespace')).toHaveTextContent(
+      'urn:sales:'
+    );
     expect(
-      screen.getByRole('textbox', { name: 'label.namespace' })
-    ).toBeDisabled();
+      screen.queryByRole('textbox', { name: 'label.name' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.ontology-settings-owners-hint')
+    ).toBeInTheDocument();
 
     await user.type(
       screen.getByRole('textbox', { name: 'label.display-name' }),
@@ -228,12 +234,12 @@ describe('OntologyCreateForm', () => {
       );
 
       expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+      expect(screen.getByTestId('ontology-settings-iri')).toHaveTextContent(
+        'urn:sales'
+      );
       expect(
-        screen.getByRole('textbox', { name: 'label.name' })
-      ).toBeDisabled();
-      expect(
-        screen.getByRole('textbox', { name: 'label.ontology-iri' })
-      ).toBeDisabled();
+        screen.queryByRole('textbox', { name: 'label.ontology-iri' })
+      ).not.toBeInTheDocument();
       expect(screen.getByRole('tab', { name: Layer.L2 })).toHaveAttribute(
         'aria-selected',
         'true'
@@ -268,7 +274,7 @@ describe('create helpers', () => {
 
   it('derives a kebab-cased ID from the display name', () => {
     expect(deriveOntologyId('  LA ClassicMade 2 ')).toBe('la-classicmade-2');
-    expect(deriveOntologyId('Café & Bar')).toBe('caf-bar');
+    expect(deriveOntologyId('Café & Bar')).toBe('cafe-bar');
   });
 
   describe('validateOntologyName', () => {

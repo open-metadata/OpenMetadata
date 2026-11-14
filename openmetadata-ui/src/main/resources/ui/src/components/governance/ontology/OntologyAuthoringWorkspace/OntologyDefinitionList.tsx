@@ -19,9 +19,15 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Plus,
+  Shield01,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, ReactNode, useState } from 'react';
+import classNames from 'classnames';
+import { Fragment, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -34,6 +40,9 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
 import { pageCount, pageOf } from './OntologyDefinitionTable.utils';
@@ -46,11 +55,47 @@ export interface DefinitionColumn<T> {
   readonly width?: string;
   /** Numbers read right-aligned. */
   readonly align?: 'end';
+  /** Names the row for assistive tech when the Name column is hidden. */
+  readonly isRowHeader?: boolean;
 }
+
+/** Whether the open editor may change its definition; view mode never can. */
+const editorCanEdit = (
+  isReadOnly: boolean,
+  isNew: boolean,
+  canCreate: boolean,
+  canEditAll: boolean
+) => !isReadOnly && (isNew ? canCreate : canEditAll);
+
+/**
+ * What Add does: opens the form here in Edit, or asks for Edit from View mode.
+ * Undefined when the user cannot create, or View mode offers no way to Edit.
+ */
+const createAction = (
+  canCreate: boolean,
+  isReadOnly: boolean,
+  requestEdit: (() => void) | undefined,
+  openHere: () => void
+) => {
+  if (!canCreate) {
+    return undefined;
+  }
+
+  return isReadOnly ? requestEdit : openHere;
+};
 
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
   canCreate: boolean;
+  /** View mode: rows open read-only and nothing can be added. */
+  isReadOnly?: boolean;
+  /** Every definition of this kind before filters, so an empty list can say why it is empty. */
+  totalCount?: number;
+  /** View mode's Add: switches to Edit instead of opening the form here. */
+  onRequestCreate?: () => void;
+  /** Set when Edit was entered from View mode's Add, to open the create form once. */
+  shouldOpenCreate?: boolean;
+  onCreateOpened?: () => void;
   definitionType: 'concept' | 'property' | 'axiom';
   /** The rows after the tab's search and filters; undefined while the model loads. */
   items?: readonly T[];
@@ -60,15 +105,27 @@ interface OntologyDefinitionListProps<T> {
   onChanged?: () => void;
   /** Columns after Name. */
   columns: readonly DefinitionColumn<T>[];
+  /** Drops the Name column, for definitions whose own column already names them. */
+  hideNameColumn?: boolean;
+  rowClassName?: (item: T) => string | undefined;
+  /** A full-width row under the item when it returns content; `open` opens a row's editor. */
+  renderDetail?: (item: T, open: (item: T) => void) => ReactNode;
+  /** Buttons between the count and Add. */
+  actions?: ReactNode;
   /** Search and filters, left of the count. */
   toolbar?: ReactNode;
+  /** A notice between the controls and the table, such as unresolved conflicts. */
+  banner?: ReactNode;
   /** "6 concepts" or "3 of 8", right of the filters. */
   summary?: ReactNode;
   /** Changes whenever the tab's search or filters change, which sends the list back to its first page. */
   filterKey?: string;
   /** Replaces the side editor for a row, e.g. to open a concept on the graph. */
   onOpen?: (item: T) => void;
-  /** Replaces the inline editor for a new definition; `saved` is set once, to keep the new one open. */
+  /**
+   * Replaces the editor for a new definition with one that opens its own drawer; `saved` is set
+   * once, to keep the new one open.
+   */
   renderCreate?: (actions: {
     close: () => void;
     onCreated: (saved?: T) => void;
@@ -118,20 +175,31 @@ const OntologyDefinitionList = <
   >
 >({
   ontology,
-  canCreate,
+  canCreate: canCreateProp,
+  isReadOnly = false,
+  totalCount,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
   definitionType,
   items,
   isError,
   onRetry,
   onChanged,
   columns,
+  hideNameColumn,
+  rowClassName,
+  renderDetail,
+  actions,
   toolbar,
+  banner,
   summary,
   filterKey,
   onOpen,
   children,
   renderCreate,
 }: OntologyDefinitionListProps<T>) => {
+  const canCreate = editorCanEdit(isReadOnly, true, canCreateProp, false);
   const { t } = useTranslation();
   const guard = useOntologyDraftGuard();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
@@ -141,6 +209,19 @@ const OntologyDefinitionList = <
   const pluralLabel = t(`label.${label}-plural`);
   const [page, setPage] = usePageResetOn(filterKey);
   const [selected, setSelected] = useState<T | 'new'>();
+  const startCreate = createAction(
+    canCreateProp,
+    isReadOnly,
+    onRequestCreate,
+    () => guard(() => setSelected('new'))
+  );
+  // Edit entered from View mode's Add opens the create form once permissions allow it.
+  useEffect(() => {
+    if (shouldOpenCreate && canCreate) {
+      setSelected('new');
+      onCreateOpened?.();
+    }
+  }, [shouldOpenCreate, canCreate, onCreateOpened]);
   const [isDeleting, setIsDeleting] = useState(false);
   const definition = selected === 'new' ? undefined : selected;
   const permission = useEntityPermissions(
@@ -153,15 +234,16 @@ const OntologyDefinitionList = <
   );
   if (isError) {
     return (
-      <Alert variant="error">
-        <Box direction="col" gap={2}>
-          {t('server.entity-fetch-error', {
-            entity: pluralLabel,
-          })}
-          <Button color="secondary" onPress={onRetry}>
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={onRetry}>
             {t('label.retry')}
           </Button>
-        </Box>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: pluralLabel,
+        })}
       </Alert>
     );
   }
@@ -225,7 +307,8 @@ const OntologyDefinitionList = <
   };
 
   const renderDeleteAction = () =>
-    definition && permission.canDelete ? (
+    // View mode reads definitions; deleting is an Edit action.
+    definition && permission.canDelete && !isReadOnly ? (
       <ButtonUtility
         aria-label={t('label.delete')}
         color="tertiary"
@@ -244,7 +327,12 @@ const OntologyDefinitionList = <
       key={definition ? definition.id + ':' + definition.version : 'new'}>
       {children(
         definition,
-        selected === 'new' ? canCreate : permission.canEditAll,
+        editorCanEdit(
+          isReadOnly,
+          selected === 'new',
+          canCreate,
+          permission.canEditAll
+        ),
         (saved) => {
           setSelected(saved);
           onChanged?.();
@@ -268,7 +356,7 @@ const OntologyDefinitionList = <
 
   const renderBlockedState = () => {
     if (definition && permission.isLoading) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     if (definition && !permission.hasViewAccess) {
       return (
@@ -284,20 +372,35 @@ const OntologyDefinitionList = <
   // Row editors open in the Studio's right slide-over, beside the list.
   const renderDrawer = (title: string, content: ReactNode) => (
     <OntologyStudioDrawer
-      placement="overlay"
-      testId="ontology-definition-drawer">
+      testId="ontology-definition-drawer"
+      // Unguarded: the drawer runs its own discard prompt first.
+      onInteractOutside={() => setSelected(undefined)}>
       <Box
         align="center"
         className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-4"
-        gap={2}>
-        <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Typography color="secondary" size="text-sm">
+        gap={3}>
+        {/* The design gives a constraint a shield tile and puts its ontology under the title. */}
+        {definitionType === 'axiom' ? (
+          <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:shadow-xs">
+            <Shield01 aria-hidden className="tw:size-5 tw:text-fg-secondary" />
+          </span>
+        ) : null}
+        <Box
+          className={classNames(
+            'tw:min-w-0 tw:flex-1',
+            definitionType === 'axiom' && 'tw:flex-col-reverse'
+          )}
+          direction="col">
+          <Typography
+            color="secondary"
+            ellipsis={{ tooltip: true }}
+            size="text-sm">
             {t('label.in-entity', { entity: getEntityName(ontology) })}
           </Typography>
           <Typography
             ellipsis
             as="h2"
-            className="not-prose tw:m-0"
+            className="not-prose tw:m-0 tw:text-primary"
             size="text-lg"
             weight="semibold">
             {title}
@@ -326,10 +429,8 @@ const OntologyDefinitionList = <
       return null;
     }
     if (selected === 'new' && renderCreate) {
-      return renderDrawer(
-        t('label.add-entity', { entity: entityText }),
-        renderCreateForm(renderCreate)
-      );
+      // Wrapping it in this drawer too stacked an empty drawer over the form.
+      return renderCreateForm(renderCreate);
     }
     const blocked = renderBlockedState();
     if (blocked) {
@@ -380,69 +481,131 @@ const OntologyDefinitionList = <
   const openRow = (item: T) =>
     guard(() => (onOpen ? onOpen(item) : setSelected(item)));
 
+  const toRows = (page: readonly T[]) =>
+    page.flatMap((item) => {
+      const detail = renderDetail?.(item, openRow);
+
+      return detail
+        ? [
+            { id: item.id, item },
+            { id: `${item.id}-detail`, item, detail },
+          ]
+        : [{ id: item.id, item }];
+    });
+
+  const renderNameCell = (item: T) => (
+    <Table.Cell className={CELL_PADDING}>
+      <Box align="center" className="tw:min-w-0 tw:overflow-hidden" gap={2}>
+        {definitionType === 'concept' ? (
+          <span
+            aria-hidden
+            className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
+          />
+        ) : null}
+        <Button
+          ellipsis
+          className="tw:min-w-0 tw:max-w-full tw:overflow-hidden"
+          color="link-gray"
+          size="sm"
+          onPress={() => openRow(item)}>
+          <span className="tw:font-semibold tw:text-primary">
+            {getEntityName(item)}
+          </span>
+        </Button>
+      </Box>
+    </Table.Cell>
+  );
+
+  const renderRow = ({ id, item, detail }: ReturnType<typeof toRows>[0]) =>
+    detail ? (
+      // The detail sits on the table surface; only the definition row carries its tint.
+      <Table.Row id={id}>
+        <Table.Cell
+          className={CELL_PADDING}
+          colSpan={columns.length + (hideNameColumn ? 0 : 1)}>
+          {detail}
+        </Table.Cell>
+      </Table.Row>
+    ) : (
+      <Table.Row
+        className={rowClassName?.(item)}
+        id={id}
+        onAction={() => openRow(item)}>
+        {hideNameColumn ? null : renderNameCell(item)}
+        {columns.map((column) => (
+          <Table.Cell className={columnClassName(column)} key={column.id}>
+            {column.render(item)}
+          </Table.Cell>
+        ))}
+      </Table.Row>
+    );
+
+  // The shared placeholders, as the glossary terms table uses: nothing yet, or nothing matching.
+  const renderEmpty = () => (
+    <div
+      className="tw:relative tw:min-h-80"
+      data-testid={`ontology-${definitionType}-empty`}>
+      {totalCount ? (
+        <NoFilteredResultsPlaceholder
+          description={t('message.ontology-definitions-no-match', {
+            entity: pluralLabel.toLocaleLowerCase(),
+          })}
+        />
+      ) : (
+        // Without an Add (a published release, or no permission) "Add the first…" would mislead.
+        <NoDataPlaceholder
+          description={
+            startCreate
+              ? t('message.ontology-definitions-empty-description', {
+                  entity: entityText,
+                })
+              : undefined
+          }
+          footer={
+            startCreate ? (
+              <Button
+                color="primary"
+                data-testid={`ontology-empty-add-${definitionType}`}
+                iconLeading={Plus}
+                size="sm"
+                onPress={startCreate}>
+                {t('label.add-entity', { entity: entityText })}
+              </Button>
+            ) : undefined
+          }
+          title={t('label.no-entity', { entity: pluralLabel })}
+        />
+      )}
+    </div>
+  );
+
   const renderTable = (rows: readonly T[]) => (
     <TableCard.Root
       data-testid={`ontology-definition-group-${definitionType}`}
       size="sm">
       <Table aria-label={pluralLabel} className="tw:table-fixed" size="sm">
         <Table.Header>
-          <Table.Head
-            isRowHeader
-            className={`${CELL_PADDING} tw:w-44`}
-            id="name"
-            label={t('label.name')}
-          />
+          {hideNameColumn ? null : (
+            <Table.Head
+              isRowHeader
+              className={`${CELL_PADDING} tw:w-44`}
+              id="name"
+              label={t('label.name')}
+            />
+          )}
           {columns.map((column) => (
             <Table.Head
               align={column.align}
               className={columnClassName(column)}
               id={column.id}
+              isRowHeader={column.isRowHeader}
               key={column.id}
               label={column.label}
             />
           ))}
         </Table.Header>
-        <Table.Body
-          items={rows}
-          renderEmptyState={() => (
-            <div className="tw:m-4 tw:rounded-lg tw:bg-secondary_alt tw:p-4">
-              <Typography as="p" size="text-sm" weight="medium">
-                {t('label.no-entity', { entity: pluralLabel })}
-              </Typography>
-            </div>
-          )}>
-          {(item) => (
-            <Table.Row id={item.id} onAction={() => openRow(item)}>
-              <Table.Cell className={CELL_PADDING}>
-                <Box
-                  align="center"
-                  className="tw:min-w-0 tw:overflow-hidden"
-                  gap={2}>
-                  {definitionType === 'concept' ? (
-                    <span
-                      aria-hidden
-                      className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
-                    />
-                  ) : null}
-                  <Button
-                    ellipsis
-                    className="tw:min-w-0 tw:max-w-full tw:overflow-hidden"
-                    color="link-gray"
-                    size="sm"
-                    onPress={() => openRow(item)}>
-                    <span className="tw:font-semibold tw:text-primary">
-                      {getEntityName(item)}
-                    </span>
-                  </Button>
-                </Box>
-              </Table.Cell>
-              {columns.map((column) => (
-                <Table.Cell className={columnClassName(column)} key={column.id}>
-                  {column.render(item)}
-                </Table.Cell>
-              ))}
-            </Table.Row>
-          )}
+        <Table.Body items={toRows(rows)} renderEmptyState={renderEmpty}>
+          {renderRow}
         </Table.Body>
       </Table>
       {lastPage > 0 ? (
@@ -471,21 +634,23 @@ const OntologyDefinitionList = <
             {summary}
           </Typography>
         ) : null}
-        {canCreate && (
+        {actions}
+        {startCreate && (
           <Button
-            color={definitionType === 'axiom' ? 'primary' : 'secondary'}
+            color="primary"
             data-testid={`ontology-add-${definitionType}`}
             iconLeading={Plus}
             size="sm"
-            onPress={() => guard(() => setSelected('new'))}>
+            onPress={startCreate}>
             {t('label.add-entity', { entity: entityText })}
           </Button>
         )}
       </Box>
+      {banner}
       {items ? (
         renderTable(pageOf(items, currentPage))
       ) : (
-        <Typography role="status">{t('label.loading')}</Typography>
+        <Loader size="small" />
       )}
       {renderEditor()}
     </Box>

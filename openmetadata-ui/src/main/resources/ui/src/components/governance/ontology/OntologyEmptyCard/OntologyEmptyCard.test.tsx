@@ -25,12 +25,12 @@ describe('OntologyEmptyCard', () => {
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
-  it('frames the copy in a centred elevated card the canvas can pan around', () => {
+  it('centres the copy on the canvas without a card surface so the canvas can pan around it', () => {
     render(<OntologyEmptyCard canAdd onAdd={jest.fn()} />);
     const card = screen.getByTestId('ontology-empty-card');
 
-    expect(card).toHaveClass('tw:shadow-md', 'tw:bg-surface', 'tw:w-85');
-    expect(card).toHaveClass('tw:pointer-events-auto');
+    expect(card).toHaveClass('tw:w-85', 'tw:pointer-events-auto');
+    expect(card.className).not.toMatch(/shadow|bg-/);
     expect(card.parentElement).toHaveClass(
       'tw:pointer-events-none',
       'tw:items-center',

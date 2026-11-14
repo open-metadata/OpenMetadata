@@ -27,6 +27,7 @@ import {
 } from '../../../../generated/api/data/createOntologyConcept';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
+import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 
 export interface OntologyConceptFormValues {
   name: string;
@@ -60,7 +61,10 @@ export const conceptFormValues = (
   })),
   conceptMappings: (concept.conceptMappings ?? []).map((mapping) => ({
     conceptIri: mapping.conceptIri,
-    mappingType: { id: mapping.mappingType, label: mapping.mappingType },
+    mappingType: {
+      id: mapping.mappingType,
+      label: mappingTypeLabel(mapping.mappingType),
+    },
     schemeIri: mapping.schemeIri ?? '',
     source: mapping.source ?? '',
   })),
@@ -123,7 +127,7 @@ export const mappingFormFields = (
       isDisabled: disabled,
       options: Object.values(ConceptMappingType).map((id) => ({
         id,
-        label: id,
+        label: mappingTypeLabel(id),
       })),
     },
   },

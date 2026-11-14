@@ -229,12 +229,34 @@ const openData = async (
   ontology: Ontology,
   concept?: OntologyConcept
 ) => {
-  await page.goto(
-    `/governance/ontology?ontology=${ontology.id}${
-      concept ? `&concept=${concept.id}` : ''
-    }`
-  );
+  // A concept in the URL opens its drawer over the Model/Data switch, so Data is opened first and
+  // the concept is picked there, as a person reaches it.
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await page.getByTestId('ontology-graph-mode-data').click();
+  if (concept) {
+    await pickConcept(page, concept);
+  }
+};
+
+const pickConcept = async (page: Page, concept: OntologyConcept) => {
+  const chip = page.getByTestId('ontology-data-concept-chip');
+  const trigger = page.getByTestId('ontology-data-concept-picker-trigger');
+  // Data remembers the last pick per ontology, so a reload can land on it already picked.
+  await expect(chip.or(trigger)).toBeVisible();
+  if (await chip.isVisible()) {
+    await expect(chip).toContainText(concept.name);
+
+    return;
+  }
+  await trigger.click();
+  await page.getByTestId(`ontology-data-concept-option-${concept.id}`).click();
+  await expect(page.getByTestId('ontology-data-concept-chip')).toContainText(
+    concept.name
+  );
+  // Picking opens the concept's drawer over the right of the canvas; Data keeps the pick once it closes.
+  const inspector = page.getByTestId('ontology-concept-inspector');
+  await inspector.getByTestId('ontology-concept-close').click();
+  await expect(inspector).toHaveCount(0);
 };
 
 const assetRow = (page: Page, table: TableClass) =>
@@ -383,6 +405,8 @@ test.describe(
           empty.getByTestId('ontology-data-link-asset')
         ).toBeVisible();
         await expect(page.getByText(/0 of 0 properties bound/)).toHaveCount(0);
+        // Picking never changes the mode; only Link data asset or Edit does.
+        await expect(page).not.toHaveURL(/mode=edit/);
         await page.screenshot({ path: `${SCREENSHOTS}/g17-empty.png` });
       } finally {
         await cleanUp(api, { ontology, tables: [] });
@@ -425,8 +449,8 @@ test.describe(
         await bindTable(api, concept, table, linked.revision, [
           { property, column },
         ]);
-        await page.reload();
-        await page.getByTestId('ontology-graph-mode-data').click();
+        // A reload reopens the concept's drawer over the Model/Data switch.
+        await openData(page, ontology, concept);
 
         const toggle = page.getByTestId(/^ontology-data-asset-columns-toggle-/);
         await toggle.click();
@@ -689,9 +713,10 @@ test.describe(
         await bindTable(api, concept, table, 0);
         taskId = await publish(api, reviewerPage, ontology);
         await page.goto(
-          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}&version=published`
+          `/governance/ontology?ontology=${ontology.id}&version=published`
         );
         await page.getByTestId('ontology-graph-mode-data').click();
+        await pickConcept(page, concept);
 
         await assetRow(page, table).click();
         await expect(

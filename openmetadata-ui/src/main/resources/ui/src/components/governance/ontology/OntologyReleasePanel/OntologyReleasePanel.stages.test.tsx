@@ -36,6 +36,7 @@ import {
   LogicalCheck,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
@@ -69,6 +70,34 @@ jest.mock('../../../../rest/axiosClient', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+// The shared Users/Teams picker owns its own search; a test picks by setting `mockReviewerPick`.
+let mockReviewerPick: (owner: EntityReference[]) => EntityReference[] = (
+  owner
+) => owner;
+jest.mock(
+  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: ({
+      children,
+      owner = [],
+      onUpdate,
+    }: {
+      children: React.ReactNode;
+      owner?: EntityReference[];
+      onUpdate: (next: EntityReference[]) => void;
+    }) => (
+      <div>
+        {children}
+        <button
+          data-testid="reviewer-picker-pick"
+          type="button"
+          onClick={() => onUpdate(mockReviewerPick(owner))}>
+          pick
+        </button>
+      </div>
+    ),
+  })
+);
 const get = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -306,6 +335,17 @@ const setStage = (stage: Stage) => {
   }
 };
 
+/** The configured reviewer whose name matches, from the Reviewers card's list. */
+const addReviewerButton = () =>
+  screen.findByTestId('ontology-release-add-reviewer');
+
+const reviewerItem = (name: RegExp) =>
+  Array.from(
+    screen
+      .queryByTestId('ontology-release-reviewer-list')
+      ?.querySelectorAll('li') ?? []
+  ).find((item) => name.test(item.textContent ?? '')) ?? null;
+
 it('keeps independent reviewer configuration and the review stage available in AI mode', async () => {
   (useIsAiMode as jest.Mock).mockReturnValue(true);
   setStage(Stage.Draft);
@@ -415,9 +455,7 @@ it.each([undefined, null, { unexpected: true }])(
     Object.assign(ontology.publicationStatus, { reviewLock: lock });
     await renderPanel();
 
-    expect(
-      screen.getByRole('combobox', { name: /label.add-reviewer/ })
-    ).toBeDisabled();
+    expect(await addReviewerButton()).toBeDisabled();
     expect(
       screen.getByText('message.ontology-review-lock-unavailable')
     ).toBeVisible();
@@ -440,9 +478,7 @@ it('locks the latest Draft settings using an older open review from the owner pr
   expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
     'label.draft'
   );
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeDisabled();
+  expect(await addReviewerButton()).toBeDisabled();
   expect(
     screen.getByText('message.ontology-review-settings-locked')
   ).toBeVisible();
@@ -549,74 +585,77 @@ it.each([false, true])(
   }
 );
 
-const configureReviewerSearch = () => {
-  const previous = get.getMockImplementation();
-  get.mockImplementation(async (url, config) => {
-    if (url.startsWith('/search/query')) {
-      const teams =
-        (config?.params as { index?: string } | undefined)?.index === 'team';
-      const entries = teams
-        ? [
-            {
-              id: id(8),
-              name: 'review-team',
-              displayName: 'Review team',
-              teamType: 'Group',
-            },
-          ]
-        : [
-            { id: id(2), name: 'editor', displayName: 'Current editor' },
-            { id: id(3), name: 'reviewer', displayName: 'Existing reviewer' },
-            { id: id(6), name: 'author', displayName: 'Capture author' },
-            { id: id(7), name: 'new-reviewer', displayName: 'New reviewer' },
-          ];
+const newReviewer = (): EntityReference => ({
+  id: id(7),
+  type: 'user',
+  name: 'new-reviewer',
+  displayName: 'New reviewer',
+});
 
-      return {
-        data: {
-          hits: {
-            hits: entries.map((entry) => ({ _source: entry })),
-            total: { value: entries.length },
-          },
-        },
-      };
-    }
-    if (!previous) {
-      throw new Error('Missing fixture');
-    }
-
-    return previous(url, config);
+const pickReviewers = async (
+  pick: (owner: EntityReference[]) => EntityReference[]
+) => {
+  mockReviewerPick = pick;
+  const picker = await screen.findByTestId('reviewer-picker-pick');
+  await act(async () => {
+    fireEvent.click(picker);
   });
 };
 
-const openReviewerSearch = async () => {
-  const input = screen.getByRole('combobox', { name: /label.add-reviewer/ });
-  await act(async () => {
-    input.focus();
-  });
-  await act(async () => {
-    fireEvent.keyDown(input, { key: 'ArrowDown' });
+const addNewReviewer = () =>
+  pickReviewers((owner) => [...owner, newReviewer()]);
+
+const applyPatchedOntology = (version: number) =>
+  (
+    APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
+  ).mockImplementation(async (_url, operations) => {
+    ontology = {
+      ...applyPatch(
+        ontology,
+        JSON.parse(JSON.stringify(operations)) as Operation[],
+        true,
+        false
+      ).newDocument,
+      version,
+    };
+
+    return { data: ontology };
   });
 
-  return input;
-};
-
-it('excludes caller, capture author, existing reviewers and teams when users are selected', async () => {
-  configureReviewerSearch();
+it('drops the caller and the capture author from a reviewer pick', async () => {
+  applyPatchedOntology(0.2);
   await renderPanel();
-  await openReviewerSearch();
+  await pickReviewers((owner) => [
+    ...owner,
+    { id: id(2), type: 'user', name: 'editor' },
+    { id: id(6), type: 'user', name: 'author' },
+    newReviewer(),
+  ]);
 
-  expect(
-    await screen.findByRole('option', { name: /New reviewer/ })
-  ).toBeVisible();
-  expect(
-    screen.queryByRole('option', {
-      name: /Current editor|Capture author|Existing reviewer|Review team/,
-    })
-  ).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([id(3), id(7)])
+  );
+});
+
+it('keeps an already configured reviewer who is the caller when adding another', async () => {
+  ontology.reviewers = [
+    { id: id(2), type: 'user', name: 'editor' },
+    { id: id(3), type: 'user', name: 'reviewer' },
+  ];
+  applyPatchedOntology(0.2);
+  await renderPanel();
+  await addNewReviewer();
+
+  await waitFor(() =>
+    expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([
+      id(2),
+      id(3),
+      id(7),
+    ])
+  );
 });
 
 it('persists user addition and keyboard removal with the current ontology version test', async () => {
-  configureReviewerSearch();
   const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
   patch.mockImplementation(async (_url, operations) => {
     ontology = {
@@ -632,12 +671,7 @@ it('persists user addition and keyboard removal with the current ontology versio
     return { data: ontology };
   });
   const mounted = await renderPanel();
-  await openReviewerSearch();
-  await act(async () => {
-    fireEvent.click(
-      await screen.findByRole('option', { name: /New reviewer/ })
-    );
-  });
+  await addNewReviewer();
 
   expect(patch.mock.calls.map(([, body]) => body)).toEqual([
     [
@@ -666,14 +700,16 @@ it('persists user addition and keyboard removal with the current ontology versio
   await waitFor(() =>
     expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([id(3), id(7)])
   );
-  const tags = within(
+  const list = within(
     screen.getByTestId('ontology-release-reviewers')
-  ).getByRole('grid', { name: 'label.reviewers' });
-  const row = within(tags).getByRole('row', { name: /New reviewer/ });
-  await waitFor(() => expect(row).not.toHaveAttribute('aria-disabled', 'true'));
+  ).getByRole('list', { name: 'label.reviewers' });
+  const remove = await within(
+    within(list).getByText('New reviewer').closest('li') as HTMLElement
+  ).findByRole('button');
   await act(async () => {
-    row.focus();
-    fireEvent.keyDown(row, { key: 'Delete' });
+    remove.focus();
+    fireEvent.keyDown(remove, { key: 'Enter' });
+    fireEvent.keyUp(remove, { key: 'Enter' });
   });
   await waitFor(() => expect(ontology.reviewers).toHaveLength(1));
 
@@ -687,120 +723,29 @@ it('persists user addition and keyboard removal with the current ontology versio
   await renderPanel();
 
   expect(
-    within(screen.getByTestId('ontology-release-reviewers')).queryByRole(
-      'row',
-      { name: /New reviewer/ }
+    within(screen.getByTestId('ontology-release-reviewer-list')).queryByText(
+      'New reviewer'
     )
   ).not.toBeInTheDocument();
 });
 
-it('keeps the reviewer list closed after a pick while the addition saves', async () => {
-  configureReviewerSearch();
-  let finishPatch: () => void = () => undefined;
-  (
-    APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
-  ).mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finishPatch = () => resolve({ data: ontology });
-      })
-  );
-  await renderPanel();
-  const input = await openReviewerSearch();
-  fireEvent.change(input, { target: { value: 'new' } });
-  const option = await screen.findByRole('option', { name: /New reviewer/ });
-  await waitFor(() =>
-    expect(option).not.toHaveAttribute('aria-disabled', 'true')
-  );
-  await act(async () => {
-    fireEvent.click(option);
-  });
-
-  // Disabling the focused input blurs it, and focus restored after the save
-  // reopened the list over the dialog.
-  expect(input).toHaveValue('');
-  expect(input).toHaveFocus();
-  expect(input).not.toBeDisabled();
-  expect(input).toHaveAttribute('readonly');
-  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-
-  await act(async () => {
-    finishPatch();
-  });
-
-  expect(input).toHaveFocus();
-  expect(input).not.toHaveAttribute('readonly');
-  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-});
-
-it('keeps the reviewer list open from focus until the first search returns', async () => {
-  configureReviewerSearch();
-  const search = get.getMockImplementation();
-  let releaseSearch: () => void = () => undefined;
-  const searchGate = new Promise<void>((resolve) => {
-    releaseSearch = resolve;
-  });
-  get.mockImplementation(async (url, config) => {
-    if (!search) {
-      throw new Error('Missing fixture');
-    }
-    if (url.startsWith('/search/query')) {
-      await searchGate;
-    }
-
-    return search(url, config);
-  });
-  await renderPanel();
-  const input = screen.getByRole('combobox', { name: /label.add-reviewer/ });
-  await act(async () => {
-    input.focus();
-  });
-
-  // Closing the empty list here raced text typed right after the focus,
-  // which then never reopened it.
-  expect(screen.getByRole('listbox')).toHaveTextContent('label.loading');
-
-  fireEvent.change(input, { target: { value: 'new' } });
-  await act(async () => {
-    releaseSearch();
-  });
-
-  expect(
-    await screen.findByRole('option', { name: /New reviewer/ })
-  ).toBeInTheDocument();
-});
-
-it('allows one group team with All and disables adding another entry', async () => {
+it('saves one group team as the only reviewer and lets it use All', async () => {
   ontology.reviewers = [];
-  configureReviewerSearch();
-  (
-    APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
-  ).mockImplementation(async (_url, operations) => {
-    ontology = {
-      ...applyPatch(
-        ontology,
-        JSON.parse(JSON.stringify(operations)) as Operation[],
-        true,
-        false
-      ).newDocument,
-      version: 0.2,
-    };
-
-    return { data: ontology };
-  });
+  applyPatchedOntology(0.2);
   await renderPanel();
-  await openReviewerSearch();
-  await act(async () => {
-    fireEvent.click(await screen.findByRole('option', { name: /Review team/ }));
-  });
+  await pickReviewers(() => [
+    {
+      id: id(8),
+      type: 'team',
+      name: 'review-team',
+      displayName: 'Review team',
+    },
+  ]);
 
   await waitFor(() =>
     expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([id(8)])
   );
 
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeDisabled();
   expect(screen.getByText('message.ontology-one-team-reviewer')).toBeVisible();
 
   await act(async () => {
@@ -816,7 +761,6 @@ it('allows one group team with All and disables adding another entry', async () 
 });
 
 it('refreshes and shows an inline conflict when another editor locks settings during PATCH', async () => {
-  configureReviewerSearch();
   (
     APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
   ).mockImplementation(async () => {
@@ -834,84 +778,14 @@ it('refreshes and shows an inline conflict when another editor locks settings du
     throw { isAxiosError: true, response: { status: 409 } };
   });
   await renderPanel();
-  await openReviewerSearch();
-  await act(async () => {
-    fireEvent.click(
-      await screen.findByRole('option', { name: /New reviewer/ })
-    );
-  });
+  await addNewReviewer();
 
   expect(
     screen.getByText('message.ontology-review-settings-conflict')
   ).toBeVisible();
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeDisabled();
-  expect(
-    within(screen.getByTestId('ontology-release-reviewers')).queryByRole(
-      'row',
-      { name: /New reviewer/ }
-    )
-  ).not.toBeInTheDocument();
+  expect(await addReviewerButton()).toBeDisabled();
+  expect(reviewerItem(/New reviewer/)).toBeNull();
   expect(ontology.reviewers).toHaveLength(1);
-});
-
-it('shows a failed reviewer search and retries without treating it as an empty result', async () => {
-  configureReviewerSearch();
-  const previous = get.getMockImplementation();
-  let denied = true;
-  get.mockImplementation(async (url, config) => {
-    if (denied && url.startsWith('/search/query')) {
-      throw new Error('Search unavailable');
-    }
-    if (!previous) {
-      throw new Error('Missing fixture');
-    }
-
-    return previous(url, config);
-  });
-  await renderPanel();
-  await openReviewerSearch();
-  const reviewers = screen.getByTestId('ontology-release-reviewers');
-
-  expect(within(reviewers).getByRole('alert')).toHaveTextContent(
-    'message.ontology-reviewer-search-unavailable'
-  );
-  expect(
-    screen.queryByRole('option', { name: /New reviewer/ })
-  ).not.toBeInTheDocument();
-
-  denied = false;
-  await act(async () => {
-    fireEvent.click(
-      within(reviewers).getByRole('button', { name: 'label.retry' })
-    );
-  });
-  await openReviewerSearch();
-
-  expect(
-    await screen.findByRole('option', { name: /New reviewer/ })
-  ).toBeVisible();
-  expect(APIClient.patch).not.toHaveBeenCalled();
-});
-
-it('does not select retained search results while the next input is pending', async () => {
-  configureReviewerSearch();
-  await renderPanel();
-  const input = await openReviewerSearch();
-
-  expect(
-    await screen.findByRole('option', { name: /New reviewer/ })
-  ).toBeVisible();
-
-  fireEvent.change(input, { target: { value: 'new term' } });
-  const retained = screen.getByRole('option', { name: /New reviewer/ });
-
-  expect(retained).toHaveAttribute('aria-disabled', 'true');
-
-  fireEvent.click(retained);
-
-  expect(APIClient.patch).not.toHaveBeenCalled();
 });
 
 it('renders a fresh working Draft and the initial semantic version without a captured candidate', async () => {
@@ -1020,15 +894,13 @@ it('clears visible reviewers and assignees when another user cannot read this on
   });
 
   expect(screen.queryAllByText('second reviewer')).toHaveLength(0);
-  expect(
-    screen.queryByRole('row', { name: /reviewer/ })
-  ).not.toBeInTheDocument();
+  expect(reviewerItem(/reviewer/)).toBeNull();
 });
 
 it('clears retained reviewer names when the panel changes to a denied ontology', async () => {
   const mounted = await renderPanel();
 
-  expect(screen.getByRole('row', { name: /reviewer/ })).toBeVisible();
+  expect(reviewerItem(/reviewer/)).toBeVisible();
 
   get.mockRejectedValue({ isAxiosError: true, response: { status: 403 } });
   await act(async () => {
@@ -1043,9 +915,7 @@ it('clears retained reviewer names when the panel changes to a denied ontology',
     );
   });
 
-  expect(
-    screen.queryByRole('row', { name: /reviewer/ })
-  ).not.toBeInTheDocument();
+  expect(reviewerItem(/reviewer/)).toBeNull();
 });
 
 it.each(['projection', 'review'])(
@@ -1139,46 +1009,7 @@ it.each(['projection', 'review'])(
   }
 );
 
-it('clears a pending reviewer search after same-scope denial', async () => {
-  configureReviewerSearch();
-  const mounted = await renderPanel();
-  const picker = screen.getByRole('combobox', { name: /label.add-reviewer/ });
-  fireEvent.change(picker, { target: { value: 'private search' } });
-
-  expect(picker).toHaveValue('private search');
-
-  const originalGet = get.getMockImplementation();
-  let denied = true;
-  get.mockImplementation(async (url, ...args) => {
-    if (denied && url === `/ontologies/${ontology.id}`) {
-      throw { isAxiosError: true, response: { status: 403 } };
-    }
-
-    return originalGet?.(url, ...args);
-  });
-  await act(async () => {
-    await mounted.queryClient.invalidateQueries({
-      queryKey: ['ontology-publication', ontology.id],
-    });
-  });
-  await waitFor(() =>
-    expect(
-      screen.queryByTestId('ontology-release-reviewers')
-    ).not.toBeInTheDocument()
-  );
-  denied = false;
-  await act(async () => {
-    fireEvent.click(screen.getAllByRole('button', { name: 'label.retry' })[0]);
-  });
-  await waitFor(() =>
-    expect(
-      screen.getByRole('combobox', { name: /label.add-reviewer/ })
-    ).toHaveValue('')
-  );
-});
-
-it('does not transfer an old settings failure or pending search to a new user', async () => {
-  configureReviewerSearch();
+it('does not transfer an old settings failure to a new user', async () => {
   let rejectPatch: ((reason: unknown) => void) | undefined;
   (
     APIClient.patch as jest.MockedFunction<typeof APIClient.patch>
@@ -1189,14 +1020,9 @@ it('does not transfer an old settings failure or pending search to a new user', 
       })
   );
   await renderPanel();
-  await openReviewerSearch();
-  await act(async () => {
-    fireEvent.click(screen.getByRole('option', { name: /New reviewer/ }));
-  });
+  await addNewReviewer();
 
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toHaveAttribute('readonly');
+  expect(await addReviewerButton()).toBeDisabled();
 
   await act(async () => {
     useApplicationStore.setState({
@@ -1204,14 +1030,8 @@ it('does not transfer an old settings failure or pending search to a new user', 
     });
   });
   await waitFor(() =>
-    expect(
-      screen.getByRole('combobox', { name: /label.add-reviewer/ })
-    ).not.toHaveAttribute('readonly')
+    expect(screen.getByTestId('ontology-release-add-reviewer')).toBeEnabled()
   );
-
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeEnabled();
 
   await act(async () => {
     rejectPatch?.({ isAxiosError: true, response: { status: 403 } });
@@ -1220,13 +1040,10 @@ it('does not transfer an old settings failure or pending search to a new user', 
   expect(
     screen.queryByText('message.ontology-review-settings-unavailable')
   ).not.toBeInTheDocument();
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toHaveValue('');
+  expect(await addReviewerButton()).toBeEnabled();
 });
 
 it('reconciles a lost settings response from the fresh stored settings without a second PATCH', async () => {
-  configureReviewerSearch();
   const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
   patch.mockImplementation(async (_url, operations) => {
     ontology = {
@@ -1242,23 +1059,18 @@ it('reconciles a lost settings response from the fresh stored settings without a
     throw new Error('Response lost after commit');
   });
   await renderPanel();
-  await openReviewerSearch();
-  await act(async () => {
-    fireEvent.click(screen.getByRole('option', { name: /New reviewer/ }));
-  });
+  await addNewReviewer();
 
   await waitFor(() =>
     expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([id(3), id(7)])
   );
 
-  expect(screen.getByRole('row', { name: /New reviewer/ })).toBeVisible();
+  expect(reviewerItem(/New reviewer/)).toBeVisible();
   expect(
     screen.queryByText('message.ontology-review-settings-unavailable')
   ).not.toBeInTheDocument();
   expect(patch.mock.calls.length).toBe(1);
-  expect(
-    screen.getByRole('combobox', { name: /label.add-reviewer/ })
-  ).toBeEnabled();
+  expect(await addReviewerButton()).toBeEnabled();
 });
 
 it('shows validation unavailable without disabling the approved current stage', async () => {

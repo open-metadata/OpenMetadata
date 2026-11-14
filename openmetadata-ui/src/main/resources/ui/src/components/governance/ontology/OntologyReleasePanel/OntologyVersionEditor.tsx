@@ -128,7 +128,7 @@ const OntologyVersionEditor = ({
                     key={option}
                     label={`${t(
                       `label.version-${option}`
-                    )} · ${nextSemanticVersion(baseVersion, option)}`}
+                    )} · v${nextSemanticVersion(baseVersion, option)}`}
                     value={option}
                     variant="card"
                   />
@@ -138,9 +138,8 @@ const OntologyVersionEditor = ({
           </Card.Content>
         </Card>
         {beforeNotes}
-        <Card size="sm">
-          <Card.Content>{notesField}</Card.Content>
-        </Card>
+        {/* A plain label and field under the cards, as the design does. */}
+        {notesField}
       </>
     );
   }

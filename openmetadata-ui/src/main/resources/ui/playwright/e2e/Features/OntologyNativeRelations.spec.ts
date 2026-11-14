@@ -150,7 +150,7 @@ const chooseRelationType = async (page: Page, typeIri: string) => {
 const connectByClick = async (page: Page, fromId: string, toId: string) => {
   const ports = await waitForGraphPoints(page, 'port', [fromId]);
   await page.mouse.click(ports[fromId].x, ports[fromId].y);
-  await expect(page.getByTestId('ontology-connect-instruction')).toBeVisible();
+  await expect(page.getByTestId('ontology-connection-line')).toBeAttached();
   const nodes = await readGraphPoints(page, 'node');
   await page.mouse.click(nodes[toId].x, nodes[toId].y);
 };
@@ -385,7 +385,8 @@ test.describe(
               new URL(response.url()).pathname === '/api/v1/ontologyAxioms' &&
               response.request().method() === 'POST'
           );
-          await dialog.getByTestId('relationship-type-submit').click();
+          // The footer actions sit outside the dialog's content box.
+          await page.getByTestId('relationship-type-submit').click();
           const axiom = await okJson<OntologyAxiom>(
             await axiomCreated,
             'Create the custom relation'
@@ -587,10 +588,10 @@ test.describe(
             'aria-selected',
             'true'
           );
-          await page
-            .getByTestId('ontology-concept-inspector')
-            .getByRole('button', { name: 'Close' })
-            .click();
+          // Pressing the mode tab, outside the drawer, closed Alpha's drawer.
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
           const empty = await findEmptyCanvasPoint(page, 160, {
             besideDrawer: true,
           });

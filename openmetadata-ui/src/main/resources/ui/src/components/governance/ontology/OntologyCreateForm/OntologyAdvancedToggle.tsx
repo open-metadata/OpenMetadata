@@ -19,6 +19,8 @@ import { useTranslation } from 'react-i18next';
 
 interface OntologyAdvancedToggleProps {
   readonly controls: string;
+  /** The panel's own fields differ from a dialog's ID, IRI and namespace. */
+  readonly hideHint?: boolean;
   readonly isOpen: boolean;
   readonly testId: string;
   readonly onToggle: () => void;
@@ -27,6 +29,7 @@ interface OntologyAdvancedToggleProps {
 /** The "› Advanced  ID, IRI, namespace, layer" disclosure shared by the create and settings dialogs. */
 const OntologyAdvancedToggle = ({
   controls,
+  hideHint,
   isOpen,
   testId,
   onToggle,
@@ -46,9 +49,11 @@ const OntologyAdvancedToggle = ({
       <Typography size="text-sm" weight="medium">
         {t('label.advanced')}
       </Typography>
-      <Typography color="quaternary" size="text-sm">
-        {t('message.ontology-advanced-fields')}
-      </Typography>
+      {hideHint ? null : (
+        <Typography color="quaternary" size="text-sm">
+          {t('message.ontology-advanced-fields')}
+        </Typography>
+      )}
     </button>
   );
 };

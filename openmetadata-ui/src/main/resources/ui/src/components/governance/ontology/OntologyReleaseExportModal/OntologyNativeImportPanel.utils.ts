@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isAxiosError } from 'axios';
 import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import { CreateOntologyChangeSet } from '../../../../generated/api/data/createOntologyChangeSet';
 import {
@@ -27,6 +28,7 @@ import {
   previewNativeOntologyImport,
   previewNativeOntologyImportWithoutTarget,
 } from '../../../../rest/ontologyAPI';
+import { STUDIO_VERSION_PARAM } from '../../../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
@@ -72,7 +74,8 @@ export type NativeImportParse =
       /** Ids of the items the user keeps ticked; only NEW and UPDATE items can be. */
       selection: ReadonlySet<string>;
     }
-  | { kind: 'failed'; message: string };
+  /** `isFileRejected`: the server refused the file itself, so parsing it again fails the same way. */
+  | { kind: 'failed'; message: string; isFileRejected?: boolean };
 
 export interface NativeImportState {
   readonly fileId: number;
@@ -97,7 +100,12 @@ export type NativeImportAction =
       summary: NativeOntologyImportSummary;
       changeSet?: CreateOntologyChangeSet;
     }
-  | { type: 'parseFailed'; parseId: number; message: string }
+  | {
+      type: 'parseFailed';
+      parseId: number;
+      message: string;
+      isFileRejected?: boolean;
+    }
   | {
       type: 'selectionChanged';
       parseId: number;
@@ -305,7 +313,14 @@ const reduceParse = (
         : state;
     default:
       return action.parseId === state.parseId
-        ? { ...state, parse: { kind: 'failed', message: action.message } }
+        ? {
+            ...state,
+            parse: {
+              kind: 'failed',
+              message: action.message,
+              isFileRejected: action.isFileRejected,
+            },
+          }
         : state;
   }
 };
@@ -487,6 +502,20 @@ export const nativeImportErrorMessage = (
   return state.parse.kind === 'failed' ? state.parse.message : installError;
 };
 
+/** Whether a failed dry run can be retried: a file the server refused fails again unchanged. */
+export const nativeImportParseFailure = (
+  state: NativeImportState
+): 'rejected' | 'retryable' | undefined => {
+  if (state.parse.kind !== 'failed') {
+    return undefined;
+  }
+  if (state.parse.isFileRejected) {
+    return 'rejected';
+  }
+
+  return state.fileName ? 'retryable' : undefined;
+};
+
 const fileStem = (fileName: string) => {
   const dot = fileName.lastIndexOf('.');
 
@@ -538,6 +567,8 @@ export const landOnImportedOntology = (
   next.delete('concept');
   next.delete('scope');
   next.delete(DRAFT_SEARCH_PARAM);
+  // An import lands in the draft, which the Published view would not show.
+  next.delete(STUDIO_VERSION_PARAM);
 
   return next;
 };
@@ -598,7 +629,13 @@ export const parseNativeImportFile = async (
       changeSet: preview.changeSet,
     });
   } catch (error) {
-    dispatch({ type: 'parseFailed', parseId, message: describe(error) });
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    dispatch({
+      type: 'parseFailed',
+      parseId,
+      message: describe(error),
+      isFileRejected: status !== undefined && status >= 400 && status < 500,
+    });
   }
 };
 
