@@ -51,7 +51,6 @@ import {
   searchEntity,
 } from './AlertsUtil';
 import {
-  getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getConfigHeaderArrayFromObject,
@@ -149,42 +148,6 @@ describe('AlertsUtil tests', () => {
 
     expect(icon).toStrictEqual(
       <Webhook className="tw:text-utility-gray-500" size={16} />
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for Slack', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Slack)).toBe(
-      'label.slack'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for Email', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Email)).toBe(
-      'label.email'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for MSTeam', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.MSTeams)).toBe(
-      'label.ms-team-plural'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for ActivityFeed', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.ActivityFeed)).toBe(
-      'label.activity-feed-plural'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for generic', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Webhook)).toBe(
-      'label.webhook'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for GChat', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.GChat)).toBe(
-      'label.g-chat'
     );
   });
 
