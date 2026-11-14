@@ -25,6 +25,10 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -189,6 +193,38 @@ public class ConfigSourceIT {
           assertThrows(
               ConflictException.class, () -> execute(HttpMethod.PUT, SETTINGS_PATH, update));
       assertEquals(409, rejected.getStatusCode());
+    }
+    assertEquals(stored, dao.getConfigJsonWithKey(APP_CONFIGURATION.value()));
+  }
+
+  /** A client tells this rejection from other conflicts by its error type, not by its wording. */
+  @Test
+  void envModeRejectionNamesItsErrorType() throws Exception {
+    String stored = dao.getConfigJsonWithKey(APP_CONFIGURATION.value());
+    String otherMode = stored != null && stored.contains("\"ai\"") ? "classic" : "ai";
+    String update =
+        MAPPER.writeValueAsString(
+            Map.of(
+                "config_type",
+                APP_CONFIGURATION.value(),
+                "config_value",
+                Map.of("defaultAppMode", otherMode)));
+    HttpRequest put =
+        HttpRequest.newBuilder(URI.create(SdkClients.getServerUrl() + SETTINGS_PATH))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(update))
+            .build();
+    try (AutoCloseable env =
+            ConfigSources.overrideForTest(APP_CONFIGURATION, ConfigSourceMode.ENV);
+        HttpClient http = HttpClient.newHttpClient()) {
+      HttpResponse<String> rejected = http.send(put, HttpResponse.BodyHandlers.ofString());
+
+      assertEquals(409, rejected.statusCode());
+      assertEquals(
+          "SETTINGS_MANAGED_BY_ENVIRONMENT",
+          MAPPER.readTree(rejected.body()).path("errorType").asText(),
+          rejected.body());
     }
     assertEquals(stored, dao.getConfigJsonWithKey(APP_CONFIGURATION.value()));
   }
