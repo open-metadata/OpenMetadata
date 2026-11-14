@@ -275,6 +275,28 @@ describe('Releases tab', () => {
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
+  it('opens an AI release from its version button, with the row menu as its own control', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onSelect = jest.fn();
+    renderHistory([release('ai', '3.0.0', EntityStatus.Approved)], {
+      onSelect,
+    });
+
+    const open = screen.getByTestId('ontology-release-select-ai');
+
+    expect(open.tagName).toBe('BUTTON');
+    expect(open).toHaveTextContent('v3.0.0');
+    expect(open).not.toContainElement(
+      screen.getByTestId('ontology-release-menu-ai')
+    );
+
+    fireEvent.click(open);
+
+    expect(onSelect).toHaveBeenCalledWith('ai');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
   it('opens Compare versions from the AI toolbar and returns to all releases', () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     render(

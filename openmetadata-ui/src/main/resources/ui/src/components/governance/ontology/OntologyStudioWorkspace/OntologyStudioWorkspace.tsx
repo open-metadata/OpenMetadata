@@ -49,8 +49,8 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: (conceptId?: string) => void;
-  /** View mode's Add on an ontology tab: switches to Edit's Ontology surface. */
-  onRequestDefinitionsEdit?: () => void;
+  /** View mode's Add on an ontology tab: switches to Edit's Ontology surface; false when refused. */
+  onRequestDefinitionsEdit?: () => boolean;
   /** View mode's "Show on graph": View's graph with the concept selected. */
   onShowConceptOnGraph?: (conceptId: string) => void;
   onOpenPublication?: () => void;
@@ -127,11 +127,18 @@ const OntologyStudioWorkspace = ({
     onRequestCreate:
       isReadOnly && !releaseId && onRequestDefinitionsEdit
         ? () => {
-            setCreateFor(tab);
-            onRequestDefinitionsEdit();
+            if (onRequestDefinitionsEdit()) {
+              setCreateFor(tab);
+            }
           }
         : undefined,
   });
+  // Edit can still bounce back to View (no edit rights); the intent must not outlive it.
+  useEffect(() => {
+    if (mode === 'view') {
+      setCreateFor(undefined);
+    }
+  }, [mode]);
   const isReadOnlyTabs = showsReadOnlyTabs(mode, viewSurface);
   const tabsReleaseId = isReadOnlyTabs ? releaseId : undefined;
   const { model, graph, relations } = useOntologyStudioModel(

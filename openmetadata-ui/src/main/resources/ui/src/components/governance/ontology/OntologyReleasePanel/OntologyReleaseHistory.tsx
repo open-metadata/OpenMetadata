@@ -723,38 +723,24 @@ const OntologyReleaseHistory = ({
     return (
       <li
         className={classNames(
+          'tw:relative tw:transition-colors tw:hover:bg-primary_hover',
           index > 0 && 'tw:border-t tw:border-secondary',
           status === 'active' &&
             'tw:border-l-3 tw:border-l-utility-success-500 tw:bg-utility-success-50'
         )}
         data-testid="ontology-release-row"
         key={release.id}>
-        {/* The whole row opens the release, as the task list's rows do. */}
-        <Box
-          align="center"
-          aria-label={version}
-          className="tw:cursor-pointer tw:px-5 tw:py-4 tw:transition-colors tw:hover:bg-primary_hover"
-          data-testid={`ontology-release-select-${release.id}`}
-          gap={4}
-          role="button"
-          tabIndex={0}
-          onClick={() => onSelect(release.id)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              onSelect(release.id);
-            }
-          }}>
-          <Typography
-            as="span"
-            className={classNames(
-              'tw:w-28 tw:shrink-0',
-              isMuted ? 'tw:text-quaternary' : 'tw:text-primary'
-            )}
-            size="text-md"
-            weight="medium">
+        <Box align="center" className="tw:px-5 tw:py-4" gap={4}>
+          {/* The version opens the release; its ::after stretches the hit area over the
+              whole row, and the menu sits above it as its own control. */}
+          <Button
+            className="tw:static tw:w-28 tw:shrink-0 tw:justify-start tw:after:absolute tw:after:inset-0"
+            color={isMuted ? 'link-gray' : 'link-primary'}
+            data-testid={`ontology-release-select-${release.id}`}
+            size="md"
+            onPress={() => onSelect(release.id)}>
             {version}
-          </Typography>
+          </Button>
           <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
             <Box align="center" gap={2} wrap="wrap">
               <OntologyReleaseBadges
@@ -794,10 +780,7 @@ const OntologyReleaseHistory = ({
           <div className="tw:w-56 tw:shrink-0">
             <ReleaseApprover release={release} />
           </div>
-          {/* The menu's own clicks and keys stay with the menu, not the row. */}
-          <Box
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}>
+          <Box className="tw:relative">
             <ReleaseRowMenu
               canWithdraw={release.id === withdrawableReleaseId}
               release={release}

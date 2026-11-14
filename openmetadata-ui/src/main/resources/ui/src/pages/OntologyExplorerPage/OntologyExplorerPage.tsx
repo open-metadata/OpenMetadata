@@ -2414,7 +2414,12 @@ const OntologyExplorerContent: React.FC = () => {
           setIsPublicationOpen(true);
         }}
         onRequestCreateConcept={() => guard(handleAddConcept)}
-        onRequestDefinitionsEdit={() => handleModeChange('edit', 'ontology')}
+        onRequestDefinitionsEdit={() => {
+          handleModeChange('edit', 'ontology');
+
+          // A locked draft refuses the switch with a toast.
+          return !nativeAuthoringLocked;
+        }}
         onRequestEdit={(conceptId) => {
           setEditConceptRequest(conceptId);
           handleModeChange('edit', 'graph');
