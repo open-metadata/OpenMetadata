@@ -865,7 +865,6 @@ const OntologyReleasePanel = ({
   const renderReviewers = () => (
     <OntologyReleaseReviewers
       key={scopeKey}
-      scopeKey={scopeKey}
       view={panelView}
       onChange={updateReviewSettings}
       onRefresh={refresh}

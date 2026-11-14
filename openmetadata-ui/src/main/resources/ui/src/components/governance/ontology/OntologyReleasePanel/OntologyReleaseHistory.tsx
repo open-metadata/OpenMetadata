@@ -48,6 +48,8 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import OntologyReleaseBadges from './OntologyReleaseBadges';
 import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseCompare from './OntologyReleaseCompare';
@@ -808,17 +810,18 @@ const OntologyReleaseHistory = ({
       </ol>
     );
 
-  const renderAiEmpty = () =>
+  // The shared empty states, as on the glossary terms table: none yet, or none matching the filter.
+  const renderEmptyState = () =>
     history.isSuccess &&
     matching.length === 0 && (
       <div
-        className="tw:rounded-xl tw:border tw:border-dashed tw:border-secondary tw:px-6 tw:py-10 tw:text-center"
+        className="tw:relative tw:min-h-80"
         data-testid="ontology-release-history-empty">
-        <Typography color="secondary" size="text-sm">
-          {releases.length === 0
-            ? t('message.ontology-no-releases-yet')
-            : t('message.no-data-available')}
-        </Typography>
+        {releases.length === 0 ? (
+          <NoDataPlaceholder title={t('message.ontology-no-releases-yet')} />
+        ) : (
+          <NoFilteredResultsPlaceholder />
+        )}
       </div>
     );
 
@@ -876,19 +879,6 @@ const OntologyReleaseHistory = ({
       </>
     );
 
-  const renderEmpty = () => {
-    if (isAiMode) {
-      return renderAiEmpty();
-    }
-
-    return (
-      history.isSuccess &&
-      matching.length === 0 && (
-        <Typography>{t('message.no-data-available')}</Typography>
-      )
-    );
-  };
-
   if (isAiMode && comparing && ontologyId) {
     return (
       <Box data-testid="ontology-release-history" direction="col" gap={4}>
@@ -913,7 +903,7 @@ const OntologyReleaseHistory = ({
     <Box data-testid="ontology-release-history" direction="col" gap={4}>
       {renderControls()}
       <HistoryLoadStatus history={history} />
-      {renderEmpty()}
+      {renderEmptyState()}
       {isAiMode ? renderAiReleases() : renderClassicReleases()}
       <HistoryPager page={page} pageCount={pageCount} onPage={setPage} />
       <HistoryMore history={history} />

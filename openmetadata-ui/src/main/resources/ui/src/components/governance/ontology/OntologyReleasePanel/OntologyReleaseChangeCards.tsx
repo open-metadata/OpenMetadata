@@ -127,7 +127,7 @@ const ChangeCardSection = ({ kind, rows }: ChangeCard) => {
           className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
           gap={3}
           justify="between">
-          <Typography color="tertiary" size="text-xs">
+          <Typography color="secondary" size="text-xs">
             {t('label.kg-showing-of', {
               shown: shownRows.length,
               total: rows.length,
