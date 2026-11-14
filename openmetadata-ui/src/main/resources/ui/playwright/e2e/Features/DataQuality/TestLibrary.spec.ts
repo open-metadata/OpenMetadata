@@ -21,7 +21,11 @@ import {
 } from '../../../utils/common';
 import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
-import { findSystemTestDefinition } from '../../../utils/testCases';
+import {
+  findSystemTestDefinition,
+  openTestDefinitionDetailsFromLibrary,
+  withTestDefinitionAndTestCase,
+} from '../../../utils/testCases';
 import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -89,6 +93,21 @@ test.describe(
 
       // Verify URL
       await expect(page).toHaveURL(/.*\/test-library/);
+    });
+
+    test('should open a test definition from its name and list its test cases', async ({
+      page,
+    }) => {
+      await withTestDefinitionAndTestCase(
+        page,
+        ({ definitionFqn, testCaseName }) =>
+          openTestDefinitionDetailsFromLibrary(
+            page,
+            '/test-library',
+            definitionFqn,
+            testCaseName
+          )
+      );
     });
 
     test('should display test definitions table with columns', async ({

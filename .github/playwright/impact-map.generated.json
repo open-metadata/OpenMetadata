@@ -5532,6 +5532,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/testCases.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",

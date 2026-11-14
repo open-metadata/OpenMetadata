@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.Include;
@@ -302,6 +303,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String dataProductFqn = getQueryParam("dataProductFqn");
     String followedBy = getQueryParam("followedBy");
     String columnName = getQueryParam("columnName");
+    String testDefinition = getQueryParam("testDefinition");
 
     if (tags != null) {
       String tagsList =
@@ -318,7 +320,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\":{\"tier.tagFQN\":\"%s\"}}",
-              escapeJsonString(tier.toLowerCase(java.util.Locale.ROOT))));
+              escapeJsonString(tier.toLowerCase(Locale.ROOT))));
     }
 
     if (serviceName != null) {
@@ -365,6 +367,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           String.format(
               "{\"term\": {\"%s\": \"%s\"}}",
               FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
+    }
+
+    // ADR:2026-11-12-test-cases-filter-by-test-definition-through-search-list
+    if (testDefinition != null && !testDefinition.isBlank()) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testDefinition.fullyQualifiedName\": \"%s\"}}",
+              escapeJsonString(testDefinition.toLowerCase(Locale.ROOT))));
     }
 
     if (followedBy != null) {

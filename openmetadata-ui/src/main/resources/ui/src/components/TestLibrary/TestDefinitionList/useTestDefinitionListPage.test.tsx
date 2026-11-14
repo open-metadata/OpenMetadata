@@ -823,4 +823,56 @@ describe('useTestDefinitionListPage', () => {
       expect(updatedRow?.displayName).toBe('Edited Row');
     });
   });
+
+  describe('details panel', () => {
+    it('should open a definition, close it, and hand it to the edit form', async () => {
+      const { result } = await renderAndSettle();
+
+      act(() => {
+        result.current.openDetails(MOCK_TEST_DEFINITIONS[0]);
+      });
+
+      expect(result.current.viewedDefinition).toEqual(MOCK_TEST_DEFINITIONS[0]);
+      // The permission payload carries no EditAll, so the panel offers no edit.
+      expect(result.current.canEditViewedDefinition).toBe(false);
+
+      act(() => {
+        result.current.closeDetails();
+      });
+
+      expect(result.current.viewedDefinition).toBeUndefined();
+
+      act(() => {
+        result.current.openDetails(MOCK_TEST_DEFINITIONS[1]);
+      });
+      act(() => {
+        result.current.editFromDetails(MOCK_TEST_DEFINITIONS[1]);
+      });
+
+      expect(result.current.viewedDefinition).toBeUndefined();
+      expect(result.current.isFormVisible).toBe(true);
+      expect(result.current.selectedDefinition).toEqual(
+        MOCK_TEST_DEFINITIONS[1]
+      );
+    });
+
+    it('should offer edit in the panel when the definition grants EditAll', async () => {
+      mockGetEntityPermissionByFqn.mockResolvedValue({
+        ...MOCK_PERMISSION_API_RESPONSE,
+        permissions: [
+          ...MOCK_PERMISSION_API_RESPONSE.permissions,
+          { operation: 'EditAll', access: Access.Allow },
+        ],
+      });
+      const { result } = await renderAndSettle();
+
+      act(() => {
+        result.current.openDetails(MOCK_TEST_DEFINITIONS[0]);
+      });
+
+      await waitFor(() => {
+        expect(result.current.canEditViewedDefinition).toBe(true);
+      });
+    });
+  });
 });

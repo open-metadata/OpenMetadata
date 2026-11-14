@@ -19,6 +19,7 @@ import {
   type TestCaseLastRunBannerStatus,
 } from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
+import { okJson } from './apiResponse';
 import {
   fetchCompletedCsvAsyncJobResult,
   getApiContext,
@@ -1037,4 +1038,114 @@ export const expectRunTestCaseDisabledWithReason = async (
   await reasonTrigger.focus();
 
   await expect(page.getByRole('tooltip')).toHaveText(reason);
+};
+
+/**
+ * Creates a table-level test definition plus one test case that uses it, runs
+ * `check` once the test case search index lists it under that definition (the
+ * details panel reads its linked test cases from that index), and always cleans
+ * up whatever was created, even when a step fails part-way.
+ */
+export const withTestDefinitionAndTestCase = async (
+  page: Page,
+  check: (data: {
+    definitionFqn: string;
+    testCaseName: string;
+  }) => Promise<void>
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  let definitionId: string | undefined;
+
+  try {
+    const definition = await okJson<{ id: string; fullyQualifiedName: string }>(
+      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
+        data: {
+          name: `pwTestDefinitionDetails${uuid()}`,
+          description: 'Playwright test definition details',
+          entityType: 'TABLE',
+          testPlatforms: ['OpenMetadata'],
+        },
+      }),
+      'withTestDefinitionAndTestCase'
+    );
+    definitionId = definition.id;
+    const testCase = await table.createTestCase(apiContext, {
+      testDefinition: definition.fullyQualifiedName,
+      parameterValues: [],
+    });
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/dataQuality/testCases/search/list',
+            { params: { testDefinition: definition.fullyQualifiedName } }
+          );
+
+          return (await response.json()).paging?.total;
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(1);
+
+    await check({
+      definitionFqn: definition.fullyQualifiedName,
+      testCaseName: testCase.name,
+    });
+  } finally {
+    if (table.entityResponseData?.id) {
+      await table.delete(apiContext);
+    }
+    if (definitionId) {
+      await apiContext.delete(
+        `/api/v1/dataQuality/testDefinitions/${definitionId}?hardDelete=true&recursive=true`
+      );
+    }
+    await afterAction();
+  }
+};
+
+/**
+ * Opens the Test Library at `libraryPath`, searches for the definition and
+ * clicks its name, then checks the details panel lists `testCaseName` and
+ * closes it.
+ */
+export const openTestDefinitionDetailsFromLibrary = async (
+  page: Page,
+  libraryPath: string,
+  definitionFqn: string,
+  testCaseName: string
+) => {
+  await page.goto(libraryPath, { waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
+
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+      response.url().includes(`q=${definitionFqn}`)
+  );
+  await page.getByTestId('test-definition-search').fill(definitionFqn);
+  await searchResponse;
+
+  const testCasesResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+      response.url().includes(`testDefinition=${definitionFqn}`)
+  );
+  await page.getByRole('button', { name: definitionFqn, exact: true }).click();
+  await testCasesResponse;
+
+  const panel = page.getByRole('dialog', { name: 'Test Definition' });
+  await expect(panel.getByTestId('test-definition-overview')).toContainText(
+    'Playwright test definition details'
+  );
+  await expect(
+    panel.getByRole('link', { name: testCaseName, exact: true })
+  ).toBeVisible();
+  // The panel opens over the list, so the URL stays on the Test Library.
+  await expect(page).toHaveURL(new RegExp(`${libraryPath}(\\?|$)`));
+
+  await panel.getByRole('button', { name: 'Close' }).click();
+  await expect(panel).not.toBeVisible();
 };
