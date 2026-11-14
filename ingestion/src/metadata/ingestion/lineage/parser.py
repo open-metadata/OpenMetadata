@@ -13,6 +13,7 @@ Lineage Parser configuration
 """
 
 import hashlib
+import re
 import time
 import traceback
 from collections import defaultdict
@@ -73,6 +74,12 @@ logger = ingestion_logger()
 LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
+
+# String literals, quoted names and comments are matched too so that text inside them is never rewritten
+IDENTIFIER_LITERAL = re.compile(
+    r"""(?<![\w$.])identifier\s*\(\s*'([^']+)'\s*\)|'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|/\*.*?\*/""",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
 
 def _sqlglot_dialect(dialect: Dialect) -> DialectType:
@@ -650,6 +657,7 @@ class LineageParser:
         )
 
         clean_query = clean_query.replace("\\n", "\n")
+        clean_query = IDENTIFIER_LITERAL.sub(lambda match: match.group(1) or match.group(0), clean_query)
 
         if insensitive_match(clean_query, r"\s*/\*.*?\*/\s*merge.*into.*?when matched.*?"):
             clean_query = insensitive_replace(
