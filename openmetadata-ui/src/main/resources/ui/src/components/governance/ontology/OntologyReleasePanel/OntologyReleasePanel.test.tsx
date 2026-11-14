@@ -2217,6 +2217,88 @@ describe('OntologyReleasePanel', () => {
     );
   });
 
+  it('shows only the load error, never "No releases yet" beside it, when the publication status cannot be read', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    let statusFails = true;
+    let statusReads = 0;
+    get.mockImplementation(async (url, config) => {
+      const fields = (config?.params as { fields?: string } | undefined)
+        ?.fields;
+      if (
+        url === `/ontologies/${ontology.id}` &&
+        fields?.includes('reviewers')
+      ) {
+        statusReads += 1;
+        if (statusFails) {
+          // The owner answers, but without the publication status the panel needs.
+          return { data: { ...ontology, publicationStatus: undefined } };
+        }
+      }
+      if (url === `/ontologies/${ontology.id}/releases`) {
+        return { data: { data: [], paging: { total: 0 } } };
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'releases');
+
+    const error = await screen.findByTestId(
+      'ontology-publication-status-error'
+    );
+
+    expect(error).toHaveTextContent('server.entity-fetch-error');
+    expect(
+      screen.queryByText('message.ontology-no-releases-yet')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const readsBeforeReload = statusReads;
+    statusFails = false;
+    await act(async () =>
+      fireEvent.click(
+        within(error).getByRole('button', { name: 'label.reload' })
+      )
+    );
+
+    await waitFor(() => expect(statusReads).toBeGreaterThan(readsBeforeReload));
+  });
+
+  it('shows only the load error, never "No unpublished changes" beside it, when the publication status cannot be read', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) => {
+      const fields = (config?.params as { fields?: string } | undefined)
+        ?.fields;
+      if (
+        url === `/ontologies/${ontology.id}` &&
+        fields?.includes('reviewers')
+      ) {
+        return { data: { ...ontology, publicationStatus: undefined } };
+      }
+      if (url.endsWith('/working/diff')) {
+        const page = (await defaultGet?.(url, config)) as {
+          data: Record<string, unknown>;
+        };
+
+        return {
+          data: { ...page.data, data: [], added: 0, modified: 0, deleted: 0 },
+        };
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByTestId('ontology-publication-status-error')
+    ).toHaveTextContent('server.entity-fetch-error');
+    expect(
+      screen.queryByTestId('ontology-working-empty')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('shows the storage-unavailable alert in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     const setItem = jest

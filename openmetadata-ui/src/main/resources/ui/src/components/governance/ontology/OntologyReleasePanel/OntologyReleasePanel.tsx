@@ -39,6 +39,7 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
@@ -1089,8 +1090,37 @@ const OntologyReleasePanel = ({
     ) : null;
   };
 
+  const isStatusUnavailable = () =>
+    state.isError || (!currentStage && panelView.kind !== 'loading');
+  // "No releases yet" or "No unpublished changes" beside a load error contradicts
+  // itself, so the failure takes the whole view.
+  const isEmptyWithStatusError = (isChanges: boolean) => {
+    const isViewEmpty = isChanges
+      ? hasNoChanges
+      : [!selectedId, history.isSuccess, loadedReleases.length === 0].every(
+          Boolean
+        );
+
+    return isViewEmpty && isStatusUnavailable();
+  };
+  const renderStatusError = () => (
+    <div
+      className="tw:relative tw:min-h-80 tw:flex-1"
+      data-testid="ontology-publication-status-error">
+      <SomethingWentWrongPlaceholder
+        title={t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
+        onReload={() => void (state.isError ? state.refetch() : refresh())}
+      />
+    </div>
+  );
+
   const renderAiPanel = () => {
     const isChanges = view === 'changes';
+    if (isEmptyWithStatusError(isChanges)) {
+      return renderStatusError();
+    }
 
     return (
       <Box

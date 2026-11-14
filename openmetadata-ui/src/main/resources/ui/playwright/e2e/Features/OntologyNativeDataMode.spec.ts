@@ -25,8 +25,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
-import { waitForSearchIndexed } from '../../utils/polling';
 import { selectOntologyOption } from '../../utils/ontologyStudio';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
 const MANY_ASSETS = 100;
