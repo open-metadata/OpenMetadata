@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEqual } from 'lodash';
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
@@ -105,6 +105,7 @@ const ConceptRuleFields = ({
   readonly onChange: (patch: Partial<QuickRule>) => void;
 }) => {
   const { t } = useTranslation();
+  const countErrorId = useId();
 
   return (
     <>
@@ -141,6 +142,7 @@ const ConceptRuleFields = ({
               )}
             </Select>
             <Input
+              aria-describedby={problems.count ? countErrorId : undefined}
               isInvalid={Boolean(problems.count)}
               label={t('label.count')}
               type="number"
@@ -161,7 +163,11 @@ const ConceptRuleFields = ({
           </div>
           {/* Under the whole row: the Count column is too narrow to hold a sentence. */}
           {problems.count ? (
-            <Typography color="danger" role="alert" size="text-sm">
+            <Typography
+              color="danger"
+              id={countErrorId}
+              role="alert"
+              size="text-sm">
               {problems.count}
             </Typography>
           ) : null}

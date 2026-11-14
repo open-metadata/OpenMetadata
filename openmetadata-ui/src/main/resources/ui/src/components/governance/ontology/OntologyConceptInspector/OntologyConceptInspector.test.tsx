@@ -2024,7 +2024,9 @@ describe('OntologyConceptInspector relationship authoring', () => {
       fireEvent.change(count, { target: { value: '-1' } });
 
       expect(count).toHaveValue(-1);
-      expect(form).toHaveTextContent('message.ontology-rule-count-negative');
+      expect(count).toHaveAccessibleDescription(
+        'message.ontology-rule-count-negative'
+      );
       expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
 
       fireEvent.change(count, { target: { value: '0' } });
