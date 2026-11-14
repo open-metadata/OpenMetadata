@@ -125,11 +125,12 @@ looks, on the alert, not only in the recent events of a send.
   decrypted; id, status and `enabled` left out). It speaks while the destination's settings still
   match it, so renaming the alert or editing another destination leaves it. A value entered in
   place of one that does not open is stored as new ciphertext, and any other change to the
-  destination changes its settings too: either reads `active` at once, unless its secrets still do not open, until the next send judges
-  the new settings. A stored one without a fingerprint speaks until the next send. A send that failed
-  or waits for a retry keeps its own status and reason, without `configurationUnusable`. An alert
-  list counts every one of them as not sending, except on a switched-off alert or destination,
-  which reads disabled.
+  destination changes its settings too. After such a change the destination reads `active` until
+  the next send tries the new settings, unless its secrets still do not open, which the read
+  reports at once. A stored one without a fingerprint speaks until the next send. A send that
+  failed or waits for a retry keeps its own status and reason, without `configurationUnusable`. An
+  alert list counts every one of them as not sending, except on a switched-off alert or
+  destination, which reads disabled.
 - The status is the server's. `statusDetails` sent with an alert, on a create, a PUT, a PATCH or a
   batch, is dropped before the alert is compared or stored.
 - A user's or team's profile webhook is reported only on the alerts that send to it. When an alert

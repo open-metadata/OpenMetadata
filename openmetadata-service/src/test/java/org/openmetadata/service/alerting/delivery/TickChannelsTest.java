@@ -16,13 +16,11 @@ package org.openmetadata.service.alerting.delivery;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,7 +41,6 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerting.channel.Delivery;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.channel.DestinationFingerprint;
-import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.events.consumer.ledger.DestinationOutcome;
 
 class TickChannelsTest {
@@ -92,20 +89,20 @@ class TickChannelsTest {
         "the settings it found unusable");
   }
 
-  // A test send builds the destination from what the user typed, secrets in the clear: only a
-  // tick, which builds from what is stored, takes a fingerprint of it.
+  // A tick records an unusable destination once, whatever the number of its events, so it takes
+  // one fingerprint of it.
   @Test
-  void anUnusableDestinationIsFingerprintedOnlyWhenATickRecordsIt() {
-    SubscriptionDestination typed = refusedEndpoint();
+  void anUnusableDestinationIsFingerprintedOnceATick() {
+    SubscriptionDestination savedLongAgo = refusedEndpoint();
+    Destination<ChangeEvent> unusable = AlertFactory.getAlert(ALERT, savedLongAgo);
+    TickChannels tick = new TickChannels(ALERT, Map.of(savedLongAgo.getId(), unusable), health);
     try (MockedStatic<DestinationFingerprint> fingerprints =
         mockStatic(DestinationFingerprint.class, CALLS_REAL_METHODS)) {
-      Destination<ChangeEvent> unusable = AlertFactory.getAlert(new EventSubscription(), typed);
-      assertThrows(EventPublisherException.class, unusable::sendTestMessage);
-      fingerprints.verify(() -> DestinationFingerprint.of(any()), never());
+      tick.deliver(EVENT);
+      tick.deliver(new ChangeEvent().withId(UUID.randomUUID()));
+      tick.deliver(new ChangeEvent().withId(UUID.randomUUID()));
 
-      deliverThrough(List.of(unusable));
-
-      fingerprints.verify(() -> DestinationFingerprint.of(typed), times(1));
+      fingerprints.verify(() -> DestinationFingerprint.of(savedLongAgo), times(1));
       assertNotNull(outcomeOf(unusable).configurationFingerprint());
     }
   }

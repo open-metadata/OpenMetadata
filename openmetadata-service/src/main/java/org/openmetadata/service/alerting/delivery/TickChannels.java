@@ -100,7 +100,7 @@ public final class TickChannels implements ChannelDelivery {
         channelIdOf(unserved),
         unserved.cause(),
         unserved.reason(),
-        unusableSettingsOf(unserved));
+        () -> unusableSettingsOf(unserved));
   }
 
   // Taken here, where a tick records it, and from the destination the tick built from, so a save
