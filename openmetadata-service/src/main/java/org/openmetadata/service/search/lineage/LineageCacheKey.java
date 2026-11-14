@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.lineage;
 
+import java.util.Set;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -24,6 +25,12 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
  * - Node depth filter for entity count queries
  * - Edge time window (startTime, endTime in epoch millis) so windowed lineage
  *   queries occupy distinct cache slots
+ * - Layer pagination (layerFrom, layerSize) so paginated lineage queries occupy
+ *   distinct cache slots
+ * - Include-deleted flag so queries with different deleted-entity visibility
+ *   occupy distinct cache slots
+ * - Include-source-fields so queries requesting different node payload fields
+ *   occupy distinct cache slots
  */
 @Value
 @EqualsAndHashCode
@@ -45,6 +52,10 @@ public class LineageCacheKey {
   int paginationDownstreamDepth;
   Long startTime;
   Long endTime;
+  int layerFrom;
+  int layerSize;
+  Boolean includeDeleted;
+  Set<String> includeSourceFields;
 
   /**
    * Creates cache key from lineage request.
@@ -74,7 +85,11 @@ public class LineageCacheKey {
         0,
         0,
         request.getStartTime(),
-        request.getEndTime());
+        request.getEndTime(),
+        request.getLayerFrom() != null ? request.getLayerFrom() : 0,
+        request.getLayerSize() != null ? request.getLayerSize() : 0,
+        request.getIncludeDeleted(),
+        request.getIncludeSourceFields() != null ? request.getIncludeSourceFields() : Set.of());
   }
 
   /**
@@ -89,7 +104,8 @@ public class LineageCacheKey {
         "LineageCacheKey{fqn='%s', up=%d, down=%d, queryFilter='%s', columnFilter='%s',"
             + " preservePaths=%b, direction='%s', isConnectedVia=%b, from=%d, size=%d,"
             + " nodeDepth=%d, includePaginationInfo=%b, paginationUpstreamDepth=%d,"
-            + " paginationDownstreamDepth=%d, startTime=%s, endTime=%s}",
+            + " paginationDownstreamDepth=%d, startTime=%s, endTime=%s, layerFrom=%d,"
+            + " layerSize=%d, includeDeleted=%s, includeSourceFields=%s}",
         fqn,
         upstreamDepth,
         downstreamDepth,
@@ -105,6 +121,10 @@ public class LineageCacheKey {
         paginationUpstreamDepth,
         paginationDownstreamDepth,
         startTime,
-        endTime);
+        endTime,
+        layerFrom,
+        layerSize,
+        includeDeleted,
+        includeSourceFields);
   }
 }
