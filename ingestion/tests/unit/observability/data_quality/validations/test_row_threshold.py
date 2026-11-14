@@ -455,3 +455,31 @@ def test_needs_row_count(parameter_values, compute_passed_failed_row_count, expe
     validator = build_validator(ColumnValuesToBeNotNullValidator, parameter_values, compute_passed_failed_row_count)
 
     assert validator._needs_row_count() is expected
+
+
+@pytest.mark.parametrize("compute_passed_failed_row_count", [False, True])
+def test_in_set_match_enum_folds_row_count_into_one_query(create_sqlite_table, compute_passed_failed_row_count):
+    """`columnValuesToBeInSet` with `matchEnum` computes `countInSet` and `rowCount` in a single SELECT"""
+    validator = ColumnValuesToBeInSetValidator(
+        create_sqlite_table,
+        test_case=build_test_case(
+            [
+                TestCaseParameterValue(name="allowedValues", value="['Jane']"),
+                TestCaseParameterValue(name="matchEnum", value="true"),
+            ],
+            compute_passed_failed_row_count=compute_passed_failed_row_count,
+            entity_link=ENTITY_LINK_NAME,
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    with executed_statements(create_sqlite_table) as statements:
+        result = validator.run_validation()
+
+    assert result.testCaseStatus == TestCaseStatus.Failed
+    assert len(statements) == 1
+    assert Metrics.countInSet.name in statements[0]
+    assert Metrics.rowCount.name in statements[0]
+    if compute_passed_failed_row_count:
+        assert result.failedRows == 70
+        assert result.passedRows == 10

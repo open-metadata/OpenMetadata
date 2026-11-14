@@ -57,15 +57,14 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         try:
             test_params = self._get_test_parameters()
             column: SQALikeColumn | Column = self.get_column()
-            count_in_set = self._run_results(Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES])
-
-            metric_values = {
-                Metrics.countInSet.name: count_in_set,
-            }
-
             if test_params[self.MATCH_ENUM]:
-                row_count = self._run_results(Metrics.rowCount, column, values=test_params[self.ALLOWED_VALUES])
-                metric_values[Metrics.rowCount.name] = row_count
+                metric_values = self._run_results_and_row_count(
+                    Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
+                )
+            else:
+                metric_values = self._run_results_with_row_count(
+                    Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
+                )
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -83,7 +82,9 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         test_result_values = self._get_test_result_values(metric_values)
 
         if self.test_case.computePassedFailedRowCount:
-            row_count = self.get_row_count()
+            row_count = metric_values.get(Metrics.rowCount.name)
+            if row_count is None:
+                row_count = self.get_row_count()
         else:
             row_count = None
 
