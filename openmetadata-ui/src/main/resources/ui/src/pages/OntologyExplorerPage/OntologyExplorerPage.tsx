@@ -2433,7 +2433,7 @@ const OntologyExplorerContent: React.FC = () => {
             footer={
               <Select
                 aria-label={t('label.select-entity', {
-                  entity: t('label.ontology'),
+                  entity: t('label.ontology').toLocaleLowerCase(),
                 })}
                 className="tw:w-64"
                 data-testid="all-ontologies-capacity-select"
@@ -2442,7 +2442,7 @@ const OntologyExplorerContent: React.FC = () => {
                   label: getEntityName(ontology),
                 }))}
                 placeholder={t('label.select-entity', {
-                  entity: t('label.ontology'),
+                  entity: t('label.ontology').toLocaleLowerCase(),
                 })}
                 size="sm"
                 onSelectionChange={(ontologyId) =>
