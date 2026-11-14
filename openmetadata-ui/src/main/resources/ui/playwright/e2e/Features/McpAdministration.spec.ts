@@ -65,7 +65,7 @@ test(
       await expect(serverSwitch).toBeChecked();
       await serverSwitch.uncheck();
       await saveConfiguration(page);
-      expect((await apiContext.post('/mcp', { data: {} })).status()).toBe(503);
+      expect((await apiContext.post('/mcp', { data: {} })).status()).toBe(404);
       await page.reload();
       await expect(serverSwitch).not.toBeChecked();
       await page

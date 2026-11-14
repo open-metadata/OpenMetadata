@@ -18,7 +18,7 @@ client again afterward. Use **Remove client** to remove the registration and all
 actions require confirmation. Refresh and cursor navigation load the current inventory;
 client administration remains available while MCP is disabled.
 
-Disabling **Enable MCP Server** rejects new MCP transport and OAuth requests with HTTP 503;
+Disabling **Enable MCP Server** rejects new MCP transport and OAuth requests with HTTP 404;
 it preserves clients and grants. Already-running requests may finish. Re-enabling restores access
 for otherwise-valid grants. Settings propagation follows the existing security settings reload.
 
@@ -28,17 +28,26 @@ Configure these fields in the existing MCP configuration setting:
 
 ```json
 {
-  "dynamicClientRegistrationEnabled": false,
-  "allowedRedirectHosts": ["trusted-client.example.com"],
+  "dynamicClientRegistrationEnabled": true,
+  "allowedRedirectHosts": ["claude.ai", "chatgpt.com", "trusted-client.example.com"],
   "allowLoopbackRedirects": true,
   "allowNativeRedirects": false
 }
 ```
 
-Disabling dynamic registration stops new anonymous clients; it does not disable MCP or existing
-clients. Discovery stops advertising registration while it is disabled. New clients that only
-support DCR will not connect until an administrator enables it. Registration remains enabled by
-default in this security patch; its deprecation belongs to the separate new-spec feature.
+Treat disabling dynamic registration as a **registration kill switch**, not a normal onboarding
+policy. Discovery stops advertising registration and new registrations are rejected. This can
+block new users and reconnects whenever a client registers a fresh ID, even if another registration
+with the same name already exists. Existing IDs and their valid grants remain usable; clients that
+retain their ID can authorize again. This patch does not provide CIMD or administrator
+pre-registration as an alternative. Keep DCR enabled for self-service connections; disable it for
+containment when that disruption is intended. Its deprecation belongs to the separate new-spec feature.
+
+The example includes `claude.ai` and `chatgpt.com` for callbacks on those exact hosts. Before setting
+an allowlist, inspect the registered redirect URIs of each approved integration and include its
+actual callback host. A product name or the hostname of your MCP server is not a substitute for
+its callback host; other callback hosts and subdomains must be listed separately. Test a fresh
+connection and a reconnect for each integration after restricting the list.
 
 The HTTPS allowlist matches complete host names, case-insensitively. A listed host does not permit
 subdomains, lookalike suffixes or a trailing-dot variant. It permits HTTPS ports on that host.
@@ -50,6 +59,17 @@ assuming a policy change has reached the whole cluster.
 Policies apply to new authorization codes, including pending sign-ins, and to OAuth error
 callbacks. A rejected callback is not offered as a redirect or return link. Existing tokens are not
 revoked by editing a host allowlist. Revoke its tokens or remove the client if its existing access must end.
+
+## Client identity and users
+
+A row is an OAuth client registration, not a user or a connection. DCR is unauthenticated, so there
+is no verified user to attach at registration time. One client ID can later receive grants for
+multiple users; repeated names such as “Claude” do not identify the same client or its owner.
+Use the client ID, callback URLs and registration time to distinguish rows, and correlate grant
+and usage records when investigating who authorized one. The current inventory does not show
+per-user grants. A future grant inventory should list users under each client, with per-user
+revocation, rather than assign a misleading single owner to the registration. Until then both
+admin revocation actions affect **every user of the selected client ID**.
 
 ## Inventory and remove a client
 

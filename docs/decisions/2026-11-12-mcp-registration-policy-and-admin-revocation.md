@@ -53,8 +53,9 @@ prefixes or equivalent IP spellings from selecting a fresh quota.
 ## Amendment v3 — administrator controls
 
 The administrator MCP configuration page exposes the existing server enable flag and registration
-policy, plus paginated client inventory and confirmed revocation. The transport enforces the
-enable flag on every incoming request. Disabling preserves registration and grant rows; it is
+policy, plus paginated client inventory and confirmed revocation. Availability is enforced before
+the transport by the request-time filter, returning 404 as specified in
+ADR:2026-11-12-mcp-turns-off-at-request-time. Disabling preserves registration and grant rows; it is
 not equivalent to revoking a client. Administrative REST endpoints remain available while disabled.
 
 ## Amendment v4 — token inventory and revocation

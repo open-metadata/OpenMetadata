@@ -75,33 +75,6 @@ class OAuthHttpStatelessServerTransportProviderTest {
   private static final URI RESOURCE_METADATA =
       URI.create("https://example.com/mcp/.well-known/oauth-protected-resource");
 
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "/mcp",
-        "/mcp/register",
-        "/mcp/token",
-        "/mcp/authorize",
-        "/mcp/consent",
-        "/mcp/login"
-      })
-  void disabledServerRejectsRequestsBeforeRouting(String path) throws Exception {
-    try (MockedStatic<SecurityConfigurationManager> config =
-        mockStatic(SecurityConfigurationManager.class)) {
-      config
-          .when(SecurityConfigurationManager::getCurrentMcpConfig)
-          .thenReturn(new MCPConfiguration().withEnabled(false));
-      var request = mock(HttpServletRequest.class);
-      when(request.getRequestURI()).thenReturn(path);
-      when(request.getMethod()).thenReturn("POST");
-      var response = mock(HttpServletResponse.class);
-      transportWith(mock(UserSSOOAuthProvider.class)).service(request, response);
-      verify(response)
-          .sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "MCP server is disabled");
-      verify(request, never()).getInputStream();
-    }
-  }
-
   // ── consent route ─────────────────────────────────────────────────────────
 
   private static final String BASE_PATH = "/data-catalog";
