@@ -9,23 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""
-Source connection handler
-"""
+"""Metadata-source SAS connection wrapper."""
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
-from metadata.generated.schema.entity.services.connections.database.sasConnection import (
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
     SASConnection as SASConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.sas.client import SASClient
+from metadata.ingestion.source.metadata.sas.client import SASClient
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
@@ -33,6 +25,8 @@ logger = ingestion_logger()
 
 
 class SASConnection(BaseConnection[SASConnectionConfig, SASClient]):
+    """Compatibility wrapper for the SAS metadata source entry point."""
+
     def _get_client(self) -> SASClient:
         connection = self.service_connection
         return SASClient(connection)
@@ -40,16 +34,16 @@ class SASConnection(BaseConnection[SASConnectionConfig, SASClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: AutomationWorkflow | None = None,
+        automation_workflow=None,
         timeout_seconds: int | None = THREE_MIN,
-    ) -> TestConnectionResult:
+    ):
         client = self.client
         service_connection = self.service_connection
         test_fn = {"CheckAccess": client.check_connection}
         return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
-            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            service_type=service_connection.type.value,
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )
