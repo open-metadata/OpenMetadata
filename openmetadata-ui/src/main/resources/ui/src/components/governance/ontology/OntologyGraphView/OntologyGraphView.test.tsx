@@ -3091,7 +3091,8 @@ describe('OntologyGraphView', () => {
           screen.getByTestId('ontology-graph-concept-option-filler-300')
         );
 
-        expect(onSelectedConceptChange).toHaveBeenLastCalledWith('filler-300');
+        // Picking only loads the graph; the drawer waits for a node click.
+        expect(onSelectedConceptChange).not.toHaveBeenCalled();
 
         const view = (selectedConceptId?: string) => (
           <OntologyGraphView

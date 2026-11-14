@@ -1763,9 +1763,10 @@ const OntologyGraphView = ({
   };
 
   // An explicit pick always refocuses, even on a concept already drawn.
+  // Picking only draws and centres the concept's neighbourhood; clicking a node opens its drawer.
   const pickConcept = (id: string) => {
     setFocusId(id);
-    selectNode({ id });
+    setPendingFocusId(id);
   };
   const clearFocus = () => {
     setFocusId(undefined);
