@@ -262,6 +262,7 @@ const StatCard = ({
     isClickable={Boolean(onOpen)}
     role={onOpen ? 'button' : undefined}
     tabIndex={onOpen ? 0 : undefined}
+    variant="stat"
     onClick={onOpen}
     onKeyDown={(event) => {
       if (onOpen && (event.key === 'Enter' || event.key === ' ')) {
