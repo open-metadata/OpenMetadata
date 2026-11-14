@@ -3118,6 +3118,35 @@ describe('OntologyGraphView', () => {
         ).toHaveTextContent('Filler 300');
       });
 
+      it('clears an open selection when a concept is picked, so the camera centres the pick', async () => {
+        const onSelectedConceptChange = jest.fn();
+        // Holds the selection like the page does, so clearing it re-renders in the same update.
+        const SelectionHost = () => {
+          const [selected, setSelected] = useState<string | undefined>(
+            'filler-10'
+          );
+
+          return (
+            <OntologyGraphView
+              ontology={ontology}
+              selectedConceptId={selected}
+              surface="graph"
+              onRequestGraphSurface={jest.fn()}
+              onSelectedConceptChange={(id) => {
+                onSelectedConceptChange(id);
+                setSelected(id);
+              }}
+            />
+          );
+        };
+        render(<SelectionHost />);
+        await pickFiller('Filler 300', 'filler-300');
+
+        expect(onSelectedConceptChange).toHaveBeenLastCalledWith(undefined);
+        expect(latestGraphProps().focusNodeId).toBe('filler-300');
+        expect(drawnLabels()).toContain('Filler 300');
+      });
+
       it('does not recentre when a drawn concept is clicked, and clears back to the picker', async () => {
         renderGraph();
         await pickFiller('Filler 300', 'filler-300');
