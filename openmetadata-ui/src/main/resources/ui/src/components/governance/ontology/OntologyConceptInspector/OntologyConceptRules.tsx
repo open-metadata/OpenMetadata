@@ -332,7 +332,12 @@ const ConceptRuleForm = ({
         <Button
           color="primary"
           data-testid="ontology-rule-submit"
-          isDisabled={!isQuickRuleReady(rule) || Boolean(countProblem)}
+          // Same gate as the Constraints editor: enabled once the live check passes.
+          isDisabled={
+            !isQuickRuleReady(rule) ||
+            Boolean(countProblem) ||
+            validation.current?.report?.valid !== true
+          }
           isLoading={isSaving}
           size="sm"
           onPress={() => void save()}>

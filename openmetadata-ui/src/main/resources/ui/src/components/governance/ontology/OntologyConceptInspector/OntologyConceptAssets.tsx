@@ -274,16 +274,19 @@ const OntologyConceptAssets = ({
           <Dialog
             data-testid="ontology-unlink"
             dividers="scroll"
-            title={t('message.ontology-unlink-asset-title', {
-              asset: unlinkTarget.name,
-              concept: conceptName,
-            })}
             width={400}
             onClose={() => setUnlinkTarget(undefined)}>
-            <Dialog.Content>
-              {getUnlinkDescription(unlinkTarget.binding, t)}
-            </Dialog.Content>
-            <Dialog.Footer>
+            {/* Title and description share the header, so the short prompt reads as one block. */}
+            <Dialog.Header
+              title={t('message.ontology-unlink-asset-title', {
+                asset: unlinkTarget.name,
+                concept: conceptName,
+              })}>
+              <Typography as="p" className="tw:mt-1.5" size="text-sm">
+                {getUnlinkDescription(unlinkTarget.binding, t)}
+              </Typography>
+            </Dialog.Header>
+            <Dialog.Footer className="tw:mt-5 tw:sm:mt-5">
               <Button
                 color="secondary"
                 isDisabled={isUnlinking}

@@ -1763,10 +1763,17 @@ const OntologyGraphView = ({
   };
 
   // An explicit pick always refocuses, even on a concept already drawn.
-  const pickConcept = (id: string) => {
-    setFocusId(id);
-    selectNode({ id });
-  };
+  // Picking only draws and centres the concept's neighbourhood; clicking a node opens its drawer.
+  // A previous selection is cleared, or the camera would stay on it while the new neighbourhood draws.
+  const pickConcept = (id: string) =>
+    closeRelation(() => {
+      setConflictReviewId(undefined);
+      if (selectedId) {
+        setSelectedId(undefined);
+      }
+      setFocusId(id);
+      setPendingFocusId(id);
+    });
   const clearFocus = () => {
     setFocusId(undefined);
     setSelectedId(undefined);

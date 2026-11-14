@@ -44,3 +44,6 @@ export const RELEASE_DISPLAY_STATUS: Record<
   withdrawn: { label: 'label.withdrawn', color: 'gray' },
   draft: { label: 'label.draft', color: 'gray' },
 };
+
+/** Rows each change card shows before Load more; a large draft lists thousands. */
+export const CHANGE_ROWS_PAGE_SIZE = 30;
