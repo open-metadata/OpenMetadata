@@ -24,6 +24,7 @@ from sqlalchemy.sql.compiler import IdentifierPreparer
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     TableConstraint,
@@ -47,6 +48,7 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.ingestion.source.database.doris.queries import (
+    DORIS_GET_TABLE_KEY_MODELS,
     DORIS_GET_TABLE_NAMES,
     DORIS_PARTITION_DETAILS,
     DORIS_SHOW_FULL_COLUMNS,
@@ -57,6 +59,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
@@ -71,6 +74,11 @@ RELKIND_MAP = {
     "Iceberg": TableType.Iceberg,
     "ICEBERG": TableType.Iceberg,
 }
+
+# TABLE_MODEL values (KeysType.toMetadata in Doris) whose key identifies a row: UNIQUE KEY,
+# AGGREGATE KEY, whose rows are merged by key, and the legacy PRIMARY KEY model. The key of a
+# DUPLICATE KEY table ("DUP") is only a sort key and can repeat; other tables report "".
+PRIMARY_KEY_TABLE_MODELS = {"UNI", "AGG", "PRI"}
 
 DorisDialect.get_table_names_and_type = get_table_names_and_type
 DorisDialect.get_table_comment = get_table_comment
@@ -170,6 +178,10 @@ class DorisSource(CommonDbSourceService):
         if self.ssl_manager:
             service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
+        # One entry per schema in progress: each of the `threads` workers ingests its own schema
+        self.primary_key_columns_cache: LRUCache[dict[str, list[str]]] = LRUCache(
+            capacity=self.source_config.threads or 1
+        )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -216,7 +228,6 @@ class DorisSource(CommonDbSourceService):
         """
 
         table_columns = []
-        primary_columns = []
         preparer = self.engine.dialect.identifier_preparer
         qualified_table_name = _qualified_identifier(preparer, schema, table_name)
         # row schema: Field, Type, Collation, Null, Key, Default, Extra, Privileges, Comment
@@ -224,10 +235,33 @@ class DorisSource(CommonDbSourceService):
             self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(table_name=qualified_table_name)))
         ):
             table_columns.append(_get_column(i, row[0], row[1], row[3], row[5], row[8]))
-            if row[4] == "YES":
-                primary_columns.append(row[0])
 
-        return table_columns, primary_columns
+        return table_columns
+
+    def _get_primary_key_columns(self, schema_name: str, table_name: str) -> list[str]:
+        """
+        Key columns of a UNIQUE KEY or AGGREGATE KEY table, read once per schema.
+        The Key flag of SHOW FULL COLUMNS cannot be used: it is also set on the sort
+        columns of a DUPLICATE KEY table and on every column of an external table.
+        """
+        try:
+            # Read once rather than checking for membership first: an eviction by another
+            # worker thread between the two calls would raise here
+            primary_keys = self.primary_key_columns_cache.get(schema_name)
+        except KeyError:
+            try:
+                primary_keys = {
+                    row.TABLE_NAME: row.TABLE_MODEL_KEY.split(",")
+                    for row in self.connection.execute(sql.text(DORIS_GET_TABLE_KEY_MODELS), {"schema": schema_name})
+                    if row.TABLE_MODEL in PRIMARY_KEY_TABLE_MODELS
+                }
+            except Exception as exc:
+                # Ingest the schema's tables without primary keys rather than fail each of them
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not read the table models of schema [%s]: %s", schema_name, exc)
+                primary_keys = {}
+            self.primary_key_columns_cache.put(schema_name, primary_keys)
+        return primary_keys.get(table_name, [])
 
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
@@ -246,7 +280,14 @@ class DorisSource(CommonDbSourceService):
         """
         table_constraints = []
         table_columns = []
-        columns, primary_columns = self._get_columns(table_name, schema_name)
+        columns = self._get_columns(table_name, schema_name)
+        primary_columns = self._get_primary_key_columns(schema_name, table_name)
+        if len(primary_columns) > 1:
+            table_constraints.append(
+                TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=primary_columns)
+            )
+        # A single key column is marked PRIMARY_KEY; the columns of a composite key keep NULL / NOT NULL
+        column_primary_key = primary_columns if len(primary_columns) == 1 else []
         for column in columns:
             try:
                 children = None
@@ -254,7 +295,7 @@ class DorisSource(CommonDbSourceService):
                     children = [column_from_parsed(ordinal, child) for ordinal, child in enumerate(column["children"])]
                 self.process_additional_table_constraints(column=column, table_constraints=table_constraints)
 
-                col_constraint = self._get_column_constraints(column, primary_columns, [])
+                col_constraint = self._get_column_constraints(column, column_primary_key, [])
                 col_data_length = self._check_col_length(column["system_data_type"], column["data_type"])
                 if col_data_length is None:
                     col_data_length = 1
@@ -281,7 +322,7 @@ class DorisSource(CommonDbSourceService):
                 logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
                 continue
             table_columns.append(om_column)
-        return table_columns, [], []
+        return table_columns, table_constraints, []
 
     def get_table_partition_details(
         self,
