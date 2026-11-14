@@ -1,9 +1,9 @@
 # Ontology definition status is derived from releases
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-23 (clarify publication response and working-change counts); v3 2026-10-25 (separate deprecation counts at stack integration); v4 2026-10-25 (distinguish available and unavailable review locks)
+- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-23 (clarify publication response and working-change counts); v3 2026-10-25 (separate deprecation counts at stack integration); v4 2026-10-25 (distinguish available and unavailable review locks); v5 2026-11-14 (the ontology counts itself before its first release)
 - **Deciders:** Harsha
-- **Guard:** `OntologyDefinitionStatusResolverTest`, `OntologyPublicationStatusResolverTest`, `OntologyDerivedStatusStorageTest`, `IndependentOntologyStatusIT`
+- **Guard:** `OntologyDefinitionStatusResolverTest`, `OntologyPublicationStatusResolverTest`, `OntologyDerivedStatusStorageTest`, `IndependentOntologyStatusIT`, `OntologyUnpublishedCount.utils.test.ts`
 - **Related:** ADR:2026-10-14-ontology-reviews-bind-workflow-tasks-to-revisions, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members, #35981, #36184
 
 ## Context
@@ -90,3 +90,17 @@ separate authorization check.
 The envelope is derived, never stored or accepted in writes. The server's existing 409 guard on
 reviewer and approval-rule changes remains authoritative. Both configured JSON serializers must
 preserve the empty object so clients can distinguish an unlocked result from an unavailable one.
+
+## Amendment v5, 2026-11-14
+
+Before an ontology's first release, the ontology itself is one of the working members that count as
+added: `OntologyUnpublishedChanges` counts the `ontology_entity` row with concepts, properties and
+axioms, and the working diff lists it. So `unpublishedChanges` is the user's changes plus one.
+
+The user did not make that row a change; creating the ontology is the container. Clients show
+`max(unpublishedChanges - 1, 0)` as the change count while `publicationStatus.active` is absent, and
+the value unchanged once a release is active. The review dialog and the Overview's recent changes
+hide the ontology's own row by the same rule. Every Studio count reads one helper,
+`getUnpublishedCount`, so the Publish button, the Draft badge, the all-ontologies total and the
+dialog agree. This amendment changes no API or stored count; if the server stops counting the
+ontology itself, the helper's subtraction must go in the same change.

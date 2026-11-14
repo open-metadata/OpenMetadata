@@ -15,6 +15,7 @@ import { OntologyPublicationStatus } from '../../../generated/type/ontologyPubli
 /**
  * The changes a user made since the active release. Before the first release the server
  * counts the ontology itself as an added member; the user did not make that a change.
+ * ADR:2026-10-21-ontology-definition-status-is-derived-from-releases (amendment v5)
  */
 export const getUnpublishedCount = (
   status: OntologyPublicationStatus | undefined
