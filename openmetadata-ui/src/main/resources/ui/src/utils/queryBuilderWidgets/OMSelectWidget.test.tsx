@@ -96,6 +96,32 @@ describe('OMSelectWidget', () => {
     expect(screen.getByRole('button')).toBeDisabled();
   });
 
+  it('searches static options by label and restores them when cleared', () => {
+    render(
+      <OMSelectWidget
+        {...baseProps}
+        showSearch
+        listValues={[
+          { value: 'table', title: 'Table' },
+          { value: 'testCase', title: 'Test Case' },
+        ]}
+      />
+    );
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'tEsT' },
+    });
+
+    expect(screen.getByTestId('options')).toHaveTextContent('Test Case');
+    expect(screen.getByTestId('options')).not.toHaveTextContent('Table');
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: '' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+  });
+
   it('restores the full option list from cache when the dropdown is reopened', async () => {
     const allOptions = [
       { value: 'opt1', title: 'Option 1' },
