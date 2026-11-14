@@ -78,8 +78,8 @@ class FolderIndexTest {
     assertFalse(result.containsKey("deleted"));
     assertFalse(result.containsKey("owners"));
 
-    // Entity-specific fields
-    assertEquals(2, result.get("childrenCount"));
+    // Entity-specific fields; the count depends on who reads the folder, so it is not indexed.
+    assertFalse(result.containsKey("childrenCount"));
     assertNotNull(result.get("parent"));
   }
 }

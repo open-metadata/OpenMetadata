@@ -24,6 +24,8 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateContextFile;
+import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -34,7 +36,9 @@ import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
@@ -55,6 +59,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.drives.FolderService;
 import org.openmetadata.service.Entity;
 
 /**
@@ -97,6 +102,108 @@ public class ListRowAuthorizationIT {
             schema,
             "&limit=2&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8));
     assertEquals(List.of("b_visible_3"), names(secondPage));
+  }
+
+  @Test
+  void aFileListingOrderedByUpdateTimeLeavesOutAndDoesNotCountRowsADenyRuleRefuses(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "files");
+    OpenMetadataClient restricted = restrictedUser(ns, "files", secret, Entity.CONTEXT_FILE);
+    Folder folder =
+        new FolderService(admin.getHttpClient())
+            .create(new CreateFolder().withName(ns.prefix("lraFiles")));
+    admin
+        .contextFiles()
+        .create(
+            new CreateContextFile()
+                .withName(ns.prefix("hiddenFile"))
+                .withFolder(folder.getFullyQualifiedName())
+                .withTags(List.of(tag(secret))));
+    ContextFile visible =
+        admin
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("visibleFile"))
+                    .withFolder(folder.getFullyQualifiedName()));
+
+    JsonNode ordered =
+        list(
+            restricted,
+            "/v1/contextCenter/drive/files?orderBy=DESC&limit=10&folderId=" + folder.getId());
+    assertEquals(List.of(visible.getName()), names(ordered));
+    assertEquals(1, ordered.path("paging").path("total").asInt(), ordered.toString());
+    JsonNode badge =
+        list(
+            restricted,
+            "/v1/contextCenter/drive/folders/" + folder.getId() + "?fields=childrenCount");
+    assertEquals(1, badge.path("childrenCount").asInt(), badge.toString());
+  }
+
+  @Test
+  void aFolderContentsLeavesOutAndDoesNotCountFilesADenyRuleRefuses(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "contents");
+    OpenMetadataClient restricted = restrictedUser(ns, "contents", secret, Entity.CONTEXT_FILE);
+    FolderService folders = new FolderService(admin.getHttpClient());
+    Folder parent = folders.create(new CreateFolder().withName(ns.prefix("lraParent")));
+    Folder child =
+        folders.create(
+            new CreateFolder()
+                .withName(ns.prefix("lraChild"))
+                .withParent(parent.getFullyQualifiedName()));
+    admin
+        .contextFiles()
+        .create(
+            new CreateContextFile()
+                .withName(ns.prefix("hiddenFile"))
+                .withFolder(child.getFullyQualifiedName())
+                .withTags(List.of(tag(secret))));
+    ContextFile visible =
+        admin
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("visibleFile"))
+                    .withFolder(child.getFullyQualifiedName()));
+
+    JsonNode parentContents = list(restricted, contentsPath(parent));
+    assertEquals(
+        1,
+        parentContents.path("folders").path(0).path("childrenCount").asInt(),
+        parentContents.toString());
+    JsonNode childContents = list(restricted, contentsPath(child));
+    assertEquals(List.of(visible.getName()), names(childContents.path("files")));
+    assertEquals(1, childContents.path("childrenFileCount").asInt(), childContents.toString());
+  }
+
+  @Test
+  void aFolderContentsLeavesOutSubfoldersADenyRuleRefuses(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "subfolders");
+    OpenMetadataClient restricted = restrictedUser(ns, "subfolders", secret, Entity.FOLDER);
+    FolderService folders = new FolderService(admin.getHttpClient());
+    Folder parent = folders.create(new CreateFolder().withName(ns.prefix("lraSubParent")));
+    folders.create(
+        new CreateFolder()
+            .withName(ns.prefix("hiddenSub"))
+            .withParent(parent.getFullyQualifiedName())
+            .withTags(List.of(tag(secret))));
+    Folder visible =
+        folders.create(
+            new CreateFolder()
+                .withName(ns.prefix("visibleSub"))
+                .withParent(parent.getFullyQualifiedName()));
+
+    JsonNode contents = list(restricted, contentsPath(parent));
+    assertEquals(List.of(visible.getName()), names(contents.path("folders")));
+    assertEquals(1, contents.path("childrenFolderCount").asInt(), contents.toString());
+  }
+
+  private static String contentsPath(Folder folder) {
+    return "/v1/contextCenter/drive/folders/" + folder.getId() + "/contents";
   }
 
   @Test
@@ -349,8 +456,9 @@ public class ListRowAuthorizationIT {
   }
 
   private static List<String> names(JsonNode page) {
+    JsonNode rows = page.isArray() ? page : page.path("data");
     List<String> names = new ArrayList<>();
-    page.path("data").forEach(row -> names.add(row.path("name").asText()));
+    rows.forEach(row -> names.add(row.path("name").asText()));
     return names;
   }
 

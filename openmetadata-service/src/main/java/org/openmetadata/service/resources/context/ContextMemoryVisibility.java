@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.context;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
@@ -514,16 +516,30 @@ public final class ContextMemoryVisibility {
    * signs up under a team's name is not a member of that team.
    */
   public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
+    return isSharedWith(sharedWith, () -> resolvePrincipalIdentifiers(userName));
+  }
+
+  /**
+   * As {@link #isSharedWith(List, String)}, with the caller's ids from {@code principalIds}, read
+   * only when the list names someone; pass {@link #principalIdsOf} to resolve them once per list.
+   */
+  public static boolean isSharedWith(
+      List<MemorySharedPrincipal> sharedWith, Supplier<Set<String>> principalIds) {
     if (nullOrEmpty(sharedWith)) {
       return false;
     }
-    Set<String> principalIds = resolvePrincipalIdentifiers(userName);
+    Set<String> ids = principalIds.get();
     return sharedWith.stream()
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
                     && sp.getPrincipal().getId() != null
-                    && principalIds.contains(sp.getPrincipal().getId().toString()));
+                    && ids.contains(sp.getPrincipal().getId().toString()));
+  }
+
+  /** {@code userName}'s principal ids, resolved on first use and then reused. */
+  public static Supplier<Set<String>> principalIdsOf(String userName) {
+    return Suppliers.memoize(() -> resolvePrincipalIdentifiers(userName));
   }
 
   /**

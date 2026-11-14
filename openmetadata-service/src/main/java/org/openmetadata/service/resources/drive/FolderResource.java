@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -37,12 +38,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.FolderRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewOperations;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Tag(
     name = "Context Center Drive Folders",
@@ -54,6 +58,8 @@ import org.openmetadata.service.security.Authorizer;
 public class FolderResource extends EntityResource<Folder, FolderRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/folders/";
   public static final String FIELDS = "owners,tags,parent,children,domains,followers,childrenCount";
+  private static final List<MetadataOperation> VIEW_BASIC_ONLY =
+      List.of(MetadataOperation.VIEW_BASIC);
   private final FolderMapper mapper = new FolderMapper();
 
   public static class FolderContents {
@@ -110,8 +116,11 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @QueryParam("before") String before,
       @QueryParam("after") String after,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+    ResultList<Folder> folders =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+    countVisibleFiles(securityContext, folders.getData());
+    return folders;
   }
 
   @GET
@@ -123,7 +132,9 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @PathParam("id") UUID id,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Folder folder = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    countVisibleFiles(securityContext, List.of(folder));
+    return folder;
   }
 
   @GET
@@ -135,7 +146,52 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @PathParam("fqn") String fqn,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    Folder folder = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    countVisibleFiles(securityContext, List.of(folder));
+    return folder;
+  }
+
+  /**
+   * A folder's {@code childrenCount} counts only the files the caller may see, as its file listing
+   * does (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
+  private void countVisibleFiles(SecurityContext securityContext, List<Folder> folders) {
+    List<Folder> counted =
+        folders.stream().filter(folder -> folder.getChildrenCount() != null).toList();
+    if (counted.isEmpty() || ContextFileVisibility.seesEveryFile(securityContext)) {
+      return;
+    }
+    Map<UUID, Integer> counts =
+        fileRepository()
+            .countVisibleByFolder(
+                counted.stream().map(Folder::getId).toList(),
+                securityContext,
+                viewPermissionFilter,
+                VIEW_BASIC_ONLY);
+    counted.forEach(folder -> folder.setChildrenCount(counts.getOrDefault(folder.getId(), 0)));
+  }
+
+  /** The subfolders the caller may read, as the folder listing returns them. */
+  private List<Folder> readableFolders(SecurityContext securityContext, List<Folder> folders) {
+    Fields fields = getFields(FIELDS);
+    return rowsMayDiffer(securityContext, fields)
+        ? rowAuthorization(fields).readable().apply(securityContext, folders)
+        : folders;
+  }
+
+  /** The files the caller may read, as the file listing returns them. */
+  private List<ContextFile> visibleFiles(SecurityContext securityContext, List<ContextFile> files) {
+    ContextFileRepository fileRepository = fileRepository();
+    List<MetadataOperation> operations =
+        ViewOperations.forFields(
+            ContextFileRepository.CONTEXT_FILE_ENTITY,
+            fileRepository.getFields(ContextFileResource.FIELDS));
+    return fileRepository.retainVisible(files, securityContext, viewPermissionFilter, operations);
+  }
+
+  private static ContextFileRepository fileRepository() {
+    return (ContextFileRepository)
+        Entity.getEntityRepository(ContextFileRepository.CONTEXT_FILE_ENTITY);
   }
 
   @GET
@@ -149,10 +205,11 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @PathParam("id") UUID id,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
     Folder folder = getInternal(uriInfo, securityContext, id, "parent,children", include);
-    List<Folder> folders = repository.getChildFolderEntities(folder);
+    List<Folder> folders =
+        readableFolders(securityContext, repository.getChildFolderEntities(folder));
+    countVisibleFiles(securityContext, folders);
     List<ContextFile> files =
-        ContextFileVisibility.filterVisible(
-            repository.getChildFileEntities(folder), securityContext);
+        visibleFiles(securityContext, repository.getChildFileEntities(folder));
 
     FolderContents response = new FolderContents();
     response.folder = folder;

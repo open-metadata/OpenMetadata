@@ -930,3 +930,11 @@ CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_conc
 ALTER TABLE mcp_pending_auth_requests
     ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
     ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);
+
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+ALTER TABLE context_file ADD COLUMN IF NOT EXISTS visibility VARCHAR(16)
+    GENERATED ALWAYS AS (json -> 'shareConfig' ->> 'visibility') STORED;
+CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibility);

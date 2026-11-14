@@ -26,20 +26,24 @@ import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.MoveContextFileRequest;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileSourceType;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
+import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 import org.openmetadata.service.Entity;
@@ -550,6 +554,146 @@ class ContextFileIT {
     ContextFile stored = getFile(rest, file.getId(), "");
     assertNotNull(stored.getShareConfig(), "A sharing change must survive a re-read");
     assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+  }
+
+  @Test
+  void testListingCountsOnlyFilesTheCallerMaySee(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "o-list");
+    User reader = DriveTestUsers.createUser(ns, "r-list");
+    Folder folder = createFolder(admin, new CreateFolder().withName(ns.prefix("listing-total")));
+    ContextFile orgWide = createFile(admin, ownedFileIn(folder, ns.prefix("a-org-wide"), owner));
+    ContextFile privateFile = createFile(admin, ownedFileIn(folder, ns.prefix("b-private"), owner));
+    String original = JsonUtils.pojoToJson(privateFile);
+    privateFile.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    privateFile.setExtractedText("Extracted text the counts never read");
+    admin.patch(FILE_PATH, privateFile.getId(), original, privateFile, ContextFile.class);
+    assertEquals(
+        privateFile.getExtractedText(), getFile(admin, privateFile.getId(), "").getExtractedText());
+    RestClient readerRest = RestClient.forUser(reader.getEmail(), new String[] {});
+
+    // One file per page: every page reports the same total, including the page that hides nothing
+    // itself, and so does a count-only read.
+    List<String> listed = new ArrayList<>();
+    String after = null;
+    for (int page = 0; page < 2; page++) {
+      JsonNode onePerPage = listFiles(readerRest, folder.getId(), 1, after);
+      assertEquals(1, onePerPage.get("paging").get("total").asInt(), "total on page " + page);
+      onePerPage.get("data").forEach(node -> listed.add(node.get("id").asText()));
+      after = onePerPage.get("paging").path("after").asText(null);
+    }
+    assertEquals(List.of(orgWide.getId().toString()), listed);
+    assertEquals(
+        1, listFiles(readerRest, folder.getId(), 0, null).get("paging").get("total").asInt());
+    assertEquals(1, folderChildrenCount(readerRest, folder.getId()), "folder badge");
+
+    RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
+    assertEquals(
+        2, listFiles(ownerRest, folder.getId(), 1, null).get("paging").get("total").asInt());
+    assertEquals(2, folderChildrenCount(ownerRest, folder.getId()), "owner's folder badge");
+  }
+
+  @Test
+  void testCountsAgreeWithTheListingForEverySharing(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("share-team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    User owner = DriveTestUsers.createUser(ns, "o-share");
+    User teamMember = DriveTestUsers.createUser(ns, "t-share", List.of(team.getId()));
+    User named = DriveTestUsers.createUser(ns, "n-share");
+    User stranger = DriveTestUsers.createUser(ns, "s-share");
+    Folder parent = createFolder(admin, new CreateFolder().withName(ns.prefix("sharing-parent")));
+    Folder folder =
+        createFolder(
+            admin,
+            new CreateFolder()
+                .withName(ns.prefix("sharing-counts"))
+                .withParent(parent.getFullyQualifiedName()));
+    sharedFileIn(admin, folder, ns.prefix("a-unset"), owner, null);
+    sharedFileIn(
+        admin,
+        folder,
+        ns.prefix("b-entity"),
+        owner,
+        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+    sharedFileIn(
+        admin,
+        folder,
+        ns.prefix("c-private"),
+        owner,
+        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    sharedFileIn(admin, folder, ns.prefix("d-team"), owner, sharedWith(team.getEntityReference()));
+    sharedFileIn(
+        admin, folder, ns.prefix("e-named"), owner, sharedWith(named.getEntityReference()));
+
+    Map<User, Integer> expected = Map.of(owner, 5, teamMember, 3, named, 3, stranger, 2);
+    for (Map.Entry<User, Integer> entry : expected.entrySet()) {
+      RestClient rest = RestClient.forUser(entry.getKey().getEmail(), new String[] {});
+      int visible = entry.getValue();
+      String who = entry.getKey().getName();
+      assertEquals(visible, listFiles(rest, folder.getId(), 100, null).get("data").size(), who);
+      assertEquals(
+          visible,
+          listFiles(rest, folder.getId(), 1, null).get("paging").get("total").asInt(),
+          who + " total");
+      assertEquals(visible, folderChildrenCount(rest, folder.getId()), who + " folder badge");
+      assertEquals(visible, subfolderChildrenCount(rest, parent.getId()), who + " in contents");
+    }
+  }
+
+  private void sharedFileIn(
+      RestClient admin, Folder folder, String name, User owner, MemoryShareConfig share)
+      throws Exception {
+    ContextFile file = createFile(admin, ownedFileIn(folder, name, owner));
+    if (share != null) {
+      String original = JsonUtils.pojoToJson(file);
+      file.setShareConfig(share);
+      admin.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+    }
+  }
+
+  private static MemoryShareConfig sharedWith(EntityReference principal) {
+    return new MemoryShareConfig()
+        .withVisibility(MemoryVisibility.SHARED)
+        .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(principal)));
+  }
+
+  private static int folderChildrenCount(RestClient rest, UUID folderId) {
+    try (Response response = rest.rawGet(FOLDER_PATH + "/" + folderId + "?fields=childrenCount")) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readTree(response.readEntity(String.class)).get("childrenCount").asInt();
+    }
+  }
+
+  /** The {@code childrenCount} of the only subfolder in a folder's contents. */
+  private static int subfolderChildrenCount(RestClient rest, UUID parentId) {
+    try (Response response = rest.rawGet(FOLDER_PATH + "/" + parentId + "/contents")) {
+      assertEquals(200, response.getStatus());
+      JsonNode contents = JsonUtils.readTree(response.readEntity(String.class));
+      return contents.get("folders").get(0).get("childrenCount").asInt();
+    }
+  }
+
+  private static CreateContextFile ownedFileIn(Folder folder, String name, User owner) {
+    return new CreateContextFile()
+        .withName(name)
+        .withFolder(folder.getFullyQualifiedName())
+        .withOwners(List.of(owner.getEntityReference()))
+        .withProcessingStatus(ProcessingStatus.Uploaded);
+  }
+
+  private static JsonNode listFiles(RestClient rest, UUID folderId, int limit, String after) {
+    String page = after == null ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+    try (Response response =
+        rest.rawGet(FILE_PATH + "?folderId=" + folderId + "&limit=" + limit + page)) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readTree(response.readEntity(String.class));
+    }
   }
 
   @Test

@@ -15,6 +15,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -57,6 +59,11 @@ import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -494,15 +501,31 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
             activeFqn, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
-  public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
+  public List<PageHierarchy> listHierarchy(
+      ListFilter filter, int limit, SecurityContext securityContext, Authorizer authorizer) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
+    // Each page is checked only when a rule could refuse one the listing's check allowed.
+    boolean rowsMayDiffer =
+        RowDecisionGate.mayDiffer(
+            DefaultAuthorizer.getSubjectContext(securityContext),
+            Entity.PAGE,
+            List.of(MetadataOperation.VIEW_BASIC));
     EntityUtil.Fields fields = getFields("parent,children");
+    if (rowsMayDiffer) {
+      fields = ResourceContext.authorizationFields(this, fields);
+    }
 
-    ResultList<Page> resultList = listAfter(null, fields, filter, limit, null);
-    Map<UUID, Page> lookUp =
-        resultList.getData().stream().collect(Collectors.toMap(Page::getId, p -> p));
-    List<Page> topLevelPages =
-        resultList.getData().stream().filter(p -> p.getParent() == null).toList();
+    List<Page> pages = listAfter(null, fields, filter, limit, null).getData();
+    if (rowsMayDiffer) {
+      // Built from the pages the caller may view, so the tree and its child counts match what
+      // opens.
+      pages =
+          new ViewPermissionFilter(authorizer)
+              .retainPermitted(
+                  securityContext, Entity.PAGE, this, pages, List.of(MetadataOperation.VIEW_BASIC));
+    }
+    Map<UUID, Page> lookUp = pages.stream().collect(Collectors.toMap(Page::getId, p -> p));
+    List<Page> topLevelPages = pages.stream().filter(p -> p.getParent() == null).toList();
 
     for (Page page : topLevelPages) {
       pageHierarchyList.add(getHierarchy(lookUp, page));

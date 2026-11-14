@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -55,9 +56,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
@@ -82,6 +90,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -105,6 +114,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -114,6 +124,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -1101,7 +1112,79 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                 new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS),
                 termContext)),
         AuthorizationLogic.ANY);
-    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+    BulkOperationResult result = repository.validateGlossaryTagsAddition(id, request);
+    return Response.ok().entity(viewableRowsOnly(securityContext, result)).build();
+  }
+
+  /**
+   * Keeps the result rows about assets the caller may view; the counts and status still cover every
+   * asset, so the caller learns the outcome without the details of assets they cannot open.
+   */
+  private BulkOperationResult viewableRowsOnly(
+      SecurityContext securityContext, BulkOperationResult result) {
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return result;
+    }
+    List<BulkResponse> rows = new ArrayList<>(listOrEmpty(result.getSuccessRequest()));
+    rows.addAll(listOrEmpty(result.getFailedRequest()));
+    Map<String, EntityReference> tables = tablesOfColumns(rows);
+    List<EntityReference> targets =
+        rows.stream().map(row -> viewTarget(row, tables)).filter(Objects::nonNull).toList();
+    Set<UUID> viewable = new ViewPermissionFilter(authorizer).viewableIds(securityContext, targets);
+    // A row without an asset (e.g. "Nothing to Validate.") names nothing, so it stays.
+    Predicate<BulkResponse> isViewable =
+        row ->
+            row.getRequest() == null
+                || Optional.ofNullable(viewTarget(row, tables))
+                    .map(target -> viewable.contains(target.getId()))
+                    .orElse(false);
+    return result
+        .withSuccessRequest(
+            listOrEmpty(result.getSuccessRequest()).stream().filter(isViewable).toList())
+        .withFailedRequest(
+            listOrEmpty(result.getFailedRequest()).stream().filter(isViewable).toList());
+  }
+
+  /** The entity whose view permission decides a row: the asset, or a column's table. */
+  private static EntityReference viewTarget(BulkResponse row, Map<String, EntityReference> tables) {
+    EntityReference asset = assetOf(row);
+    if (asset == null || !Entity.TABLE_COLUMN.equals(asset.getType())) {
+      return asset;
+    }
+    return tables.get(tableFqnOf(asset.getFullyQualifiedName()));
+  }
+
+  /** The tables of the column rows, loaded in one batch and keyed by table FQN. */
+  private static Map<String, EntityReference> tablesOfColumns(List<BulkResponse> rows) {
+    List<String> tableFqns =
+        rows.stream()
+            .map(GlossaryTermResource::assetOf)
+            .filter(asset -> asset != null && Entity.TABLE_COLUMN.equals(asset.getType()))
+            .map(asset -> tableFqnOf(asset.getFullyQualifiedName()))
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    if (tableFqns.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityRepository(Entity.TABLE).findByNames(tableFqns, Include.ALL).stream()
+        .collect(
+            Collectors.toMap(
+                EntityInterface::getFullyQualifiedName,
+                EntityInterface::getEntityReference,
+                (first, second) -> first));
+  }
+
+  private static String tableFqnOf(String columnFqn) {
+    try {
+      return columnFqn == null ? null : FullyQualifiedName.getTableFQN(columnFqn);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private static EntityReference assetOf(BulkResponse row) {
+    return row.getRequest() instanceof EntityReference ref && ref.getId() != null ? ref : null;
   }
 
   @PUT

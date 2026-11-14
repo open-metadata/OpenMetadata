@@ -8,7 +8,6 @@ import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.service.Entity;
 
 public class FolderIndex implements TaggableIndex {
-  private static final String FIELD_CHILDREN_COUNT = "childrenCount";
   final Folder folder;
 
   public FolderIndex(Folder folder) {
@@ -19,13 +18,7 @@ public class FolderIndex implements TaggableIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add(Entity.FIELD_PARENT);
-    fields.add(FIELD_CHILDREN_COUNT);
     return Collections.unmodifiableSet(fields);
-  }
-
-  @Override
-  public Set<String> getFieldsLoadedOnWrite() {
-    return Set.of(FIELD_CHILDREN_COUNT);
   }
 
   @Override
@@ -38,16 +31,15 @@ public class FolderIndex implements TaggableIndex {
     return Entity.FOLDER;
   }
 
+  /**
+   * No {@code childrenCount}: the files a folder shows depend on who reads it, so the count is
+   * computed per caller on read (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (folder.getParent() != null) {
       doc.put("parent", getEntityWithDisplayName(folder.getParent()));
     }
-    // Default to 0 when the entity hasn't had its children recomputed yet (e.g. just-created
-    // folders). Storing null as a long/integer in ES indexes as `missing` and breaks
-    // numeric range/sort queries that assume the field is always present.
-    doc.put(
-        FIELD_CHILDREN_COUNT, folder.getChildrenCount() != null ? folder.getChildrenCount() : 0);
     return doc;
   }
 

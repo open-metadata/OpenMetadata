@@ -118,7 +118,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private static final Set<String> EXTRACTION_SOURCES = Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
-  static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
+  public static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
 
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
@@ -313,7 +313,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
    * the rows the caller may list are recounted. Never less than the page itself
    * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
-  static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
+  public static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
     return total > listedOnPage ? Math.max(recount.getAsInt(), listedOnPage) : total;
   }
 

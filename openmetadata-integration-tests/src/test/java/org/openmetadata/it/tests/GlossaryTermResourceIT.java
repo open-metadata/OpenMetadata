@@ -33,6 +33,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -4382,6 +4383,50 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(setup.totalAssets(), result.getNumberOfRowsProcessed());
     assertEquals(1, result.getNumberOfRowsPassed());
     assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_validateGlossaryTagsAddition_listsOnlyAssetsTheCallerMayView(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_view");
+    for (Table t : setup.allTables()) {
+      applyTermToTable(admin, t, setup.term);
+    }
+    // Hide the failing tables only (they carry the conflicting tag); the passing table stays
+    // visible.
+    String conflictTagFqn =
+        admin
+            .tables()
+            .get(setup.failTables.getFirst().getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .findFirst()
+            .orElseThrow()
+            .getTagFQN();
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("validate_view"),
+            Entity.TABLE,
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + conflictTagFqn + "')");
+
+    ValidateGlossaryTagsRequest validate =
+        new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/tags/validate";
+    BulkOperationResult result =
+        denied.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertTrue(result.getFailedRequest().isEmpty());
+    assertEquals(1, result.getSuccessRequest().size());
+    assertEquals(
+        setup.passTable.getId(),
+        JsonUtils.convertValue(
+                result.getSuccessRequest().getFirst().getRequest(), EntityReference.class)
+            .getId());
   }
 
   @Test

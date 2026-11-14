@@ -28,13 +28,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageHierarchy;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -43,6 +47,7 @@ import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
 
 /**
  * Verifies that the Knowledge Center hierarchy listing path populates the {@code parent} reference
@@ -61,6 +66,7 @@ public class KnowledgePageHierarchyIT {
   private static final String PARENT_FIELD = "parent";
   private static final String RELATED_ENTITIES_FIELD = "relatedEntities";
   private static final String ORGANIZATION_NAME = "Organization";
+  private static final String PII_SENSITIVE = "PII.Sensitive";
   // A search-index-only pseudo-type: it has no entity repository, so resolving it throws.
   private static final String NO_REPOSITORY_TYPE = "tableColumn";
 
@@ -236,6 +242,33 @@ public class KnowledgePageHierarchyIT {
         listedPage.getRelatedEntities().stream()
             .anyMatch(ref -> resolvableRef.getId().equals(ref.getId())),
         "Resolvable related entities must still be returned alongside the skipped one");
+  }
+
+  @Test
+  void testHierarchyListsOnlyPagesTheCallerMayView(TestNamespace ns) throws HttpResponseException {
+    RestClient admin = RestClient.admin();
+    Page shown = createPage(admin, buildCreateRequest(ns.prefix("shownPage"), null));
+    TagLabel sensitive =
+        new TagLabel()
+            .withTagFQN(PII_SENSITIVE)
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    Page hidden =
+        createPage(
+            admin, buildCreateRequest(ns.prefix("hiddenPage"), null).withTags(List.of(sensitive)));
+    User user =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("kc_view"),
+            Entity.PAGE,
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+
+    ResultList<PageHierarchy> hierarchy =
+        listHierarchy(RestClient.forUser(user.getEmail(), new String[] {}));
+
+    assertTrue(containsTopLevelId(hierarchy, shown.getId()));
+    assertFalse(containsTopLevelId(hierarchy, hidden.getId()));
   }
 
   @Test

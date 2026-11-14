@@ -1,10 +1,15 @@
 # Context Center listings show and count only what the caller may read
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-11 (file listings count the same way)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`,
-  `ContextMemoryResourceTest`
+  `ContextMemoryResourceTest`, `ContextFileIT.testListingCountsOnlyFilesTheCallerMaySee`,
+  `ContextFileIT.testCountsAgreeWithTheListingForEverySharing`,
+  `ListRowAuthorizationIT.aFileListingOrderedByUpdateTimeLeavesOutAndDoesNotCountRowsADenyRuleRefuses`,
+  `ListRowAuthorizationIT.aFolderContentsLeavesOutAndDoesNotCountFilesADenyRuleRefuses`,
+  `ListRowAuthorizationIT.aFolderContentsLeavesOutSubfoldersADenyRuleRefuses`,
+  `FolderResourceIT#test_folderSearchDocumentCarriesNoChildrenCount`
 - **Related:** ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request;
   ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review;
   ADR:ai-platform/2026-10-11-explicit-memory-delete-searches-every-status
@@ -46,3 +51,34 @@ count-only call (`limit=0`) and on any page that hid none itself.
   includes everyone's.
 - A plain-list page that does not show every counted row costs one bounded extra read, plus one
   ownership lookup per document whose pending pills are on it.
+
+## Amendment
+
+### v2 2026-11-11 — file listings count the same way
+
+The plain file listing (`/v1/contextCenter/drive/files`) reports its `paging.total` by the same
+rule as the plain memory list: it stands only when the page shows every counted row, and otherwise
+the files the caller may see are recounted, never less than the page. A folder's `childrenCount`,
+which the Documents page shows as the folder's badge, counts the same files. Both counts are exact:
+files have no scan bound.
+
+- `context_file.visibility` is a stored column generated from `shareConfig.visibility`, with an
+  index (2.1.0 migration). A file whose visibility is unset or `Entity` is visible to everyone a
+  policy allows; any other value only to its user owners and, when `Shared`, the principals it
+  names (`ContextFileVisibility`).
+- For a caller no rule could refuse a file the listing allowed (`RowDecisionGate`), the count is
+  SQL over that column: the open files, plus the restricted files the caller owns (the `OWNS`
+  relationship), plus the `Shared` files they do not own whose `sharedWith` names them, the only
+  files read, without their extracted text.
+- For a caller a rule could refuse (a deny rule or a conditional allow), every file in scope is
+  read in batches and passes the listing's row check and the sharing rules. Policy conditions are
+  evaluated by the policy engine, never in SQL, so this cost grows with the folder for those
+  callers only.
+
+The listing ordered by update time (`orderBy`) applies the same row check to its page, so the page
+and its total agree; it does not refill, and its cursors are sealed when rows are checked.
+
+A folder's contents (`/folders/{id}/contents`) list the subfolders and files the folder and file
+listings would return to the caller, with the same row checks, and each subfolder's
+`childrenCount` is counted as above. The folder search document carries no `childrenCount`, since
+no single value is right for every reader.
