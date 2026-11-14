@@ -59,8 +59,7 @@ endpoint and header values included, as it was written.
   upgrade encrypts with a wrong key is entered again, as for any other secret the server encrypts.
 - A destination's id carries no secret, so assigning or changing ids touches no stored value.
 - A database that ran a 2.1 pre-release with a different key than the one it upgrades with keeps
-  those values as stored, to be entered again. An endpoint or header value a pre-release built
-  before the bound format stored encrypted is encrypted again as it is, so it is entered again too.
+  those values as stored, to be entered again.
 - Each step's transaction holds every row it rewrites until it ends.
 - Revisit if a response or a save could again carry a webhook secret's ciphertext: the guarantee
   rests on ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored.

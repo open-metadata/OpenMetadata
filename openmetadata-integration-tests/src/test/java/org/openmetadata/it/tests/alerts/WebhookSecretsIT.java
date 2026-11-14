@@ -178,7 +178,7 @@ class WebhookSecretsIT {
       destinations
           .get(0)
           .withConfig(
-              legacyConfig(
+              storedConfig(
                   receiver,
                   "/hook-oauth",
                   Map.of(
@@ -187,15 +187,15 @@ class WebhookSecretsIT {
       destinations
           .get(1)
           .withConfig(
-              legacyConfig(
+              storedConfig(
                   receiver,
                   "/hook-header",
                   Map.of("headers", Map.of("X-Legacy", encryptedWithAnotherKey("old")))));
       AlertFixtures.writeBehindTheServer(alert);
-      // As after the upgrade: what was stored in plain text is encrypted.
-      runTheUpgradeStep(ns);
 
-      HttpResponse<String> testSend = postTestDestination(readAsAdmin(alert.getId()));
+      List<SubscriptionDestination> read = readAsAdmin(alert.getId());
+      HttpResponse<String> oauthTestSend = postTestDestination(List.of(read.get(0)));
+      HttpResponse<String> headerTestSend = postTestDestination(List.of(read.get(1)));
       HttpResponse<String> renamed =
           patchAlert(alert.getId(), replace("/description", "edited while it cannot send"));
       HttpResponse<String> entered =
@@ -206,8 +206,10 @@ class WebhookSecretsIT {
       FixtureEvents.insert(FixtureEvents.tableEvents());
       DirectTick.run(AlertFixtures.stored(alert.getId()));
 
-      assertEquals(400, testSend.statusCode(), testSend.body());
-      assertTrue(testSend.body().contains("must be entered again"), testSend.body());
+      for (HttpResponse<String> testSend : List.of(oauthTestSend, headerTestSend)) {
+        assertEquals(400, testSend.statusCode(), testSend.body());
+        assertTrue(testSend.body().contains("must be entered again"), testSend.body());
+      }
       assertEquals(200, renamed.statusCode(), renamed.body());
       assertEquals(200, entered.statusCode(), entered.body());
       List<RecordingReceiver.Received> sends = receiver.received();
@@ -328,6 +330,14 @@ class WebhookSecretsIT {
     Map<String, Object> withEndpoint = new LinkedHashMap<>(config);
     withEndpoint.put("endpoint", receiver.url(path));
     return withEndpoint;
+  }
+
+  // As the server stores a configuration: its endpoint encrypted with the server's key.
+  private static Map<String, Object> storedConfig(
+      RecordingReceiver receiver, String path, Map<String, Object> config) {
+    Map<String, Object> stored = legacyConfig(receiver, path, config);
+    stored.put("endpoint", Fernet.getInstance().encrypt(receiver.url(path)));
+    return stored;
   }
 
   private static Map<String, Object> bearer(String signingKey) {
