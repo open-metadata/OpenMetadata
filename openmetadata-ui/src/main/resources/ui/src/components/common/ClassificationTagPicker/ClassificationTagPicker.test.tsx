@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { TreeSelectNode } from '@openmetadata/ui-core-components';
+import {
+  TreeSelectDataFetcher,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import {
   LabelType,
@@ -173,6 +176,75 @@ describe('ClassificationTagPicker', () => {
     ]);
 
     expect(onChange).toHaveBeenCalledWith([newTag]);
+  });
+
+  // A derived tag is implied by a glossary term or inherited from a parent such as the service; it
+  // is never stored on the asset, so unticking it here would only look like a removal.
+  it('keeps derived tags in the selection it reports, since they cannot be removed here', () => {
+    const own = makeClassificationTag('Personal.Email');
+    const inherited = makeClassificationTag('DataZone.Sandbox', {
+      labelType: LabelType.Derived,
+    });
+    const onChange = jest.fn();
+
+    render(
+      <ClassificationTagPicker value={[own, inherited]} onChange={onChange} />
+    );
+
+    const handleChange = capturedTreeSelectProps.onChange as (
+      nodes: TreeSelectNode<TagLabel>[] | null
+    ) => void;
+
+    handleChange([
+      {
+        id: 'Personal.Email',
+        value: 'Personal.Email',
+        label: 'Email',
+        data: own,
+        isLeaf: true,
+      },
+    ]);
+    handleChange(null);
+
+    expect(onChange).toHaveBeenNthCalledWith(1, [own, inherited]);
+    expect(onChange).toHaveBeenNthCalledWith(2, [inherited]);
+  });
+
+  it('disables the rows of derived tags so they cannot be unticked', async () => {
+    const inherited = makeClassificationTag('DataZone.Sandbox', {
+      labelType: LabelType.Derived,
+    });
+    mockFetchData.mockResolvedValue({
+      nodes: [
+        {
+          id: 'DataZone.Sandbox',
+          value: 'DataZone.Sandbox',
+          label: 'Sandbox',
+          isLeaf: true,
+        },
+        {
+          id: 'Personal.Email',
+          value: 'Personal.Email',
+          label: 'Email',
+          isLeaf: true,
+        },
+      ],
+      hasMore: false,
+    });
+
+    render(
+      <ClassificationTagPicker value={[inherited]} onChange={jest.fn()} />
+    );
+
+    const fetchData =
+      capturedTreeSelectProps.fetchData as TreeSelectDataFetcher<TagLabel>;
+    const { nodes } = await fetchData({ searchTerm: 'Sandbox' });
+
+    expect(mockFetchData).toHaveBeenCalledWith({ searchTerm: 'Sandbox' });
+    expect(nodes.map((node) => [node.id, Boolean(node.disabled)])).toEqual([
+      ['DataZone.Sandbox', true],
+      ['Personal.Email', false],
+    ]);
   });
 
   it('onChange with null produces empty array', () => {

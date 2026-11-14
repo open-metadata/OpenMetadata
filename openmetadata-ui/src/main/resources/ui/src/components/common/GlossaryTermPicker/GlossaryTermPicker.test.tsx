@@ -253,6 +253,66 @@ describe('GlossaryTermPicker', () => {
     expect(lastProps().multiple).toBe(false);
   });
 
+  // A derived term is inherited from a parent such as the service; it is never stored on the
+  // asset, so unticking it here would only look like a removal.
+  it('keeps derived terms in the selection it reports, since they cannot be removed here', () => {
+    const inherited: TagLabel = {
+      tagFQN: 'Finance.ARR',
+      name: 'ARR',
+      source: TagSource.Glossary,
+      labelType: LabelType.Derived,
+      state: State.Confirmed,
+    };
+    const onChange = jest.fn();
+    render(
+      <GlossaryTermPicker
+        value={[APPLIED_TERM, inherited]}
+        onChange={onChange}
+      />
+    );
+
+    emit(null);
+
+    expect(onChange).toHaveBeenCalledWith([inherited], [inherited]);
+  });
+
+  it('disables the rows of derived terms, at any depth', async () => {
+    const inherited: TagLabel = {
+      tagFQN: 'Finance.Revenue.ARR',
+      source: TagSource.Glossary,
+      labelType: LabelType.Derived,
+      state: State.Confirmed,
+    };
+    const node = (
+      id: string,
+      children?: TreeSelectNode<unknown>[]
+    ): TreeSelectNode<unknown> => ({ id, label: id, value: id, children });
+    mockFetchTree.mockResolvedValueOnce({
+      nodes: [
+        node('Finance.Revenue', [
+          node('Finance.Revenue.ARR'),
+          node('Finance.Revenue.MRR'),
+        ]),
+      ],
+    });
+
+    render(<GlossaryTermPicker value={[inherited]} />);
+
+    const { nodes } = await lastProps().fetchData({ searchTerm: 'ARR' });
+    const [parent] = nodes;
+
+    expect(parent.disabled).toBeFalsy();
+    expect(
+      parent.children.map((child: TreeSelectNode<unknown>) => [
+        child.id,
+        Boolean(child.disabled),
+      ])
+    ).toEqual([
+      ['Finance.Revenue.ARR', true],
+      ['Finance.Revenue.MRR', false],
+    ]);
+  });
+
   it('reports an empty selection when the tree clears', () => {
     const onChange = jest.fn();
     render(<GlossaryTermPicker value={[APPLIED_TERM]} onChange={onChange} />);
