@@ -1,6 +1,9 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +31,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class TestCaseResolutionStatusService {
 
   private static final String BASE_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
+  private static final ObjectMapper OBJECT_MAPPER =
+      new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   private final HttpClient httpClient;
 
   public TestCaseResolutionStatusService(HttpClient httpClient) {
@@ -62,9 +67,7 @@ public class TestCaseResolutionStatusService {
         path += "?" + buildQueryString(queryParams);
       }
     }
-    ResultList<TestCaseResolutionStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
+    return fetchResolutionStatusList(path);
   }
 
   /**
@@ -116,9 +119,7 @@ public class TestCaseResolutionStatusService {
         path += "?" + buildQueryString(queryParams);
       }
     }
-    ResultList<TestCaseResolutionStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
+    return fetchResolutionStatusList(path);
   }
 
   /**
@@ -133,9 +134,7 @@ public class TestCaseResolutionStatusService {
     if (queryParams != null && !queryParams.isEmpty()) {
       path += "?" + buildQueryString(queryParams);
     }
-    ResultList<TestCaseIncidentGroup> result =
-        httpClient.execute(HttpMethod.GET, path, null, getIncidentGroupResultListType());
-    return new ListResponse<>(result);
+    return fetchIncidentGroupList(path);
   }
 
   // ===================================================================
@@ -184,14 +183,42 @@ public class TestCaseResolutionStatusService {
     return sb.toString();
   }
 
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<TestCaseResolutionStatus>> getResultListType() {
-    return (Class<ResultList<TestCaseResolutionStatus>>) (Class<?>) ResultList.class;
+  /**
+   * Fetch a list-shaped response from {@code path} and deserialize it preserving the
+   * {@code TestCaseResolutionStatus} element type. Using {@link TypeReference} (rather than passing
+   * a raw {@code ResultList.class} token to {@code httpClient.execute}) keeps Jackson from erasing
+   * the generic and binding every {@code data} element to {@code LinkedHashMap}.
+   */
+  private ListResponse<TestCaseResolutionStatus> fetchResolutionStatusList(String path)
+      throws OpenMetadataException {
+    String json = httpClient.executeForString(HttpMethod.GET, path, null);
+    try {
+      ResultList<TestCaseResolutionStatus> result =
+          OBJECT_MAPPER.readValue(
+              json, new TypeReference<ResultList<TestCaseResolutionStatus>>() {});
+      return new ListResponse<>(result);
+    } catch (Exception e) {
+      throw new OpenMetadataException(
+          "Failed to deserialize test case resolution status list response: " + e.getMessage(), e);
+    }
   }
 
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<TestCaseIncidentGroup>> getIncidentGroupResultListType() {
-    return (Class<ResultList<TestCaseIncidentGroup>>) (Class<?>) ResultList.class;
+  /**
+   * Fetch a list-shaped response from {@code path} and deserialize it preserving the
+   * {@code TestCaseIncidentGroup} element type; see {@link #fetchResolutionStatusList(String)} for
+   * why {@link TypeReference} is required.
+   */
+  private ListResponse<TestCaseIncidentGroup> fetchIncidentGroupList(String path)
+      throws OpenMetadataException {
+    String json = httpClient.executeForString(HttpMethod.GET, path, null);
+    try {
+      ResultList<TestCaseIncidentGroup> result =
+          OBJECT_MAPPER.readValue(json, new TypeReference<ResultList<TestCaseIncidentGroup>>() {});
+      return new ListResponse<>(result);
+    } catch (Exception e) {
+      throw new OpenMetadataException(
+          "Failed to deserialize test case incident group list response: " + e.getMessage(), e);
+    }
   }
 
   // ===================================================================

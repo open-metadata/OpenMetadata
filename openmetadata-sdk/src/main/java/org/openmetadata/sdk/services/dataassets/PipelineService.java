@@ -1,5 +1,8 @@
 package org.openmetadata.sdk.services.dataassets;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -20,6 +23,9 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
    * (ADR:2026-11-05-pipeline-entity-status-reads-hold-at-most-one-page).
    */
   private static final int MAX_STATUS_PAGE_SIZE = 1000;
+
+  private static final ObjectMapper STATUS_OBJECT_MAPPER =
+      new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   public PipelineService(HttpClient httpClient) {
     super(httpClient, "/v1/pipelines");
@@ -75,14 +81,15 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
     }
     String path = basePath + "/" + encodedFqn + "/status?startTs=" + startTs + "&endTs=" + endTs;
     RequestOptions options = RequestOptions.builder().queryParams(params.toQueryParams()).build();
-    ResultList<PipelineStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType(), options);
-    return new ListResponse<>(result);
-  }
-
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<PipelineStatus>> getResultListType() {
-    return (Class<ResultList<PipelineStatus>>) (Class<?>) ResultList.class;
+    String json = httpClient.executeForString(HttpMethod.GET, path, null, options);
+    try {
+      ResultList<PipelineStatus> result =
+          STATUS_OBJECT_MAPPER.readValue(json, new TypeReference<ResultList<PipelineStatus>>() {});
+      return new ListResponse<>(result);
+    } catch (Exception e) {
+      throw new OpenMetadataException(
+          "Failed to deserialize pipeline status list response: " + e.getMessage(), e);
+    }
   }
 
   public Pipeline addBulkPipelineStatus(String fqn, List<PipelineStatus> statuses)
