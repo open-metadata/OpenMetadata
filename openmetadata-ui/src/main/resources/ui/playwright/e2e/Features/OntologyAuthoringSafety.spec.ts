@@ -257,8 +257,13 @@ test.describe(
             await confirmation
               .getByRole('button', { name: 'Discard', exact: true })
               .click();
-            await expect(page.getByTestId('ontology-create-form')).toHaveCount(
-              0
+            // Discard drops the edit and moves to View, which still shows Settings read-only.
+            await expect(
+              page.getByTestId('ontology-create-dialog')
+            ).toBeVisible();
+            await expect(description).toBeDisabled();
+            await expect(description).not.toHaveValue(
+              'Keep settings until discard'
             );
             await page
               .getByTestId('ontology-create-name')

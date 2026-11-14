@@ -823,6 +823,10 @@ test.describe(
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
+          // The form's preview names the property too, so wait for the saved row.
+          await expect(
+            inspector.getByTestId('ontology-property-form')
+          ).toHaveCount(0);
           await expect(inspector.getByText('email')).toBeVisible();
         });
 
@@ -837,6 +841,10 @@ test.describe(
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
+          // The form's preview names the property too, so wait for the saved row.
+          await expect(
+            inspector.getByTestId('ontology-property-form')
+          ).toHaveCount(0);
           await expect(inspector.getByText('internalNote')).toBeVisible();
         });
 

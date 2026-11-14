@@ -528,7 +528,13 @@ test.describe(
             body: await page.screenshot(),
             contentType: 'image/png',
           });
+          // Switching mode keeps the surface: Edit stays on Tree until Graph is picked.
           await page.getByTestId('mode-tab-edit').click();
+          await expect(page.getByTestId('submode-tab-tree')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+          await page.getByTestId('submode-tab-graph').click();
           await expect(page.locator('.ontology-g6-container')).toBeVisible();
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('submode-tab-graph').click();

@@ -1151,7 +1151,8 @@ const OntologyReleasePanel = ({
         title={t('server.entity-fetch-error', {
           entity: t('label.publication-status'),
         })}
-        onReload={() => void (state.isError ? state.refetch() : refresh())}
+        // refresh() re-reads every publication query and clears a sticky failure, so one click suffices.
+        onReload={() => void refresh()}
       />
     </div>
   );
