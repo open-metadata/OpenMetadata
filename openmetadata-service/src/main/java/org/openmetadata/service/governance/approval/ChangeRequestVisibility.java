@@ -156,7 +156,8 @@ public final class ChangeRequestVisibility {
       Task task) {
     boolean allowed = true;
     try {
-      repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+      repository.checkPolicyForResolveTask(
+          authorizer, task, false, securityContext, TaskRepository.TaskResolutionInput.NONE);
     } catch (AuthorizationException denied) {
       allowed = false;
     }

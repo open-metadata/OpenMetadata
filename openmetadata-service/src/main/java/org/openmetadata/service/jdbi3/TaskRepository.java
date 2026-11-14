@@ -66,6 +66,7 @@ import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandle
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
@@ -1071,7 +1072,40 @@ public class TaskRepository extends EntityRepository<Task> {
     public static final TaskResolutionInput NONE = new TaskResolutionInput(null, null);
   }
 
+  /**
+   * A voter already counted on a multi-approval task is refused before the policy runs: a direct
+   * assignee is pruned from the assignees once they vote, so the policy would answer them 403 where a
+   * team member gets 409. The refusal tells the caller only about their own vote.
+   */
   public void checkPermissionsForResolveTask(
+      Authorizer authorizer,
+      Task task,
+      boolean closeTask,
+      SecurityContext securityContext,
+      TaskResolutionInput input) {
+    if (!closeTask) {
+      rejectRepeatVote(task, securityContext.getUserPrincipal().getName());
+    }
+    checkPolicyForResolveTask(authorizer, task, closeTask, securityContext, input);
+  }
+
+  private static void rejectRepeatVote(Task task, String userName) {
+    if (isRepeatVote(task, userName)) {
+      throw TaskStateConflictException.of(
+          CatalogExceptionMessage.alreadyVoted(userName, task.getId()));
+    }
+  }
+
+  private static boolean isRepeatVote(Task task, String userName) {
+    return task.getWorkflowInstanceId() != null
+        && WorkflowHandler.getInstance().hasVoted(task.getId(), userName);
+  }
+
+  /**
+   * The policy half of {@link #checkPermissionsForResolveTask}, without the vote check: deciding
+   * what a reviewer may read must not fail because they have already voted.
+   */
+  public void checkPolicyForResolveTask(
       Authorizer authorizer,
       Task task,
       boolean closeTask,

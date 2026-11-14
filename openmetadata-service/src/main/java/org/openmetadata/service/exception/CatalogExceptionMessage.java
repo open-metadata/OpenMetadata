@@ -262,6 +262,10 @@ public final class CatalogExceptionMessage {
         name);
   }
 
+  public static String alreadyVoted(String name, UUID taskId) {
+    return String.format("User '%s' has already voted on task '%s'", name, taskId);
+  }
+
   public static String pendingApprovalTaskExists(String entityFqn) {
     return String.format(
         "Entity '%s' has a pending approval task. Only the task assignee can perform this operation.",

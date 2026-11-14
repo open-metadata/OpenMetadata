@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -695,8 +696,10 @@ class OntologyEntityDAOTest {
           workflow.resolveTaskOutcome(taskId, vote("alice")));
       assertEquals(List.of("alice"), workflow.approvalTaskContext(taskId).voters());
       assertEquals("Review", workflow.approvalTaskContext(taskId).nodeName());
+      assertTrue(workflow.hasVoted(taskId, "alice"));
+      assertFalse(workflow.hasVoted(taskId, "bob"));
       assertEquals(
-          TaskResolutionOutcome.WAITING_FOR_VOTES,
+          TaskResolutionOutcome.RESOLUTION_FAILED,
           workflow.resolveTaskOutcome(taskId, vote("alice")));
       assertEquals(List.of("alice"), workflow.approvalTaskContext(taskId).voters());
       assertEquals(
@@ -708,6 +711,7 @@ class OntologyEntityDAOTest {
               .createTaskQuery()
               .processVariableValueEquals("customTaskId", taskId.toString())
               .count());
+      assertFalse(workflow.hasVoted(taskId, "alice"));
       assertEquals(
           TaskResolutionOutcome.RESOLUTION_FAILED,
           workflow.resolveTaskOutcome(taskId, vote("bob")));
