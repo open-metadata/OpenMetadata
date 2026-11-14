@@ -80,6 +80,7 @@ class PythonDialects(Enum):
     Hana = "hana"
     Hive = "hive"
     Impala = "impala"
+    Impala4 = "impala4"
     IbmDbSa = "ibm_db_sa"
     Ibmi = "ibmi"
     Informix = "informix"
