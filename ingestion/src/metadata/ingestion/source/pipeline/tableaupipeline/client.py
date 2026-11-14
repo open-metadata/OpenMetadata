@@ -69,6 +69,9 @@ EXTRACT_REFRESH_JOB_TYPES = ["refresh_extracts", "increment_extracts"]
 MAX_EXTRACT_REFRESH_JOB_LOOKUPS = 1000
 # The version TSC keeps when it cannot read the server's; too old for flows.
 FALLBACK_API_VERSION = "2.4"
+# The warnings Tableau sends next to an answer it cut short.
+# https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_errors.html
+TRUNCATION_ERROR_CODES = frozenset({"NODE_LIMIT_EXCEEDED", "TIME_LIMIT_EXCEEDED"})
 
 
 class TableauSiteAdminRequiredError(Exception):
@@ -76,12 +79,17 @@ class TableauSiteAdminRequiredError(Exception):
 
 
 class TableauMetadataApiError(Exception):
-    """The Metadata API could not be queried at all (as opposed to answering
-    with no data)."""
+    """The Metadata API could not be queried, or returned only part of a flow
+    (as opposed to answering with no data)."""
 
 
 def _has_status(exc: ServerResponseError, status: int) -> bool:
     return str(exc.code).startswith(str(status))
+
+
+def _is_truncation(error: dict) -> bool:
+    code = (error.get("extensions") or {}).get("code")
+    return code in TRUNCATION_ERROR_CODES or "node limit" in str(error.get("message", ""))
 
 
 def _join_notes(notes: list[str]) -> str | None:
@@ -472,7 +480,8 @@ class TableauPipelineClient:
         Input and output fields are read PAGE_SIZE at a time, so a wide flow stays
         under the node limit. Returns None when the flow has no lineage records yet
         (the Metadata store lags live publishes by a few minutes on Tableau Server);
-        raises TableauMetadataApiError when the Metadata API cannot be queried.
+        raises TableauMetadataApiError when the Metadata API cannot be queried, or
+        when a page is cut short or comes back without the flow.
         """
         record: dict | None = None
         cursors: dict[str, str | None] = {"inputFields": None, "outputFields": None}
@@ -488,6 +497,10 @@ class TableauPipelineClient:
                 truncation_fails=True,
             )
             flows = data.get("flows") or []
+            if not flows and record is not None:
+                raise TableauMetadataApiError(
+                    f"Tableau Metadata API answer for flow {flow_luid} lost the flow after its first page of fields"
+                )
             if not flows:
                 break
             page_record: dict = flows[0]
@@ -559,18 +572,17 @@ class TableauPipelineClient:
                 ]
 
     def _metadata_query(self, query: str, subject: str, truncation_fails: bool = False) -> dict:
-        """The `data` of a Metadata API answer. A node-limit or permission error
-        still returns partial data next to `errors`; the data is kept and the
-        errors logged, unless `truncation_fails` and the node limit cut it short."""
+        """The `data` of a Metadata API answer. A node-limit, time-limit or
+        permission error still returns partial data next to `errors`; the data is
+        kept and the errors logged, unless `truncation_fails` and Tableau cut the
+        answer short."""
         try:
             result = self.tableau_server.metadata.query(query=query)
         except Exception as exc:
             raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {exc}") from exc
-        if truncation_fails and any(
-            "node limit" in str(error.get("message", "")) for error in result.get("errors") or []
-        ):
+        if truncation_fails and any(_is_truncation(error) for error in result.get("errors") or []):
             raise TableauMetadataApiError(
-                f"Tableau Metadata API answer for {subject} exceeded the node limit: {result['errors']}"
+                f"Tableau Metadata API answer for {subject} was cut short: {result['errors']}"
             )
         if result.get("errors"):
             logger.warning("Tableau Metadata API returned errors for %s: %s", subject, result["errors"])

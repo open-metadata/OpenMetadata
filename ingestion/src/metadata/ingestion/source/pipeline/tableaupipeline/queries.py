@@ -23,7 +23,7 @@ ref: https://help.tableau.com/current/api/metadata_api/en-us/reference/flow.doc.
 # rather than downstreamFlows: the latter would add an A -> C edge next to
 # A -> B -> C. The fields make the answer grow with the flow's column count, so
 # they are read a page at a time (a finished side asks for 0) and a page cut
-# short by the node limit is a failed query. A custom SQL input
+# short by the node or time limit is a failed query. A custom SQL input
 # carries its own query; TABLEAU_TABLE_QUERIES_QUERY is only for unnamed tables
 # that come without one: referencedByQueries lists every query on the site that
 # reads a table, which on a popular table would spend most of the node budget.

@@ -497,6 +497,28 @@ LINEAGE = {
 }
 
 
+def _connection(nodes: list, after: str | None) -> dict:
+    """One page of a flow's input or output fields; Tableau ends a side with endCursor null."""
+    return {"nodes": nodes, "pageInfo": {"hasNextPage": after is not None, "endCursor": after}}
+
+
+ORDERS_FIELD = {"__typename": "FlowColumnInputField", "column": {"table": LINEAGE["upstreamTables"][0]}}
+TARGETS_FIELD = {"__typename": "FlowFieldInputField", "field": {"datasource": LINEAGE["upstreamDatasources"][0]}}
+SALES_FIELD = {"__typename": "FlowColumnOutputField", "column": {"table": LINEAGE["downstreamTables"][0]}}
+FIRST_OF_TWO_PAGES = {
+    "data": {
+        "flows": [
+            {
+                "outputSteps": [],
+                "nextDownstreamFlows": [],
+                "inputFieldsConnection": _connection([ORDERS_FIELD], "in-1"),
+                "outputFieldsConnection": _connection([SALES_FIELD], None),
+            }
+        ]
+    }
+}
+
+
 class TestFlowLineage:
     def test_inputs_and_outputs_are_the_flows_own_not_everything_upstream(self, tableau):
         """Tableau's Flow.upstream* and downstream* fields reach through other
@@ -536,33 +558,16 @@ class TestFlowLineage:
     def test_a_wide_flow_is_read_a_page_at_a_time(self, tableau):
         """Fields are paged so a wide flow stays under the node limit. Tableau ends
         a side with endCursor null; that side is then asked for 0 fields."""
-
-        def connection(nodes: list, after: str | None) -> dict:
-            return {"nodes": nodes, "pageInfo": {"hasNextPage": after is not None, "endCursor": after}}
-
-        orders = {"__typename": "FlowColumnInputField", "column": {"table": LINEAGE["upstreamTables"][0]}}
-        targets = {"__typename": "FlowFieldInputField", "field": {"datasource": LINEAGE["upstreamDatasources"][0]}}
-        sales = {"__typename": "FlowColumnOutputField", "column": {"table": LINEAGE["downstreamTables"][0]}}
-        flow = {"outputSteps": [], "nextDownstreamFlows": []}
         tableau.graphql_pages = [
+            FIRST_OF_TWO_PAGES,
             {
                 "data": {
                     "flows": [
                         {
-                            **flow,
-                            "inputFieldsConnection": connection([orders], "in-1"),
-                            "outputFieldsConnection": connection([sales], None),
-                        }
-                    ]
-                }
-            },
-            {
-                "data": {
-                    "flows": [
-                        {
-                            **flow,
-                            "inputFieldsConnection": connection([targets], None),
-                            "outputFieldsConnection": connection([], None),
+                            "outputSteps": [],
+                            "nextDownstreamFlows": [],
+                            "inputFieldsConnection": _connection([TARGETS_FIELD], None),
+                            "outputFieldsConnection": _connection([], None),
                         }
                     ]
                 }
@@ -670,6 +675,37 @@ class TestFlowLineage:
         }
 
         with pytest.raises(TableauMetadataApiError, match="node limit"):
+            _client().get_flow_lineage("flow-1")
+
+    def test_a_flow_cut_off_by_the_time_limit_is_an_error(self, tableau):
+        """Tableau names the warning in extensions.code; its message never says node limit."""
+        tableau.graphql_response = {
+            "data": {"flows": [LINEAGE]},
+            "errors": [
+                {
+                    "message": "Can't show all data because the timeout limit '30' has been exceeded.",
+                    "extensions": {"code": "TIME_LIMIT_EXCEEDED"},
+                }
+            ],
+        }
+
+        with pytest.raises(TableauMetadataApiError, match="TIME_LIMIT_EXCEEDED"):
+            _client().get_flow_lineage("flow-1")
+
+    def test_a_later_page_without_the_flow_is_an_error_not_the_end_of_its_fields(self, tableau):
+        """The first page alone is missing the flow's other inputs, so its stored
+        tasks must be kept rather than replaced by the first page's."""
+        tableau.graphql_pages = [
+            FIRST_OF_TWO_PAGES,
+            {
+                "data": None,
+                "errors": [
+                    {"message": "The query contains an invalid cursor. Make sure to use cursors of the same type."}
+                ],
+            },
+        ]
+
+        with pytest.raises(TableauMetadataApiError, match="flow flow-1"):
             _client().get_flow_lineage("flow-1")
 
     def test_a_rejected_query_yields_no_lineage(self, tableau, caplog):

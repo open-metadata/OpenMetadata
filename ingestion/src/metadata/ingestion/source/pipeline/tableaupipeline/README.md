@@ -151,12 +151,13 @@ would replace their column lineage whenever `overrideLineage` is on.
   skipped normally.
 - **Retries.** 429 and 502-504 answers are retried three times with backoff,
   honouring `Retry-After`.
-- **Metadata API node limit.** A query that exceeds the node limit (20,000
-  by default on Tableau Server) returns partial data plus `errors`. The flow
-  query reads input and output fields 100 at a time, so a wide flow stays
-  under the limit; a page cut short anyway keeps the flow's stored tasks and
-  gets no new lineage that run, with a warning; other queries log the errors
-  and ingest what was returned.
+- **Metadata API node and time limits.** A query that exceeds the node limit
+  (20,000 by default on Tableau Server) or the time limit returns partial data
+  plus `errors`. The flow query reads input and output fields 100 at a time,
+  so a wide flow stays under the node limit; a page cut short anyway, or a
+  later page that comes back without the flow, keeps the flow's stored tasks
+  and gets no new lineage that run, with a warning; other queries log the
+  errors and ingest what was returned.
 
 ## Test connection steps
 
