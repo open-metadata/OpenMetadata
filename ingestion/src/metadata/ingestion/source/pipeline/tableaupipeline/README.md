@@ -142,13 +142,15 @@ would replace their column lineage whenever `overrideLineage` is on.
   inside the flow) is not exposed by the Metadata API. The Task DAG captures
   the flow boundary (inputs → processing → outputs) only.
 - **Metadata API outages keep the DAG.** When the Metadata API cannot be
-  queried, a flow keeps the tasks it already has in OpenMetadata rather than
-  collapsing to a single task; a flow with no lineage records is a single
-  task.
+  queried, answers with errors and no data, or returns a flow record the
+  connector cannot read, a flow keeps the tasks it already has in OpenMetadata
+  rather than collapsing to a single task; a flow with no lineage records is a
+  single task.
 - **Partial listings delete nothing.** When the flows, the extract refresh
   tasks, or one of their data sources / workbooks, cannot be read, no pipeline
   is marked as deleted that run. A data source or workbook that no longer exists is
-  skipped normally.
+  skipped normally. A partial listing also fails the run, whatever the success
+  threshold.
 - **Retries.** 429 and 502-504 answers are retried three times with backoff,
   honouring a `Retry-After` of up to 30 seconds. A longer one, as Tableau Cloud
   sends once a site's hourly flow quota is used up, is not waited out: the call

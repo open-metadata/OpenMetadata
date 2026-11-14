@@ -204,12 +204,12 @@ class TableaupipelineSource(PipelineServiceSource):
         self._metadata_api_failed = True
 
     def _iter(self) -> Iterable[Either]:
-        """Fail a run whose flow listing stopped part way, whatever the success
-        threshold. Raised once the topology is done because the runner only
-        records a producer's exception, then reconciles anyway."""
+        """Fail a run whose flow or extract refresh listing stopped part way,
+        whatever the success threshold. Raised once the topology is done because
+        the runner only records a producer's exception, then reconciles anyway."""
         yield from super()._iter()
-        if not self.connection.flow_listing_complete:
-            raise WorkflowFatalError("Some Tableau flows could not be listed, so this run failed.")
+        if not (self.connection.flow_listing_complete and self.connection.extract_refresh_listing_complete):
+            raise WorkflowFatalError("Some Tableau flows or extract refreshes could not be listed, so this run failed.")
 
     def get_pipeline_name(self, pipeline_details: TableauPipelineDetails) -> str:
         return pipeline_details.display_name or pipeline_details.name

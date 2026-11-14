@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Akash Verma
 - **Guard:** `test_tableaupipeline_client.py::TestNetworkLimits::test_a_long_retry_after_fails_at_once_and_says_why`
-- **Related:** open-metadata/OpenMetadata#26500
+- **Related:** open-metadata/OpenMetadata#36839
 
 ## Context
 
@@ -16,7 +16,7 @@ only `[SIGNUM 14] STREAM ioctl timeout`. Tableau documents neither this limit's 
 
 ## Decision
 
-A 429 or 5xx whose `Retry-After` is at most 30 s is retried as before, after that wait. A longer
+A 429, 502, 503 or 504 whose `Retry-After` is at most 30 s is retried as before, after that wait. A longer
 `Retry-After` is not retried. The client logs a WARNING naming the status, the `Retry-After` and
 the cap, and returns the response, so tableauserverclient raises Tableau's own message: "Too many
 requests for 'api.rest.flows.hourly'. Please retry after N seconds." The cap stays below what the

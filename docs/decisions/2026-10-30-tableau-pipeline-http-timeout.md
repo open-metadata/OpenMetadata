@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** Akash Verma
 - **Guard:** `test_tableaupipeline_client.py::TestNetworkLimits::test_a_stalled_server_fails_instead_of_hanging`
-- **Related:** open-metadata/OpenMetadata#26500
+- **Related:** open-metadata/OpenMetadata#36839
 
 ## Context
 
@@ -16,7 +16,9 @@ error and retried it, so the budget never ended the step.
 
 ## Decision
 
-Every call the client makes passes `timeout=(10, 60)`: 10 s to connect, as the shared OpenMetadata
+Every call the client makes through tableauserverclient's endpoints passes `timeout=(10, 60)`
+(tableauserverclient's legacy version probe, reached only when serverInfo answers 404003 or
+404001, sends none): 10 s to connect, as the shared OpenMetadata
 REST client does, and 60 s without a byte from the server. Tableau Server cancels a Metadata API
 query after `metadata.query.limits.time`, 20 s by default, and Tableau recommends raising it to no
 more than 60 s; Tableau Cloud documents no value, and 30 s cancellations are seen in practice. The

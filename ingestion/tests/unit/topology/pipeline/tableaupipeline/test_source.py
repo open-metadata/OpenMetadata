@@ -19,7 +19,7 @@ against a fake client and an in-memory OpenMetadata catalog.
 import logging
 from datetime import datetime, timezone
 from fnmatch import fnmatchcase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -38,7 +38,6 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.step import WorkflowFatalError
-from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauMetadataApiError,
 )
@@ -243,16 +242,50 @@ class TestDeletion:
         assert list(source.mark_pipelines_as_deleted()) == []
         source.metadata.delete_stale_entities.assert_not_called()
 
-    def test_a_partial_flow_listing_fails_the_run(self, tableau_source):
+    def test_a_partial_flow_listing_fails_the_run(self, tableau_source, monkeypatch):
         """Whatever the success threshold: one failed page is a single error among
-        every flow that was listed before it."""
+        every flow that was listed before it. The runner records the producer's
+        error and still runs the post-process, so this runs the real topology."""
         source, client = tableau_source
+        source.metadata.config = None
 
-        with patch.object(PipelineServiceSource, "_iter", side_effect=lambda: iter(())):
-            assert list(source._iter()) == []
+        def listing_failing_on_page_two(keep=lambda _: True):
             client.flow_listing_complete = False
-            with pytest.raises(WorkflowFatalError, match="could not be listed"):
-                list(source._iter())
+            yield FLOW_SALES
+            raise RuntimeError("page 2 of /flows failed")
+
+        monkeypatch.setattr(client, "get_pipelines", listing_failing_on_page_two)
+
+        with pytest.raises(WorkflowFatalError, match="could not be listed"):
+            list(source._iter())
+
+        source.metadata.delete_stale_entities.assert_not_called()
+        assert [failure.name for failure in source.status.failures] == ["Producer get_pipeline"]
+
+    def test_a_partial_extract_listing_fails_the_run(self, tableau_source, monkeypatch):
+        """The client catches a failed extract refresh listing, so nothing reaches
+        the runner; the run must still fail."""
+        source, client = tableau_source
+        source.metadata.config = None
+
+        def listing_with_a_failed_task_page(keep=lambda _: True):
+            yield FLOW_SALES
+            client.extract_refresh_listing_complete = False
+
+        monkeypatch.setattr(client, "get_pipelines", listing_with_a_failed_task_page)
+
+        with pytest.raises(WorkflowFatalError, match="could not be listed"):
+            list(source._iter())
+
+        source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_complete_flow_listing_lets_the_run_finish(self, tableau_source):
+        source, _ = tableau_source
+        source.metadata.config = None
+
+        list(source._iter())
+
+        source.metadata.delete_stale_entities.assert_called_once()
 
     def test_a_complete_listing_marks_missing_pipelines_deleted(self, tableau_source):
         source, _ = tableau_source
