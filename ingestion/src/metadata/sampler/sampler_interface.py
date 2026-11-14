@@ -247,6 +247,22 @@ class SamplerInterface(ABC):
             return _TruncatedCell(value[:SAMPLE_DATA_MAX_CELL_LENGTH])
         return value
 
+    @staticmethod
+    def _array_to_list(value: Any) -> Any:
+        """Return numpy arrays, including ones nested in arrays and structs, as lists.
+
+        pyarrow reads parquet list columns into numpy arrays. Auto classification skips
+        values it cannot read as text or lists, and the sample data upload would store
+        the array's repr.
+        """
+        import numpy as np  # pylint: disable=import-outside-toplevel
+
+        if isinstance(value, np.ndarray):
+            return [SamplerInterface._array_to_list(item) for item in value.tolist()]
+        if isinstance(value, dict):
+            return {key: SamplerInterface._array_to_list(item) for key, item in value.items()}
+        return value
+
     def generate_sample_data(self, sample_data_config: SampleDataIngestionConfig | None = None) -> TableData:
         """Fetch and ingest sample data
 
