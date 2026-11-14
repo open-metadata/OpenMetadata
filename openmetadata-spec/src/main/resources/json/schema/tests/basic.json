@@ -126,6 +126,29 @@
       },
       "additionalProperties": false
     },
+    "thresholdUnit": {
+      "description": "How a failure threshold reads: `ABSOLUTE` for a raw deviation, `PERCENTAGE` for a share of what it applies to.",
+      "javaType": "org.openmetadata.schema.tests.type.ThresholdUnit",
+      "type": "string",
+      "enum": ["ABSOLUTE", "PERCENTAGE"],
+      "default": "ABSOLUTE"
+    },
+    "testCaseAppliedThreshold": {
+      "description": "The failure threshold a test case run was judged by, as the evaluator read it while the run executed. Recorded by the agent that ran the test and never re-read from the test case afterwards: an edit between the run and the result being stored would otherwise be attributed to the run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseAppliedThreshold",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "Deviation the run tolerated before it was reported as failed. `0` tolerated nothing.",
+          "type": "number",
+          "default": 0
+        },
+        "unit": {
+          "$ref": "#/definitions/thresholdUnit"
+        }
+      },
+      "additionalProperties": false
+    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
@@ -191,6 +214,18 @@
         "minBound": {
           "description": "Lower bound limit for the test case result as defined in the test definition.",
           "type": "number"
+        },
+        "configuredMaxBound": {
+          "description": "Upper bound the test case asked for when the run executed, before the failure threshold widened it into `maxBound`. Absent for a run that recorded no threshold snapshot.",
+          "type": "number"
+        },
+        "configuredMinBound": {
+          "description": "Lower bound the test case asked for when the run executed, before the failure threshold widened it into `minBound`. Absent for a run that recorded no threshold snapshot.",
+          "type": "number"
+        },
+        "appliedThreshold": {
+          "description": "Failure threshold the run was judged by, as configured when it executed. Absent for a run recorded before the snapshot existed, whose threshold cannot be recovered.",
+          "$ref": "#/definitions/testCaseAppliedThreshold"
         },
         "testCase": {
           "description": "Test case that this result is for.",
@@ -360,6 +395,18 @@
         "maxBound": {
           "description": "Upper bound this dimension was evaluated against: the configured bound, widened by the failure threshold or learned by dynamic assertion when either applies.",
           "type": "number"
+        },
+        "configuredMinBound": {
+          "description": "Lower bound the test case asked for when the run executed, before the failure threshold widened it into `minBound`.",
+          "type": "number"
+        },
+        "configuredMaxBound": {
+          "description": "Upper bound the test case asked for when the run executed, before the failure threshold widened it into `maxBound`.",
+          "type": "number"
+        },
+        "appliedThreshold": {
+          "description": "Failure threshold the parent run was judged by, as configured when it executed. Every dimension of a run shares it.",
+          "$ref": "#/definitions/testCaseAppliedThreshold"
         },
         "excludedFromRollUp": {
           "description": "Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its status is still reported, but it does not fail the test case under the `ANY_DIMENSION` policy.",

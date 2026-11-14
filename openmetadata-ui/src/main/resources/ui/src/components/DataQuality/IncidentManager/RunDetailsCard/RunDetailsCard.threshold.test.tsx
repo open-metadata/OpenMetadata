@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { act, screen } from '@testing-library/react';
+import { omit } from 'lodash';
 import {
   ProfileSampleType,
   TestCase,
+  TestCaseAppliedThreshold,
   TestCaseResult,
   TestCaseStatus,
+  ThresholdUnit,
 } from '../../../../generated/tests/testCase';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -92,10 +95,22 @@ const MEAN_FIVE_PERCENT = testCaseOf('columnValueMeanToBeBetween', [
   { name: 'thresholdUnit', value: 'PERCENTAGE' },
 ]);
 
+const percentage = (value: number): TestCaseAppliedThreshold => ({
+  value,
+  unit: ThresholdUnit.Percentage,
+});
+
+const absolute = (value: number): TestCaseAppliedThreshold => ({
+  value,
+  unit: ThresholdUnit.Absolute,
+});
+
+/** A run as an agent records it, threshold snapshot included. */
 const rowRun = (
   testCaseStatus: TestCaseStatus,
   failedRows: number,
-  passedRows: number
+  passedRows: number,
+  appliedThreshold: TestCaseAppliedThreshold = percentage(1)
 ): TestCaseResult => ({
   timestamp: 1_786_001_601_000,
   testCaseStatus,
@@ -104,7 +119,12 @@ const rowRun = (
   failedRows,
   failedRowsPercentage:
     Math.round((failedRows / (failedRows + passedRows)) * 10000) / 100,
+  appliedThreshold,
 });
+
+/** The same run as an agent that predates the snapshot recorded it. */
+const withoutThreshold = (result: TestCaseResult): TestCaseResult =>
+  omit(result, 'appliedThreshold') as TestCaseResult;
 
 const renderCard = (result: TestCaseResult, testCase: TestCase) =>
   renderWithQueryClient(
@@ -143,7 +163,7 @@ describe('RunDetailsCard threshold and scope', () => {
 
   it('leads with the count when the threshold is a count', () => {
     renderCard(
-      rowRun(TestCaseStatus.Failed, 120, 9861),
+      rowRun(TestCaseStatus.Failed, 120, 9861, absolute(100)),
       testCaseOf('columnValuesToBeNotNull', [
         { name: 'threshold', value: '100' },
         { name: 'thresholdUnit', value: 'ABSOLUTE' },
@@ -158,9 +178,9 @@ describe('RunDetailsCard threshold and scope', () => {
     );
   });
 
-  it('says a test case with no threshold set tolerates nothing', () => {
+  it('says a run that tolerated nothing tolerated nothing', () => {
     renderCard(
-      rowRun(TestCaseStatus.Failed, 3, 97),
+      rowRun(TestCaseStatus.Failed, 3, 97, absolute(0)),
       testCaseOf('columnValuesToBeNotNull', [])
     );
 
@@ -180,6 +200,9 @@ describe('RunDetailsCard threshold and scope', () => {
         testResultValue: [{ name: 'mean', value: '87.4' }],
         minBound: 85.5,
         maxBound: 115.5,
+        configuredMinBound: 90,
+        configuredMaxBound: 110,
+        appliedThreshold: percentage(5),
       },
       MEAN_FIVE_PERCENT
     );
@@ -190,6 +213,79 @@ describe('RunDetailsCard threshold and scope', () => {
     expect(
       screen.getByTestId('run-details-configured-range')
     ).toHaveTextContent('90 – 110');
+    expect(screen.getByTestId('run-details-effective-range')).toHaveTextContent(
+      '85.5 – 115.5'
+    );
+  });
+
+  it('keeps the threshold the run applied after the test case is tightened', () => {
+    // The run tolerated 5% and 3% of its rows failed, so it succeeded. The
+    // test case now tolerates 1%, which this run was never judged by.
+    renderCard(
+      rowRun(TestCaseStatus.Success, 30, 970, percentage(5)),
+      NOT_NULL_ONE_PERCENT
+    );
+
+    expect(screen.getByTestId('run-details-threshold')).toHaveTextContent(
+      '5% of rows'
+    );
+    expect(screen.getByTestId('run-details-failed')).toHaveTextContent(
+      '3.00% (30 row(s))'
+    );
+    expect(screen.getByTestId('run-details-card')).toHaveAttribute(
+      'data-status',
+      TestCaseStatus.Success
+    );
+  });
+
+  it('keeps the threshold the run applied after the test case is loosened', () => {
+    renderCard(
+      rowRun(TestCaseStatus.Failed, 30, 970, percentage(1)),
+      testCaseOf('columnValuesToBeNotNull', [
+        { name: 'threshold', value: '5' },
+        { name: 'thresholdUnit', value: 'PERCENTAGE' },
+      ])
+    );
+
+    expect(screen.getByTestId('run-details-threshold')).toHaveTextContent(
+      '1% of rows'
+    );
+  });
+
+  it('says the threshold of a run that recorded none is unavailable', () => {
+    renderCard(
+      withoutThreshold(rowRun(TestCaseStatus.Success, 30, 970)),
+      NOT_NULL_ONE_PERCENT
+    );
+
+    expect(screen.getByTestId('run-details-threshold')).toHaveTextContent(
+      'Unavailable'
+    );
+    // What the run measured is still its own. The count leads, as it does for
+    // any run whose threshold is not a percentage -- here, not known to be one.
+    expect(screen.getByTestId('run-details-failed')).toHaveTextContent(
+      '30 row(s) (3.00%)'
+    );
+  });
+
+  it('leaves the configured range of a statistical run that recorded none unknown', () => {
+    renderCard(
+      {
+        timestamp: 1_786_001_601_000,
+        testCaseStatus: TestCaseStatus.Success,
+        testResultValue: [{ name: 'mean', value: '87.4' }],
+        minBound: 85.5,
+        maxBound: 115.5,
+      },
+      MEAN_FIVE_PERCENT
+    );
+
+    expect(screen.getByTestId('run-details-threshold')).toHaveTextContent(
+      'Unavailable'
+    );
+    expect(
+      screen.getByTestId('run-details-configured-range')
+    ).toHaveTextContent('—');
     expect(screen.getByTestId('run-details-effective-range')).toHaveTextContent(
       '85.5 – 115.5'
     );
