@@ -162,6 +162,7 @@ import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.ontology.OntologyPackInstallJobHandler;
 import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
+import org.openmetadata.service.rdf.RdfDisabledMark;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -396,6 +397,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // use columns a pending migration adds, and must not run against a schema it has not reached.
     startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
 
+    // After migration validation, because nothing should write to the database before its schema is
+    // validated. Here, not in a helper subclasses override or in app registration, which the ops
+    // CLI also reaches without starting a server.
+    RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
+
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     startupTimer.time(
         "settings cache initialization", () -> SettingsCache.initialize(catalogConfig));
@@ -498,6 +504,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
+    // The mark is written twice at stop. When the stop begins, because a shutdown that outlasts
+    // the platform's grace period is killed before any hook below runs. And after ManagedShutdown
+    // (registered before it; hooks stop in reverse order), to follow the hooks that stop this
+    // server's background writers.
+    environment
+        .lifecycle()
+        .addEventListener(
+            RdfDisabledMark.whenStopBegins(catalogConfig.getRdfConfiguration(), jdbi));
+    environment
+        .lifecycle()
+        .manage(RdfDisabledMark.atStop(catalogConfig.getRdfConfiguration(), jdbi));
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();

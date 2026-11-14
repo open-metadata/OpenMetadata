@@ -130,6 +130,14 @@ class RdfIndexAppTest {
     return new RdfProjectionStateResolver(runStore, () -> false).resolve();
   }
 
+  /** Reads the run history once RDF is on again: the run the app pushed is the only one. */
+  private static RdfProjectionStateResolver resolverAfter(final AppRunRecord pushed) {
+    final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
+        .thenReturn(List.of(JsonUtils.pojoToJson(pushed)));
+    return new RdfProjectionStateResolver(runStore, () -> false);
+  }
+
   @AfterEach
   void resetProjectionHealth() {
     RdfProjectionHealth.markReady();
@@ -195,6 +203,14 @@ class RdfIndexAppTest {
         assertTrue(testApp.pushedUpdate, "skipped run must push a final status update");
         assertEquals(AppRunRecord.Status.COMPLETED, testApp.pushedRecord.getStatus());
         assertNull(testApp.pushedRecord.getFailureContext());
+        assertEquals(
+            Boolean.TRUE,
+            testApp
+                .pushedRecord
+                .getSuccessContext()
+                .getAdditionalProperties()
+                .get("projectionUnchanged"));
+        assertEquals(RdfProjectionState.REBUILDING, resolverAfter(testApp.pushedRecord).resolve());
       } finally {
         rdfRepositoryMockedStatic
             .when(RdfRepository::getInstanceOrNull)
@@ -1165,12 +1181,40 @@ class RdfIndexAppTest {
     }
 
     private EventPublisherJob executeInPlaceRebuild() throws Exception {
+      return executeTableRun(true, Set.of());
+    }
+
+    @Test
+    @DisplayName("A completed recreate of some entity types leaves the projection degraded")
+    void aRecreateOfSomeEntityTypesDoesNotRepairTheProjection() throws Exception {
+      RdfProjectionHealth.markDegraded();
+
+      final EventPublisherJob job = executeTableRun(true, Set.of("table", "dashboard"));
+
+      assertEquals(EventPublisherJob.Status.COMPLETED, job.getStatus());
+      assertTrue(RdfProjectionHealth.isDegraded());
+    }
+
+    @Test
+    @DisplayName("A completed incremental run leaves the projection degraded")
+    void anIncrementalRunDoesNotRepairTheProjection() throws Exception {
+      RdfProjectionHealth.markDegraded();
+
+      final EventPublisherJob job = executeTableRun(false, Set.of("table"));
+
+      assertEquals(EventPublisherJob.Status.COMPLETED, job.getStatus());
+      assertTrue(RdfProjectionHealth.isDegraded());
+    }
+
+    /** Runs the app over tables on an installation that has the given entity types. */
+    private EventPublisherJob executeTableRun(
+        final boolean recreateIndex, final Set<String> installedEntityTypes) throws Exception {
       final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
       final EventPublisherJob jobConfig =
           new EventPublisherJob()
               .withEntities(Set.of("table"))
-              .withRecreateIndex(true)
+              .withRecreateIndex(recreateIndex)
               .withStatus(EventPublisherJob.Status.STARTED);
       var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
       jobDataField.setAccessible(true);
@@ -1190,7 +1234,8 @@ class RdfIndexAppTest {
       lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-        entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
+        entityMock.when(Entity::getEntityList).thenReturn(installedEntityTypes);
+        entityMock.when(() -> Entity.getEntityRepository(anyString())).thenReturn(repository);
 
         testApp.execute(context);
       }

@@ -46,6 +46,8 @@ public final class RdfLiveWriteStore {
   private static final String START_COMPACTION_CLOCK =
       "UPDATE rdf_projection_health SET lastCompactedAt = ? WHERE id = 'active' "
           + "AND lastCompactedAt = 0";
+  private static final String RDF_DISABLED_REASON =
+      "A server ran with RDF disabled; the changes made through it are not in the graph";
   private static final String LAST_COMPACTION =
       "SELECT lastCompactedAt FROM rdf_projection_health WHERE id = 'active'";
 
@@ -359,6 +361,16 @@ public final class RdfLiveWriteStore {
                   && !RdfLiveWritePause.isPaused(handle, clock.millis());
           return unrepaired || lagging || compactionOverdue(handle);
         });
+  }
+
+  /**
+   * Records that a server ran with RDF off; written when it starts, when its stop begins and again
+   * at the end of its stop. Changes made through it never reach the graph, so the projection is
+   * degraded like any other lost write: only a rebuild of the entire projection that starts
+   * afterwards repairs it.
+   */
+  public void recordRdfDisabled() {
+    markDegraded(RDF_DISABLED_REASON);
   }
 
   /** Records that storage maintenance compacted the serving dataset, whichever server ran it. */

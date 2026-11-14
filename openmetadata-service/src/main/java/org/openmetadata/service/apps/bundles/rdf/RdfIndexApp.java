@@ -178,6 +178,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // RDF is optional, so a server without it completes the run with nothing indexed, as
       // RdfInferenceApp does. Set directly: no rebuild ran, so no rebuild metrics are recorded.
       LOG.info("RDF is not configured on this server, skipping RDF indexing");
+      projectionUnchanged = true;
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       sendUpdates(jobExecutionContext, true);
       return;
@@ -1038,6 +1039,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
     if (jobData.getStats() != null) {
       appRecord.setSuccessContext(
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
+    }
+    if (projectionUnchanged && jobData.getFailure() == null) {
+      appRecord.setSuccessContext(RdfProjectionStateResolver.successContextOfUnchangedProjection());
     }
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
 

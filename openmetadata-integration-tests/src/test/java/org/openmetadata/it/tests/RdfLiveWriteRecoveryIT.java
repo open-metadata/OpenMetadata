@@ -289,6 +289,26 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void anRdfOffMarkWrittenAfterARebuildStartedKeepsTheProjectionDegradedUntilALaterRebuild(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      assertFalse(fixture.primary.isDegraded());
+
+      fixture.primary.recordRdfDisabled();
+      assertTrue(fixture.other.isDegraded());
+
+      final long rebuildStarted = fixture.primary.failureVersion();
+      fixture.other.recordRdfDisabled();
+      fixture.primary.markRebuilt(rebuildStarted);
+      assertTrue(fixture.primary.isDegraded());
+
+      fixture.primary.markRebuilt(fixture.primary.failureVersion());
+      assertFalse(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void migrationReapplicationPreservesFailuresAndPendingWrites(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
