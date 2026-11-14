@@ -68,6 +68,7 @@ from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -130,6 +131,48 @@ TableNameParts = tuple[str | None, str | None, str]
 AssetResolver = Callable[[], list[EntityReference]]
 
 _NOT_FETCHED = object()
+
+# Tableau's connection types for files, cloud storage and SharePoint lists, which
+# are never database tables; a file in cloud storage can also be
+# `cloudfile:<service>-<type>`.
+# https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_connections.html
+FILE_CONNECTION_TYPES = frozenset(
+    {
+        "box",
+        "csv",
+        "dataengine",
+        "dropbox",
+        "excel",
+        "excel-direct",
+        "excel-reader",
+        "google-sheets",
+        "googledrive",
+        "hyper",
+        "ogr",
+        "ogrdirect",
+        "onedrive",
+        "pdf",
+        "pdf-reader",
+        "semistructpassivestore",
+        "semistructpassivestore-direct",
+        "sharepoint",
+        "stat",
+        "stat-direct",
+        "textclean",
+        "textscan",
+        "textscan-reader",
+    }
+)
+
+
+def _is_file(table: TableauLineageTable) -> bool:
+    """Tableau reports an uploaded file with its file as an excel-direct or
+    textscan database, or with no database and no schema at all; by name alone
+    it would resolve to a database table of the same name."""
+    if table.database is None:
+        return not table.schema_
+    connection_type = table.database.connection_type or ""
+    return connection_type in FILE_CONNECTION_TYPES or connection_type.startswith("cloudfile:")
 
 
 class TableaupipelineSource(PipelineServiceSource):
@@ -582,6 +625,8 @@ class TableaupipelineSource(PipelineServiceSource):
         ]
 
     def _downstream_table_refs(self, table: TableauLineageTable) -> list[EntityReference]:
+        if _is_file(table):
+            return []
         entity = self._resolve_table_entity(table)
         return [EntityReference(id=entity.id, type=ENTITY_TYPE_TABLE)] if entity is not None else []
 
@@ -590,6 +635,18 @@ class TableaupipelineSource(PipelineServiceSource):
             EntityReference(id=datamodel.id, type=ENTITY_TYPE_DASHBOARD_DATA_MODEL)
             for datamodel in self._lookup_datamodels(datasource_id, label)
         ]
+
+    def yield_pipeline_lineage(self, pipeline_details: TableauPipelineDetails) -> Iterable[Either[OMetaLineageRequest]]:
+        """A refresh edge starts at the refresh and names no pipeline, so with
+        overrideLineage on the sink would first delete every PipelineLineage edge
+        into its data model, the flows' included. Refresh edges are always added.
+        Naming the refresh as the edge's pipeline instead draws it as a loop on
+        the refresh."""
+        for lineage in super().yield_pipeline_lineage(pipeline_details):
+            if pipeline_details.kind == TableauPipelineKind.EXTRACT_REFRESH and lineage.right is not None:
+                yield Either(left=None, right=lineage.right.model_copy(update={"override_lineage": False}))
+            else:
+                yield lineage
 
     def yield_pipeline_bulk_lineage_details(self) -> Iterable[Either[AddLineageRequest]]:
         """Flow -> flow edges whose downstream flow was ingested after its
@@ -731,6 +788,8 @@ class TableaupipelineSource(PipelineServiceSource):
         connector.
         """
         if upstream.name:
+            if _is_file(upstream):
+                return []
             direct = self._resolve_table_entity(upstream)
             return [direct] if direct is not None else []
 

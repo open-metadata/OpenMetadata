@@ -393,7 +393,14 @@ class TestLineage:
     def test_a_failing_reference_does_not_drop_the_rest(self, source, mock_conn):
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
-            upstream_tables=[TableauLineageTable(id="Tabl-1", name="orders")],
+            upstream_tables=[
+                TableauLineageTable(
+                    id="Tabl-1",
+                    name="orders",
+                    schema="public",
+                    database=TableauLineageDatabase(name="sales", connection_type="postgres"),
+                )
+            ],
             upstream_datasources=[TableauPublishedDatasource(id="ds-in", name="Targets")],
             downstream_datasources=[TableauPublishedDatasource(id="ds-out", name="Sales")],
         )

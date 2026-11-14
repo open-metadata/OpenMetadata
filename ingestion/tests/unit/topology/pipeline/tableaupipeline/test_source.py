@@ -25,6 +25,9 @@ from uuid import uuid4
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import BasicAuth
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
@@ -461,6 +464,20 @@ class TestLineage:
 
         assert _lineage(source, FLOW_SALES, catalog) == []
 
+    def test_flow_edges_keep_the_configured_override(self, tableau_source):
+        """Only refresh edges are written without override."""
+        source, _ = tableau_source
+        source.source_config.overrideLineage = True
+        catalog = self._sales_catalog()
+        catalog.add(Table, "warehouse.warehouse.public.orders")
+        catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
+        catalog.wire(source)
+
+        requests = [r.right for r in source.yield_pipeline_lineage(FLOW_SALES) if r.right is not None]
+
+        assert requests
+        assert {r.override_lineage for r in requests} == {True}
+
 
 class TestTableResolution:
     """Tableau reports a table as its source does; OpenMetadata files it by
@@ -518,6 +535,47 @@ class TestTableResolution:
         )
 
         assert source._resolve_table_entity(excel_orders) is None
+
+    def test_a_file_is_not_taken_for_a_bigquery_table_of_the_same_name(self, tableau_source):
+        """An uploaded Excel sheet comes back with no database and no schema, or
+        with its file as an excel-direct database; BigQuery's database is left
+        to the search, so the sheet's name alone would find the table."""
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = ["bq"]
+        catalog = Catalog()
+        catalog.add_service(
+            "bq",
+            BigQueryConnection.model_validate(
+                {"credentials": {"gcpConfig": {"type": "gcp_credential_path", "path": "/dev/null"}}}
+            ),
+        )
+        catalog.wire(source)
+        orders = catalog.add(Table, "bq.project.issue26161.orders_26161")
+        bigquery_orders = TableauLineageTable(
+            id="t-bq",
+            name="orders_26161",
+            full_name="[project.issue26161].[orders_26161]",
+            schema_="issue26161",
+            database=TableauLineageDatabase(name="cb2bc729", connection_type="bigquery"),
+        )
+        assert source._resolve_upstream_tables(bigquery_orders) == [orders]
+
+        files = (None,) + tuple(
+            TableauLineageDatabase(name="qa_orders", connection_type=connection_type)
+            for connection_type in (
+                "excel-direct",
+                "textscan",
+                "semistructpassivestore-direct",
+                "ogrdirect",
+                "cloudfile:onedrive-excel-direct",
+            )
+        )
+        for database in files:
+            sheet = TableauLineageTable(
+                id="t-sheet", name="orders_26161", full_name="[orders_26161$]", schema_="", database=database
+            )
+            assert source._resolve_upstream_tables(sheet) == []
+            assert source._downstream_table_refs(sheet) == []
 
     def test_custom_sql_naming_only_the_table_finds_the_one_table_of_that_name(self, tableau_source):
         source, _ = tableau_source
@@ -614,6 +672,22 @@ class TestExtractRefresh:
 
         refresh_id = str(refresh.id.root)
         assert {_edge(r) for r in requests} == {(refresh_id, str(orders.id.root)), (refresh_id, str(targets.id.root))}
+
+    def test_refresh_edges_never_override_the_lineage_of_their_data_models(self, tableau_source):
+        """A refresh edge names no pipeline, so overriding it would delete every
+        pipeline edge into the data model it refreshes, a flow's included."""
+        source, _ = tableau_source
+        source.source_config.overrideLineage = True
+        catalog = Catalog()
+        catalog.add(Pipeline, f"{SERVICE}.wb-exec")
+        catalog.add_datamodel("gql-exec-orders")
+        catalog.add_datamodel("gql-exec-targets")
+        catalog.wire(source)
+
+        requests = [r.right for r in source.yield_pipeline_lineage(EXTRACT_EXEC_WORKBOOK) if r.right is not None]
+
+        assert len(requests) == 2
+        assert {r.override_lineage for r in requests} == {False}
 
     def test_no_edge_until_the_dashboard_connector_has_the_data_model(self, tableau_source):
         source, _ = tableau_source

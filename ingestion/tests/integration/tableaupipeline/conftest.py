@@ -123,11 +123,9 @@ def _flow_lineage(
     next_flows: tuple[tuple[str, str], ...] = (),
 ) -> dict:
     return {
-        "upstreamTables": inputs,
-        "upstreamDatasources": [],
+        "inputFields": [{"column": {"table": table}} for table in inputs],
         "outputSteps": [{"id": step_id, "name": name} for step_id, name in steps],
-        "downstreamTables": outputs,
-        "downstreamDatasources": [],
+        "outputFields": [{"column": {"table": table}} for table in outputs],
         "nextDownstreamFlows": [{"luid": luid, "name": name} for luid, name in next_flows],
     }
 
@@ -271,7 +269,7 @@ class FakeTableauSite:
             return {"data": {"flowsConnection": {"nodes": [{"id": "gql-flow-sales"}]}}}
         if "publishedDatasources" in query:
             return {"data": {"publishedDatasources": [{"id": "gql-ds-sales"}]}}
-        if "outputFields" in query and luid:
+        if "outputSteps {\n      outputFields" in query and luid:
             return {"data": {"flows": [{"outputSteps": [{"outputFields": OUTPUT_FIELDS.get(luid.group(1), [])}]}]}}
         if "flows(filter" in query and luid:
             lineage = FLOW_LINEAGE.get(luid.group(1))

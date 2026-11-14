@@ -15,9 +15,9 @@ Tableau Pipeline Source Model module
 
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ExtractTargetType = Literal["datasource", "workbook"]
 
@@ -138,10 +138,46 @@ class TableauPublishedDatasource(BaseModel):
     project_name: str | None = Field(default=None, alias="projectName")
 
 
+def _field_assets(fields: list[Any] | None) -> tuple[list[dict], list[dict]]:
+    """The tables and published data sources a flow's input or output fields
+    belong to, once each, in order. A custom SQL table stands for the tables
+    Tableau read its query from; when Tableau read none, for an unnamed table
+    carrying the query, whose source tables are parsed from it."""
+    tables: dict[str, dict] = {}
+    datasources: dict[str, dict] = {}
+    for field in fields or []:
+        table = ((field or {}).get("column") or {}).get("table")
+        datasource = ((field or {}).get("field") or {}).get("datasource")
+        if table and table.get("__typename") == "CustomSQLTable":
+            for source_table in table.get("tables") or [{"id": table.get("id"), "referencedByQueries": [table]}]:
+                if source_table.get("id"):
+                    tables.setdefault(source_table["id"], source_table)
+        elif table and table.get("id"):
+            tables.setdefault(table["id"], table)
+        if datasource and datasource.get("id"):
+            datasources.setdefault(datasource["id"], datasource)
+    return list(tables.values()), list(datasources.values())
+
+
 class TableauFlowLineage(BaseModel):
     """Inputs and outputs of a single Tableau Prep flow."""
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_input_and_output_fields(cls, data: Any) -> Any:
+        if not isinstance(data, dict) or "inputFields" not in data:
+            return data
+        upstream_tables, upstream_datasources = _field_assets(data.get("inputFields"))
+        downstream_tables, downstream_datasources = _field_assets(data.get("outputFields"))
+        return {
+            **data,
+            "upstreamTables": upstream_tables,
+            "upstreamDatasources": upstream_datasources,
+            "downstreamTables": downstream_tables,
+            "downstreamDatasources": downstream_datasources,
+        }
 
     upstream_tables: list[TableauLineageTable] = Field(default_factory=list, alias="upstreamTables")
     upstream_datasources: list[TableauPublishedDatasource] = Field(default_factory=list, alias="upstreamDatasources")
