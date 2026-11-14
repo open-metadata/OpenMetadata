@@ -231,7 +231,7 @@ cacheMemory:
   # Entity JSON can range from 1KB to 2MB+. Increase on high-memory deployments for better hit rates.
   entityCacheMaxSizeBytes: ${ENTITY_CACHE_MAX_SIZE_BYTES:-104857600}  # 100 MB
   entityCacheTTLSeconds: ${ENTITY_CACHE_TTL_SECONDS:-30}
-  # Auth caches (user context + policies) — TTLs hardcoded (2min policies, 15min user context)
+  # Auth caches (user context + policies) — TTLs hardcoded (2min policies; 15min user context, 2min without Redis)
   authCacheMaxEntries: ${AUTH_CACHE_MAX_ENTRIES:-5000}
   # RBAC query cache (OpenSearch role-based access control query DSL)
   rbacCacheMaxEntries: ${RBAC_CACHE_MAX_ENTRIES:-5000}
