@@ -39,6 +39,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.tableaupipeline import metadata as metadata_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
@@ -719,3 +720,18 @@ class TestCloseLifecycle:
         source.close()
 
         source.metadata.compute_percentile.assert_called_once()
+
+
+class TestFlowRecordErrors:
+    def test_an_unreadable_flow_record_does_not_mute_a_metadata_api_outage(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.side_effect = [
+            TableauFlowRecordError("Unable to parse flow-a"),
+            TableauMetadataApiError("Metadata API is down"),
+        ]
+
+        with caplog.at_level(logging.WARNING):
+            source._get_flow_lineage("flow-a")
+            source._get_flow_lineage("flow-b")
+
+        assert "Unable to parse flow-a" in caplog.text
+        assert "Metadata API is down" in caplog.text

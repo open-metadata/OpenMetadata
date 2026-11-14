@@ -18,7 +18,13 @@ a real server. Bodies follow the REST and Metadata API reference examples.
 
 import json
 import logging
+import socket
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+from xml.etree.ElementTree import ParseError
 
 import pytest
 import requests
@@ -26,6 +32,7 @@ from pydantic import SecretStr
 from requests.adapters import HTTPAdapter
 from tableauserverclient import PersonalAccessTokenAuth
 from tableauserverclient.server.endpoint.exceptions import (
+    FailedSignInError,
     GraphQLError,
     ServerResponseError,
 )
@@ -35,6 +42,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 )
 from metadata.ingestion.source.pipeline.tableaupipeline import client as client_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
     TableauPipelineClient,
     TableauSiteAdminRequiredError,
@@ -151,13 +159,21 @@ class FakeTableau:
         self.table_queries_status = 200
         self.field_lineage_response: dict = {"data": {"flows": []}}
         self.field_lineage_status = 200
+        # Path suffix answered once with 401, as after another sign-in with the same token.
+        self.end_session_on: str | None = None
+        # Path suffix answered with 401 every time, as when a fresh session is refused too.
+        self.refuse_on: str | None = None
 
     def send(self, request: requests.PreparedRequest, **kwargs) -> requests.Response:
         self.requests.append(request)
         self.transport_kwargs.append(kwargs)
         path = urlparse(request.url).path
         query = parse_qs(urlparse(request.url).query)
-        answer = self._rest_answer(path, query) or self._jobs_or_metadata_answer(path, query, request)
+        answer = (
+            self._session_ended(path)
+            or self._rest_answer(path, query)
+            or self._jobs_or_metadata_answer(path, query, request)
+        )
         if answer is None:
             raise AssertionError(f"Unexpected Tableau call {request.method} {request.url}")
         status, body, content_type = answer
@@ -170,11 +186,20 @@ class FakeTableau:
         response.request = request
         return response
 
+    def _session_ended(self, path: str) -> tuple[int, str, str] | None:
+        if self.refuse_on is not None and path.endswith(self.refuse_on):
+            return 401, _error("401002"), "text/xml"
+        if self.end_session_on is None or not path.endswith(self.end_session_on):
+            return None
+        self.end_session_on = None
+        return 401, _error("401002"), "text/xml"
+
     def _rest_answer(self, path: str, query: dict) -> tuple[int, str, str] | None:
         if path.endswith("/serverInfo"):
             return (200, SERVER_INFO, "text/xml") if self.server_info_status == 200 else (500, "", "text/xml")
         if path.endswith("/auth/signin"):
-            return 200, SIGN_IN, "text/xml"
+            token = f"token-{len(self.calls_to('/auth/signin'))}"
+            return 200, SIGN_IN.replace('token="token"', f'token="{token}"'), "text/xml"
         if path.endswith("/auth/signout"):
             return 204, "", "text/xml"
         if path.endswith("/flows/runs") and "sort" not in query and self.unsorted_runs is not None:
@@ -278,6 +303,22 @@ class TestFlows:
         assert sales.owner_id == "owner-1"
         assert sales.tags == ["finance", "pii"]
         assert sales.webpage_url == f"{HOST}/#/site/MarketingTeam/flows/flow-1"
+
+    def test_a_complete_flow_listing_is_marked_complete(self, tableau):
+        client = _client(include_extract_refreshes=False)
+
+        list(client.get_pipelines())
+
+        assert client.flow_listing_complete is True
+
+    def test_a_flow_listing_that_fails_part_way_is_marked_partial(self, tableau):
+        tableau.flow_pages[1] = "<not xml"
+        client = _client(include_extract_refreshes=False)
+
+        with pytest.raises(ParseError):
+            list(client.get_pipelines())
+
+        assert client.flow_listing_complete is False
 
     def test_configured_api_version_skips_the_version_lookup(self, tableau):
         next(iter(_client(api_version="3.19").get_pipelines()))
@@ -520,12 +561,30 @@ class TestFlowLineage:
         assert lineage is not None
         assert "20000 node limit" in caplog.text
 
-    def test_a_rejected_query_yields_no_lineage(self, tableau, caplog):
-        tableau.graphql_response = {"errors": [{"message": "Validation error of type FieldUndefined"}]}
+    def test_a_query_answered_with_errors_and_no_data_is_an_error(self, tableau):
+        """Tableau answers a timed-out or rejected query with errors and no data.
+        That says nothing about the flow, so its stored tasks must be kept."""
+        tableau.graphql_response = {
+            "data": None,
+            "errors": [{"message": "Execution canceled because timeout of 30000 millis was reached"}],
+        }
 
-        with caplog.at_level(logging.WARNING):
-            assert _client().get_flow_lineage("flow-1") is None
-        assert "FieldUndefined" in caplog.text
+        with pytest.raises(TableauMetadataApiError, match="30000 millis"):
+            _client().get_flow_lineage("flow-1")
+
+    @pytest.mark.parametrize("data", [{"flows": []}, {"flows": None}])
+    def test_errors_next_to_an_empty_answer_are_an_error(self, tableau, data):
+        """While Tableau rebuilds its store it answers with errors and an empty list."""
+        tableau.graphql_response = {"data": data, "errors": [{"message": "BACKFILL_RUNNING"}]}
+
+        with pytest.raises(TableauMetadataApiError, match="BACKFILL_RUNNING"):
+            _client().get_flow_lineage("flow-1")
+
+    def test_an_unparseable_flow_record_is_an_error(self, tableau):
+        tableau.graphql_response = {"data": {"flows": [{**LINEAGE, "upstreamTables": None}]}}
+
+        with pytest.raises(TableauFlowRecordError, match="flow-1"):
+            _client().get_flow_lineage("flow-1")
 
     def test_an_unreachable_metadata_api_is_an_error_not_an_empty_answer(self, tableau):
         """The source keeps a flow's existing tasks on this error, but not when
@@ -666,6 +725,37 @@ class TestFlowLineage:
 
 
 class TestLifecycle:
+    def test_a_session_ended_by_another_sign_in_is_renewed(self, tableau):
+        """Tableau keeps one session per personal access token, so a sign-in with
+        the same token elsewhere ends this one and the next call answers 401."""
+        client = _client(include_extract_refreshes=False)
+        tableau.end_session_on = "/flows"
+
+        flows = list(client.get_pipelines())
+
+        assert [flow.id for flow in flows] == ["flow-1", "flow-2"]
+        assert len(tableau.calls_to("/auth/signin")) == 2
+        assert tableau.calls_to("/flows")[-1].headers["X-Tableau-Auth"] == "token-2"
+
+    def test_a_refused_sign_in_is_not_repeated(self, tableau):
+        client = _client(include_extract_refreshes=False)
+        tableau.end_session_on = "/flows"
+        tableau.refuse_on = "/auth/signin"
+
+        with pytest.raises(FailedSignInError):
+            list(client.get_pipelines())
+
+        assert len(tableau.calls_to("/auth/signin")) == 2
+
+    def test_a_call_refused_after_signing_in_again_is_not_retried_again(self, tableau):
+        client = _client(include_extract_refreshes=False)
+        tableau.refuse_on = "/flows"
+
+        with pytest.raises(FailedSignInError):
+            list(client.get_pipelines())
+
+        assert len(tableau.calls_to("/auth/signin")) == 2
+
     def test_sign_out_releases_the_session(self, tableau):
         client = _client()
 
@@ -965,3 +1055,139 @@ class TestExtractRefreshListing:
         query = parse_qs(urlparse(tableau.calls_to("/jobs")[0].url).query)
         assert query["filter"] == ["jobType:in:[refresh_extracts,increment_extracts]"]
         assert query["pageSize"] == ["1"]
+
+
+class _Throttled(BaseHTTPRequestHandler):
+    """Answers like Tableau Cloud once a site's hourly quota is used up."""
+
+    retry_after = "687"
+
+    def do_GET(self):
+        self.send_response(429)
+        self.send_header("Retry-After", self.retry_after)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *args):
+        pass
+
+
+class _DropsOneConnection(BaseHTTPRequestHandler):
+    """Closes the first connection unanswered, as a proxy resetting it would."""
+
+    dropped = False
+
+    def do_GET(self):
+        if not type(self).dropped:
+            type(self).dropped = True
+            self.close_connection = True
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *args):
+        pass
+
+
+@contextmanager
+def _serving(handler: type[BaseHTTPRequestHandler]) -> Iterator[str]:
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/flows"
+    finally:
+        server.shutdown()
+
+
+class TestNetworkLimits:
+    def test_a_stalled_server_fails_instead_of_hanging(self, monkeypatch):
+        """A host that accepts the connection and never answers must end the run."""
+        monkeypatch.setattr(client_module, "HTTP_TIMEOUT", (1, 1))
+        with socket.socket() as stalled:
+            stalled.bind(("127.0.0.1", 0))
+            stalled.listen()
+            config = TableauPipelineConnection(
+                hostPort=f"http://127.0.0.1:{stalled.getsockname()[1]}",
+                authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+                siteName="MarketingTeam",
+            )
+            outcome: list[BaseException] = []
+
+            def connect():
+                try:
+                    TableauPipelineClient(
+                        tableau_server_auth=PersonalAccessTokenAuth("pat", "secret", site_id="MarketingTeam"),
+                        config=config,
+                        verify_ssl=None,
+                    )
+                except requests.exceptions.ReadTimeout as exc:
+                    outcome.append(exc)
+
+            attempt = threading.Thread(target=connect, daemon=True)
+            attempt.start()
+            attempt.join(timeout=15)
+
+            assert not attempt.is_alive(), "the client is still waiting on a server that never answers"
+            assert outcome, "connecting to a server that never answers must fail"
+
+    def test_a_read_timeout_is_not_retried(self, monkeypatch):
+        """The host took the request and went silent; another attempt would only
+        add another full read timeout."""
+        monkeypatch.setattr("urllib3.util.retry.time.sleep", lambda _: None)
+        accepted: list[socket.socket] = []
+        with socket.socket() as silent:
+            silent.bind(("127.0.0.1", 0))
+            silent.listen()
+
+            def hold():
+                while True:
+                    try:
+                        accepted.append(silent.accept()[0])
+                    except OSError:
+                        return
+
+            threading.Thread(target=hold, daemon=True).start()
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                client_module._retrying_session().get(
+                    f"http://127.0.0.1:{silent.getsockname()[1]}/flows", timeout=(1, 0.2)
+                )
+
+        assert len(accepted) == 1
+
+    def test_a_dropped_connection_is_retried(self, monkeypatch):
+        """Only a read timeout is final; a connection reset part way recovers."""
+        monkeypatch.setattr("urllib3.util.retry.time.sleep", lambda _: None)
+        monkeypatch.setattr(_DropsOneConnection, "dropped", False)
+
+        with _serving(_DropsOneConnection) as url:
+            response = client_module._retrying_session().get(url)
+
+        assert response.status_code == 200
+
+    @pytest.mark.parametrize("retry_after", ["31", "687"])
+    def test_a_long_retry_after_fails_at_once_and_says_why(self, monkeypatch, caplog, retry_after):
+        """An exhausted hourly quota answers 429 with a Retry-After that runs to the
+        top of the hour; waiting it out would stall the run without a word."""
+        slept: list[float] = []
+        monkeypatch.setattr("urllib3.util.retry.time.sleep", slept.append)
+        monkeypatch.setattr(_Throttled, "retry_after", retry_after)
+
+        with _serving(_Throttled) as url, caplog.at_level(logging.WARNING):
+            response = client_module._retrying_session().get(url)
+
+        assert response.status_code == 429
+        assert slept == []
+        assert f"Retry-After {retry_after}s" in caplog.text
+
+    def test_a_short_retry_after_is_waited_out_and_says_so(self, monkeypatch, caplog):
+        slept: list[float] = []
+        monkeypatch.setattr("urllib3.util.retry.time.sleep", slept.append)
+        monkeypatch.setattr(_Throttled, "retry_after", "30")
+
+        with _serving(_Throttled) as url, caplog.at_level(logging.WARNING):
+            response = client_module._retrying_session().get(url)
+
+        assert response.status_code == 429
+        assert slept == [30, 30, 30]
+        assert caplog.text.count("Retry-After 30s") == 3

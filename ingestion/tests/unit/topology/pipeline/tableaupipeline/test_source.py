@@ -19,8 +19,10 @@ against a fake client and an in-memory OpenMetadata catalog.
 import logging
 from datetime import datetime, timezone
 from fnmatch import fnmatchcase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -35,6 +37,8 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.step import WorkflowFatalError
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauMetadataApiError,
 )
@@ -230,6 +234,25 @@ class TestDeletion:
 
         assert list(source.mark_pipelines_as_deleted()) == []
         source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_partial_flow_listing_deletes_nothing(self, tableau_source):
+        """Flows not listed yet would look deleted in Tableau."""
+        source, client = tableau_source
+        client.flow_listing_complete = False
+
+        assert list(source.mark_pipelines_as_deleted()) == []
+        source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_partial_flow_listing_fails_the_run(self, tableau_source):
+        """Whatever the success threshold: one failed page is a single error among
+        every flow that was listed before it."""
+        source, client = tableau_source
+
+        with patch.object(PipelineServiceSource, "_iter", side_effect=lambda: iter(())):
+            assert list(source._iter()) == []
+            client.flow_listing_complete = False
+            with pytest.raises(WorkflowFatalError, match="could not be listed"):
+                list(source._iter())
 
     def test_a_complete_listing_marks_missing_pipelines_deleted(self, tableau_source):
         source, _ = tableau_source
