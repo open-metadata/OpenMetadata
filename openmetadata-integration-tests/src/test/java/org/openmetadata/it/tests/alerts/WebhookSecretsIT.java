@@ -2,16 +2,22 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +27,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -33,46 +38,30 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.jdbi3.DataAssetServiceDAOs.DatabaseServiceDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 /**
- * A webhook is sent only the secrets encrypted for its own destination. Before the 2.1.0 data step,
- * a real send and a test send use no stored ciphertext. The step carries over the credentials
- * earlier releases encrypted, unless the same ciphertext is stored somewhere else; any other value
- * is refused with a reason until it is entered again, and the destination stays enabled.
+ * A webhook is sent the secrets it stores, decrypted with the server's Fernet keys, by a real send
+ * and by a test send. Credentials stored before the 2.1.0 data step keep sending after it. A value
+ * no configured key decrypts is refused with a reason until it is entered again, and the alert
+ * stays editable. A destination's status is the server's: one sent with the alert is never stored,
+ * and a list of alerts reads it as a single alert does.
  *
  * <p>Isolated: the data step rewrites every alert row, and a tick counts every change event.
  */
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
-class WebhookSecretOwnershipIT {
+class WebhookSecretsIT {
   private static final String TABLE_FQN = "golden_service.golden_db.golden_schema.orders";
   private static final int ONE_DAY_SECONDS = 86400;
   private static final String SIGNATURE = "X-OM-Signature";
   private static final String OLD_SIGNING_KEY = "a signing key entered long ago";
   private static final String OLD_CLIENT_SECRET = "a client secret entered long ago";
-
-  @Test
-  void aStoredValueNotWrittenForItsDestinationIsNeverSent(TestNamespace ns) throws Exception {
-    try (RecordingReceiver receiver = new RecordingReceiver()) {
-      String heldElsewhere = "held-elsewhere-" + UUID.randomUUID();
-      EventSubscription alert = legacyAlert(ns, "stored_elsewhere", receiver, heldElsewhere);
-
-      HttpResponse<String> testSend = postTestDestination(readAsAdmin(alert.getId()));
-      FixtureEvents.insert(FixtureEvents.tableEvents());
-      DirectTick.run(alert);
-
-      assertEquals(400, testSend.statusCode(), testSend.body());
-      assertTrue(testSend.body().contains("must be entered again"), testSend.body());
-      assertTrue(receiver.received().isEmpty(), "sent: " + receiver.received());
-    }
-  }
 
   @Test
   void secretsEnteredForADestinationStillDeliver(TestNamespace ns) throws Exception {
@@ -110,72 +99,119 @@ class WebhookSecretOwnershipIT {
   }
 
   @Test
-  void theUpgradeStepCarriesOverEarlierCredentialsAndLeavesTheRestToEnterAgain(TestNamespace ns)
-      throws Exception {
+  void credentialsStoredBeforeTheUpgradeKeepSending(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       receiver.answer("/token", "{\"access_token\":\"the-token\",\"expires_in\":3600}");
-      String heldElsewhere = "held-elsewhere-" + UUID.randomUUID();
-      EventSubscription alert = legacyAlert(ns, "upgraded", receiver, heldElsewhere);
+      String header = ns.prefix("a header stored in the clear");
+      EventSubscription alert =
+          createAlert(
+              ns,
+              "upgraded",
+              List.of(
+                  AlertFixtures.external(WEBHOOK, receiver.url("/hook-signed")),
+                  AlertFixtures.external(WEBHOOK, receiver.url("/hook-oauth"))));
+      QuietAlert.settle(alert);
+      List<SubscriptionDestination> destinations = alert.getDestinations();
+      destinations
+          .get(0)
+          .withConfig(
+              legacyConfig(
+                  receiver,
+                  "/hook-signed",
+                  Map.of(
+                      "headers",
+                      Map.of("X-Header", header),
+                      "authType",
+                      bearer(Fernet.getInstance().encrypt(OLD_SIGNING_KEY)))));
+      destinations
+          .get(1)
+          .withConfig(
+              legacyConfig(
+                  receiver,
+                  "/hook-oauth",
+                  Map.of(
+                      "authType",
+                      oauth2(
+                          receiver,
+                          Fernet.getInstance().encrypt(uniqueClientId()),
+                          Fernet.getInstance().encrypt(OLD_CLIENT_SECRET)))));
+      AlertFixtures.writeBehindTheServer(alert);
 
       TestSuiteBootstrap.getJdbi()
           .useHandle(
-              handle -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+              handle -> WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, dialect()));
       EventSubscription upgraded = AlertFixtures.stored(alert.getId());
       FixtureEvents.insert(FixtureEvents.tableEvents());
       DirectTick.run(upgraded);
 
       List<RecordingReceiver.Received> sends = receiver.received();
-      assertFalse(sendsTo(sends, "/hook-signed").isEmpty(), "the signing key is carried over");
+      assertFalse(sendsTo(sends, "/hook-signed").isEmpty(), "the signing key still signs");
       assertTrue(
           sendsTo(sends, "/hook-signed").stream()
-              .allMatch(send -> signedWith(send, OLD_SIGNING_KEY)));
+              .allMatch(
+                  send ->
+                      signedWith(send, OLD_SIGNING_KEY)
+                          && header.equals(headerOf(send, "X-Header"))));
       assertTrue(
           sendsTo(sends, "/token").stream().anyMatch(send -> carries(send, OLD_CLIENT_SECRET)),
-          "the OAuth2 client secret is carried over");
+          "the OAuth2 client secret is still sent to its token URL");
       assertFalse(sendsTo(sends, "/hook-oauth").isEmpty());
-      assertTrue(sendsTo(sends, "/hook-stored-twice").isEmpty(), sends.toString());
-      assertTrue(sendsTo(sends, "/hook-header").isEmpty(), sends.toString());
-      assertTrue(sends.stream().noneMatch(send -> carries(send, heldElsewhere)));
-      List<SubscriptionDestination> destinations = upgraded.getDestinations();
-      assertTrue(destinations.stream().allMatch(SubscriptionDestination::getEnabled));
-      for (SubscriptionDestination toEnterAgain : destinations.subList(2, 4)) {
-        String status = destinationStatus(alert.getId(), toEnterAgain.getId());
-        assertTrue(status.contains("must be entered again"), status);
-      }
-      HttpResponse<String> testSend =
-          postTestDestination(List.of(readAsAdmin(alert.getId()).get(2)));
-      assertEquals(400, testSend.statusCode(), testSend.body());
-      assertTrue(testSend.body().contains("must be entered again"), testSend.body());
+      assertTrue(upgraded.getDestinations().stream().allMatch(SubscriptionDestination::getEnabled));
     }
   }
 
-  /** Only an edit can repair these values, so the alert has to stay editable until they are. */
+  /** Only an edit can repair a value no key decrypts, so the alert stays editable until it is. */
   @Test
-  void aValueLeftToEnterAgainStopsNoEditAndDeliversOnceEntered(TestNamespace ns) throws Exception {
+  void aValueNoKeyDecryptsIsRefusedStopsNoEditAndDeliversOnceEntered(TestNamespace ns)
+      throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       receiver.answer("/token", "{\"access_token\":\"the-token\",\"expires_in\":3600}");
       String clientSecret = ns.prefix("client-secret-entered-again");
       String header = ns.prefix("header-entered-again");
-      EventSubscription alert = legacyAlert(ns, "entered_again", receiver, "held-elsewhere");
-      TestSuiteBootstrap.getJdbi()
-          .useHandle(
-              handle -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+      EventSubscription alert =
+          createAlert(
+              ns,
+              "entered_again",
+              List.of(
+                  AlertFixtures.external(WEBHOOK, receiver.url("/hook-oauth")),
+                  AlertFixtures.external(WEBHOOK, receiver.url("/hook-header"))));
+      QuietAlert.settle(alert);
+      List<SubscriptionDestination> destinations = alert.getDestinations();
+      destinations
+          .get(0)
+          .withConfig(
+              legacyConfig(
+                  receiver,
+                  "/hook-oauth",
+                  Map.of(
+                      "authType",
+                      oauth2(receiver, uniqueClientId(), encryptedWithAnotherKey("old")))));
+      destinations
+          .get(1)
+          .withConfig(
+              legacyConfig(
+                  receiver,
+                  "/hook-header",
+                  Map.of("headers", Map.of("X-Legacy", encryptedWithAnotherKey("old")))));
+      AlertFixtures.writeBehindTheServer(alert);
 
+      HttpResponse<String> testSend = postTestDestination(readAsAdmin(alert.getId()));
       HttpResponse<String> renamed =
-          patchAlert(alert.getId(), replace("/description", "edited after the upgrade"));
+          patchAlert(alert.getId(), replace("/description", "edited while it cannot send"));
       HttpResponse<String> entered =
           patchAlert(
               alert.getId(),
-              replace("/destinations/2/config/authType/clientSecret", clientSecret),
-              replace("/destinations/3/config/headers/X-Legacy", header));
+              replace("/destinations/0/config/authType/clientSecret", clientSecret),
+              replace("/destinations/1/config/headers/X-Legacy", header));
       FixtureEvents.insert(FixtureEvents.tableEvents());
       DirectTick.run(AlertFixtures.stored(alert.getId()));
 
+      assertEquals(400, testSend.statusCode(), testSend.body());
+      assertTrue(testSend.body().contains("must be entered again"), testSend.body());
       assertEquals(200, renamed.statusCode(), renamed.body());
       assertEquals(200, entered.statusCode(), entered.body());
       List<RecordingReceiver.Received> sends = receiver.received();
       assertTrue(sendsTo(sends, "/token").stream().anyMatch(send -> carries(send, clientSecret)));
-      assertFalse(sendsTo(sends, "/hook-stored-twice").isEmpty(), sends.toString());
       assertTrue(
           sendsTo(sends, "/hook-header").stream()
               .anyMatch(send -> header.equals(headerOf(send, "X-Legacy"))),
@@ -183,90 +219,51 @@ class WebhookSecretOwnershipIT {
     }
   }
 
-  /**
-   * An alert stored as a release before 2.1 could store it: a signing key and an OAuth2 client
-   * secret the server encrypted for it, an OAuth2 client secret whose ciphertext a database service
-   * stores too, and a header value holding ciphertext.
-   */
-  private static EventSubscription legacyAlert(
-      TestNamespace ns, String name, RecordingReceiver receiver, String heldElsewhere) {
-    String storedTwice = storedInADatabaseService(ns, heldElsewhere);
-    EventSubscription alert =
-        createAlert(
-            ns,
-            name,
-            List.of(
-                AlertFixtures.external(WEBHOOK, receiver.url("/hook-signed")),
-                AlertFixtures.external(WEBHOOK, receiver.url("/hook-oauth")),
-                AlertFixtures.external(WEBHOOK, receiver.url("/hook-stored-twice")),
-                AlertFixtures.external(WEBHOOK, receiver.url("/hook-header"))));
-    QuietAlert.settle(alert);
-    List<SubscriptionDestination> destinations = alert.getDestinations();
-    destinations
-        .get(0)
-        .withConfig(
-            legacyConfig(
-                receiver,
-                "/hook-signed",
-                Map.of("authType", bearer(Fernet.getInstance().encrypt(OLD_SIGNING_KEY)))));
-    destinations
-        .get(1)
-        .withConfig(
-            legacyConfig(
-                receiver,
-                "/hook-oauth",
-                Map.of(
-                    "authType",
-                    oauth2(
-                        receiver,
-                        Fernet.getInstance().encrypt(uniqueClientId()),
-                        Fernet.getInstance().encrypt(OLD_CLIENT_SECRET)))));
-    destinations
-        .get(2)
-        .withConfig(
-            legacyConfig(
-                receiver,
-                "/hook-stored-twice",
-                Map.of("authType", oauth2(receiver, uniqueClientId(), storedTwice))));
-    destinations
-        .get(3)
-        .withConfig(
-            legacyConfig(
-                receiver,
-                "/hook-header",
-                Map.of(
-                    "headers", Map.of("X-Legacy", Fernet.getInstance().encrypt(heldElsewhere)))));
-    return AlertFixtures.writeBehindTheServer(alert);
+  @Test
+  void aStatusSentWithTheAlertIsNeverStored(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      SubscriptionStatus sent =
+          new SubscriptionStatus()
+              .withStatus(SubscriptionStatus.Status.FAILED)
+              .withLastFailedReason("sent with the alert");
+      CreateEventSubscription request =
+          alertRequest(
+              ns,
+              "status_sent",
+              List.of(
+                  AlertFixtures.external(WEBHOOK, receiver.url("/hook")).withStatusDetails(sent)));
+      UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
+      SubscriptionDestination created = AlertFixtures.stored(id).getDestinations().getFirst();
+
+      HttpResponse<String> put = putAlert(request.withDescription("sent again"));
+      SubscriptionDestination afterThePut = AlertFixtures.stored(id).getDestinations().getFirst();
+      HttpResponse<String> patch =
+          patchAlert(
+              id, Map.of("op", "add", "path", "/destinations/0/statusDetails", "value", sent));
+      SubscriptionDestination afterThePatch = AlertFixtures.stored(id).getDestinations().getFirst();
+
+      assertNull(created.getStatusDetails());
+      assertEquals(200, put.statusCode(), put.body());
+      assertNull(afterThePut.getStatusDetails());
+      assertEquals(200, patch.statusCode(), patch.body());
+      assertNull(afterThePatch.getStatusDetails());
+    }
   }
 
-  // A database service whose stored connection holds the password encrypted, as the server stores
-  // it.
-  private static String storedInADatabaseService(TestNamespace ns, String password) {
-    String ciphertext = Fernet.getInstance().encrypt(password);
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseServiceDAO dao = Entity.getCollectionDAO().dbServiceDAO();
-    ObjectNode row =
-        (ObjectNode) JsonUtils.readTree(dao.findById(dao.getTableName(), service.getId(), ""));
-    ((ObjectNode) row.at("/connection/config"))
-        .set("authType", JsonUtils.valueToTree(Map.of("password", ciphertext)));
-    dao.update(JsonUtils.readValue(row.toString(), DatabaseService.class));
-    return ciphertext;
-  }
+  @Test
+  void aListOfAlertsReadsEachDestinationsStatus(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          createAlert(
+              ns, "listed", List.of(AlertFixtures.external(WEBHOOK, receiver.url("/hook"))));
 
-  private static String destinationStatus(UUID alertId, UUID destinationId) throws Exception {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(
-                URI.create(
-                    SdkClients.getServerUrl()
-                        + "/v1/events/subscriptions/"
-                        + alertId
-                        + "/status/"
-                        + destinationId))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .GET()
-            .build();
-    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString()).body();
+      SubscriptionDestination listed = listedWithStatus(alert.getId()).getFirst();
+
+      assertNotNull(listed.getStatusDetails(), "the list reads no status");
+      assertEquals(
+          SubscriptionStatus.Status.ACTIVE.value(),
+          JsonUtils.convertValue(listed.getStatusDetails(), Map.class).get("status"));
+    }
   }
 
   private static void assertDelivered(
@@ -284,6 +281,12 @@ class WebhookSecretOwnershipIT {
         sendsTo(sends, "/hook-signed").stream()
             .allMatch(
                 send -> signedWith(send, signingKey) && header.equals(headerOf(send, "X-Header"))));
+  }
+
+  // Ciphertext written with a key the server does not have.
+  private static String encryptedWithAnotherKey(String secret) {
+    return Fernet.FERNET_PREFIX
+        + Token.generate(new SecureRandom(), Key.generateKey(), secret).serialise();
   }
 
   private static List<RecordingReceiver.Received> sendsTo(
@@ -356,12 +359,40 @@ class WebhookSecretOwnershipIT {
     return JsonUtils.readValue(body, EventSubscription.class).getDestinations();
   }
 
+  // The list reads its fields in bulk; every page is read until the alert is found.
+  private static List<SubscriptionDestination> listedWithStatus(UUID id) throws Exception {
+    String after = null;
+    do {
+      String query =
+          "?fields=statusDetails&limit=100"
+              + (after == null ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8));
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(SdkClients.getServerUrl() + "/v1/events/subscriptions" + query))
+              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+              .GET()
+              .build();
+      JsonNode page =
+          JsonUtils.readTree(
+              HttpClient.newHttpClient()
+                  .send(request, HttpResponse.BodyHandlers.ofString())
+                  .body());
+      for (JsonNode alert : page.path("data")) {
+        if (id.toString().equals(alert.path("id").asText())) {
+          return JsonUtils.treeToValue(alert, EventSubscription.class).getDestinations();
+        }
+      }
+      after = page.at("/paging/after").asText(null);
+    } while (after != null);
+    throw new AssertionError("The alert " + id + " is not listed");
+  }
+
   private static Map<String, String> replace(String path, String value) {
     return Map.of("op", "replace", "path", path, "value", value);
   }
 
   @SafeVarargs
-  private static HttpResponse<String> patchAlert(UUID id, Map<String, String>... operations)
+  private static HttpResponse<String> patchAlert(UUID id, Map<String, ?>... operations)
       throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
@@ -373,6 +404,17 @@ class WebhookSecretOwnershipIT {
                 HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(List.of(operations))))
             .build();
     return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private static HttpResponse<String> putAlert(CreateEventSubscription request) throws Exception {
+    HttpRequest put =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/events/subscriptions"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+            .build();
+    return HttpClient.newHttpClient().send(put, HttpResponse.BodyHandlers.ofString());
   }
 
   private static HttpResponse<String> postTestDestination(
@@ -391,24 +433,31 @@ class WebhookSecretOwnershipIT {
 
   private static EventSubscription createAlert(
       TestNamespace ns, String name, List<SubscriptionDestination> destinations) {
+    UUID id =
+        SdkClients.adminClient()
+            .eventSubscriptions()
+            .create(alertRequest(ns, name, destinations))
+            .getId();
+    return AlertFixtures.stored(id);
+  }
+
+  private static CreateEventSubscription alertRequest(
+      TestNamespace ns, String name, List<SubscriptionDestination> destinations) {
     ArgumentsInput onlyTheFixtureTable =
         new ArgumentsInput()
             .withName("filterByFqn")
             .withEffect(Effect.INCLUDE)
             .withArguments(
                 List.of(new Argument().withName("fqnList").withInput(List.of(TABLE_FQN))));
-    CreateEventSubscription request =
-        new CreateEventSubscription()
-            .withName(ns.prefix(name))
-            .withAlertType(AlertType.NOTIFICATION)
-            .withResources(List.of(Entity.TABLE))
-            .withInput(new AlertFilteringInput().withFilters(List.of(onlyTheFixtureTable)))
-            .withEnabled(true)
-            .withBatchSize(100)
-            .withPollInterval(ONE_DAY_SECONDS)
-            .withDestinations(destinations);
-    UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
-    return AlertFixtures.stored(id);
+    return new CreateEventSubscription()
+        .withName(ns.prefix(name))
+        .withAlertType(AlertType.NOTIFICATION)
+        .withResources(List.of(Entity.TABLE))
+        .withInput(new AlertFilteringInput().withFilters(List.of(onlyTheFixtureTable)))
+        .withEnabled(true)
+        .withBatchSize(100)
+        .withPollInterval(ONE_DAY_SECONDS)
+        .withDestinations(destinations);
   }
 
   private static ConnectionType dialect() {
