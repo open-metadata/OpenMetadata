@@ -109,7 +109,8 @@ export interface ColumnSuggestion<P> {
 /**
  * The property each column of one table most likely holds, keyed by column id. Every column gets
  * its own best match; when several columns match one property, only the best of them is `isBest`,
- * so a save binds a property to one column unless the user ticks more.
+ * so a save binds a property to one column unless the user ticks more. A column that loses its
+ * top property falls back to its best property no other column holds.
  */
 export const suggestPropertiesForColumns = <
   C extends SuggestableColumn,
@@ -140,6 +141,23 @@ export const suggestPropertiesForColumns = <
       suggestion.isBest = true;
     }
   });
+  // A column outbid on its top property takes its best property no column holds yet,
+  // so a property is not left unsuggested only because its column preferred another.
+  const takenProperties = new Set(bestColumn.keys());
+  for (const column of columns) {
+    const suggestion = suggestions.get(column.id);
+    if (suggestion && !suggestion.isBest) {
+      const name = lastSegment(column.id);
+      const free = pickBest(
+        properties.filter((candidate) => !takenProperties.has(candidate.id)),
+        (candidate) => scoreMatch(candidate, name)
+      );
+      if (free) {
+        suggestions.set(column.id, { property: free, isBest: true });
+        takenProperties.add(free.id);
+      }
+    }
+  }
 
   return suggestions;
 };

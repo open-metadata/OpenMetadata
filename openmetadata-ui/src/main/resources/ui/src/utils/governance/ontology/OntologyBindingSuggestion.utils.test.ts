@@ -107,6 +107,18 @@ describe('suggestPropertiesForColumns', () => {
     });
   });
 
+  it('gives a column outbid on its top property the next property no column holds', () => {
+    expect(
+      suggest(
+        ['patient', 'patient_name_raw'],
+        [
+          { id: 'p-patient', label: 'patient' },
+          { id: 'p-name', label: 'patient name' },
+        ]
+      )
+    ).toEqual({ patient: 'p-patient', patient_name_raw: 'p-name' });
+  });
+
   it('ticks the first of two equally good columns', () => {
     expect(
       suggest(['unit', 'unit'.toUpperCase()], [{ id: 'p-unit', label: 'unit' }])
