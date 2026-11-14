@@ -176,7 +176,7 @@ const ConflictDetail = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-2 tw:rounded-lg tw:border tw:border-error_subtle tw:px-4 tw:py-3"
+      className="tw:flex tw:flex-col tw:gap-2 tw:rounded-lg tw:border tw:border-utility-error-300 tw:bg-surface tw:px-4 tw:py-3"
       data-testid="ontology-constraint-conflict-detail">
       <Typography color="danger" size="text-sm">
         {explanation}
