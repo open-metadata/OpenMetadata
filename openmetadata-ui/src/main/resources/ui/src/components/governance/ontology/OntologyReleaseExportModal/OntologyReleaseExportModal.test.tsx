@@ -475,7 +475,7 @@ describe('OntologyReleaseExportModal', () => {
       await screen.findByText('message.ontology-export-failed')
     ).toBeVisible();
     expect(
-      screen.queryByText('message.ontology-review-unavailable')
+      screen.queryByText('server.entity-fetch-error')
     ).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /label.rdf-xml/ })).toBeChecked();
     expect(

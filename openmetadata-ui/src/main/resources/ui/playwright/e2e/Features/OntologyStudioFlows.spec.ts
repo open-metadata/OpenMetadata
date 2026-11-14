@@ -764,7 +764,10 @@ test.describe(
 
           await reviewNow(reviewer, ontology);
           await taskAction(reviewer, 'Reject').click();
-          await reviewer.getByTestId('task-action-comment').fill(reason);
+          await reviewer
+            .getByTestId('task-action-comment')
+            .getByRole('textbox')
+            .fill(reason);
           await decide(
             reviewer,
             reviewer.getByTestId('task-action-comment-confirm')

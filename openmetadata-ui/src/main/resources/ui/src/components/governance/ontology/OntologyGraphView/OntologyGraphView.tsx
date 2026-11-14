@@ -111,6 +111,7 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
@@ -1310,15 +1311,16 @@ const OntologyGraphView = ({
 
   if ([isError, !model].every(Boolean)) {
     return (
-      <Alert
-        rightContent={
-          <Button color="secondary" size="sm" onPress={() => void refetch()}>
-            {t('label.retry')}
-          </Button>
-        }
-        variant="error">
-        {t('server.entity-fetch-error', { entity: t('label.ontology') })}
-      </Alert>
+      <div
+        className="tw:relative tw:min-h-60 tw:flex-1"
+        data-testid="ontology-load-error">
+        <SomethingWentWrongPlaceholder
+          title={t('server.entity-fetch-error', {
+            entity: t('label.ontology'),
+          })}
+          onReload={() => void refetch()}
+        />
+      </div>
     );
   }
   if (isLoading || !model || !graph) {

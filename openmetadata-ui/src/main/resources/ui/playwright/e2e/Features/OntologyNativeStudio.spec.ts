@@ -282,15 +282,29 @@ test.describe(
                 [party.id]: expect.any(Object),
               })
             );
-            expect(
-              await page
-                .locator('.ontology-g6-container')
-                .evaluate((element) => element.getBoundingClientRect().left)
-            ).toBe(
-              await page
-                .getByTestId('ontology-studio-shell')
-                .evaluate((element) => element.getBoundingClientRect().left)
-            );
+            // The workspace is an inset card, so the graph fills that frame rather than the shell.
+            const gutter = await page
+              .locator('.ontology-g6-container')
+              .evaluate((element) => {
+                let frame = element.parentElement;
+                while (
+                  frame &&
+                  Number.parseFloat(getComputedStyle(frame).borderLeftWidth) ===
+                    0
+                ) {
+                  frame = frame.parentElement;
+                }
+                if (!frame) {
+                  return Number.NaN;
+                }
+
+                return (
+                  element.getBoundingClientRect().left -
+                  frame.getBoundingClientRect().left -
+                  Number.parseFloat(getComputedStyle(frame).borderLeftWidth)
+                );
+              });
+            expect(gutter).toBe(0);
 
             return [customer, party] as const;
           });
@@ -334,7 +348,7 @@ test.describe(
           ).toContainText('(3)');
           await expect(
             inspector.getByTestId('ontology-concept-properties')
-          ).toContainText('customer number');
+          ).toContainText('customerNumber');
 
           await inspector.getByTestId('ontology-add-relationship').click();
           await chooseInspectorRelationType(
@@ -514,7 +528,13 @@ test.describe(
             body: await page.screenshot(),
             contentType: 'image/png',
           });
+          // Switching mode keeps the surface: Edit stays on Tree until Graph is picked.
           await page.getByTestId('mode-tab-edit').click();
+          await expect(page.getByTestId('submode-tab-tree')).toHaveAttribute(
+            'aria-selected',
+            'true'
+          );
+          await page.getByTestId('submode-tab-graph').click();
           await expect(page.locator('.ontology-g6-container')).toBeVisible();
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('submode-tab-graph').click();
@@ -830,6 +850,12 @@ test.describe(
             expect(created.iri).toBe(`https://example.org/${id}`);
             expect(created.namespace).toBe(`https://example.org/${id}/ns#`);
             expect(created.layer).toBe('L1');
+
+            // A new ontology opens New concept, and its drawer covers the header's scope menu.
+            const newConcept = page.getByTestId('ontology-new-class-panel');
+            await expect(newConcept).toBeVisible();
+            await page.getByTestId('ontology-new-class-close').click();
+            await expect(newConcept).toHaveCount(0);
 
             await page.getByTestId('ontology-scope-menu-trigger').click();
             await page

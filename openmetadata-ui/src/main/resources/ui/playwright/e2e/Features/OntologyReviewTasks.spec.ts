@@ -366,7 +366,10 @@ test.describe(
         await openTask(reviewer.page, fixture.task, fixture.ontology);
         await actionButton(reviewer.page, 'Reject').click();
         const reject = reviewer.page.getByTestId('task-action-comment-confirm');
-        const reason = reviewer.page.getByTestId('task-action-comment');
+        // The test id sits on the shared TextArea's field wrapper, not the textarea itself.
+        const reason = reviewer.page
+          .getByTestId('task-action-comment')
+          .getByRole('textbox');
         await reason.fill('   ');
         await expect(reject).toBeDisabled();
         const original =

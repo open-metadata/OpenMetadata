@@ -970,7 +970,7 @@ it.each(['projection', 'review'])(
 
     await waitFor(() =>
       expect(
-        screen.getAllByText('message.ontology-review-unavailable').length
+        screen.getAllByText('server.entity-fetch-error').length
       ).toBeGreaterThan(0)
     );
 
@@ -978,9 +978,11 @@ it.each(['projection', 'review'])(
     expect(
       screen.queryByTestId('ontology-release-reviewers')
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText('message.ontology-review-settings-unavailable')
-    ).toBeVisible();
+
+    // With nothing unpublished, the failed read takes the whole view as one error state.
+    const statusError = screen.getByTestId('ontology-publication-status-error');
+
+    expect(statusError).toHaveTextContent('server.entity-fetch-error');
     expect(APIClient.patch).not.toHaveBeenCalled();
 
     denied = false;
@@ -993,7 +995,7 @@ it.each(['projection', 'review'])(
     ];
     await act(async () => {
       fireEvent.click(
-        screen.getAllByRole('button', { name: 'label.retry' })[0]
+        within(statusError).getByRole('button', { name: 'label.reload' })
       );
     });
     await waitFor(() =>

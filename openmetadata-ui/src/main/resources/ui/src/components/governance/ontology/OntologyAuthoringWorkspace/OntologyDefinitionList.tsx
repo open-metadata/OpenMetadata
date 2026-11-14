@@ -42,6 +42,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
@@ -234,17 +235,16 @@ const OntologyDefinitionList = <
   );
   if (isError) {
     return (
-      <Alert
-        rightContent={
-          <Button color="secondary" size="sm" onPress={onRetry}>
-            {t('label.retry')}
-          </Button>
-        }
-        variant="error">
-        {t('server.entity-fetch-error', {
-          entity: pluralLabel,
-        })}
-      </Alert>
+      <div
+        className="tw:relative tw:min-h-60 tw:flex-1"
+        data-testid="ontology-load-error">
+        <SomethingWentWrongPlaceholder
+          title={t('server.entity-fetch-error', {
+            entity: pluralLabel,
+          })}
+          onReload={onRetry}
+        />
+      </div>
     );
   }
 

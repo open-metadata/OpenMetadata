@@ -131,8 +131,9 @@ export const humanizeName = (name: string): string =>
     .trim()
     .toLocaleLowerCase();
 
+// The name, not a humanized copy: `patientId` and a property named `patient id` must stay distinct.
 export const getPropertyLabel = (property: OntologyProperty): string =>
-  property.displayName || humanizeName(property.name);
+  property.displayName || property.name;
 
 export const getRelationPropertyLabel = (
   relation: Pick<OntologyModelRelation, 'property' | 'propertyIri'>

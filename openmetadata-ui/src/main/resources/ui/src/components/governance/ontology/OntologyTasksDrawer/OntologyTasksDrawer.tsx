@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Alert,
   Badge,
   Box,
   Button,
@@ -52,6 +51,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import InboxTaskListItem from '../../../discovery/personal-space/InboxPage/components/InboxTaskListItem';
 import TaskDetailPanel from '../../../discovery/personal-space/InboxPage/components/TaskDetailPanel';
@@ -486,9 +486,16 @@ const OntologyTasksDrawer = ({
         onChange={setSearch}
       />
       {queue.isError && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.task-plural'),
+            })}
+            onReload={() => void queue.refetch()}
+          />
+        </div>
       )}
       {queue.isPending ? <Loader size="small" /> : null}
       {renderQueueList()}
@@ -509,12 +516,15 @@ const OntologyTasksDrawer = ({
         onTaskUpdated={refreshQueues}
       />
     ) : (
-      <div className="tw:relative tw:h-full">
-        <NoDataPlaceholder
-          description={t('message.ontology-select-task-description')}
-          title={t('message.ontology-select-task')}
-        />
-      </div>
+      // A queue that failed to load has nothing to pick, so the list's error stands alone.
+      !queue.isError && (
+        <div className="tw:relative tw:h-full">
+          <NoDataPlaceholder
+            description={t('message.ontology-select-task-description')}
+            title={t('message.ontology-select-task')}
+          />
+        </div>
+      )
     );
   const renderDrawer = () => {
     if (!isOpen) {

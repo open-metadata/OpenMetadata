@@ -21,6 +21,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { TeamClass } from '../../support/team/TeamClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
+  chooseSelectOption,
   clickIgnoringToasts,
   getWorkerAdminAPIContext,
   scrollIntoViewAndSettle,
@@ -516,14 +517,18 @@ test.describe(
         await page.getByTestId('ontology-add-concept').click();
         await page.getByTestId('new-class-label').fill('Remittance');
         await page.getByTestId('new-class-advanced-toggle').click();
-        await page.getByTestId('new-class-type').getByRole('button').click();
-        await page.getByTestId('new-class-type-SKOS_CONCEPT').click();
+        await chooseSelectOption(
+          page.getByTestId('new-class-type'),
+          page.getByTestId('new-class-type-SKOS_CONCEPT')
+        );
         await expect(page.getByText(skosError)).toHaveCount(0);
         await pick(page, 'Subclass of', 'Payment');
         await expect(page.getByText(skosError)).toBeVisible();
         await expect(page.getByTestId('new-class-create')).toBeDisabled();
-        await page.getByTestId('new-class-type').getByRole('button').click();
-        await page.getByTestId('new-class-type-OWL_CLASS').click();
+        await chooseSelectOption(
+          page.getByTestId('new-class-type'),
+          page.getByTestId('new-class-type-OWL_CLASS')
+        );
         await expect(page.getByText(skosError)).toHaveCount(0);
         await expect(page.getByTestId('new-class-create')).toBeEnabled();
         await clickIgnoringToasts(page.getByTestId('new-class-create'));

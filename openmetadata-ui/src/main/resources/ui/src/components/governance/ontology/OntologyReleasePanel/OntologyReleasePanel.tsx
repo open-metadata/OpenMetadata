@@ -39,6 +39,7 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
@@ -391,12 +392,16 @@ const OntologyReleasePanel = ({
     }
     if (changes.isError || !hasCoherentPreview) {
       return (
-        <Alert variant={changes.isError ? 'error' : 'warning'}>
-          {t('message.ontology-review-unavailable')}
-          <Button color="secondary" size="sm" onPress={retryChanges}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.change-plural'),
+            })}
+            onReload={retryChanges}
+          />
+        </div>
       );
     }
     if (hasNoChanges) {
@@ -423,9 +428,16 @@ const OntologyReleasePanel = ({
     }
     if (displayed.isError) {
       return (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release'),
+            })}
+            onReload={() => void refresh()}
+          />
+        </div>
       );
     }
     if (displayed.isPending) {
@@ -685,17 +697,32 @@ const OntologyReleasePanel = ({
         )}
     </Box>
   );
-  const renderStageStatus = () =>
-    panelView.kind === 'loading' ? (
+  const isStatusUnavailable = () =>
+    state.isError || (!currentStage && panelView.kind !== 'loading');
+  // The opened release feeds the publication status too, so its failure is reported once.
+  const hasReleaseDetailError = () =>
+    view !== 'changes' && Boolean(selectedId) && displayed.isError;
+  const renderStageStatus = () => {
+    if (hasReleaseDetailError()) {
+      return null;
+    }
+
+    return panelView.kind === 'loading' ? (
       <Loader size="small" />
     ) : (
-      <Alert variant="error">
-        {t('message.ontology-review-unavailable')}
-        <Button color="secondary" size="sm" onPress={() => void refresh()}>
-          {t('label.retry')}
-        </Button>
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={() => void refresh()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
       </Alert>
     );
+  };
   const renderTaskLink = (task: ReleaseTaskLink) =>
     onOpenTask ? (
       <Button color="link-color" size="sm" onPress={() => onOpenTask(task.id)}>
@@ -851,25 +878,30 @@ const OntologyReleasePanel = ({
 
   const renderVersionError = () =>
     versionBase.isError && (
-      <Alert variant="error">
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void versionBase.refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
         {t('message.ontology-version-unavailable')}
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void versionBase.refetch()}>
-          {t('label.retry')}
-        </Button>
       </Alert>
     );
 
-  const renderReviewers = () => (
-    <OntologyReleaseReviewers
-      key={scopeKey}
-      view={panelView}
-      onChange={updateReviewSettings}
-      onRefresh={refresh}
-    />
-  );
+  // An unreadable publication status already says so once; the card would repeat it.
+  const renderReviewers = () =>
+    isStatusUnavailable() ? null : (
+      <OntologyReleaseReviewers
+        key={scopeKey}
+        view={panelView}
+        onChange={updateReviewSettings}
+        onRefresh={refresh}
+      />
+    );
 
   const renderVersionEditor = (beforeNotes: ReactNode) =>
     versionBase.isSuccess && (
@@ -947,9 +979,16 @@ const OntologyReleasePanel = ({
   const renderReleaseDetail = () => {
     if (displayed.isError) {
       return (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release'),
+            })}
+            onReload={() => void refresh()}
+          />
+        </div>
       );
     }
     if (!release) {
@@ -993,14 +1032,17 @@ const OntologyReleasePanel = ({
 
   const renderStorageStatus = () =>
     receipt.kind === 'unavailable' && (
-      <Alert variant="error">
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void retryRecovery()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
         {t('message.ontology-publication-storage-unavailable')}
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void retryRecovery()}>
-          {t('label.retry')}
-        </Button>
       </Alert>
     );
   const recoveryVersion = () => {
@@ -1032,7 +1074,20 @@ const OntologyReleasePanel = ({
     }
 
     return (
-      <Alert variant="warning">
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            data-testid="ontology-recovery-action"
+            isDisabled={isBusy || (retryReview && !canEdit)}
+            size="sm"
+            onPress={() =>
+              void (conflict ? dismissActivationConflict() : retryRecovery())
+            }>
+            {t(actionLabel)}
+          </Button>
+        }
+        variant="warning">
         <Typography>
           {t(
             conflict
@@ -1041,30 +1096,25 @@ const OntologyReleasePanel = ({
             { version: recoveryVersion() }
           )}
         </Typography>
-        <Button
-          color="secondary"
-          data-testid="ontology-recovery-action"
-          isDisabled={isBusy || (retryReview && !canEdit)}
-          size="sm"
-          onPress={() =>
-            void (conflict ? dismissActivationConflict() : retryRecovery())
-          }>
-          {t(actionLabel)}
-        </Button>
       </Alert>
     );
   };
 
   const renderStateError = () =>
     state.isError && (
-      <Alert variant="error">
-        {t('message.ontology-review-unavailable')}
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void state.refetch()}>
-          {t('label.retry')}
-        </Button>
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void state.refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
       </Alert>
     );
 
@@ -1079,15 +1129,43 @@ const OntologyReleasePanel = ({
     ) : null;
   };
 
+  // "No releases yet" or "No unpublished changes" beside a load error contradicts
+  // itself, so the failure takes the whole view.
+  const isEmptyWithStatusError = (isChanges: boolean) => {
+    const isViewEmpty = isChanges
+      ? hasNoChanges
+      : [!selectedId, history.isSuccess, loadedReleases.length === 0].every(
+          Boolean
+        );
+
+    return isViewEmpty && isStatusUnavailable();
+  };
+  const renderStatusError = () => (
+    <div
+      className="tw:relative tw:min-h-80 tw:flex-1"
+      data-testid="ontology-publication-status-error">
+      <SomethingWentWrongPlaceholder
+        title={t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
+        // refresh() re-reads every publication query and clears a sticky failure, so one click suffices.
+        onReload={() => void refresh()}
+      />
+    </div>
+  );
+
   const renderAiPanel = () => {
     const isChanges = view === 'changes';
+    if (isEmptyWithStatusError(isChanges)) {
+      return renderStatusError();
+    }
 
     return (
       <Box
         className={isChanges ? 'tw:flex-1' : 'tw:flex-1 tw:pb-5'}
         direction="col"
         gap={4}>
-        {renderStateError()}
+        {hasReleaseDetailError() ? null : renderStateError()}
         {isChanges ? renderAiChanges() : renderReleases()}
         {isAiMode ? null : renderRelease()}
         {renderStorageStatus()}

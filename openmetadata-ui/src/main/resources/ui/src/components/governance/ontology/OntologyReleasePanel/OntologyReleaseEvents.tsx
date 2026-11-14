@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Alert,
-  Box,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +23,7 @@ import {
 } from '../../../../generated/type/ontologyReleaseEvent';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 
 /** The marker colour of each event on the timeline. */
@@ -170,15 +166,16 @@ const OntologyReleaseEvents = ({
       </Typography>
       {events.isPending && <Loader size="small" />}
       {events.isError && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => void events.refetch()}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release-events'),
+            })}
+            onReload={() => void events.refetch()}
+          />
+        </div>
       )}
       <ol className="tw:m-0 tw:list-none tw:p-0">{list.map(renderEvent)}</ol>
       {events.hasNextPage && (

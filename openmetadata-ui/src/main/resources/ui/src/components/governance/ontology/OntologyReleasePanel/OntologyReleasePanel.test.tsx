@@ -887,16 +887,14 @@ describe('OntologyReleasePanel', () => {
       fireEvent.click(screen.getByTestId('ontology-working-next'));
     });
 
-    expect(
-      await screen.findByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(await screen.findByText('server.entity-fetch-error')).toBeVisible();
     expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
     expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
     expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
 
     nextPageError = undefined;
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
     });
 
     expect(await screen.findByText(/Customer/)).toBeVisible();
@@ -937,9 +935,7 @@ describe('OntologyReleasePanel', () => {
 
     fireEvent.click(screen.getByTestId('ontology-working-next'));
 
-    expect(
-      await screen.findByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(await screen.findByText('server.entity-fetch-error')).toBeVisible();
     expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'label.save-as-release-draft' })
@@ -1416,15 +1412,13 @@ describe('OntologyReleasePanel', () => {
           'label.published'
         );
         expect(
-          screen.queryByText('message.ontology-review-unavailable')
+          screen.queryByText('server.entity-fetch-error')
         ).not.toBeInTheDocument();
       } else {
         expect(
           screen.queryByTestId('ontology-release-stage')
         ).not.toBeInTheDocument();
-        expect(
-          screen.getByText('message.ontology-review-unavailable')
-        ).toBeVisible();
+        expect(screen.getByText('server.entity-fetch-error')).toBeVisible();
       }
     }
   );
@@ -1607,9 +1601,7 @@ describe('OntologyReleasePanel', () => {
     );
     await renderPanel(true, 'changes');
 
-    expect(
-      await screen.findByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(await screen.findByText('server.entity-fetch-error')).toBeVisible();
     expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
     expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
 
@@ -1651,9 +1643,7 @@ describe('OntologyReleasePanel', () => {
       rejectState?.(new AxiosError('State unavailable', '403'));
     });
 
-    expect(
-      screen.getByText('message.ontology-review-unavailable')
-    ).toBeVisible();
+    expect(screen.getByText('server.entity-fetch-error')).toBeVisible();
     expect(
       screen.getByTestId(
         'ontology-release-select-00000000-0000-4000-8000-000000000005'
@@ -1672,7 +1662,7 @@ describe('OntologyReleasePanel', () => {
     );
 
     expect(
-      screen.queryByText('message.ontology-review-unavailable')
+      screen.queryByText('server.entity-fetch-error')
     ).not.toBeInTheDocument();
     expect(activationButton()).toBeEnabled();
   });
@@ -2216,16 +2206,130 @@ describe('OntologyReleasePanel', () => {
       return defaultGet?.(url, config);
     });
     await renderPanel(true, 'changes');
-    await screen.findAllByText('message.ontology-review-unavailable');
+    await screen.findAllByText('server.entity-fetch-error');
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.getAllByText('message.ontology-review-unavailable')
-    ).toHaveLength(1);
+    expect(screen.getAllByText('server.entity-fetch-error')).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'label.retry' })).toHaveLength(
       1
+    );
+  });
+
+  it('shows only the load error, never "No releases yet" beside it, when the publication status cannot be read', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    let statusFails = true;
+    let statusReads = 0;
+    get.mockImplementation(async (url, config) => {
+      const fields = (config?.params as { fields?: string } | undefined)
+        ?.fields;
+      if (
+        url === `/ontologies/${ontology.id}` &&
+        fields?.includes('reviewers')
+      ) {
+        statusReads += 1;
+        if (statusFails) {
+          // The owner answers, but without the publication status the panel needs.
+          return { data: { ...ontology, publicationStatus: undefined } };
+        }
+      }
+      if (url === `/ontologies/${ontology.id}/releases`) {
+        return { data: { data: [], paging: { total: 0 } } };
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'releases');
+
+    const error = await screen.findByTestId(
+      'ontology-publication-status-error'
+    );
+
+    expect(error).toHaveTextContent('server.entity-fetch-error');
+    expect(
+      screen.queryByText('message.ontology-no-releases-yet')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    const readsBeforeReload = statusReads;
+    statusFails = false;
+    await act(async () =>
+      fireEvent.click(
+        within(error).getByRole('button', { name: 'label.reload' })
+      )
+    );
+
+    await waitFor(() => expect(statusReads).toBeGreaterThan(readsBeforeReload));
+  });
+
+  it('shows only the load error, never "No unpublished changes" beside it, when the publication status cannot be read', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) => {
+      const fields = (config?.params as { fields?: string } | undefined)
+        ?.fields;
+      if (
+        url === `/ontologies/${ontology.id}` &&
+        fields?.includes('reviewers')
+      ) {
+        return { data: { ...ontology, publicationStatus: undefined } };
+      }
+      if (url.endsWith('/working/diff')) {
+        const page = (await defaultGet?.(url, config)) as {
+          data: Record<string, unknown>;
+        };
+
+        return {
+          data: { ...page.data, data: [], added: 0, modified: 0, deleted: 0 },
+        };
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByTestId('ontology-publication-status-error')
+    ).toHaveTextContent('server.entity-fetch-error');
+    expect(
+      screen.queryByTestId('ontology-working-empty')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('reports a release that cannot be opened once, with Retry, not again as the publication status', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const defaultGet = get.getMockImplementation();
+    let releaseFails = true;
+    get.mockImplementation(async (url, config) => {
+      if (releaseFails && url === `/ontologyReleases/${currentRelease.id}`) {
+        throw new AxiosError('Release unavailable', '500');
+      }
+
+      return defaultGet?.(url, config);
+    });
+    await renderPanel(true, 'releases');
+    await selectRelease();
+
+    const error = await screen.findByTestId('ontology-load-error');
+
+    expect(error).toHaveTextContent('server.entity-fetch-error');
+    // One error for the failed release, not a second alert for the publication status.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    releaseFails = false;
+    await act(async () =>
+      fireEvent.click(
+        within(error).getByRole('button', { name: 'label.reload' })
+      )
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-load-error')
+      ).not.toBeInTheDocument()
     );
   });
 
