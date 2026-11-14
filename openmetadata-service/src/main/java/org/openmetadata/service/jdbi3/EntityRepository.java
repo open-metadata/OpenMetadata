@@ -16052,7 +16052,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
       try {
         // The full delete, not deleteInternal: its post-delete steps take the entity out of search.
-        delete(deletedBy, stale.id, recursive, hardDelete);
+        DeleteResponse<T> deleted = delete(deletedBy, stale.id, recursive, hardDelete);
+        // A bulk result carries no entity for the response filter to record a change event from,
+        // so record it here, as an asynchronous delete does.
+        storeChangeEventForAsyncOperation(
+            deleted.entity(), deleted.changeType(), recursive, deletedBy);
         deletedHashes.add(fqnHash);
         successRequests.add(staleSuccess(stale.fqn));
       } catch (Exception e) {
