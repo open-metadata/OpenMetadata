@@ -288,6 +288,10 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 repeatedly add the following.
 
 - **Java migrations** (`migration/utils/vNNN`):
+  - Carry their own logic: rows and SQL, not repositories, `Entity` lookups, generated classes,
+    secrets, search or workflow code, which keep changing after the step ships. An unavoidable call
+    is a named exception in `MigrationArchitectureTest`.
+    ADR:2026-11-11-a-data-migration-carries-its-own-logic
   - Compute a fixed point that is safe to re-run, never a subtractive delta.
   - Guard on the current shape, so an admin-customized row is left alone.
   - Let unexpected failures propagate. A migration that logs and returns is recorded as applied in
@@ -295,11 +299,14 @@ repeatedly add the following.
   - Skip work already done. Data migrations re-run whenever `MigrationCodeFingerprint` changes.
   - Normalize legacy `null` values.
   - Rewrite the `entity_extension` `<entity>.version.*` snapshots as well as the live row.
-  - Remove the deployed pipelines of an entity type the migration removes.
+  - Remove the deployed pipelines of an entity type the migration removes. This needs the pipeline
+    service, so the step is a named exception.
+    ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
 - **SQL.**
   - Never edit a statement that already ran; statements are tracked by a hash of their text.
-    Appending a statement to the newest folder of the release in progress is fine:
-    `MigrationWorkflow` reprocesses it.
+    Appending a statement to the newest folder of the release in progress is fine while that
+    release has not shipped: `MigrationWorkflow` reprocesses it. A shipped folder never changes,
+    because a database that ran a later version of the same line never reads it again.
   - Size FQN-hash key columns like `entity_extension` (`VARCHAR(512)`).
   - Replace MySQL `INSERT IGNORE`, which turns truncation into a warning, with
     `ON DUPLICATE KEY UPDATE`.
