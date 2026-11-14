@@ -152,6 +152,12 @@ const ExportScopeSelect = ({
 
 const PUBLISHED_CONTENTS = 'published';
 
+// The Studio names a release by its version; the stored name ("release-1") is only a fallback.
+const releaseLabel = (release: OntologyRelease) =>
+  release.semanticVersion
+    ? `v${release.semanticVersion}`
+    : getEntityName(release);
+
 const ExportContentsChoice = ({
   activeRelease,
   scopeKey,
@@ -184,7 +190,7 @@ const ExportContentsChoice = ({
         data-testid="ontology-export-contents-published"
         hint={
           activeRelease
-            ? getEntityName(activeRelease)
+            ? releaseLabel(activeRelease)
             : t('message.ontology-export-no-published-release')
         }
         isDisabled={!activeRelease}

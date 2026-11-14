@@ -1075,6 +1075,59 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('asks before the close button drops an unsaved relationship description', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyDraftProvider>
+          <OntologyGraphView
+            isEditing
+            ontology={ontology}
+            surface="graph"
+            onRequestGraphSurface={jest.fn()}
+          />
+        </OntologyDraftProvider>
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-relation-concept-party')
+    );
+    const detail = screen.getByTestId('ontology-relation-detail');
+    fireEvent.change(await within(detail).findByRole('textbox'), {
+      target: { value: 'Every buyer is a party' },
+    });
+
+    fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-close')
+    );
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'label.cancel',
+      })
+    );
+
+    expect(screen.getByTestId('ontology-relation-detail')).toBeInTheDocument();
+    expect(within(detail).getByRole('textbox')).toHaveValue(
+      'Every buyer is a party'
+    );
+
+    fireEvent.click(
+      within(detail).getByTestId('ontology-relation-detail-close')
+    );
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'label.discard',
+      })
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-relation-detail')
+      ).not.toBeInTheDocument()
+    );
+  });
+
   it('marks the clashing concept on the graph, lists the clash and, in Edit, resolves it from the concept drawer', async () => {
     const customerNeverParty: OntologyAxiom = {
       ...customerIsParty,
@@ -1594,6 +1647,64 @@ describe('OntologyGraphView', () => {
       })
     );
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the relationship delete action in sentence case', async () => {
+    useEnUsTranslations();
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-relation-concept-party')
+    );
+
+    expect(
+      within(screen.getByTestId('ontology-relation-detail')).getByTestId(
+        'ontology-relation-delete'
+      )
+    ).toHaveTextContent('Delete relationship');
+  });
+
+  it('asks for a new relationship type in a sentence-case dialog that the close button dismisses', async () => {
+    useEnUsTranslations();
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    act(() => {
+      void latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
+      );
+    });
+
+    const dialog = await screen.findByRole('dialog');
+
+    expect(
+      within(dialog).getByRole('heading', { name: 'Add relationship type' })
+    ).toBeVisible();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /close/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('relationship-type-dialog')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('creates a custom registry type with its inverse from the picker, then instantiates it', async () => {

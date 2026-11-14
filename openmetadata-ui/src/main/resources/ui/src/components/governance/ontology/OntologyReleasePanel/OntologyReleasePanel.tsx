@@ -327,6 +327,8 @@ const OntologyReleasePanel = ({
     currentStage?.unpublishedChanges,
     isFirstRelease
   );
+  // After a publish the draft is empty: say so instead of an empty list with paging.
+  const hasNoChanges = Boolean(working.data) && changeCounts.total === 0;
   const bump = resolveBump(versionBump, suggestion);
   const getNextVersion = () =>
     versionBase.isSuccess ? nextSemanticVersion(baseVersion, bump) : '';
@@ -382,6 +384,16 @@ const OntologyReleasePanel = ({
             {t('label.retry')}
           </Button>
         </Alert>
+      );
+    }
+    if (hasNoChanges) {
+      return (
+        <Typography
+          color="secondary"
+          data-testid="ontology-working-empty"
+          size="text-sm">
+          {t('message.ontology-no-unpublished-changes')}
+        </Typography>
       );
     }
 
@@ -782,31 +794,35 @@ const OntologyReleasePanel = ({
       />
     );
 
-  const renderChangesPagination = () => (
-    <>
-      <OntologyReleaseTruncationNote working={working.data} />
-      <Box gap={2}>
-        <Button
-          color="secondary"
-          data-testid="ontology-working-previous"
-          isDisabled={cursors.length === 1 || !hasCoherentPreview}
-          size="sm"
-          onPress={() => setCursors((previous) => previous.slice(0, -1))}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          data-testid="ontology-working-next"
-          isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
-          size="sm"
-          onPress={() =>
-            setCursors((previous) => [...previous, changes.data?.paging.after])
-          }>
-          {t('label.next')}
-        </Button>
-      </Box>
-    </>
-  );
+  const renderChangesPagination = () =>
+    hasNoChanges ? null : (
+      <>
+        <OntologyReleaseTruncationNote working={working.data} />
+        <Box gap={2}>
+          <Button
+            color="secondary"
+            data-testid="ontology-working-previous"
+            isDisabled={cursors.length === 1 || !hasCoherentPreview}
+            size="sm"
+            onPress={() => setCursors((previous) => previous.slice(0, -1))}>
+            {t('label.previous')}
+          </Button>
+          <Button
+            color="secondary"
+            data-testid="ontology-working-next"
+            isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
+            size="sm"
+            onPress={() =>
+              setCursors((previous) => [
+                ...previous,
+                changes.data?.paging.after,
+              ])
+            }>
+            {t('label.next')}
+          </Button>
+        </Box>
+      </>
+    );
 
   const renderVersionError = () =>
     versionBase.isError && (

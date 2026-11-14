@@ -1141,7 +1141,7 @@ const OntologyConceptInspector = ({
               icon={Trash01}
               id="delete"
               label={t('label.delete-entity', {
-                entity: t('label.concept'),
+                entity: t('label.concept').toLocaleLowerCase(),
               })}
               textValue={t('label.delete')}
             />

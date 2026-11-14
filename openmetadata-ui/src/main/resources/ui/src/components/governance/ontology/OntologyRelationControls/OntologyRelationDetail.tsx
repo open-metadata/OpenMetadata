@@ -447,7 +447,9 @@ const OntologyRelationDetail = ({
               isDisabled={isBusy}
               size="sm"
               onPress={() => void run(onDelete)}>
-              {t('label.delete-entity', { entity: t('label.relationship') })}
+              {t('label.delete-entity', {
+                entity: t('label.relationship').toLocaleLowerCase(),
+              })}
             </Button>
           </Box>
         ) : null}

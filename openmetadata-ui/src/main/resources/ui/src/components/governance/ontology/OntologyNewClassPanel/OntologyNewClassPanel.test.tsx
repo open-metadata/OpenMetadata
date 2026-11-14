@@ -936,7 +936,7 @@ describe('one drawer for every entry point', () => {
 
     expect(
       screen.getAllByText('message.ontology-concept-name-invalid')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
     expect(screen.getByTestId('new-class-create-another')).toBeDisabled();
     expect(screen.getByTestId('new-class-iri')).toHaveTextContent(
@@ -950,7 +950,7 @@ describe('one drawer for every entry point', () => {
 
     expect(
       screen.getAllByText('message.ontology-concept-name-taken')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
     fill('new-class-local-name', 'Remittance');
@@ -958,7 +958,7 @@ describe('one drawer for every entry point', () => {
 
     expect(
       screen.getAllByText('message.ontology-concept-label-taken')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
     fill('new-class-label', 'Remittance advice');
@@ -966,19 +966,31 @@ describe('one drawer for every entry point', () => {
     expect(screen.getByTestId('new-class-create')).toBeEnabled();
   });
 
+  it('puts a label clash on Name when Display name is left empty', () => {
+    setup();
+    fill('new-class-local-name', 'payment');
+
+    expect(screen.getByTestId('new-class-local-name')).toBeInvalid();
+    expect(screen.getByTestId('new-class-label')).toBeValid();
+    expect(
+      screen.getAllByText('message.ontology-concept-label-taken')
+    ).toHaveLength(1);
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+  });
+
   it('rejects a relative IRI and an IRI already in use', () => {
     setup();
     fill('new-class-local-name', 'Remittance');
     fill('new-class-iri-input', 'relative/iri');
 
-    expect(screen.getAllByText('message.invalid-concept-iri')).toHaveLength(2);
+    expect(screen.getAllByText('message.invalid-concept-iri')).toHaveLength(1);
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
     fill('new-class-iri-input', parents[0].iri);
 
     expect(
       screen.getAllByText('message.ontology-concept-iri-taken')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
 
     fill('new-class-iri-input', 'https://example.org/other#Remittance');
 

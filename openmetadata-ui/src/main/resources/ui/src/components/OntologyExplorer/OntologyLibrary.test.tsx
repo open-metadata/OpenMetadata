@@ -180,7 +180,7 @@ describe('OntologyLibrary', () => {
       FIBO_PACK.standard
     );
     expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
-      '5 label.concept-plural · 3 label.relation-plural'
+      '5 label.concept-plural · 3 label.hierarchy-link-plural'
     );
     expect(screen.getByTestId('ontology-pack-new-pack')).toHaveTextContent(
       UNKNOWN_PACK.name

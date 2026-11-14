@@ -27,7 +27,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Layer } from '../../../../generated/api/data/createOntology';
@@ -91,6 +91,10 @@ const OntologyCreateDialog = ({
       owners: currentUser ? [ownerOption(currentUser, t('label.you'))] : [],
       reviewers: [],
     },
+  });
+  const chosenReviewers = useWatch({
+    control: people.control,
+    name: 'reviewers',
   });
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -223,7 +227,9 @@ const OntologyCreateDialog = ({
         {getField({
           name: 'reviewers',
           label: t('label.reviewer-plural'),
-          helperText: t('message.ontology-reviewers-create-hint'),
+          helperText: chosenReviewers?.length
+            ? t('message.ontology-reviewers-create-hint')
+            : undefined,
           type: FieldTypes.USER_TEAM_SELECT_INPUT,
           props: {
             ...reviewerPicker,

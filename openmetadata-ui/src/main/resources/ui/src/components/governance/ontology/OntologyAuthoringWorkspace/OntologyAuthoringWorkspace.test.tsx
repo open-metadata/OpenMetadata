@@ -192,8 +192,8 @@ describe('OntologyAuthoringWorkspace', () => {
     });
 
     expect(
-      screen.getAllByText('message.ontology-concept-name-invalid')
-    ).toHaveLength(2);
+      screen.getByText('message.ontology-concept-name-invalid')
+    ).toBeVisible();
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
     expect(post).not.toHaveBeenCalled();
 
@@ -202,8 +202,8 @@ describe('OntologyAuthoringWorkspace', () => {
     });
 
     expect(
-      screen.getAllByText('message.ontology-concept-name-taken')
-    ).toHaveLength(2);
+      screen.getByText('message.ontology-concept-name-taken')
+    ).toBeVisible();
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
     fireEvent.change(screen.getByTestId('new-class-local-name'), {

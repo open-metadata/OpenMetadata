@@ -49,7 +49,6 @@ const OntologyPropertyBindings = ({
 }: OntologyPropertyBindingsProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isHintOpen, setIsHintOpen] = useState(false);
   const hasTable = Boolean(
     bindings.data?.assets.some(({ assetType }) => assetType === AssetType.Table)
   );
@@ -70,9 +69,9 @@ const OntologyPropertyBindings = ({
         color="link-color"
         data-testid={`ontology-bind-property-${propertyId}`}
         iconLeading={Plus}
-        isDisabled={!bindings.editableSnapshot}
+        isDisabled={!bindings.editableSnapshot || !hasTable}
         size="xs"
-        onPress={() => (hasTable ? setIsOpen(true) : setIsHintOpen(true))}>
+        onPress={() => setIsOpen(true)}>
         {t('label.ontology-bind-to-column')}
       </Button>
     );
@@ -87,17 +86,13 @@ const OntologyPropertyBindings = ({
         onClose={() => setIsOpen(false)}
       />
     ) : (
-      // Without a linked table there is nothing to bind yet, so the button says
-      // so in a popover. One stable tree either way: swapping wrappers would
-      // remount the button whenever the bindings load.
+      // Without a linked table there is nothing to bind yet: the button reads as disabled,
+      // and the tooltip on its focusable wrapper says why.
       <Tooltip
-        excludeTriggerFromTabOrder
         isDisabled={hasTable}
-        isOpen={!hasTable && isHintOpen}
         placement="bottom start"
-        title={t('message.ontology-link-table-before-binding')}
-        onOpenChange={setIsHintOpen}>
-        <span className="tw:w-max">{bindButton}</span>
+        title={t('message.ontology-link-table-before-binding')}>
+        {bindButton}
       </Tooltip>
     );
   };

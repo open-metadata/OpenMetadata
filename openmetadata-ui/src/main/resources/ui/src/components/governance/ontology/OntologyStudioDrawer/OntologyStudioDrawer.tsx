@@ -22,7 +22,7 @@ interface OntologyStudioDrawerProps {
   readonly className?: string;
   readonly testId?: string;
   /**
-   * A press anywhere outside the panel closes it, as on the app's other drawers, after the
+   * A press anywhere outside the panel, or Escape, closes it, as on the app's other drawers, after the
    * discard prompt when a form in it has unsaved edits. Its own menus, lists, dialogs and
    * toasts are portalled elsewhere, so presses in them don't count.
    */
@@ -79,10 +79,26 @@ const OntologyStudioDrawer = ({
         guard(onInteractOutside);
       }
     };
+    // Bubble phase: an open menu, list or dialog handles its own Escape first and stops it here.
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (
+        event.key === 'Escape' &&
+        !event.defaultPrevented &&
+        !(
+          event.target instanceof Element &&
+          event.target.closest(OWNED_OVERLAY_SELECTOR)
+        )
+      ) {
+        guard(onInteractOutside);
+      }
+    };
     document.addEventListener('pointerdown', closeOnOutsidePress, true);
+    document.addEventListener('keydown', closeOnEscape);
 
-    return () =>
+    return () => {
       document.removeEventListener('pointerdown', closeOnOutsidePress, true);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
   }, [guard, onInteractOutside, panelElement]);
   // data-studio-drawer: the Studio's canvas toolbar reads it to stay clear of an open drawer.
   const panel = (positionClass: string) => (
