@@ -228,6 +228,9 @@ class LineageParser:
         self.query_hash = self.get_query_hash(query)
         self.query_parsing_success = True
         self.query_parsing_failure_reason = None
+        # SqlParse, the last resort, accepts SQL it cannot read and then reports no tables, so an
+        # empty result from it does not prove the query reads nothing
+        self.used_fallback_parser = False
         self.dialect = dialect
         self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
@@ -854,6 +857,7 @@ class LineageParser:
             lr_sqlparse = None
 
         if lr_sqlparse:
+            self.used_fallback_parser = True
             self.query_hash += "-SqlParse"
             logger.debug(f"[{self.query_hash}] Selected SqlParse for query parsing")
             return lr_sqlparse
