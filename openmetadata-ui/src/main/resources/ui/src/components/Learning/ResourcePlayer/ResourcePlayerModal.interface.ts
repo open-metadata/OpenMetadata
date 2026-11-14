@@ -17,4 +17,11 @@ export interface ResourcePlayerModalProps {
   open: boolean;
   resource: LearningResource;
   onClose: () => void;
+  /** Opens the player full screen, as the product tour does. */
+  isFullScreenByDefault?: boolean;
+  /**
+   * Whether the resource is a stored learning resource, which the player
+   * refreshes by id. The product tour's is not.
+   */
+  isStored?: boolean;
 }

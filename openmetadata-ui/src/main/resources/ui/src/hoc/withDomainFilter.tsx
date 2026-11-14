@@ -17,7 +17,6 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
-import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
@@ -102,19 +101,14 @@ const keepsUnassignedSearch = (index?: string | string[]) =>
 
 /**
  * The navbar domain a request should be scoped to, or `undefined` when none is
- * selected or scoping is off (product tour, domain pages, auth calls).
+ * selected or scoping is off (domain pages, auth calls).
  */
 const getRequestDomain = (): string | undefined => {
   const { activeDomain } = useDomainStore.getState();
   const currentPath = getPathNameFromWindowLocation();
-  // A product tour shows every user the same recorded pages, whatever domain
-  // they have selected. Off while the tour is recorded too, so the recorded
-  // requests are the ones the tour sends.
-  const isUnscopedPage =
-    isProductTourRunning() ||
-    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
-      currentPath.startsWith(path)
-    );
+  const isUnscopedPage = ['/domain', '/auth/logout', '/auth/refresh'].some(
+    (path) => currentPath.startsWith(path)
+  );
 
   return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
     ? undefined

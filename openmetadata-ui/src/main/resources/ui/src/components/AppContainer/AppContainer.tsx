@@ -113,9 +113,7 @@ const AppContainer = () => {
             : null}
 
           {/* Render main content */}
-          <main
-            className="tw:min-h-0 tw:flex-1 tw:[html[data-product-tour-pending]_&]:invisible"
-            data-tour-page="">
+          <main className="tw:min-h-0 tw:flex-1">
             <AuthenticatedRouter />
             {ApplicationExtras && <ApplicationExtras />}
           </main>

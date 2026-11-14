@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/constants';
 import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
 import { URL_OM_RELEASE_UPDATES } from '../constants/URL.constants';
+import { useProductTourStore } from '../hooks/useProductTourStore';
 import { getHelpDropdownItems } from './NavbarUtils';
 
 describe('NavbarUtils test', () => {
@@ -128,15 +129,6 @@ describe('NavbarUtils test', () => {
     it('should render internal links with correct attributes', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
-      // Test TOUR item (internal)
-      const tourItem = helpDropdownItems.find(
-        (item) => item.key === HELP_ITEMS_ENUM.TOUR
-      );
-
-      expect(tourItem?.label.type).toBe(Link);
-      expect(tourItem?.label.props.to).toBe(ROUTES.TOUR);
-      expect(tourItem?.label.props.className).toBe('no-underline');
-
       // Test API item (internal)
       const apiItem = helpDropdownItems.find(
         (item) => item.key === HELP_ITEMS_ENUM.API
@@ -147,11 +139,30 @@ describe('NavbarUtils test', () => {
       expect(apiItem?.label.props.className).toBe('no-underline');
     });
 
+    it('should render the tour item as a row that opens the product tour', () => {
+      const tourItem = getHelpDropdownItems().find(
+        (item) => item.key === HELP_ITEMS_ENUM.TOUR
+      );
+
+      expect(tourItem?.label.type).not.toBe(Link);
+
+      tourItem?.label.props.onClick();
+
+      expect(useProductTourStore.getState().isOpen).toBe(true);
+
+      useProductTourStore.getState().close();
+    });
+
     it('should render label content with correct structure', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
       helpDropdownItems.forEach((item) => {
-        const labelContent = item.label.props.children;
+        // The tour opens a popup rather than a page, so its row is not
+        // wrapped in a link.
+        const labelContent =
+          item.key === HELP_ITEMS_ENUM.TOUR
+            ? item.label
+            : item.label.props.children;
 
         expect(labelContent.props.className.split(/\s+/)).toContain(
           'cursor-pointer'
@@ -203,7 +214,7 @@ describe('NavbarUtils test', () => {
     it('should not include external link icon for internal items', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
-      const internalItems = [HELP_ITEMS_ENUM.TOUR, HELP_ITEMS_ENUM.API];
+      const internalItems = [HELP_ITEMS_ENUM.API];
 
       internalItems.forEach((key) => {
         const item = helpDropdownItems.find((item) => item.key === key);

@@ -10,47 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CLASSIC_TOUR_STEPS } from '../constants/product-tour/classicTour.constants';
-import productTourClassBase from './ProductTourClassBase';
+import productTourClassBase, { PRODUCT_TOUR_URL } from './ProductTourClassBase';
 
 describe('ProductTourClassBase', () => {
-  it('runs the Classic tour, in Classic mode, from either mode', () => {
-    expect(productTourClassBase.getTour('default')).toMatchObject({
-      mode: 'default',
-      steps: CLASSIC_TOUR_STEPS,
-    });
-    expect(productTourClassBase.getTour('ai').mode).toBe('default');
-  });
-
-  it('gives every step a route, a target and copy', () => {
-    CLASSIC_TOUR_STEPS.forEach((step) => {
-      expect(step.route).toMatch(/^\//);
-      expect(step.selector).not.toBe('');
-      expect(step.i18nKey).toMatch(/^message\.product-tour-step-/);
-      expect(step.labelKey).toMatch(/^label\./);
-    });
-  });
-
-  it('serves the Classic pages from recorded fixtures', async () => {
-    const fixtures = await productTourClassBase
-      .getTour('default')
-      .loadFixtures();
-
-    expect(fixtures.length).toBeGreaterThan(0);
-
-    fixtures.forEach((fixture) => {
-      expect(fixture.path).toMatch(/^\//);
-      expect(['get', 'post']).toContain(fixture.method);
-    });
-  });
-
-  it('points a step without its target at the page content', () => {
-    expect(productTourClassBase.getPageSelector()).toBe('[data-tour-page]');
-  });
-
-  it('finds every target by its tour marker, never a test id', () => {
-    CLASSIC_TOUR_STEPS.forEach(({ selector }) => {
-      expect(selector).toMatch(/^\[data-tour-step="[a-z-]+"\]$/);
-    });
+  it('shows the Storylane demo', () => {
+    expect(productTourClassBase.getTourUrl()).toBe(PRODUCT_TOUR_URL);
+    expect(new URL(PRODUCT_TOUR_URL).protocol).toBe('https:');
   });
 });

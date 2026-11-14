@@ -144,14 +144,20 @@ test.describe(
     test('classic: take a product tour opens the tour', async ({
       firstLoginPage: page,
     }) => {
+      // The demo is hosted on Storylane; answer it locally so the test never
+      // depends on the network.
+      await page.route(/^https:\/\/[\w-]+\.storylane\.io\//, (route) =>
+        route.fulfill({ contentType: 'text/html', body: '<html></html>' })
+      );
       await openHome(page, '/my-data');
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-tour-btn'));
 
-      // /tour only starts the tour, which opens on Home with the welcome
-      // screen gone.
-      await expect(page.locator('.product-tour-helper')).toContainText(
-        'Topics to catch up on'
+      const tour = page.getByTestId('resource-player-dialog');
+
+      await expect(tour.locator('iframe')).toHaveAttribute(
+        'src',
+        /^https:\/\/[\w-]+\.storylane\.io\/demo\//
       );
       await expect(page.getByTestId('welcome-screen')).toHaveCount(0);
     });

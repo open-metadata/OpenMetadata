@@ -13,19 +13,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import WelcomeScreen from './WelcomeScreen.component';
 
-const mockNavigate = jest.fn();
 const mockOnClose = jest.fn();
 const mockAddService = jest.fn();
 const mockUseAddServiceAction = jest.fn();
 const mockUseIsAiMode = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
 
 jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockUseIsAiMode(),
@@ -146,12 +141,14 @@ describe('WelcomeScreen', () => {
     expect(screen.getByTestId('welcome-screen-tour-btn')).toBeInTheDocument();
   });
 
-  it('should close the welcome screen and start the tour', () => {
+  it('should close the welcome screen and open the product tour', () => {
     renderScreen();
 
     fireEvent.click(screen.getByTestId('welcome-screen-tour-btn'));
 
     expect(mockOnClose).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/tour');
+    expect(useProductTourStore.getState().isOpen).toBe(true);
+
+    useProductTourStore.getState().close();
   });
 });

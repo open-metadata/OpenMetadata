@@ -26,7 +26,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { CsvJobsTrayContainer } from '../common/EntityImport/CsvJobsTray/CsvJobsTrayContainer.component';
 import { EntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { PersonaLandingRedirect } from '../platform/persona/PersonaLandingRedirect/PersonaLandingRedirect';
-import ProductTour from '../product-tour/ProductTour/ProductTour';
+import ProductTourModal from '../ProductTour/ProductTourModal';
 import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from './../../context/UntitledUIThemeProvider/theme-provider';
@@ -80,8 +80,8 @@ const AuthenticatedApp: FC<AuthenticatedAppProps> = ({ children }) => {
                       </RuleEnforcementProvider>
                     </AirflowStatusProvider>
                     <CsvJobsTrayContainer />
-                    {/* Above both shells, so a tour outlives its own mode switch. */}
-                    <ProductTour />
+                    {/* Above both shells, so Help > Tour opens it in either mode. */}
+                    <ProductTourModal />
                   </EntityExportModalProvider>
                 </AsyncDeleteProvider>
               </ApplicationsProvider>
