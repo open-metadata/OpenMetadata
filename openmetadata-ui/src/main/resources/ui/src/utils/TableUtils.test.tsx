@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
@@ -54,7 +55,11 @@ import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
-import { getConstraintIcon, getDataTypeBadgeColor } from './TableUtils';
+import {
+  getConstraintIcon,
+  getDataTypeBadgeColor,
+  prepareConstraintIcon,
+} from './TableUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {
@@ -2607,6 +2612,112 @@ describe('getDataTypeBadgeColor', () => {
 });
 
 describe('getConstraintIcon', () => {
+  it('shows every composite unique group containing a column on keyboard focus', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['item_code', 'locale'],
+            },
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['external_ref', 'region'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getAllByTestId('constraint-icon-unique')).toHaveLength(1);
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      /warehouse_id, item_code; item_code, locale/
+    );
+
+    await user.tab();
+
+    expect(screen.getByRole('button')).toHaveFocus();
+
+    const tooltip = await screen.findByRole('tooltip');
+
+    expect(tooltip).toHaveTextContent('warehouse_id + item_code');
+    expect(tooltip).toHaveTextContent('item_code + locale');
+    expect(tooltip).not.toHaveTextContent('external_ref');
+  });
+
+  it('keeps individual uniqueness distinct from composite membership', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'external_ref',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['external_ref'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getByRole('img')).toHaveAccessibleName('label.unique');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('preserves a column constraint alongside composite membership', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          columnConstraint: 'NOT_NULL',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getByTestId('constraint-icon-not-null')).toBeInTheDocument();
+    expect(screen.getByTestId('constraint-icon-unique')).toHaveAccessibleName(
+      /warehouse_id, item_code/
+    );
+  });
+
+  it('shows individual uniqueness and composite membership when both are table constraints', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          tableConstraints: [
+            { constraintType: ConstraintType.Unique, columns: ['item_code'] },
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(
+      screen.getByRole('img', { name: 'label.unique' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /warehouse_id, item_code/ })
+    ).toBeInTheDocument();
+  });
+
   it.each([
     ['current', false],
     ['removed', true],
