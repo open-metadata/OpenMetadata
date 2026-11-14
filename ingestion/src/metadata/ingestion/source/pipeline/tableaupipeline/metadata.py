@@ -348,6 +348,11 @@ class TableaupipelineSource(PipelineServiceSource):
         for base, display_name, input_description in inputs:
             task_name = self._task_name(INPUT_TASK_PREFIX, base, used_names)
             if task_name is None:
+                logger.warning(
+                    "Skipping input %s of flow %s: Tableau returned it with no id or name.",
+                    display_name,
+                    self.get_pipeline_name(pipeline_details),
+                )
                 continue
             input_tasks.append(
                 Task(
@@ -364,6 +369,10 @@ class TableaupipelineSource(PipelineServiceSource):
         for output in flow_lineage.output_steps:
             task_name = self._task_name(OUTPUT_TASK_PREFIX, output.id or output.name, used_names)
             if task_name is None:
+                logger.warning(
+                    "Skipping an output step of flow %s that Tableau returned with no id or name.",
+                    self.get_pipeline_name(pipeline_details),
+                )
                 continue
             output_tasks.append(
                 Task(
@@ -931,6 +940,11 @@ class TableaupipelineSource(PipelineServiceSource):
                 # run twice, leaving its Pending row behind once it finishes.
                 run_key = start_time or end_time
                 if run_key is None:
+                    logger.warning(
+                        "Skipping run %s of %s: Tableau returned it with no start or end time.",
+                        run.id,
+                        self.get_pipeline_name(pipeline_details),
+                    )
                     continue
 
                 task_statuses = [
