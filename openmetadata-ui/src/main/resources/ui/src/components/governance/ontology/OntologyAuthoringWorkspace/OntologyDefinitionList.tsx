@@ -514,7 +514,8 @@ const OntologyDefinitionList = <
 
   const renderRow = ({ id, item, detail }: ReturnType<typeof toRows>[0]) =>
     detail ? (
-      <Table.Row className={rowClassName?.(item)} id={id}>
+      // The detail sits on the table surface; only the definition row carries its tint.
+      <Table.Row id={id}>
         <Table.Cell
           className={CELL_PADDING}
           colSpan={columns.length + (hideNameColumn ? 0 : 1)}>

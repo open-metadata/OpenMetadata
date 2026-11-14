@@ -1660,8 +1660,10 @@ const OntologyExplorerContent: React.FC = () => {
     if (nextMode !== 'edit') {
       setConceptDraft(undefined);
     }
+    // Switching between View and Edit keeps the surface (Graph, Tree or Ontology) in view.
+    const keptSurface = mode === 'query' ? undefined : aggregateSurface;
     setMode(nextMode, {
-      view: nextMode === 'query' ? lastQuerySurface : editView,
+      view: nextMode === 'query' ? lastQuerySurface : editView ?? keptSurface,
     });
   }
 
