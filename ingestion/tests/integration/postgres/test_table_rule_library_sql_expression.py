@@ -17,9 +17,13 @@ from dataclasses import dataclass
 import pytest
 
 from metadata.data_quality.api.models import TestCaseDefinition
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    FAILED_ROW_SAMPLE_SIZE,
+)
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -86,6 +90,26 @@ def table_rule_library_test_definition(
     metadata.delete(TestDefinition, test_def.id, hard_delete=True)
 
 
+@pytest.fixture(scope="module")
+def aggregate_rule_library_test_definition(metadata: OpenMetadata) -> TestDefinition:
+    """A rule whose output is an aggregate, not the table's columns"""
+    test_def = metadata.create_or_update(
+        CreateTestDefinitionRequest(
+            name=TestCaseEntityName(generate_name().root),
+            description=Markdown(root="Customers per store"),
+            entityType=EntityType.TABLE,
+            testPlatforms=[TestPlatform.OpenMetadata],
+            parameterDefinition=[],
+            sqlExpression=SqlQuery(
+                root="SELECT store_id, COUNT(*) AS customers FROM {{ table_name }} GROUP BY store_id"
+            ),
+            validatorClass="TableRuleLibrarySqlExpressionValidator",
+        )
+    )
+    yield test_def
+    metadata.delete(TestDefinition, test_def.id, hard_delete=True)
+
+
 @pytest.fixture()
 def get_table_rule_library_test_suite_config(workflow_config, sink_config):
     def inner(entity_fqn: str, test_case_definitions: list[TestCaseDefinition]):
@@ -116,6 +140,9 @@ class TableRuleLibraryTestParameter:
     entity_fqn: str
     test_case_definition: TestCaseDefinition
     expected_status: TestCaseStatus
+    # Rows in the stored failed rows sample, None when no sample is stored
+    expected_sample_rows: int | None
+    expected_inspection_query: SqlQuery | None
 
 
 @pytest.fixture(
@@ -125,24 +152,31 @@ class TableRuleLibraryTestParameter:
             test_case_definition=TestCaseDefinition(
                 name="table_rule_library_customers_greater_than_zero",
                 testDefinitionName="{test_def_name}",
+                computePassedFailedRowCount=True,
                 parameterValues=[{"name": "minCustomerId", "value": "0"}],
             ),
             expected_status=TestCaseStatus.Failed,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
             test_case_definition=TestCaseDefinition(
                 name="table_rule_library_customers_greater_than_max",
                 testDefinitionName="{test_def_name}",
+                computePassedFailedRowCount=True,
                 parameterValues=[{"name": "minCustomerId", "value": "99999"}],
             ),
             expected_status=TestCaseStatus.Success,
+            expected_sample_rows=None,
+            expected_inspection_query=None,
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
             test_case_definition=TestCaseDefinition(
                 name="table_rule_library_customers_threshold_tolerated_as_percentage",
                 testDefinitionName="{test_def_name}",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     {"name": "minCustomerId", "value": "0"},
                     {"name": "threshold", "value": "100"},
@@ -150,12 +184,15 @@ class TableRuleLibraryTestParameter:
                 ],
             ),
             expected_status=TestCaseStatus.Success,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
             test_case_definition=TestCaseDefinition(
                 name="table_rule_library_customers_threshold_above_percentage",
                 testDefinitionName="{test_def_name}",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     {"name": "minCustomerId", "value": "0"},
                     {"name": "threshold", "value": "99"},
@@ -163,12 +200,15 @@ class TableRuleLibraryTestParameter:
                 ],
             ),
             expected_status=TestCaseStatus.Failed,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
             test_case_definition=TestCaseDefinition(
                 name="table_rule_library_customers_threshold_tolerated_as_absolute",
                 testDefinitionName="{test_def_name}",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     {"name": "minCustomerId", "value": "0"},
                     {"name": "threshold", "value": "1000000"},
@@ -176,6 +216,21 @@ class TableRuleLibraryTestParameter:
                 ],
             ),
             expected_status=TestCaseStatus.Success,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
+        ),
+        TableRuleLibraryTestParameter(
+            entity_fqn="{database_service_fqn}.dvdrental.public.payment",
+            test_case_definition=TestCaseDefinition(
+                name="table_rule_library_payments_greater_than_zero",
+                testDefinitionName="{test_def_name}",
+                computePassedFailedRowCount=True,
+                parameterValues=[{"name": "minCustomerId", "value": "0"}],
+            ),
+            expected_status=TestCaseStatus.Failed,
+            # payment holds numeric amounts and timestamps, which the sample must serialize
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.payment WHERE customer_id > '0'"),
         ),
     ],
     ids=lambda x: x.test_case_definition.name,
@@ -230,3 +285,49 @@ def test_table_rule_library_sql_expression_validator(
     assert test_case.testCaseResult is not None
     assert test_case.testCaseResult.testCaseStatus == table_rule_library_parameters.expected_status
     assert "Evaluated on the full table." in test_case.testCaseResult.result
+    assert test_case.inspectionQuery == table_rule_library_parameters.expected_inspection_query
+
+    failed_rows_sample = metadata.get_failed_rows_sample(test_case)
+    if table_rule_library_parameters.expected_sample_rows is None:
+        assert failed_rows_sample is None
+        return
+    table: Table = metadata.get_by_name(Table, table_rule_library_parameters.entity_fqn, nullable=False)
+    assert failed_rows_sample is not None
+    assert [column.root for column in failed_rows_sample.columns] == [column.name.root for column in table.columns]
+    assert len(failed_rows_sample.rows) == table_rule_library_parameters.expected_sample_rows
+    assert all(len(row) == len(table.columns) for row in failed_rows_sample.rows)
+
+
+def test_aggregate_rule_output_is_not_stored_as_a_sample(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    db_service: DatabaseService,
+    metadata: OpenMetadata,
+    get_table_rule_library_test_suite_config,
+    cleanup_fqns,
+    aggregate_rule_library_test_definition,
+):
+    """The server masks a sample by column name, so output that names no column of the table is not stored"""
+    run_workflow(MetadataWorkflow, ingestion_config)
+    entity_fqn = f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer"
+    test_case_definition = TestCaseDefinition(
+        name="table_rule_library_customers_per_store",
+        testDefinitionName=aggregate_rule_library_test_definition.name.root,
+        computePassedFailedRowCount=True,
+    )
+
+    run_workflow(TestSuiteWorkflow, get_table_rule_library_test_suite_config(entity_fqn, [test_case_definition]))
+
+    test_case: TestCase = metadata.get_by_name(
+        TestCase, f"{entity_fqn}.{test_case_definition.name}", fields=["*"], nullable=False
+    )
+    cleanup_fqns(TestCase, test_case.fullyQualifiedName.root)
+
+    assert test_case.testCaseResult is not None
+    assert test_case.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+    assert test_case.testCaseResult.testResultValue[0].value == "2"
+    assert metadata.get_failed_rows_sample(test_case) is None
+    assert test_case.inspectionQuery == SqlQuery(
+        root="SELECT store_id, COUNT(*) AS customers FROM dvdrental.public.customer GROUP BY store_id"
+    )

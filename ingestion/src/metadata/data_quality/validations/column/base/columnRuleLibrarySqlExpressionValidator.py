@@ -13,6 +13,11 @@
 Validator for column value rule library SQL expression
 """
 
+from typing import Any
+
+from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
+    FailedSampleValidatorMixin,
+)
 from metadata.data_quality.validations.mixins.rule_library_threshold_mixin import (
     RuleLibraryThresholdMixin,
 )
@@ -20,6 +25,7 @@ from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
 from metadata.data_quality.validations.utils import render_sql_expression
+from metadata.generated.schema.entity.data.table import ColumnName, TableData
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -40,13 +46,17 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 }
 
 
-class ColumnRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
+class ColumnRuleLibrarySqlExpressionValidator(FailedSampleValidatorMixin, RuleLibraryThresholdMixin):
     """Validator for column-level SQL Expression based rules in the Rule Library."""
 
     # The rule's SQL is executed as written, so the sampler never sees it.
     BYPASSES_SAMPLER = True
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
+
+    # Columns and first rows of what the rule returned, kept by `_run_results` so the failed rows
+    # sample costs no second query. None when the rule returned nothing that can be stored.
+    _failed_rows: tuple[list[str], list[list[Any]]] | None = None
 
     def _get_user_params(self) -> dict[str, str]:
         """Extract user-defined parameters from test case parameterValues.
@@ -94,6 +104,12 @@ class ColumnRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
 
     def _run_results(self, sql_expression: str) -> int:
         raise NotImplementedError
+
+    def fetch_failed_rows_sample(self) -> TableData | None:
+        if self._failed_rows is None:
+            return None
+        columns, rows = self._failed_rows
+        return TableData(columns=[ColumnName(column) for column in columns], rows=rows)
 
     def get_column_name(self) -> str:
         """Get the column name from the test case entity link.
