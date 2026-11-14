@@ -30,6 +30,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -172,6 +173,22 @@ class RdfReasoningContractTest {
                         "contentDigest",
                         "sha256:0c5f2e8a9b1d3c4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e"),
             "pattern"),
+        violation(
+            "a REFRESH over more than 1,000 active releases",
+            "refresh-request",
+            Contract.REQUEST,
+            request -> {
+              final ArrayNode releases = (ArrayNode) request.get("ontologyReleases");
+              final ObjectNode first = (ObjectNode) releases.get(0);
+              while (releases.size() <= 1000) {
+                releases.add(
+                    first
+                        .deepCopy()
+                        .put("ontologyId", UUID.randomUUID().toString())
+                        .put("releaseId", UUID.randomUUID().toString()));
+              }
+            },
+            "maxItems"),
         violation(
             "a REFRESH without its rules inline",
             "refresh-request",

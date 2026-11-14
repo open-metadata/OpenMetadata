@@ -409,12 +409,13 @@ journal replays writes into a blue/green target. Reuse these instead of a Fuseki
   a write that cannot be recorded marks the projection degraded, which makes them `UNKNOWN`. The
   admin SPARQL Update, pipeline-status provenance writes, and in-place reindex runs (before their
   first write and after their last) record themselves. Derived graphs (rule output and insights)
-  are never captured, `OntologyLoader` reloads identical content and is covered by the ontology
-  digest, and blue/green builds get a new generation at promotion. Direct Fuseki writes that bypass
+  are never captured, `OntologyLoader` reloads identical content and is covered by the active
+  release set, and blue/green builds get a new generation at promotion. Direct Fuseki writes that bypass
   OM are unsupported for freshness.
 - **Freshness** is `UNKNOWN` while projection health is degraded, since a refresh cannot repair a
   graph that is missing writes. Otherwise it is `CURRENT` only when generations match, the snapshot
-  watermark covers the highest *enqueued* queue ID, and ontology/rule digests match, and `STALE`
+  watermark covers the highest *enqueued* queue ID, the same ontology releases are active and the
+  rule digest matches, and `STALE`
   when any of them does not. The metadata commit and queue insert are separate transactions, so a
   crash between them is invisible to freshness, exactly as it is to projection; a full rebuild
   repairs both.

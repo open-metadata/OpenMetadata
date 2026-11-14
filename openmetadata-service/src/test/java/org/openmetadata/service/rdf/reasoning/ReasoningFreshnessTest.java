@@ -13,6 +13,7 @@
 package org.openmetadata.service.rdf.reasoning;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
@@ -22,6 +23,7 @@ import org.openmetadata.schema.api.rdf.RdfOntologyReleaseRef;
 import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
 import org.openmetadata.schema.api.rdf.RdfReasoningInput;
 import org.openmetadata.schema.api.rdf.RdfSourceRevision;
+import org.openmetadata.schema.api.rdf.RdfUploadedInput;
 import org.openmetadata.service.rdf.reasoning.ReasoningFreshness.Serving;
 
 class ReasoningFreshnessTest {
@@ -57,6 +59,23 @@ class ReasoningFreshnessTest {
     assertEquals(
         RdfReasoningFreshness.STALE,
         ReasoningFreshness.of(READ, new Serving(UUID.randomUUID(), 18442, false, ONTOLOGY, RULES)));
+  }
+
+  @Test
+  void aCheckOfOneReleaseIsNotJudgedAgainstTheActiveSet() {
+    final RdfReasoningInput check =
+        new RdfReasoningInput()
+            .withSourceRevision(READ.getSourceRevision())
+            .withOntologyReleases(ONTOLOGY)
+            .withReleaseRdf(
+                new RdfUploadedInput()
+                    .withDigest("sha256:" + "c".repeat(64))
+                    .withByteSize(1024L)
+                    .withMediaType(RdfUploadedInput.MediaType.APPLICATION_RDF_THRIFT));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ReasoningFreshness.of(check, new Serving(GENERATION, 18442, false, ONTOLOGY, RULES)));
   }
 
   @Test
