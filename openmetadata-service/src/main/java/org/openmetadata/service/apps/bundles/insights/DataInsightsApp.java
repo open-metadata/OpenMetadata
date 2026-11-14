@@ -530,17 +530,20 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
 
     stats.setTotalRecords(
-        entityLevelStats.getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getTotalRecords)
+        entityLevelStats.getAdditionalProperties().entrySet().stream()
+            .filter(e -> !e.getKey().startsWith(DataAssetsWorkflow.ENRICHER_STEP_PREFIX))
+            .mapToInt(e -> e.getValue().getTotalRecords())
             .sum());
 
     stats.setSuccessRecords(
-        entityLevelStats.getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
+        entityLevelStats.getAdditionalProperties().entrySet().stream()
+            .filter(e -> !e.getKey().startsWith(DataAssetsWorkflow.ENRICHER_STEP_PREFIX))
+            .mapToInt(e -> e.getValue().getSuccessRecords())
             .sum());
     stats.setFailedRecords(
-        entityLevelStats.getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
+        entityLevelStats.getAdditionalProperties().entrySet().stream()
+            .filter(e -> !e.getKey().startsWith(DataAssetsWorkflow.ENRICHER_STEP_PREFIX))
+            .mapToInt(e -> e.getValue().getFailedRecords())
             .sum());
 
     // Update for the Job
