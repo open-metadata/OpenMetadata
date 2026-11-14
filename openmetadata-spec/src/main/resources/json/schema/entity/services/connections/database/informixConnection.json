@@ -141,14 +141,6 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "supportsLineageExtraction": {
-      "title": "Supports Lineage Extraction",
-      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
-    },
-    "supportsUsageExtraction": {
-      "title": "Supports Usage Extraction",
-      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
     }
   },
   "additionalProperties": false,

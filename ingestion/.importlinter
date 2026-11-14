@@ -103,6 +103,7 @@ ignore_imports =
 # Remove when the BigQuery sampler moves into the connector package.
     metadata.sampler.sqlalchemy.bigquery.sampler -> metadata.ingestion.source.database.bigquery.sharding
     metadata.sampler.sqlalchemy.databricks.sampler -> metadata.ingestion.source.database.databricks.connection
+    metadata.sampler.sqlalchemy.informix.sampler -> metadata.ingestion.source.database.informix.queries
     metadata.sampler.sqlalchemy.timescale.sampler -> metadata.ingestion.source.database.timescale.queries
     metadata.sampler.storage.gcs.sampler -> metadata.ingestion.source.storage.gcs.connection
     metadata.sampler.storage.s3.sampler -> metadata.ingestion.source.storage.s3.connection
