@@ -366,7 +366,13 @@ class GluePipelineUnitTest(TestCase):
             database="dev",
             table="customer_sample",
         )
-        self.gluepipeline._resolve_jdbc_entities([jdbc_ref], lineage_details, "targets")
+        with patch(
+            "metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build",
+            return_value="svc.dev.customer_sample",
+        ) as mock_build:
+            self.gluepipeline._resolve_jdbc_entities([jdbc_ref], lineage_details, "targets")
+
+        assert mock_build.call_args.kwargs["service_name"] == "*"
 
         assert len(lineage_details["targets"]) == 1
         assert lineage_details["targets"][0].name == "customer_sample"
@@ -391,7 +397,13 @@ class GluePipelineUnitTest(TestCase):
 
         lineage_details = {"sources": [], "targets": []}
         catalog_ref = CatalogRef(database="my_database", table="my_table")
-        self.gluepipeline._resolve_catalog_entities([catalog_ref], lineage_details, "sources")
+        with patch(
+            "metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build",
+            return_value="svc.my_database.my_table",
+        ) as mock_build:
+            self.gluepipeline._resolve_catalog_entities([catalog_ref], lineage_details, "sources")
+
+        assert mock_build.call_args.kwargs["service_name"] == "*"
 
         assert len(lineage_details["sources"]) == 1
         assert lineage_details["sources"][0].name == "my_table"
