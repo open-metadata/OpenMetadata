@@ -15,6 +15,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobSta
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 
@@ -180,9 +181,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   protected void validateConfig(Map<String, Object> appConfig) {
     try {
-      JsonUtils.convertValue(
-          SearchIndexAppConfigSanitizer.copyWithoutRemovedOptions(appConfig),
-          EventPublisherJob.class);
+      EventPublisherJob job =
+          JsonUtils.convertValue(
+              SearchIndexAppConfigSanitizer.copyWithoutRemovedOptions(appConfig),
+              EventPublisherJob.class);
+      DefaultRecreateHandler.requirePositiveShards(job.getLiveIndexSettings());
+      if (job.getLiveIndexSettingsByEntity() != null) {
+        job.getLiveIndexSettingsByEntity()
+            .values()
+            .forEach(DefaultRecreateHandler::requirePositiveShards);
+      }
     } catch (IllegalArgumentException e) {
       throw AppException.byMessage(
           Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());

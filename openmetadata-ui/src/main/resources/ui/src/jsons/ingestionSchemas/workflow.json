@@ -4417,7 +4417,7 @@
                           "description": "Override liveIndexSettings for specific entity types. Useful for large or specialized entities (e.g. 'container' on instances with 500k+ assets, 'queryCostRecord' for high-cardinality time series). Keys are entity type names; values override the global liveIndexSettings.",
                           "type": "object",
                           "additionalProperties": {
-                            "description": "Index settings applied to live (post-promote) search indexes. Tune for read freshness, durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides controls that. number_of_shards is intentionally omitted — it can only be set at index creation time and the staged-index reindex flow uses the static mapping JSON for creation.",
+                            "description": "Index settings applied to live (post-promote) search indexes. Tune for read freshness, durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides controls that. numberOfShards is applied when the staged index is created, since shards cannot change on an existing index.",
                             "javaType": "org.openmetadata.schema.system.IndexSettings",
                             "type": "object",
                             "additionalProperties": false,
@@ -4427,6 +4427,12 @@
                                 "description": "Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.",
                                 "type": "integer",
                                 "minimum": 0
+                              },
+                              "numberOfShards": {
+                                "title": "Number of Shards",
+                                "description": "Primary shard count of the staged index, set when it is created. Unset keeps the cluster default (5 on AWS OpenSearch). 1 is enough for most catalogs and keeps single-node clusters under cluster.max_shards_per_node during a reindex.",
+                                "type": "integer",
+                                "minimum": 1
                               },
                               "refreshInterval": {
                                 "title": "Refresh Interval",

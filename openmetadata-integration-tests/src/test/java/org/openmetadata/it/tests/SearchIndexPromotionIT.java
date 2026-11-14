@@ -19,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +45,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -91,6 +95,61 @@ public class SearchIndexPromotionIT {
     assertPreviousTargetIsNotServing(firstTarget);
   }
 
+  @Test
+  void stagedTableIndexUsesConfiguredShardCount(TestNamespace ns) throws Exception {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+
+    createTableForReindex(ns);
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    waitForCurrentRunCompletion(httpClient);
+    String target = readSingleTableAliasTargetIfPresent();
+
+    // Global value, then a per-entity override over it, then unset (restores the default).
+    target = reindexAndAssertShards(httpClient, target, Map.of("liveIndexSettings", shards(2)), 2);
+    target =
+        reindexAndAssertShards(
+            httpClient,
+            target,
+            Map.of(
+                "liveIndexSettings",
+                shards(2),
+                "liveIndexSettingsByEntity",
+                Map.of(TABLE_ENTITY, shards(3))),
+            3);
+    reindexAndAssertShards(httpClient, target, Map.of(), 1);
+  }
+
+  private static Map<String, Object> shards(int count) {
+    return Map.of("numberOfShards", count);
+  }
+
+  private static String reindexAndAssertShards(
+      HttpClient httpClient, String previousTarget, Map<String, Object> extra, int expected)
+      throws Exception {
+    Long previousRunStartTime = readLatestRunStartTime(httpClient);
+    triggerTableReindex(httpClient, extra);
+    waitForLatestRunSuccess(httpClient, previousRunStartTime);
+    String target = waitForPromotedTableAlias(previousTarget);
+
+    JsonNode index = readIndexSettings(target);
+    assertEquals(expected, index.path("number_of_shards").asInt(), "Shards of " + target);
+    assertEquals(17, index.path("max_ngram_diff").asInt(), "Mapping settings should survive");
+    return target;
+  }
+
+  private static JsonNode readIndexSettings(String indexName) throws Exception {
+    try (Rest5Client client = TestSuiteBootstrap.createSearchClient()) {
+      byte[] body =
+          client
+              .performRequest(new Request("GET", "/" + indexName + "/_settings"))
+              .getEntity()
+              .getContent()
+              .readAllBytes();
+      return JsonUtils.readTree(new String(body)).path(indexName).path("settings").path("index");
+    }
+  }
+
   private static void createTableForReindex(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -101,7 +160,11 @@ public class SearchIndexPromotionIT {
   }
 
   private static void triggerTableReindex(HttpClient httpClient) {
-    Map<String, Object> config = new HashMap<>();
+    triggerTableReindex(httpClient, Map.of());
+  }
+
+  private static void triggerTableReindex(HttpClient httpClient, Map<String, Object> extra) {
+    Map<String, Object> config = new HashMap<>(extra);
     config.put("entities", List.of(TABLE_ENTITY));
     config.put("batchSize", 100);
 
