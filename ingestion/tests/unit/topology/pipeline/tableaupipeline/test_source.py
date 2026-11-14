@@ -464,20 +464,6 @@ class TestLineage:
 
         assert _lineage(source, FLOW_SALES, catalog) == []
 
-    def test_flow_edges_keep_the_configured_override(self, tableau_source):
-        """Only refresh edges are written without override."""
-        source, _ = tableau_source
-        source.source_config.overrideLineage = True
-        catalog = self._sales_catalog()
-        catalog.add(Table, "warehouse.warehouse.public.orders")
-        catalog.add(Table, "warehouse.warehouse.mart.sales_clean")
-        catalog.wire(source)
-
-        requests = [r.right for r in source.yield_pipeline_lineage(FLOW_SALES) if r.right is not None]
-
-        assert requests
-        assert {r.override_lineage for r in requests} == {True}
-
 
 class TestTableResolution:
     """Tableau reports a table as its source does; OpenMetadata files it by
@@ -672,22 +658,6 @@ class TestExtractRefresh:
 
         refresh_id = str(refresh.id.root)
         assert {_edge(r) for r in requests} == {(refresh_id, str(orders.id.root)), (refresh_id, str(targets.id.root))}
-
-    def test_refresh_edges_never_override_the_lineage_of_their_data_models(self, tableau_source):
-        """A refresh edge names no pipeline, so overriding it would delete every
-        pipeline edge into the data model it refreshes, a flow's included."""
-        source, _ = tableau_source
-        source.source_config.overrideLineage = True
-        catalog = Catalog()
-        catalog.add(Pipeline, f"{SERVICE}.wb-exec")
-        catalog.add_datamodel("gql-exec-orders")
-        catalog.add_datamodel("gql-exec-targets")
-        catalog.wire(source)
-
-        requests = [r.right for r in source.yield_pipeline_lineage(EXTRACT_EXEC_WORKBOOK) if r.right is not None]
-
-        assert len(requests) == 2
-        assert {r.override_lineage for r in requests} == {False}
 
     def test_no_edge_until_the_dashboard_connector_has_the_data_model(self, tableau_source):
         source, _ = tableau_source

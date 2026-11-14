@@ -68,7 +68,6 @@ from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -635,18 +634,6 @@ class TableaupipelineSource(PipelineServiceSource):
             EntityReference(id=datamodel.id, type=ENTITY_TYPE_DASHBOARD_DATA_MODEL)
             for datamodel in self._lookup_datamodels(datasource_id, label)
         ]
-
-    def yield_pipeline_lineage(self, pipeline_details: TableauPipelineDetails) -> Iterable[Either[OMetaLineageRequest]]:
-        """A refresh edge starts at the refresh and names no pipeline, so with
-        overrideLineage on the sink would first delete every PipelineLineage edge
-        into its data model, the flows' included. Refresh edges are always added.
-        Naming the refresh as the edge's pipeline instead draws it as a loop on
-        the refresh."""
-        for lineage in super().yield_pipeline_lineage(pipeline_details):
-            if pipeline_details.kind == TableauPipelineKind.EXTRACT_REFRESH and lineage.right is not None:
-                yield Either(left=None, right=lineage.right.model_copy(update={"override_lineage": False}))
-            else:
-                yield lineage
 
     def yield_pipeline_bulk_lineage_details(self) -> Iterable[Either[AddLineageRequest]]:
         """Flow -> flow edges whose downstream flow was ingested after its
