@@ -131,3 +131,14 @@ Also lineage information can only be generated if the dataset is a <a href="http
 For more information please visit the PowerBI official documentation <a href="https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables#limitations" target="_blank">here</a>.
 
 $$
+
+$$section
+### Include Hidden Fields $(id="includeHiddenFields")
+
+Option for ingesting the tables, columns and measures that are marked as hidden in Power BI:
+- `Enabled` (default)
+Hidden tables, columns and measures are ingested into the Dashboard Data Model. Hidden measures keep the `MEASURE_HIDDEN` data type.
+
+- `Disabled`
+Hidden tables, columns and measures are skipped. Hidden fields that were already ingested are removed on the next ingestion, together with their tags and descriptions. Metrics already created for measures of hidden tables are not removed.
+$$

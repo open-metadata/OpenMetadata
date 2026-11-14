@@ -351,3 +351,24 @@ def test_dax_references_ignore_strings_and_comments_and_unescape_names():
     expression = "/* [Ignored] */ 'Bob''s Table'[A]]B] + T[Col] + [Measure] & \"[Literal]\" // [Comment]"
 
     assert list(dax_references(expression)) == [("Bob's Table", "A]B"), ("T", "Col"), (None, "Measure")]
+
+
+def test_hidden_table_measures_emit_no_metrics_when_include_hidden_fields_disabled(make_source):
+    """A visible measure on a hidden table leaves the data model with its table, so it gets no Metric."""
+    calcs = PowerBiTable(
+        name="Calcs",
+        isHidden=True,
+        columns=[PowerBiColumns(name="Key", dataType="Int64")],
+        measures=[PowerBiMeasures(name="Calc Total", expression="SUM(Calcs[Key])")],
+    )
+    dataset = Dataset(id="ds-hidden-table", name="Hidden Table Model", tables=[FACT_SALES, calcs])
+    calc_metric = powerbi_metric_name(SERVICE, dataset.id, "Calc Total")
+
+    hiding = make_source()
+    with patch.object(hiding.service_connection, "includeHiddenFields", False):
+        _, outputs = _run_workspace(hiding, [dataset])
+    assert calc_metric not in {metric.name.root for metric in _metrics(outputs)}
+    assert _metrics(outputs)
+
+    _, outputs = _run_workspace(make_source(), [dataset])
+    assert calc_metric in {metric.name.root for metric in _metrics(outputs)}
