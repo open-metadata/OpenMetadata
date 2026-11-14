@@ -464,7 +464,10 @@ test.describe(
       const api = await getWorkerAdminAPIContext();
       const fixture = await publishWithNewerDraft(api, page, reviewer);
       try {
-        await page.goto(studioUrl(fixture.ontology, '&view=ontology'));
+        // Only a published release lists its details; the draft's tabs leave them to Settings.
+        await page.goto(
+          studioUrl(fixture.ontology, '&view=ontology&version=published')
+        );
         const overview = page.getByTestId('ontology-overview');
 
         await expect(overview).toBeVisible();
@@ -491,7 +494,7 @@ test.describe(
           ).toContainText('0');
           await expect(
             page.getByTestId('ontology-overview-version')
-          ).toContainText('Draft');
+          ).toHaveCount(0);
         } finally {
           await cleanUp(api, [bare]);
         }

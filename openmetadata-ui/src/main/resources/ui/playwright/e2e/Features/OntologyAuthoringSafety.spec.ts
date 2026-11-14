@@ -203,11 +203,12 @@ test.describe(
               );
               expect(updated.description).toBe(text);
               if (tab === 'Settings') {
-                await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+                // Settings stay open in Edit after a save.
+                await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
                   'aria-selected',
                   'true'
                 );
-                await page.getByTestId('mode-tab-edit').click();
+                await expect(editor).toBeVisible();
                 await page.getByTestId('submode-tab-definitions').click();
               }
               if (tab === 'Concepts') {

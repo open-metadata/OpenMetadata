@@ -439,12 +439,15 @@ test.describe(
         const more = page.getByTestId(/^ontology-data-column-more-/);
 
         await expect(more).toContainText(`${WIDE_COLUMN_COUNT - CAP} more`);
-        await more.click();
+        // The slot sits at the bottom of the column lane, where the canvas toolbar floats over it.
+        await more.focus();
+        await page.keyboard.press('Enter');
 
         await expect(columnNodes(page)).toHaveCount(WIDE_COLUMN_COUNT);
         await expect(columnEdges(page)).toHaveCount(WIDE_COLUMN_COUNT);
 
-        await page.getByTestId(/^ontology-data-column-fewer-/).click();
+        await page.getByTestId(/^ontology-data-column-fewer-/).focus();
+        await page.keyboard.press('Enter');
 
         await expect(columnNodes(page)).toHaveCount(CAP);
       } finally {
