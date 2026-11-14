@@ -22,8 +22,8 @@ import {
   OntologyPublicationStatus,
   Stage,
 } from '../../../../generated/type/ontologyPublicationStatus';
-import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
 import { getUnpublishedCount } from '../../../../utils/governance/ontology/OntologyUnpublishedCount.utils';
+import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
 
 interface OntologyVersionChipProps {
   readonly status?: OntologyPublicationStatus;

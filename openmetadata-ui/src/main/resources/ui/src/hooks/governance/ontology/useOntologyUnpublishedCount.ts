@@ -18,9 +18,9 @@ import {
   Operation,
 } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { getEntityPermissionById } from '../../../rest/permissionAPI';
+import { getUnpublishedCount } from '../../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getOperationPermissions } from '../../../utils/PermissionsUtils';
-import { getUnpublishedCount } from '../../../utils/governance/ontology/OntologyUnpublishedCount.utils';
 import { useApplicationStore } from '../../useApplicationStore';
 
 type UnpublishedCount =

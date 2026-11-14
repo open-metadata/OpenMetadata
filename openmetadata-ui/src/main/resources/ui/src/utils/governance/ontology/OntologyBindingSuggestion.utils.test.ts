@@ -63,10 +63,14 @@ describe('suggestPropertiesForColumns', () => {
     { id: 'p-name', label: 'Patient Name' },
     { id: 'p-unit', label: 'unit' },
   ];
+  // Column name → property id, with ' (unticked)' when another column matches it better.
   const suggest = (names: string[], props: typeof properties = properties) =>
     Object.fromEntries(
       [...suggestPropertiesForColumns(names.map(column), props)].map(
-        ([id, property]) => [JSON.parse(id)[0], property.id]
+        ([id, { property, isBest }]) => [
+          JSON.parse(id)[0],
+          isBest ? property.id : `${property.id} (unticked)`,
+        ]
       )
     );
 
@@ -88,7 +92,7 @@ describe('suggestPropertiesForColumns', () => {
     expect(suggest(['row_id'], [{ id: 'p-name', label: 'Name' }])).toEqual({});
   });
 
-  it('gives each property to its best column only', () => {
+  it('does not offer an id column to an identifier not named like a key', () => {
     const email = [{ id: 'p-email', label: 'email', isIdentifier: true }];
 
     expect(suggest(['customer_id', 'customer_email'], email)).toEqual({
@@ -96,15 +100,16 @@ describe('suggestPropertiesForColumns', () => {
     });
   });
 
-  it('does not offer an id column to an identifier not named like a key', () => {
-    const email = [{ id: 'p-email', label: 'email', isIdentifier: true }];
-
-    expect(suggest(['customer_id'], email)).toEqual({});
+  it('suggests every matching column but ticks only the best one for a property', () => {
+    expect(suggest(['patient_id', 'patient_key'])).toEqual({
+      patient_id: 'p-id (unticked)',
+      patient_key: 'p-id',
+    });
   });
 
-  it('gives a property to the first of two equally good columns', () => {
+  it('ticks the first of two equally good columns', () => {
     expect(
       suggest(['unit', 'unit'.toUpperCase()], [{ id: 'p-unit', label: 'unit' }])
-    ).toEqual({ unit: 'p-unit' });
+    ).toEqual({ UNIT: 'p-unit (unticked)', unit: 'p-unit' });
   });
 });

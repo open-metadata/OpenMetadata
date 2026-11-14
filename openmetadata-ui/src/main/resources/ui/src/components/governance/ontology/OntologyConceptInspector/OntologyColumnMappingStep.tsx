@@ -134,7 +134,7 @@ const OntologyColumnMappingStep = ({
         const boundColumnIds = new Set(
           resolvedBindings.map((column) => JSON.stringify(column.columnPath))
         );
-        // A bound column shows its binding, so only unbound columns compete for a suggestion.
+        // A bound column shows its binding, so only unbound columns are suggested a property.
         const suggestions = suggestPropertiesForColumns(
           options.filter((option) => !boundColumnIds.has(option.id)),
           properties
@@ -152,7 +152,8 @@ const OntologyColumnMappingStep = ({
               ...option,
               existingPropertyId: resolved[0]?.propertyId,
               extraBindings: Math.max(resolved.length - 1, 0),
-              suggestedPropertyId: suggestions.get(option.id)?.id,
+              suggestedPropertyId: suggestions.get(option.id)?.property.id,
+              isBestSuggestion: Boolean(suggestions.get(option.id)?.isBest),
             };
           }),
           query: columnQueries[index],
@@ -171,10 +172,15 @@ const OntologyColumnMappingStep = ({
     if (edited) {
       return edited;
     }
-    const propertyId =
-      option.existingPropertyId ?? option.suggestedPropertyId ?? '';
+    if (option.existingPropertyId) {
+      return { checked: true, propertyId: option.existingPropertyId };
+    }
 
-    return { checked: Boolean(propertyId), propertyId };
+    // Every match is shown; only a property's best column starts ticked.
+    return {
+      checked: option.isBestSuggestion,
+      propertyId: option.suggestedPropertyId ?? '',
+    };
   };
   const setRow = (assetId: string, columnId: string, next: RowState) =>
     setEdits((current) => ({ ...current, [keyOf(assetId, columnId)]: next }));
@@ -408,11 +414,14 @@ const OntologyColumnMappingStep = ({
                     })}
                   </Typography>
                 ) : null}
-                {isSuggested ? (
-                  <Badge color="brand" size="sm" type="pill-color">
-                    {t('label.ontology-suggested-column')}
-                  </Badge>
-                ) : null}
+                {/* A fixed slot, so every row's property select lines up with or without the badge. */}
+                <span className="tw:flex tw:w-24 tw:shrink-0">
+                  {isSuggested ? (
+                    <Badge color="brand" size="sm" type="pill-color">
+                      {t('label.ontology-suggested-column')}
+                    </Badge>
+                  ) : null}
+                </span>
               </li>
             );
           })}

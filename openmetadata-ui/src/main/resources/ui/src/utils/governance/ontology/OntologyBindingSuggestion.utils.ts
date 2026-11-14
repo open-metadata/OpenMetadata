@@ -100,9 +100,16 @@ export const suggestColumnForProperty = <T extends SuggestableColumn>(
 ): T | undefined =>
   pickBest(columns, (column) => scoreMatch(property, lastSegment(column.id)));
 
+export interface ColumnSuggestion<P> {
+  property: P;
+  /** The column matches this property better than any other column; only it is ticked. */
+  isBest: boolean;
+}
+
 /**
- * The property each column of one table most likely holds, keyed by column id. Each property goes
- * to at most one column, the best-matching one.
+ * The property each column of one table most likely holds, keyed by column id. Every column gets
+ * its own best match; when several columns match one property, only the best of them is `isBest`,
+ * so a save binds a property to one column unless the user ticks more.
  */
 export const suggestPropertiesForColumns = <
   C extends SuggestableColumn,
@@ -110,26 +117,29 @@ export const suggestPropertiesForColumns = <
 >(
   columns: readonly C[],
   properties: readonly P[]
-): Map<string, P> => {
-  const candidates = columns
-    .flatMap((column) =>
-      properties.map((property) => ({
-        column,
-        property,
-        score: scoreMatch(property, lastSegment(column.id)),
-      }))
-    )
-    .filter(({ score }) => score > 0)
-    // Stable sort: equal scores keep column order, so the first matching column wins a tie.
-    .sort((a, b) => b.score - a.score);
-  const suggestions = new Map<string, P>();
-  const usedProperties = new Set<string>();
-  for (const { column, property } of candidates) {
-    if (!suggestions.has(column.id) && !usedProperties.has(property.id)) {
-      suggestions.set(column.id, property);
-      usedProperties.add(property.id);
+): Map<string, ColumnSuggestion<P>> => {
+  const bestColumn = new Map<string, { columnId: string; score: number }>();
+  const suggestions = new Map<string, ColumnSuggestion<P>>();
+  for (const column of columns) {
+    const name = lastSegment(column.id);
+    const property = pickBest(properties, (candidate) =>
+      scoreMatch(candidate, name)
+    );
+    if (property) {
+      const score = scoreMatch(property, name);
+      suggestions.set(column.id, { property, isBest: false });
+      // Strictly greater: on a tie the first column keeps the property.
+      if (score > (bestColumn.get(property.id)?.score ?? 0)) {
+        bestColumn.set(property.id, { columnId: column.id, score });
+      }
     }
   }
+  bestColumn.forEach(({ columnId }) => {
+    const suggestion = suggestions.get(columnId);
+    if (suggestion) {
+      suggestion.isBest = true;
+    }
+  });
 
   return suggestions;
 };
