@@ -190,7 +190,7 @@ const OntologyReleaseReviewers = ({
                 {canRemove ? (
                   <ButtonUtility
                     aria-label={t('label.remove-entity', { entity: name })}
-                    color="secondary"
+                    color="tertiary"
                     icon={XClose}
                     size="xs"
                     tooltip={t('label.remove')}
@@ -241,10 +241,13 @@ const OntologyReleaseReviewers = ({
     </>
   );
 
-  // The reviewer of a capture cannot be its author, so the caller and the author are dropped.
+  // A new pick cannot be the caller or the capture's author; reviewers already configured stay.
   const isEligible = ({ id, name }: EntityReference) =>
     !model.excludedIds.includes(id) &&
     !model.excludedNames.includes(name ?? '');
+  const keepsReviewer =
+    (current: EntityReference[]) => (entry: EntityReference) =>
+      current.some(({ id }) => id === entry.id) || isEligible(entry);
   // One team, or any number of users: the shared picker swaps the selection when the tab changes.
   // Closed while a save is in flight, so a second pick cannot race the first.
   const canPick = interactive && !saving;
@@ -261,7 +264,7 @@ const OntologyReleaseReviewers = ({
           onUpdate={(next = []) =>
             change((latest) => ({
               ...latest,
-              reviewers: next.filter(isEligible),
+              reviewers: next.filter(keepsReviewer(latest.reviewers)),
             }))
           }>
           <Button

@@ -637,6 +637,24 @@ it('drops the caller and the capture author from a reviewer pick', async () => {
   );
 });
 
+it('keeps an already configured reviewer who is the caller when adding another', async () => {
+  ontology.reviewers = [
+    { id: id(2), type: 'user', name: 'editor' },
+    { id: id(3), type: 'user', name: 'reviewer' },
+  ];
+  applyPatchedOntology(0.2);
+  await renderPanel();
+  await addNewReviewer();
+
+  await waitFor(() =>
+    expect(ontology.reviewers?.map((entry) => entry.id)).toEqual([
+      id(2),
+      id(3),
+      id(7),
+    ])
+  );
+});
+
 it('persists user addition and keyboard removal with the current ontology version test', async () => {
   const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
   patch.mockImplementation(async (_url, operations) => {
