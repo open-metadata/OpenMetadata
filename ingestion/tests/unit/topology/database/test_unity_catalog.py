@@ -643,7 +643,9 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
     @patch("databricks.sdk.service.catalog.SchemasAPI.list")
     def test_database_schema_names(self, mock_schema_list):
         mock_schema_list.return_value = MOCK_SCHEMA_INFO
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
+        # Every schema is walked only when no databaseSchema restricts the connection.
+        with patch.object(self.unitycatalog_source.service_connection, "databaseSchema", None):
+            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
 
     def test_yield_table(self):
         table_list = []

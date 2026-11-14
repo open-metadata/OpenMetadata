@@ -218,15 +218,27 @@ def test_owner_resolver_uses_email_lookup_for_email_owner():
     metadata.get_reference_by_email.assert_called_once()
 
 
-def test_owner_resolver_falls_back_to_email_local_part_name():
+def test_owner_resolver_does_not_assign_a_user_who_only_shares_the_email_local_part():
+    # OpenMetadata user `user` has another email: only the email identifies the owner.
     api_client = Mock()
     metadata = Mock()
     metadata.get_reference_by_email.return_value = None
-    metadata.get_reference_by_name.return_value = "owner-ref"
+    metadata.get_reference_by_name.return_value = "someone-else-ref"
     resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
 
-    assert resolver.get_owner_ref("user@example.com") == "owner-ref"
-    metadata.get_reference_by_name.assert_called_once_with(name="user")
+    assert resolver.get_owner_ref("user@example.com") is None
+    metadata.get_reference_by_name.assert_not_called()
+
+
+def test_owner_resolver_looks_up_a_mixed_case_email_lowercase():
+    # OpenMetadata stores emails lowercase and its email search is exact.
+    api_client = Mock()
+    metadata = Mock()
+    metadata.get_reference_by_email.return_value = "email-ref"
+    resolver = DatabricksOwnerResolver(api_client, metadata, include_owners=True)
+
+    assert resolver.get_owner_ref("First.Last@Example.com") == "email-ref"
+    metadata.get_reference_by_email.assert_called_once_with(email="first.last@example.com")
 
 
 def test_owner_resolver_falls_back_to_raw_owner_when_scim_fails():

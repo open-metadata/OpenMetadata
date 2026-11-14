@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -381,19 +380,19 @@ class TestUnityCatalogIncrementalSource:
         assert result == []
         delete_mock.assert_not_called()
 
-    def test_mark_tables_as_deleted_full_mode_delegates_to_super(self):
+    def test_mark_tables_as_deleted_full_mode_runs_the_listing_aware_cleanup(self):
         instance = UnitycatalogSource.__new__(UnitycatalogSource)
         instance.incremental = SimpleNamespace(enabled=False)
 
         with patch.object(
-            DatabaseServiceSource,
-            "mark_tables_as_deleted",
-            return_value=iter(["base"]),
-        ) as base_mark:
+            UnitycatalogSource,
+            "_mark_listed_tables_as_deleted",
+            return_value=iter(["full"]),
+        ) as full_mark:
             result = list(instance.mark_tables_as_deleted())
 
-        assert result == ["base"]
-        base_mark.assert_called_once()
+        assert result == ["full"]
+        full_mark.assert_called_once()
 
     def test_create_builds_and_forwards_incremental_config(self):
         config = Mock()
