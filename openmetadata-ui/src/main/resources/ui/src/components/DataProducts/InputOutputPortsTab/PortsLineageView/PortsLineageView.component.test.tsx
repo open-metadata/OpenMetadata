@@ -25,10 +25,12 @@ import { DataProductNodeProps, PortNodeProps } from './PortsLineageView.types';
 // (useNodesState/useEdgesState are pure useState, no provider needed) and the
 // real <Handle>/<ReactFlowProvider>, but swap the default <ReactFlow> export
 // for a recorder that captures the `nodes`/`edges` props the component builds.
-// `useReactFlow` is stubbed so PortsLineageView can render with no provider,
-// and to keep the post-fit setTimeout effects inert under fake timers.
+// `useReactFlow` is stubbed with stable mock spies so the fullscreen-refit
+// tests can assert fitView/zoomTo are called on every isFullScreen transition.
 let mockCapturedNodes: Node[] = [];
 let mockCapturedEdges: Edge[] = [];
+const mockFitView = jest.fn();
+const mockZoomTo = jest.fn();
 
 jest.mock('reactflow', () => {
   const actual = jest.requireActual('reactflow');
@@ -40,7 +42,7 @@ jest.mock('reactflow', () => {
     // (an object, not a component) and React fails with "Element type is
     // invalid".
     __esModule: true,
-    useReactFlow: () => ({ fitView: jest.fn(), zoomTo: jest.fn() }),
+    useReactFlow: () => ({ fitView: mockFitView, zoomTo: mockZoomTo }),
     default: ({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
       mockCapturedNodes = nodes;
       mockCapturedEdges = edges;
@@ -291,5 +293,153 @@ describe('PortsLineageView handle-id wiring', () => {
           expect(handleId).not.toBe(portId);
         });
       });
+  });
+});
+
+// The fullscreen refit suite verifies that the viewport re-fits on every
+// isFullScreen transition — not just the button-click path. The bug was that
+// exiting fullscreen via Escape (handled by the parent, which sets
+// isFullScreen=false directly) skipped the fitView/zoomTo refit that the
+// button handler used to perform, leaving the graph cropped/off-center.
+// The fix moves the refit into a useEffect keyed on isFullScreen, so both
+// exit paths (button and Escape) trigger it.
+describe('PortsLineageView fullscreen refit', () => {
+  beforeEach(() => {
+    // The refit effect uses a 100ms setTimeout; switch to real timers so
+    // waitFor can observe the deferred fitView/zoomTo calls.
+    jest.useRealTimers();
+    mockCapturedNodes = [];
+    mockCapturedEdges = [];
+  });
+
+  afterEach(() => {
+    jest.useFakeTimers();
+  });
+
+  it('fits the viewport on initial mount when nodes are present', async () => {
+    render(
+      <PortsLineageView
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        outputPortsData={outputPortsData}
+      />
+    );
+
+    await waitFor(() => expect(mockFitView).toHaveBeenCalled());
+
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2 });
+    expect(mockZoomTo).toHaveBeenCalledWith(0.4);
+  });
+
+  it('refits the viewport when entering fullscreen (button path)', async () => {
+    const onToggleFullScreen = jest.fn();
+    const { rerender } = render(
+      <PortsLineageView
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        isFullScreen={false}
+        outputPortsData={outputPortsData}
+        onToggleFullScreen={onToggleFullScreen}
+      />
+    );
+
+    // Wait for the initial mount fit to fire.
+    await waitFor(() => expect(mockFitView).toHaveBeenCalled());
+    mockFitView.mockClear();
+    mockZoomTo.mockClear();
+
+    // Simulate the button click: the parent flips isFullScreen to true.
+    rerender(
+      <PortsLineageView
+        isFullScreen
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        outputPortsData={outputPortsData}
+        onToggleFullScreen={onToggleFullScreen}
+      />
+    );
+
+    await waitFor(() => expect(mockFitView).toHaveBeenCalled());
+
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2 });
+    expect(mockZoomTo).toHaveBeenCalledWith(0.4);
+  });
+
+  it('refits the viewport when exiting fullscreen via Escape key', async () => {
+    const onToggleFullScreen = jest.fn();
+    const { rerender } = render(
+      <PortsLineageView
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        isFullScreen={false}
+        outputPortsData={outputPortsData}
+        onToggleFullScreen={onToggleFullScreen}
+      />
+    );
+
+    // Wait for the initial mount fit.
+    await waitFor(() => expect(mockFitView).toHaveBeenCalled());
+    mockFitView.mockClear();
+    mockZoomTo.mockClear();
+
+    // Enter fullscreen.
+    rerender(
+      <PortsLineageView
+        isFullScreen
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        outputPortsData={outputPortsData}
+        onToggleFullScreen={onToggleFullScreen}
+      />
+    );
+    await waitFor(() => expect(mockFitView).toHaveBeenCalled());
+    mockFitView.mockClear();
+    mockZoomTo.mockClear();
+
+    // Exit fullscreen via Escape: the parent sets isFullScreen=false directly,
+    // bypassing handleToggleFullScreen. Before the fix, no refit ran on this
+    // path — the graph kept the fullscreen transform inside the 250px
+    // container. The effect keyed on isFullScreen now covers this transition.
+    rerender(
+      <PortsLineageView
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        isFullScreen={false}
+        outputPortsData={outputPortsData}
+        onToggleFullScreen={onToggleFullScreen}
+      />
+    );
+
+    await waitFor(() => expect(mockFitView).toHaveBeenCalled());
+
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2 });
+    expect(mockZoomTo).toHaveBeenCalledWith(0.4);
+  });
+
+  it('does not refit when there are no ports', async () => {
+    const { container } = render(
+      <PortsLineageView
+        assetCount={0}
+        dataProduct={dataProduct}
+        inputPortsData={[]}
+        outputPortsData={[]}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-testid="no-ports-placeholder"]')
+      ).not.toBeNull()
+    );
+
+    // The guard (nodes.length > 0) prevents the effect from scheduling a fit.
+    expect(mockFitView).not.toHaveBeenCalled();
+    expect(mockZoomTo).not.toHaveBeenCalled();
   });
 });
