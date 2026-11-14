@@ -126,6 +126,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
+    Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
+    TooltipTrigger: jest.requireActual('@openmetadata/ui-core-components')
+      .TooltipTrigger,
     Box: ({
       children,
       ...rest
@@ -261,6 +265,7 @@ jest.mock('react-router-dom', () => ({
 
 const columnList: AlertTableColumn[] = [
   { id: ALERT_TABLE_COLUMN_IDS.NAME, name: 'Name' },
+  { id: ALERT_TABLE_COLUMN_IDS.STATUS, name: 'Status' },
   { id: ALERT_TABLE_COLUMN_IDS.TRIGGER, name: 'Source' },
   { id: ALERT_TABLE_COLUMN_IDS.DESCRIPTION, name: 'Description' },
   { id: ALERT_TABLE_COLUMN_IDS.ACTIONS, name: 'Actions' },
@@ -355,6 +360,19 @@ describe('ObservabilityAlertsAiTable', () => {
     fireEvent.click(screen.getByTestId('alert-name'));
 
     expect(onViewAlert).toHaveBeenCalledWith(alertRecord);
+  });
+
+  it('shows the status of each alert in its own column', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: false }]}
+      />
+    );
+
+    expect(screen.getByTestId('alert-status')).toHaveTextContent(
+      'label.disabled'
+    );
   });
 
   it('marks only the alert name column as the row header', () => {

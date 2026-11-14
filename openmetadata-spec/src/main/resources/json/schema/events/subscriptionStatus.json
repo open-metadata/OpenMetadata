@@ -40,6 +40,10 @@
     "timestamp": {
       "description": "Current timestamp of this status in UNIX epoch time in milliseconds.",
       "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "configurationUnusable": {
+      "description": "Read only, set by the server. True when the stored configuration cannot be used to send, such as a secret that must be entered again; `lastFailedReason` names it, and nothing is sent until it is changed. Absent for a failure of a send.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

@@ -51,6 +51,7 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import FeaturesPlaceholder from '../../common/EmptyPlaceholder/FeaturesPlaceholder';
+import AlertStatusBadge from './AlertStatusBadge/AlertStatusBadge';
 import ObservabilityAlertAiActions from './ObservabilityAlertAiActions.component';
 
 interface ObservabilityAlertsAiPageChangeParams {
@@ -232,6 +233,12 @@ function ObservabilityAlertsAiTable({
               {alertName}
             </Link>
           )}
+        </Table.Cell>
+        <Table.Cell
+          className={getAlertTableCellLayoutClassName(
+            ALERT_TABLE_COLUMN_IDS.STATUS
+          )}>
+          <AlertStatusBadge alert={record} />
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(

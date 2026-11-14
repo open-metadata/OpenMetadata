@@ -37,6 +37,10 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
+import {
+  getDestinationProblem,
+  getDestinationProblemAlertProps,
+} from '../../../utils/observability/alerts/alertStatus.utils';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
@@ -380,6 +384,20 @@ const AlertAiDestinationItem = ({
     );
   };
 
+  const renderNotSending = () => {
+    const problem = isViewOnly
+      ? getDestinationProblem(destination?.statusDetails)
+      : undefined;
+
+    return problem ? (
+      <Alert
+        data-testid={`destination-not-sending-${name}`}
+        {...getDestinationProblemAlertProps(problem, t)}>
+        {problem.reason}
+      </Alert>
+    ) : null;
+  };
+
   const renderDestinationStatus = () => {
     if (isDestinationStatusLoading) {
       return destination.category === SubscriptionCategory.External ? (
@@ -446,6 +464,7 @@ const AlertAiDestinationItem = ({
           />
           {renderDownstreamDepthField()}
           {renderDestinationStatus()}
+          {renderNotSending()}
         </Fragment>
       )}
     </Box>

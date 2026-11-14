@@ -294,7 +294,8 @@ class ProfileWebhookSecretsTest {
                 new SubscriptionConfig()
                     .withSlack(oauth2("x").withAuthType(oauth2Map(TOKEN_URL, storedSecret))));
     Profile encryptedElsewhere =
-        profileWith(oauth2(Fernet.getInstance().encrypt("a value held elsewhere")));
+        profileWith(
+            oauth2("x").withHeaders(Map.of("X-Api-Key", Fernet.getInstance().encrypt("k"))));
 
     assertNull(ProfileWebhookSecrets.decrypted(another, stored).getSubscription().getGeneric());
     assertNull(ProfileWebhookSecrets.decrypted(HOLDER, inAnotherSlot).getSubscription().getSlack());

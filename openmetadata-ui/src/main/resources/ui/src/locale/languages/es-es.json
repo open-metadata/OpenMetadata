@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "Esta etiqueta se deriva automáticamente y solo se puede eliminar eliminando el Término del glosario relacionado.",
     "describe-what-ask-collate-should-remember": "Describa lo que AskCollate debería recordar.",
     "description-coverage-widget-description": "Cobertura de descripción para todos los activos de datos en el servicio. <0>saber más.</0>",
+    "destination-does-not-send-until-fixed": "Este destino no envía hasta que se corrija esto",
     "destination-owner-selection-warning": "Asegúrese de que el \"Propietario\" es un <0>Equipo</0> con \"{{subscriptionType}}\" configurado para recibir alertas.",
     "destination-selection-warning": "Asegúrese de que los \"{{subscriptionCategory}}\" hayan configurado su \"{{subscriptionType}}\" para recibir las alertas.",
     "dimension-delete-fallback": "Dejarán de tener dimensión. No se elimina ningún caso de prueba.",

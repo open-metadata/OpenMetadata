@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.events.consumer.ledger.DestinationOutcome;
@@ -49,6 +50,7 @@ public final class TickHealth {
     private String channelFailure;
     private Cause notAttemptedCause;
     private String notAttemptedBecause;
+    private String unusableConfiguration;
     private String nobodyBecause;
     private long lastSuccess;
   }
@@ -86,10 +88,25 @@ public final class TickHealth {
 
   /** Nothing was resolved, rendered or sent, for a reason that is not the destination's fault. */
   void notAttempted(UUID destinationId, String channelId, Cause cause, String why) {
+    notAttempted(destinationId, channelId, cause, why, () -> null);
+  }
+
+  /**
+   * @param configurationFingerprint the stored settings found unusable, with {@link
+   *     Cause#CONFIGURATION_UNUSABLE}: asked for once, when the destination is first recorded, and
+   *     never for the later events of the tick
+   */
+  void notAttempted(
+      UUID destinationId,
+      String channelId,
+      Cause cause,
+      String why,
+      Supplier<String> configurationFingerprint) {
     Tally tally = tallyOf(destinationId);
     if (tally.notAttemptedBecause == null) {
       tally.notAttemptedCause = cause;
       tally.notAttemptedBecause = why;
+      tally.unusableConfiguration = configurationFingerprint.get();
     }
     notAttemptedChannels.putIfAbsent(channelId, why);
   }
@@ -167,7 +184,8 @@ public final class TickHealth {
     return DestinationOutcome.notAttempted(
         channelLevel ? tally.notAttemptedCause : Cause.NO_RECIPIENT,
         channelLevel ? tally.notAttemptedBecause : tally.nobodyBecause,
-        System.currentTimeMillis());
+        System.currentTimeMillis(),
+        tally.unusableConfiguration);
   }
 
   // Failed before awaiting retry: an endpoint that answered with an error was at least reached.

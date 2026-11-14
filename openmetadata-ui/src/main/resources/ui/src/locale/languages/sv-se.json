@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "Denna tagg härleds automatiskt och kan endast tas bort genom att radera den relaterade ordlistetermen.",
     "describe-what-ask-collate-should-remember": "Beskriv vad AskCollate ska komma ihåg.",
     "description-coverage-widget-description": "Beskrivningstäckning för alla datatillgångar i tjänsten. <0>läs mer.</0>",
+    "destination-does-not-send-until-fixed": "Det här målet skickar inte förrän detta har åtgärdats",
     "destination-owner-selection-warning": "Se till att \"Ägaren\" är ett <0>Team</0> med \"{{subscriptionType}}\" konfigurerat för att ta emot aviseringar.",
     "destination-selection-warning": "Kontrollera att \"{{subscriptionCategory}}\" har konfigurerat sin \"{{subscriptionType}}\" för att ta emot aviseringarna.",
     "dimension-delete-fallback": "De kommer inte längre att ha någon dimension. Inget testfall tas bort.",

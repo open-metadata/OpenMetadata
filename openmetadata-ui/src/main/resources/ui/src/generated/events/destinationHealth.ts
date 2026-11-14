@@ -15,6 +15,12 @@
  */
 export interface DestinationHealth {
     /**
+     * SHA-256 of the destination's settings as stored, secrets still encrypted, when the tick
+     * found that configuration unusable. A stored unusable status speaks only while the
+     * destination's settings still match it.
+     */
+    configurationFingerprint?: string;
+    /**
      * Ticks in a row in which this destination failed.
      */
     consecutiveFailedTicks?: number;
@@ -35,6 +41,12 @@ export interface DestinationHealth {
  * attempts, and retry information.
  */
 export interface SubscriptionStatus {
+    /**
+     * Read only, set by the server. True when the stored configuration cannot be used to send,
+     * such as a secret that must be entered again; `lastFailedReason` names it, and nothing is
+     * sent until it is changed. Absent for a failure of a send.
+     */
+    configurationUnusable?: boolean;
     /**
      * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
      */

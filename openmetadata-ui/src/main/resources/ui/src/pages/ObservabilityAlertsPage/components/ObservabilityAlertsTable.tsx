@@ -25,6 +25,7 @@ import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/P
 import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
+import AlertStatusBadge from '../../../components/observability/Alerts/AlertStatusBadge/AlertStatusBadge';
 import { ALERT_EMPTY_STATE_FEATURES } from '../../../constants/Alerts.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
@@ -101,6 +102,12 @@ function ObservabilityAlertsTable({
               {alertName}
             </Link>
           )}
+        </Table.Cell>
+        <Table.Cell
+          className={getAlertTableCellLayoutClassName(
+            ALERT_TABLE_COLUMN_IDS.STATUS
+          )}>
+          <AlertStatusBadge alert={record} />
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(

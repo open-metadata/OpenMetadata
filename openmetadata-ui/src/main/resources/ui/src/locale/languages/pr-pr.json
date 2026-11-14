@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "این برچسب به طور خودکار مشتق شده است و فقط با حذف اصطلاح مربوطه از فرهنگ لغت قابل حذف است.",
     "describe-what-ask-collate-should-remember": "توضیح دهید که AskCollate چه چیزی را باید به خاطر بسپارد.",
     "description-coverage-widget-description": "پوشش توضیحات برای تمام دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",
+    "destination-does-not-send-until-fixed": "این مقصد تا زمانی که این مشکل برطرف نشود ارسال نمی‌کند",
     "destination-owner-selection-warning": "لطفاً مطمئن شوید که «مالک» یک <0>تیم</0> با «{{subscriptionType}}» پیکربندی شده برای دریافت هشدارها است.",
     "destination-selection-warning": "لطفاً اطمینان حاصل کنید که \"{{subscriptionCategory}}\" تنظیمات \"{{subscriptionType}}\" را برای دریافت هشدارها پیکربندی کرده است.",
     "dimension-delete-fallback": "آن‌ها دیگر بُعدی نخواهند داشت. هیچ مورد آزمونی حذف نمی‌شود.",

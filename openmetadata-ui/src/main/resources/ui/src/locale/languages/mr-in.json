@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "हा टॅग स्वयंचलितपणे व्युत्पन्न केला जातो आणि संबंधित शब्दकोश संज्ञा मिटवूनच काढला जाऊ शकतो.",
     "describe-what-ask-collate-should-remember": "AskCollate ने काय लक्षात ठेवावे याचे वर्णन करा.",
     "description-coverage-widget-description": "सेवेतील सर्व डेटा मालमत्तांसाठी वर्णन व्याप्ती. <0>अधिक जाणून घ्या.</0>",
+    "destination-does-not-send-until-fixed": "हे दुरुस्त होईपर्यंत हे गंतव्य पाठवत नाही",
     "destination-owner-selection-warning": "कृपया खात्री करा की \"मालक\" हा <0>संघ</0> आहे जो \"{{subscriptionType}}\" सूचना प्राप्त करण्यासाठी कॉन्फिगर केलेला आहे.",
     "destination-selection-warning": "कृपया खात्री करा की \"{{subscriptionCategory}}\" ने \"{{subscriptionType}}\" अलर्ट प्राप्त करण्यासाठी कॉन्फिगर केले आहेत.",
     "dimension-delete-fallback": "त्यांना यापुढे परिमाण राहणार नाही. कोणतेही चाचणी प्रकरण हटवले जात नाही.",

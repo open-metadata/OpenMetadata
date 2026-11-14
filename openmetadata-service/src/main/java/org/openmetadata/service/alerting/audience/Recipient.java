@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.alerting.audience;
 
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -39,6 +40,11 @@ public abstract sealed class Recipient permits EmailRecipient, WebhookRecipient 
 
   /** What makes two recipients one address. Equality and the hash code follow it. */
   public abstract Object identity();
+
+  /** Why nothing can be sent to this recipient as it is saved; empty when it can be sent to. */
+  public Optional<String> unusableBecause() {
+    return Optional.empty();
+  }
 
   @Override
   public final boolean equals(Object other) {

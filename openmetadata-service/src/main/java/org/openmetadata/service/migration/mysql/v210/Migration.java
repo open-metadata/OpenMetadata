@@ -39,6 +39,8 @@ import static org.openmetadata.service.migration.utils.v210.OntologyMigration.mi
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
 
+import org.jdbi.v3.core.Handle;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
@@ -69,6 +71,15 @@ import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
+  }
+
+  // Runs before any pending version is migrated, earlier ones included: stops the upgrade, --force
+  // included, when the configured Fernet keys open none of the webhook credentials earlier
+  // releases stored, before any step writes with those keys.
+  @Override
+  public void preflight(Handle handle) {
+    WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+        handle.attach(MigrationDAO.class), getVersion(), handle, MYSQL);
   }
 
   @Override
@@ -180,13 +191,13 @@ public class Migration extends MigrationProcessImpl {
     runOnce(
         migrationDAO,
         getVersion(),
-        WebhookSecretsMigration.PROFILE_STEP_NAME,
-        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, MYSQL));
+        WebhookSecretsMigration.ALERT_STEP_NAME,
+        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, MYSQL));
     runOnce(
         migrationDAO,
         getVersion(),
-        WebhookSecretsMigration.ALERT_STEP_NAME,
-        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, MYSQL));
+        WebhookSecretsMigration.PROFILE_STEP_NAME,
+        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, MYSQL));
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.

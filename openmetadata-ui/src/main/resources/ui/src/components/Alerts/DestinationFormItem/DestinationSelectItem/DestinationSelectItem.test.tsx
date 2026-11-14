@@ -117,14 +117,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
       variant,
       closable,
       onClose,
+      children,
     }: {
       title: ReactNode;
       variant?: string;
       closable?: boolean;
       onClose?: () => void;
+      children?: ReactNode;
     }) => (
       <div data-testid={`alert-${variant}`}>
         {title}
+        {children}
         {closable && (
           <button aria-label="Close alert" type="button" onClick={onClose}>
             Close
@@ -511,6 +514,74 @@ describe('DestinationSelectItem', () => {
       screen.getByTestId(`destination-downstream-depth-input-${MOCK_PROPS.id}`)
     ).toBeDisabled();
   });
+
+  it('tells, in view mode, why the stored destination does not send', () => {
+    const reason =
+      "its stored configuration is not usable: The value at '/authType/secretKey' must be entered again";
+    const failedDestination = {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Webhook,
+          statusDetails: {
+            status: Status.Failed,
+            lastFailedReason: reason,
+            configurationUnusable: true,
+          },
+        },
+      ],
+    };
+
+    renderWithForm(
+      <DestinationSelectItem {...MOCK_PROPS} isViewMode />,
+      failedDestination
+    );
+
+    expect(screen.getByTestId('alert-error')).toHaveTextContent(
+      `message.destination-does-not-send-until-fixed${reason}`
+    );
+  });
+
+  it.each([Status.Failed, Status.AwaitingRetry, Status.RetryLimitReached])(
+    'tells, in view mode, why a %s send failed, under the failure reason',
+    (status) => {
+      renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
+        destinations: [
+          {
+            destinationType: SubscriptionType.Webhook,
+            statusDetails: {
+              status,
+              lastFailedReason: 'Webhook failed with status: 503',
+            },
+          },
+        ],
+      });
+
+      // An error, as an unusable configuration is, under its own title.
+      expect(screen.getByTestId('alert-error')).toHaveTextContent(
+        'label.failure-reasonWebhook failed with status: 503'
+      );
+      expect(screen.getByTestId('alert-error')).not.toHaveTextContent(
+        'message.destination-does-not-send-until-fixed'
+      );
+    }
+  );
+
+  it.each([Status.Active, Status.Disabled])(
+    'says nothing in view mode about a destination that is %s',
+    (status) => {
+      renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
+        destinations: [
+          {
+            destinationType: SubscriptionType.Webhook,
+            statusDetails: { status },
+          },
+        ],
+      });
+
+      expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    }
+  );
 
   it('shows config field when external destination is selected', async () => {
     renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {

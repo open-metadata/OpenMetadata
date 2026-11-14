@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "Этот тег создается автоматически и может быть удален только путем удаления соответствующего термина из глоссария.",
     "describe-what-ask-collate-should-remember": "Опишите, что должен запомнить AskCollate.",
     "description-coverage-widget-description": "Покрытие описаниями для всех объектов данных в сервисе. <0>узнать больше.</0>",
+    "destination-does-not-send-until-fixed": "Это назначение не отправляет сообщения, пока проблема не будет устранена",
     "destination-owner-selection-warning": "Пожалуйста, убедитесь, что \"Владелец\" является <0>Командой</0>, для которой настроен \"{{subscriptionType}}\" для получения оповещений.",
     "destination-selection-warning": "Пожалуйста, убедитесь, что «{{subscriptionCategory}}» настроили их «{{subscriptionType}}», чтобы получать оповещения.",
     "dimension-delete-fallback": "У них больше не будет измерения. Ни один тест-кейс не удаляется.",

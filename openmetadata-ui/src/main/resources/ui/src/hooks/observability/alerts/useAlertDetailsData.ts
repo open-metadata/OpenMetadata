@@ -23,6 +23,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { EventsRecord } from '../../../generated/events/api/eventsRecord';
 import {
   EntityReference,
@@ -121,8 +122,9 @@ export function useAlertDetailsData({
     try {
       setLoadingCount((count) => count + 1);
       setAlertDetailsError(undefined);
+      // statusDetails says, per destination, whether it sends and why not.
       const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
-        fields: 'owners',
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.STATUS_DETAILS}`,
       });
 
       setAlertDetails(observabilityAlert);

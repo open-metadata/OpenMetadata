@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "此標籤是自動衍生的，只能透過刪除相關的詞彙表術語來移除。",
     "describe-what-ask-collate-should-remember": "描述 AskCollate 應該記住的內容。",
     "description-coverage-widget-description": "服務中所有資料資產的描述涵蓋範圍。<0>了解更多。</0>",
+    "destination-does-not-send-until-fixed": "在修正此問題之前，此目的地不會傳送",
     "destination-owner-selection-warning": "請確保「擁有者」是一個已設定「{{subscriptionType}}」以接收警示的<0>團隊</0>。",
     "destination-selection-warning": "請確保如果「{{subscriptionCategory}}」已設定其「{{subscriptionType}}」以接收警示。",
     "dimension-delete-fallback": "它們將不再具有維度。不會刪除任何測試案例。",

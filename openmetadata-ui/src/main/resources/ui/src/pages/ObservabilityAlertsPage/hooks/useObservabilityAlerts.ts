@@ -19,6 +19,7 @@ import { PagingHandlerParams } from '../../../components/common/NextPrevious/Nex
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   AlertType,
@@ -152,9 +153,12 @@ export function useObservabilityAlerts({
             before: requestParams?.before,
             limit: pageSize,
             alertType,
+            fields: TabSpecificField.STATUS_DETAILS,
           }),
           includeSystemAlerts && isFirstPage
-            ? getAlertsFromName(ACTIVITY_FEED_ALERT_NAME).catch(() => undefined)
+            ? getAlertsFromName(ACTIVITY_FEED_ALERT_NAME, {
+                fields: TabSpecificField.STATUS_DETAILS,
+              }).catch(() => undefined)
             : undefined,
         ]);
         const alertsList = includeSystemAlerts
@@ -225,6 +229,10 @@ export function useObservabilityAlerts({
       {
         id: ALERT_TABLE_COLUMN_IDS.NAME,
         name: t('label.name'),
+      },
+      {
+        id: ALERT_TABLE_COLUMN_IDS.STATUS,
+        name: t('label.status'),
       },
       {
         id: ALERT_TABLE_COLUMN_IDS.TRIGGER,

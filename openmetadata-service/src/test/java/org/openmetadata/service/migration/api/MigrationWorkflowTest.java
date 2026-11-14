@@ -648,6 +648,38 @@ class MigrationWorkflowTest {
         .upsertServerMigration(eq("1.13.0"), eq("/tmp/1.13.0"), anyString(), anyString());
   }
 
+  // A later version's preflight runs before an earlier version writes anything.
+  @Test
+  void runMigrationWorkflowsStopsOnALaterVersionsPreflightBeforeAnyVersionRuns() throws Exception {
+    MigrationProcess earlier = reprocessedJavaMigration("1.12.0");
+    MigrationProcess later = reprocessedJavaMigration("1.13.0");
+    doThrow(new MigrationHaltException("the configured keys open nothing"))
+        .when(later)
+        .preflight(any());
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            tempDir.resolve("native").toString(),
+            ConnectionType.POSTGRES,
+            null,
+            null,
+            config,
+            true);
+    setMigrations(workflow, List.of(earlier, later));
+    setCurrentMaxVersion(workflow, Optional.of("1.11.0"));
+
+    try (var ignored = mockConstruction(MigrationWorkflowContext.class, this::mockContext)) {
+      assertThrows(MigrationHaltException.class, () -> workflow.runMigrationWorkflows(false));
+    }
+
+    verify(earlier).preflight(any());
+    verify(earlier, never()).runSchemaChanges(anyBoolean());
+    verify(earlier, never()).runDataMigration();
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+    verify(migrationDAO, never())
+        .upsertServerMigration(anyString(), anyString(), anyString(), anyString());
+  }
+
   @Test
   void runMigrationWorkflowsFailsWhenASucceededDataMigrationCannotBeRecorded() throws Exception {
     MigrationProcess process = reprocessedJavaMigration("1.13.0");

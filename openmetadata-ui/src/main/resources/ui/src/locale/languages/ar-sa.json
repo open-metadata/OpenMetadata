@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "هذا الوسم مشتق تلقائيًا ولا يمكن إزالته إلا عن طريق حذف مصطلح المسرد المرتبط.",
     "describe-what-ask-collate-should-remember": "صف ما يجب أن يتذكره AskCollate.",
     "description-coverage-widget-description": "تغطية الوصف لجميع أصول البيانات في الخدمة. <0>تعلم المزيد.</0>",
+    "destination-does-not-send-until-fixed": "لا ترسل هذه الوجهة حتى يتم إصلاح ذلك",
     "destination-owner-selection-warning": "يرجى التأكد من أن \"المالك\" هو <0>فريق</0> تم تكوينه لـ \"{{subscriptionType}}\" لتلقي التنبيهات.",
     "destination-selection-warning": "يرجى التأكد مما إذا كان \"{{subscriptionCategory}}\" قد قام بتكوين \"{{subscriptionType}}\" لتلقي التنبيهات.",
     "dimension-delete-fallback": "لن يعود لها بُعد. ولن تُحذف أي حالة اختبار.",

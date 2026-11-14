@@ -63,6 +63,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
   private static final String FIELD_ENABLED = "enabled";
+  private static final String FIELD_STATUS_DETAILS = "statusDetails";
 
   public EventSubscriptionRepository() {
     super(
@@ -72,15 +73,23 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         Entity.getCollectionDAO().eventSubscriptionDAO(),
         ALERT_PATCH_FIELDS,
         ALERT_UPDATE_FIELDS);
+    fieldFetchers.put(FIELD_STATUS_DETAILS, this::fetchAndSetStatusDetails);
   }
 
   @Override
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
-    if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      entity.withDestinations(new ArrayList<>(AlertDiagnostics.destinationsWithStatus(entity)));
-    }
+    fetchAndSetStatusDetails(List.of(entity), fields);
     entity.setNotificationTemplate(templateOf(entity.getId()));
+  }
+
+  // A list reads its fields in bulk, without setFields, so the status is read here for both, with
+  // one read of the health of every listed alert.
+  private void fetchAndSetStatusDetails(List<EventSubscription> alerts, Fields fields) {
+    if (fields.contains(FIELD_STATUS_DETAILS)) {
+      AlertDiagnostics.setDestinationStatuses(
+          alerts.stream().filter(alert -> !nullOrEmpty(alert.getDestinations())).toList());
+    }
   }
 
   @Override
@@ -167,6 +176,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void prepare(EventSubscription entity, boolean update) {
+    forgetStatusDetails(entity.getDestinations());
     // Sort Filters and Actions
     if (entity.getInput() != null) {
       listOrEmpty(entity.getInput().getFilters())
@@ -205,6 +215,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
       }
     }
+  }
+
+  // A destination's status is the server's, worked out when the alert is read: whatever a write
+  // sends for it is neither stored nor compared.
+  private static void forgetStatusDetails(List<SubscriptionDestination> destinations) {
+    listOrEmpty(destinations).forEach(destination -> destination.setStatusDetails(null));
   }
 
   // A save naming a consumer this server does not have fails here, not at every tick.

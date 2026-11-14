@@ -4924,6 +4924,7 @@
     "derived-tag-warning": "该标签是自动生成的, 只有通过删除相关术语库术语才能删除该标签。",
     "describe-what-ask-collate-should-remember": "描述 AskCollate 应该记住的内容。",
     "description-coverage-widget-description": "服务中所有数据资产的描述覆盖率。<0>了解更多。</0>",
+    "destination-does-not-send-until-fixed": "在修复此问题之前，此目标不会发送",
     "destination-owner-selection-warning": "请确保所有者是配置了{{subscriptionType}}以接收告警的<0>团队</0>。",
     "destination-selection-warning": "请确认\"{{subscriptionCategory}}\"是否已配置其\"{{subscriptionType}}\"以接收警报",
     "dimension-delete-fallback": "它们将不再具有维度。不会删除任何测试用例。",

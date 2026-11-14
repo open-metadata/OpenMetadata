@@ -14,9 +14,14 @@
 package org.openmetadata.service.alerting.delivery;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
@@ -34,6 +40,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerting.channel.Delivery;
 import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationFingerprint;
+import org.openmetadata.service.events.consumer.ledger.DestinationOutcome;
 
 class TickChannelsTest {
   private static final ChangeEvent EVENT = new ChangeEvent().withId(UUID.randomUUID());
@@ -55,17 +63,14 @@ class TickChannelsTest {
     assertEquals(
         "Not attempted: The channel not.registered.here is not registered on this server",
         status.getLastFailedReason());
+    assertNull(status.getConfigurationUnusable());
+    assertNull(outcomeOf(unserved).configurationFingerprint());
   }
 
   // A configuration saved under older rules must cost this destination only, never the tick.
   @Test
   void destinationWhoseStoredConfigurationIsUnusableIsNotAttempted() {
-    SubscriptionDestination savedLongAgo =
-        new SubscriptionDestination()
-            .withId(UUID.randomUUID())
-            .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
-            .withEnabled(true)
-            .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
+    SubscriptionDestination savedLongAgo = refusedEndpoint();
     Destination<ChangeEvent> unusable = AlertFactory.getAlert(ALERT, savedLongAgo);
 
     Delivery delivery = deliverThrough(List.of(unusable));
@@ -76,6 +81,30 @@ class TickChannelsTest {
         statusOf(unusable)
             .getLastFailedReason()
             .startsWith("Not attempted: its stored configuration is not usable"));
+    assertTrue(statusOf(unusable).getConfigurationUnusable(), "stored as the read reports it");
+    assertNotNull(statusOf(unusable).getLastFailedAt(), "a send failed when it found it");
+    assertEquals(
+        DestinationFingerprint.of(savedLongAgo),
+        outcomeOf(unusable).configurationFingerprint(),
+        "the settings it found unusable");
+  }
+
+  // A tick records an unusable destination once, whatever the number of its events, so it takes
+  // one fingerprint of it.
+  @Test
+  void anUnusableDestinationIsFingerprintedOnceATick() {
+    SubscriptionDestination savedLongAgo = refusedEndpoint();
+    Destination<ChangeEvent> unusable = AlertFactory.getAlert(ALERT, savedLongAgo);
+    TickChannels tick = new TickChannels(ALERT, Map.of(savedLongAgo.getId(), unusable), health);
+    try (MockedStatic<DestinationFingerprint> fingerprints =
+        mockStatic(DestinationFingerprint.class, CALLS_REAL_METHODS)) {
+      tick.deliver(EVENT);
+      tick.deliver(new ChangeEvent().withId(UUID.randomUUID()));
+      tick.deliver(new ChangeEvent().withId(UUID.randomUUID()));
+
+      fingerprints.verify(() -> DestinationFingerprint.of(savedLongAgo), times(1));
+      assertNotNull(outcomeOf(unusable).configurationFingerprint());
+    }
   }
 
   // Before, the first destination of a channel answered for all of them: an unusable one first
@@ -142,9 +171,21 @@ class TickChannelsTest {
   }
 
   private SubscriptionStatus statusOf(Destination<ChangeEvent> destination) {
-    Map<UUID, SubscriptionStatus> reported = new HashMap<>();
-    health.reportTo((destinationId, outcome) -> reported.put(destinationId, outcome.status()));
+    return outcomeOf(destination).status();
+  }
+
+  private DestinationOutcome outcomeOf(Destination<ChangeEvent> destination) {
+    Map<UUID, DestinationOutcome> reported = new HashMap<>();
+    health.reportTo(reported::put);
     return reported.get(destination.getSubscriptionDestination().getId());
+  }
+
+  private static SubscriptionDestination refusedEndpoint() {
+    return new SubscriptionDestination()
+        .withId(UUID.randomUUID())
+        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+        .withEnabled(true)
+        .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
   }
 
   private static SubscriptionDestination emailDestination() {

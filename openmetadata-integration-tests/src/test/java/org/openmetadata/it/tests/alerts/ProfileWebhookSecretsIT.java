@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -30,6 +32,7 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Profile;
@@ -45,6 +48,7 @@ import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
@@ -159,6 +163,47 @@ class ProfileWebhookSecretsIT {
             "/v1/users/" + user.getId() + "/versions/0.2")
         .forEach(path -> assertNoSecretOrCiphertext(rawGet(viewer, path), secrets));
     assertNoSecretOrCiphertext(rawGet(owner, "/v1/users/loggedInUser?fields=profile"), secrets);
+  }
+
+  /**
+   * A team whose saved webhook cannot be used is reported on the alert that targets it, as one of
+   * its recipients, and nothing is sent to it; a team without a webhook is not a recipient at all.
+   */
+  @Test
+  void aTeamWhoseWebhookCannotBeUsedIsReportedOnTheAlert(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      Team working =
+          teamWith(ns, "working_team", new Webhook().withEndpoint(URI.create(receiver.url("/ok"))));
+      Team unusable =
+          teamWith(
+              ns, "unusable_team", new Webhook().withEndpoint(URI.create(receiver.url("/held"))));
+      holdAValueThatDoesNotOpen(Entity.TEAM, unusable.getId());
+      Team withoutWebhook = teamWith(ns, "no_webhook_team", null);
+      EventSubscription alert =
+          createAlert(
+              ns,
+              new SubscriptionDestination()
+                  .withType(WEBHOOK)
+                  .withCategory(SubscriptionDestination.SubscriptionCategory.TEAMS)
+                  .withConfig(
+                      Map.of(
+                          "receivers",
+                          List.of(
+                              working.getName(), unusable.getName(), withoutWebhook.getName()))));
+      QuietAlert.settle(alert);
+
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(alert);
+
+      assertTrue(receiver.received().stream().anyMatch(it -> "/ok".equals(it.path())));
+      assertTrue(receiver.received().stream().noneMatch(it -> "/held".equals(it.path())));
+      String reason = lastFailedReasonOf(alert.getId());
+      assertEquals(
+          "1 of 2 recipients failed. "
+              + unusable.getName()
+              + ": the saved webhook value cannot be used; enter it again on the team",
+          reason);
+    }
   }
 
   @Test
@@ -294,6 +339,46 @@ class ProfileWebhookSecretsIT {
             .withDestinations(List.of(destination));
     UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
     return AlertFixtures.stored(id);
+  }
+
+  // A header value in the plain Fernet format: no profile webhook opens one.
+  private static void holdAValueThatDoesNotOpen(String entityType, UUID id) {
+    String table = Entity.TEAM.equals(entityType) ? "team_entity" : "user_entity";
+    String header = Fernet.getInstance().encrypt("a header value");
+    JsonNode row = Entity.TEAM.equals(entityType) ? storedTeam(id) : storedUser(id);
+    ((ObjectNode) row.at("/profile/subscription/generic"))
+        .set("headers", JsonUtils.valueToTree(Map.of("X-Api-Key", header)));
+    String json = isMySql() ? ":json" : ":json::jsonb";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate("UPDATE " + table + " SET json = " + json + " WHERE id = :id")
+                    .bind("id", id.toString())
+                    .bind("json", JsonUtils.pojoToJson(row))
+                    .execute());
+    EntityRepository.invalidateCacheForEntity(
+        entityType, id, row.path("fullyQualifiedName").asText());
+  }
+
+  private static Team teamWith(TestNamespace ns, String name, Webhook webhook) {
+    CreateTeam team =
+        new CreateTeam().withName(ns.prefix(name)).withTeamType(CreateTeam.TeamType.GROUP);
+    return SdkClients.adminClient()
+        .teams()
+        .create(webhook == null ? team : team.withProfile(profileWith(webhook)));
+  }
+
+  private static String lastFailedReasonOf(UUID alertId) {
+    EventSubscription read =
+        SdkClients.adminClient().eventSubscriptions().get(alertId.toString(), "statusDetails");
+    return JsonUtils.convertValue(
+            read.getDestinations().getFirst().getStatusDetails(), SubscriptionStatus.class)
+        .getLastFailedReason();
+  }
+
+  private static boolean isMySql() {
+    return "mysql".equalsIgnoreCase(System.getProperty("databaseType", "postgres"));
   }
 
   private static JsonNode storedTeam(UUID id) {

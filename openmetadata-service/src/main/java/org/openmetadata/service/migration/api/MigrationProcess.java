@@ -80,6 +80,15 @@ public interface MigrationProcess {
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
   Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration);
 
+  /**
+   * Runs for every pending version before any of them is migrated, and before {@link
+   * #initialize}, so it reads only through the handle it is given and never from state that
+   * initialize sets. A version can stop the whole upgrade before an earlier version writes data it
+   * could not bring back: it throws a {@link MigrationHaltException}, which {@code migrate --force}
+   * does not skip, as preflight runs outside the steps --force goes on past. Reads only.
+   */
+  default void preflight(Handle handle) {}
+
   // This method is to run code to fix any data. Implementations must be idempotent because
   // force mode and continuous reprocessing can invoke it multiple times for the same version.
   void runDataMigration();

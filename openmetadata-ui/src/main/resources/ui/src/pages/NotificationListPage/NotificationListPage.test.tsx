@@ -290,6 +290,21 @@ describe('Notification Alerts Page Tests', () => {
     mockLocationSearch = '';
   });
 
+  it('requests and shows the status of each alert', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(getAllAlerts).toHaveBeenCalledWith(
+      expect.objectContaining({ fields: 'statusDetails' })
+    );
+    expect(
+      (await screen.findAllByTestId('alert-status')).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
   it('Table should render alerts data', async () => {
     await act(async () => {
       render(<NotificationListPage />, {

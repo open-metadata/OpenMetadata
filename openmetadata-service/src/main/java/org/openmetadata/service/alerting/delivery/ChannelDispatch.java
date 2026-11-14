@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.RecipientResolver;
 import org.openmetadata.service.alerting.audience.Recipients;
 import org.openmetadata.service.alerting.channel.Channel;
@@ -266,8 +267,19 @@ final class ChannelDispatch {
     Optional<Exception> failure =
         IsolatedSends.attemptOne(
             target.recipient() == null ? target.identity() : target.recipient(),
-            ignored -> publisher.sendTo(prepared, target.recipient()));
+            ignored -> sendOrRefuse(publisher, prepared, target.recipient()));
     return new Outcome(target, failure.orElse(null), SendStatus.take());
+  }
+
+  // A recipient saved in a way that cannot be used fails with its reason; nothing is sent to it.
+  private static void sendOrRefuse(
+      Destination<ChangeEvent> publisher, Object prepared, Recipient recipient)
+      throws EventPublisherException {
+    Optional<String> unusable = recipient == null ? Optional.empty() : recipient.unusableBecause();
+    if (unusable.isPresent()) {
+      throw new EventPublisherException(unusable.get());
+    }
+    publisher.sendTo(prepared, recipient);
   }
 
   private void record(Outcome outcome, Failures failures) {
