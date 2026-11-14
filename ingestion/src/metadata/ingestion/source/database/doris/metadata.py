@@ -107,17 +107,24 @@ def extract_child(data):
     return result[0]
 
 
+# Doris names some types with a storage-format suffix. Only these are stripped:
+# ipv4/ipv6 also end in "v" plus a digit and are their own data types.
+VERSIONED_TYPES = {
+    "datev2": "DATE",
+    "datetimev2": "DATETIME",
+    "decimalv2": "DECIMAL",
+    "decimalv3": "DECIMAL",
+    "timev2": "TIME",
+}
+
+
 def _parse_type(_type):
     """
     parse raw type to system_data_type like CHAR(1) -> CHAR, STRUCT<s_id:int(11),s_name:text> -> STRUCT,
-    DECIMALV3(9, 0) -> DECIMAL, DATEV2 -> DATE
+    DECIMALV3(9, 0) -> DECIMAL, DATEV2 -> DATE, IPV4 -> IPV4
     """
-    parse_type = _type.split("(")[0].split("<")[0]
-    if parse_type[-2] == "v":
-        system_data_type = parse_type.split("v")[0].upper()
-    else:
-        system_data_type = parse_type.upper()
-    return system_data_type
+    parse_type = _type.split("(")[0].split("<")[0].lower()
+    return VERSIONED_TYPES.get(parse_type, parse_type.upper())
 
 
 def _get_column(ordinal, field, _type, null, default, comment):
