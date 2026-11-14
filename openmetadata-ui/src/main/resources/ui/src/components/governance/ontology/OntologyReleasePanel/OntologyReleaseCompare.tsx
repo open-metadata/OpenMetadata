@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Alert,
-  Box,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +24,7 @@ import { MemberKind as WorkingMemberKind } from '../../../../generated/api/data/
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getOntologyReleaseDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleasePicker from '../OntologyReleasePicker/OntologyReleasePicker';
 import {
@@ -203,20 +199,16 @@ const OntologyReleaseCompare = ({
     }
     if (diff.isError) {
       return (
-        <Alert
-          rightContent={
-            <Button
-              color="secondary"
-              size="sm"
-              onPress={() => void diff.refetch()}>
-              {t('label.retry')}
-            </Button>
-          }
-          variant="error">
-          {t('server.entity-fetch-error', {
-            entity: t('label.change-plural'),
-          })}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.change-plural'),
+            })}
+            onReload={() => void diff.refetch()}
+          />
+        </div>
       );
     }
     if (!hasResult) {

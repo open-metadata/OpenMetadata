@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Alert,
   Avatar,
   Badge,
   Box,
@@ -49,6 +48,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseBadges from './OntologyReleaseBadges';
 import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
@@ -577,20 +577,16 @@ const HistoryLoadStatus = ({ history }: { history: HistoryQuery }) => {
   }
 
   return history.isError ? (
-    <Alert
-      rightContent={
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void history.refetch()}>
-          {t('label.retry')}
-        </Button>
-      }
-      variant="error">
-      {t('server.entity-fetch-error', {
-        entity: t('label.release-plural'),
-      })}
-    </Alert>
+    <div
+      className="tw:relative tw:min-h-60 tw:flex-1"
+      data-testid="ontology-load-error">
+      <SomethingWentWrongPlaceholder
+        title={t('server.entity-fetch-error', {
+          entity: t('label.release-plural'),
+        })}
+        onReload={() => void history.refetch()}
+      />
+    </div>
   ) : null;
 };
 

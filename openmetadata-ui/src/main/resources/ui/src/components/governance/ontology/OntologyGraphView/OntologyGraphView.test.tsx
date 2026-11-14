@@ -3556,7 +3556,11 @@ describe('OntologyGraphView', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    expect(screen.getByTestId('ontology-load-error')).toHaveTextContent(
+      'server.entity-fetch-error'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(refetch).toHaveBeenCalled();
     expect(

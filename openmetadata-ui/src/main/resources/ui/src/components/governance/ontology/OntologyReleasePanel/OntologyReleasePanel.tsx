@@ -392,17 +392,16 @@ const OntologyReleasePanel = ({
     }
     if (changes.isError || !hasCoherentPreview) {
       return (
-        <Alert
-          rightContent={
-            <Button color="secondary" size="sm" onPress={retryChanges}>
-              {t('label.retry')}
-            </Button>
-          }
-          variant={changes.isError ? 'error' : 'warning'}>
-          {t('server.entity-fetch-error', {
-            entity: t('label.change-plural'),
-          })}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.change-plural'),
+            })}
+            onReload={retryChanges}
+          />
+        </div>
       );
     }
     if (hasNoChanges) {
@@ -429,17 +428,16 @@ const OntologyReleasePanel = ({
     }
     if (displayed.isError) {
       return (
-        <Alert
-          rightContent={
-            <Button color="secondary" size="sm" onPress={() => void refresh()}>
-              {t('label.retry')}
-            </Button>
-          }
-          variant="error">
-          {t('server.entity-fetch-error', {
-            entity: t('label.release'),
-          })}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release'),
+            })}
+            onReload={() => void refresh()}
+          />
+        </div>
       );
     }
     if (displayed.isPending) {
@@ -981,17 +979,16 @@ const OntologyReleasePanel = ({
   const renderReleaseDetail = () => {
     if (displayed.isError) {
       return (
-        <Alert
-          rightContent={
-            <Button color="secondary" size="sm" onPress={() => void refresh()}>
-              {t('label.retry')}
-            </Button>
-          }
-          variant="error">
-          {t('server.entity-fetch-error', {
-            entity: t('label.release'),
-          })}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release'),
+            })}
+            onReload={() => void refresh()}
+          />
+        </div>
       );
     }
     if (!release) {

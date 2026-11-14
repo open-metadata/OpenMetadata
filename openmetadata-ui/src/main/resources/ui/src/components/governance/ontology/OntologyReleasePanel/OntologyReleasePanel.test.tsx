@@ -894,7 +894,7 @@ describe('OntologyReleasePanel', () => {
 
     nextPageError = undefined;
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
     });
 
     expect(await screen.findByText(/Customer/)).toBeVisible();
@@ -2313,20 +2313,23 @@ describe('OntologyReleasePanel', () => {
     await renderPanel(true, 'releases');
     await selectRelease();
 
-    const alert = await screen.findByRole('alert');
+    const error = await screen.findByTestId('ontology-load-error');
 
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
-    expect(alert).toHaveTextContent('server.entity-fetch-error');
+    expect(error).toHaveTextContent('server.entity-fetch-error');
+    // One error for the failed release, not a second alert for the publication status.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
     releaseFails = false;
     await act(async () =>
       fireEvent.click(
-        within(alert).getByRole('button', { name: 'label.retry' })
+        within(error).getByRole('button', { name: 'label.reload' })
       )
     );
 
     await waitFor(() =>
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId('ontology-load-error')
+      ).not.toBeInTheDocument()
     );
   });
 

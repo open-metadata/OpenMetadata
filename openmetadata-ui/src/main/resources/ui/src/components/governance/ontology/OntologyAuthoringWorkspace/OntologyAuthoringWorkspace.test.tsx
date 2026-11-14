@@ -313,11 +313,13 @@ describe('OntologyAuthoringWorkspace', () => {
     renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
     await flushReactQuery();
 
-    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(await screen.findByTestId('ontology-load-error')).toHaveTextContent(
+      'server.entity-fetch-error'
+    );
 
     get.mockResolvedValue({ data: { data: [concept], paging: { total: 1 } } });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
     });
 
     expect(
