@@ -851,8 +851,8 @@ describe('OntologyGraphView', () => {
     expect(
       within(inspector).getByText('A person who buys goods.')
     ).toBeVisible();
-    expect(within(inspector).getByText('customer code')).toBeVisible();
-    expect(within(inspector).getByText('legal name')).toBeVisible();
+    expect(within(inspector).getByText('customerCode')).toBeVisible();
+    expect(within(inspector).getByText('legalName')).toBeVisible();
     expect(
       within(inspector).getByText('https://schema.org/Person')
     ).toBeVisible();
@@ -1500,7 +1500,7 @@ describe('OntologyGraphView', () => {
           expect.objectContaining({ id: GOVERNED_BY, label: 'Governed By' }),
           expect.objectContaining({
             id: objectProperty.iri,
-            label: 'served by',
+            label: 'servedBy',
           }),
         ],
       }),

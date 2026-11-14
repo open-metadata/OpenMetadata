@@ -71,16 +71,20 @@ const needsEnumValues = (draft: PropertyDraft) =>
 const needsRange = (draft: PropertyDraft) =>
   draft.kind === 'object' && !draft.rangeIri;
 
+// The name becomes the property's IRI local name, so it cannot hold whitespace.
+const hasInvalidName = (draft: PropertyDraft) => /\s/.test(draft.name.trim());
+
+const hasValidName = (draft: PropertyDraft) =>
+  Boolean(draft.name.trim()) && !hasInvalidName(draft);
+
 const canSubmitDraft = (draft: PropertyDraft) =>
   draft.reuseIri === undefined
-    ? Boolean(draft.name.trim()) &&
-      !needsEnumValues(draft) &&
-      !needsRange(draft)
+    ? hasValidName(draft) && !needsEnumValues(draft) && !needsRange(draft)
     : Boolean(draft.reuseIri);
 
 const objectInput = (draft: PropertyDraft): ObjectPropertyInput => ({
   kind: 'object',
-  name: draft.name,
+  name: draft.name.trim(),
   rangeIri: draft.rangeIri,
 });
 
@@ -90,7 +94,7 @@ const dataInput = (draft: PropertyDraft): DataPropertyInput => ({
     draft.datatype === 'enum' ? parseEnumValues(draft.enumValues) : undefined,
   isIdentifier: draft.isIdentifier,
   kind: draft.kind === 'annotation' ? 'annotation' : 'data',
-  name: draft.name,
+  name: draft.name.trim(),
   reusePropertyIri: draft.reuseIri || undefined,
 });
 
@@ -213,8 +217,14 @@ const NewPropertyFields = ({
   return (
     <>
       <Input
+        hint={
+          hasInvalidName(draft)
+            ? t('message.ontology-property-name-help')
+            : undefined
+        }
         inputDataTestId="ontology-property-name"
         isDisabled={isSaving}
+        isInvalid={hasInvalidName(draft)}
         label={`${t('label.name')} · ${t(
           'message.ontology-property-name-hint'
         )}`}
