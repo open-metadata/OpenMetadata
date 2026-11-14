@@ -38,6 +38,7 @@ import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
@@ -75,7 +76,6 @@ import {
   visibleHistoryReleases,
   type VersionEditorState,
 } from './OntologyReleasePanel.utils';
-import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
 import OntologyReleaseTruncationNote from './OntologyReleaseTruncationNote';
 import OntologyReleaseValidation, {

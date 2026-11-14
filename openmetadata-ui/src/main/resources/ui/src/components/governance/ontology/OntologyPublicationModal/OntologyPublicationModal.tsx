@@ -239,7 +239,7 @@ const OntologyPublicationModal = ({
               }
             }}>
             <div
-              className="tw:flex tw:h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body tw:outline-none"
+              className="tw:flex tw:h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand"
               data-testid="ontology-publication-modal"
               ref={bodyRef}
               tabIndex={-1}>

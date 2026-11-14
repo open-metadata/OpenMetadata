@@ -525,6 +525,7 @@ const OntologyNewClassPanel = ({
           });
         for (const type of ['axiom', 'property', 'concept'] as const) {
           for (const id of ids(type)) {
+            // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- undo must delete in order
             await hardDeleteOntologyDefinition(type, id); // NOSONAR ordered: axioms and properties reference the concept
           }
         }
