@@ -20,31 +20,24 @@ SHOW FULL COLUMNS FROM {table_name}
     """
 )
 
-DORIS_GET_TABLE_NAMES = textwrap.dedent(
+# Async materialized views of a schema: SHOW FULL TABLES and information_schema.tables list them as base tables
+DORIS_GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
     """
-    select TABLE_NAME as name, `ENGINE` as engine
-    from INFORMATION_SCHEMA.tables 
-    where TABLE_SCHEMA = :schema
-    """  # noqa: W291
+SELECT Name FROM mv_infos('database' = :schema)
+    """
 )
 
-DORIS_TABLE_COMMENTS = textwrap.dedent(
+DORIS_SHOW_CREATE_TABLE = textwrap.dedent(
     """
-SELECT TABLE_COMMENT
-FROM information_schema.tables
-WHERE TABLE_SCHEMA = :schema
-AND TABLE_NAME = :table_name
-"""
+SHOW CREATE TABLE {table_name}
+    """
 )
 
-DORIS_VIEW_DEFINITIONS = textwrap.dedent(
+# SHOW CREATE TABLE refuses an async materialized view
+DORIS_SHOW_CREATE_MATERIALIZED_VIEW = textwrap.dedent(
     """
-select
-	TABLE_NAME as view_name,
-	TABLE_SCHEMA as schema,
-	'' as view_def
-from information_schema.tables where engine in ['MaterializedView', 'View']
-"""
+SHOW CREATE MATERIALIZED VIEW {table_name}
+    """
 )
 
 DORIS_PARTITION_DETAILS = textwrap.dedent(

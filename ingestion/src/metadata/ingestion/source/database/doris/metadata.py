@@ -16,7 +16,6 @@ from collections.abc import Iterable
 from typing import cast
 
 from pydoris.sqlalchemy import datatype
-from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy import sql
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 from sqlalchemy.engine.reflection import Inspector
@@ -47,13 +46,11 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.ingestion.source.database.doris.queries import (
-    DORIS_GET_TABLE_NAMES,
+    DORIS_GET_MATERIALIZED_VIEW_NAMES,
     DORIS_PARTITION_DETAILS,
+    DORIS_SHOW_CREATE_MATERIALIZED_VIEW,
+    DORIS_SHOW_CREATE_TABLE,
     DORIS_SHOW_FULL_COLUMNS,
-)
-from metadata.ingestion.source.database.doris.utils import (
-    get_table_comment,
-    get_table_names_and_type,
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
@@ -62,18 +59,6 @@ from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
 )
-
-RELKIND_MAP = {
-    "Doris": TableType.Regular,
-    "View": TableType.View,
-    "MEMORY": TableType.View,
-    "OLAP": TableType.MaterializedView,
-    "Iceberg": TableType.Iceberg,
-    "ICEBERG": TableType.Iceberg,
-}
-
-DorisDialect.get_table_names_and_type = get_table_names_and_type
-DorisDialect.get_table_comment = get_table_comment
 
 logger = ingestion_logger()
 
@@ -183,32 +168,52 @@ class DorisSource(CommonDbSourceService):
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
-        Connect to the source database to get the table
-        name and type. By default, use the inspector method
-        to get the names and pass the Regular type.
-
-        This is useful for sources where we need fine-grained
-        logic on how to handle table types, e.g., external, foreign,...
+        The base tables of the schema, as the generic source lists them; views are listed apart by
+        query_view_names_and_types. Doris reports an async materialized view as a base table, so
+        mv_infos() tells the materialized views apart.
         """
-        tables = [
-            TableNameAndType(name=name, type_=RELKIND_MAP.get(engine, TableType.Regular))
-            for name, engine in self.connection.execute(sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}) or []
+        materialized_views = {
+            name
+            for (name,) in self.connection.execute(sql.text(DORIS_GET_MATERIALIZED_VIEW_NAMES), {"schema": schema_name})
+        }
+        return [
+            TableNameAndType(name=table.name, type_=TableType.MaterializedView)
+            if table.name in materialized_views
+            else table
+            for table in super().query_table_names_and_types(schema_name)
         ]
-        return tables  # noqa: RET504
 
-    @staticmethod
-    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
-        description = None
-        try:
-            table_info: dict = inspector.get_table_comment(table_name, schema_name)
-        # Catch any exception without breaking the ingestion
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
+    def _get_create_statement(self, show_create: str, schema_name: str, table_name: str) -> str:
+        """The DDL, second column of SHOW CREATE TABLE and of SHOW CREATE MATERIALIZED VIEW"""
+        preparer = self.engine.dialect.identifier_preparer
+        qualified_table_name = _qualified_identifier(preparer, schema_name, table_name)
+        return self.connection.execute(sql.text(show_create.format(table_name=qualified_table_name))).one()[1]
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
+        """
+        The definition of a materialized view, and with includeDDL the DDL of a table, as Doris prints
+        them: SHOW CREATE TABLE refuses an async materialized view, and the DDL SQLAlchemy rebuilds
+        from reflection has no key model, partitioning, distribution or properties.
+        """
+        if table_type == TableType.MaterializedView:
+            show_create = DORIS_SHOW_CREATE_MATERIALIZED_VIEW
+        elif table_type == TableType.Regular and self.source_config.includeDDL:
+            show_create = DORIS_SHOW_CREATE_TABLE
         else:
-            description = table_info.get("text")
-
-        return description[0]
+            return super().get_schema_definition(table_type, table_name, schema_name, inspector)
+        try:
+            return self._get_create_statement(show_create, schema_name, table_name).strip()
+        except Exception as exc:
+            # Same as the generic source: the table is ingested without a definition
+            logger.debug(traceback.format_exc())
+            logger.debug("Failed to fetch schema definition for %s: %s", table_name, exc)
+        return None
 
     def _get_columns(self, table_name, schema=None):
         """

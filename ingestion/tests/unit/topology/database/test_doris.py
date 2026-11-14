@@ -80,13 +80,6 @@ class DorisUnitTest(TestCase):
         connection.return_value = True
         self.doris_source.close()
 
-    def test_iceberg_relkind_mapping(self):
-        from metadata.generated.schema.entity.data.table import TableType
-        from metadata.ingestion.source.database.doris.metadata import RELKIND_MAP
-
-        assert RELKIND_MAP["Iceberg"] == TableType.Iceberg
-        assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
-
     def test_qualified_identifier_escapes_catalog_names(self):
         preparer = MySQLDialect().identifier_preparer
 
