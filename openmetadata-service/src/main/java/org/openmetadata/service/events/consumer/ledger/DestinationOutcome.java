@@ -60,10 +60,6 @@ public record DestinationOutcome(
     return new DestinationOutcome(Kind.FAILED, Cause.NONE, status, null);
   }
 
-  public static DestinationOutcome notAttempted(Cause cause, String why, long at) {
-    return notAttempted(cause, why, at, null);
-  }
-
   /**
    * A stored configuration that cannot be used reads as one, so the alert shows what to change, and
    * keeps the fingerprint of the settings found unusable, so a change to them ends it.

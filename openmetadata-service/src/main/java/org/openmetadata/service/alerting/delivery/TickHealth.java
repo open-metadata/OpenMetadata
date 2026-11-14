@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.events.consumer.ledger.DestinationOutcome;
@@ -87,24 +88,25 @@ public final class TickHealth {
 
   /** Nothing was resolved, rendered or sent, for a reason that is not the destination's fault. */
   void notAttempted(UUID destinationId, String channelId, Cause cause, String why) {
-    notAttempted(destinationId, channelId, cause, why, null);
+    notAttempted(destinationId, channelId, cause, why, () -> null);
   }
 
   /**
    * @param configurationFingerprint the stored settings found unusable, with {@link
-   *     Cause#CONFIGURATION_UNUSABLE}
+   *     Cause#CONFIGURATION_UNUSABLE}: asked for once, when the destination is first recorded, and
+   *     never for the later events of the tick
    */
   void notAttempted(
       UUID destinationId,
       String channelId,
       Cause cause,
       String why,
-      String configurationFingerprint) {
+      Supplier<String> configurationFingerprint) {
     Tally tally = tallyOf(destinationId);
     if (tally.notAttemptedBecause == null) {
       tally.notAttemptedCause = cause;
       tally.notAttemptedBecause = why;
-      tally.unusableConfiguration = configurationFingerprint;
+      tally.unusableConfiguration = configurationFingerprint.get();
     }
     notAttemptedChannels.putIfAbsent(channelId, why);
   }

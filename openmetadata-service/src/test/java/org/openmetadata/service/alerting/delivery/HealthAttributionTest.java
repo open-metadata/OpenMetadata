@@ -190,8 +190,10 @@ class HealthAttributionTest {
   @Test
   void theHealthKeepsWhichSettingsWereFoundUnusableUntilTheNextTick() {
     TickHealth tick = new TickHealth();
-    tick.notAttempted(owners, "webhook", Cause.CONFIGURATION_UNUSABLE, "bad scheme", "settings");
-    tick.notAttempted(owners, "webhook", Cause.CHANNEL_UNAVAILABLE, MAIL_SERVER_OFF, "ignored");
+    tick.notAttempted(
+        owners, "webhook", Cause.CONFIGURATION_UNUSABLE, "bad scheme", () -> "settings");
+    tick.notAttempted(
+        owners, "webhook", Cause.CHANNEL_UNAVAILABLE, MAIL_SERVER_OFF, () -> "ignored");
     List<DestinationOutcome> outcomes = new ArrayList<>();
     tick.reportTo((destinationId, outcome) -> outcomes.add(outcome));
 
@@ -295,7 +297,7 @@ class HealthAttributionTest {
   }
 
   private static DestinationOutcome notAttempted() {
-    return DestinationOutcome.notAttempted(Cause.CHANNEL_UNAVAILABLE, MAIL_SERVER_OFF, 1L);
+    return DestinationOutcome.notAttempted(Cause.CHANNEL_UNAVAILABLE, MAIL_SERVER_OFF, 1L, null);
   }
 
   private static SubscriptionStatus refused() {
