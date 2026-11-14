@@ -1051,6 +1051,13 @@ authorization, orchestration, and bounded request/response handling.
    and `openmetadata-mcp/src/main/resources/json/data/mcp/tools.json`; add typed read-only check
    and explanation tools under `openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/`.
    Enforce the same scope, quotas, freshness, and authorization as REST. Keep raw SPARQL admin-only.
+4. Respect the request bounds of ADR:2026-11-10-reasoning-jobs-name-ontology-releases-and-carry-their-rules
+   when submitting. A refresh with more than 1,000 active releases is not submitted; reasoning
+   status reports the count and the cap instead of a stale answer. Before a CHECK or EXPLAIN,
+   compare the release export's size with the store's `maxUploadBytes` and answer `LIMIT_EXCEEDED`
+   naming it rather than uploading; ask the store with `HEAD /reasoning/inputs/sha256:{hex}` first
+   and skip the upload when it already holds the release. Judge freshness for snapshots only; a
+   check or explanation is answered for the release it names.
 
 **Exit:** cover the legacy RDF query path, glossary SPARQL with RDF on and off, scheduler,
 explanations, and MCP. Explicit inference with default inference disabled still uses Fuseki.
