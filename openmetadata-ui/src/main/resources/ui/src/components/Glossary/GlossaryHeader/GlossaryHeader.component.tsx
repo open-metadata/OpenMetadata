@@ -139,61 +139,66 @@ const buildManageButtonContent = ({
   setOpenChangeParentHierarchyModal: (value: boolean) => void;
   setIsDelete: (value: boolean) => void;
 }): ManageMenuItem[] => [
-  ...(isGlossary && importExportPermissions
-    ? ([
-        {
-          label: (
-            <ManageButtonItemLabel
-              description={t('message.export-entity-help', {
-                entity: t('label.glossary-term-lowercase-plural'),
-              })}
-              icon={Upload01}
-              id="export-button"
-              name={t('label.export')}
-            />
-          ),
-          key: 'export-button',
-          onClick: (e) => {
-            e.domEvent.stopPropagation();
-            handleGlossaryExportClick();
-            setShowActions(false);
+  ...(importExportPermissions
+    ? (
+        [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.export-entity-help', {
+                  entity: t('label.glossary-term-lowercase-plural'),
+                })}
+                icon={Upload01}
+                id="export-button"
+                name={t('label.export')}
+              />
+            ),
+            key: 'export-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryExportClick();
+              setShowActions(false);
+            },
           },
-        },
-        {
-          label: (
-            <ManageButtonItemLabel
-              description={t('message.import-entity-help', {
-                entity: t('label.glossary-term-lowercase'),
-              })}
-              icon={Download01}
-              id="import-button"
-              name={t('label.import')}
-            />
-          ),
-          key: 'import-button',
-          onClick: (e) => {
-            e.domEvent.stopPropagation();
-            handleGlossaryImport();
-            setShowActions(false);
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-entity-help', {
+                  entity: t('label.glossary-term-lowercase'),
+                })}
+                icon={Download01}
+                id="import-button"
+                name={t('label.import')}
+              />
+            ),
+            key: 'import-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryImport();
+              setShowActions(false);
+            },
           },
-        },
-        {
-          label: (
-            <ManageButtonItemLabel
-              description={t('message.import-ontology-help')}
-              icon={Download01}
-              id="import-ontology-button"
-              name={t('label.import-ontology')}
-            />
-          ),
-          key: 'import-ontology-button',
-          onClick: (e) => {
-            e.domEvent.stopPropagation();
-            setIsOntologyImportOpen(true);
-            setShowActions(false);
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-ontology-help')}
+                icon={Download01}
+                id="import-ontology-button"
+                name={t('label.import-ontology')}
+              />
+            ),
+            key: 'import-ontology-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOntologyImportOpen(true);
+              setShowActions(false);
+            },
           },
-        },
-      ] as ManageMenuItem[])
+        ] as ManageMenuItem[]
+      ).filter(
+        // Export and Import Ontology call glossary-only endpoints; CSV import also has a term-level page.
+        ({ key }) => isGlossary || key === 'import-button'
+      )
     : []),
   ...(editDisplayNamePermission
     ? ([
@@ -644,7 +649,12 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    navigate(getEntityImportPath(EntityType.GLOSSARY, fqn));
+    navigate(
+      getEntityImportPath(
+        isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
+        fqn
+      )
+    );
 
   const handleVersionClick = async () => {
     let path: string;
