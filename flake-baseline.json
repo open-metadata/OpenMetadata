@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-13T19:07:41Z",
+  "generatedAt": "2026-11-14T03:10:30Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "41761758946",
-      "sourceSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "recordedAt": "2026-11-04T03:35:59Z"
-    },
     {
       "runId": "41956205227",
       "sourceSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
@@ -53,6 +48,11 @@
       "runId": "43482948785",
       "sourceSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "recordedAt": "2026-11-13T19:07:41Z"
+    },
+    {
+      "runId": "43547153622",
+      "sourceSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
+      "recordedAt": "2026-11-14T03:10:30Z"
     }
   ],
   "entries": {
@@ -157,16 +157,6 @@
       "title": "Change request review lifecycle \u203a only the reviewers see every held edit; a requester sees their own",
       "lastSeenSha": "94e56a935f2bec5ec8d01c2440c499c88fb3746e",
       "hardFailure": false
-    },
-    "ImportExport :: Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts :: Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource \u203a EditAll User: Complete export-import-validate flow": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "ImportExport",
-      "file": "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
-      "title": "Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource \u203a EditAll User: Complete export-import-validate flow",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
     },
     "ImportExport :: Pages/ODCSImportExport.spec.ts :: ODCS Import/Export \u203a Export ODCS YAML and verify download": {
       "observations": [
@@ -388,46 +378,6 @@
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
       "hardFailure": true
     },
-    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a Save & go saves the edits, then leaves": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Features/AIMode/PersonaSettings.spec.ts",
-      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a Save & go saves the edits, then leaves",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a breadcrumb and side nav ask first and Escape keeps the edits": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Features/AIMode/PersonaSettings.spec.ts",
-      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a breadcrumb and side nav ask first and Escape keeps the edits",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a footer Cancel asks in a popover and Discard returns to the persona detail": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Features/AIMode/PersonaSettings.spec.ts",
-      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a footer Cancel asks in a popover and Discard returns to the persona detail",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a modal close asks first and Discard closes the settings modal": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Features/AIMode/PersonaSettings.spec.ts",
-      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a modal close asks first and Discard closes the settings modal",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a multiple articles hold independent drafts simultaneously": {
       "observations": [
         "43197108715"
@@ -521,22 +471,24 @@
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API": {
       "observations": [
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "chromium",
       "file": "Features/OntologyNativeDataMode.spec.ts",
       "title": "Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": false
     },
     "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL": {
       "observations": [
-        "43353296951"
+        "43353296951",
+        "43547153622"
       ],
       "project": "chromium",
       "file": "Features/OntologyNativeLiveData.spec.ts",
       "title": "Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": false
     },
     "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a shows the generated SQL, one search-around hop and the not stored badge": {
@@ -609,16 +561,27 @@
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
       "hardFailure": true
     },
+    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode": {
+      "observations": [
+        "43547153622"
+      ],
+      "project": "chromium",
+      "file": "Features/OntologyReview.spec.ts",
+      "title": "Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
+      "hardFailure": false
+    },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed": {
       "observations": [
         "43353296951",
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "chromium",
       "file": "Features/OntologyReview.spec.ts",
       "title": "Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": false
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail": {
@@ -777,7 +740,6 @@
     },
     "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format": {
       "observations": [
-        "41761758946",
         "41974141457"
       ],
       "project": "chromium",
@@ -848,366 +810,6 @@
       "file": "Pages/AIProfile/ProfileTeam.spec.ts",
       "title": "AI Profile Team Detail \u203a Should join and leave a public team",
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for apiCollection \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for apiCollection \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for apiEndpoint \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for apiEndpoint \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for chart \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for chart \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for container \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for container \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dashboard \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for dashboard \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dashboardDataModel \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for dashboardDataModel \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dataProduct \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for dataProduct \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for database \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for database \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for databaseSchema \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for databaseSchema \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for domain \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for domain \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for glossaryTerm \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for glossaryTerm \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for metric \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for metric \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for mlmodel \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for mlmodel \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for pipeline \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for pipeline \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for searchIndex \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for searchIndex \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for storedProcedure \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for storedProcedure \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Date": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Date",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Date Time": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Date Time",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Duration": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Duration",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Email": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Email",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Entity Reference": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Entity Reference",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Entity Reference List": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Entity Reference List",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Enum": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Enum",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Hyperlink": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Hyperlink",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Integer": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Integer",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Markdown": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Markdown",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Number": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Number",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Number CP between operator sends gte/lte bounds (Issue #27482)": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Number CP between operator sends gte/lte bounds (Issue #27482)",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a SQL Query": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a SQL Query",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Table": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Table",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Time": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Time",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Time Interval": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Time Interval",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Timestamp": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for table \u203a Timestamp",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for tableColumn \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for tableColumn \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": true
-    },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for topic \u203a String": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for topic \u203a String",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
       "hardFailure": true
     },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for ApiEndpoint": {
@@ -1335,7 +937,6 @@
     },
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false": {
       "observations": [
-        "41761758946",
         "41956205227",
         "41974141457"
       ],
@@ -1347,7 +948,6 @@
     },
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true": {
       "observations": [
-        "41761758946",
         "41956205227",
         "41974141457"
       ],
@@ -1366,16 +966,6 @@
       "title": "Searching the bundle suites list from a later page resets to the first page",
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
       "hardFailure": true
-    },
-    "chromium :: Pages/TestSuiteDetailsPage.spec.ts :: Search test cases inside a bundle suite (AI mode) \u203a finds a test case by an upper-cased part of its name": {
-      "observations": [
-        "41761758946"
-      ],
-      "project": "chromium",
-      "file": "Pages/TestSuiteDetailsPage.spec.ts",
-      "title": "Search test cases inside a bundle suite (AI mode) \u203a finds a test case by an upper-cased part of its name",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": false
     },
     "chromium :: Pages/Users.spec.ts :: User with Data Consumer Roles \u203a Reset Password for Data Consumer": {
       "observations": [
@@ -4291,12 +3881,13 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties": {
       "observations": [
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs light \u203a tab-spreadsheet-custom-properties",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage": {
@@ -4422,13 +4013,14 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition": {
       "observations": [
-        "42151309967"
+        "42151309967",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs light \u203a tab-table-schema-definition",
-      "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
-      "hardFailure": true
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
+      "hardFailure": false
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks": {
       "observations": [
@@ -4443,12 +4035,13 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties": {
       "observations": [
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs light \u203a tab-topic-custom-properties",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage": {
@@ -4941,12 +4534,13 @@
         "43197108715",
         "43353296951",
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Governance states light \u203a ontology-publish-releases",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query": {
@@ -7228,12 +6822,13 @@
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices PowerBI configuration form": {
@@ -7265,12 +6860,13 @@
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form": {
       "observations": [
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a dashboardServices Sigma configuration form",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form": {
@@ -7681,12 +7277,13 @@
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a dashboardServices MicroStrategy configuration form",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices PowerBI configuration form": {
@@ -7718,12 +7315,13 @@
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form": {
       "observations": [
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a dashboardServices Sigma configuration form",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form": {
@@ -8342,12 +7940,13 @@
         "43197108715",
         "43353296951",
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/glossaryInteractions.spec.ts",
       "title": "Glossary interactions dark \u203a glossary-late-activity-count",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
@@ -8356,12 +7955,13 @@
         "43197108715",
         "43353296951",
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/glossaryInteractions.spec.ts",
       "title": "Glossary interactions light \u203a glossary-late-activity-count",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/homeInteractions.spec.ts :: Home interactions light \u203a announcement-all-dialog": {
@@ -8788,12 +8388,13 @@
         "43197108715",
         "43353296951",
         "43437005879",
-        "43482948785"
+        "43482948785",
+        "43547153622"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/staticPages.spec.ts",
       "title": "glossary matches baseline",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: landing page with expanded sidebar matches baseline": {
@@ -8873,11 +8474,11 @@
   "stableIds": [
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
+    "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
-    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 edit mode: start node description \u203a editing the workflow description on the start node persists it on save",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 edit mode: task node config \u203a editing a form field and saving node config then workflow fires PUT API with updated data",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 execution history \u203a execution history tab loads and API call succeeds",
@@ -9061,6 +8662,7 @@
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-sample-data",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-search-index-settings",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks",
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-lineage",
@@ -9070,7 +8672,9 @@
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-data-observability",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-sample-data",
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks",
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-lineage",
@@ -9403,7 +9007,6 @@
     "visual-regression :: VisualRegression/staticPages.spec.ts :: users matches baseline"
   ],
   "hardFailureStableIds": [
-    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 edit mode: start node description \u203a editing the workflow description on the start node persists it on save",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 edit mode: task node config \u203a editing a form field and saving node config then workflow fires PUT API with updated data",
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 execution history \u203a execution history tab loads and API call succeeds",
@@ -9586,6 +9189,7 @@
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-sample-data",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-search-index-settings",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks",
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-lineage",
@@ -9596,6 +9200,7 @@
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-sample-data",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks",
+    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-lineage",
