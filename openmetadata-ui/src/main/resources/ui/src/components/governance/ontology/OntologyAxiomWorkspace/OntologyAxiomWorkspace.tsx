@@ -297,7 +297,7 @@ const OntologyAxiomWorkspace = ({
     releaseId
   );
   const validation = useQuery({
-    queryKey: overviewValidationQueryKey(ontology.id),
+    queryKey: overviewValidationQueryKey(ontology.id, releaseId),
     queryFn: () => getOntologyWorkingValidation(ontology.id),
     enabled: !releaseId,
     retry: false,

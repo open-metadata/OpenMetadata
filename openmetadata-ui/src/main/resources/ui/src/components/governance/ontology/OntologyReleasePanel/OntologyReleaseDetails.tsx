@@ -226,6 +226,7 @@ const OntologyReleaseDetails = ({
       <OntologyReleaseEvents releaseId={release.id} />
       <OntologyReviewRelease
         baseReleaseId={release.baseReleaseId}
+        inspectable={false}
         key={release.id}
         releaseId={release.id}
       />

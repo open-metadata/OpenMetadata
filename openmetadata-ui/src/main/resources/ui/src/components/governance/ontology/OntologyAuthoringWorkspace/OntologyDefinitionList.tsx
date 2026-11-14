@@ -549,10 +549,15 @@ const OntologyDefinitionList = <
           })}
         />
       ) : (
+        // Without an Add (a published release, or no permission) "Add the first…" would mislead.
         <NoDataPlaceholder
-          description={t('message.ontology-definitions-empty-description', {
-            entity: entityText,
-          })}
+          description={
+            startCreate
+              ? t('message.ontology-definitions-empty-description', {
+                  entity: entityText,
+                })
+              : undefined
+          }
           footer={
             startCreate ? (
               <Button

@@ -615,7 +615,7 @@ const OntologyOverview = ({
   const validation = useQuery({
     enabled: !releaseId,
     queryFn: () => getOntologyWorkingValidation(ontology.id),
-    queryKey: overviewValidationQueryKey(ontology.id),
+    queryKey: overviewValidationQueryKey(ontology.id, releaseId),
     retry: false,
   });
   const treeIndex = useMemo(

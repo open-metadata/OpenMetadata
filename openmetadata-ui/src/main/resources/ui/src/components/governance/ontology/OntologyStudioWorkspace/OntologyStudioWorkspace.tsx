@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -21,7 +21,9 @@ import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getOntologyHealthSummary } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
+import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
 import { AxiomStatus } from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace.utils';
@@ -132,10 +134,22 @@ const OntologyStudioWorkspace = ({
   });
   const isReadOnlyTabs = showsReadOnlyTabs(mode, viewSurface);
   const tabsReleaseId = isReadOnlyTabs ? releaseId : undefined;
-  const { model } = useOntologyStudioModel(
+  const { model, graph, relations } = useOntologyStudioModel(
     mode === 'definitions' || isReadOnlyTabs ? ontology : undefined,
     tabsReleaseId
   );
+  // The header counts what the tabs show; without this it keeps the last graph's counts.
+  useEffect(() => {
+    if (model) {
+      onStatsChange?.({
+        conceptCount: model.concepts.length,
+        isolatedCount: getOntologyHealthSummary(graph, FILTERS).isolatedTerms
+          .length,
+        ontologyId: ontology.id,
+        relationCount: relations.length,
+      });
+    }
+  }, [graph, model, onStatsChange, ontology.id, relations.length]);
   // Leaving for the graph drops an open definition editor, so it asks first.
   const openConcept = onRequestEdit
     ? (conceptId: string) => guard(() => onRequestEdit(conceptId))
