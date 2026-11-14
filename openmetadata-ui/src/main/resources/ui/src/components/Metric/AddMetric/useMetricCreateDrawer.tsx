@@ -16,14 +16,17 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { createMetric } from '../../../rest/metricsAPI';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import { toEntityReferenceOption } from '../../Glossary/AddGlossary/AddGlossary.utils';
 import AddMetricForm, { METRIC_FORM_DEFAULTS } from './AddMetricForm';
 import { MetricFormValues } from './AddMetricForm.types';
 import { transformMetricFormData } from './AddMetricForm.utils';
+import { useMetricIntakeForm } from './useMetricIntakeForm';
 
 /**
  * Encapsulates the "create metric" drawer — form, submit, and the drawer chrome
@@ -34,17 +37,27 @@ import { transformMetricFormData } from './AddMetricForm.utils';
 export const useMetricCreateDrawer = (onSuccess?: () => void) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { activeDomainEntityRef } = useDomainStore();
   const [parentMetricFqn, setParentMetricFqn] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
+  const [loadIntake, setLoadIntake] = useState(false);
+  const intake = useMetricIntakeForm(loadIntake);
   const form = useForm<MetricFormValues>({
     defaultValues: METRIC_FORM_DEFAULTS,
   });
 
   const handleCreate = useCallback(
     async (data: MetricFormValues) => {
+      if (!intake.isLoaded) {
+        throw new Error(t('label.intake-form'));
+      }
       setIsLoading(true);
       try {
-        const payload = transformMetricFormData(data, parentMetricFqn);
+        const payload = transformMetricFormData(
+          data,
+          parentMetricFqn,
+          intake.customProperties
+        );
         const metric = await createMetric(payload);
         form.reset(METRIC_FORM_DEFAULTS);
         navigate(
@@ -61,7 +74,14 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
         setIsLoading(false);
       }
     },
-    [form, navigate, parentMetricFqn]
+    [
+      form,
+      navigate,
+      parentMetricFqn,
+      intake.isLoaded,
+      intake.customProperties,
+      t,
+    ]
   );
 
   const {
@@ -78,6 +98,7 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
     form: (
       <AddMetricForm
         form={form}
+        intake={intake}
         parentMetricFqn={parentMetricFqn}
         onSubmit={(data: MetricFormValues): Promise<void> =>
           submitAndClose(data, handleCreate, closeDrawer, onSuccess)
@@ -86,16 +107,23 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
     ),
     onSubmit: (data: MetricFormValues): Promise<void> =>
       submitAndClose(data, handleCreate, closeDrawer, onSuccess),
-    loading: isLoading,
+    loading: isLoading || !intake.isLoaded,
   });
 
   const openDrawer = useCallback(
     (nextParentMetricFqn?: string) => {
+      setLoadIntake(true);
+      void intake.retry();
       setParentMetricFqn(nextParentMetricFqn);
-      form.reset(METRIC_FORM_DEFAULTS);
+      form.reset({
+        ...METRIC_FORM_DEFAULTS,
+        domains: activeDomainEntityRef
+          ? [toEntityReferenceOption(activeDomainEntityRef)]
+          : [],
+      });
       openFormDrawer();
     },
-    [form, openFormDrawer]
+    [activeDomainEntityRef, form, openFormDrawer, intake.retry]
   );
 
   return { formDrawer, openDrawer, closeDrawer };

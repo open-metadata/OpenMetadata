@@ -340,22 +340,6 @@ class ReindexingMetricsTest {
   }
 
   @Nested
-  @DisplayName("Backpressure")
-  class BackpressureTests {
-
-    @Test
-    @DisplayName("recordBackpressureEvent increments counter")
-    void testRecordBackpressureEvent() {
-      ReindexingMetrics metrics = ReindexingMetrics.getInstance();
-      metrics.recordBackpressureEvent();
-      metrics.recordBackpressureEvent();
-      metrics.recordBackpressureEvent();
-
-      assertEquals(3, getCounterValue("reindexing.backpressure.events"));
-    }
-  }
-
-  @Nested
   @DisplayName("Promotion Metrics")
   class PromotionTests {
 

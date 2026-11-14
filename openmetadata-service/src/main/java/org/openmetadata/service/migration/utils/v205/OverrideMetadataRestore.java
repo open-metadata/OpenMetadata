@@ -159,8 +159,9 @@ public final class OverrideMetadataRestore {
   /**
    * {@link #windowStart} as the database stood before this migration run. Call it while the
    * workflow loads migrations: a 1.x upgrade records 2.0.0-2.0.4 in the same run, just before 2.0.5,
-   * which read later would pass for a 2.0.x history. Never throws, since the workflow drops every
-   * later version when loading one fails. A fresh install has no change log yet.
+   * which read later would pass for a 2.0.x history. Never throws, since a version that fails to
+   * load stops every run, including the server's startup check. A fresh install has no change log
+   * yet.
    */
   public static Window windowBeforeRun() {
     Window window;

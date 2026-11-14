@@ -12,6 +12,14 @@
         "$ref": "ontologyPackManifest.json"
       },
       "default": []
+    },
+    "installations": {
+      "description": "Native ontologies the caller may view that installed a listed pack, one record per ontology and pack.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyPackInstallationRecord.json"
+      },
+      "default": []
     }
   },
   "required": ["packs"],

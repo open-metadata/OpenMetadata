@@ -27,7 +27,6 @@ import {
   EventSubscription,
   Status,
 } from '../generated/events/eventSubscription';
-import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
 import { getEncodedFqn } from '../utils/StringUtils';
 import axiosClient from './axiosClient';
@@ -137,14 +136,6 @@ export const getAlertCapabilities = async (
     `${BASE_URL}/capabilities`,
     request
   );
-
-  return response.data;
-};
-
-export const getResourceFunctions = async () => {
-  const response = await axiosClient.get<
-    PagingResponse<FilterResourceDescriptor[]>
-  >(`${BASE_URL}/${AlertType.Notification}/resources`);
 
   return response.data;
 };

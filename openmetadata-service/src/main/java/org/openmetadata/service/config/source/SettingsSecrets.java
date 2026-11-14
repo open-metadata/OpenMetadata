@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.macasaet.fernet.TokenValidationException;
+import jakarta.ws.rs.BadRequestException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -90,6 +91,20 @@ public final class SettingsSecrets {
     }
   }
 
+  /** The pointers of the secrets in {@code value} that hold the mask rather than a secret. */
+  public static Set<String> maskedSecrets(SettingsType settingsType, Object value) {
+    Set<String> masked = new TreeSet<>();
+    for (String pointer : pointersOf(settingsType)) {
+      BeanPath.parentOf(value, pointer)
+          .filter(
+              parent ->
+                  PasswordEntityMasker.PASSWORD_MASK.equals(
+                      BeanPath.get(parent, BeanPath.lastSegment(pointer))))
+          .ifPresent(parent -> masked.add(pointer));
+    }
+    return masked;
+  }
+
   /**
    * Gives every secret of {@code updated} that the client sent back masked, or left out, the value
    * it has in {@code original}, in place. Clients only ever see masked secrets.
@@ -105,6 +120,35 @@ public final class SettingsSecrets {
                   BeanPath.parentOf(original, pointer)
                       .map(originalParent -> BeanPath.get(originalParent, field))
                       .ifPresent(kept -> BeanPath.set(parent, field, kept)));
+    }
+  }
+
+  /**
+   * Refuses a secret sent already encrypted unless it is the value the setting holds. An encrypted
+   * value is stored as sent and decrypted when the setting is used, so another secret's token would
+   * make the setting a way to decrypt it. Clients only ever see masked secrets, so they have no
+   * reason to send a token. {@code original} is null when the setting is first saved.
+   */
+  public static void rejectForeignEncryptedSecrets(
+      SettingsType settingsType, Object updated, Object original) {
+    for (String pointer : pointersOf(settingsType)) {
+      String field = BeanPath.lastSegment(pointer);
+      Object sent =
+          BeanPath.parentOf(updated, pointer)
+              .map(parent -> BeanPath.get(parent, field))
+              .orElse(null);
+      if (sent instanceof String token && Fernet.isTokenized(token)) {
+        Object held =
+            original == null
+                ? null
+                : BeanPath.parentOf(original, pointer)
+                    .map(parent -> BeanPath.get(parent, field))
+                    .orElse(null);
+        if (!token.equals(held)) {
+          throw new BadRequestException(
+              String.format("%s cannot be set to an encrypted value", pointer));
+        }
+      }
     }
   }
 

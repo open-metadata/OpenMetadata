@@ -67,6 +67,7 @@ class ClassificationManager:
             classifications = list(
                 self.metadata.list_all_entities(
                     entity=Classification,
+                    skip_on_failure=True,
                     fields=[
                         "name",
                         "autoClassificationConfig",
@@ -125,6 +126,7 @@ class ClassificationManager:
                 tags = list(
                     self.metadata.list_all_entities(
                         entity=Tag,
+                        skip_on_failure=True,
                         fields=[
                             "name",
                             "fullyQualifiedName",

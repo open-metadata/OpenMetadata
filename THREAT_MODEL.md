@@ -2,6 +2,10 @@
 
 This document outlines the security threat model for OpenMetadata, a unified metadata platform for data discovery, observability, and governance.
 
+This document describes deployment risks and mitigations. CVE and private Security Advisory
+eligibility is defined in [SECURITY.md](SECURITY.md); a risk listed here does not by itself meet
+that reporting scope.
+
 ## Important Scope Notice
 
 **OpenMetadata is a metadata-only platform**. It does not:

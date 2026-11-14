@@ -22,8 +22,7 @@
   "properties": {
     "conceptIri": {
       "description": "External concept IRI to map this ontology term to.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "mappingType": {
       "description": "Type of mapping used for the external concept alignment.",
@@ -31,8 +30,7 @@
     },
     "schemeIri": {
       "description": "Optional external concept scheme IRI for the mapped concept.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "source": {
       "description": "Optional source label or catalog for the external concept.",

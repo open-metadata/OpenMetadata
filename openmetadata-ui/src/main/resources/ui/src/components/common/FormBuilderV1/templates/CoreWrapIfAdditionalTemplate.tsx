@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import {
   ADDITIONAL_PROPERTY_FLAG,
@@ -42,11 +42,12 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
 
   return (
     <div className="core-wrap-if-additional-template tw:w-full tw:min-w-0 tw:rounded-lg">
-      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_40px]">
+      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_36px]">
         <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
+            aria-label={t('label.key')}
             id={`${id}-key`}
-            placeholder={t('label.option').toLowerCase()}
+            placeholder={t('label.key').toLowerCase()}
             value={keyValue}
             onBlur={() => onKeyChange(keyValue)}
             onChange={setKeyValue}
@@ -58,16 +59,14 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
         <div className="core-wrap-if-additional-value tw:min-w-0">
           {children}
         </div>
-        <Button
-          aria-label={t('label.remove')}
-          className="core-wrap-if-additional-remove-button tw:inline-flex tw:h-9 tw:w-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
-          color="secondary"
+        <ButtonUtility
+          className="core-wrap-if-additional-remove-button tw:shrink-0"
+          icon={Trash01}
           isDisabled={disabled || readonly}
-          size="sm"
-          type="button"
-          onClick={onDropPropertyClick(label)}>
-          <Trash01 data-icon size={14} />
-        </Button>
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={onDropPropertyClick(label)}
+        />
       </div>
     </div>
   );

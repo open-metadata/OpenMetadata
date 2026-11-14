@@ -17,7 +17,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Table } from '../../../generated/entity/data/table';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import SampleDataTable from './SampleDataTable.component';
 
 const mockProps = {
@@ -56,20 +56,12 @@ jest.mock('../../../rest/tableAPI', () => ({
   deleteSampleDataByTableId: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    );
-});
-
 jest.mock('../../common/DeleteModal/DeleteModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteModal</p>);
 });
 
 jest.mock('../../../utils/Export/ExportUtils', () => ({
-  downloadFile: jest.fn(),
+  downloadCsv: jest.fn(),
 }));
 
 describe('SampleDataTable with reserved column names', () => {
@@ -130,7 +122,7 @@ describe('SampleDataTable with reserved column names', () => {
     fireEvent.click(screen.getByTestId('sample-data-manage-button'));
     fireEvent.click(screen.getByTestId('export-button-details-container'));
 
-    const csvContent = (downloadFile as jest.Mock).mock.calls[0][0] as string;
+    const csvContent = (downloadCsv as jest.Mock).mock.calls[0][0] as string;
     const [header, ...dataLines] = csvContent.split('\n');
 
     expect(header).toBe(SAMPLE_COLUMNS.join(','));

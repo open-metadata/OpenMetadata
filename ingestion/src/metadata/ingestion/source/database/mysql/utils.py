@@ -14,14 +14,28 @@ MySQL SQLAlchemy Helper Methods
 """
 
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
-from sqlalchemy import util
+from collections.abc import Sequence
+from typing import Any
+
+from sqlalchemy import Table, text, util
+from sqlalchemy.dialects.mysql.base import MySQLDialect, _DecodingRow
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
 from sqlalchemy.dialects.mysql.reflection import _strip_values
 from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
+from sqlalchemy.engine import Connection, Row
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_VIEW_COLUMNS
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_display_datatype
+
+logger = ingestion_logger()
+
+ER_TABLEACCESS_DENIED_ERROR = 1142
+
+_sqlalchemy_describe_table = MySQLDialect._describe_table
 
 col_type_map = {
     "bool": create_sqlalchemy_type("BOOL"),
@@ -150,3 +164,43 @@ def parse_column(self, line, state):  # noqa: C901
     }
     col_d.update(col_kw)
     state.columns.append(col_d)
+
+
+def describe_or_read_view_columns(
+    self: MySQLDialect,
+    connection: Connection,
+    table: Table | None,
+    charset: str | None = None,
+    full_name: str | None = None,
+) -> Sequence[Row[Any]] | Sequence[_DecodingRow]:
+    """
+    MySQL denies DESCRIBE on a view when the user's privileges on it come from a database-level
+    grant without SELECT. information_schema.COLUMNS still lists the columns the user holds any
+    column privilege on, such as REFERENCES.
+    See ADR:2026-10-15-mysql-view-columns-fall-back-to-information-schema.
+    """
+    if full_name is None:
+        assert table is not None
+        full_name = self.identifier_preparer.format_table(table)
+    try:
+        return _sqlalchemy_describe_table(self, connection, table, charset, full_name)
+    except DBAPIError as err:
+        if (
+            not isinstance(err.orig, self.loaded_dbapi.Error)
+            or self._extract_error_code(err.orig) != ER_TABLEACCESS_DENIED_ERROR
+        ):
+            raise
+    *schema, view_name = self.identifier_preparer.unformat_identifiers(full_name)
+    columns = self._compat_fetchall(
+        connection.execute(
+            text(MYSQL_GET_VIEW_COLUMNS),
+            {"schema_name": schema[0] if schema else None, "view_name": view_name},
+        ),
+        charset=charset,
+    )
+    if not columns:
+        logger.warning(
+            "View %s has no columns visible to this user. Grant SELECT or REFERENCES on it to ingest its columns.",
+            full_name,
+        )
+    return columns

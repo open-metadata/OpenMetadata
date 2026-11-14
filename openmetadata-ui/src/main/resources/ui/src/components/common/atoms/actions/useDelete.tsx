@@ -168,11 +168,10 @@ export const useDelete = <
     () => (
       <div className="tw:relative tw:inline-flex">
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-selected"
           icon={Trash01}
           isDisabled={selectedEntities.length === 0}
-          size="sm"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={openModal}
         />

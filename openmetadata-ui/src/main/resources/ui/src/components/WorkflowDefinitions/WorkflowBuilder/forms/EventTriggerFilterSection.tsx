@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility, Card } from '@openmetadata/ui-core-components';
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,12 +84,12 @@ export const EventTriggerFilterSection: React.FC<
         ) : (
           <Card className="tw:p-4">
             <div className="tw:flex tw:items-center tw:gap-1.5 tw:mb-3">
-              <Button
-                color="tertiary"
-                iconLeading={XClose}
+              <ButtonUtility
+                icon={XClose}
                 isDisabled={controlsDisabled}
                 size="sm"
-                onPress={handleClearFilter}
+                tooltip={t('label.remove')}
+                onClick={handleClearFilter}
               />
             </div>
 
@@ -98,7 +98,7 @@ export const EventTriggerFilterSection: React.FC<
                 entityTypes={entityType}
                 forceReadOnly={lockFields}
                 label={t('label.exclude-filter')}
-                outputType={SearchOutputType.ElasticSearch}
+                outputType={SearchOutputType.JSONLogic}
                 showExploreLink={false}
                 value={triggerFilter}
                 onChange={(value: string) => {

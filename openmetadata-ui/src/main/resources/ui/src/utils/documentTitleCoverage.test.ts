@@ -57,7 +57,7 @@ const LITERAL_PAGE_TITLE = /pageTitle=(?:"[^"]*"|\{\s*['"`][^'"`]*['"`]\s*\})/g;
 
 /** The same defect spelled `<DocumentTitle title="X" />`. */
 const LITERAL_DOCUMENT_TITLE =
-  /<DocumentTitle\b[^>]*?\stitle=(?:"[^"]*"|\{\s*['"`][^'"`]*['"`]\s*\})/gs;
+  /<DocumentTitle\b[^>]*?\stitle=(?:"[^"]*"|\{\s*['"`][^'"`]*['"`]\s*\})/g;
 
 const findLiteralTitles = (file: string): string[] => {
   const contents = fs.readFileSync(file, 'utf8');
@@ -103,7 +103,9 @@ const DELEGATION_DEPTH = 1;
 /**
  * Routed modules that legitimately set no title anywhere in their render
  * tree: app shells and nested routers (they only render other routes), and
- * transient OAuth redirects that are gone before a title could be read.
+ * transient redirects that are gone before a title could be read (OAuth
+ * callbacks; a data contract link, which replaces itself with its asset's
+ * Contract tab).
  */
 const MODULES_WITHOUT_OWN_TITLE = new Set([
   'components/AppRouter/AuthenticatedApp.tsx',
@@ -111,6 +113,7 @@ const MODULES_WITHOUT_OWN_TITLE = new Set([
   'components/Auth/AppCallbacks/Auth0Callback/Auth0Callback.tsx',
   'components/Auth/AppCallbacks/OktaCallback/OktaCallback.tsx',
   'components/platform/ai-shell/AppModeRoutes/AppModeRoutes.tsx',
+  'pages/DataContractRedirectPage/DataContractRedirectPage.tsx',
 ]);
 
 const collectRouterFiles = (directory: string): string[] =>

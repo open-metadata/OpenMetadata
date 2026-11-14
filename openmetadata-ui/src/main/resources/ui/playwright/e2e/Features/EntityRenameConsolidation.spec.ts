@@ -64,10 +64,13 @@ async function performRename(
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
+  // A rename re-indexes the subtree in-line (update-by-query, refresh=true), which
+  // has taken ~60s on a loaded search cluster — the nightly AUT's default wait.
   const patchResponse = page.waitForResponse(
     (response) =>
       response.url().includes(apiEndpoint) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH',
+    { timeout: 120_000 }
   );
   await page.getByTestId('save-button').click();
   await patchResponse;

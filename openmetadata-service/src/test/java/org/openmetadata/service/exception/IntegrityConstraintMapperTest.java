@@ -19,8 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
+import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Statement;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
@@ -53,6 +55,27 @@ class IntegrityConstraintMapperTest {
             psqlException(
                 PSQLState.UNIQUE_VIOLATION,
                 "ERROR: duplicate key value violates unique constraint \"entity_name_key\""));
+
+    assertEquals(409, response.getStatus());
+    assertErrorMessage(response, 409, DUPLICATE_KEY_MESSAGE);
+  }
+
+  @Test
+  void postgresBatchDuplicateKeyMapsToConflict() {
+    PSQLException duplicate =
+        psqlException(
+            PSQLState.UNIQUE_VIOLATION,
+            "ERROR: duplicate key value violates unique constraint \"test_case_fqnhash_key\"");
+    BatchUpdateException batch =
+        new BatchUpdateException(
+            "Batch entry 0 /* TestCaseDAO.insertMany */ INSERT INTO test_case was aborted",
+            duplicate.getSQLState(),
+            duplicate.getErrorCode(),
+            new int[] {Statement.EXECUTE_FAILED},
+            duplicate);
+    batch.setNextException(duplicate);
+
+    Response response = map(batch);
 
     assertEquals(409, response.getStatus());
     assertErrorMessage(response, 409, DUPLICATE_KEY_MESSAGE);

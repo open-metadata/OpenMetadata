@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { ReactElement } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 export interface WidgetEmptyStateProps {
   icon?: ReactElement;
@@ -45,6 +45,24 @@ const WidgetEmptyState = ({
 
   const buttonLabel = actionButtonText || t('label.explore');
 
+  let actionButton: ReactNode;
+  if (showActionButton || actionButtonLink) {
+    actionButton = (
+      <>
+        {showActionButton && (
+          <Button size="sm" onPress={onActionClick}>
+            {buttonLabel}
+          </Button>
+        )}
+        {actionButtonLink && (
+          <Button href={actionButtonLink} size="sm">
+            {buttonLabel}
+          </Button>
+        )}
+      </>
+    );
+  }
+
   return (
     <Box
       align="center"
@@ -54,38 +72,15 @@ const WidgetEmptyState = ({
       )}
       data-testid={dataTestId}
       justify="center">
-      <ErrorPlaceHolder
-        className="border-none"
-        icon={icon}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Box align="center" direction="col">
-          {title && (
-            <Typography
-              className="tw:mb-3 tw:text-secondary"
-              size="text-md"
-              weight="semibold">
-              {title}
-            </Typography>
-          )}
-          {description && (
-            <Typography
-              className="tw:max-w-75 tw:text-center tw:text-quaternary"
-              size="text-sm">
-              {description}
-            </Typography>
-          )}
-          {showActionButton && (
-            <Button className="tw:mt-4" size="sm" onPress={onActionClick}>
-              {buttonLabel}
-            </Button>
-          )}
-          {actionButtonLink && (
-            <Button className="tw:mt-4" href={actionButtonLink} size="sm">
-              {buttonLabel}
-            </Button>
-          )}
-        </Box>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={description}
+          footer={actionButton}
+          icon={icon ?? <Database01 />}
+          title={title}
+        />
+      </div>
     </Box>
   );
 };

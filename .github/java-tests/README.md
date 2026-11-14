@@ -1,8 +1,28 @@
 # Java test selection
 
+## Task scope and publishing existing evidence
+
+For implementation, push and PR-creation tasks use `make java_affected ARGS="--scope focused"`
+and `make java_affected_run ARGS="--scope focused"`. Focused scope runs changed test classes,
+convention-named unit tests and explicit `--add-it`/`--add-unit` choices with `--reason`.
+It reports broader commands as deferred, and refuses an empty focused selection when the full
+plan has runnable checks. Use `--add-area` only when that area is the intended verification scope.
+A focused pass does not establish merge readiness. The default `--scope full` preserves existing
+selection and execution for merge-readiness tasks and other CLI callers.
+
+After a run, `make java_affected ARGS="--publish-results"` publishes the saved summary and details
+without planning or executing tests. It validates relevant source/build/config contents, configured
+Java/Maven paths and options, and report hashes. Documentation-only changes do not invalidate
+these inputs. Missing, changed or edited evidence is rejected; a saved failed run stays failed.
+The single evidence record is overwritten on each run, so storage is bounded. Changes to external
+services are not detectable from these files; rerun when the environment or observed behavior
+changes. Stop at the requested outcome and report pending broader checks. Monitoring CI or
+launching extra workflows requires that task scope.
+
+
 Where each Java suite runs:
 
-| Suite | PR checks | Merge queue | Nightly | Before you open the PR |
+| Suite | PR checks | Merge queue | Nightly | For merge readiness |
 | --- | --- | --- | --- | --- |
 | Unit tests (`openmetadata-service`, `openmetadata-k8s-operator`) | full | full | — | impacted classes |
 | Integration tests (`openmetadata-integration-tests`, every lane, MySQL+ES / PostgreSQL+OS / +Redis) | reports skipped | full | — | impacted classes |
@@ -12,13 +32,21 @@ Where each Java suite runs:
 | Collate integration tests against the OSS change (`maven-collate-ci`) | — | yes | — | — |
 
 The integration tests are gone from PR checks, so the merge queue is the first place CI sees an
-IT failure, and an ejection there costs every PR queued behind it. The local run is the gate:
+IT failure, and an ejection there costs every PR queued behind it. Full local or CI coverage is
+the merge-readiness gate; PR creation records focused results and pending broader coverage:
 
 ```bash
 make java_affected                              # list the impacted tests + the exact commands
-make java_affected_run                          # run them, write target/java-tests/local-pr-results.md
-make java_affected_run ARGS="--update-pr"       # also upsert the results block in the PR body (needs gh)
+make java_affected_run                          # run them, write the summary and details to target/java-tests/
+make java_affected_run ARGS="--update-pr"       # also put them on the PR (needs gh)
 ```
+
+The PR description gets a summary: the verdict, a row per step, and what failed. The details
+(every class each step ran, why the plan chose it, the commands) go in one PR comment that the
+summary links to, and a re-run edits that comment
+(ADR:2026-10-12-local-java-test-details-go-in-a-pr-comment). Without `--update-pr`, paste
+`target/java-tests/local-pr-results.md` into the description and post the details with
+`gh pr comment --body-file target/java-tests/local-pr-results-details.md`.
 
 ## How tests are selected
 
@@ -107,9 +135,10 @@ generated file. When you run the steps by hand, `make java_affected` prints the 
 `--run` clears the report directories before each step and fails a step that ran zero tests or
 left a selected class without a report. It refuses to start the ITs while another Testcontainers
 stack is running (`--allow-concurrent` overrides), because two stacks rarely fit in Docker's
-memory. The block's step totals are Maven's own counts. Its per-class counts come from the test
-reports, which can credit a test to the wrong class when classes run concurrently, and keep only
-the last run of a nested class that several ITs inherit (`BaseEntityIT$…`).
+memory. The summary's step totals are Maven's own counts. The per-class counts in the details
+come from the test reports, which can credit a test to the wrong class when classes run
+concurrently, and keep only the last run of a nested class that several ITs inherit
+(`BaseEntityIT$…`).
 
 ## What the author adds
 
@@ -120,7 +149,7 @@ about and says why; nothing takes tests out:
 make java_affected_run ARGS='--add-area lineage --add-it TableResourceIT --reason "changes the edge payload lineage reads" --update-pr'
 ```
 
-`--reason` is required with any `--add-*`, and the PR block lists the additions under it. Pass
+`--reason` is required with any `--add-*`, and the details list the additions under it. Pass
 them to the run, not only the plan: nothing is saved between the two.
 `skills/java-affected-tests` has the ground rules for when to add.
 

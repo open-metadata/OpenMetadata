@@ -16,24 +16,26 @@ import {
   Button,
   ButtonUtility,
   Card,
+  DateRangePicker,
   Input,
+  ProgressBar,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
-import { Progress } from 'antd';
+import {
+  Download01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component';
 import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../components/common/Banner/Banner';
-import DatePicker from '../../components/common/DatePicker/DatePicker';
-import { getPopupContainer } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -41,9 +43,7 @@ import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExport
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -51,6 +51,8 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import { usePageSizeState } from '../../hooks/paging/usePageSizeState';
+import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
 import {
   exportAuditLogs,
   getAuditLogExportJob,
@@ -64,10 +66,17 @@ import {
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
+import {
+  dateValueToEndOfDayMillis,
+  dateValueToMillis,
+  millisToPickerDateValue,
+} from '../../utils/date-time/calendarDate.utils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
+
+type CorePickerProps = Parameters<typeof DateRangePicker>[0];
 
 // Fallback cadence for the export modal when the completion websocket event is
 // delivered to a different server than the one holding this client's socket.
@@ -104,15 +113,18 @@ const AuditLogsPage = () => {
     {}
   );
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
+  const [pageSize, setPageSize] = usePageSizeState();
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportDateRange, setExportDateRange] = useState<
-    [DateTime, DateTime] | null
-  >(null);
+  const [exportDateRange, setExportDateRange] =
+    useState<CorePickerProps['value']>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
+  const exportRangePicker = useStagedPickerValue(
+    exportDateRange,
+    setExportDateRange
+  );
 
   const fetchAuditLogs = useCallback(
     async (
@@ -161,10 +173,13 @@ const AuditLogsPage = () => {
     [fetchAuditLogs, paging]
   );
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1);
+    },
+    [setPageSize]
+  );
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
@@ -386,8 +401,8 @@ const AuditLogsPage = () => {
     setIsExporting(true);
     try {
       const response = await exportAuditLogs({
-        startTs: exportDateRange[0].startOf('day').valueOf(),
-        endTs: exportDateRange[1].endOf('day').valueOf(),
+        startTs: dateValueToMillis(exportDateRange.start),
+        endTs: dateValueToEndOfDayMillis(exportDateRange.end),
         q: searchTerm || undefined,
         ...filterParams,
       });
@@ -421,14 +436,13 @@ const AuditLogsPage = () => {
   const renderExportProgress = () =>
     exportJob?.status === 'IN_PROGRESS' ? (
       <div className="export-progress-container">
-        <Progress
-          percent={
+        <ProgressBar
+          className="tw:h-1.5"
+          value={
             exportJob.total && exportJob.total > 0
               ? Math.round(((exportJob.progress ?? 0) / exportJob.total) * 100)
               : 0
           }
-          size="small"
-          status="active"
         />
         <Typography as="p" className="tw:mt-2!" size="text-md">
           {exportJob.message ?? t('message.exporting')}
@@ -481,7 +495,7 @@ const AuditLogsPage = () => {
           <Button
             color="primary"
             data-testid="export-audit-logs-button"
-            iconLeading={<ExportIcon height={16} width={16} />}
+            iconLeading={Download01}
             onPress={() => setIsExportModalOpen(true)}>
             {t('label.export')}
           </Button>
@@ -496,6 +510,7 @@ const AuditLogsPage = () => {
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   inputDataTestId="audit-log-search"
@@ -520,7 +535,7 @@ const AuditLogsPage = () => {
                 <div className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1">
                   {activeFilters.map((filter) => (
                     <Badge
-                      className="tw:outline-0 tw:gap-1"
+                      className="tw:gap-1"
                       color="brand"
                       key={filter.category}
                       size="lg"
@@ -549,9 +564,9 @@ const AuditLogsPage = () => {
                       </div>
                       <ButtonUtility
                         aria-label="Remove filter"
-                        color="tertiary"
                         data-testid={`remove-filter-${filter.category}`}
-                        icon={<XClose size={14} />}
+                        icon={XClose}
+                        size="xs"
                         onClick={() => handleRemoveFilter(filter.category)}
                       />
                     </Badge>
@@ -587,11 +602,7 @@ const AuditLogsPage = () => {
                 currentPage={currentPage}
                 isLoading={isLoading}
                 pageSize={pageSize}
-                pageSizeOptions={[
-                  PAGE_SIZE_BASE,
-                  PAGE_SIZE_MEDIUM,
-                  PAGE_SIZE_LARGE,
-                ]}
+                pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                 paging={paging}
                 pagingHandler={handlePaging}
                 onShowSizeChange={handlePageSizeChange}
@@ -625,21 +636,12 @@ const AuditLogsPage = () => {
               size="text-md">
               {t('label.date-range')} <span className="tw:text-red-600">*</span>
             </Typography>
-            <DatePicker.RangePicker
-              allowClear
-              className="w-full"
+            <DateRangePicker
+              fullWidth
               data-testid="export-date-range-picker"
-              disabled={isExporting}
-              disabledDate={(current) => current > DateTime.now().endOf('day')}
-              getPopupContainer={getPopupContainer}
-              value={exportDateRange}
-              onChange={(dates) => {
-                if (dates?.[0] && dates?.[1]) {
-                  setExportDateRange([dates[0], dates[1]]);
-                } else {
-                  setExportDateRange(null);
-                }
-              }}
+              isDisabled={isExporting}
+              maxValue={millisToPickerDateValue(Date.now())}
+              {...exportRangePicker}
             />
           </div>
           {renderExportProgress()}

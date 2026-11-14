@@ -14,9 +14,12 @@
 package org.openmetadata.operator.unit;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.openmetadata.operator.fixtures.ServerShapedOMJobs.SERVER_POD_LABELS;
+import static org.openmetadata.operator.fixtures.ServerShapedOMJobs.serverShapedOMJob;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.operator.model.OMJobResource;
@@ -62,17 +65,67 @@ class LabelBuilderTest {
   void testBuildSelectors() {
     OMJobResource omJob = createTestOMJob();
 
-    Map<String, String> podSelector = LabelBuilder.buildPodSelector(omJob);
-    assertEquals("test-omjob", podSelector.get("omjob.pipelines.openmetadata.org/name"));
-    assertEquals(2, podSelector.size());
+    assertEquals(
+        Map.of("omjob.pipelines.openmetadata.org/name", "test-omjob"),
+        LabelBuilder.buildPodSelector(omJob));
+    assertEquals(
+        Map.of(
+            "omjob.pipelines.openmetadata.org/name", "test-omjob",
+            "omjob.pipelines.openmetadata.org/pod-type", "main"),
+        LabelBuilder.buildMainPodSelector(omJob));
+    assertEquals(
+        Map.of(
+            "omjob.pipelines.openmetadata.org/name", "test-omjob",
+            "omjob.pipelines.openmetadata.org/pod-type", "exit-handler"),
+        LabelBuilder.buildExitHandlerSelector(omJob));
+  }
 
-    Map<String, String> mainSelector = LabelBuilder.buildMainPodSelector(omJob);
-    assertTrue(mainSelector.entrySet().containsAll(podSelector.entrySet()));
-    assertEquals("main", mainSelector.get("omjob.pipelines.openmetadata.org/pod-type"));
+  @Test
+  void testMainPodLabelsWithServerLabelsMatchMainSelector() {
+    OMJobResource omJob = serverShapedOMJob("om-cronomjob-mysql-metadata-1792052520");
 
-    Map<String, String> exitSelector = LabelBuilder.buildExitHandlerSelector(omJob);
-    assertTrue(exitSelector.entrySet().containsAll(podSelector.entrySet()));
-    assertEquals("exit-handler", exitSelector.get("omjob.pipelines.openmetadata.org/pod-type"));
+    Map<String, String> labels = LabelBuilder.buildMainPodLabels(omJob);
+
+    assertTrue(
+        labels.entrySet().containsAll(LabelBuilder.buildMainPodSelector(omJob).entrySet()),
+        "main pod labels " + labels + " must match the main pod selector");
+  }
+
+  @Test
+  void testExitHandlerLabelsWithServerLabelsMatchExitHandlerSelector() {
+    OMJobResource omJob = serverShapedOMJob("om-cronomjob-mysql-metadata-1792052520");
+
+    Map<String, String> labels = LabelBuilder.buildExitHandlerLabels(omJob);
+
+    assertTrue(
+        labels.entrySet().containsAll(LabelBuilder.buildExitHandlerSelector(omJob).entrySet()),
+        "exit handler labels " + labels + " must match the exit handler selector");
+  }
+
+  @Test
+  void testServerLabelsArePreservedOnPods() {
+    OMJobResource omJob = serverShapedOMJob("om-job-mysql-metadata-1a2b3c4d");
+
+    Map<String, String> mainLabels = LabelBuilder.buildMainPodLabels(omJob);
+    Map<String, String> exitLabels = LabelBuilder.buildExitHandlerLabels(omJob);
+
+    assertTrue(mainLabels.entrySet().containsAll(SERVER_POD_LABELS.entrySet()));
+    assertTrue(exitLabels.entrySet().containsAll(SERVER_POD_LABELS.entrySet()));
+  }
+
+  @Test
+  void testSpecLabelsCannotOverrideIdentityLabels() {
+    OMJobResource omJob = serverShapedOMJob("om-job-mysql-metadata-1a2b3c4d");
+    Map<String, String> conflictingLabels = new HashMap<>(SERVER_POD_LABELS);
+    conflictingLabels.put("omjob.pipelines.openmetadata.org/name", "another-omjob");
+    conflictingLabels.put("omjob.pipelines.openmetadata.org/pod-type", "exit-handler");
+    omJob.getSpec().getMainPodSpec().setLabels(conflictingLabels);
+
+    Map<String, String> labels = LabelBuilder.buildMainPodLabels(omJob);
+
+    assertEquals(
+        "om-job-mysql-metadata-1a2b3c4d", labels.get("omjob.pipelines.openmetadata.org/name"));
+    assertEquals("main", labels.get("omjob.pipelines.openmetadata.org/pod-type"));
   }
 
   @Test

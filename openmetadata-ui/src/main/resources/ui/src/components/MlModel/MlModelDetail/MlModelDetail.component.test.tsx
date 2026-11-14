@@ -12,7 +12,7 @@
  */
 
 import {
-  findAllByText,
+  findAllByTestId,
   findByTestId,
   findByText,
   render,
@@ -289,10 +289,6 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   EntityLineageTab: jest.fn().mockReturnValue(<div>EntityLineageTab</div>),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-});
-
 jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
@@ -448,9 +444,9 @@ describe('Test MlModel entity detail component', () => {
     );
 
     const entityTabs = await findByTestId(container, 'tabs');
-    const emptyTablePlaceholder = await findAllByText(
+    const emptyTablePlaceholder = await findAllByTestId(
       container,
-      'ErrorPlaceHolder'
+      'no-data-placeholder'
     );
 
     expect(entityTabs).toBeInTheDocument();

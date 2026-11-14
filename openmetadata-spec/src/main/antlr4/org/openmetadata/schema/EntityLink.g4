@@ -40,6 +40,10 @@ ENTITY_TYPE
     | 'glossary'
     | 'glossaryTerm'
     | 'relationshipType'
+    | 'ontology'
+    | 'ontologyConcept'
+    | 'ontologyProperty'
+    | 'ontologyRelease'
     | 'ontologyAxiom'
     | 'ontologyChangeSet'
     | 'databaseService'
@@ -123,6 +127,8 @@ ENTITY_TYPE
     | 'mcpServer'
     | 'mcpExecution'
     | 'intakeForm'
+    | 'announcement'
+    | 'governanceAutomation'
     ;
 
 ENTITY_FIELD
@@ -134,6 +140,7 @@ ENTITY_FIELD
     | 'mlFeatures'
     | 'schemaText'
     | 'owner'
+    | 'owners'
     | 'reviewers'
     | 'synonyms'
     | 'relatedTerms'

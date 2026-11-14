@@ -231,6 +231,12 @@ public class DataCompletenessImpl implements JavaDelegate {
       return null;
     }
 
+    if (path.startsWith("extension.")
+        && map.get("extension") instanceof Map<?, ?> extension
+        && extension.containsKey(path.substring("extension.".length()))) {
+      return extension.get(path.substring("extension.".length()));
+    }
+
     String[] parts = path.split("\\.");
     Object current = map;
 

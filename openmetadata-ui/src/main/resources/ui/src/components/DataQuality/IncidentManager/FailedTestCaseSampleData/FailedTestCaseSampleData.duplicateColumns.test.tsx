@@ -35,7 +35,6 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityPureUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityPureUtils'),
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('my_status'),
 }));
 

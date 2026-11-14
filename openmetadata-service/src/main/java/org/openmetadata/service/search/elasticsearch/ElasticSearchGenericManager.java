@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
+import static org.openmetadata.service.monitoring.ServicesStatusJobHandler.HEALTHY_STATUS;
+import static org.openmetadata.service.monitoring.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;

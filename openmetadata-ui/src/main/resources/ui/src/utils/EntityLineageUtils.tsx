@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon, { CheckOutlined } from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Check, Metric } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
 import { Link } from 'react-router-dom';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import Loader from '../components/common/Loader/Loader';
 import type { ColumnsType } from '../components/common/Table/Table.interface';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
@@ -37,7 +36,7 @@ export const getLoadingStatusValue = (
   if (loading) {
     return <Loader className="text-primary" size="small" />;
   } else if (status === 'success') {
-    return <CheckOutlined className="text-primary" />;
+    return <Check className="tw:text-brand-secondary tw:shrink-0" size={14} />;
   } else {
     return defaultState;
   }
@@ -60,7 +59,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
     return (
       <div className="d-flex items-center gap-2">
         {isMetricEntity ? (
-          <Icon component={MetricIcon} style={{ fontSize: '20px' }} />
+          <Metric className="tw:shrink-0" size={20} />
         ) : (
           <img
             alt={fqn}

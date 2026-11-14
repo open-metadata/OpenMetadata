@@ -40,20 +40,12 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
 jest.mock('../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockImplementation(() => <div>ProfilePicture</div>)
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../components/common/EntityDescription/Description', () =>
@@ -166,6 +158,7 @@ const props: ServiceVersionMainTabContentProps = {
   serviceName: 'sample_data',
   data: mockData,
   isServiceLoading: false,
+  pageSize: 15,
   paging: { total: 1 },
   pagingHandler: mockPagingHandler,
   currentPage: 1,
@@ -188,7 +181,7 @@ describe('ServiceVersionMainTabContent tests', () => {
     expect(entityTable).toBeInTheDocument();
     expect(screen.getByText('Description')).toBeInTheDocument();
     expect(screen.getByTestId('entity-right-panel')).toBeInTheDocument();
-    expect(screen.queryByText('NextPrevious')).toBeNull();
+    expect(screen.getByText('NextPrevious')).toBeInTheDocument();
     expect(screen.getAllByText('TagsContainerV2')).toHaveLength(2);
     expect(entityName).toBeInTheDocument();
     expect(entityOwner).toBeInTheDocument();

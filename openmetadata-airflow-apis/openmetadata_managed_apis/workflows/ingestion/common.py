@@ -81,6 +81,9 @@ logger = workflow_logger()
 PIPELINE_RUN_ID_PARAM = "pipelineRunId"
 SOURCE_CONFIG_OVERRIDE_PARAM = "sourceConfigOverride"
 
+# Run states that mean the workflow already reported its outcome
+RUN_FINISHED_STATES = (PipelineState.success, PipelineState.partialSuccess)
+
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
     "databaseService": DatabaseService,
@@ -301,7 +304,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "start_date": start_date,
         "end_date": ingestion_pipeline.airflowConfig.endDate.root if ingestion_pipeline.airflowConfig.endDate else None,
         "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
-        "dagrun_timeout": timedelta(ingestion_pipeline.airflowConfig.workflowTimeout)
+        "dagrun_timeout": timedelta(seconds=ingestion_pipeline.airflowConfig.workflowTimeout)
         if ingestion_pipeline.airflowConfig.workflowTimeout
         else None,
         "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline or False,
@@ -407,6 +410,19 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *ar
                 workflow_config.ingestionPipelineFQN,
                 str(run_id),
             )
+
+            # The workflow already reported its outcome. A late kill or failure signal
+            # (for example Airflow killing the task after the callable returned) must not
+            # overwrite it.
+            if pipeline_status is not None and pipeline_status.pipelineState in RUN_FINISHED_STATES:
+                logger.info(
+                    "Run [%s] of %s already finished as [%s]. Skipping the failed-status callback.",
+                    run_id,
+                    workflow_config.ingestionPipelineFQN,
+                    pipeline_status.pipelineState.value,
+                )
+                return
+
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
 

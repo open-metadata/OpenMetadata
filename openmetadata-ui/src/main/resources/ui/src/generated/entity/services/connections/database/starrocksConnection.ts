@@ -51,14 +51,15 @@ export interface StarrocksConnection {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                     Config;
-    supportsDBTExtraction?:         boolean;
-    supportsLineageExtraction?:     boolean;
-    supportsMetadataExtraction?:    boolean;
-    supportsProfiler?:              boolean;
-    supportsQueryComment?:          boolean;
-    supportsUsageExtraction?:       boolean;
-    supportsViewLineageExtraction?: boolean;
+    sslConfig?:                      Config;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
+    supportsViewLineageExtraction?:  boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

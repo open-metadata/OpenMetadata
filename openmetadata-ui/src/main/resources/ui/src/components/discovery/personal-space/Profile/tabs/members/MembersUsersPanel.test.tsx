@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockGetUsers = jest.fn().mockResolvedValue({
@@ -35,9 +41,34 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockRestoreUser = jest.fn().mockResolvedValue({});
+const mockDeleteEntity = jest.fn();
+
 jest.mock('../../../../../../rest/userAPI', () => ({
   getUsers: (...args: unknown[]) => mockGetUsers(...args),
+  restoreUser: (...args: unknown[]) => mockRestoreUser(...args),
 }));
+
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: (...args: unknown[]) => mockDeleteEntity(...args),
+}));
+
+jest.mock('../../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: { id: 'me', name: 'admin' } }),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
+}));
+
+jest.mock(
+  '../../../../../../context/AsyncDeleteProvider/AsyncDeleteProvider',
+  () => ({
+    useAsyncDeleteProvider: () => ({
+      handleOnAsyncEntityDeleteConfirm: jest.fn(),
+    }),
+  })
+);
 
 jest.mock('../../../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({
@@ -54,6 +85,32 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+const mockSetHashPage = jest.fn();
+
+// Stateful stand-in for the settings-hash pager: jsdom has no settings hash, so
+// record what would be written to the URL and keep the page in state.
+jest.mock('../../../../../../hooks/useSettingsHash', () => {
+  const { useState } = jest.requireActual('react');
+
+  return {
+    useSettingsHash: () => ({ goTo: jest.fn() }),
+    useHashPagingParams: () => {
+      const [page, setPage] = useState(1);
+
+      return {
+        page,
+        pageSize: undefined,
+        resolvedPageSize: 15,
+        savePageSize: jest.fn(),
+        setPage: (...args: [number, ...unknown[]]) => {
+          mockSetHashPage(...args);
+          setPage(args[0]);
+        },
+      };
+    },
+  };
+});
+
 import MembersUsersPanel from './MembersUsersPanel';
 
 const renderComponent = (isAdmin = false) =>
@@ -66,6 +123,129 @@ const renderComponent = (isAdmin = false) =>
 describe('MembersUsersPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockDeleteEntity.mockResolvedValue({ status: 200, data: {} });
+  });
+
+  it('soft-deletes a user from the row popover and reloads the list', async () => {
+    renderComponent();
+    fireEvent.click(await screen.findByTestId('delete-user-btn-user1'));
+
+    expect(
+      screen.getByTestId('delete-user-popover-confirm')
+    ).toBeInTheDocument();
+
+    mockGetUsers.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-user-popover-confirm'));
+    });
+
+    expect(mockDeleteEntity).toHaveBeenCalledWith('users', '1', false, false);
+
+    await waitFor(() => expect(mockGetUsers).toHaveBeenCalled());
+  });
+
+  it('keeps the delete popover open when the delete fails', async () => {
+    mockDeleteEntity.mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+    fireEvent.click(await screen.findByTestId('delete-user-btn-user1'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-user-popover-confirm'));
+    });
+
+    expect(mockDeleteEntity).toHaveBeenCalledWith('users', '1', false, false);
+    expect(screen.getByTestId('delete-user-popover')).toBeInTheDocument();
+  });
+
+  it('does not delete when the row popover is cancelled', async () => {
+    renderComponent();
+    fireEvent.click(await screen.findByTestId('delete-user-btn-user1'));
+    fireEvent.click(screen.getByTestId('delete-user-popover-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-user-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(mockDeleteEntity).not.toHaveBeenCalled();
+  });
+
+  it('restores a deleted user from the row popover', async () => {
+    renderComponent();
+    fireEvent.click(await screen.findByTestId('show-deleted'));
+    fireEvent.click(await screen.findByTestId('restore-user-btn-user1'));
+
+    expect(
+      screen.getByTestId('restore-user-popover-confirm')
+    ).toHaveTextContent('label.restore');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('restore-user-popover-confirm'));
+    });
+
+    expect(mockRestoreUser).toHaveBeenCalledWith('1');
+    expect(
+      screen.queryByTestId('restore-user-popover')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the restore popover open when the restore fails', async () => {
+    mockRestoreUser.mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+    fireEvent.click(await screen.findByTestId('show-deleted'));
+    fireEvent.click(await screen.findByTestId('restore-user-btn-user1'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('restore-user-popover-confirm'));
+    });
+
+    expect(mockRestoreUser).toHaveBeenCalledWith('1');
+    expect(screen.getByTestId('restore-user-popover')).toBeInTheDocument();
+  });
+
+  it('pages forward with the next cursor from the Next button', async () => {
+    const page = (paging: Record<string, unknown>) => ({
+      data: [
+        {
+          id: '1',
+          name: 'user1',
+          displayName: 'User One',
+          fullyQualifiedName: 'user1',
+          teams: [],
+          roles: [],
+        },
+      ],
+      paging,
+    });
+    mockGetUsers
+      .mockResolvedValueOnce(page({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(page({ before: 'cursor-1', total: 100 }));
+    renderComponent(true);
+
+    const next = await screen.findByTestId('next');
+
+    await waitFor(() => expect(next).toBeEnabled());
+
+    fireEvent.click(next);
+
+    await waitFor(() =>
+      expect(mockGetUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'cursor-2', isAdmin: true })
+      )
+    );
+
+    expect(await screen.findByTestId('page-indicator')).toHaveTextContent(
+      'label.page 2'
+    );
+    expect(screen.getByTestId('previous')).toBeEnabled();
+    // Only the page and size reach the URL; the cursor stays in state.
+    expect(mockSetHashPage).toHaveBeenLastCalledWith(
+      2,
+      undefined,
+      undefined,
+      15
+    );
   });
 
   it('renders the users list container', async () => {

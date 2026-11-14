@@ -97,13 +97,15 @@ public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityPr
     // If no, we insert a new record
     SystemProfile systemProfile =
         (SystemProfile) deserializeProfileData(entityProfile).getProfileData();
+    TimeSeriesDAOs.ProfilerDataTimeSeriesDAO profilerDao =
+        (TimeSeriesDAOs.ProfilerDataTimeSeriesDAO) timeSeriesDao;
     String storedSystemProfile =
-        timeSeriesDao.getExtensionAtTimestampWithOperation(
+        profilerDao.getSystemProfileAtTimestamp(
             entity.getFullyQualifiedName(),
             extension,
             systemProfile.getTimestamp(),
             systemProfile.getOperation().value());
-    timeSeriesDao.storeTimeSeriesWithOperation(
+    profilerDao.storeSystemProfile(
         entity.getFullyQualifiedName(),
         SYSTEM_PROFILE_EXTENSION,
         "systemProfile",

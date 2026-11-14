@@ -30,9 +30,69 @@ from metadata.utils.stored_procedures import get_procedure_name_from_call
         ("SELECT $body$BEGIN old(); END;$body$; CALL nightly_load()", "nightly_load"),
         ("CALL/* prior CALL legacy() */nightly_load()", "nightly_load"),
         ('/* prior */ CALL db."My Schema"."My Proc"(\'has -- inside\')', "my proc"),
+        # Query history can end mid-literal; its remaining body must not
+        # fabricate an invocation.
+        ("SELECT 'CALL nightly_load()", None),
+        ("SELECT 'call fake(); CALL real_proc(1)", None),
     ],
 )
 def test_get_procedure_name_ignores_sql_literals(query_text, expected):
+    assert get_procedure_name_from_call(query_text) == expected
+
+
+@pytest.mark.parametrize(
+    "query_text,expected",
+    [
+        ("CALL etl.my#$proc$archive()", "my#$proc$archive"),
+        ("CALL etl.a#$$()", "a#$$"),
+        ("CALL etl.my#$$archive()", "my#$$archive"),
+        ("CALL etl#$live$.proc()", "proc"),
+    ],
+)
+def test_get_procedure_name_preserves_dollars_after_hash_in_identifiers(query_text: str, expected: str) -> None:
+    assert get_procedure_name_from_call(query_text) == expected
+
+
+@pytest.mark.parametrize(
+    "query_text",
+    [
+        "CALL # deprecated: CALL legacy_load()\n dataset.nightly_load('x')",
+        "CALL # deprecated: CALL legacy_load()\n dataset.nightly_load(/*param*/)",
+        "CALL # harmless note\n dataset.nightly_load()",
+        "CALL #deprecated: CALL legacy_load()\n dataset.nightly_load()",
+    ],
+)
+def test_get_procedure_name_ignores_hash_comments(query_text: str) -> None:
+    assert get_procedure_name_from_call(query_text) == "nightly_load"
+
+
+@pytest.mark.parametrize("line_ending", ["\r", "\n", "\r\n"], ids=["cr", "lf", "crlf"])
+@pytest.mark.parametrize("comment", ["--", "#"])
+def test_get_procedure_name_preserves_call_after_line_comment(comment: str, line_ending: str) -> None:
+    query_text = f"CALL {comment} operator note{line_ending} dataset.nightly_load('x')"
+    assert get_procedure_name_from_call(query_text) == "nightly_load"
+
+
+@pytest.mark.parametrize("comment", ["--", "#"])
+def test_get_procedure_name_ignores_comment_to_end_of_text(comment: str) -> None:
+    assert get_procedure_name_from_call(f"CALL {comment} CALL hidden('x')") is None
+
+
+@pytest.mark.parametrize(
+    "query_text,expected",
+    [
+        ("CALL etl.é$proc$archive()", "é$proc$archive"),
+        ("CALL etl.é$$()", "é$$"),
+        ("CALL etl.é#$$()", "é#$$"),
+        ("CALL etl.a#$proc$archive()", "a#$proc$archive"),
+        ('CALL "hash#proc"()', "hash#proc"),
+        ("CALL `dataset.hash#proc`()", "hash#proc"),
+        ("SELECT '# CALL hidden()'; CALL real()", "real"),
+        ("SELECT $$# CALL hidden()$$; CALL real()", "real"),
+        ("SELECT q'[# CALL hidden()]'; CALL real()", "real"),
+    ],
+)
+def test_get_procedure_name_preserves_identifier_and_literal_hashes(query_text: str, expected: str) -> None:
     assert get_procedure_name_from_call(query_text) == expected
 
 
@@ -241,11 +301,237 @@ class TestStoredProcedures:
 
         assert get_procedure_name_from_call(query_text="/* begin schema.proc(); end; */") is None
 
+    def test_get_procedure_name_ignores_unterminated_block_comment(self):
+        """Truncated block comments cannot fabricate lineage. Oracle's
+        `gv$sql.sql_text` can cut a statement at 1000 characters, so the scanner
+        discards an unclosed comment tail while preserving earlier calls.
+        """
+        # The terse reproduction: a closed comment is stripped (real call wins),
+        # while the same text with the `*/` removed is a single unterminated
+        # comment, so a CALL inside it must never be returned.
+        assert get_procedure_name_from_call(query_text="/* CALL hidden(); */\nCALL real();") == "real"
+        assert get_procedure_name_from_call(query_text="/* CALL hidden(); CALL real();") is None
+
+        # A CALL inside an unterminated comment shadows every line after it (it
+        # is all commented), so neither the commented name nor the trailing text
+        # may match.
+        assert get_procedure_name_from_call(query_text="/* CALL old_daily_refresh();\nCALL nightly_load();") is None
+
+        # A real invocation that runs BEFORE the unterminated comment keeps its
+        # lineage: truncating only the open tail leaves the executed statement.
+        assert get_procedure_name_from_call(query_text="CALL nightly_load(); /* CALL old();") == "nightly_load"
+
+        # Only an unterminated comment is present -> nothing to extract.
+        assert get_procedure_name_from_call(query_text="/* CALL nightly_load()") is None
+        assert get_procedure_name_from_call(query_text="/* begin schema.proc(); end;") is None
+
+        # The PL/SQL `BEGIN ... END;` form inside the unterminated comment must
+        # not match either.
+        assert get_procedure_name_from_call(query_text="/* BEGIN schema.fake(); END; CALL real();") is None
+
+        # Oracle's 1000-char SQL_TEXT cap cutting a long leading block comment:
+        # the surviving fragment holds only the commented interior, so no real
+        # invocation is fabricated; intact, the same statement resolves to the
+        # executed call.
+        long_comment = "/* " + "CALL legacy_load(); " * 80  # ~1.5KB, no closing */
+        assert get_procedure_name_from_call(query_text=long_comment) is None
+        assert get_procedure_name_from_call(query_text=long_comment + " */\nCALL daily_etl_v2();") == "daily_etl_v2"
+
+    def test_get_procedure_name_ignores_unterminated_string_literal(self):
+        """A query-history cut inside a string must not expose its body as SQL.
+        The scanner discards the unclosed literal tail and preserves calls
+        before it, including when the cut falls inside an escaped apostrophe.
+        """
+        # The terse reproduction: a closed string is blanked (real call wins),
+        # while the same text with the closing `'` removed is a single
+        # unterminated string, so a CALL inside it must never be returned.
+        assert get_procedure_name_from_call(query_text="SELECT 'CALL hidden()'; CALL real();") == "real"
+        assert get_procedure_name_from_call(query_text="SELECT 'CALL hidden(); CALL real();") is None
+
+        # Prose (not a real invocation) inside the unterminated string naming a
+        # plausible procedure must not fabricate lineage.
+        assert get_procedure_name_from_call(query_text="SELECT 'please call nightly_load() tomorrow") is None
+        assert (
+            get_procedure_name_from_call(query_text="INSERT INTO audit VALUES ('batch note: call refresh_stats(1)")
+            is None
+        )
+
+        # A real invocation that runs BEFORE the unterminated string keeps its
+        # lineage: truncating only the open tail leaves the executed statement.
+        # This is the "unterminated string placed before a real call" failure
+        # mode done right -- the executed CALL ahead of the truncated literal
+        # is preserved, and the fabricated name in the string cannot shadow it.
+        assert (
+            get_procedure_name_from_call(
+                query_text="CALL real_proc(1); INSERT INTO log VALUES ('note: call fake_proc() tomorr"
+            )
+            == "real_proc"
+        )
+        assert get_procedure_name_from_call(query_text="CALL nightly_load(); SELECT 'CALL old()") == "nightly_load"
+
+        # A terminated string followed by an unterminated one: only the
+        # unterminated tail is truncated, so a real call would survive if it
+        # preceded the literals (the terminated `'ok'` is blanked).
+        assert get_procedure_name_from_call(query_text="SELECT 'ok' || 'b CALL x()") is None
+
+        # An escaped `''` is balanced and harmless when intact...
+        assert (
+            get_procedure_name_from_call(query_text="SELECT 'escaped ''CALL old()'''; CALL nightly_load()")
+            == "nightly_load"
+        )
+        # A cut can leave an escaped apostrophe without a closing delimiter;
+        # the entire unclosed literal is discarded while an earlier call survives.
+        assert get_procedure_name_from_call(query_text="SELECT 'it''") is None
+        assert get_procedure_name_from_call(query_text="CALL real(); SELECT 'it''") == "real"
+
+        # The PL/SQL `BEGIN ... END;` form inside the unterminated string must
+        # not match either.
+        assert get_procedure_name_from_call(query_text="SELECT 'BEGIN schema.fake(); END; CALL real();") is None
+
+        # Oracle's 1000-char SQL_TEXT cap cutting a long string literal: the
+        # surviving fragment holds only the literal interior, so no real
+        # invocation is fabricated; intact, the same statement resolves to the
+        # executed call.
+        long_string = "SELECT '" + "call legacy_load(); " * 90  # ~1.5KB, no closing '
+        assert get_procedure_name_from_call(query_text=long_string) is None
+        assert get_procedure_name_from_call(query_text=long_string + "' ; CALL daily_etl_v2();") == "daily_etl_v2"
+
+    def test_get_procedure_name_handles_oracle_alternative_quoting(self):
+        """Oracle q/nq literals may contain unescaped apostrophes. The scanner
+        consumes their paired delimiter and closing quote together so their
+        contents cannot fabricate calls or hide a following real invocation.
+        """
+        # The reviewer reproduction: a real PL/SQL block AFTER a valid Oracle
+        # q-quoted literal that contains an apostrophe must still resolve.
+        assert (
+            get_procedure_name_from_call(
+                query_text="DECLARE m VARCHAR2(50) := q'[it's done]'; BEGIN etl.notify(m); END;"
+            )
+            == "notify"
+        )
+
+        # A complete q-quoted literal must not hide a following invocation.
+        assert get_procedure_name_from_call(query_text="q'[note]'; CALL real_proc(1)") == "real_proc"
+        assert get_procedure_name_from_call(query_text="CALL real(); q'[it's done]'") == "real"
+
+        # Non-bracket delimiters (here `#`) whose content holds an apostrophe
+        # are equally well-formed and must be blanked the same way.
+        assert get_procedure_name_from_call(query_text="q'#it's#'; CALL after()") == "after"
+
+        # The national-char `nq'...'` form uses the same mechanism.
+        assert get_procedure_name_from_call(query_text="nq'[it's done]'; CALL nproc()") == "nproc"
+
+        # A `CALL`/`BEGIN` written INSIDE the q-quoted literal never executed,
+        # so it must not fabricate lineage -- the whole literal is blanked.
+        assert get_procedure_name_from_call(query_text="q'[call fake(); BEGIN ghost(); END;]'") is None
+
+        # `q'` inside an identifier (e.g. `seq'...`) is NOT a q-quote, so the
+        # scanner must not treat it as alternative quoting. The unclosed `'` is a
+        # genuine truncated literal and must still truncate to `None`.
+        assert get_procedure_name_from_call(query_text="SELECT seq'CALL fake()") is None
+
+    def test_get_procedure_name_preserves_real_call_after_backslash_string(self):
+        """Oracle backslashes do not escape ordinary string delimiters, so a
+        path ending in a backslash must not hide a later CALL or PL/SQL block.
+        """
+        assert (
+            get_procedure_name_from_call(
+                query_text=(
+                    "DECLARE d VARCHAR2(99) := 'D:\\exp\\'; f VARCHAR2(9) := 'o.csv'; BEGIN etl.export(d, f); END;"
+                )
+            )
+            == "export"
+        )
+
+        # A single backslashed literal ahead of a real call: same guarantee.
+        assert get_procedure_name_from_call(query_text="SELECT 'D:\\exp\\'; CALL nightly_load()") == "nightly_load"
+
+        # The unterminated-string regression tests must still hold: a lone `'`
+        # that genuinely opens a never-closed string still truncates.
+        assert get_procedure_name_from_call(query_text="SELECT 'CALL hidden(); CALL real();") is None
+        assert get_procedure_name_from_call(query_text="CALL real(); SELECT 'D:\\exp\\'") == "real"
+
+    def test_get_procedure_name_does_not_blank_q_quote_inside_comments_or_identifiers(self):
+        """Oracle alternative-quoted literals are recognized only outside
+        comments and delimited identifiers. A `q'` written in a `--` comment or
+        inside a `"..."` identifier must keep its meaning, so the q-quote
+        blanking must not rewrite it -- regression flagged in review of #36038.
+        """
+        # A `q'[` written in a `--` line comment must not be read as a q-quote
+        # opener that swallows the real `BEGIN` on the next line.
+        assert get_procedure_name_from_call(query_text="-- q'[\nBEGIN etl.notify(q'[it's done]'); END;") == "notify"
+
+        # A `q'[x]'` written inside a `"..."` delimited identifier is part of
+        # the procedure name, not a q-quote literal, so it must be preserved.
+        assert get_procedure_name_from_call(query_text="CALL \"q'[x]'\"()") == "q'[x]'"
+
+        # The q-quote still blanks a real q-quote literal that follows the
+        # comment, so a `CALL` inside it does not fabricate lineage.
+        assert get_procedure_name_from_call(query_text="-- note\nq'[call fake()]'; CALL real()") == "real"
+
+    def test_get_procedure_name_preserves_dollar_signs_in_unquoted_identifiers(self):
+        """Dollars continuing identifiers are not literal openers. Unicode
+        word characters, `$` and `#` continue a name; genuine dollar-quoted
+        literals at a boundary still hide their contents from name matching.
+        """
+        # The reviewer reproduction: a `$` that continues an unquoted
+        # identifier must not be read as a dollar-quote opener that truncates.
+        assert get_procedure_name_from_call(query_text="CALL etl.my$proc$archive()") == "my$proc$archive"
+
+        # A name made entirely of word chars and `$` (e.g. `a$$`) is an
+        # identifier, not a `$$` dollar-quote opener; a later real call keeps
+        # resolving.
+        assert get_procedure_name_from_call(query_text="BEGIN etl.a$$(); etl.b$$(); END;") == "a$$"
+
+        # A single `$$` inside a longer identifier is preserved the same way.
+        assert get_procedure_name_from_call(query_text="CALL a$$foo$$(1)") == "a$$foo$$"
+
+        # The genuine dollar-quote cases must still blank, so a `CALL` written
+        # inside one does not fabricate lineage.
+        assert get_procedure_name_from_call(query_text="SELECT $$CALL old()$$; CALL nightly_load()") == "nightly_load"
+        assert (
+            get_procedure_name_from_call(query_text="SELECT $body$BEGIN old(); END;$body$; CALL nightly_load()")
+            == "nightly_load"
+        )
+
+        # A dollar-quote at a token boundary (after `(`) still blanks, while a
+        # `$1` parameter that continues no identifier is preserved verbatim.
+        assert get_procedure_name_from_call(query_text=r"CALL real(($tag$ x $tag$))") == "real"
+        assert get_procedure_name_from_call(query_text="CALL proc($1, $2)") == "proc"
+
+        # An unterminated dollar-quote at a token boundary truncates the tail,
+        # so a `CALL` written after the opener does not resolve.
+        assert get_procedure_name_from_call(query_text="$tag$ broken; CALL real()") is None
+
+    def test_get_procedure_name_stays_linear_on_repeated_unmatched_q_prefixes(self):
+        """Repeated unmatched `q'`-like prefixes must not make the sanitizer
+        rescan the remaining suffix for each opener. A backtracking regex would
+        grow roughly 4x per doubling (each opener walks to end of text); the
+        linear scan stays proportional to input. Snowflake passes full CALL
+        history through this helper, so a stall on comment text would stall
+        ingestion -- regression flagged in review of #36038.
+        """
+        line = " q'[a"
+        # 64 KiB of repeated unmatched `q'[a` inside a block comment; base
+        # stays under ~0.2ms, a quadratic regex reaches seconds.
+        for size in (4 * 1024, 16 * 1024, 64 * 1024):
+            query_text = "CALL nightly_load(/*" + line * (size // len(line)) + " */)"
+            start = time.perf_counter()
+            result = get_procedure_name_from_call(query_text=query_text)
+            elapsed = time.perf_counter() - start
+            assert result == "nightly_load"
+            assert elapsed < 0.5, f"parsing {len(query_text)} bytes took {elapsed:.2f}s"
+
+        # Repeated unmatched q-prefixes WITHOUT a wrapping comment: the first
+        # unterminated q-quote truncates immediately, so the scan stays linear.
+        query_text = "CALL real(); " + "q'[a" * 4000
+        assert get_procedure_name_from_call(query_text=query_text) == "real"
+
     def test_get_procedure_name_strips_comments_without_corrupting_quoted_identifiers(self):
-        """`sqlparse` is a SQL-aware tokenizer, so stripping comments must preserve quoted
-        identifiers (backtick and `"..."` forms) and string literals that a naive regex would
-        corrupt. A `--` or `/*` that appears inside a string literal is not a comment and must
-        survive, while a real comment ahead of a quoted-name invocation is still stripped."""
+        """Comment markers inside quoted identifiers belong to the name.
+        Markers inside literals must not change where those literals end;
+        real comments before an invocation must not hide its quoted name.
+        """
         # Comment ahead of a quoted-name invocation still allows the quoted name to parse.
         assert (
             get_procedure_name_from_call(query_text="-- prior run\nCALL `my-project.my_dataset.my_proc`()") == "my_proc"
@@ -260,6 +546,22 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="CALL proc('has -- inside')") == "proc"
 
         assert get_procedure_name_from_call(query_text="CALL schema.proc('a/*b*/c')") == "proc"
+
+        # A `/*` inside a delimited identifier is part of the name, not a
+        # comment, so the unterminated-comment truncation must skip quoted
+        # spans and keep resolving the real procedure.
+        assert get_procedure_name_from_call(query_text='CALL schema."weird/*x".proc(1)') == "proc"
+
+        assert get_procedure_name_from_call(query_text="CALL `weird/*x`()") == "weird/*x"
+
+        # An apostrophe inside a delimited identifier is part of the name, not
+        # a string-literal start, so the unterminated-`'` truncation must skip
+        # `"..."` / `` `...` `` spans and keep resolving the real procedure
+        # (the leading `--` comment also exercises that the comment blanking ran
+        # and the apostrophe survived only inside the delimited name).
+        assert get_procedure_name_from_call(query_text='-- prior\nCALL "it\'s weird"()') == "it's weird"
+
+        assert get_procedure_name_from_call(query_text="CALL `it's weird`()") == "it's weird"
 
     def test_get_procedure_name_ignores_identifiers_that_start_with_the_keyword(self):
         """A word boundary before the keyword is not enough. `call_center` and `begin_date` both

@@ -70,6 +70,8 @@ const defaultFilterNode = <T>(node: TreeSelectNode<T>, term: string) =>
 /**
  * Pure client-side visibility computation over already-loaded tree data.
  * A node (and its ancestors) stay visible if it matches, or any descendant matches.
+ * A matching node keeps its whole subtree, so searching for a parent still
+ * offers its children (e.g. a team's sub-teams).
  */
 export const getVisibleNodeIds = <T>(
   treeData: TreeSelectNode<T>[],
@@ -83,12 +85,16 @@ export const getVisibleNodeIds = <T>(
   const visible = new Set<string>();
   const filterFn = filterNode ?? defaultFilterNode;
 
-  const walk = (nodes: TreeSelectNode<T>[], ancestors: string[]): boolean => {
+  const walk = (
+    nodes: TreeSelectNode<T>[],
+    ancestors: string[],
+    ancestorMatches: boolean
+  ): boolean => {
     let hasVisibleChild = false;
     nodes.forEach((node) => {
-      const matches = filterFn(node, searchTerm);
+      const matches = ancestorMatches || filterFn(node, searchTerm);
       const childVisible = node.children
-        ? walk(node.children, [...ancestors, node.id])
+        ? walk(node.children, [...ancestors, node.id], matches)
         : false;
 
       if (matches || childVisible) {
@@ -101,7 +107,7 @@ export const getVisibleNodeIds = <T>(
     return hasVisibleChild;
   };
 
-  walk(treeData, []);
+  walk(treeData, [], false);
 
   return visible;
 };

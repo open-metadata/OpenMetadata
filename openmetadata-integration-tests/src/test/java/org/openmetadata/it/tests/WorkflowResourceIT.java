@@ -1,30 +1,55 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +69,9 @@ import org.slf4j.LoggerFactory;
 public class WorkflowResourceIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowResourceIT.class);
+  private static final String ATHENA_SECRET = "never-echo-this-secret";
+  private static final String SERVICE_PASSWORD = "openmetadata_password";
+  private static final String WORKFLOW_PATH = "/v1/automations/workflows";
 
   private CreateWorkflow createRequest(String name) {
     return new CreateWorkflow()
@@ -54,14 +82,199 @@ public class WorkflowResourceIT {
             new TestServiceConnectionRequest()
                 .withServiceType(ServiceType.DATABASE)
                 .withConnectionType("Mysql")
-                .withConnection(
-                    new DatabaseConnection()
-                        .withConfig(
-                            new MysqlConnection()
-                                .withHostPort("mysql:3306")
-                                .withUsername("openmetadata_user")
-                                .withAuthType(
-                                    new basicAuth().withPassword("openmetadata_password")))));
+                .withConnection(mysqlConnection(SERVICE_PASSWORD)));
+  }
+
+  private DatabaseConnection mysqlConnection(String password) {
+    return new DatabaseConnection()
+        .withConfig(
+            new MysqlConnection()
+                .withHostPort("mysql:3306")
+                .withUsername("openmetadata_user")
+                .withAuthType(new basicAuth().withPassword(password)));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void testConnectionCreateRequiresServiceEdit(HttpMethod method, TestNamespace ns) {
+    final WorkflowOperator operator = workflowOperator(ns);
+    final DatabaseService service =
+        testConnectionService(ns, UserTestFactory.createUser(ns, "connectionOwner"));
+    assertFalse(canEditService(operator.client(), service));
+    assertNotNull(operator.client().databaseServices().get(service.getId().toString()));
+    final CreateWorkflow newService = createRequest(ns.shortPrefix() + "newServiceTest");
+    ((TestServiceConnectionRequest) newService.getRequest())
+        .setServiceName(ns.shortPrefix() + "unregisteredService");
+    assertNotNull(createWorkflow(operator.client(), newService, method, ns).getId());
+
+    final CreateWorkflow request =
+        maskedServiceRequest(ns.shortPrefix() + "existingServiceTest", service);
+    assertThrows(
+        ForbiddenException.class, () -> createWorkflow(operator.client(), request, method, ns));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void testConnectionServiceOwnerCanReuseSecrets(HttpMethod method, TestNamespace ns) {
+    final WorkflowOperator operator = workflowOperator(ns);
+    final DatabaseService service = testConnectionService(ns, operator.user());
+    assertTrue(canEditService(operator.client(), service));
+    final CreateWorkflow request =
+        maskedServiceRequest(ns.shortPrefix() + "ownerServiceTest", service);
+
+    final Workflow created = createWorkflow(operator.client(), request, method, ns);
+
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, workflowPassword(created));
+    final Workflow runnerWorkflow =
+        SdkClients.ingestionBotClient().workflows().getByName(created.getFullyQualifiedName());
+    assertEquals(SERVICE_PASSWORD, workflowPassword(runnerWorkflow));
+    assertEquals(
+        service.getName(),
+        JsonUtils.valueToTree(runnerWorkflow.getRequest()).get("serviceName").asText());
+  }
+
+  private WorkflowOperator workflowOperator(TestNamespace ns) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(ns.shortPrefix() + "workflowPolicy")
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("CreateWorkflows")
+                                    .withEffect(Rule.Effect.ALLOW)
+                                    .withResources(
+                                        List.of(Entity.WORKFLOW, Entity.INGESTION_PIPELINE))
+                                    .withOperations(List.of(MetadataOperation.CREATE)),
+                                new Rule()
+                                    .withName("ViewServicesAndWorkflows")
+                                    .withEffect(Rule.Effect.ALLOW)
+                                    .withResources(
+                                        List.of(Entity.DATABASE_SERVICE, Entity.WORKFLOW))
+                                    .withOperations(List.of(MetadataOperation.VIEW_ALL))))));
+    final Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(ns.shortPrefix() + "workflowRole")
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    final User user =
+        ns.trackRoot(
+            Entity.USER,
+            admin
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(ns.shortPrefix() + "workflowOperator")
+                        .withEmail(ns.shortPrefix() + "workflowOperator@test.openmetadata.org")
+                        .withRoles(List.of(role.getId()))));
+    return new WorkflowOperator(
+        SdkClients.createClient(user.getName(), user.getEmail(), new String[] {}), user);
+  }
+
+  private DatabaseService testConnectionService(TestNamespace ns, User owner) {
+    return ns.trackRoot(
+        Entity.DATABASE_SERVICE,
+        SdkClients.adminClient()
+            .databaseServices()
+            .create(
+                new CreateDatabaseService()
+                    .withName(ns.shortPrefix() + "connectionService")
+                    .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+                    .withConnection(mysqlConnection(SERVICE_PASSWORD))
+                    .withOwners(List.of(owner.getEntityReference()))));
+  }
+
+  private boolean canEditService(OpenMetadataClient client, DatabaseService service) {
+    final ResourcePermission permission =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/permissions/databaseService/" + service.getId(),
+                null,
+                ResourcePermission.class);
+    return permission.getPermissions().stream()
+            .filter(operation -> operation.getOperation() == MetadataOperation.EDIT_ALL)
+            .findFirst()
+            .orElseThrow()
+            .getAccess()
+        == Permission.Access.ALLOW;
+  }
+
+  private CreateWorkflow maskedServiceRequest(String name, DatabaseService service) {
+    final CreateWorkflow request = createRequest(name);
+    ((TestServiceConnectionRequest) request.getRequest())
+        .withServiceName(service.getName())
+        .withConnection(mysqlConnection(PasswordEntityMasker.PASSWORD_MASK));
+    return request;
+  }
+
+  private Workflow createWorkflow(
+      OpenMetadataClient client, CreateWorkflow request, HttpMethod method, TestNamespace ns) {
+    return ns.trackRoot(
+        Entity.WORKFLOW,
+        client.getHttpClient().execute(method, WORKFLOW_PATH, request, Workflow.class));
+  }
+
+  @AfterEach
+  void cleanupWorkflows(TestNamespace ns) {
+    // Workflows are not included in the generic namespace cleanup mapping.
+    for (final TestNamespace.EntityRoot root : ns.drainTrackedRoots().reversed()) {
+      if (Entity.WORKFLOW.equals(root.entityType())) {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.DELETE, WORKFLOW_PATH + "/" + root.id() + "?hardDelete=true", null);
+      } else {
+        ns.trackRoot(root.entityType(), root.id());
+      }
+    }
+  }
+
+  private String workflowPassword(Workflow workflow) {
+    return JsonUtils.valueToTree(workflow.getRequest())
+        .at("/connection/config/authType/password")
+        .asText();
+  }
+
+  private record WorkflowOperator(OpenMetadataClient client, User user) {}
+
+  /** A raw config map, since a typed AthenaConnection cannot hold an invalid URI. */
+  private CreateWorkflow athenaTestConnectionRequest(String name, String s3StagingDir) {
+    Map<String, Object> config =
+        Map.of(
+            "type",
+            "Athena",
+            "s3StagingDir",
+            s3StagingDir,
+            "workgroup",
+            "primary",
+            "awsConfig",
+            Map.of(
+                "awsRegion", "us-east-1",
+                "awsAccessKeyId", "AKIAEXAMPLE",
+                "awsSecretAccessKey", ATHENA_SECRET));
+    return new CreateWorkflow()
+        .withName(name)
+        .withWorkflowType(WorkflowType.TEST_CONNECTION)
+        .withRequest(
+            new TestServiceConnectionRequest()
+                .withServiceType(ServiceType.DATABASE)
+                .withConnectionType("Athena")
+                .withConnection(new DatabaseConnection().withConfig(config)));
   }
 
   @Test
@@ -293,6 +506,40 @@ public class WorkflowResourceIT {
         Exception.class,
         () -> client.workflows().create(duplicateRequest),
         "Creating duplicate workflow with same name should fail");
+  }
+
+  @Test
+  void post_testConnectionWithInvalidConnectionField_400_namesFieldWithoutValues(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateWorkflow createRequest =
+        athenaTestConnectionRequest(ns.prefix("athenaBadUri"), "s3://bucket/athena results/");
+
+    InvalidRequestException error =
+        assertThrows(InvalidRequestException.class, () -> client.workflows().create(createRequest));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(
+        error
+            .getMessage()
+            .contains(
+                "Invalid Athena connection: 's3StagingDir' must be a valid URI "
+                    + "(Illegal character in path at index 18)"),
+        error.getMessage());
+    assertFalse(error.getMessage().contains("athena results"), error.getMessage());
+    assertFalse(error.getMessage().contains(ATHENA_SECRET), error.getMessage());
+  }
+
+  @Test
+  void post_testConnectionWithValidAthenaConnection_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Workflow workflow =
+        client
+            .workflows()
+            .create(athenaTestConnectionRequest(ns.prefix("athenaOk"), "s3://bucket/results/"));
+
+    assertEquals(WorkflowType.TEST_CONNECTION, workflow.getWorkflowType());
+    assertNotNull(workflow.getRequest());
   }
 
   @Test

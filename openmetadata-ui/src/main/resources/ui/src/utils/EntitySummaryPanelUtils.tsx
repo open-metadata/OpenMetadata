@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from './common/layout.utils';
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { get, isEmpty } from 'lodash';
 import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { CustomizeEntityType } from '../constants/Customize.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -185,7 +184,7 @@ export const getTitle = (
           ellipsis={{ tooltip: true }}>
           {title}
         </Typography>
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <LinkExternal01 className="tw:shrink-0" size={14} />
       </div>
     </Link>
   ) : (

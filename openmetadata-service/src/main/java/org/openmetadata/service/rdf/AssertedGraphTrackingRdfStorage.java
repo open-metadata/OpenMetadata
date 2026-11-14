@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +38,8 @@ import org.apache.jena.update.Update;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /**
@@ -65,9 +68,17 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
   }
 
   @Override
-  public void storeEntity(final String entityType, final UUID entityId, final Model entityModel) {
-    delegate.storeEntity(entityType, entityId, entityModel);
-    assertedOnlyQueries.graphsWritten(entityGraphs);
+  public RdfEntityWriteResult storeEntity(
+      final String entityType,
+      final UUID entityId,
+      final Model entityModel,
+      final RdfEntityWriteStrategy strategy) {
+    final RdfEntityWriteResult result =
+        delegate.storeEntity(entityType, entityId, entityModel, strategy);
+    if (result.changesGraph()) {
+      assertedOnlyQueries.graphsWritten(entityGraphs);
+    }
+    return result;
   }
 
   @Override
@@ -113,10 +124,23 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
     try {
       delegate.executeSparqlUpdate(sparqlUpdate);
     } finally {
-      // A failed or timed-out update may still have been applied.
-      targetGraphs(sparqlUpdate)
-          .ifPresentOrElse(assertedOnlyQueries::graphsWritten, assertedOnlyQueries::graphsChanged);
+      recordTargets(sparqlUpdate);
     }
+  }
+
+  @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    try {
+      delegate.executeMaintenanceUpdate(sparqlUpdate, timeout);
+    } finally {
+      recordTargets(sparqlUpdate);
+    }
+  }
+
+  // A failed or timed-out update may still have been applied.
+  private void recordTargets(final String sparqlUpdate) {
+    targetGraphs(sparqlUpdate)
+        .ifPresentOrElse(assertedOnlyQueries::graphsWritten, assertedOnlyQueries::graphsChanged);
   }
 
   @Override
@@ -125,6 +149,15 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
       delegate.loadTurtleFile(turtleStream, graphUri);
     } finally {
       assertedOnlyQueries.graphsWritten(Set.of(graphUri));
+    }
+  }
+
+  @Override
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
+    try {
+      delegate.replaceGraph(graph, releaseId, model);
+    } finally {
+      assertedOnlyQueries.graphsWritten(Set.of(graph));
     }
   }
 

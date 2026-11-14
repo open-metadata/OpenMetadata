@@ -18,8 +18,10 @@ import { AuthProvider } from '../../../generated/settings/settings';
 import {
   getProviderDisplayName,
   getProviderIcon,
+  ProviderIcon,
 } from '../../../utils/SSOUtils';
 import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import './sso-doc-panel.less';
 import { FIELD_MAPPINGS, PROVIDER_FILE_MAP } from './SSODocPanel.constants';
 
@@ -73,11 +75,10 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
       <div className="sso-doc-header">
         {getProviderIcon(serviceName) && (
           <div className="sso-provider-icon">
-            <img
+            <SsoProviderIcon
               alt={`${serviceName} icon`}
-              height={22}
-              src={getProviderIcon(serviceName) as string}
-              width={22}
+              icon={getProviderIcon(serviceName) as ProviderIcon}
+              size={22}
             />
           </div>
         )}

@@ -23,9 +23,12 @@ import {
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SettingType } from '../../../../../../generated/settings/settings';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import {
   showErrorToast,
@@ -53,7 +56,7 @@ const EMPTY_VALUES: ProfilerFormValues = {
   readSampleData: true,
 };
 
-const ProfilerSettingsForm = ({
+const ProfilerConfigForm = ({
   showHint,
   onNavigate,
 }: PlatformSettingsFormProps) => {
@@ -135,6 +138,19 @@ const ProfilerSettingsForm = ({
           items: metricItems,
           isDisabled: Boolean(current?.disabled),
           maxVisibleItems: 5,
+          // "All" already means every metric, so it never sits alongside one.
+          onItemInserted: (key: Key) => {
+            const name = `metricConfiguration.${index}.metrics` as const;
+            const keepAll = String(key) === ALL_METRICS;
+
+            form.setValue(
+              name,
+              form
+                .getValues(name)
+                .filter((metric) => (metric.id === ALL_METRICS) === keepAll),
+              { shouldDirty: true }
+            );
+          },
         },
       },
       {
@@ -223,10 +239,9 @@ const ProfilerSettingsForm = ({
                 {getField(disabled)}
                 <ButtonUtility
                   className="tw:mt-7"
-                  color="tertiary"
                   data-testid={`remove-filter-${index}`}
                   icon={XClose}
-                  size="sm"
+                  size="lg"
                   tooltip={t('label.remove')}
                   onPress={() => remove(index)}
                 />
@@ -260,6 +275,16 @@ const ProfilerSettingsForm = ({
       </SettingsFormSection>
     </SettingsFormLayout>
   );
+};
+
+// An item id addresses a downstream sub-page; without one (or without a
+// contributor) this is the profiler configuration form.
+const ProfilerSettingsForm = (props: PlatformSettingsFormProps) => {
+  const ItemForm = props.itemId
+    ? profilerConfigurationClassBase.getSettingsItemForm()
+    : undefined;
+
+  return ItemForm ? <ItemForm {...props} /> : <ProfilerConfigForm {...props} />;
 };
 
 export default ProfilerSettingsForm;

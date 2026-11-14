@@ -13,15 +13,18 @@
 import { PERSONA_CONTEXT_ASSET_TYPES } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ContextSection } from '../generated/type/personaContextDefinition';
+import { CacheState } from '../generated/type/personaContextStatus';
 import {
   buildPersonaContextVersionHistory,
   getDefaultPersonaContextSections,
+  getPersonaContextFreshness,
   getPersonaContextSections,
   getRuleConditionCount,
   getRuleExplorePath,
   getRuleFilterTree,
   getScopedRuleCount,
   isKnowledgeContextRule,
+  isRuleFilterFullyRendered,
   isSearchScopedRule,
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
@@ -136,6 +139,90 @@ describe('PersonaAIContextUtils', () => {
 
     expect(tree).toBeDefined();
     expect(getRuleConditionCount(JSON.stringify(tree))).toBe(1);
+  });
+
+  // The backend stores `queryFilter` as a free-form JSON object and embeds the
+  // DSL `query` node verbatim — it never requires `bool.must`. Rules created via
+  // the REST API (which never populates `filterJsonTree`) use `should`, `filter`,
+  // `must_not`, or bare `term` shapes. Each of these must reconstruct to a
+  // non-empty tree so the editor shows the saved conditions and the rule card
+  // shows a non-zero condition count.
+  it.each([
+    [
+      'bool.should (root OR)',
+      {
+        query: {
+          bool: {
+            should: [{ term: { deleted: false } }, { term: { name: 'x' } }],
+          },
+        },
+      },
+      2,
+    ],
+    [
+      'bool.filter',
+      { query: { bool: { filter: [{ term: { deleted: false } }] } } },
+      1,
+    ],
+    [
+      'bool.must_not',
+      { query: { bool: { must_not: [{ term: { deleted: true } }] } } },
+      1,
+    ],
+    [
+      'bare query.term',
+      { query: { term: { fullyQualifiedName: 'dim_customer' } } },
+      1,
+    ],
+    [
+      'bare term without query wrapper',
+      { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+      1,
+    ],
+    [
+      'single must clause',
+      { query: { bool: { must: [{ term: { name: 'x' } }] } } },
+      1,
+    ],
+  ])(
+    'reconstructs a %s shape from queryFilter alone',
+    (_label, filter, expectedCount) => {
+      const tree = getRuleFilterTree(undefined, JSON.stringify(filter));
+
+      expect(tree).toBeDefined();
+      expect(getRuleConditionCount(JSON.stringify(tree))).toBe(expectedCount);
+    }
+  );
+
+  it('returns undefined when the queryFilter is empty', () => {
+    expect(getRuleFilterTree(undefined, '')).toBeUndefined();
+    expect(getRuleFilterTree(undefined, '{}')).toBeUndefined();
+  });
+
+  it('returns undefined when the queryFilter is not valid JSON', () => {
+    expect(getRuleFilterTree(undefined, '{invalid')).toBeUndefined();
+  });
+
+  it('treats a filter as fully rendered only when no condition is dropped', () => {
+    const tier = { term: { 'tier.tagFQN': 'Tier.Tier1' } };
+    const pii = { term: { 'tags.tagFQN': 'PII.Sensitive' } };
+    const mixed = JSON.stringify({
+      query: { bool: { should: [tier], filter: [pii] } },
+    });
+
+    expect(isRuleFilterFullyRendered(undefined, undefined)).toBe(true);
+    expect(
+      isRuleFilterFullyRendered(
+        undefined,
+        JSON.stringify({ query: { bool: { filter: [tier, pii] } } })
+      )
+    ).toBe(true);
+    expect(isRuleFilterFullyRendered(undefined, mixed)).toBe(false);
+    expect(isRuleFilterFullyRendered(undefined, '{invalid')).toBe(false);
+    // A persisted tree is exact, whatever the DSL looks like.
+    expect(
+      isRuleFilterFullyRendered(JSON.stringify({ type: 'group' }), mixed)
+    ).toBe(true);
   });
 
   it('identifies knowledge rules', () => {
@@ -358,6 +445,25 @@ describe('PersonaAIContextUtils', () => {
 // its custom-property keys omit the entity segment Explore expects — without
 // the rewrite the link landed on the unfiltered estate with no filter chip.
 describe('getRuleExplorePath', () => {
+  it('scopes a no-text persona link with an explicit entity-type quick filter', () => {
+    const url = new URL(
+      getRuleExplorePath(EntityType.TABLE),
+      'http://localhost'
+    );
+
+    expect(url.pathname).toBe('/explore/');
+    expect(url.searchParams.get('search')).toBe('');
+    expect(JSON.parse(url.searchParams.get('quickFilter') ?? '{}')).toEqual({
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { entityType: EntityType.TABLE } }] } },
+          ],
+        },
+      },
+    });
+  });
+
   const filterJsonTree = JSON.stringify({
     id: 'root',
     type: 'group',
@@ -397,4 +503,34 @@ describe('getRuleExplorePath', () => {
       '"field":"extension.table.testCp.keyword"'
     );
   });
+});
+
+describe('getPersonaContextFreshness', () => {
+  const status = (cacheState: CacheState, lastGeneratedAt?: number) => ({
+    cacheState,
+    tokensEst: 0,
+    entitiesIncluded: 0,
+    lastGeneratedAt,
+    personaId: 'p',
+  });
+
+  it.each([
+    [false, status(CacheState.Fresh, 1), 'message.not-configured', 'error'],
+    [true, undefined, undefined, undefined],
+    [true, status(CacheState.Fresh, 1), 'label.fresh', 'success'],
+    [true, status(CacheState.Stale, 1), 'label.stale', 'warning'],
+    [true, status(CacheState.Stale), 'label.not-generated', 'gray'],
+    [true, status(CacheState.Generating), 'label.generating', 'warning'],
+    [true, status(CacheState.Failed), 'label.failed', 'error'],
+  ])(
+    'hasRules=%s status=%o -> %s',
+    (hasRules, cacheStatus, labelKey, color) => {
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.labelKey).toBe(
+        labelKey
+      );
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.color).toBe(
+        color
+      );
+    }
+  );
 });

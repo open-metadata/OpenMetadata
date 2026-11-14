@@ -28,7 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.http.OutboundHttpClients;
 
 @Slf4j
 public class OAuth2TokenManager {
@@ -78,8 +78,8 @@ public class OAuth2TokenManager {
       String tokenUrl = oauth2Config.getTokenUrl().toString();
       URLValidator.validateURL(tokenUrl);
 
-      String clientId = decryptSecret(oauth2Config.getClientId());
-      String clientSecret = decryptSecret(oauth2Config.getClientSecret());
+      String clientId = oauth2Config.getClientId();
+      String clientSecret = oauth2Config.getClientSecret();
 
       try (Client client = createTokenClient()) {
         Form form = new Form();
@@ -140,19 +140,12 @@ public class OAuth2TokenManager {
     return 3600;
   }
 
-  private static String decryptSecret(String encryptedValue) {
-    if (Fernet.getInstance().isKeyDefined()) {
-      return Fernet.getInstance().decryptIfApplies(encryptedValue);
-    }
-    return encryptedValue;
-  }
-
   private static String buildCacheKey(WebhookOAuth2Config config) {
     return config.getTokenUrl().toString() + "|" + config.getClientId();
   }
 
   private static Client createTokenClient() {
-    return SubscriptionUtil.getClient(TOKEN_CONNECT_TIMEOUT_SECONDS, TOKEN_READ_TIMEOUT_SECONDS);
+    return OutboundHttpClients.newClient(TOKEN_CONNECT_TIMEOUT_SECONDS, TOKEN_READ_TIMEOUT_SECONDS);
   }
 
   private record CachedToken(String accessToken, Instant expiresAt) {

@@ -13,17 +13,45 @@
 package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Unit tests for {@link AIContextFinder}'s pure hit-mapping helpers and the Mode-B markdown that
@@ -82,34 +110,31 @@ class AIContextFinderTest {
   }
 
   @Test
-  void toKnowledgeItem_filtersDraftGlossaryTerms() {
-    assertNull(
-        AIContextFinder.toKnowledgeItem(
-            Map.of(
-                "entityType", "glossaryTerm",
-                "fullyQualifiedName", "Business.Draft",
-                "name", "Draft",
-                "entityStatus", "Draft")),
-        "non-Approved glossary terms are untrusted as business-rule context");
+  void collectHit_dropsDraftGlossaryTermsButNotDraftArticles() {
+    AIContextFinder finder = new AIContextFinder();
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
+    Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
+    finder.collectHit(
+        Map.of(
+            "entityType", "glossaryTerm",
+            "fullyQualifiedName", "Business.Draft",
+            "name", "Draft",
+            "entityStatus", "Draft"),
+        items,
+        candidates);
+    finder.collectHit(
+        Map.of(
+            "entityType", "page",
+            "fullyQualifiedName", "Article_1",
+            "name", "Guide",
+            "entityStatus", "Draft"),
+        items,
+        candidates);
     assertEquals(
-        KnowledgeItem.Type.GLOSSARY_TERM,
-        AIContextFinder.toKnowledgeItem(
-                Map.of(
-                    "entityType", "glossaryTerm",
-                    "fullyQualifiedName", "Business.Live",
-                    "name", "Live",
-                    "entityStatus", "Approved"))
-            .getType());
-    assertEquals(
-        KnowledgeItem.Type.PAGE,
-        AIContextFinder.toKnowledgeItem(
-                Map.of(
-                    "entityType", "page",
-                    "fullyQualifiedName", "Article_1",
-                    "name", "Guide",
-                    "entityStatus", "Draft"))
-            .getType(),
-        "the Approved filter applies to glossary terms only");
+        List.of("page:Article_1"),
+        List.copyOf(items.keySet()),
+        "non-Approved glossary terms are untrusted as business-rule context; articles keep their"
+            + " rule");
   }
 
   @Test
@@ -130,7 +155,11 @@ class AIContextFinderTest {
     Map<String, KnowledgeItem> items = new LinkedHashMap<>();
     Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
     finder.collectHit(
-        Map.of("entityType", "metric", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        Map.of(
+            "entityType", "metric",
+            "fullyQualifiedName", "Revenue",
+            "name", "Revenue",
+            "entityStatus", "Approved"),
         items,
         candidates);
     finder.collectHit(
@@ -146,6 +175,88 @@ class AIContextFinderTest {
         items.size(),
         "a metric and a page sharing an FQN are distinct knowledge items; a repeated chunk of the"
             + " same item still dedupes");
+  }
+
+  @Test
+  void collectHit_skipsHitsTheCallerCannotViewAndDoesNotRouteThem() {
+    UUID hiddenMetricId = UUID.randomUUID();
+    UUID visiblePageId = UUID.randomUUID();
+    EntityReference orders =
+        new EntityReference().withFullyQualifiedName("svc.db.sch.orders").withType("table");
+    EntityRepository<?> repository = mock(EntityRepository.class);
+    when(repository.findTo(hiddenMetricId, Entity.METRIC, Relationship.APPLIED_TO, null))
+        .thenReturn(List.of(orders));
+    when(repository.findFrom(visiblePageId, Entity.PAGE, Relationship.HAS, null))
+        .thenReturn(List.of(orders));
+    AIContextFinder finder =
+        new AIContextFinder(null, item -> item.getType() != KnowledgeItem.Type.METRIC);
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
+    Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(any(String.class))).thenReturn(repository);
+      finder.collectHit(
+          Map.of(
+              "id", hiddenMetricId.toString(),
+              "entityType", "metric",
+              "fullyQualifiedName", "Finance.Ceiling",
+              "name", "Ceiling",
+              "entityStatus", "Approved"),
+          items,
+          candidates);
+      assertTrue(items.isEmpty(), "a hidden hit is not returned");
+      assertTrue(candidates.isEmpty(), "a hidden hit routes to no candidate assets");
+
+      finder.collectHit(
+          Map.of(
+              "id", visiblePageId.toString(),
+              "entityType", "page",
+              "fullyQualifiedName", "Marketing.Playbook",
+              "name", "Playbook"),
+          items,
+          candidates);
+    }
+
+    assertEquals(List.of("page:Marketing.Playbook"), List.copyOf(items.keySet()));
+    assertEquals(
+        List.of(
+            new AIContextFinder.CandidateAsset("svc.db.sch.orders", "table", "Marketing.Playbook")),
+        List.copyOf(candidates.values()),
+        "a visible hit still routes to an asset a hidden hit also points at");
+    verify(repository, never())
+        .findTo(hiddenMetricId, Entity.METRIC, Relationship.APPLIED_TO, null);
+  }
+
+  @Test
+  void find_usesTheBackendNeutralVectorServiceWhenTheOpenSearchSingletonIsNull() {
+    Map<String, Object> hit =
+        Map.of(
+            "entityType", "glossaryTerm",
+            "fullyQualifiedName", "Business.BounceRate",
+            "name", "BounceRate",
+            "description", "Share of visits that leave after a single page.",
+            // Only an Approved term reaches AI context.
+            "entityStatus", "Approved");
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(1L, List.of(hit)));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<OpenSearchVectorService> openSearch =
+            mockStatic(OpenSearchVectorService.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      // Elasticsearch deployments never create the OpenSearch singleton.
+      openSearch.when(OpenSearchVectorService::getInstance).thenReturn(null);
+
+      AIContextFinder.FoundContext found = new AIContextFinder().find("bounce rate", 5);
+
+      assertEquals(
+          List.of("Business.BounceRate"),
+          found.items().stream().map(KnowledgeItem::getFullyQualifiedName).toList());
+    }
   }
 
   @Test
@@ -170,5 +281,55 @@ class AIContextFinderTest {
     assertTrue(
         markdown.contains("- `svc.db.sch.orders` (table) — via `Business.Order`"),
         "missing routed candidate asset");
+  }
+
+  @Test
+  void attachMetricHierarchy_showsAMetricsParentAndVariantCount() {
+    EntityReference revenue =
+        new EntityReference().withType(Entity.METRIC).withFullyQualifiedName("Revenue");
+    MetricRepository repository = mock(MetricRepository.class);
+    Fields hierarchyFields = new Fields(Set.of("parent", "childrenCount"));
+    when(repository.getFields("parent,childrenCount")).thenReturn(hierarchyFields);
+    when(repository.getByNames(
+            isNull(),
+            eq(List.of("Revenue", "RevenueEU")),
+            eq(hierarchyFields),
+            eq(Include.NON_DELETED)))
+        .thenReturn(
+            List.of(
+                new Metric().withFullyQualifiedName("Revenue").withChildrenCount(1),
+                new Metric()
+                    .withFullyQualifiedName("RevenueEU")
+                    .withParent(revenue)
+                    .withChildrenCount(0)));
+    KnowledgeItem parent = metricItem("Revenue");
+    KnowledgeItem variant = metricItem("RevenueEU");
+    KnowledgeItem term =
+        new KnowledgeItem()
+            .withType(KnowledgeItem.Type.GLOSSARY_TERM)
+            .withName("Revenue")
+            .withFullyQualifiedName("Business.Revenue");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      AIContextFinder.attachMetricHierarchy(List.of(parent, variant, term));
+    }
+
+    assertEquals(1, parent.getChildrenCount());
+    assertEquals(revenue, variant.getParent());
+    assertNull(term.getChildrenCount(), "a glossary term is not looked up as a metric");
+    String markdown =
+        AIContextMarkdown.renderFound(
+            new AIContextFinder.FoundContext(List.of(parent, variant), List.of()));
+    assertTrue(markdown.contains("childrenCount: 1"), "missing the parent's variant count");
+    assertTrue(markdown.contains("parent: \"Revenue\""), "missing the variant's parent");
+    assertFalse(markdown.contains("childrenCount: 0"), "a metric with no variants adds no line");
+  }
+
+  private static KnowledgeItem metricItem(String name) {
+    return new KnowledgeItem()
+        .withType(KnowledgeItem.Type.METRIC)
+        .withName(name)
+        .withFullyQualifiedName(name);
   }
 }

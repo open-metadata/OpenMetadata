@@ -27,9 +27,11 @@ import { useTranslation } from 'react-i18next';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 export interface CardinalityDistributionChartProps {
+  isSharded?: boolean;
   data: {
     firstDayData?: ColumnProfile;
     currentDayData?: ColumnProfile;
@@ -66,7 +68,12 @@ const RICH_STYLES = (selectedColor: string) => ({
 
 const renderPlaceholder = (placeholderText?: string | React.ReactNode) => (
   <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
-    <ErrorPlaceHolder placeholderText={placeholderText} />
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <NoDataPlaceholder
+        data-testid="no-data-placeholder"
+        description={placeholderText}
+      />
+    </div>
   </div>
 );
 
@@ -194,6 +201,7 @@ const CardinalityGraph = ({
 
 const CardinalityDistributionChart = ({
   data,
+  isSharded,
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
@@ -211,6 +219,7 @@ const CardinalityDistributionChart = ({
 
           return {
             key,
+            executionSource: columnProfile?.executionSource,
             isAllUnique: cardinality?.allValuesUnique ?? false,
             categoriesCount: cardinality?.categories?.length || 0,
             date: customFormatDateTime(
@@ -294,6 +303,10 @@ const CardinalityDistributionChart = ({
                       {`${chartAriaLabel}: ${entry.categoriesCount}`}
                     </Badge>
                   </div>
+                  <ExecutionSource
+                    isSharded={isSharded}
+                    source={entry.executionSource}
+                  />
                   <CardinalityGraph
                     ariaLabel={chartAriaLabel}
                     chartKey={entry.key}

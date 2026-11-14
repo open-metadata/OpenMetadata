@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, within } from '@testing-library/react';
-import { Form } from 'antd';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Table } from '../../../generated/entity/data/table';
+import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import CustomMetricForm from './CustomMetricForm.component';
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -44,9 +46,11 @@ describe('CustomMetricForm', () => {
     render(<CustomMetricForm isColumnMetric isEditMode onFinish={jest.fn()} />);
 
     expect(await screen.findByTestId('custom-metric-name')).toBeDisabled();
-    expect(await screen.findByTestId('custom-metric-column')).toHaveClass(
-      'ant-select-disabled'
-    );
+    expect(
+      within(await screen.findByTestId('custom-metric-column')).getByRole(
+        'button'
+      )
+    ).toBeDisabled();
   });
 
   it('initial value is visible if provided', async () => {
@@ -55,28 +59,24 @@ describe('CustomMetricForm', () => {
       expression: 'select * from table',
       columnName: 'column',
     };
-    const FormWrapper = () => {
-      const [form] = Form.useForm();
-
-      return (
-        <CustomMetricForm
-          isColumnMetric
-          isEditMode
-          form={form}
-          initialValues={initialValues}
-          onFinish={jest.fn()}
-        />
-      );
-    };
-
-    render(<FormWrapper />);
+    render(
+      <CustomMetricForm
+        isColumnMetric
+        isEditMode
+        initialValues={initialValues}
+        table={{ columns: [{ name: 'column' }] } as Table}
+        onFinish={jest.fn()}
+      />
+    );
 
     expect(await screen.findByTestId('custom-metric-name')).toHaveValue(
       initialValues.name
     );
     expect(
-      await screen.findByText(initialValues.columnName)
-    ).toBeInTheDocument();
+      within(await screen.findByTestId('custom-metric-column')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent(initialValues.columnName);
     // The line-number and fold gutters live inside the container, so read the
     // expression from the editor's content element instead of the whole box.
     expect(
@@ -84,5 +84,76 @@ describe('CustomMetricForm', () => {
         'textbox'
       )
     ).toHaveTextContent(initialValues.expression);
+  });
+
+  it('blocks empty name and SQL fields without submitting', async () => {
+    const onFinish = jest.fn();
+    render(<CustomMetricForm isColumnMetric={false} onFinish={onFinish} />);
+    const form = await screen.findByTestId('custom-metric-form');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(screen.getByText('label.field-required')).toBeVisible();
+    expect(screen.getByText('message.field-text-is-required')).toBeVisible();
+  });
+
+  it('submits edited values while keeping the disabled metric name', async () => {
+    const onFinish = jest.fn();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <CustomMetricForm
+        isEditMode
+        initialValues={{
+          name: 'row_metric',
+          expression: 'SELECT COUNT(*) FROM table_name',
+          id: 'persisted-id',
+          description: 'not a form field',
+        }}
+        isColumnMetric={false}
+        onFinish={onFinish}
+      />
+    );
+    const editor = within(
+      await screen.findByTestId('code-mirror-container')
+    ).getByRole('textbox');
+    await user.click(editor);
+    await user.keyboard('{Control>}a{/Control}SELECT 10');
+    await act(async () => {
+      fireEvent.submit(screen.getByTestId('custom-metric-form'));
+    });
+
+    expect(onFinish).toHaveBeenCalledWith({
+      name: 'row_metric',
+      expression: 'SELECT 10',
+    });
+  });
+
+  it('rejects an existing table metric name before submitting', async () => {
+    const onFinish = jest.fn();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <CustomMetricForm
+        initialValues={{ expression: 'SELECT 1' }}
+        isColumnMetric={false}
+        table={{
+          ...MOCK_TABLE,
+          columns: [],
+          customMetrics: [{ name: 'duplicate', expression: 'SELECT 1' }],
+        }}
+        onFinish={onFinish}
+      />
+    );
+    await user.type(
+      await screen.findByTestId('custom-metric-name'),
+      'duplicate'
+    );
+    await act(async () => {
+      fireEvent.submit(screen.getByTestId('custom-metric-form'));
+    });
+
+    expect(screen.getByText('message.entity-already-exists')).toBeVisible();
+    expect(onFinish).not.toHaveBeenCalled();
   });
 });

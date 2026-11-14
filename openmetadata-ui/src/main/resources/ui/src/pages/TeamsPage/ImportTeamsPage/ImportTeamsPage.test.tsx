@@ -75,19 +75,6 @@ jest.mock(
   })
 );
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(({ children }) => {
-      return (
-        <div>
-          ErrorPlaceHolder
-          <div>{children}</div>
-        </div>
-      );
-    });
-  }
-);
-jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest.fn().mockImplementation(() => {
@@ -195,7 +182,11 @@ describe('ImportTeamsPage', () => {
       render(<ImportTeamsPage />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('ErrorPlaceHolder should be visible if teams API fail', async () => {
@@ -204,7 +195,11 @@ describe('ImportTeamsPage', () => {
       render(<ImportTeamsPage />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('Loader should visible is data is loading', async () => {
@@ -215,7 +210,11 @@ describe('ImportTeamsPage', () => {
     // To check if loader was rendered when the loading state was true and then removed after loading is false
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('TeamImportResult should visible', async () => {
@@ -241,7 +240,11 @@ describe('ImportTeamsPage', () => {
       render(<ImportTeamsPage />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
         'message.group-type-team-not-allowed-to-have-sub-team'

@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Drawer } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, User01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
@@ -26,9 +30,9 @@ import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -77,15 +81,7 @@ const TableQueryRightPanel = ({
   };
 
   return (
-    <Drawer
-      destroyOnClose
-      open
-      className="query-right-panel"
-      closable={false}
-      getContainer={false}
-      mask={false}
-      title={null}
-      width="100%">
+    <Box className="query-right-panel tw:h-full tw:w-full" direction="col">
       {isLoading ? (
         <Loader />
       ) : (
@@ -117,10 +113,10 @@ const TableQueryRightPanel = ({
                         onUpdate={(updatedUsers) =>
                           handleUpdateOwner(updatedUsers)
                         }>
-                        <EditIconButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          size="small"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-lowercase-plural'),
                           })}
                         />
@@ -189,7 +185,7 @@ const TableQueryRightPanel = ({
                         name={user.name || ''}
                         width="20"
                       />
-                      <Link to={getUserPath(user.name ?? '')}>
+                      <Link to={getSettingsLink(getUserPath(user.name ?? ''))}>
                         {getEntityName(user)}
                       </Link>
                     </Box>
@@ -231,7 +227,7 @@ const TableQueryRightPanel = ({
                       gap={1}
                       itemClassName="layout-space-item"
                       key={user}>
-                      <Icon component={IconUser} />
+                      <User01 className="tw:shrink-0" size={14} />
                       {user}
                     </Box>
                   ))}
@@ -247,7 +243,7 @@ const TableQueryRightPanel = ({
           </Grid.Item>
         </Grid>
       )}
-    </Drawer>
+    </Box>
   );
 };
 

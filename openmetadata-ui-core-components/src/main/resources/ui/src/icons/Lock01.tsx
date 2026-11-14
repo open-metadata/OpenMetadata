@@ -18,22 +18,32 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Lock01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M17 10V8A5 5 0 0 0 7 8v2m5 4.5v2M8.8 21h6.4c1.68 0 2.52 0 3.162-.327a3 3 0 0 0 1.311-1.311C20 18.72 20 17.88 20 16.2v-1.4c0-1.68 0-2.52-.327-3.162a3 3 0 0 0-1.311-1.311C17.72 10 16.88 10 15.2 10H8.8c-1.68 0-2.52 0-3.162.327a3 3 0 0 0-1.311 1.311C4 12.28 4 13.12 4 14.8v1.4c0 1.68 0 2.52.327 3.162a3 3 0 0 0 1.311 1.311C6.28 21 7.12 21 8.8 21"
+      d="M13.603 7.6v-2a3.6 3.6 0 1 0-7.2 0v2"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M11.202 7.598h-2.4c-1.868 0-2.802 0-3.51.378A3.2 3.2 0 0 0 3.98 9.289c-.378.707-.378 1.642-.377 3.51 0 1.867 0 2.8.378 3.508a3.2 3.2 0 0 0 1.313 1.313c.707.378 1.641.378 3.509.378h2.4c1.867 0 2.801 0 3.508-.378a3.2 3.2 0 0 0 1.314-1.313c.378-.707.378-1.641.378-3.51 0-1.867 0-2.8-.378-3.508a3.2 3.2 0 0 0-1.314-1.313c-.707-.378-1.64-.378-3.509-.378"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M11.603 12.8a1.6 1.6 0 1 1-3.2 0 1.6 1.6 0 0 1 3.2 0"
       stroke="currentColor"
       strokeWidth={1.3}
     />

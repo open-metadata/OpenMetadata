@@ -99,7 +99,7 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(matched),
-            self.format_statistic_message("Inserted row count", res, (min_bound, max_bound), matched),
+            self.format_statistic_message("Inserted row count", res, (min_bound, max_bound), matched, noun="rows"),
             [TestResultValue(name=ROW_COUNT, value=str(res))],
         )
 

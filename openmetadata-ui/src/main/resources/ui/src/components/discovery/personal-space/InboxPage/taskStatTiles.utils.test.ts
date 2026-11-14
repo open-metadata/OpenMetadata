@@ -79,7 +79,7 @@ describe('getTaskStatTiles', () => {
         getTaskStatTiles(incident, about, t).find(
           (tile) => tile.key === 'severity'
         )
-      ).toMatchObject({ value: 'Severity 1', badgeColor: 'error' });
+      ).toMatchObject({ value: 'label.severity 1', badgeColor: 'error' });
     });
 
     it('names the incident stage the workflow reports', () => {
@@ -97,7 +97,7 @@ describe('getTaskStatTiles', () => {
           { ...about, incidentSeverity: 'Severity2' } as TaskAboutEntity,
           t
         ).find((tile) => tile.key === 'severity')?.value
-      ).toBe('Severity 2');
+      ).toBe('label.severity 2');
     });
 
     it('drops tiles whose facts are missing', () => {

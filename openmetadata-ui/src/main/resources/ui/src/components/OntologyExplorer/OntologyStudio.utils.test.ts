@@ -16,10 +16,17 @@ import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import { GraphFilters, OntologyGraphData } from './OntologyExplorer.interface';
 import {
+  buildNativeTreeIndex,
   buildOntologyQuerySuggestions,
   buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
+  findNativeTreePath,
+  getNativeTreePage,
   getOntologyHealthSummary,
+  nativeTreeCursorForPath,
+  nestTreeRows,
   resolveOntologyTermLabel,
+  revealNativeTreeSelection,
 } from './OntologyStudio.utils';
 
 const FILTERS: GraphFilters = {
@@ -287,6 +294,97 @@ describe('OntologyStudio utils', () => {
     ]);
   });
 
+  it('nests depth-ordered rows back under their parents', () => {
+    const row = (id: string, depth: number) => ({
+      depth,
+      isIsolated: false,
+      node: { id, label: id, type: 'glossaryTerm' },
+      parentCount: 0,
+      relationCount: 1,
+    });
+    const tree = nestTreeRows([
+      row('a', 0),
+      row('b', 1),
+      row('c', 2),
+      row('d', 1),
+      row('e', 0),
+    ]);
+    const shape = (items: typeof tree): unknown[] =>
+      items.map((item) => [item.node.id, shape(item.children)]);
+
+    expect(shape(tree)).toEqual([
+      [
+        'a',
+        [
+          ['b', [['c', []]]],
+          ['d', []],
+        ],
+      ],
+      ['e', []],
+    ]);
+  });
+
+  it('keeps the real depth so a hierarchy deeper than the indent cap nests correctly', () => {
+    const ids = Array.from({ length: 20 }, (_, index) => `t${index}`);
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: ids.map((id) => ({
+          id,
+          label: id,
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        })),
+        edges: ids.slice(1).map((id, index) => parentOf(ids[index], id)),
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    let item = nestTreeRows(group.rows)[0];
+    const chain = [item.node.id];
+    while (item.children.length > 0) {
+      expect(item.children).toHaveLength(1);
+
+      item = item.children[0];
+      chain.push(item.node.id);
+    }
+
+    expect(group.rows[19].depth).toBe(19);
+    expect(chain).toEqual(ids);
+  });
+
+  it('lists only metrics that measure a scoped term', () => {
+    const metrics = buildOntologyTreeMetrics(
+      {
+        nodes: [
+          { id: 'a', label: 'Revenue', type: 'glossaryTerm', glossaryId: 'g1' },
+          { id: 'b', label: 'Policy', type: 'glossaryTerm', glossaryId: 'g2' },
+          { id: 'm1', label: 'Net Revenue', type: 'metric' },
+          { id: 'm2', label: 'Policy Count', type: 'metric' },
+        ],
+        edges: [
+          {
+            from: 'm1',
+            to: 'a',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+          {
+            from: 'm2',
+            to: 'b',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] }
+    );
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0].node.id).toBe('m1');
+    expect(metrics[0].measures.map((term) => term.id)).toEqual(['a']);
+  });
+
   it('derives executable query suggestions from scoped ontology relations', () => {
     const suggestions = buildOntologyQuerySuggestions(
       GRAPH,
@@ -304,5 +402,271 @@ describe('OntologyStudio utils', () => {
     expect(suggestions[0].query).not.toContain('GRAPH');
     expect(suggestions[0].query).toContain('Finance.BetaParent');
     expect(suggestions[0].query).not.toContain('AntiMoneyLaundering');
+  });
+});
+
+describe('native ontology placements', () => {
+  const disclosure = { expanded: true, overrides: new Map<string, boolean>() };
+
+  it('places a class and its descendants beneath each parent with stable path identities', () => {
+    const graph = {
+      nodes: [
+        ...GRAPH.nodes,
+        { id: 'leaf', label: 'Leaf', type: 'glossaryTerm', glossaryId: 'g1' },
+      ],
+      edges: [...GRAPH.edges, parentOf('c', 'leaf'), parentOf('a', 'c')],
+    };
+    const index = buildNativeTreeIndex(graph, FILTERS, []);
+    const page = getNativeTreePage(index, disclosure);
+    const children = page.placements.filter(({ node }) => node.id === 'c');
+
+    expect(children.map(({ path }) => path)).toEqual([
+      ['a', 'c'],
+      ['b', 'c'],
+    ]);
+    expect(new Set(children.map(({ key }) => key)).size).toBe(2);
+    expect(
+      children.map(({ otherParents }) => otherParents.map(({ id }) => id))
+    ).toEqual([['b'], ['a']]);
+    expect(
+      page.placements.filter(({ node }) => node.id === 'leaf')
+    ).toHaveLength(2);
+    expect(index.nodes.size).toBe(6);
+    expect(index.health.totalTermCount).toBe(6);
+    expect(
+      getNativeTreePage(
+        buildNativeTreeIndex(
+          {
+            nodes: [...graph.nodes].reverse(),
+            edges: [...graph.edges].reverse(),
+          },
+          FILTERS,
+          []
+        ),
+        disclosure
+      ).placements.map(({ key }) => key)
+    ).toEqual(page.placements.map(({ key }) => key));
+  });
+
+  it('keeps disclosure per placement and reveals a shortest path without unfolding the DAG', () => {
+    const index = buildNativeTreeIndex(GRAPH, FILTERS, []);
+    const a = getNativeTreePage(index, disclosure).placements.find(
+      ({ node }) => node.id === 'a'
+    );
+    const page = getNativeTreePage(index, {
+      expanded: true,
+      overrides: new Map([[a?.key ?? '', false]]),
+    });
+
+    expect(
+      page.placements
+        .filter(({ node }) => node.id === 'c')
+        .map(({ path }) => path)
+    ).toEqual([['b', 'c']]);
+    expect(findNativeTreePath(index, 'c')).toEqual(['a', 'c']);
+    expect(findNativeTreePath(index, 'missing')).toBeUndefined();
+    expect(
+      getNativeTreePage(
+        index,
+        disclosure,
+        nativeTreeCursorForPath(index, ['b', 'c'])
+      ).placements[0].path
+    ).toEqual(['b', 'c']);
+  });
+
+  it('ends ancestor cycles and includes every disconnected rootless component', () => {
+    const ids = ['a', 'b', 'c', 'd', 'self'];
+    const index = buildNativeTreeIndex(
+      {
+        nodes: ids.map((id) => ({
+          id,
+          label: id,
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        })),
+        edges: [
+          parentOf('a', 'b'),
+          parentOf('b', 'a'),
+          parentOf('c', 'd'),
+          parentOf('d', 'c'),
+          parentOf('self', 'self'),
+        ],
+      },
+      FILTERS,
+      []
+    );
+    const page = getNativeTreePage(index, disclosure);
+
+    expect(new Set(page.placements.map(({ node }) => node.id))).toEqual(
+      new Set(ids)
+    );
+    expect(page.placements).toHaveLength(5);
+    expect(
+      page.placements.every(({ path }) => path.length === new Set(path).size)
+    ).toBe(true);
+  });
+
+  it('keeps every concept in the window when the selection sits late in a small tree', () => {
+    const nodes = [
+      'Party',
+      'Patient',
+      'Prescription',
+      'Clinician',
+      'Doctor',
+      'Visit',
+    ].map((label) => ({
+      id: label,
+      label,
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    }));
+    const index = buildNativeTreeIndex(
+      {
+        nodes,
+        edges: [
+          parentOf('Party', 'Patient'),
+          parentOf('Party', 'Clinician'),
+          parentOf('Clinician', 'Doctor'),
+          parentOf('Patient', 'Visit'),
+          parentOf('Patient', 'Prescription'),
+        ],
+      },
+      FILTERS,
+      []
+    );
+
+    const state = revealNativeTreeSelection(index, 'Doctor');
+    const page = getNativeTreePage(
+      index,
+      state.disclosure,
+      state.anchor,
+      state.direction
+    );
+
+    expect(
+      [...page.context, ...page.placements].map(({ node }) => node.label)
+    ).toEqual([
+      'Party',
+      'Clinician',
+      'Doctor',
+      'Patient',
+      'Prescription',
+      'Visit',
+    ]);
+    expect(page.previous).toBeUndefined();
+    expect(page.next).toBeUndefined();
+    expect(state.selectedKey).toBeDefined();
+  });
+
+  it('still anchors the window at the selection when the tree needs more than one window', () => {
+    const nodes = Array.from({ length: 3000 }, (_, n) => ({
+      id: String(n),
+      label: String(n).padStart(4, '0'),
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    }));
+    const index = buildNativeTreeIndex({ nodes, edges: [] }, FILTERS, []);
+
+    const state = revealNativeTreeSelection(index, '2500');
+
+    expect(
+      getNativeTreePage(index, state.disclosure, state.anchor, state.direction)
+        .placements[0].node.id
+    ).toBe('2500');
+  });
+
+  it('walks bounded windows forward and backward through a layered diamond', () => {
+    const nodes = Array.from({ length: 24 }, (_, n) => ({
+      id: String(n),
+      label: String(n).padStart(2, '0'),
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    }));
+    const edges = nodes
+      .slice(2)
+      .flatMap((node, n) => [
+        parentOf(String(Math.floor(n / 2) * 2), node.id),
+        parentOf(String(Math.floor(n / 2) * 2 + 1), node.id),
+      ]);
+    const index = buildNativeTreeIndex({ nodes, edges }, FILTERS, []);
+    const first = getNativeTreePage(index, disclosure);
+
+    expect(first.placements).toHaveLength(2048);
+    expect(first.previous).toBeUndefined();
+    expect(first.next).toBeDefined();
+
+    const next = getNativeTreePage(index, disclosure, first.next);
+
+    expect(next.placements).toHaveLength(2048);
+    expect(
+      new Set([...first.placements, ...next.placements].map(({ key }) => key))
+        .size
+    ).toBe(4096);
+
+    const back = getNativeTreePage(
+      index,
+      disclosure,
+      next.previous,
+      'backward'
+    );
+
+    expect(back.placements.map(({ key }) => key)).toEqual(
+      first.placements.map(({ key }) => key)
+    );
+
+    const seek = nativeTreeCursorForPath(
+      index,
+      findNativeTreePath(index, '23') ?? []
+    );
+
+    expect(
+      getNativeTreePage(index, disclosure, seek).placements[0].node.id
+    ).toBe('23');
+  });
+
+  it('keeps owner boundaries and treats an inverse edge as the same parent edge', () => {
+    const index = buildNativeTreeIndex(
+      {
+        ...GRAPH,
+        edges: [
+          ...GRAPH.edges,
+          parentOf('a', 'e'),
+          { ...parentOf('c', 'a'), relationType: 'isA' },
+        ],
+      },
+      FILTERS,
+      []
+    );
+
+    expect(index.parents.get('c')).toEqual(['a', 'b']);
+    expect(index.parents.get('e')).toEqual([]);
+    expect(index.roots).toContain('e');
+    expect(buildNativeTreeIndex(null, FILTERS, []).nodes.size).toBe(0);
+  });
+
+  it('indexes a deep hierarchy iteratively and finds its shortest reveal path', () => {
+    const nodes = Array.from({ length: 8000 }, (_, n) => ({
+      id: String(n),
+      label: String(n),
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    }));
+    const index = buildNativeTreeIndex(
+      {
+        nodes,
+        edges: nodes.slice(1).map((node, i) => parentOf(String(i), node.id)),
+      },
+      FILTERS,
+      []
+    );
+
+    expect(index.nodes.size).toBe(8000);
+    expect(findNativeTreePath(index, '7999')).toHaveLength(8000);
+    expect(
+      getNativeTreePage(index, {
+        expanded: false,
+        overrides: new Map(),
+      }).placements.map(({ node }) => node.id)
+    ).toEqual(['0']);
   });
 });

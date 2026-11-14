@@ -63,10 +63,6 @@ jest.mock('./AnnouncementThreads', () =>
     )
 );
 
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>)
-);
-
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -101,7 +97,11 @@ describe('AnnouncementThreadBody', () => {
       render(<AnnouncementThreadBody {...mockProps} />);
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render announcement list and confirmation modal', async () => {

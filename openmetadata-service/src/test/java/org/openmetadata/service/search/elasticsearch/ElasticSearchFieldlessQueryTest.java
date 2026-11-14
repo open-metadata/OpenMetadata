@@ -195,7 +195,8 @@ class ElasticSearchFieldlessQueryTest {
                 .withQuery(query)
                 .withFieldName("entityType")
                 .withFieldValue("")
-                .withSize(10))
+                .withSize(10),
+            null)
         .close();
   }
 

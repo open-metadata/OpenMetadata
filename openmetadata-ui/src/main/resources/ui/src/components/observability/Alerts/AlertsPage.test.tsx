@@ -18,7 +18,6 @@ import {
   AlertType,
   EventSubscription,
 } from '../../../generated/events/eventSubscription';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 import AlertsPage from './AlertsPage';
 
 const mockNavigate = jest.fn();
@@ -332,59 +331,6 @@ describe('AlertsPage', () => {
     expect(
       queryClient.getQueryState(ALERT_COUNT_QUERY_KEY)?.isInvalidated
     ).toBe(true);
-  });
-
-  describe('as the Settings → Notifications alert list', () => {
-    const renderNotificationAlertsPage = () =>
-      render(
-        <QueryClientProvider client={queryClient}>
-          <AlertsPage kind={NOTIFICATION_ALERT_KIND} />
-        </QueryClientProvider>
-      );
-
-    it('lists notification alerts including the system activity feed alert', () => {
-      renderNotificationAlertsPage();
-
-      expect(mockUseObservabilityAlerts).toHaveBeenCalledWith(
-        expect.objectContaining({
-          alertType: AlertType.Notification,
-          includeSystemAlerts: true,
-        })
-      );
-
-      const { getAlertDetailsPath } = mockUseObservabilityAlerts.mock
-        .calls[0][0] as { getAlertDetailsPath: (fqn: string) => string };
-
-      expect(getAlertDetailsPath('my_alert')).toBe(
-        '/settings/notifications/alerts/my_alert/configuration'
-      );
-    });
-
-    it('titles the page as notifications', () => {
-      renderNotificationAlertsPage();
-
-      expect(screen.getByTestId('page-header')).toHaveTextContent(
-        'label.notification-plural'
-      );
-    });
-
-    it('creates notification alerts and opens the new alert under settings', async () => {
-      renderNotificationAlertsPage();
-
-      fireEvent.click(screen.getByText('label.add-entity:label.alert'));
-
-      expect(screen.getByTestId('modal-alert-type')).toHaveTextContent(
-        AlertType.Notification
-      );
-
-      fireEvent.click(screen.getByTestId('modal-save'));
-
-      await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith(
-          '/settings/notifications/alerts/saved.alert/configuration'
-        )
-      );
-    });
   });
 
   it('keeps serving observability alerts by default', () => {

@@ -77,7 +77,7 @@ export const Popover = ({
           // `outline-hidden` removed: the outline now draws this popover's border (it
           // replaced a ring, which WebKit does not pixel-snap), so suppressing it would
           // erase the border.
-          'tw:origin-(--trigger-anchor-point) tw:rounded-xl tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:origin-(--trigger-anchor-point) tw:rounded-xl tw:bg-floating tw:shadow-raised tw:dark:text-primary tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-left:slide-in-from-right-0.5 tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&
@@ -90,7 +90,7 @@ export const Popover = ({
       {arrow && (
         <AriaOverlayArrow>
           <svg
-            className="tw:fill-bg-primary tw:drop-shadow-sm tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180"
+            className="tw:fill-bg-floating tw:drop-shadow-sm tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180"
             height={10}
             viewBox="0 0 100 100"
             width={10}>
@@ -98,7 +98,10 @@ export const Popover = ({
           </svg>
         </AriaOverlayArrow>
       )}
-      <AriaDialog className={cx('tw:outline-hidden', containerClassName)}>
+      <AriaDialog
+        aria-label={popoverProps['aria-label']}
+        aria-labelledby={popoverProps['aria-labelledby']}
+        className={cx('tw:outline-hidden', containerClassName)}>
         {children}
       </AriaDialog>
     </AriaPopover>

@@ -14,7 +14,7 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,8 +28,7 @@ class OntologyBulkCsvPlannerTest {
   private static final UUID PARENT_ID = UUID.fromString("0aa6965a-4a9a-49c5-8e21-54ec2f3feea6");
   private static final UUID CHILD_ID = UUID.fromString("0958f082-5c76-47b9-803b-d4db010cdd2e");
   private final OntologyBulkCsvPlanner planner =
-      new OntologyBulkCsvPlanner(
-          new OntologyBulkCsvParser(), new OntologyIriMinter(), OntologyBulkTestFixtures.clock());
+      new OntologyBulkCsvPlanner(new OntologyBulkCsvParser(), OntologyBulkTestFixtures.clock());
 
   @Test
   void plansParentFirstCreatesAndOptimisticUpdates() {
@@ -56,7 +55,7 @@ class OntologyBulkCsvPlannerTest {
     assertEquals(2, plan.counts().creates());
     assertEquals(1, plan.counts().updates());
     assertEquals(PARENT_ID, plan.operations().get(1).getTerm().getParent().getId());
-    assertNotNull(plan.operations().getFirst().getTerm().getIri());
+    assertNull(plan.operations().getFirst().getTerm().getIri());
     final OntologyChangeOperation update = plan.operations().getLast();
     assertEquals(OntologyChangeOperationType.UPDATE_TERM, update.getOperationType());
     assertEquals(customer.getVersion(), update.getBaseVersion());

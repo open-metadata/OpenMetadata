@@ -13,13 +13,9 @@
 
 import { expect, Locator, Page, Response } from '@playwright/test';
 
-export const waitForAntOverlayToOpen = async (overlay: Locator) => {
+export const waitForOverlayToOpen = async (overlay: Locator) => {
   await expect(overlay).toBeVisible();
-  // Ant's invisible enter-start frame has a stable box, so click auto-waiting
-  // can finish before the zoom motion starts changing the target's position.
-  await expect(overlay).not.toHaveClass(
-    /\bant-zoom(?:-big)?-(?:appear|enter|leave)(?:-|\b)/
-  );
+  // Click auto-waiting can pass while the overlay is still fading in.
   await expect(overlay).toHaveCSS('opacity', '1');
 };
 
@@ -83,7 +79,7 @@ export const clickAndWaitFor = async (
   return response;
 };
 
-/** React Aria counterpart of `waitForAntOverlayToOpen`: a click landing mid-slide cancels the press. */
+/** React Aria counterpart of `waitForOverlayToOpen`: a click landing mid-slide cancels the press. */
 export const waitForAriaOverlayToSettle = async (page: Page) => {
   await expect(page.locator('[data-entering]')).toHaveCount(0);
 };

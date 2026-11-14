@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Box, Button } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
+import { Box, ButtonUtility, Select } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
@@ -26,11 +26,8 @@ function TeamTypeSelect({
   updateTeamType,
   parentTeamType,
 }: TeamTypeSelectProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState<TeamType>(teamType);
-
-  const handleSelect = (type: TeamType) => {
-    setValue(type);
-  };
 
   const handleCancel = () => {
     handleShowTypeSelector(false);
@@ -42,13 +39,13 @@ function TeamTypeSelect({
 
   const options = useMemo(() => {
     const options = getTeamOptionsFromType(parentTeamType).map((type) => ({
+      id: type,
       label: type,
-      value: type,
     }));
 
     return showGroupOption
       ? options
-      : options.filter((opt) => opt.value !== TeamType.Group);
+      : options.filter((opt) => opt.id !== TeamType.Group);
   }, [parentTeamType, showGroupOption]);
 
   // Editing the team type must not toggle its parent collapsible panel.
@@ -62,31 +59,35 @@ function TeamTypeSelect({
       itemClassName="layout-space-item"
       onClick={(e) => e.stopPropagation()}>
       <Select
-        defaultActiveFirstOption
-        options={options}
-        value={value}
-        onSelect={handleSelect}
-      />
+        aria-label={t('label.team-type')}
+        className="tw:w-40"
+        items={options}
+        selectedKey={value}
+        onSelectionChange={(key) => key && setValue(key as TeamType)}>
+        {(item) => <Select.Item id={item.id} label={item.label} />}
+      </Select>
       <Box
         inline
         align="center"
         className="layout-space layout-space-horizontal m-l-xs"
         gap={1}
         itemClassName="layout-space-item">
-        <Button
+        <ButtonUtility
           color="primary"
           data-testid="cancel-btn"
-          size="xs"
-          onClick={handleCancel}>
-          <CloseOutlined />
-        </Button>
-        <Button
+          icon={XClose}
+          size="sm"
+          tooltip={t('label.cancel')}
+          onClick={handleCancel}
+        />
+        <ButtonUtility
           color="primary"
           data-testid="save-btn"
-          size="xs"
-          onClick={handleSubmit}>
-          <CheckOutlined />
-        </Button>
+          icon={Check}
+          size="sm"
+          tooltip={t('label.save')}
+          onClick={handleSubmit}
+        />
       </Box>
     </Box>
   );

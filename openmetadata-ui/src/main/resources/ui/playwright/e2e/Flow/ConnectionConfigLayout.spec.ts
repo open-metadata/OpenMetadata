@@ -373,7 +373,23 @@ test.describe('Connection config layout', () => {
 
     await expect(
       connectionOptions.locator('.core-wrap-if-additional-key input')
-    ).toHaveAttribute('placeholder', 'option');
+    ).toHaveAttribute('placeholder', 'key');
+
+    // The add button and each row's remove button share one right edge.
+    const addButtonBox = await addConnectionOption.boundingBox();
+    const removeButtonBox = await connectionOptions
+      .locator('.core-wrap-if-additional-remove-button')
+      .boundingBox();
+
+    expect(addButtonBox).not.toBeNull();
+    expect(removeButtonBox).not.toBeNull();
+    expect(
+      Math.abs(
+        (addButtonBox?.x ?? 0) +
+          (addButtonBox?.width ?? 0) -
+          ((removeButtonBox?.x ?? 0) + (removeButtonBox?.width ?? 0))
+      )
+    ).toBeLessThan(1);
     await expect(
       connectionOptions.locator(
         '.core-wrap-if-additional-value .design-field-label'

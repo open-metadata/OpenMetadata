@@ -15,9 +15,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,26 +27,31 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
-import org.openmetadata.service.events.scheduled.AlertJobs;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
-import org.openmetadata.service.events.subscription.DestinationValidation;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.AlertLimits;
+import org.openmetadata.service.alerting.channel.DestinationIds;
+import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.DestinationValidation;
+import org.openmetadata.service.alerting.definition.AlertDefinitionPolicy;
+import org.openmetadata.service.events.consumer.Consumers;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -73,8 +78,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      entity.withDestinations(
-          new ArrayList<>(EventSubscriptionScheduler.getInstance().destinationsWithStatus(entity)));
+      entity.withDestinations(new ArrayList<>(AlertDiagnostics.destinationsWithStatus(entity)));
     }
     entity.setNotificationTemplate(templateOf(entity.getId()));
   }
@@ -183,7 +187,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
-      requireLoadableConsumer(entity);
+      requireRegistered(entity);
+      AlertLimits.requireWithin(null, entity);
       DestinationValidation.ofANewAlert(entity);
       AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
@@ -202,17 +207,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  // A save naming a consumer this server cannot load fails here, not at every tick.
-  private static void requireLoadableConsumer(EventSubscription alert) {
-    if (alert.getClassName() != null) {
-      try {
-        ConsumerKind.of(
-            Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class));
-      } catch (ClassNotFoundException | ClassCastException e) {
-        throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
-      } catch (IllegalArgumentException e) {
-        throw new BadRequestException(e.getMessage());
-      }
+  // A save naming a consumer this server does not have fails here, not at every tick.
+  private static void requireRegistered(EventSubscription alert) {
+    if (alert.getClassName() != null && Consumers.find(alert.getClassName()).isEmpty()) {
+      throw new BadRequestException("No consumer is registered as " + alert.getClassName());
     }
   }
 
@@ -233,9 +231,19 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  protected EventSubscription createNewEntity(EventSubscription entity) {
+    // PUT reaches prepare with update=true even when it creates an alert. At this point the
+    // repository knows it is a create. Each destination gets the id it keeps for life, and its
+    // secrets are encrypted for that id, once, before the retryable store.
+    DestinationIds.assignNew(entity.getDestinations());
+    entity.withDestinations(DestinationSecrets.ofANewAlert(entity.getDestinations()));
+    return super.createNewEntity(entity);
+  }
+
+  @Override
   public void storeEntity(EventSubscription entity, boolean update) {
-    // Ensure all destinations have unique IDs before storage (handles all operations: POST, PUT,
-    // PATCH)
+    // A created alert's destinations got their ids in createNewEntity, where their secrets were
+    // encrypted for them; an update's new ones are those it sent no id for.
     ensureDestinationIds(entity);
     store(entity, update);
   }
@@ -245,9 +253,13 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     List<String> fqns = new ArrayList<>(entities.size());
     List<String> jsons = new ArrayList<>(entities.size());
     for (EventSubscription entity : entities) {
-      ensureDestinationIds(entity);
+      DestinationIds.assignNew(entity.getDestinations());
+      // Batch inserts can be retried after a rollback; keep the submitted values unchanged so
+      // server-produced ciphertext is not mistaken for caller-supplied ciphertext on retry.
+      EventSubscription stored = JsonUtils.deepCopy(entity, EventSubscription.class);
+      stored.withDestinations(DestinationSecrets.ofANewAlert(stored.getDestinations()));
       fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
+      jsons.add(serializeForStorage(stored));
     }
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }
@@ -273,12 +285,63 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  protected EventSubscription forChangeEvent(EventSubscription entity) {
+    return DestinationSecrets.mask(entity);
+  }
+
+  /** A destination as stored, and the alert it belongs to. */
+  public record StoredDestination(UUID alertId, SubscriptionDestination destination) {}
+
+  /** The stored destination with this id, and the alert that holds it: ids are the server's. */
+  public Optional<StoredDestination> findDestination(UUID destinationId) {
+    return daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+        .map(json -> JsonUtils.readValue(json, EventSubscription.class))
+        .flatMap(alert -> storedDestinations(alert, destinationId))
+        .findFirst();
+  }
+
+  private static Stream<StoredDestination> storedDestinations(
+      EventSubscription alert, UUID destinationId) {
+    return listOrEmpty(alert.getDestinations()).stream()
+        .filter(destination -> destinationId.equals(destination.getId()))
+        .map(destination -> new StoredDestination(alert.getId(), destination));
+  }
+
+  @Override
   public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
       EventSubscription original,
       EventSubscription updated,
       Operation operation,
       ChangeSource changeSource) {
+    // Every update path builds its updater here: the one point where the stored and the incoming
+    // alert meet before the diff and the store. A secret sent back as read is the stored one, and
+    // the rest is encrypted before the diff, so the change description and the stored row carry
+    // ciphertext only.
+    DestinationIds.forgetIdsNotIssuedHere(original, updated);
+    DestinationSecretGuards.requireStoredSecretsStaySecret(original, updated);
+    DestinationSecrets.restore(original, updated);
+    if (operation != Operation.SOFT_DELETE) {
+      DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, updated);
+      DestinationSecretGuards.requireNoMaskedSecrets(updated.getDestinations());
+      DestinationSecretGuards.requireStoredCiphertext(original, updated);
+    }
+    DestinationSecrets.encrypt(updated.getDestinations());
     return new EventSubscriptionUpdater(original, updated, operation);
+  }
+
+  /**
+   * PATCH is the one write that can read a stored secret, through a copy or move operation, and
+   * the one that carries a stored secret it never wrote: a row stored before secrets were
+   * encrypted holds plaintext, which the updater's guard cannot tell from a value entered again.
+   * A carried secret is judged by the patch itself, and stays protected by the destination that
+   * keeps it.
+   */
+  @Override
+  protected void validatePatch(
+      EventSubscription original, EventSubscription updated, JsonPatch patch) {
+    DestinationIds.forgetIdsNotIssuedHere(original, updated);
+    DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
+    DestinationSecretGuards.requireUnwrittenSecretsStayProtected(original, updated, patch);
   }
 
   public class EventSubscriptionUpdater extends EntityUpdater {
@@ -290,6 +353,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       // may be judged.
       AlertDefinitionPolicy.ofUpdate(original, updated)
           .settle(original, updated, operation.isPut());
+      AlertLimits.requireWithin(original, updated);
       DestinationValidation.ofWhatChanged(original, updated);
     }
 
@@ -302,7 +366,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       compareAndUpdate(
           "batchSize",
           () -> recordChange("batchSize", original.getBatchSize(), updated.getBatchSize()));
-      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+      if (!original.getAlertType().equals(AlertType.ACTIVITY_FEED)) {
         compareAndUpdate(
             "filteringRules",
             () ->
@@ -320,7 +384,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                 recordChange(
                     "destinations",
                     original.getDestinations(),
-                    encryptWebhookSecretKey(updated.getDestinations()),
+                    updated.getDestinations(),
                     true,
                     objectMatch,
                     false));

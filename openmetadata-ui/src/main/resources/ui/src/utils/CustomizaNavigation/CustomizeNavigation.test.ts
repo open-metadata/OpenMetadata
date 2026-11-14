@@ -1012,17 +1012,23 @@ describe('CustomizeNavigation Utils', () => {
   });
 
   describe('mergePluginSidebarItems', () => {
+    const HomeIcon = () => null;
+    const ExploreIcon = () => null;
+    const PluginIcon = () => null;
+    const Plugin1Icon = () => null;
+    const Plugin2Icon = () => null;
+    const Plugin3Icon = () => null;
     const mockBaseItems = [
       {
         key: 'home',
         title: 'Home',
-        icon: 'home-icon',
+        icon: HomeIcon,
         dataTestId: 'home',
       },
       {
         key: 'explore',
         title: 'Explore',
-        icon: 'explore-icon',
+        icon: ExploreIcon,
         dataTestId: 'explore',
       },
     ];
@@ -1038,7 +1044,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
         },
       ];
@@ -1054,7 +1060,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1073,7 +1079,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 0,
         },
@@ -1092,21 +1098,21 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin2',
           title: 'Plugin 2',
-          icon: 'plugin-icon-2',
+          icon: Plugin2Icon,
           dataTestId: 'plugin2',
           index: 2,
         },
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon-1',
+          icon: Plugin1Icon,
           dataTestId: 'plugin1',
           index: 0,
         },
         {
           key: 'plugin3',
           title: 'Plugin 3',
-          icon: 'plugin-icon-3',
+          icon: Plugin3Icon,
           dataTestId: 'plugin3',
         },
       ];
@@ -1126,7 +1132,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 999,
         },
@@ -1143,7 +1149,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1173,7 +1179,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1203,7 +1209,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1220,7 +1226,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PluginIcon,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1250,21 +1256,21 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon-1',
+          icon: Plugin1Icon,
           dataTestId: 'plugin1',
           index: 0,
         },
         {
           key: 'plugin2',
           title: 'Plugin 2',
-          icon: 'plugin-icon-2',
+          icon: Plugin2Icon,
           dataTestId: 'plugin2',
           index: 1,
         },
         {
           key: 'plugin3',
           title: 'Plugin 3',
-          icon: 'plugin-icon-3',
+          icon: Plugin3Icon,
           dataTestId: 'plugin3',
           index: 2,
         },

@@ -20,6 +20,8 @@ import EntityLinkParser from '../generated/antlr/EntityLinkParser';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 
+type AntlrRecognizer = { removeErrorListeners: () => void };
+
 export default class EntityLink {
   /**
    *
@@ -32,6 +34,14 @@ export default class EntityLink {
       const lexer = new EntityLinkLexer(chars);
       const tokens = new antlr4.CommonTokenStream(lexer);
       const parser = new EntityLinkParser(tokens);
+      // A feed's `about` can name a field the grammar does not list (e.g.
+      // `entityStatus`); the default listeners would log a syntax error for it
+      // on every render. The split of what did parse is still returned.
+      // The generated recognizers are untyped JS; both inherit this from
+      // antlr4's Recognizer.
+      [lexer, parser].forEach((recognizer) =>
+        (recognizer as unknown as AntlrRecognizer).removeErrorListeners()
+      );
       const tree = parser.entitylink();
       const splitter = new EntityLinkSplitListener();
       ParseTreeWalker.DEFAULT.walk(splitter, tree);

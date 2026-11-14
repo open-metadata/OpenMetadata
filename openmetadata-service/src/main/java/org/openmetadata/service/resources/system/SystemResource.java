@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -49,6 +50,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -98,6 +100,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.mcp.McpToolRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
@@ -123,6 +126,7 @@ import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -146,6 +150,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final String ENTITY_RULES_LIST_POINTER = "/entitySemantics";
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
@@ -279,17 +284,35 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    String settingName = canonicalSettingName(name);
     // Restrict access to authentication and authorizer configurations
-    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+    if (settingName.equals(AUTHENTICATION_CONFIGURATION.value())
+        || settingName.equals(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!isUserReadableSetting(name)) {
+    if (!isUserReadableSetting(settingName)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    return forResponse(systemRepository.getConfigWithKey(name));
+    Settings settings = systemRepository.getConfigWithKey(settingName);
+    // The lookup compares with the database collation, which on MySQL ignores accents, so it can
+    // answer with a row of another name than the one the checks above were made for.
+    if (settings != null
+        && settings.getConfigType() != null
+        && !settings.getConfigType().value().equals(settingName)) {
+      throw new SystemSettingsException(String.format("Setting %s was not found", name));
+    }
+    return forResponse(settings);
+  }
+
+  /** The defined setting name {@code name} refers to, ignoring case; any other name unchanged. */
+  private static String canonicalSettingName(String name) {
+    return Arrays.stream(SettingsType.values())
+        .map(SettingsType::value)
+        .filter(value -> SecurityUtil.sameIdentifier(value, name))
+        .findFirst()
+        .orElse(name);
   }
 
   /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
@@ -522,6 +545,56 @@ public class SystemResource {
         .toList();
   }
 
+  @PATCH
+  @Path("/settings/entityRulesSettings/rules/{ruleName}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchEntityRule",
+      summary = "Patch one Data Asset Rule",
+      description =
+          "Update one Data Asset Rule, found by name, using JsonPatch. Paths are relative to the "
+              + "rule (for example /enabled), so rules the caller never read are preserved. The "
+              + "patch may not rename, add or remove rules. The write uses compare-and-set: if the "
+              + "stored rules changed while the server applied the patch, the request fails with "
+              + "412 Precondition Failed instead of overwriting the newer value.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid patch, or a patch that renames, adds or removes rules"),
+        @ApiResponse(responseCode = "404", description = "Rule not found"),
+        @ApiResponse(
+            responseCode = "412",
+            description = "The stored rules changed while the patch was applied")
+      })
+  public Response patchEntityRule(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the rule to patch", schema = @Schema(type = "string"))
+          @PathParam("ruleName")
+          String ruleName,
+      @RequestBody(
+              description = "JsonPatch with operations relative to the rule",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {@ExampleObject("[{op:replace, path:/enabled, value:false}]")}))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+    return forResponse(
+        systemRepository.patchSettingItem(
+            SettingsType.ENTITY_RULES_SETTINGS, ENTITY_RULES_LIST_POINTER, ruleName, patch));
+  }
+
   @GET
   @Path("/search/nlq")
   @Operation(
@@ -622,17 +695,12 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type for which to get the global profiler configuration",
-              schema = @Schema(type = "string"))
-          @QueryParam("entityType")
-          @DefaultValue("table")
-          String entityType) {
-    ResourceContext resourceContext = new ResourceContext(entityType);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // One global setting, so one resource decides it: a caller-chosen type would let a policy on
+    // tables be stepped around by asking as another type.
+    ResourceContext resourceContext = new ResourceContext(Entity.TABLE);
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
@@ -682,6 +750,7 @@ public class SystemResource {
 
   @POST
   @Path("/settings/source/{configType}/adopt")
+  @IdentityEndpoint
   @Operation(
       operationId = "adoptDeploymentConfig",
       summary = "Use the deployment configuration for stored settings",
@@ -1006,12 +1075,15 @@ public class SystemResource {
       })
   public EntitiesCount listEntitiesCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    // Catalog-wide counts ignore the caller's domain and view restrictions.
+    authorizer.authorizeAdminOrBot(securityContext);
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllEntitiesCount(filter);
   }
@@ -1033,12 +1105,14 @@ public class SystemResource {
       })
   public ServicesCount listServicesCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    authorizer.authorizeAdminOrBot(securityContext);
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllServicesCount(filter);
   }
@@ -1059,7 +1133,10 @@ public class SystemResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = ServicesCount.class)))
       })
-  public ValidationResponse validate() {
+  public ValidationResponse validate(@Context SecurityContext securityContext) {
+    // The report names the database URL, search host and pipeline service endpoint, and each call
+    // runs live probes against them, including billed embedding requests.
+    authorizer.authorizeAdminOrBot(securityContext);
     return systemRepository.validateSystem(applicationConfig);
   }
 
@@ -1103,23 +1180,24 @@ public class SystemResource {
       })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    SecurityConfiguration originalConfig =
-        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    // Masked for every caller, bots included: no client needs the stored secrets back.
+    return maskedCopy(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
 
-    // Create a deep copy to avoid mutating the original shared objects
-    String configJson = JsonUtils.pojoToJson(originalConfig);
-    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
-    // Apply password masking if needed - only to the copy
-    if (authorizer.shouldMaskPasswords(securityContext)) {
+  /** A copy with the secrets masked, as an admin reads the configuration. */
+  static SecurityConfiguration maskedCopy(SecurityConfiguration config) {
+    SecurityConfiguration copy =
+        JsonUtils.readValue(JsonUtils.pojoToJson(config), SecurityConfiguration.class);
+    if (copy.getAuthenticationConfiguration() != null) {
       SettingsSecrets.maskInPlace(
-          AUTHENTICATION_CONFIGURATION, config.getAuthenticationConfiguration());
+          AUTHENTICATION_CONFIGURATION, copy.getAuthenticationConfiguration());
     }
-    return config;
+    return copy;
   }
 
   @PUT
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "updateSecurityConfig",
       summary = "Update complete security configuration",
@@ -1189,6 +1267,7 @@ public class SystemResource {
 
   @PATCH
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "patchSecurityConfig",
       summary = "Patch security configuration",
@@ -1217,9 +1296,12 @@ public class SystemResource {
       SecurityConfiguration currentConfig =
           stored == null ? currentSecurityConfiguration() : stored.configuration();
 
-      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
+      // The patch works on the configuration as the admin reads it, so a copy or move from a secret
+      // moves the mask; the secrets come back below where that is safe.
+      SecurityConfiguration maskedConfig = maskedCopy(currentConfig);
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, maskedConfig);
 
-      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
+      JsonValue patched = JsonUtils.applyPatch(maskedConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
@@ -1229,8 +1311,8 @@ public class SystemResource {
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
-          systemRepository.validateSecurityConfiguration(
-              updatedConfig, applicationConfig, currentUsername);
+          systemRepository.validateSecurityConfigurationChange(
+              currentConfig, updatedConfig, applicationConfig, currentUsername);
 
       boolean isValidConfig =
           validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
@@ -1298,16 +1380,33 @@ public class SystemResource {
     }
   }
 
+  /**
+   * Gives back the stored secrets a client sent masked or left out, but only while the setting each
+   * one is used with is unchanged, so a write never sends a stored secret somewhere new. A secret
+   * still masked after that has to be entered again
+   * (ADR:2026-11-03-security-config-writes-never-move-a-stored-secret).
+   */
   static void preserveMaskedSecuritySecrets(
       SecurityConfiguration updated, SecurityConfiguration original) {
-    if (updated != null
-        && original != null
-        && updated.getAuthenticationConfiguration() != null
-        && original.getAuthenticationConfiguration() != null) {
-      SettingsSecrets.restoreMaskedInPlace(
-          AUTHENTICATION_CONFIGURATION,
-          updated.getAuthenticationConfiguration(),
-          original.getAuthenticationConfiguration());
+    if (updated == null || updated.getAuthenticationConfiguration() == null) {
+      return;
+    }
+    AuthenticationConfiguration originalAuthentication =
+        original == null ? null : original.getAuthenticationConfiguration();
+    SettingsSecrets.rejectForeignEncryptedSecrets(
+        AUTHENTICATION_CONFIGURATION,
+        updated.getAuthenticationConfiguration(),
+        originalAuthentication);
+    if (originalAuthentication != null) {
+      TestLoginCandidates.restoreLiveSecretsInPlace(updated, original);
+    }
+    Set<String> withheld =
+        SettingsSecrets.maskedSecrets(
+            AUTHENTICATION_CONFIGURATION, updated.getAuthenticationConfiguration());
+    if (!withheld.isEmpty()) {
+      throw new BadRequestException(
+          String.format(
+              "Enter %s again: the setting it is used with changed.", String.join(", ", withheld)));
     }
   }
 
@@ -1497,6 +1596,30 @@ public class SystemResource {
       return Response.ok(mcpSettings.getConfigValue()).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("MCP configuration not found").build();
+  }
+
+  @GET
+  @Path("/mcp/tools")
+  @Operation(
+      operationId = "listMCPTools",
+      summary = "List the MCP server's tools",
+      description =
+          "Names of the tools this MCP server registered at startup, including tools a "
+              + "distribution adds and before read-only mode or disabled tools are applied. "
+              + "The settings form offers these as the tools an admin can disable.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tool names",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public List<String> listMCPTools(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return McpToolRegistry.getToolNames();
   }
 
   @PUT

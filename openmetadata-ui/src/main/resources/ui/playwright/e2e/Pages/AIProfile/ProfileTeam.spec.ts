@@ -14,6 +14,7 @@
 import { APIRequestContext } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
+import { TableClass } from '../../../support/entity/TableClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -27,7 +28,12 @@ import {
   openTeamTab,
   waitForTeamPatch,
 } from '../../../utils/aiProfile';
+import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
+import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
+import { dragAndDropElement } from '../../../utils/dragDrop';
+import { waitForOwnedAssetCount } from '../../../utils/polling';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
@@ -150,15 +156,28 @@ test.describe('AI Profile Team Detail', () => {
     const searchInput = page
       .getByTestId('team-detail')
       .getByTestId('searchbar');
+    const teamLink = page.getByTestId(`team-link-${team.responseData.name}`);
+    const teamLinks = page
+      .getByTestId('sub-teams-table')
+      .locator('[data-testid^="team-link-"]');
+
+    // The search filters the loaded teams in the browser (no request to
+    // await). It is debounced, and applying it writes the term back into the
+    // input, so a term typed before that write-back is overwritten by it. Wait
+    // for each step to show in the table — the render that applies the term —
+    // before typing the next one.
     await searchInput.fill(team.responseData.displayName);
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeVisible();
+    await expect(teamLinks).toHaveCount(1);
+    await expect(teamLink).toBeVisible();
+
+    await searchInput.clear();
+    await expect(searchInput).toHaveValue('');
+    // The full list is back once the cleared term has been applied.
+    await expect(teamLinks).not.toHaveCount(1);
 
     await searchInput.fill('non-existent-team-xyz');
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeHidden();
+    await expect(searchInput).toHaveValue('non-existent-team-xyz');
+    await expect(teamLink).toBeHidden();
   });
 
   test('Should rename a team inline', async ({ browser, page }) => {
@@ -217,13 +236,17 @@ test.describe('AI Profile Team Detail', () => {
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
-    await openCreatedTeam(page, team);
-
-    const teamUsers = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users?')
+    // A Group team has no Teams tab, so the detail opens on Users and fetches
+    // them on mount — listen before navigating or the response is missed.
+    const teamUsers = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users?') &&
+        new URL(response.url()).searchParams.get('team') ===
+          team.responseData.name
     );
-    await openTeamTab(page, /Users/);
+    await openCreatedTeam(page, team);
     await teamUsers;
+    await expect(page.getByTestId('team-users-table')).toBeVisible();
 
     await addUserToTeam(
       page,
@@ -240,13 +263,65 @@ test.describe('AI Profile Team Detail', () => {
         ['PATCH', 'DELETE'].includes(response.request().method())
     );
     await page.getByTestId(`remove-user-${member.responseData.name}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('remove-from-team-popover')).toBeVisible();
+    await page.getByTestId('remove-from-team-popover-confirm').click();
     await removeResponse;
 
     await expect(
       page.getByTestId('team-users-table').getByText(member.responseData.name)
     ).toBeHidden();
+  });
+
+  test('Should confirm a team move in a popover, not a modal', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const parent = await makeTeam(apiContext, { teamType: 'Department' });
+    const target = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    const moved = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    await openCreatedTeam(page, parent);
+
+    const subTeams = page.getByTestId('sub-teams-table');
+    await expect(
+      subTeams.locator(`[data-row-key="${target.responseData.name}"]`)
+    ).toBeVisible();
+    await expect(
+      subTeams.locator(`[data-row-key="${moved.responseData.name}"]`)
+    ).toBeVisible();
+
+    await dragAndDropElement(
+      page,
+      moved.responseData.name,
+      target.responseData.name
+    );
+
+    await expect(page.getByTestId('move-team-popover')).toBeVisible();
+
+    const patchResponse = waitForTeamPatch(page, moved.responseData.id ?? '');
+    await page.getByTestId('move-team-popover-confirm').click();
+    const patch = await patchResponse;
+
+    await expect(page.getByTestId('move-team-popover')).toBeHidden();
+    expect(JSON.stringify(patch.request().postDataJSON())).toContain(
+      target.responseData.id ?? ''
+    );
+
+    const movedTeam = await okJson<{ parents?: { id: string }[] }>(
+      await apiContext.get(
+        `/api/v1/teams/${moved.responseData.id}?fields=parents`
+      ),
+      'Read the moved team'
+    );
+    expect(movedTeam.parents?.map(({ id }) => id)).toEqual([
+      target.responseData.id,
+    ]);
   });
 
   test('Should render and update the team user count', async ({
@@ -260,6 +335,37 @@ test.describe('AI Profile Team Detail', () => {
     await openCreatedTeam(page, team);
 
     await expect(page.getByTestId('team-user-count')).toContainText('1');
+  });
+
+  test('Should show a sub-team asset count from the team asset counts', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const parent = await makeTeam(apiContext, { teamType: 'Department' });
+    const child = await makeTeam(apiContext, {
+      parents: [parent.responseData.id ?? ''],
+    });
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await table.setOwner(apiContext, {
+        id: child.responseData.id ?? '',
+        type: 'team',
+      });
+      // The sub-teams table reads the counts once, when the parent team opens.
+      await waitForOwnedAssetCount(apiContext, child.responseData.id, 1);
+
+      await openCreatedTeam(page, parent);
+
+      await expect(
+        page.getByTestId(`team-asset-count-${child.responseData.name}`)
+      ).toHaveText('1');
+    } finally {
+      await table.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Should toggle show-deleted child teams', async ({ page }) => {
@@ -353,8 +459,8 @@ test.describe('AI Profile Team Detail', () => {
 
       const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
       await page.getByTestId(`remove-${name}`).click();
-      await page.getByTestId('delete-modal').waitFor();
-      await page.getByTestId('confirm-button').click();
+      await expect(page.getByTestId('remove-from-team-popover')).toBeVisible();
+      await page.getByTestId('remove-from-team-popover-confirm').click();
       await removePatch;
 
       await expect(entityButton).toBeHidden();
@@ -383,14 +489,22 @@ test.describe('AI Profile Team Detail', () => {
     const { apiContext } = await performAdminLogin(browser);
     // Public group team the admin is not a member of.
     const team = await makeTeam(apiContext, { isJoinable: true });
+    const admin = await okJson<{ id: string }>(
+      await apiContext.get('/api/v1/users/loggedInUser'),
+      'GET loggedInUser'
+    );
+    // Join and leave both patch the admin's own teams, not the team entity.
+    const waitForOwnTeamsPatch = () =>
+      waitForResponseWithStatus(
+        page,
+        (response) =>
+          new URL(response.url()).pathname === `/api/v1/users/${admin.id}` &&
+          response.request().method() === 'PATCH',
+        200
+      );
     await openCreatedTeam(page, team);
 
-    // Joining patches the current (admin) user's teams, not the team entity.
-    const joinResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users/') &&
-        response.request().method() === 'PATCH'
-    );
+    const joinResponse = waitForOwnTeamsPatch();
     await page
       .getByTestId('profile-content-header')
       .getByTestId('join-team-button')
@@ -402,14 +516,7 @@ test.describe('AI Profile Team Detail', () => {
       .getByTestId('leave-team-button');
     await expect(leaveButton).toBeVisible();
 
-    // Leaving removes the user from the team: DELETE /teams/<id>/users/<userId>.
-    const leaveResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/teams/${team.responseData.id}/users/`) &&
-        response.request().method() === 'DELETE'
-    );
+    const leaveResponse = waitForOwnTeamsPatch();
     await leaveButton.click();
     await leaveResponse;
 
@@ -433,9 +540,8 @@ test.describe('AI Profile Team Detail', () => {
         response.request().method() === 'DELETE'
     );
     await page.getByTestId('delete-team').click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('soft-delete').click();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('delete-team-popover')).toBeVisible();
+    await page.getByTestId('delete-team-popover-confirm').click();
     await deleteResponse;
 
     // Re-open with deleted teams shown, restore it.
@@ -521,9 +627,9 @@ test.describe('AI Profile Team Detail', () => {
   });
 
   // The Custom Properties tab is native to MembersTeamDetail (it renders the
-  // shared CustomPropertyTable): one pass covers that the tab is reachable and
-  // that a property defined for the `team` entity actually shows up in it.
-  test('Should show the Custom Properties tab and render a team property', async ({
+  // shared CustomPropertiesList): one pass covers that a property defined for
+  // the `team` entity shows up in it and that a value set inline is saved.
+  test('Should set a team custom property value inline from the Custom Properties tab', async ({
     browser,
     page,
   }) => {
@@ -532,59 +638,71 @@ test.describe('AI Profile Team Detail', () => {
 
     // Defined through the metadata type API rather than the settings UI: this
     // test is about the tab rendering the property, not about creating one.
-    const teamType = await (
-      await apiContext.get('/api/v1/metadata/types/name/team')
-    ).json();
+    const teamType = await okJson<{ id: string }>(
+      await apiContext.get('/api/v1/metadata/types/name/team'),
+      'Read the team type'
+    );
     const stringType = (
-      await (
-        await apiContext.get('/api/v1/metadata/types?category=field&limit=50')
-      ).json()
-    ).data.find((item: { name: string }) => item.name === 'string');
+      await okJson<{ data: { id: string; name: string }[] }>(
+        await apiContext.get('/api/v1/metadata/types?category=field&limit=50'),
+        'Read the property types'
+      )
+    ).data.find((item) => item.name === 'string');
 
-    await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
-      data: {
-        name: propertyName,
-        description: propertyName,
-        propertyType: { id: stringType.id, type: 'type' },
-      },
-    });
+    await okJson(
+      await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
+        data: {
+          name: propertyName,
+          description: propertyName,
+          propertyType: { id: stringType?.id, type: 'type' },
+        },
+      }),
+      'Add the team property'
+    );
 
     try {
       const team = await makeTeam(apiContext);
       await openCreatedTeam(page, team);
 
-      const tab = page.getByRole('tab', { name: /Custom Properties/ });
+      const tab = page
+        .getByTestId('team-detail')
+        .getByRole('tab', { name: /Custom Properties/ });
 
       await expect(tab).toBeVisible();
 
       await openTeamTab(page, /Custom Properties/);
 
       await expect(tab).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByTestId('custom-properties-card')).toBeVisible();
-      await expect(
-        page.getByTestId(`custom-property-${propertyName}-card`)
-      ).toBeVisible();
-    } finally {
-      // Leaving the property behind would alter every later team's tab. There
-      // is no REST delete for a single custom property, so remove it from the
-      // type's array by index.
-      const current = await (
+
+      const row = page.getByTestId(`custom-property-row-${propertyName}`);
+
+      await expect(row).toBeVisible();
+
+      const value = `team value ${uuid()}`;
+      await row.getByTestId(`edit-${propertyName}`).click();
+      await row.getByRole('textbox').fill(value);
+      const patch = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${team.responseData.id}`
+      );
+      await row.getByTestId('inline-save-btn').click();
+
+      expect((await patch).ok()).toBeTruthy();
+      await expect(row).toContainText(value);
+
+      const saved = await okJson<{ extension?: Record<string, unknown> }>(
         await apiContext.get(
-          '/api/v1/metadata/types/name/team?fields=customProperties'
-        )
-      ).json();
-      const index = (current.customProperties as { name: string }[]).findIndex(
-        (property) => property.name === propertyName
+          `/api/v1/teams/${team.responseData.id}?fields=extension`
+        ),
+        'Read the team extension'
       );
 
-      if (index >= 0) {
-        await apiContext
-          .patch(`/api/v1/metadata/types/${teamType.id}`, {
-            headers: { 'Content-Type': 'application/json-patch+json' },
-            data: [{ op: 'remove', path: `/customProperties/${index}` }],
-          })
-          .catch(() => undefined);
-      }
+      expect(saved.extension?.[propertyName]).toBe(value);
+    } finally {
+      // Leaving the property behind would alter every later team's tab.
+      await removeCustomPropertyViaApi(apiContext, 'team', propertyName);
     }
   });
 });

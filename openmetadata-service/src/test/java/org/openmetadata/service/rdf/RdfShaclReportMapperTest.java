@@ -41,6 +41,17 @@ class RdfShaclReportMapperTest {
   private final RdfShaclReportMapper mapper = new RdfShaclReportMapper();
 
   @Test
+  void skippedCatalogReportKeepsItsExistingEmptyContract() {
+    RdfValidationReport report = mapper.skipped();
+    assertTrue(report.getConforms());
+    assertFalse(report.getPerformed());
+    assertEquals(0, report.getViolationCount());
+    assertEquals("", report.getReportTurtle());
+    assertFalse(report.getTruncated());
+    assertTrue(report.getViolations().isEmpty());
+  }
+
+  @Test
   void severityIsShaclIriNotObjectHash() {
     ValidationReport report =
         validate(minCountShape(SHACL + "Violation", EX + "alice"), emptyModel());

@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 public final class CsvUtil {
   public static final String SEPARATOR = ",";
@@ -45,6 +46,9 @@ public final class CsvUtil {
   public static final String LINE_SEPARATOR = "\r\n";
 
   public static final String INTERNAL_ARRAY_SEPARATOR = "|";
+
+  private static final String FORMULA_TRIGGERS = "=+-@\t\r";
+  private static final String FORMULA_ESCAPE = "'";
 
   private CsvUtil() {
     // Utility class hides the constructor
@@ -59,10 +63,37 @@ public final class CsvUtil {
         Builder.create(CSVFormat.DEFAULT).setHeader(headers.toArray(new String[0])).build();
     try (CSVPrinter printer = new CSVPrinter(writer, csvFormat)) {
       for (List<String> csvRecord : listOrEmpty(csvFile.getRecords())) {
-        printer.printRecord(csvRecord);
+        printer.printRecord(csvRecord.stream().map(CsvUtil::neutralizeFormula).toList());
       }
     }
     return writer.toString();
+  }
+
+  /**
+   * Prefix cells a spreadsheet would evaluate as a formula with a quote (e.g. "=HYPERLINK(..)"
+   * becomes "'=HYPERLINK(..)"). A value already shaped like an escaped one (e.g. "'=x") gets one
+   * more quote, so {@link #restoreFormula} gives every value back unchanged on import.
+   */
+  public static String neutralizeFormula(String value) {
+    return isFormulaLike(value) ? FORMULA_ESCAPE + value : value;
+  }
+
+  public static String restoreFormula(String value) {
+    boolean escaped =
+        value != null && value.startsWith(FORMULA_ESCAPE) && isFormulaLike(value.substring(1));
+    return escaped ? value.substring(1) : value;
+  }
+
+  // A formula trigger, possibly behind leading quotes (e.g. "=x", "'=x", "''=x").
+  private static boolean isFormulaLike(String value) {
+    if (value == null) {
+      return false;
+    }
+    int index = 0;
+    while (index < value.length() && value.startsWith(FORMULA_ESCAPE, index)) {
+      index++;
+    }
+    return index < value.length() && FORMULA_TRIGGERS.indexOf(value.charAt(index)) >= 0;
   }
 
   /** Get headers from CsvHeaders */
@@ -292,7 +323,7 @@ public final class CsvUtil {
                     tagLabel ->
                         tagLabel.getSource().equals(TagLabel.TagSource.CLASSIFICATION)
                             && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
-                            && !tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED))
+                            && !TagLabelUtil.isSystemGenerated(tagLabel))
                 .map(TagLabel::getTagFQN)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
 
@@ -307,7 +338,12 @@ public final class CsvUtil {
                 .filter(
                     tagLabel ->
                         tagLabel.getSource().equals(TagLabel.TagSource.GLOSSARY)
-                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier"))
+                            && !tagLabel.getTagFQN().split("\\.")[0].equals("Tier")
+                            // A DERIVED label -- inherited from a parent or implied by a term -- is
+                            // not the entity's own. Exporting it and re-importing would store it as
+                            // MANUAL in tag_usage, pinning a label that should vanish with its
+                            // source.
+                            && !TagLabelUtil.isSystemGenerated(tagLabel))
                 .map(TagLabel::getTagFQN)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
 

@@ -12,6 +12,7 @@
  */
 import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { EntityTags } from 'Models';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
@@ -19,16 +20,22 @@ import { ReviewerLabelV2 } from '../../../components/DataAssets/ReviewerLabelV2/
 import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
+import { KNOWLEDGE_PAGE_FIELDS } from '../../../constants/KnowledgeCenter.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
-import { EntityTags } from '../../../Models';
+import {
+  extractPageMemories,
+  getKnowledgePageByFqn,
+} from '../../../rest/knowledgeCenterAPI';
+import { getArticleExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
+import MemoryExtractionButton from '../../discovery/context-center/MemoryExtractionButton/MemoryExtractionButton';
 import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
 import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
@@ -41,6 +48,8 @@ interface KnowledgePageDetailRightPanelProps {
   handleRelatedEntitiesUpdate: (
     relatedEntities?: Array<EntityReference>
   ) => Promise<void>;
+  /** Takes the article's extraction state from an Extract or Retry, or a read after one. */
+  onExtractionStateChange: (page: KnowledgePage) => void;
 }
 
 const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
@@ -49,6 +58,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   tags,
   updatePageTag,
   handleRelatedEntitiesUpdate,
+  onExtractionStateChange,
 }) => {
   const { t } = useTranslation();
   const { entityRules, isRulesLoaded, data, onUpdate } =
@@ -139,18 +149,35 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
 
         {knowledgePage?.id && (
           <div>
-            {knowledgePage.processingStatus && (
+            {(knowledgePage.processingStatus ||
+              knowledgePage.neverExtracted) && (
               <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
                 <Typography className="tw:text-quaternary">
                   {t('label.memory-extraction')}
                 </Typography>
-                <ArticleStatusBadge
-                  error={knowledgePage.processingError}
-                  status={knowledgePage.processingStatus}
-                />
+                <div className="tw:flex tw:items-center tw:gap-2">
+                  <ArticleStatusBadge page={knowledgePage} />
+                  <MemoryExtractionButton<KnowledgePage>
+                    action={getArticleExtractionAction(knowledgePage)}
+                    documentId={knowledgePage.id}
+                    owners={knowledgePage.owners}
+                    reload={() =>
+                      getKnowledgePageByFqn(knowledgePage.fullyQualifiedName, {
+                        fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
+                      })
+                    }
+                    request={() => extractPageMemories(knowledgePage.id)}
+                    onUpdate={onExtractionStateChange}
+                  />
+                </div>
               </div>
             )}
-            <ExtractedMemoriesCard collapsible sourceId={knowledgePage.id} />
+            <ExtractedMemoriesCard
+              collapsible
+              sourceId={knowledgePage.id}
+              sourceOwners={knowledgePage.owners}
+              sourceType={EntityType.KNOWLEDGE_PAGE}
+            />
           </div>
         )}
       </Card.Content>

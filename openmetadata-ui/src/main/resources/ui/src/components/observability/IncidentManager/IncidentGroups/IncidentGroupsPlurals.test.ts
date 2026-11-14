@@ -63,6 +63,22 @@ describe('incident group plural counts', () => {
     expect(t('label.table-count', { count: 2 })).toBe('2 tableaux');
   });
 
+  it('should agree the French group row counts with incident', async () => {
+    const t = await translatorFor('fr-FR');
+
+    expect(t('label.incident-open-lowercase', { count: 1 })).toBe('ouvert');
+    expect(t('label.incident-open-lowercase', { count: 4 })).toBe('ouverts');
+    expect(t('label.count-incident-assigned', { count: 3 })).toBe('3 assignés');
+    expect(t('label.count-incident-new', { count: 1 })).toBe('1 nouveau');
+  });
+
+  it('should pick the Russian few form for the group row counts', async () => {
+    const t = await translatorFor('ru-RU');
+
+    expect(t('label.count-incident-new', { count: 1 })).toBe('1 новый');
+    expect(t('label.count-incident-new', { count: 3 })).toBe('3 новых');
+  });
+
   it('should read English one and other', async () => {
     const t = await translatorFor('en-US');
 

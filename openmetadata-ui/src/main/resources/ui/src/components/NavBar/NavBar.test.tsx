@@ -16,8 +16,10 @@ import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
 } from '../../constants/constants';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
+import DomainSelect from '../common/DomainSelect/DomainSelect';
 import NavBarComponent from './NavBar';
 
 // Place these at the very top of your test file, before any imports!
@@ -76,11 +78,6 @@ jest.mock('../../utils/FqnUtils', () => ({
 jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
-  isLandingPagePath: jest
-    .fn()
-    .mockImplementation(
-      (pathname: string) => pathname === '/' || pathname === '/my-data'
-    ),
 }));
 jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
@@ -136,18 +133,6 @@ jest.mock('../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
   useAsyncDeleteProvider: jest.fn().mockImplementation(() => ({
     deleteEntity: jest.fn(),
   })),
-}));
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-
-  Dropdown: jest.fn().mockImplementation(({ dropdownRender }) => {
-    return (
-      <div data-testid="dropdownRender">
-        <div>{dropdownRender}</div>
-      </div>
-    );
-  }),
 }));
 
 jest.mock('../../rest/miscAPI', () => ({
@@ -226,7 +211,7 @@ describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
@@ -245,27 +230,29 @@ describe('Test NavBar Component', () => {
     expect(getHelpDropdownItems).toHaveBeenCalled();
   });
 
-  it('should hide global search bar and domain dropdown on my-data route', () => {
+  // The landing page carries neither a search bar nor a domain control of its
+  // own any more, so the navbar is the only place either one can live there.
+  it('should show global search bar and domain dropdown on my-data route', async () => {
     mockUseCustomLocation.pathname = '/my-data';
     mockUseCustomLocation.search = 'search';
 
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-dropdown')).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-dropdown')).toBeInTheDocument();
   });
 
-  it('should hide global search bar and domain dropdown on the root landing route', () => {
+  it('should show global search bar and domain dropdown on the root landing route', async () => {
     mockUseCustomLocation.pathname = '/';
     mockUseCustomLocation.search = 'search';
 
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-dropdown')).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-dropdown')).toBeInTheDocument();
   });
 
-  it('should hide global search bar and domain dropdown on customize-page route', async () => {
+  it('should show global search bar and domain dropdown on customize-page route', async () => {
     mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
     mockUseCustomLocation.search = 'search';
 
@@ -273,6 +260,36 @@ describe('Test NavBar Component', () => {
 
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('domain-dropdown')).toBeInTheDocument();
+  });
+
+  it('offers All Domains to a domain-restricted user with several domains', () => {
+    const userDomains = [
+      { id: 'd1', type: 'domain', fullyQualifiedName: 'Alpha' },
+      { id: 'd2', type: 'domain', fullyQualifiedName: 'Gamma' },
+    ];
+    const domainStore = useDomainStore as unknown as jest.Mock;
+    const defaultStore = domainStore.getMockImplementation();
+    domainStore.mockImplementation(() => ({
+      activeDomain: 'All Domains',
+      isDomainRestricted: true,
+      userDomains,
+      updateActiveDomain: jest.fn(),
+    }));
+
+    render(<NavBarComponent />);
+
+    expect(DomainSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showAllDomains: true,
+        restrictedDomains: userDomains,
+      }),
+      expect.anything()
+    );
+    expect(
+      (DomainSelect as unknown as jest.Mock).mock.calls.at(-1)[0]
+    ).not.toHaveProperty('isClearable', false);
+
+    domainStore.mockImplementation(defaultStore);
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {

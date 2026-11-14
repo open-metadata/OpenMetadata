@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { APP_ROUTER_ROUTES } from '../constants/router.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
@@ -112,12 +111,14 @@ const syncDomainStoreForUser = (user?: User) => {
   domainStore.setDomainRestriction(isRestricted);
 
   const hasSingleDomain = isRestricted && userDomains.length === 1;
-  const isDefaultDomainActive =
-    domainStore.activeDomain === DEFAULT_DOMAIN_VALUE;
 
-  if (hasSingleDomain && isDefaultDomainActive) {
-    domainStore.updateActiveDomain(userDomains[0]);
-  }
+  // The selection persisted on the user (defaultDomain) is the source of truth: the server scopes
+  // list views from it, so the navbar must show exactly that, including "no selection" when it was
+  // cleared elsewhere (another session or the API) and this browser still caches an older pick.
+  // One write: other tabs reload when the stored pick changes, so no intermediate value is written.
+  domainStore.updateActiveDomain(
+    user?.defaultDomain ?? (hasSingleDomain ? userDomains[0] : undefined)
+  );
 };
 
 export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
@@ -145,6 +146,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   appPreferences: {},
   appVersion: undefined,
   rdfEnabled: false,
+  timeFormat: '12h',
 
   initializeAuthState: async () => {
     try {
@@ -382,5 +384,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setRdfEnabled: (enabled: boolean) => {
     set({ rdfEnabled: enabled });
+  },
+  setTimeFormat: (format: '12h' | '24h') => {
+    set({ timeFormat: format });
   },
 }));

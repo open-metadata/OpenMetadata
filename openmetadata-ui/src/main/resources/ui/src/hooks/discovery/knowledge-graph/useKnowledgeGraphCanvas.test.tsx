@@ -13,7 +13,7 @@
 
 import type { EdgeData, GraphOptions, NodeData } from '@antv/g6';
 import { Graph } from '@antv/g6';
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode, useRef } from 'react';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import {
@@ -242,6 +242,46 @@ describe('useKnowledgeGraphCanvas', () => {
     await flush();
 
     expect(onSelectionChange).toHaveBeenCalledWith(null);
+  });
+
+  it('pans to a node on keyboard focus only, so a pointer click does not move the card away', async () => {
+    await act(async () => {
+      render(withProviders(<Harness />));
+    });
+    await flush();
+    await flush();
+    const graph = graphInstances[0];
+    const options = (Graph as unknown as jest.Mock).mock.calls[0][0];
+    const element = options.node.style.component({ id: 'neighbor', data: {} });
+    const onHoverStart = element.props.onHoverStart as (id: string) => void;
+    const card = document.createElement('button');
+    document.body.appendChild(card);
+    card.focus();
+    graph.focusElement.mockClear();
+    const matches = jest
+      .spyOn(card, 'matches')
+      .mockImplementation((selector) => selector !== ':focus-visible');
+
+    act(() => onHoverStart('neighbor'));
+
+    expect(graph.focusElement).not.toHaveBeenCalled();
+
+    matches.mockImplementation((selector) => selector === ':focus-visible');
+    act(() => onHoverStart('neighbor'));
+
+    expect(graph.focusElement).toHaveBeenCalledWith('neighbor', false);
+
+    card.remove();
+  });
+
+  it('exposes the mounted container element, which PNG export captures', async () => {
+    let api: ReturnType<typeof useKnowledgeGraphCanvas> | undefined;
+    await act(async () => {
+      render(withProviders(<Harness capture={(value) => (api = value)} />));
+    });
+    await flush();
+
+    expect(api?.container).toBe(screen.getByTestId('canvas'));
   });
 
   it('runs the ResizeObserver callback without throwing', async () => {

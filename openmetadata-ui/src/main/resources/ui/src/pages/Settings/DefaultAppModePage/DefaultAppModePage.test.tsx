@@ -68,6 +68,19 @@ describe('DefaultAppModePage', () => {
     expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
   });
 
+  it('marks only the Classic option as deprecated, with the release notes link', async () => {
+    await renderPage();
+
+    const classic = screen.getByTestId('app-mode-option-classic');
+
+    expect(classic).toHaveTextContent('label.deprecated');
+    expect(classic).toHaveTextContent('message.classic-mode-retiring-admin');
+    expect(screen.getAllByTestId('classic-deprecated-badge')).toHaveLength(1);
+    expect(
+      screen.getByTestId('classic-deprecation-release-notes')
+    ).toHaveAttribute('target', '_blank');
+  });
+
   it('keeps Save disabled until the selection changes', async () => {
     await renderPage();
 

@@ -211,4 +211,25 @@ class UriUtilsTest {
     assertThat(result.getHost()).isEqualTo("example.com");
     assertThat(result.getScheme()).isEqualTo("https");
   }
+
+  @Test
+  void testWithoutTrailingSlash_dropsOnlyTheTrailingSlash() {
+    assertThat(UriUtils.withoutTrailingSlash("http://localhost:8585/om/"))
+        .isEqualTo("http://localhost:8585/om");
+    assertThat(UriUtils.withoutTrailingSlash("http://localhost:8585/om"))
+        .isEqualTo("http://localhost:8585/om");
+    assertThat(UriUtils.withoutTrailingSlash(null)).isNull();
+  }
+
+  @Test
+  void isRemoteWebUri_onlyForHttpOnAnotherMachine() {
+    assertThat(UriUtils.isRemoteWebUri(URI.create("https://attacker.example/cb"))).isTrue();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("HTTP://client.example/cb"))).isTrue();
+    // getHost() is null for a_b.example, which a browser still opens; it is not loopback.
+    assertThat(UriUtils.isRemoteWebUri(URI.create("https://a_b.example/cb"))).isTrue();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("http://127.0.0.1:33418/cb"))).isFalse();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("http://localhost:6274/cb"))).isFalse();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("http://[::1]:8080/cb"))).isFalse();
+    assertThat(UriUtils.isRemoteWebUri(URI.create("cursor://anysphere.cursor-mcp/cb"))).isFalse();
+  }
 }

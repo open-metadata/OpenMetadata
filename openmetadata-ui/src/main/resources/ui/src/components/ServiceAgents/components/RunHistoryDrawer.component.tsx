@@ -16,23 +16,24 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   AlignLeft,
-  LinkExternal02,
+  LinkExternal01,
+  PlayFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   Agent,
   AgentActionPermissions,
   AgentRun,
+  RenderRunAction,
   RunStatus,
 } from '../AgentsPage.interface';
 import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
@@ -159,9 +160,16 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 interface SelectedRunPanelProps {
   run?: AgentRun;
   isLoading: boolean;
+  action?: ReactNode;
 }
 
-const SelectedRunPanel: FC<SelectedRunPanelProps> = ({ run, isLoading }) => {
+const ACTIONABLE_RUN_STATUSES: RunStatus[] = ['failed', 'partial'];
+
+const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
+  run,
+  isLoading,
+  action,
+}) => {
   const { t } = useTranslation();
   const meta = run ? RUN_META[run.status] : undefined;
   const tot = run?.totals;
@@ -199,6 +207,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({ run, isLoading }) => {
           type="pill-color">
           {runLabel}
         </Badge>
+        {action}
       </Box>
 
       {/* stat strip */}
@@ -256,10 +265,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({ run, isLoading }) => {
           <div
             className="tw:relative tw:min-h-[120px]"
             data-testid="run-steps-empty">
-            <EmptyPlaceholder
-              title={t('message.no-steps-available')}
-              variant="blank"
-            />
+            <NoDataPlaceholder title={t('message.no-steps-available')} />
           </div>
         ) : (
           run.steps.map((s, idx) => (
@@ -285,12 +291,14 @@ interface RunHistoryDrawerProps {
   fetchRuns?: () => Promise<AgentRun[]>;
   permissions?: AgentActionPermissions;
   onClose: () => void;
-  onOpenLogs: (agent: Agent) => void;
+  // `run` is set only when a run other than the latest is selected.
+  onOpenLogs: (agent: Agent, run?: AgentRun) => void;
   onRun: (agent: Agent) => void;
   agentLinkProps?: {
     href: string;
     label: string;
   };
+  renderRunAction?: RenderRunAction;
 }
 
 const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
@@ -303,6 +311,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onOpenLogs,
   onRun,
   agentLinkProps,
+  renderRunAction,
 }) => {
   const { t } = useTranslation();
   const { isPending, isUnavailable } = useAgentActionAvailability();
@@ -368,7 +377,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="link-color"
               data-testid="agent-link-button"
               href={agentLinkProps.href}
-              iconTrailing={<LinkExternal02 size={12} />}
+              iconTrailing={LinkExternal01}
               target="_blank">
               {agentLinkProps.label}
             </Button>
@@ -381,10 +390,15 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               agent.status === 'failed' ? 'secondary-destructive' : 'secondary'
             }
             data-testid="raw-logs-button"
-            iconLeading={<AlignLeft size={15} />}
+            iconLeading={AlignLeft}
             isDisabled={isPending || isUnavailable}
             size="sm"
-            onClick={() => onOpenLogs(agent)}>
+            onClick={() =>
+              onOpenLogs(
+                agent,
+                run?.runId && run.id !== latestRun?.id ? run : undefined
+              )
+            }>
             {t('label.raw-logs')}
           </Button>
           {canRunAgent(agent, permissions) && (
@@ -392,7 +406,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               className="tw:font-semibold"
               color="primary"
               data-testid="drawer-run-now-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayFilled}
               isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>
@@ -409,7 +423,15 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
         </div>
         <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
 
-        <SelectedRunPanel isLoading={isLoading} run={run} />
+        <SelectedRunPanel
+          action={
+            run && ACTIONABLE_RUN_STATUSES.includes(run.status)
+              ? renderRunAction?.(agent, run, onClose)
+              : undefined
+          }
+          isLoading={isLoading}
+          run={run}
+        />
       </SlideoutMenu.Content>
     </SlideoutMenu>
   );

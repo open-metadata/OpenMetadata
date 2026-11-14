@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, uniq } from 'lodash';
+import { isEmpty, isEqual, isUndefined, sortBy, uniq } from 'lodash';
 import {
   AlertCapabilities,
   AlertConditionCapability,
@@ -20,16 +20,9 @@ import {
 import { AlertFilteringInput } from '../../generated/events/api/alertCapabilitiesRequest';
 import { EventFilterRule } from '../../generated/events/eventSubscription';
 import { EventType } from '../../generated/type/changeEvent';
+import type { ModifiedCreateEventSubscription } from '../AlertsClassBase.interface';
 import { getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
-
-export interface SourceOfTheCatalog {
-  name?: string;
-  containerEntities?: string[];
-  supportedFilters?: EventFilterRule[];
-  supportedActions?: EventFilterRule[];
-  supportedEventTypes?: EventType[];
-}
 
 export interface SelectionSupport {
   supportedFilters?: EventFilterRule[];
@@ -38,6 +31,10 @@ export interface SelectionSupport {
   supportedEventTypes?: EventType[];
   /** Who inside the platform the alert can be sent to. Unknown until the server has answered. */
   recipientCategories?: string[];
+  /** Whether the sources support any filter, and so whether the filters section is shown. */
+  hasFilters?: boolean;
+  /** Whether the sources support any trigger, and so whether the triggers section is shown. */
+  hasTriggers?: boolean;
 }
 
 // A trigger applies only to the sources that support it, so with several sources it says which.
@@ -56,97 +53,127 @@ const labelledWithItsSources = (
 /**
  * What the selected sources support: the one place the filters section, the triggers section, the
  * recipients and the pickers inside them get it from. The server answers, with the rules the save
- * applies, so the form cannot offer what the save would reject. Until it has answered, the catalog
- * the form already has says what the first source supports.
+ * applies, so the form cannot offer what the save would reject. Until it has answered for some
+ * of the selected sources, what they support is unknown and every field is left out. An answer for
+ * no sources, which usually arrives before a saved alert has loaded, says nothing about them.
+ * While a new selection is asked about, the answer for the previous one still says which sections
+ * are shown, so they do not blink, but nothing it lists can be chosen: it was given for other
+ * sources, and the save may reject it.
  */
 export const getSelectionSupport = (
-  catalog: SourceOfTheCatalog[],
   sources: string[] = [],
-  selection?: AlertCapabilities
+  selection?: AlertCapabilities,
+  answeredFor: string[] = []
 ): SelectionSupport => {
   const selected = uniq(sources);
-  const recipientCategories = selection?.recipientCategories;
-  if (selected.length > 0 && selection) {
-    return {
-      recipientCategories,
-      supportedFilters: selection.filters.map(
-        (filter) => filter.condition as EventFilterRule
-      ),
-      // With one source every trigger is its own, and saying so would only be noise.
-      supportedTriggers: selection.triggers.map((trigger) =>
-        selected.length > 1
-          ? labelledWithItsSources(trigger)
-          : (trigger.condition as EventFilterRule)
-      ),
-      containerEntities: selection.containerEntities,
-      supportedEventTypes: selection.eventTypes as EventType[] | undefined,
-    };
+  if (selected.length === 0) {
+    return { recipientCategories: selection?.recipientCategories };
   }
-  // Nothing is selected, or the server has not answered yet.
-  const only = catalog.find((source) => source.name === selected[0]);
+  if (!selection || answeredFor.length === 0) {
+    return {};
+  }
+  const shown = {
+    recipientCategories: selection.recipientCategories,
+    hasFilters: !isEmpty(selection.filters),
+    hasTriggers: !isEmpty(selection.triggers),
+  };
+  if (!isEqual(sortBy(uniq(answeredFor)), sortBy(selected))) {
+    return shown;
+  }
 
   return {
-    supportedFilters: only?.supportedFilters,
-    supportedTriggers: only?.supportedActions,
-    containerEntities: only?.containerEntities,
-    supportedEventTypes: only?.supportedEventTypes,
-    recipientCategories,
+    ...shown,
+    supportedFilters: selection.filters.map(
+      (filter) => filter.condition as EventFilterRule
+    ),
+    // With one source every trigger is its own, and saying so would only be noise.
+    supportedTriggers: selection.triggers.map((trigger) =>
+      selected.length > 1
+        ? labelledWithItsSources(trigger)
+        : (trigger.condition as EventFilterRule)
+    ),
+    containerEntities: selection.containerEntities,
+    supportedEventTypes: selection.eventTypes as EventType[] | undefined,
   };
 };
+
+/**
+ * Whether a section of rules is shown. With no source chosen it is, empty. Once the server has said
+ * whether the sources support any rule of that kind, it is shown when they do. Until then it is
+ * shown only for rules the alert already holds, so a saved alert never hides them.
+ */
+export const shouldShowRuleSection = (
+  sources: string[],
+  hasRules: boolean | undefined,
+  chosenRules: unknown[] | undefined
+) => {
+  if (isEmpty(sources)) {
+    return true;
+  }
+
+  return isUndefined(hasRules) ? !isEmpty(chosenRules) : hasRules;
+};
+
+/**
+ * What choosing other sources does to the rest of an alert, in every alert form. The filters and
+ * triggers chosen so far start over, since the new sources may not support them. The destinations
+ * start over only when a source is taken away; adding one keeps them. Rules stored without
+ * selections stay listed: the form shows them read-only and a save keeps them as stored.
+ */
+export const getAlertSourceChanges = (
+  next: string[],
+  previous: string[],
+  hasRulesWithoutSelections = false
+): Partial<ModifiedCreateEventSubscription> => ({
+  resources: next,
+  ...(hasRulesWithoutSelections ? {} : { input: {} }),
+  ...(previous.some((source) => !next.includes(source))
+    ? { destinations: [] }
+    : {}),
+});
 
 export interface SourceOption {
   name: string;
   disabled: boolean;
   reason?: string;
   warning?: string;
-  /** Unknown until the server has answered. */
-  kind?: SourceKind;
+  kind: SourceKind;
 }
 
 /**
- * Which sources can still be chosen, and what to say about the ones that cannot. The server says
- * so for every source: which can join the selection, why another cannot, and which selected source
- * can never produce a match with what has been chosen so far.
+ * Which sources can be chosen, and what to say about the ones that cannot. The server lists every
+ * source of the alert type and says, for each, whether it can join the selection, why it cannot,
+ * and which selected source can never produce a match with what has been chosen so far. When its
+ * latest answer failed, the sources it listed before are offered as they are.
  */
 export const getSourceOptions = (
-  names: string[],
   selected: string[],
-  selection?: AlertCapabilities
-): SourceOption[] => {
-  const said = selection?.sources ?? [];
-
-  return names.map((name) => {
-    const about: AlertSourceCapability | undefined = said.find(
-      (source) => source.name === name
-    );
-    const isSelected = selected.includes(name);
-    const canJoin = about?.canJoin !== false;
+  selection?: AlertCapabilities,
+  knownSources: AlertSourceCapability[] = []
+): SourceOption[] =>
+  (selection?.sources ?? knownSources).map((about) => {
+    const isSelected = selected.includes(about.name);
+    const canJoin = about.canJoin !== false;
 
     return {
-      name,
+      name: about.name,
       disabled: !isSelected && !canJoin,
-      reason: isSelected || canJoin ? undefined : about?.reason,
-      warning: isSelected ? about?.warning : undefined,
-      kind: about?.kind,
+      reason: isSelected || canJoin ? undefined : about.reason,
+      warning: isSelected ? about.warning : undefined,
+      kind: about.kind,
     };
   });
-};
 
 const KINDS_IN_ORDER = [SourceKind.All, SourceKind.Entity, SourceKind.Activity];
 
-/**
- * Sources grouped by the kind the server gives them, in the order the kinds are offered. A source
- * whose kind is not known yet goes last, in a group with no kind.
- */
-export const groupSourcesByKind = <T extends { kind?: SourceKind }>(
+/** Sources grouped by the kind the server gives them, in the order the kinds are offered. */
+export const groupSourcesByKind = <T extends { kind: SourceKind }>(
   sources: T[]
 ) =>
-  [...KINDS_IN_ORDER, undefined]
-    .map((kind) => ({
-      kind,
-      sources: sources.filter((source) => source.kind === kind),
-    }))
-    .filter((group) => group.sources.length > 0);
+  KINDS_IN_ORDER.map((kind) => ({
+    kind,
+    sources: sources.filter((source) => source.kind === kind),
+  })).filter((group) => group.sources.length > 0);
 
 export const getSourceKindLabel = (kind: SourceKind) => {
   switch (kind) {

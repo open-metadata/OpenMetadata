@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/type/memoryConflictReviewResolution.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MemoryConflictReviewResolution",
+  "description": "What a reviewer compared when deciding a Memory Conflict Review, sent as the resolution payload: the reviewed memory and every disputed memory, each with when its claim last changed as the reviewer read it. The decision is refused when the disputes or any of those claims changed since.",
+  "javaType": "org.openmetadata.schema.type.MemoryConflictReviewResolution",
+  "type": "object",
+  "definitions": {
+    "comparedMemory": {
+      "javaType": "org.openmetadata.schema.type.ComparedMemory",
+      "description": "A memory the reviewer compared.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "The compared context memory.",
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "contentUpdatedAt": {
+          "description": "When the memory's claim last changed, as the reviewer read it. Absent when the reviewer could not read the memory.",
+          "$ref": "basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["id"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "compared": {
+      "description": "The reviewed memory and every memory it disputes.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/comparedMemory"
+      }
+    }
+  },
+  "required": ["compared"],
+  "additionalProperties": false
+}

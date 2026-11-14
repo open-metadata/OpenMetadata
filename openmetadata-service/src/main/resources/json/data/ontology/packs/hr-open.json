@@ -1,15 +1,18 @@
 {
   "abbreviation": "HR Open",
+  "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to HR Open Standards, which are not licensed to this project.",
   "bundled": true,
-  "description": "A compact OpenMetadata starter subset of HR Open Standards workforce concepts.",
+  "description": "An OpenMetadata-authored concept outline aligned to HR Open Standards workforce concepts. HR Open publishes no RDF form of its standard, so this is not a copy of it.",
   "id": "hr-open",
-  "license": "MIT",
-  "licenseUrl": "https://www.hropenstandards.org/",
+  "industry": "human-resources",
+  "layer": "L2",
+  "license": "Apache License 2.0",
+  "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
   "modules": [
     {
       "conceptCount": 9,
       "dependencies": [],
-      "description": "Workers, positions, organizations, and compensation concepts.",
+      "description": "Workers, positions, organizations and compensation concepts aligned to HR Open.",
       "format": "turtle",
       "id": "workforce",
       "name": "Workforce",
@@ -19,7 +22,8 @@
       "sha256": "ef532604d3b0adfa6bc53c6d217283e5bf9937238c5d6d55c569610f5994599f"
     }
   ],
-  "name": "HR Open Standards",
+  "name": "HR Open Starter (OpenMetadata-authored)",
+  "publisher": "OpenMetadata",
   "sourceUrl": "https://www.hropenstandards.org/",
   "standard": "HR Open Standards",
   "version": "2025Q1-om1"

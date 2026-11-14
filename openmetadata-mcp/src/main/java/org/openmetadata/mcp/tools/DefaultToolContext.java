@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.ws.rs.WebApplicationException;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -203,15 +205,23 @@ public class DefaultToolContext {
     boolean isError = logicalError(result);
     BudgetedResult budgeted = applyBudget(result, toolName);
     return McpSchema.CallToolResult.builder()
-        .content(List.of(new McpSchema.TextContent(budgeted.json())))
+        .content(List.of(McpSchema.TextContent.builder(budgeted.json()).build()))
         .structuredContent(budgeted.payload())
         .isError(isError)
         .build();
   }
 
+  /** A call refused before it reaches any tool, answered in the shape of a tool's own 403. */
+  public static CallToolOutcome forbidden(String message) {
+    return new CallToolOutcome(
+        errorResult(errorPayload(message, STATUS_FORBIDDEN)),
+        0L,
+        McpToolCallUsage.ErrorCategory.AUTH);
+  }
+
   private static McpSchema.CallToolResult errorResult(Map<String, Object> error) {
     return McpSchema.CallToolResult.builder()
-        .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(error))))
+        .content(List.of(McpSchema.TextContent.builder(JsonUtils.pojoToJson(error)).build()))
         .structuredContent(error)
         .isError(true)
         .build();
@@ -312,6 +322,26 @@ public class DefaultToolContext {
     return matched;
   }
 
+  /**
+   * The status an exception already carries, when it blames the caller. A {@code SearchException}
+   * reports the engine's 400 for a malformed {@code queryFilter} or a page past the result window,
+   * but its message names no status and no keyword below, so it fell through to 500 and the caller
+   * was told its arguments were fine. Only a 4xx is taken: a carried 500 is often a constructor
+   * default, and the keyword table still tells a timeout from an outage.
+   */
+  private static CategoryMatcher carriedClientStatus(Throwable cursor) {
+    int status =
+        switch (cursor) {
+          case WebServiceException e -> e.getResponse().getStatus();
+          case WebApplicationException e -> e.getResponse().getStatus();
+          default -> 0;
+        };
+    boolean isClientError = status >= STATUS_BAD_REQUEST && status < STATUS_INTERNAL_ERROR;
+    return isClientError
+        ? new CategoryMatcher(meta -> true, categoryForStatus(status), status)
+        : null;
+  }
+
   /** Matches the {@code status line [HTTP/1.1 400 Bad Request]} a search client embeds in its message. */
   private static final Pattern REPORTED_HTTP_STATUS =
       Pattern.compile("status line \\[http/\\d(?:\\.\\d)? (\\d{3})");
@@ -337,7 +367,12 @@ public class DefaultToolContext {
   private static final List<CategoryMatcher> CATEGORY_MATCHERS =
       List.of(
           new CategoryMatcher(
-              meta -> meta.name().contains("RateLimit") || meta.message().contains("rate limit"),
+              meta ->
+                  meta.name().contains("RateLimit")
+                      // A refused or deferred graph read the caller may repeat shortly.
+                      || meta.name().contains("RdfRetryLater")
+                      || meta.name().contains("QueryCapacity")
+                      || meta.message().contains("rate limit"),
               McpToolCallUsage.ErrorCategory.RATE_LIMIT,
               STATUS_TOO_MANY_REQUESTS),
           new CategoryMatcher(
@@ -352,12 +387,15 @@ public class DefaultToolContext {
                       || meta.message().contains("permission denied"),
               McpToolCallUsage.ErrorCategory.AUTH,
               STATUS_FORBIDDEN),
-          // A disabled RDF triplestore is a deployment state, not an outage. Left unmatched it
-          // fell through to 500, and summarizeFailure then told the caller the backend was broken
-          // and that a narrower request might help - both wrong. Matched by name so the message
-          // text stays free to change.
+          // A disabled RDF triplestore, or a degraded projection that only a full rebuild clears,
+          // is a deployment state, not an outage. Left unmatched it fell through to 500, and
+          // summarizeFailure then told the caller the backend was broken and that a narrower
+          // request might help - both wrong. Matched by name so the message text stays free to
+          // change.
           new CategoryMatcher(
-              meta -> meta.name().contains("RdfNotEnabled"),
+              meta ->
+                  meta.name().contains("RdfNotEnabled")
+                      || meta.name().contains("RdfProjectionDegraded"),
               McpToolCallUsage.ErrorCategory.VALIDATION,
               STATUS_BAD_REQUEST),
           // Validation by class name runs before the NotFound message heuristic below, so a
@@ -398,7 +436,8 @@ public class DefaultToolContext {
         new ExceptionMeta(
             cursor.getClass().getSimpleName(),
             cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT));
-    CategoryMatcher reported = reportedStatus(meta.message());
+    CategoryMatcher carried = carriedClientStatus(cursor);
+    CategoryMatcher reported = carried != null ? carried : reportedStatus(meta.message());
     return reported != null
         ? reported
         : CATEGORY_MATCHERS.stream()

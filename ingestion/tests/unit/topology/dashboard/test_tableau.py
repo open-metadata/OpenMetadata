@@ -190,8 +190,7 @@ class TableauUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, get_connection, test_connection) -> None:
         get_connection.return_value = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
@@ -199,7 +198,7 @@ class TableauUnitTest(TestCase):
             mock_tableau_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.client = SimpleNamespace()
+        self.tableau.client = SimpleNamespace(metadata_api_backfill_running=False)
         self.tableau.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
@@ -279,7 +278,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=5),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -300,7 +299,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=1000),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -803,6 +802,67 @@ class TableauUnitTest(TestCase):
                 mock_get_by_name.assert_called_once()
                 assert result is None
 
+    def _search_finds_only_sales_orders(self, entity_type, fqn_search_string, **_):
+        """OM holds svc.dev.sales.orders and nothing else."""
+        return MagicMock(spec=Table) if fqn_search_string.endswith("dev.sales.orders") else None
+
+    def _lineage_tables_for_prefix(self, db_service_prefix, schema="sales"):
+        table = UpstreamTable(
+            id="t1",
+            luid="t1-luid",
+            name="sales.orders" if schema else "orders",
+            fullName="[dev].[sales].[orders]",
+            schema_=schema,
+            database={"id": "db1", "name": "dev"},
+        )
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=None),
+            patch.object(
+                self.tableau.metadata, "search_in_any_service", side_effect=self._search_finds_only_sales_orders
+            ) as search,
+        ):
+            return self.tableau._get_table_entities_from_api(db_service_prefix=db_service_prefix, table=table), search
+
+    def test_table_lineage_matches_a_schema_prefix(self):
+        result, _ = self._lineage_tables_for_prefix("svc.dev.sales")
+
+        assert result is not None and len(result) == 1
+
+    def test_table_lineage_skips_a_table_outside_the_schema_prefix(self):
+        # dbServicePrefixes svc.dev.inventory must not link a table of schema sales
+        result, search = self._lineage_tables_for_prefix("svc.dev.inventory")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_skips_a_table_other_than_the_table_prefix(self):
+        result, search = self._lineage_tables_for_prefix("svc.dev.sales.customers")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_full_name_fallback_respects_the_schema_prefix(self):
+        # Tableau reports no schema, so only the fullName [dev].[sales].[orders] carries it
+        result, _ = self._lineage_tables_for_prefix("svc.dev.inventory", schema=None)
+
+        assert result is None
+
+    def test_datamodel_dashboard_lineage_skipped_when_the_dashboard_failed(self):
+        # A workbook whose yield_dashboard failed leaves no dashboard in the context; its
+        # data models must not try to build a lineage edge to it.
+        context = self.tableau.context.get()
+        context.__dict__["dataModels"] = ["ds-bad"]
+        context.__dict__["dashboard"] = None
+        datamodel = MagicMock(spec=DashboardDataModel, dataModelType="TableauEmbeddedDatasource")
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=datamodel),
+            patch("metadata.ingestion.source.dashboard.tableau.metadata.logger") as log,
+        ):
+            lineage = list(self.tableau.yield_datamodel_dashboard_lineage())
+
+        assert lineage == []
+        log.error.assert_not_called()
+
     def test_datamodel_uses_own_project_over_dashboard_project(self):
         """
         Test that when a published datasource has its own projectName,
@@ -1005,6 +1065,79 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
         assert len(columns) == 1
         assert columns[0].description is None
+
+    def test_embedded_column_inherits_published_formula(self):
+        """
+        An embedded datasource reports a field it reads from a published datasource as a bare
+        field with no formula; its column takes the formula from the published definition, and
+        a formula the embedded datasource defines itself still wins.
+        """
+        published = DataSource(
+            id="pds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0"),
+                DatasourceField(id="pub-local", name="Local Calc", formula="[a] + 1"),
+            ],
+        )
+        embedded = DataSource(
+            id="eds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="emb-calc", name="Has Activity"),
+                DatasourceField(id="emb-local", name="Local Calc", formula="[a] + 2"),
+                DatasourceField(id="emb-plain", name="Region"),
+            ],
+            upstreamDatasources=[published],
+        )
+
+        descriptions = {
+            column.displayName: column.description.root if column.description else None
+            for column in self.tableau.get_column_info(embedded)
+        }
+
+        assert descriptions == {
+            "Has Activity": "**Formula:** `LOOKUP(ZN([Net Flow $]),0)<>0`",
+            "Local Calc": "**Formula:** `[a] + 2`",
+            "Region": None,
+        }
+
+    def test_datamodel_col_lineage_carries_published_formula(self):
+        """The published -> embedded column edge of a calculated field carries its formula."""
+
+        def model(name: str, columns: list[str]) -> DashboardDataModel:
+            return DashboardDataModel(
+                id=uuid.uuid4(),
+                name=name,
+                service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+                dataModelType="TableauDataModel",
+                columns=[
+                    Column(
+                        name=column,
+                        displayName=column,
+                        dataType=DataType.RECORD,
+                        fullyQualifiedName=f"svc.model.{name}.{column}",
+                    )
+                    for column in columns
+                ],
+            )
+
+        published = DataSource(
+            id="pds-1",
+            fields=[DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0")],
+        )
+
+        lineage = self.tableau._get_datamodel_col_lineage(
+            data_model_entity=model("emb", ["Has Activity", "Region"]),
+            upstream_data_model_entity=model("pub", ["Has Activity", "Region"]),
+            upstream_formulas=self.tableau._get_field_formulas(published),
+        )
+
+        functions = {line.toColumn.root: line.function.root if line.function else None for line in lineage}
+        assert functions == {
+            "svc.model.emb.Has Activity": "LOOKUP(ZN([Net Flow $]),0)<>0",
+            "svc.model.emb.Region": None,
+        }
 
     def test_column_data_length_set_for_guid_mirrored_column(self):
         """

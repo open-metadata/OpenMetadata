@@ -30,8 +30,9 @@ import {
   InfoCircle,
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
+import { isAxiosError } from 'axios';
+import classNames from 'classnames';
 import {
-  FC,
   ReactNode,
   useCallback,
   useEffect,
@@ -39,6 +40,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Checkbox as AriaCheckbox } from 'react-aria-components';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -67,6 +69,7 @@ import {
   isSearchScopedRule,
 } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { getErrorText } from '../../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
@@ -97,22 +100,24 @@ const Field = ({
   <div className={`tw:mb-5 tw:flex tw:flex-col tw:gap-1.5 ${className ?? ''}`}>
     {label && <Label isRequired={isRequired}>{label}</Label>}
     {children}
-    {error && <HintText isInvalid>{error}</HintText>}
+    {error && (
+      <HintText isInvalid>
+        <span role="alert">{error}</span>
+      </HintText>
+    )}
   </div>
 );
 
-const SECTION_CARD_CLASS =
-  'tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-[11px] tw:transition';
+const SECTION_CARD_CLASS = [
+  'tw:relative tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2',
+  'tw:rounded-lg tw:border tw:px-3 tw:py-[11px] tw:transition',
+].join(' ');
 
 const BEHAVIOR_CARD_CLASS =
   'tw:min-h-[70px] tw:rounded-lg tw:border tw:border-secondary tw:px-4 tw:py-[13px]';
 
 const ENTITY_TYPE_POPUP_CLASS =
   'tw:max-h-[min(320px,calc(100vh-96px))] tw:overflow-y-auto tw:overscroll-contain';
-
-const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
-  <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
-);
 
 const resolveFullyRendered = (
   rule: ContextRule | undefined,
@@ -197,9 +202,11 @@ export const ContextRuleEditor = ({
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
   const [filterErrorShown, setFilterErrorShown] = useState(false);
+  const [filterUnrendered, setFilterUnrendered] = useState(false);
   const clearFilterState = useCallback(() => {
     setFilterIncomplete(false);
     setFilterErrorShown(false);
+    setFilterUnrendered(false);
   }, []);
   const closeDrawerRef = useRef<() => void>(() => undefined);
   const lastResetRuleIdRef = useRef<string>();
@@ -298,6 +305,37 @@ export const ContextRuleEditor = ({
     t,
   ]);
 
+  const validateFilter = useCallback(
+    async (data: ContextRule) => {
+      try {
+        const unchangedFilter =
+          rule &&
+          data.entityType === rule.entityType &&
+          data.queryFilter === (rule.queryFilter ?? '');
+        const reEnabled = rule?.enabled === false && data.enabled !== false;
+        if (data.queryFilter && (!unchangedFilter || reEnabled)) {
+          await previewPersonaAIContextRule(personaId, data);
+        }
+        form.clearErrors('queryFilter');
+
+        return true;
+      } catch (error) {
+        let message = t('server.unexpected-error');
+        if (isAxiosError(error)) {
+          message = getErrorText(error, message);
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        form.setError('queryFilter', {
+          message,
+        });
+
+        return false;
+      }
+    },
+    [form, personaId, rule, t]
+  );
+
   const handleSubmit = useCallback(
     async (data: ContextRule) => {
       // An unfinished condition contributes nothing to the emitted filter, so saving it would
@@ -306,6 +344,9 @@ export const ContextRuleEditor = ({
       if (filterIncomplete) {
         setFilterErrorShown(true);
 
+        return;
+      }
+      if (!(await validateFilter(data))) {
         return;
       }
       const scoped = isSearchScopedRule(data);
@@ -322,7 +363,7 @@ export const ContextRuleEditor = ({
       });
       closeDrawerRef.current();
     },
-    [filterIncomplete, onSubmit]
+    [filterIncomplete, onSubmit, validateFilter]
   );
 
   const handleDismiss = useCallback(() => {
@@ -390,6 +431,8 @@ export const ContextRuleEditor = ({
               aria-label={t('label.name')}
               inputDataTestId="context-rule-name"
               isInvalid={Boolean(fieldState.error)}
+              name={field.name}
+              ref={field.ref}
               value={field.value ?? ''}
               onBlur={field.onBlur}
               onChange={field.onChange}
@@ -400,11 +443,34 @@ export const ContextRuleEditor = ({
           required: t('message.field-text-is-required', {
             fieldText: t('label.name'),
           }),
-          validate: (value) =>
-            !existingRuleNames.some(
-              (name) => name.trim().toLowerCase() === value.trim().toLowerCase()
-            ) || t('message.name-already-exists'),
+          validate: {
+            nonBlank: (value) =>
+              value.trim().length > 0 ||
+              t('message.field-text-is-required', {
+                fieldText: t('label.name'),
+              }),
+            unique: (value) =>
+              !existingRuleNames.some(
+                (name) =>
+                  name.trim().toLowerCase() === value.trim().toLowerCase()
+              ) || t('message.name-already-exists'),
+          },
         }}
+      />
+
+      <Controller
+        control={form.control}
+        name="enabled"
+        render={({ field }) => (
+          <Field label={t('label.enabled')}>
+            <Toggle
+              aria-label={t('label.enabled')}
+              isSelected={field.value ?? true}
+              size="sm"
+              onChange={field.onChange}
+            />
+          </Field>
+        )}
       />
 
       <Controller
@@ -476,17 +542,23 @@ export const ContextRuleEditor = ({
         )}
       />
 
-      <Field label={t('label.filter')}>
+      <Field
+        error={form.formState.errors.queryFilter?.message}
+        label={t('label.filter')}>
         <RuleQueryBuilderField
           entityType={entityType}
           filterJsonTree={filterJsonTree}
           key={getFilterFieldKey(open, rule?.id, entityType)}
           queryFilter={queryFilter}
           onChange={(updatedQuery, updatedTree) => {
+            form.clearErrors('queryFilter');
             form.setValue('queryFilter', updatedQuery, { shouldDirty: true });
             form.setValue('filterJsonTree', updatedTree, {
               shouldDirty: true,
             });
+          }}
+          onReconstructionStatusChange={(rendered) => {
+            setFilterUnrendered(!rendered);
           }}
           onValidityChange={(isValid) => {
             setFilterIncomplete(!isValid);
@@ -495,6 +567,16 @@ export const ContextRuleEditor = ({
             }
           }}
         />
+        {filterUnrendered && (
+          <Alert
+            className="tw:mt-1.5"
+            data-testid="context-rule-filter-unrendered"
+            icon={AlertCircle}
+            iconSize="sm"
+            variant="warning">
+            {t('message.persona-context-rule-filter-unrendered')}
+          </Alert>
+        )}
         {shouldShowFilterError(filterErrorShown, filterIncomplete) && (
           <Typography
             className="tw:mt-1.5 tw:text-error-primary"
@@ -513,7 +595,7 @@ export const ContextRuleEditor = ({
               className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
               color="link-color"
               href={getRuleExplorePath(entityType, filterJsonTree, queryFilter)}
-              iconTrailing={ViewInExploreIcon}
+              iconTrailing={LinkExternal01}
               size="sm"
               target="_blank">
               {t('label.view-in-explore')}
@@ -680,39 +762,39 @@ export const ContextRuleEditor = ({
                   const selected = selectedSections.includes(section);
 
                   return (
-                    <div
-                      aria-checked={selected}
-                      aria-disabled={sectionsDisabled}
-                      className={`${SECTION_CARD_CLASS} ${
-                        sectionsDisabled
-                          ? 'tw:cursor-not-allowed tw:opacity-60'
-                          : ''
-                      }`}
+                    <AriaCheckbox
+                      className={({ isSelected, isDisabled }) =>
+                        classNames(SECTION_CARD_CLASS, {
+                          'tw:border-brand tw:bg-brand-primary': isSelected,
+                          'tw:border-secondary tw:bg-overlay-surface':
+                            !isSelected,
+                          'tw:cursor-not-allowed tw:opacity-60': isDisabled,
+                        })
+                      }
+                      isDisabled={sectionsDisabled}
+                      isSelected={selected}
                       key={section}
-                      role="checkbox"
-                      tabIndex={sectionsDisabled ? -1 : 0}
-                      onClick={() => toggleSection(section)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          toggleSection(section);
-                        }
-                      }}>
-                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-                        <CheckboxBase
-                          isDisabled={sectionsDisabled}
-                          isSelected={selected}
-                        />
-                        <span className="tw:truncate tw:text-[13px]">
-                          {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
-                        </span>
-                      </span>
-                      {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
-                        <Badge color="gray" size="sm">
-                          {t('label.heavy')}
-                        </Badge>
+                      onChange={() => toggleSection(section)}>
+                      {({ isSelected, isDisabled, isFocusVisible }) => (
+                        <>
+                          <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+                            <CheckboxBase
+                              isDisabled={isDisabled}
+                              isFocusVisible={isFocusVisible}
+                              isSelected={isSelected}
+                            />
+                            <span className="tw:truncate tw:text-[13px]">
+                              {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
+                            </span>
+                          </span>
+                          {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
+                            <Badge color="gray" size="sm">
+                              {t('label.heavy')}
+                            </Badge>
+                          )}
+                        </>
                       )}
-                    </div>
+                    </AriaCheckbox>
                   );
                 })}
               </Box>
@@ -767,7 +849,7 @@ export const ContextRuleEditor = ({
       closeOnBackdrop: false,
       form: formBody,
       header: {
-        className: 'tw:border-b tw:border-secondary tw:px-6! tw:py-5!',
+        className: 'tw:border-b tw:border-secondary tw:mt-0 tw:px-6! tw:py-5!',
       },
       hookForm: form,
       submitLabel: t('label.save-rule'),

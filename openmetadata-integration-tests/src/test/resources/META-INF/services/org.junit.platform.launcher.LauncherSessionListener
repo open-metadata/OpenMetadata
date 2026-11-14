@@ -1,1 +1,2 @@
 org.openmetadata.it.bootstrap.TestSuiteBootstrap
+org.openmetadata.it.bench.ApiLatencyReportListener

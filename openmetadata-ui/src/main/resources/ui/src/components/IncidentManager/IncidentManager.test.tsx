@@ -21,8 +21,8 @@ import {
   renderWithQueryClient as render,
   runQueryNotificationsSynchronously,
 } from '../../test/unit/test-utils';
+import { getPastDaysRange } from '../../utils/date-time/calendarDate.utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { getPastDaysRange } from '../observability/DataQuality/Dashboard/calendarDate.utils';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -151,11 +151,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({
       title,
       description,
+      'data-testid': testId = 'empty-placeholder',
     }: {
+      'data-testid'?: string;
       title?: React.ReactNode;
       description?: React.ReactNode;
     }) => (
-      <div data-testid="empty-placeholder">
+      <div data-testid={testId}>
         <span>{title}</span>
         <span>{description}</span>
       </div>
@@ -283,6 +285,37 @@ jest.mock('../../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
+  postAggregateFieldOptions: jest.fn().mockResolvedValue({
+    data: {
+      aggregations: {
+        'sterms#testCaseResolutionStatusDetails.assignee.id': {
+          buckets: [
+            {
+              'top_hits#top': {
+                hits: {
+                  hits: [
+                    {
+                      _source: {
+                        testCaseResolutionStatusDetails: {
+                          assignee: {
+                            id: 'user-1',
+                            type: 'user',
+                            name: 'user1',
+                            displayName: 'User One',
+                            deleted: false,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+    },
+  }),
 }));
 jest.mock('../../rest/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() => Promise.resolve({ data: [] })),
@@ -531,6 +564,43 @@ describe('IncidentManagerPage', () => {
       { replace: true }
     );
     expect(screen.queryByTestId('select-owner-tabs')).not.toBeInTheDocument();
+  });
+
+  it('offers only the users and teams some incident is assigned to', async () => {
+    const mockSearchQuery = require('../../rest/searchAPI').searchQuery;
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-assignee'));
+    });
+
+    expect(
+      screen.getByRole('tab', { name: /label.team-plural/ })
+    ).toHaveTextContent('0');
+    expect(
+      screen.getByRole('tab', { name: /label.user-plural/ })
+    ).toHaveTextContent('1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /label.user-plural/ }));
+    });
+
+    expect(
+      within(screen.getByTestId('owner-select-users-panel')).getAllByTestId(
+        'owner-option'
+      )
+    ).toHaveLength(1);
+    expect(screen.getByTestId('owner-select-users-panel')).toHaveTextContent(
+      'User One'
+    );
+    // The picker lists the assignees it was given, not the user/team indexes.
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: 'user' })
+    );
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: 'team' })
+    );
   });
 
   it('clears a URL-selected assignee after reopening the picker without needing a combobox', async () => {

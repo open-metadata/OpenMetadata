@@ -10,19 +10,102 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
+import { sortBy } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_BASE,
+} from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { EntityReference } from '../../generated/entity/type';
+import { SortOrder } from '../../generated/search/aggregationRequest';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   SearchHitBody,
   TestCaseSearchSource,
 } from '../../interface/search.interface';
 import { Option } from '../../pages/TasksPage/TasksPage.interface';
 import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
-import { getUserAndTeamSearch } from '../../rest/miscAPI';
+import {
+  getUserAndTeamSearch,
+  postAggregateFieldOptions,
+} from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { getQueryFilterForDataProducts } from '../../utils/DomainFilterUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getAggregations } from '../../utils/ExplorePureUtils';
+
+const ASSIGNEE_FIELD = 'testCaseResolutionStatusDetails.assignee';
+const NO_ASSIGNEES: EntityReference[] = [];
+
+type AssigneeBucket = {
+  'top_hits#top'?: {
+    hits?: {
+      hits?: {
+        _source?: {
+          testCaseResolutionStatusDetails?: { assignee?: EntityReference };
+        };
+      }[];
+    };
+  };
+};
+
+const fetchIncidentAssignees = async (domain?: string) => {
+  const { data } = await postAggregateFieldOptions({
+    index: 'testCaseResolutionStatus',
+    fieldName: `${ASSIGNEE_FIELD}.id`,
+    fieldValue: '',
+    // A terms aggregation cannot page, so read the whole set up to this cap.
+    // Composite aggregation in /search/aggregate if catalogs ever exceed it.
+    size: AGGREGATE_PAGE_SIZE_LARGE,
+    // Incident documents carry no top-level `deleted`, so the default
+    // `deleted: false` term would match none of them
+    // (ADR:2026-10-29-incident-assignee-filter-lists-aggregated-assignees).
+    deleted: null as unknown as boolean,
+    query: domain
+      ? JSON.stringify(getQueryFilterForDataProducts(domain))
+      : undefined,
+    // The latest record names the assignee as they are now.
+    sourceFields: [ASSIGNEE_FIELD],
+    topHits: { size: 1, sortField: 'timestamp', sortOrder: SortOrder.Desc },
+  });
+  const buckets = (getAggregations(data.aggregations)[`${ASSIGNEE_FIELD}.id`]
+    ?.buckets ?? []) as AssigneeBucket[];
+
+  const assignees = buckets.reduce<EntityReference[]>((list, bucket) => {
+    const assignee =
+      bucket['top_hits#top']?.hits?.hits?.[0]?._source
+        ?.testCaseResolutionStatusDetails?.assignee;
+
+    return assignee && !assignee.deleted ? [...list, assignee] : list;
+  }, []);
+
+  return sortBy(assignees, (assignee) => getEntityName(assignee).toLowerCase());
+};
+
+/**
+ * The users and teams assigned to at least one incident in the active domain,
+ * read as a terms aggregation over the incident index so they never depend on
+ * the page of incidents on screen. The assignee picker searches and counts
+ * this list itself: sent as a filter, a large set of ids outgrows the URL of
+ * the user/team search. Empty while it loads and when the read fails, so the
+ * picker offers no one rather than everyone.
+ * ADR:2026-10-29-incident-assignee-filter-lists-aggregated-assignees
+ */
+export const useIncidentAssignees = () => {
+  const { activeDomain } = useDomainStore();
+  const domain =
+    activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain;
+  const { data = NO_ASSIGNEES } = useQuery({
+    queryKey: ['incident-assignees', domain],
+    queryFn: () => fetchIncidentAssignees(domain),
+  });
+
+  return data;
+};
 
 export interface UseIncidentFilterOptionsProps {
   filters: TestCaseIncidentStatusParams;

@@ -15,6 +15,7 @@ import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { UseFormReturn } from 'react-hook-form';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { GlossaryTermIntakeFormState } from '../hooks/useGlossaryTermIntakeForm';
 
 export interface EntityReferenceOption extends FormSelectItem {
   value: EntityReference;
@@ -29,9 +30,12 @@ export interface GlossaryFormValues {
   owners: EntityReferenceOption[];
   reviewers: EntityReferenceOption[];
   domains: EntityReferenceOption[];
+  // Intake-form custom properties, keyed by `getExtensionFormKey`.
+  extensionFormValues?: Record<string, unknown>;
 }
 
 export interface AddGlossaryProps {
   form: UseFormReturn<GlossaryFormValues>;
+  intake: GlossaryTermIntakeFormState;
   onSubmit: (data: GlossaryFormValues) => Promise<void> | void;
 }

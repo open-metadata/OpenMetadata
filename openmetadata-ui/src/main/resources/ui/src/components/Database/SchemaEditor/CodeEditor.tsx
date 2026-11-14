@@ -88,7 +88,7 @@ const CodeEditor = ({
             'tw:border-b tw:border-subtle tw:bg-secondary tw:px-6 tw:text-base',
             'tw:leading-[1.5715] tw:font-medium tw:text-primary'
           )}>
-          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:[&_.ant-form-item-label]:p-0!">
+          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
             {title}
           </div>
           {showCopyButton && (
@@ -96,11 +96,9 @@ const CodeEditor = ({
               className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
               <ButtonUtility
-                aria-label={t('message.copy-to-clipboard')}
-                color="tertiary"
                 data-testid="query-copy-button"
                 icon={Copy01}
-                size="sm"
+                size="lg"
                 tooltip={
                   hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
                 }

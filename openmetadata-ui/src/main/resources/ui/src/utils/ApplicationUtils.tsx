@@ -17,6 +17,7 @@ import {
   CACHE_WARMUP_APPLICATION_NAME,
   MCP_APPLICATION_NAME,
 } from '../constants/constants';
+import { App, AppScheduleClass } from '../generated/entity/applications/app';
 import {
   AppRunRecord,
   Stats,
@@ -24,6 +25,19 @@ import {
   StepStats,
 } from '../generated/entity/applications/appRunRecord';
 import { formatJsonString } from './StringUtils';
+
+// The generated `appSchedule` type is a loose JSON-schema union; only the object form carries a cron.
+const isAppScheduleClass = (
+  appSchedule: App['appSchedule']
+): appSchedule is AppScheduleClass =>
+  typeof appSchedule === 'object' &&
+  appSchedule !== null &&
+  !Array.isArray(appSchedule);
+
+export const getAppCronExpression = (
+  appSchedule: App['appSchedule']
+): string | undefined =>
+  isAppScheduleClass(appSchedule) ? appSchedule.cronExpression : undefined;
 
 export const isCacheWarmupApplication = (appName?: string) =>
   appName === CACHE_WARMUP_APPLICATION_NAME;

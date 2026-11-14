@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Dialog,
   Modal,
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CreatingIngestion,
+  DeployIngestion,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Fragment } from 'react';
-import { ReactComponent as IconCreateIngestion } from '../../../assets/svg/creating-ingestion.svg';
-import { ReactComponent as IconDeployIngestion } from '../../../assets/svg/deploy-ingestion.svg';
 import { LITE_GRAY_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { DeployIngestionLoaderModalProps } from './DeployIngestionLoaderModal.interface';
@@ -68,10 +69,9 @@ const DeployIngestionLoaderModal = ({
                         background: isActive(isIngestionCreated),
                       }}>
                       <Typography className="flex-center h-full">
-                        <Icon
-                          className="align-middle"
-                          component={IconCreateIngestion}
-                          style={{ fontSize: '26px' }}
+                        <CreatingIngestion
+                          className="align-middle tw:shrink-0"
+                          size={14}
                         />
                       </Typography>
                     </Typography>
@@ -87,10 +87,9 @@ const DeployIngestionLoaderModal = ({
                         background: isActive(isDeployed),
                       }}>
                       <Typography className="flex-center h-full">
-                        <Icon
-                          className="align-middle"
-                          component={IconDeployIngestion}
-                          style={{ fontSize: '26px' }}
+                        <DeployIngestion
+                          className="align-middle tw:shrink-0"
+                          size={14}
                         />
                       </Typography>
                     </Typography>

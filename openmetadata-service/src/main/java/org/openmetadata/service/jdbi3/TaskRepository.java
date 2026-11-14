@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -56,12 +58,17 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -73,11 +80,15 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.tasks.TaskFieldTarget;
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
+import org.openmetadata.service.tasks.TaskReviewVotes;
+import org.openmetadata.service.tasks.TaskTargetOperations;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
@@ -96,6 +107,8 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String FIELD_ASSIGNEES = "assignees";
 
   public static final String FIELD_REVIEWERS = "reviewers";
+  public static final String FIELD_REVIEW_VOTES = "reviewVotes";
+  private static final int REVIEW_VOTE_WRITE_ATTEMPTS = 3;
   public static final String FIELD_WATCHERS = "watchers";
   public static final String FIELD_ABOUT = "about";
   public static final String FIELD_COMMENTS = "comments";
@@ -109,6 +122,7 @@ public class TaskRepository extends EntityRepository<Task> {
   // Stage a workflow-managed task holds after being persisted but before its Flowable instance
   // starts.
   public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
+  public static final String WORKFLOW_START_FAILED_STAGE_ID = "workflow-start-failed";
 
   private static final Set<TaskEntityStatus> ALREADY_OPEN_STATUSES =
       Set.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress);
@@ -201,6 +215,18 @@ public class TaskRepository extends EntityRepository<Task> {
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
     applyTaskDomainFilter(filter);
     return super.listBefore(uriInfo, fields, filter, limitParam, before);
+  }
+
+  /**
+   * A listing paged by creation time compares its cursor against createdAt, so the cursor carries
+   * createdAt in the slot the name cursor uses. Listings that never ask for that order keep the
+   * name cursor, which the search reindex seeds by offset.
+   */
+  @Override
+  public String getCursorValue(Task entity, ListFilter filter) {
+    return TaskListOrder.isRequestedBy(filter)
+        ? getCursorValue(String.valueOf(entity.getCreatedAt()), String.valueOf(entity.getId()))
+        : super.getCursorValue(entity, filter);
   }
 
   public ResultList<Task> listDataAccessRequests(
@@ -377,6 +403,8 @@ public class TaskRepository extends EntityRepository<Task> {
     // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
     if (!update) {
       TaskFieldValidator.validateDataAccessRequestExpiry(task);
+      TaskFieldTarget.fillDefault(task);
+      TaskFieldTarget.require(task);
     }
     validateNoDuplicateActiveDataAccessRequest(task);
 
@@ -384,6 +412,7 @@ public class TaskRepository extends EntityRepository<Task> {
     computeAboutFqnHash(task);
 
     initializeWorkflowManagedTask(task, update);
+    OntologyApprovalWorkflow.prepare(task, update);
 
     // Task domains MUST be inherited from the target entity (about field)
     // This ensures tasks follow domain-based data isolation policies
@@ -451,8 +480,9 @@ public class TaskRepository extends EntityRepository<Task> {
    * If no assignees are specified and the target entity has owners, set the entity owners as default
    * assignees. This ensures tasks about owned entities are automatically routed to the right people.
    */
-  private void setDefaultAssigneesFromEntityOwners(Task task) {
-    if (!nullOrEmpty(task.getAssignees())) {
+  void setDefaultAssigneesFromEntityOwners(Task task) {
+    if (!nullOrEmpty(task.getAssignees())
+        || Boolean.FALSE.equals(task.getUseEntityOwnerFallback())) {
       return;
     }
 
@@ -515,6 +545,12 @@ public class TaskRepository extends EntityRepository<Task> {
     Map<UUID, EntityReference> byId = new LinkedHashMap<>();
     refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
     return new ArrayList<>(byId.values());
+  }
+
+  /** A task takes its domains from the entity it is about on every write, never from its author. */
+  @Override
+  protected boolean authorDecidesDomains() {
+    return false;
   }
 
   /**
@@ -582,7 +618,15 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(FIELD_ABOUT, FIELD_CREATED_BY, FIELD_ASSIGNEES, FIELD_WATCHERS);
+  }
+
+  @Override
   public void storeEntity(Task task, boolean update) {
+    if (!update && OntologyApprovalWorkflow.isReview(task)) {
+      OntologyApprovalWorkflow.lockTarget(task);
+    }
     List<EntityReference> domains = task.getDomains();
     EntityReference about = task.getAbout();
     EntityReference createdBy = task.getCreatedBy();
@@ -651,6 +695,12 @@ public class TaskRepository extends EntityRepository<Task> {
           Entity.TASK,
           Relationship.MENTIONED_IN);
     }
+    OntologyApprovalWorkflow.start(task);
+  }
+
+  @Override
+  protected void preDelete(Task task, String deletedBy) {
+    OntologyApprovalWorkflow.requireDeletable(task);
   }
 
   private void storeAssignees(Task task) {
@@ -888,10 +938,24 @@ public class TaskRepository extends EntityRepository<Task> {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTaskWithWorkflow(
+        task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, null);
+  }
+
+  public Task resolveTaskWithWorkflow(
+      Task task,
+      String transitionId,
+      TaskResolutionType resolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
     return TaskWorkflowHandler.getInstance()
-        .resolveTask(task, transitionId, resolutionType, newValue, resolvedPayload, comment, user);
+        .resolveTask(
+            task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
   }
 
   /**
@@ -998,6 +1062,21 @@ public class TaskRepository extends EntityRepository<Task> {
    */
   public void checkPermissionsForResolveTask(
       Authorizer authorizer, Task task, boolean closeTask, SecurityContext securityContext) {
+    checkPermissionsForResolveTask(
+        authorizer, task, closeTask, securityContext, TaskResolutionInput.NONE);
+  }
+
+  /** What a resolve request adds to the task's own payload before the resolution applies it. */
+  public record TaskResolutionInput(Object payload, String newValue) {
+    public static final TaskResolutionInput NONE = new TaskResolutionInput(null, null);
+  }
+
+  public void checkPermissionsForResolveTask(
+      Authorizer authorizer,
+      Task task,
+      boolean closeTask,
+      SecurityContext securityContext,
+      TaskResolutionInput input) {
     MetadataOperation operation =
         closeTask ? MetadataOperation.CLOSE_TASK : MetadataOperation.RESOLVE_TASK;
     OperationContext taskOp = new OperationContext(Entity.TASK, operation);
@@ -1039,7 +1118,34 @@ public class TaskRepository extends EntityRepository<Task> {
     // schemas declare permission: EDIT_ALL, which TaskFormExecutionResolver surfaces via
     // getOperationForTask.
     if (!closeTask && !isApprovalTask(task)) {
-      validateUnderlyingEntityPermission(authorizer, securityContext, task);
+      validateUnderlyingEntityPermission(authorizer, securityContext, task, input);
+    }
+
+    if (!closeTask && isWorkflowApproval(task)) {
+      requireAssigneeForWorkflowApproval(task, securityContext);
+    } else if (!closeTask) {
+      enforceReviewerForApprovalStatusTask(task, securityContext);
+    }
+  }
+
+  /** A stage move or held change that a workflow asks its assignees to decide. */
+  private static boolean isWorkflowApproval(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && (task.getType() == TaskEntityType.RequestApproval
+            || ChangeRequestTasks.reviewsChangeRequest(task));
+  }
+
+  /**
+   * A workflow's approval is decided by its assignees and only by them: an admin or owner who is not
+   * assigned cannot decide it, and an assignee can, whether or not the asset also has reviewers. The
+   * workflow already chose who decides (reviewers, owners or named users), and its own status write
+   * is exempt from the reviewer rule. Bots keep access; the engine resolves tasks on its own path.
+   */
+  private void requireAssigneeForWorkflowApproval(Task task, SecurityContext securityContext) {
+    final String userName = securityContext.getUserPrincipal().getName();
+    final SubjectContext subject = SubjectContext.getSubjectContext(userName);
+    if (!subject.isBot() && !subject.isOwner(task.getAssignees())) {
+      throw new AuthorizationException(CatalogExceptionMessage.notTaskAssignee(userName));
     }
   }
 
@@ -1048,6 +1154,36 @@ public class TaskRepository extends EntityRepository<Task> {
     return taskType == TaskEntityType.GlossaryApproval
         || taskType == TaskEntityType.RequestApproval
         || taskType == TaskEntityType.DataAccessRequest;
+  }
+
+  /**
+   * Resolving an approval task on a governed entity that is IN_REVIEW drives the reviewer-gated
+   * status transition enforced by {@link EntityRepository.EntityUpdater#checkUpdatedByReviewer}.
+   * Mirror that gate here so a non-reviewer is rejected with 403 up front, instead of resolving the
+   * task and letting the governance workflow instance fail on the status update downstream. The
+   * check no-ops when the entity has no reviewers (preserving the admin/owner approval path) and
+   * when the target is not a governed, in-review entity (so DAR and non-status approvals are
+   * unaffected — their targets return a null entityStatus).
+   */
+  private void enforceReviewerForApprovalStatusTask(Task task, SecurityContext securityContext) {
+    // A change request's review task approves the held edit, not a status transition; its
+    // reviewers (including the admin fallback) are decided by the review workflow.
+    if (task.getAbout() == null
+        || !isApprovalTask(task)
+        || ChangeRequestTasks.reviewsChangeRequest(task)) {
+      return;
+    }
+    // Entity types with no reviewers field (e.g. a table) can never be reviewer-gated, so skip them
+    // before requesting the field — otherwise Entity.getEntity(..., "reviewers") throws
+    // "Invalid field name reviewers" for those types.
+    EntityRepository<?> targetRepository = Entity.getEntityRepository(task.getAbout().getType());
+    if (!targetRepository.getAllowedFields().contains(Entity.FIELD_REVIEWERS)) {
+      return;
+    }
+    EntityInterface target = Entity.getEntity(task.getAbout(), Entity.FIELD_REVIEWERS, NON_DELETED);
+    if (target.getEntityStatus() == EntityStatus.IN_REVIEW && !nullOrEmpty(target.getReviewers())) {
+      EntityRepository.checkUpdatedByReviewer(target, securityContext.getUserPrincipal().getName());
+    }
   }
 
   private boolean isUserTaskFiler(Task task, SecurityContext securityContext) {
@@ -1142,7 +1278,10 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private void validateUnderlyingEntityPermission(
-      Authorizer authorizer, SecurityContext securityContext, Task task) {
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      Task task,
+      TaskResolutionInput input) {
     EntityReference about = task.getAbout();
     if (about == null) {
       return;
@@ -1151,21 +1290,38 @@ public class TaskRepository extends EntityRepository<Task> {
     ResourceContext<?> resourceContext =
         new ResourceContext<>(about.getType(), about.getId(), null);
 
-    MetadataOperation operation = getOperationForTask(task);
-    if (operation != null && operation != MetadataOperation.EDIT_ALL) {
+    Set<MetadataOperation> operations = new LinkedHashSet<>();
+    MetadataOperation taskOperation =
+        TaskTargetOperations.forTarget(
+            about, getOperationForTask(task), securityContext.getUserPrincipal().getName());
+    if (taskOperation != null) {
+      operations.add(taskOperation);
+    }
+    operations.addAll(TaskTargetOperations.forTagLabels(task, input.payload(), input.newValue()));
+    for (MetadataOperation operation : operations) {
+      authorizeOperationOrEditAll(
+          authorizer, securityContext, about.getType(), operation, resourceContext);
+    }
+  }
+
+  private static void authorizeOperationOrEditAll(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      String entityType,
+      MetadataOperation operation,
+      ResourceContext<?> resourceContext) {
+    if (operation == MetadataOperation.EDIT_ALL) {
+      authorizer.authorize(
+          securityContext, new OperationContext(entityType, operation), resourceContext);
+    } else {
       // Allow either the specific operation OR EDIT_ALL (which encompasses all edit permissions)
-      OperationContext specificOpContext = new OperationContext(about.getType(), operation);
-      OperationContext editAllOpContext =
-          new OperationContext(about.getType(), MetadataOperation.EDIT_ALL);
       authorizer.authorizeRequests(
           securityContext,
           List.of(
-              new AuthRequest(specificOpContext, resourceContext),
-              new AuthRequest(editAllOpContext, resourceContext)),
+              new AuthRequest(new OperationContext(entityType, operation), resourceContext),
+              new AuthRequest(
+                  new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext)),
           AuthorizationLogic.ANY);
-    } else if (operation == MetadataOperation.EDIT_ALL) {
-      OperationContext operationContext = new OperationContext(about.getType(), operation);
-      authorizer.authorize(securityContext, operationContext, resourceContext);
     }
   }
 
@@ -1258,15 +1414,67 @@ public class TaskRepository extends EntityRepository<Task> {
    */
   public Task resolveTask(
       Task task, TaskResolution resolution, TaskAvailableTransition transition, String updatedBy) {
+    return resolveTask(task, resolution, transition, updatedBy, null);
+  }
+
+  /**
+   * {@code reviewVotes}, when given, merges with the task's counted votes in the same write as the
+   * decision, so earlier stages' votes survive and the deciding vote commits with the decision.
+   */
+  public Task resolveTask(
+      Task task,
+      TaskResolution resolution,
+      TaskAvailableTransition transition,
+      String updatedBy,
+      List<TaskReviewVote> reviewVotes) {
     if (resolution == null) {
       throw new IllegalArgumentException("Resolution cannot be null");
     }
     Task original = get(null, task.getId(), getFields("*"));
+    if (OntologyApprovalWorkflow.isReview(original)
+        && original.getStatus() == TaskEntityStatus.Cancelled
+        && resolution.getType() == TaskResolutionType.Cancelled) {
+      return original;
+    }
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setStatus(mapResolutionToStatus(resolution.getType()));
     updated.setResolution(resolution);
+    if (reviewVotes != null) {
+      updated.setReviewVotes(TaskReviewVotes.merge(original.getReviewVotes(), reviewVotes));
+    } else if ((original.getWorkflowInstanceId() != null || !nullOrEmpty(original.getReviewVotes()))
+        && TaskReviewVotes.isDecision(resolution.getType())) {
+      updated.setReviewVotes(
+          TaskReviewVotes.record(
+              original.getReviewVotes(),
+              TaskReviewVotes.vote(
+                  original,
+                  resolution.getResolvedBy(),
+                  TaskReviewVotes.decision(resolution.getType()),
+                  resolution.getComment(),
+                  resolution.getResolvedAt())));
+    }
     applyTransitionTarget(updated, transition, resolution.getResolvedBy());
     return persistLifecycleChange(original, updated, updatedBy);
+  }
+
+  /** Project durable workflow votes, retrying when a concurrent task update wins. */
+  public Task recordReviewVotes(UUID taskId, List<TaskReviewVote> votes, String updatedBy) {
+    for (int attempt = 1; ; attempt++) {
+      Task original = get(null, taskId, getFields("*"));
+      List<TaskReviewVote> merged = TaskReviewVotes.merge(original.getReviewVotes(), votes);
+      if (Objects.equals(listOrEmpty(original.getReviewVotes()), merged)) {
+        return original;
+      }
+      Task updated = JsonUtils.deepCopy(original, Task.class);
+      updated.setReviewVotes(merged);
+      try {
+        return persistLifecycleChange(original, updated, updatedBy);
+      } catch (PreconditionFailedException conflict) {
+        if (attempt == REVIEW_VOTE_WRITE_ATTEMPTS) {
+          throw conflict;
+        }
+      }
+    }
   }
 
   private void applyTransitionTarget(
@@ -1360,6 +1568,18 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
     return findTaskByEntityTypeAndStatuses(entityFqn, taskType, OPEN_TASK_STATUSES);
+  }
+
+  /** The entity's open tasks of a type, newest first, at most {@code limit} of them. */
+  public List<Task> listOpenTasksByEntityAndType(
+      String entityFqn, TaskEntityType taskType, int limit) {
+    List<String> statusValues = OPEN_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndTypeAndStatuses(entityFqn, taskType.value(), statusValues, limit)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task findTaskByEntityTypeAndStatus(
@@ -1477,6 +1697,19 @@ public class TaskRepository extends EntityRepository<Task> {
     IncidentTcrsSyncHandler.sync(updated);
   }
 
+  @Override
+  protected void flushInOneTransaction(final List<Task> tasks, final Runnable work) {
+    if (tasks.stream().anyMatch(OntologyApprovalWorkflow::isReview)) {
+      executeInTransaction(
+          () -> {
+            work.run();
+            return null;
+          });
+    } else {
+      super.flushInOneTransaction(tasks, work);
+    }
+  }
+
   private void initializeWorkflowManagedTask(Task task, boolean update) {
     if (update || !shouldCreateWorkflowManagedTask(task)) {
       return;
@@ -1529,6 +1762,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
       Map<String, Object> variables = new LinkedHashMap<>();
       variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+      variables.putAll(OntologyApprovalWorkflow.startVariables(task));
       if (task.getAbout() != null && !nullOrEmpty(task.getAbout().getFullyQualifiedName())) {
         variables.put(
             getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
@@ -1564,7 +1798,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
   private void markWorkflowTriggerFailure(Task task) {
     try {
-      task.setWorkflowStageId("workflow-start-failed");
+      task.setWorkflowStageId(WORKFLOW_START_FAILED_STAGE_ID);
       task.setWorkflowStageDisplayName("Workflow start failed");
       task.setUpdatedAt(System.currentTimeMillis());
       storeEntity(task, true);
@@ -1670,10 +1904,15 @@ public class TaskRepository extends EntityRepository<Task> {
         Operation operation,
         org.openmetadata.schema.type.change.ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
+      setUseOptimisticLocking(
+          OntologyApprovalWorkflow.isReview(original)
+              || !Objects.equals(original.getReviewVotes(), updated.getReviewVotes()));
     }
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      OntologyApprovalWorkflow.requireUnchangedTarget(original, updated);
+      OntologyApprovalWorkflow.cancel(updated);
       preserveComments();
       updateAssignees();
       updateTaskReviewers();
@@ -1682,7 +1921,18 @@ public class TaskRepository extends EntityRepository<Task> {
       updatePriority();
       updatePayload();
       updateResolution();
+      updateReviewVotes();
       updateWorkflowFields();
+    }
+
+    // Votes are recorded by the workflow handler and the decision; a write that omits them keeps
+    // the recorded list, and PATCH rejects any client change to them.
+    private void updateReviewVotes() {
+      if (updated.getReviewVotes() == null) {
+        updated.setReviewVotes(original.getReviewVotes());
+        return;
+      }
+      recordChange(FIELD_REVIEW_VOTES, original.getReviewVotes(), updated.getReviewVotes());
     }
 
     // Comments are mutated only via the comment endpoints; a generic PATCH/PUT must preserve them.
@@ -1849,6 +2099,8 @@ public class TaskRepository extends EntityRepository<Task> {
           TaskFieldValidator.validateDataAccessRequestExpiry(updated);
         }
       }
+      TaskFieldTarget.fillDefault(updated);
+      TaskFieldTarget.requireChanged(original, updated);
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
     }

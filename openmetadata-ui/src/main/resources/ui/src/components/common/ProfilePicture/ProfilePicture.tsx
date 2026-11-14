@@ -12,10 +12,10 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
+import { AiAgent, Teams } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ComponentProps, CSSProperties, useMemo, type ReactNode } from 'react';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { User } from '../../../generated/entity/teams/user';
@@ -44,7 +44,16 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
   80: '2xl',
 };
 
+const AgentIcon = () => <AiAgent className="tw:size-5/8" />;
+
+const TRANSPARENT_BACKGROUND: CSSProperties = {
+  backgroundColor: 'transparent',
+};
+
 const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
+
+const isBotLogo = (profileURL: string | null, user?: User) =>
+  Boolean(profileURL && user?.isBot);
 
 // Resolve the effective Avatar size: prefer the defined `size`, otherwise map
 // the legacy numeric `width` to the nearest defined size (default `sm`).
@@ -142,6 +151,8 @@ interface Props extends UserData {
   className?: string;
   height?: string;
   isTeam?: boolean;
+  /** An AI agent: its icon on a plain circle, and no profile picture to fetch. */
+  isAgent?: boolean;
   avatarType?: 'solid' | 'outlined';
   /**
    * Draw the ring in the fill's hue. The core Avatar otherwise tints the ring
@@ -162,6 +173,7 @@ const ProfilePicture = ({
   size,
   width,
   isTeam = false,
+  isAgent = false,
   avatarType = 'outlined',
   matchRingToFill = false,
   borderless = false,
@@ -176,8 +188,8 @@ const ProfilePicture = ({
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
   }, [permissions]);
 
-  const [profileURL, isPicLoading] = useUserProfile({
-    permission: viewUserPermission,
+  const [profileURL, isPicLoading, user] = useUserProfile({
+    permission: viewUserPermission && !isAgent,
     name,
     isTeam,
   });
@@ -185,16 +197,44 @@ const ProfilePicture = ({
   const isLoadingWithoutUrl = isPicLoading && !profileURL;
   const edge = getAvatarEdge(isSolid, borderless, matchRingToFill);
 
+  if (isAgent) {
+    return (
+      <Avatar
+        className={className}
+        colorVariant="plain"
+        data-testid="agent-avatar"
+        placeholderIcon={AgentIcon}
+        size={avatarSize}
+      />
+    );
+  }
+
+  // Teams have no picture of their own (useUserProfile only hands back the
+  // static teams icon URL), and an <img> of that SVG cannot follow the theme's
+  // currentColor, so the inline placeholder icon is drawn instead.
   if (isTeam) {
+    return (
+      <Avatar
+        className={classNames('tw:text-fg-secondary', className)}
+        contrastBorder={false}
+        data-testid="profile-avatar"
+        placeholderIcon={Teams}
+        size={avatarSize}
+        style={TRANSPARENT_BACKGROUND}
+      />
+    );
+  }
+
+  if (isBotLogo(profileURL, user)) {
     return (
       <Avatar
         className={className}
         contrastBorder={false}
         data-testid="profile-avatar"
-        placeholderIcon={IconTeams}
+        initials={character}
         size={avatarSize}
-        src={profileURL || undefined}
-        style={{ backgroundColor: 'transparent' }}
+        src={profileURL}
+        style={TRANSPARENT_BACKGROUND}
       />
     );
   }

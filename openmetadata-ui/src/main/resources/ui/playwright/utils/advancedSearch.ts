@@ -277,7 +277,7 @@ export const selectOption = async (
 };
 
 export const selectRange = async (
-  page: Page,
+  _page: Page,
   ruleLocator: Locator,
   startDate: string,
   endDate: string

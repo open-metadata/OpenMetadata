@@ -10,24 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar, Box, Button, Tabs } from '@openmetadata/ui-core-components';
 import {
-  Announcement02 as IconAnnouncementsBlack,
+  Avatar,
+  Box,
+  Button,
+  ButtonUtility,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
+  Announcement02,
+  Brush01,
+  Collapse,
+  Download01,
+  Edit01,
+  Expand,
   RefreshCcw01,
+  Trash01,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { toLower, toString } from 'lodash';
+import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
-import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -75,7 +81,6 @@ import {
   getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -101,19 +106,20 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import { DEFAULT_DATA_PRODUCT_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
+import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -122,6 +128,7 @@ import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.compo
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
 import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
@@ -137,20 +144,6 @@ type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 // 12px padding + the 1px antd border that the core ::after outline no longer
 // takes; not-last:-mr-px keeps antd's `.ant-btn + .ant-btn` 1px overlap with
 // the next group button.
-const CONTRACT_RESULT_BUTTON_BASE_CLASS = [
-  'tw:h-10 tw:gap-2 tw:rounded-xl tw:px-3.25 tw:py-1.5 tw:text-sm tw:font-semibold tw:not-last:-mr-px',
-  'tw:shadow-[0px_2px_2px_-1px_var(--om-legacy-color-10-13-18-0-04),0px_4px_6px_-2px_var(--om-legacy-color-10-13-18-0-04),0px_12px_16px_-4px_var(--om-legacy-color-10-13-18-0-04)]!',
-].join(' ');
-
-const CONTRACT_RESULT_BUTTON_BORDER_CLASS: Partial<
-  Record<ContractExecutionStatus, string>
-> = {
-  [ContractExecutionStatus.Failed]: 'tw:after:outline-utility-error-200!',
-  [ContractExecutionStatus.Aborted]:
-    'tw:after:outline-(--om-legacy-color-f9dbaf)! tw:dark:after:outline-utility-orange-200!',
-  [ContractExecutionStatus.Running]: 'tw:after:outline-utility-brand-200!',
-};
-
 // Extracted from DataProductsDetailsPage's render to keep the component's
 // complexity down. Builds the "Manage" dropdown menu content from the
 // permission flags and the modal/action toggles the page owns.
@@ -187,7 +180,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.announcement-action-description')}
-              icon={IconAnnouncementsBlack}
+              icon={Announcement02}
               id="announcement-button"
               name={t('label.announcement-plural')}
             />
@@ -209,7 +202,7 @@ const getManageButtonContent = ({
               description={t('message.rename-entity', {
                 entity: t('label.data-product'),
               })}
-              icon={EditIcon}
+              icon={Edit01}
               id="rename-button"
               name={t('label.rename')}
             />
@@ -231,7 +224,7 @@ const getManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.data-product'),
               })}
-              icon={StyleIcon}
+              icon={Brush01}
               id="rename-button"
               name={t('label.style')}
             />
@@ -247,7 +240,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.edit-metadata-description')}
-              icon={EditIcon}
+              icon={Edit01}
               id="edit-metadata-button"
               name={t('label.edit-metadata')}
             />
@@ -269,7 +262,7 @@ const getManageButtonContent = ({
               description={t('message.delete-entity-type-action-description', {
                 entityType: t('label.data-product'),
               })}
-              icon={DeleteIcon}
+              icon={Trash01}
               id="delete-button"
               name={t('label.delete')}
             />
@@ -287,7 +280,7 @@ const getManageButtonContent = ({
     label: (
       <ManageButtonItemLabel
         description={t('message.export-entity-as-odps-description')}
-        icon={ExportIcon}
+        icon={Download01}
         id="export-odps-button"
         name={t('label.export-as-odps')}
       />
@@ -310,7 +303,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.import-odps-description')}
-              icon={ImportIcon}
+              icon={Upload01}
               id="import-odps-button"
               name={t('label.import-from-odps')}
             />
@@ -399,6 +392,13 @@ function DataProductActionButtons(
             entity: t('label.asset-plural'),
           })}
         </Button>
+      )}
+
+      {!isVersionsView && (
+        <ChangeRequestsIndicator
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+        />
       )}
 
       <Box align="center" gap={4}>
@@ -632,14 +632,10 @@ const DataProductsDetailsPage = ({
       });
     }
 
+    items.push({ label: getEntityName(dataProduct) });
+
     return items;
-  }, [
-    dataProduct.domains,
-    isMarketplace,
-    fromMarketplace,
-    dataProductBasePath,
-    t,
-  ]);
+  }, [dataProduct, isMarketplace, fromMarketplace, dataProductBasePath, t]);
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -879,6 +875,7 @@ const DataProductsDetailsPage = ({
       feedCount,
       getEntityFeedCount,
       labelMap: tabLabelMap,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -898,6 +895,7 @@ const DataProductsDetailsPage = ({
     feedCount,
     inputPortsCount,
     outputPortsCount,
+    onRefresh,
   ]);
 
   // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the
@@ -949,37 +947,25 @@ const DataProductsDetailsPage = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract.latestResult.status)
     ) {
-      const StatusIcon = getDataContractStatusIcon(
-        dataContract.latestResult.status
-      );
-
       return (
-        <Button
-          noTextPadding
-          className={classNames(
-            CONTRACT_RESULT_BUTTON_BASE_CLASS,
-            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status],
-            CONTRACT_RESULT_BUTTON_BORDER_CLASS[
-              dataContract.latestResult.status
-            ]
-          )}
-          color="secondary"
-          data-testid="data-contract-latest-result-btn"
-          iconLeading={
-            StatusIcon ? <StatusIcon className="tw:size-6.5" /> : undefined
+        <ContractLatestResultBadge
+          href={
+            isVersionsView
+              ? getVersionPath(
+                  EntityType.DATA_PRODUCT,
+                  dataProductFqn,
+                  toString(dataProduct.version),
+                  EntityTabs.CONTRACT
+                )
+              : getDataProductDetailsPath(dataProductFqn, EntityTabs.CONTRACT)
           }
-          onPress={() => {
-            handleTabChange(EntityTabs.CONTRACT);
-          }}>
-          {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
-            entity: t('label.contract'),
-          })}
-        </Button>
+          status={dataContract.latestResult.status}
+        />
       );
     }
 
     return null;
-  }, [dataContract]);
+  }, [dataContract, dataProductFqn, dataProduct.version, isVersionsView]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
@@ -1021,6 +1007,11 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <DomainMismatchAlert
+            className="tw:mx-5"
+            domains={dataProduct.domains}
+            entityId={dataProduct.id}
+          />
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
             <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
@@ -1080,9 +1071,11 @@ const DataProductsDetailsPage = ({
                 <Tabs.List
                   actions={
                     isExpandViewSupported && (
-                      <AlignRightIconButton
-                        className={isTabExpanded ? 'rotate-180' : ''}
-                        title={
+                      <ButtonUtility
+                        data-testid="tab-expand-button"
+                        icon={isTabExpanded ? Collapse : Expand}
+                        size="lg"
+                        tooltip={
                           isTabExpanded
                             ? t('label.collapse')
                             : t('label.expand')

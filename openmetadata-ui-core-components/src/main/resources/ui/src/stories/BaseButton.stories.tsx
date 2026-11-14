@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, Plus, Trash01 } from '../icons';
+import { ChevronDown, Edit01, Plus, Trash01, UploadCloud02 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
+import { ButtonUtility } from '../components/base/buttons/button-utility';
 
 const meta = {
   title: 'Components/BaseButton',
@@ -30,7 +31,7 @@ export const Default: Story = {
   args: {
     children: 'Click me',
     color: 'primary',
-    size: 'sm',
+    size: 'md',
   },
 };
 
@@ -50,25 +51,32 @@ export const Colors: StoryObj = {
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button color="primary" size="xxs">
-        XXSmall
-      </Button>
-      <Button color="primary" size="xs">
-        XSmall
-      </Button>
-      <Button color="primary" size="sm">
-        Small
-      </Button>
-      <Button color="primary" size="md">
-        Medium
-      </Button>
-      <Button color="primary" size="lg">
-        Large
-      </Button>
-      <Button color="primary" size="xl">
-        XLarge
-      </Button>
+    <div style={{ display: 'grid', gap: 12 }}>
+      {(['xl', 'lg', 'md', 'sm', 'xs'] as const).map((size) => (
+        <div
+          key={size}
+          style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button color="secondary" iconLeading={UploadCloud02} size={size}>
+            Upload File
+          </Button>
+          <Button
+            color="primary"
+            iconLeading={Plus}
+            iconTrailing={ChevronDown}
+            size={size}>
+            Create
+          </Button>
+          <Button color="tertiary" iconLeading={Edit01} size={size}>
+            Edit
+          </Button>
+          <Button
+            color="secondary-destructive"
+            iconLeading={Trash01}
+            size={size}>
+            Delete
+          </Button>
+        </div>
+      ))}
     </div>
   ),
 };
@@ -113,10 +121,15 @@ export const IconOnly: StoryObj = {
   parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button color="primary" iconLeading={Plus} size="xs" />
-      <Button color="primary" iconLeading={Plus} size="sm" />
-      <Button color="secondary" iconLeading={Edit01} size="md" />
-      <Button color="tertiary" iconLeading={Trash01} size="lg" />
+      <ButtonUtility icon={Plus} size="xs" tooltip="Add" />
+      <ButtonUtility icon={Plus} size="sm" tooltip="Add" />
+      <ButtonUtility icon={Edit01} size="md" tooltip="Edit" />
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Trash01}
+        size="lg"
+        tooltip="Delete"
+      />
     </div>
   ),
 };
@@ -158,6 +171,7 @@ export const LinkColors: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>
+      <Button color="link-primary">Link Primary</Button>
       <Button color="link-color">Link Color</Button>
       <Button color="link-destructive">Link Destructive</Button>
     </div>
@@ -183,6 +197,19 @@ export const BoxedLink: StoryObj = {
       </Button>
       <Button color="primary" size="md">
         Create
+      </Button>
+    </div>
+  ),
+};
+
+export const Pill: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3 tw:rounded-full tw:border tw:border-utility-warning-300 tw:bg-utility-warning-50 tw:py-2 tw:pr-2 tw:pl-4">
+      <span className="tw:text-sm tw:font-semibold">
+        Priya Raman asked you to review v1.1.0
+      </span>
+      <Button pill color="secondary-warning-outline" size="sm">
+        Review
       </Button>
     </div>
   ),
@@ -219,11 +246,11 @@ export const AsLink: StoryObj = {
           target="_blank">
           With Icon
         </Button>
-        <Button
-          color="primary"
+        <ButtonUtility
           href="https://open-metadata.org"
-          iconLeading={Plus}
+          icon={Plus}
           target="_blank"
+          tooltip="Open link"
         />
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

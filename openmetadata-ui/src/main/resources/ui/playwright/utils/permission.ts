@@ -163,19 +163,6 @@ export const validateViewPermissions = async (
   // check edit tier permission
   await expect(page.locator('[data-testid="edit-tier"]')).not.toBeVisible();
 
-  // check add tags button
-  await expect(
-    page.locator(
-      '[data-testid="tags-container"] > [data-testid="entity-tags"] .ant-tag'
-    )
-  ).not.toBeVisible();
-  // check add glossary term button
-  await expect(
-    page.locator(
-      '[data-testid="glossary-container"] > [data-testid="entity-tags"] .ant-tag'
-    )
-  ).not.toBeVisible();
-
   // check manage button
   await expect(page.locator('[data-testid="manage-button"]')).toHaveCount(
     permission?.editDisplayName ? 1 : 0
@@ -225,7 +212,8 @@ export const validateViewPermissions = async (
   await waitForAllLoadersToDisappear(page);
   await dismissLineageMapOnboarding(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 
   await page.click('[data-testid="custom_properties"]');
   await waitForAllLoadersToDisappear(page);

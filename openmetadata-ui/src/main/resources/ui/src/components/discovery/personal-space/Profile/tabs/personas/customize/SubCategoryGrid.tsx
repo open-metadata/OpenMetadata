@@ -49,6 +49,7 @@ const SubCategoryGrid = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => onSelectEntity(option.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -56,7 +57,7 @@ const SubCategoryGrid = ({
                 onSelectEntity(option.key);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box align="start" direction="row" gap={4}>
                 <Box className="tw:shrink-0">
                   {getEntityIconWithBg(

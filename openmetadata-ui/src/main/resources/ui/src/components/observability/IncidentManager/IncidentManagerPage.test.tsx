@@ -47,14 +47,6 @@ jest.mock('../../common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => null)
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(({ type }: { type: string }) => (
-      <div data-testid="error-placeholder">{type}</div>
-    ))
-);
-
 const withTestCasePermission = (canView?: boolean, canEditStatus = false) =>
   mockUsePermissionProvider.mockReturnValue({
     permissions: {
@@ -107,9 +99,9 @@ describe('IncidentManagerPage (app mode)', () => {
 
     renderPage();
 
-    expect(screen.getByTestId('error-placeholder')).toHaveTextContent(
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(
       screen.queryByTestId('incident-groups-view')
     ).not.toBeInTheDocument();
@@ -120,6 +112,10 @@ describe('IncidentManagerPage (app mode)', () => {
 
     renderPage();
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

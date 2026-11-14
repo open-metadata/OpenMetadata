@@ -87,6 +87,17 @@ export const Sizes: StoryObj = {
   render: () => (
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 280 }}>
+      <Select
+        fontSize="xs"
+        items={ITEMS}
+        placeholder="Extra small select"
+        size="xs">
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select>
       <Select items={ITEMS} placeholder="Small select" size="sm">
         {(item) => (
           <Select.Item id={item.id} key={item.id} textValue={item.label}>

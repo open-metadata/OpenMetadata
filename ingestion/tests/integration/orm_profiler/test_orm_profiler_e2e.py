@@ -51,7 +51,7 @@ from ..conftest import _safe_delete  # noqa: TID252
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
-sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
+sqlite_shared = f"file:orm_profiler_{uuid4().hex}?mode=memory&cache=shared&check_same_thread=False&uri=true"
 
 ingestion_config = {
     "source": {
@@ -104,16 +104,19 @@ class NewUser(Base):
     signedup = Column(DateTime)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def engine():
-    return create_engine(
-        f"sqlite+pysqlite:///{sqlite_shared}",
-    )
+    engine = create_engine(f"sqlite+pysqlite:///{sqlite_shared}")
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def session(engine):
-    return create_and_bind_session(engine)
+    with create_and_bind_session(engine) as session:
+        yield session
 
 
 @pytest.fixture(scope="session")
@@ -134,15 +137,13 @@ def service_name():
 
 
 @pytest.fixture
-def create_data(engine, session):
-    try:
-        User.__table__.create(bind=engine)
-        NewUser.__table__.create(bind=engine)
-    except:  # noqa: E722
-        logger.warning("Table Already exists, clearing existing data")
-        session.query(User).delete()
-        session.query(NewUser).delete()
-        session.commit()
+def create_data(engine, session, request):
+    request.addfinalizer(lambda: Base.metadata.drop_all(bind=engine))
+    request.addfinalizer(session.rollback)
+    Base.metadata.create_all(bind=engine)
+    session.query(User).delete()
+    session.query(NewUser).delete()
+    session.commit()
 
     data = [
         User(
@@ -198,30 +199,28 @@ def create_data(engine, session):
 
 
 @pytest.fixture
-def ingest(service_name, create_data, metadata, engine, session):
+def ingest(service_name, create_data, metadata, request):
     ingestion_config["source"]["serviceName"] = service_name
 
+    def cleanup_service():
+        service_entity = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+        if service_entity:
+            _safe_delete(
+                metadata,
+                entity=DatabaseService,
+                entity_id=service_entity.id,
+                recursive=True,
+                hard_delete=True,
+            )
+
+    request.addfinalizer(cleanup_service)
     ingestion_workflow = MetadataWorkflow.create(ingestion_config)
-    ingestion_workflow.execute()
-    ingestion_workflow.raise_from_status()
-    ingestion_workflow.print_status()
-    ingestion_workflow.stop()
-
-    yield
-
-    service_entity = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-    if service_entity:
-        _safe_delete(
-            metadata,
-            entity=DatabaseService,
-            entity_id=service_entity.id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-    User.__table__.drop(bind=engine)
-    NewUser.__table__.drop(bind=engine)
-    session.close()
+    try:
+        ingestion_workflow.execute()
+        ingestion_workflow.raise_from_status()
+        ingestion_workflow.print_status()
+    finally:
+        ingestion_workflow.stop()
 
 
 def test_ingestion(ingest, metadata, service_name):

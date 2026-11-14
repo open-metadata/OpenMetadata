@@ -218,7 +218,10 @@ const ContractQualityCard: React.FC<{
       </Grid.Item>
       <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
-          <div className="contract-status-container">
+          <Box
+            align="center"
+            className="contract-status-container tw:self-start"
+            gap={3}>
             <Typography className="contract-status-label">{`${t(
               'label.entity-status',
               {
@@ -230,7 +233,7 @@ const ContractQualityCard: React.FC<{
               label={contractStatus}
               status={getContractStatusType(contractStatus)}
             />
-          </div>
+          </Box>
         )}
       </Grid.Item>
     </Grid>

@@ -17,7 +17,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { ReviewVoteDecision } from '../../../generated/entity/tasks/task';
 import {
   resolveTask,
   Task,
@@ -33,6 +35,7 @@ import {
   isRecognizerFeedbackTask,
   isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import TaskFeedCardFromTask from './TaskFeedCardFromTask.component';
 
 const MOCK_TASK: Task = {
@@ -65,7 +68,7 @@ const MOCK_TASK: Task = {
   ],
   payload: {
     field: 'tags',
-    fieldPath: 'columns::shop_id::tags',
+    fieldPath: 'columns.shop_id.tags',
     currentValue: '[]',
     suggestedValue:
       '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory"}]',
@@ -209,9 +212,7 @@ describe('TaskFeedCardFromTask', () => {
       });
     });
 
-    expect(EntityLink.getTableColumnName).toHaveBeenCalledWith(
-      '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::shop_id::tags>'
-    );
+    expect(screen.getByText(/shop_id/)).toBeInTheDocument();
   });
 
   it('renders the creator, timestamp, and tag task content', async () => {
@@ -263,6 +264,106 @@ describe('TaskFeedCardFromTask', () => {
     });
 
     expect(screen.getByTestId('replies-count')).toBeInTheDocument();
+  });
+
+  it('opens the task replies from the keyboard when there are no comments', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const showTaskDrawer = jest.fn();
+    (useActivityFeedProvider as jest.Mock).mockReturnValue({
+      setActiveTask: jest.fn(),
+      showTaskDrawer,
+    });
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={MOCK_TASK} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const replyButton = screen.getByRole('button', { name: 'label.reply' });
+
+    expect(screen.queryByTestId('replies-count')).not.toBeInTheDocument();
+
+    replyButton.focus();
+    await user.keyboard('{Enter}');
+
+    expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
+  });
+
+  it('opens the task replies and lets the click select the card', async () => {
+    const showTaskDrawer = jest.fn();
+    const onTaskClick = jest.fn();
+    (useActivityFeedProvider as jest.Mock).mockReturnValue({
+      setActiveTask: jest.fn(),
+      showTaskDrawer,
+    });
+
+    await act(async () => {
+      render(
+        <TaskFeedCardFromTask task={MOCK_TASK} onTaskClick={onTaskClick} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
+
+    expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
+    expect(onTaskClick).toHaveBeenCalledWith(MOCK_TASK);
+  });
+
+  it('hides quick Approve/Reject from an unassigned admin on a workflow change-request review', async () => {
+    const { useAuth } = require('../../../hooks/authHooks');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    const reviewTask: Task = {
+      ...MOCK_TASK,
+      workflowInstanceId: 'wf-1',
+      payload: { ...MOCK_TASK.payload, changeRequestId: 'cr-1' },
+      assignees: [{ id: 'other-id', type: 'user', name: 'other' }],
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={reviewTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+
+    useAuth.mockReturnValue({ isAdminUser: false });
+  });
+
+  it('drops quick Approve/Reject once the assignee voted in the current stage', async () => {
+    const votedTask: Task = {
+      ...MOCK_TASK,
+      workflowStageId: 'review',
+      assignees: [
+        { id: 'current-user-id', type: 'user', name: 'current-user' },
+        { id: 'other-id', type: 'user', name: 'other' },
+      ],
+      reviewVotes: [
+        {
+          voter: { id: 'current-user-id', type: 'user', name: 'current-user' },
+          assignee: {
+            id: 'current-user-id',
+            type: 'user',
+            name: 'current-user',
+          },
+          decision: ReviewVoteDecision.Approved,
+          stage: 'review',
+          timestamp: 1,
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={votedTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
   });
 
   it('approves and rejects an assigned task through the Task V2 API', async () => {
@@ -328,5 +429,84 @@ describe('TaskFeedCardFromTask', () => {
 
     expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+  });
+
+  const ontologyReview: Task = {
+    ...MOCK_TASK,
+    type: TaskEntityType.RequestApproval,
+    category: TaskCategory.Approval,
+    about: { id: 'release-id', type: 'ontologyRelease' },
+    assignees: [{ id: 'current-user-id', type: 'user', name: 'current-user' }],
+    payload: { proposedChanges: { description: 'Captured definition' } },
+  };
+
+  it.each([
+    { availableTransitions: [] },
+    {
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    },
+    {
+      availableTransitions: [
+        {
+          id: 'reject',
+          label: 'Reject',
+          requiresComment: true,
+          targetStageId: 'rejected',
+          targetTaskStatus: TaskEntityStatus.Rejected,
+        },
+      ],
+    },
+  ])(
+    'requires opening a release review even when a quick transition is available',
+    async ({ availableTransitions }) => {
+      (isTagsTaskType as jest.Mock).mockReturnValue(false);
+      await act(async () => {
+        render(
+          <TaskFeedCardFromTask
+            task={{ ...ontologyReview, availableTransitions }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+    }
+  );
+
+  it('preserves quick actions for non-ontology approval tasks', async () => {
+    await act(async () => {
+      render(
+        <TaskFeedCardFromTask
+          task={{
+            ...ontologyReview,
+            about: { id: 'glossary-id', type: 'glossary' },
+            payload: MOCK_TASK.payload,
+            availableTransitions: [
+              {
+                id: 'reject',
+                label: 'Reject',
+                requiresComment: true,
+                targetStageId: 'rejected',
+                targetTaskStatus: TaskEntityStatus.Rejected,
+              },
+            ],
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+    expect(screen.getByTestId('reject-button')).toBeInTheDocument();
   });
 });

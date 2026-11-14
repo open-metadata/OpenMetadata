@@ -43,9 +43,10 @@ const QueryBuilderControl: FC<QueryBuilderControlProps> = ({
   readonly,
   render,
   dataTestId,
+  className,
   onChange,
 }) => (
-  <QueryBuilderCell label={label}>
+  <QueryBuilderCell className={className} label={label}>
     {render?.({
       // Only when set: the renderer supplies its own default, and an explicit `undefined` would win over it through the
       // spread.

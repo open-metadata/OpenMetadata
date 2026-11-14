@@ -17,6 +17,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -38,7 +39,6 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiTable,
     PowerBITableSource,
     PowerBIUser,
-    ReportPage,
     Tile,
     UpstreaDataflow,
     UpstreamDatamart,
@@ -715,8 +715,7 @@ class PowerBIUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def __init__(self, methodName, create_connection, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, create_connection, test_connection) -> None:
         create_connection.return_value.client = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
@@ -1193,79 +1192,18 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(13)
     def test_get_report_url(self):
         """
-        Test report URL generation with different page scenarios
+        The report url opens on the given page, and on the report itself without one
         """
-        from unittest.mock import MagicMock
-
         workspace_id = "test-workspace-123"
         dashboard_id = "test-dashboard-456"
-
-        # Create a mock client with api_client
-        mock_api_client = MagicMock()
-        self.powerbi.client = MagicMock()
-        self.powerbi.client.api_client = mock_api_client
-
-        # Create a PowerBIReport object as required by the method signature
+        report_url = f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}"
         dashboard_details = PowerBIReport(id=dashboard_id, name="Test Report")
 
-        # Test with multiple pages - should use first page name
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.return_value = [
-                ReportPage(name="page1", displayName="Page 1"),
-                ReportPage(name="page2", displayName="Page 2"),
-                ReportPage(name="page3", displayName="Page 3"),
-            ]
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            mock_api_client.fetch_report_pages.assert_called_once_with(workspace_id, dashboard_id)
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/page1?experience=power-bi",
-            )
-
-        # Test with single page - should use that page name
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.reset_mock()
-            mock_api_client.fetch_report_pages.return_value = [
-                ReportPage(name="single-page", displayName="Single Page")
-            ]
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/single-page?experience=power-bi",
-            )
-
-        # Test with no pages - should not add page_id
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.reset_mock()
-            mock_api_client.fetch_report_pages.return_value = []
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
-            )
-
-        # Test with exception during fetch_report_pages - should handle gracefully
-        with patch("metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri") as mock_clean_uri:
-            mock_clean_uri.return_value = "https://app.powerbi.com"
-            mock_api_client.fetch_report_pages.reset_mock()
-            mock_api_client.fetch_report_pages.side_effect = Exception("API Error")
-
-            result = self.powerbi._get_report_url(workspace_id, dashboard_details)
-
-            # Should build URL without page_id when exception occurs
-            self.assertEqual(
-                result,
-                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
-            )
+        assert (
+            self.powerbi._get_report_url(workspace_id, dashboard_details, page_name="page1")
+            == f"{report_url}/page1?experience=power-bi"
+        )
+        assert self.powerbi._get_report_url(workspace_id, dashboard_details) == f"{report_url}?experience=power-bi"
 
     @pytest.mark.order(14)
     def test_powerbi_report_description_parsing(self):
@@ -1873,6 +1811,83 @@ class PowerBIUnitTest(TestCase):
         """
         result = self.powerbi._extract_tables_from_sql("", "db", "server")
         assert result is None
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_line_comment_ends_at_its_line(self):
+        """
+        A -- comment must only comment out its own #(lf)-separated line,
+        not every table referenced after it.
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT yr.res_id,--some comment#(lf)  yr.res_periodTo#(lf)"
+            "FROM yachtReservation yr#(lf)"
+            "LEFT JOIN V_reservationSubCategory  vrsc ON vrsc.res_id = yr.res_id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        tables = {t["table"] for t in result}
+        assert tables == {"yachtReservation", "V_reservationSubCategory"}
+
+        result = self.powerbi._extract_tables_from_sql(
+            "WITH cte AS (SELECT id FROM dbo.first_table) -- first CTE#(lf)"
+            "SELECT * FROM cte#(lf)"
+            "JOIN dbo.second_table s ON s.id = cte.id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        tables = {t["table"] for t in result}
+        assert tables == {"first_table", "second_table"}
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_string_literals(self):
+        """
+        `--` inside a string literal is not a comment
+        """
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            wraps=LineageParser,
+        ) as parser_spy:
+            result = self.powerbi._extract_tables_from_sql(
+                "SELECT id#(lf)FROM orders#(lf)WHERE note = 'a--b'#(lf)  AND status = 1",
+                "MyDb",
+                "server",
+            )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+        assert "'a--b'" in parser_spy.call_args.args[0]
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_bracketed_identifiers(self):
+        """
+        `--` inside a [bracketed identifier] is not a comment
+        """
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            wraps=LineageParser,
+        ) as parser_spy:
+            result = self.powerbi._extract_tables_from_sql(
+                "SELECT [a--b]#(lf)FROM dbo.orders",
+                "MyDb",
+                "server",
+            )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+        assert "[a--b]" in parser_spy.call_args.args[0]
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_block_comments(self):
+        """
+        `--` inside a /* block comment */ does not hide the rest of the query
+        """
+        result = self.powerbi._extract_tables_from_sql(
+            "SELECT o.id#(lf)FROM dbo.orders o /* -- legacy */#(lf)JOIN dbo.customers c ON c.id = o.customer_id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders", "customers"}
 
     @pytest.mark.order(41)
     def test_create_dataflow_table_lineage(self):

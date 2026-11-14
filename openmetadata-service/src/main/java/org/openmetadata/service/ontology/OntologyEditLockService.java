@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyEditLockDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyEditLockRow;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy.LeaseIdentity;
@@ -45,9 +46,13 @@ public final class OntologyEditLockService {
     final EntityReference holder =
         Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
     final LeaseRequest leaseRequest = toLeaseRequest(request, holder.getId());
+    // A locking read of an absent key takes a gap lock on MySQL, so two first acquires can deadlock
+    // on their inserts even for different resources; the rolled-back one replays cleanly.
     final OntologyEditLockRow row =
-        jdbi.inTransaction(
-            handle -> acquire(handle.attach(OntologyEditLockDAO.class), leaseRequest));
+        DeadlockRetry.execute(
+            () ->
+                jdbi.inTransaction(
+                    handle -> acquire(handle.attach(OntologyEditLockDAO.class), leaseRequest)));
     return toLock(row, holder);
   }
 

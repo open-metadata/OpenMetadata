@@ -12,7 +12,7 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { List } from 'antd';
+
 import { startCase } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,34 +112,30 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
       className="no-underline"
       to={isMentionNotification ? mentionLink : taskLink}
       onClick={!isMentionNotification ? handleTaskLinkClick : undefined}>
-      <List.Item.Meta
-        avatar={<ProfilePicture name={createdBy} width="32" />}
-        className="m-0"
-        description={
-          <Box
-            inline
-            align="stretch"
-            className="layout-space"
-            data-testid={`notification-item-${entityName}`}
-            direction="col"
-            gap={0}
-            itemClassName="layout-space-item">
-            <Typography
-              as="p"
-              className="m-0"
-              style={{ color: '#37352F', marginBottom: 0 }}>
-              <>{createdBy}</>
-              {isMentionNotification ? mentionContent : taskContent}
-            </Typography>
-            <Typography
-              style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
-              title={formatDateTime(timestamp)}>
-              {getRelativeTime(timestamp)}
-            </Typography>
-          </Box>
-        }
-        style={{ marginBottom: 0 }}
-      />
+      <Box align="start" className="m-0" gap={4}>
+        <ProfilePicture name={createdBy} width="32" />
+        <Box
+          inline
+          align="stretch"
+          className="layout-space"
+          data-testid={`notification-item-${entityName}`}
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
+          <Typography
+            as="p"
+            className="m-0"
+            style={{ color: '#37352F', marginBottom: 0 }}>
+            <>{createdBy}</>
+            {isMentionNotification ? mentionContent : taskContent}
+          </Typography>
+          <Typography
+            style={{ color: '#6B7280', marginTop: '8px', fontSize: '12px' }}
+            title={formatDateTime(timestamp)}>
+            {getRelativeTime(timestamp)}
+          </Typography>
+        </Box>
+      </Box>
     </Link>
   );
 };

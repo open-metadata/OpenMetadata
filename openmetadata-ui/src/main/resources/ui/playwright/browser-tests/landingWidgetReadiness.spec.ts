@@ -21,7 +21,7 @@ import {
 const widgetKey = 'KnowledgePanel.DataProducts';
 const bundle = buildSync({
   stdin: {
-    contents: `import React from 'react';
+    contents: `import React, { useEffect, useState } from 'react';
       import { createRoot } from 'react-dom/client';
       import DeferredWidget from './src/components/common/DeferredWidget/DeferredWidget.component';
       const root = createRoot(document.getElementById('root'));
@@ -30,7 +30,26 @@ const bundle = buildSync({
         <DeferredWidget minHeight={200} data-testid="deferred-widget-${widgetKey}-211">
           <section data-testid="${widgetKey}"><output data-testid="asset-count">3</output></section>
         </DeferredWidget>
-      </>), 250);`,
+      </>), 250);
+      const LateWidget = () => {
+        const [painted, setPainted] = useState(false);
+        useEffect(() => {
+          const timer = window.setTimeout(() => {
+            window.lateWidgetPainted = true;
+            setPainted(true);
+          }, 600);
+          return () => window.clearTimeout(timer);
+        }, []);
+        return painted ? <output data-testid="asset-count">3</output> : null;
+      };
+      window.mountGridCell = () => root.render(<>
+        <div style={{height: 2000}} />
+        <section data-testid="${widgetKey}" style={{minHeight: 200}}>
+          <DeferredWidget minHeight={200} data-testid="deferred-widget-${widgetKey}">
+            <LateWidget />
+          </DeferredWidget>
+        </section>
+      </>);`,
     loader: 'tsx',
     resolveDir: process.cwd(),
   },
@@ -72,3 +91,28 @@ for (const assertion of ['visibility', 'asset count']) {
     await expect(page.getByTestId(widgetKey)).toBeInViewport();
   });
 }
+
+test('a visible grid cell is not ready until its deferred slot mounts the widget', async ({
+  page,
+}) => {
+  // The real grid cell wraps the slot, so it is visible before the widget mounts.
+  test.setTimeout(4_000);
+  await page.setContent('<div id="root"></div>');
+  await page.addScriptTag({ content: bundle });
+  await page.evaluate(() => {
+    (window as unknown as { mountGridCell: () => void }).mountGridCell();
+  });
+
+  await waitForLandingPageWidget(page, widgetKey);
+
+  // Read once rather than retried: a retrying assertion would wait for the
+  // late paint and pass whether or not the helper waited for it.
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { lateWidgetPainted?: boolean }).lateWidgetPainted
+    )
+  ).toBe(true);
+  await expect(page.getByTestId('asset-count')).toHaveText('3');
+  await expect(page.getByTestId(widgetKey)).toBeInViewport();
+});

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -52,6 +51,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
   private final TableMetadataLoader columnExtensions;
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+  // A column's reference values live outside the row JSON, so a PATCH or PUT baseline needs the
+  // columns loaded to carry them, as it does for a table.
+  public static final String PATCH_FIELDS = "columns";
+  public static final String UPDATE_FIELDS = "columns";
 
   public DashboardDataModelRepository() {
     super(
@@ -59,8 +62,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
         Entity.getCollectionDAO().dashboardDataModelDAO(),
-        "",
-        "",
+        PATCH_FIELDS,
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
@@ -72,7 +75,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
     // The loader's column-extension read is keyed by column FQN hash, not by entity type, so it
     // serves data model columns exactly as it does table columns.
-    columnExtensions = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
+    columnExtensions =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(),
+            this::customPropertyReferences,
+            Entity.DASHBOARD_DATA_MODEL);
   }
 
   @Override
@@ -158,6 +165,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("columns") && fields.contains("extension")) {
       columnExtensions.loadColumnExtensions(
           dashboardDataModel.getId(), dashboardDataModel.getColumns());
+    } else if (fields.contains("columns")) {
+      applyColumnReferences(List.of(dashboardDataModel), DashboardDataModel::getColumns, false);
     }
   }
 
@@ -186,6 +195,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("columns")) {
       // Use bulk tag fetching to avoid N+1 queries
       bulkPopulateEntityFieldTags(dataModels, DashboardDataModel::getColumns);
+      inheritEntityTermsOnFields(dataModels, DashboardDataModel::getColumns, tagsMap);
     }
   }
 
@@ -205,6 +215,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     fetchAndSetFields(dataModels, fields);
     setInheritedFields(dataModels, fields);
+    if (fields.contains("columns")) {
+      applyColumnReferences(
+          dataModels, DashboardDataModel::getColumns, fields.contains("extension"));
+    }
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
@@ -257,10 +271,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     List<TagLabel> allTags = new ArrayList<>();
     DashboardDataModel dashboardDataModel = (DashboardDataModel) entity;
     EntityUtil.mergeTags(allTags, dashboardDataModel.getTags());
-    for (Column column : listOrEmpty(dashboardDataModel.getColumns())) {
-      EntityUtil.mergeTags(allTags, column.getTags());
-    }
+    EntityUtil.mergeColumnTags(allTags, dashboardDataModel.getColumns());
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns");
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {
@@ -351,6 +368,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       // the elements, so the mapped list reaches the same objects.
       columnExtensions.loadColumnExtensions(
           dataModel.getId(), page.stream().map(Column.class::cast).toList());
+    } else {
+      columnExtensions.stripColumnReferences(page.stream().map(Column.class::cast).toList());
     }
     return page;
   }
@@ -366,6 +385,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
     if (fieldsParam.contains("extension")) {
       columnExtensions.loadColumnExtensions(dataModel.getId(), singleton);
+    } else {
+      columnExtensions.stripColumnReferences(singleton);
     }
     return column;
   }
@@ -426,6 +447,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(
           entityType, paginatedResults, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      columnExtensions.loadColumnExtensions(dataModel.getId(), paginatedResults);
+    } else {
+      columnExtensions.stripColumnReferences(paginatedResults);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;

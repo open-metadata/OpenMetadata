@@ -809,6 +809,17 @@ describe('agentsDataMapper', () => {
       expect(getLogTaskFieldForType(log, PipelineType.Dbt)).toBe('dbt logs');
     });
 
+    it('should pick the ingestion_task field for ReverseMetadata', () => {
+      const log: IngestionPipelineLogByIdInterface = {
+        ingestion_task: 'reverse metadata logs',
+        application_task: 'application logs',
+      };
+
+      expect(getLogTaskFieldForType(log, PipelineType.ReverseMetadata)).toBe(
+        'reverse metadata logs'
+      );
+    });
+
     it('should return an empty string when the field is missing', () => {
       const log: IngestionPipelineLogByIdInterface = {};
 

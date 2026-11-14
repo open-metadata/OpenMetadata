@@ -14,6 +14,7 @@ import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../../../../../components/common/PopOverCard/UserPopOverCard';
 import { getUserPath } from '../../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 
 interface AuthorPopoverProps {
   userName: string;
@@ -40,7 +41,7 @@ const AuthorPopover = ({
         className="tw:text-inherit tw:no-underline"
         data-testid="author-popover-trigger"
         tabIndex={decorative ? -1 : undefined}
-        to={getUserPath(userName)}>
+        to={getSettingsLink(getUserPath(userName))}>
         {children}
       </Link>
     </UserPopOverCard>

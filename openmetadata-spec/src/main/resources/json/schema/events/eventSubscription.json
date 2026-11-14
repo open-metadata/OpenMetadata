@@ -77,6 +77,7 @@
     },
     "alertType": {
       "description": "Type of Alerts supported.",
+      "javaType": "org.openmetadata.schema.entity.events.AlertType",
       "type": "string",
       "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent", "Custom"],
       "default": "Notification"
@@ -250,7 +251,7 @@
       "$ref": "../type/basic.json#/definitions/uuid"
     },
     "className": {
-      "description": "Java class for the Event Subscription.",
+      "description": "Id of the registered consumer that runs this Event Subscription, such as `alert`, the consumer that sends its notifications.",
       "type": "string"
     },
     "name": {

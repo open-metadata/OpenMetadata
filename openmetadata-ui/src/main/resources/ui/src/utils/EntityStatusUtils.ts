@@ -24,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { isNil } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 
 export const EntityStatusClass: Record<EntityStatus, StatusType> = {
@@ -66,6 +67,20 @@ export const getEntityStatusBadgeConfig = (
 ): StatusBadgeConfig =>
   StatusBadgeConfigs[EntityStatusClass[status as EntityStatus]] ??
   DEFAULT_STATUS_BADGE_CONFIG;
+
+// Unprocessed is the status every entity starts in, so on its own it tells
+// the user nothing; a missing status means the same.
+export const isUnprocessedStatus = (status?: string): boolean =>
+  !status || status.toLowerCase() === EntityStatus.Unprocessed.toLowerCase();
+
+/** Drops the Status column while every listed entity is still Unprocessed. */
+export const getVisibleStatusColumns = <T extends { id: string }>(
+  columns: T[],
+  entities: { entityStatus?: EntityStatus }[]
+): T[] =>
+  entities.some((entity) => !isUnprocessedStatus(entity.entityStatus))
+    ? columns
+    : columns.filter((column) => column.id !== EntityFields.ENTITY_STATUS);
 
 export const isDeleted = (deleted: unknown): boolean => {
   return (deleted as string) === 'false' || deleted === false || isNil(deleted)

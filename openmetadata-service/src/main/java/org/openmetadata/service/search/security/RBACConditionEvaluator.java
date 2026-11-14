@@ -25,6 +25,7 @@ import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolve
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.SpelNode;
+import org.springframework.expression.spel.ast.BooleanLiteral;
 import org.springframework.expression.spel.ast.MethodReference;
 import org.springframework.expression.spel.ast.OpAnd;
 import org.springframework.expression.spel.ast.OpOr;
@@ -32,16 +33,24 @@ import org.springframework.expression.spel.ast.OperatorNot;
 import org.springframework.expression.spel.ast.StringLiteral;
 import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public class RBACConditionEvaluator {
+  private static final String POLICY_TAGS_FIELD = "policyTags";
 
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
   private final Cache<String, SpelExpression> expressionCache =
       Caffeine.newBuilder().maximumSize(512).build();
-  private final StandardEvaluationContext spelContext;
+
+  /**
+   * The caller whose conditions are being compiled. One evaluator serves every search request, so
+   * the caller is held per thread for the length of {@link #evaluateConditions}: a shared holder let
+   * a concurrent request compile {@code isOwner()} against another user's identity, and the
+   * compiled query is cached under the caller's own key.
+   */
+  private final ThreadLocal<User> evaluatingUser = new ThreadLocal<>();
+
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
 
@@ -58,12 +67,19 @@ public class RBACConditionEvaluator {
 
   public RBACConditionEvaluator(QueryBuilderFactory queryBuilderFactory) {
     this.queryBuilderFactory = queryBuilderFactory;
-    spelContext = new StandardEvaluationContext();
   }
 
   public OMQueryBuilder evaluateConditions(SubjectContext subjectContext) {
+    evaluatingUser.set(subjectContext.user());
+    try {
+      return compileConditions(subjectContext);
+    } finally {
+      evaluatingUser.remove();
+    }
+  }
+
+  private OMQueryBuilder compileConditions(SubjectContext subjectContext) {
     User user = subjectContext.user();
-    spelContext.setVariable("user", user);
 
     List<OMQueryBuilder> allowQueries = new ArrayList<>();
     List<OMQueryBuilder> denyQueries = new ArrayList<>();
@@ -81,7 +97,7 @@ public class RBACConditionEvaluator {
           continue;
         }
 
-        OMQueryBuilder ruleQuery = buildRuleQuery(rule, user);
+        OMQueryBuilder ruleQuery = buildRuleQuery(rule);
         if (ruleQuery == null || ruleQuery.isEmpty()) {
           continue;
         }
@@ -134,9 +150,8 @@ public class RBACConditionEvaluator {
     return finalQuery;
   }
 
-  private OMQueryBuilder buildRuleQuery(CompiledRule rule, User user) {
+  private OMQueryBuilder buildRuleQuery(CompiledRule rule) {
     ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
-    spelContext.setVariable("user", user);
 
     if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
       OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
@@ -224,6 +239,19 @@ public class RBACConditionEvaluator {
       }
     } else if (node instanceof MethodReference) {
       handleMethodReference(node, collector);
+    } else if (node instanceof BooleanLiteral literal) {
+      handleBooleanLiteral(literal, collector);
+    }
+  }
+
+  /**
+   * {@code true} adds no clause, which the collector reads as match-all. {@code false} sets
+   * match-nothing explicitly, so a condition such as {@code isOwner() && false} matches no
+   * document, as it does when evaluated in memory.
+   */
+  private void handleBooleanLiteral(BooleanLiteral literal, ConditionCollector collector) {
+    if (!Boolean.TRUE.equals(literal.getLiteralValue().getValue())) {
+      collector.setMatchNothing(true);
     }
   }
 
@@ -244,9 +272,9 @@ public class RBACConditionEvaluator {
         List<String> tags = extractMethodArguments(methodRef);
         matchAllTags(tags, collector);
       }
-      case "isOwner" -> isOwner((User) spelContext.lookupVariable("user"), collector);
+      case "isOwner" -> isOwner(evaluatingUser.get(), collector);
       case "noOwner" -> noOwner(collector);
-      case "isReviewer" -> isReviewer((User) spelContext.lookupVariable("user"), collector);
+      case "isReviewer" -> isReviewer(evaluatingUser.get(), collector);
       case "hasAnyRole" -> {
         List<String> roles = extractMethodArguments(methodRef);
         hasAnyRole(roles, collector);
@@ -318,28 +346,26 @@ public class RBACConditionEvaluator {
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
     List<OMQueryBuilder> tagQueries = new ArrayList<>();
     for (String tag : tags) {
-      OMQueryBuilder tagQuery;
-      if (tag.startsWith("Tier")) {
-        tagQuery = queryBuilderFactory.termQuery("tier.tagFQN", tag);
-      } else {
-        tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      }
-      tagQueries.add(tagQuery);
+      tagQueries.addAll(carriesTag(tag));
     }
-    OMQueryBuilder tagQueryCombined;
-    if (tagQueries.size() == 1) {
-      tagQueryCombined = tagQueries.get(0);
-    } else {
-      tagQueryCombined = queryBuilderFactory.boolQuery().should(tagQueries);
-    }
-    collector.addMust(tagQueryCombined);
+    collector.addMust(queryBuilderFactory.boolQuery().should(tagQueries));
   }
 
   public void matchAllTags(List<String> tags, ConditionCollector collector) {
     for (String tag : tags) {
-      OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      collector.addMust(tagQuery);
+      collector.addMust(queryBuilderFactory.boolQuery().should(carriesTag(tag)));
     }
+  }
+
+  /**
+   * A document carries a tag in its own labels or in {@code policyTags}, the access-only list of
+   * the tags its entity's inline children carry (the columns of a column's table), so a tag rule
+   * decides here as it does on the entity's own endpoints.
+   */
+  private List<OMQueryBuilder> carriesTag(String tag) {
+    return List.of(
+        queryBuilderFactory.termQuery(tag.startsWith("Tier") ? "tier.tagFQN" : "tags.tagFQN", tag),
+        queryBuilderFactory.termQuery(POLICY_TAGS_FIELD, tag));
   }
 
   /**
@@ -475,7 +501,7 @@ public class RBACConditionEvaluator {
   }
 
   public void hasAnyRole(List<String> roles, ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
+    User user = evaluatingUser.get();
     boolean hasRole = roles.stream().anyMatch(role -> SubjectContext.hasRole(user, role));
 
     if (hasRole) {
@@ -486,7 +512,7 @@ public class RBACConditionEvaluator {
   }
 
   public void hasDomain(ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
+    User user = evaluatingUser.get();
     if (user == null || nullOrEmpty(user.getDomains())) {
       // No user domains: only domainless entities, and never any Domain entity itself.
       collector.addMustNot(queryBuilderFactory.existsQuery("domains.id"));
@@ -516,7 +542,7 @@ public class RBACConditionEvaluator {
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
+    User user = evaluatingUser.get();
     if (user.getTeams() == null || user.getTeams().isEmpty()) {
       collector.setMatchNothing(true);
       return;

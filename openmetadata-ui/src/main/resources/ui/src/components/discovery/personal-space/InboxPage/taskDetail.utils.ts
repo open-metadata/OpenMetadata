@@ -13,15 +13,24 @@
 
 import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { TIER_CATEGORY } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
 import {
   EntityReference,
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
 import { DomainUpdatePayload } from '../../../../generated/type/domainUpdatePayload';
+import {
+  GlossaryApprovalPayload,
+  ProviderType,
+} from '../../../../generated/type/glossaryApprovalPayload';
 import { OwnershipUpdatePayload } from '../../../../generated/type/ownershipUpdatePayload';
 import { SuggestionPayload } from '../../../../generated/type/suggestionPayload';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -29,7 +38,15 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
+import { parseTaskFieldPath } from '../../../../utils/TaskFieldPathUtils';
+import {
+  getMetadataCompletionInstruction,
+  getMetadataCompletionPayload,
+  getRequiredFieldLabel,
+  isRevisionRequest,
+} from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import type { ActivityChange } from './inbox.utils';
 import {
@@ -181,6 +198,16 @@ const TASK_TYPE_BADGE: Record<
     color: 'indigo',
     icon: 'approval',
   },
+  [TaskType.MemoryConflictReview]: {
+    labelKey: 'label.memory-conflict',
+    color: 'orange',
+    icon: 'approval',
+  },
+  [TaskType.MetadataCompletion]: {
+    labelKey: 'label.missing-metadata',
+    color: 'warning',
+    icon: 'description',
+  },
   [TaskType.RecognizerFeedbackApproval]: {
     labelKey: 'label.recognizer-feedback',
     color: 'purple',
@@ -194,19 +221,36 @@ const DEFAULT_TYPE_BADGE = {
   icon: 'approval' as TaskTypeBadge['icon'],
 };
 
-const getTypeBadgeConfig = (task: Pick<Task, 'type' | 'category'>) =>
-  TASK_TYPE_BADGE[task.type] ??
-  (task.category === TaskCategory.Incident
-    ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
-    : DEFAULT_TYPE_BADGE);
+// A Metadata Completion task that carries a rejection asks for a revision, not for fields.
+const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
+  labelKey: 'label.revise-and-resubmit',
+  color: 'warning',
+  icon: 'approval',
+};
+
+const getTypeBadgeConfig = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => {
+  if (isRevisionRequest(task)) {
+    return REVISION_BADGE;
+  }
+
+  return (
+    TASK_TYPE_BADGE[task.type] ??
+    (task.category === TaskCategory.Incident
+      ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
+      : DEFAULT_TYPE_BADGE)
+  );
+};
 
 /**
  * What a task reads as, as a stable key: two types that share a label (a test
  * case incident and an incident) are one kind to a reviewer, so the list
  * groups them under one header and the filter offers them as one option.
  */
-export const getTaskTypeKey = (task: Pick<Task, 'type' | 'category'>) =>
-  getTypeBadgeConfig(task).labelKey;
+export const getTaskTypeKey = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => getTypeBadgeConfig(task).labelKey;
 
 /**
  * The type chip shown in the detail header and on each list row. Falls back to
@@ -247,6 +291,27 @@ const textRow = (
   text?: string
 ): TaskDetailRow[] =>
   text ? [{ key, icon, label, value: { kind: 'text', text } }] : [];
+
+const getEntityFieldLabel = (field: string) =>
+  getFeedChangeFieldLabel(field as EntityField) || field;
+
+// A description or tag path reads as container › names › property; any other
+// suggestion path (a custom property's extension.name) as its own segments.
+export const getFieldPathLabel = (fieldPath?: string): string | undefined => {
+  if (!fieldPath) {
+    return undefined;
+  }
+  const path = parseTaskFieldPath(fieldPath);
+  const [container, ...names] = path
+    ? [path.container?.split(FQN_SEPARATOR_CHAR)[0], ...path.names]
+    : Fqn.split(fieldPath).map((name) => Fqn.unquoteName(name));
+
+  return [
+    ...(container ? [getEntityFieldLabel(container)] : []),
+    ...names,
+    ...(path ? [getEntityFieldLabel(path.property)] : []),
+  ].join(' › ');
+};
 
 const dateRow = (
   key: string,
@@ -307,6 +372,34 @@ const TAG_SOURCE_OVERRIDES: Record<string, string> = {
   Agent: 'label.auto-classifier',
 };
 
+/**
+ * The AI agent that proposed what the task decides, when an automation did: its name, or a
+ * generic one when it recorded none. A person reads it instead of the bot the agent writes as.
+ */
+export const getProposingAgent = (task: Task, t: Translate) => {
+  const { proposal } = getPayload<GlossaryApprovalPayload>(task);
+
+  return proposal?.provider === ProviderType.Automation
+    ? proposal.agent ?? t('label.ai-agent')
+    : undefined;
+};
+
+const createdByRow = (task: Task, t: Translate): TaskDetailRow[] => {
+  const agent = getProposingAgent(task, t);
+  const creators = task.createdBy ? [task.createdBy] : [];
+
+  return agent
+    ? [
+        {
+          key: 'createdBy',
+          icon: 'owner',
+          label: t('label.created-by'),
+          value: { kind: 'agent', name: agent },
+        },
+      ]
+    : usersRow('createdBy', 'owner', t('label.created-by'), creators);
+};
+
 /** Assignee / requester / opened-on, which every task type shows. */
 const getCommonRows = (
   task: Task,
@@ -320,12 +413,7 @@ const getCommonRows = (
     task.assignees,
     t('label.assignee-plural')
   ),
-  ...usersRow(
-    'createdBy',
-    'owner',
-    t('label.created-by'),
-    task.createdBy ? [task.createdBy] : []
-  ),
+  ...createdByRow(task, t),
   ...dateRow('createdAt', t(dateLabelKey), task.createdAt),
 ];
 
@@ -432,7 +520,12 @@ const describeDescriptionUpdate = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -465,7 +558,12 @@ const describeSuggestion = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -514,7 +612,7 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'text', text: t('label.no-owner') },
+            value: { kind: 'text', text: NO_DATA_PLACEHOLDER },
           },
       // Approving replaces the current owners with these, so the reviewer sees
       // both sides of the change before deciding.
@@ -582,6 +680,68 @@ const describeDomainUpdate = (
   };
 };
 
+// The fields still missing and whether the stage's conditions hold, which the server rewrites as
+// they change; the fixed instruction sits where other types put their requester's context.
+const describeMetadataCompletion = (
+  task: Task,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  const payload = getMetadataCompletionPayload(task);
+  // A closed task keeps the payload it had when it closed, which no longer describes the asset.
+  const isOpen = task.status === TaskStatus.Open;
+  const missingFields = isOpen ? payload.missingFields ?? [] : [];
+
+  return {
+    rows: [
+      ...(missingFields.length > 0
+        ? [
+            {
+              key: 'missingFields',
+              icon: 'columns' as const,
+              label: t('label.missing-field-plural'),
+              value: {
+                kind: 'list' as const,
+                items: missingFields.map((field) => ({
+                  label: getRequiredFieldLabel(field, t),
+                })),
+                title: t('label.missing-field-plural'),
+              },
+            },
+          ]
+        : []),
+      ...textRow(
+        'revisionComment',
+        'type',
+        t('label.comment'),
+        payload.revision
+          ? payload.revision.comment ??
+              t('message.metadata-completion-revision-no-comment')
+          : undefined
+      ),
+      ...textRow(
+        'revisionRequestedBy',
+        'user',
+        t('label.requested-by'),
+        payload.revision?.requestedBy
+      ),
+      // An unmet condition is reported, not spelled out: the stage's rule may be any JSON Logic.
+      ...textRow(
+        'conditions',
+        'shield',
+        t('label.condition-plural'),
+        isOpen && payload.conditionsMet === false
+          ? t('message.lifecycle-conditions-not-met')
+          : undefined
+      ),
+      ...getCommonRows(task, t),
+    ],
+    callout: {
+      label: t('label.context'),
+      text: getMetadataCompletionInstruction(payload, t),
+    },
+  };
+};
+
 type Describer = (task: Task, t: Translate) => Partial<TaskDetailDescriptor>;
 
 const DESCRIBERS: Record<string, Describer> = {
@@ -593,6 +753,7 @@ const DESCRIBERS: Record<string, Describer> = {
   [TaskType.OwnershipUpdate]: describeOwnershipUpdate,
   [TaskType.TierUpdate]: describeTierUpdate,
   [TaskType.DomainUpdate]: describeDomainUpdate,
+  [TaskType.MetadataCompletion]: describeMetadataCompletion,
 };
 
 /**
@@ -676,13 +837,9 @@ type DescribedEntity = {
   columns?: DescribedField[];
 };
 
-const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
-const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
-
-// The paths that name the entity itself; any other path names one of its
-// fields, and one this cannot resolve (a topic's schema field, a container's
-// data-model column) shows nothing rather than the entity's values.
-const ENTITY_LEVEL_PATHS = new Set(['', 'description', 'tags', 'entity']);
+// A field this cannot resolve (a topic's schema field, a container's data-model
+// column) shows nothing rather than the entity's values.
+const COLUMNS_CONTAINER = 'columns';
 
 // Follows a column path's names down through nested columns.
 const findColumnByPath = (
@@ -698,42 +855,21 @@ const findColumnByPath = (
     { level: columns }
   ).found;
 
-// A nested column named on its own, without its parents.
-const findColumnByName = (
-  columns: DescribedField[] | undefined,
-  name: string
-): DescribedField | undefined =>
-  columns?.reduce<DescribedField | undefined>(
-    (found, column) =>
-      found ??
-      (column.name === name ? column : findColumnByName(column.children, name)),
-    undefined
-  );
-
 // What a field path names on its entity: the entity itself, or a column by its
-// path (`address.city`, `"a.b"` with its quotes dropped).
+// path of names.
 const getField = (
   entity: EntityUnion | undefined,
-  fieldPath: string | undefined,
-  columnPath: RegExp
+  fieldPath: string | undefined
 ): DescribedField | DescribedEntity | undefined => {
   const typed = entity as DescribedEntity | undefined;
-  const path = fieldPath ?? '';
-  if (ENTITY_LEVEL_PATHS.has(path)) {
+  const path = parseTaskFieldPath(fieldPath);
+  if (path && !path.container) {
     return typed;
   }
-  const column = columnPath.exec(path)?.[1];
-  const names = column
-    ? Fqn.split(column).map((name) => Fqn.unquoteName(name))
-    : [];
-  const byPath = findColumnByPath(typed?.columns, names);
 
-  return (
-    byPath ??
-    (names.length === 1
-      ? findColumnByName(typed?.columns, names[0])
-      : undefined)
-  );
+  return path?.container === COLUMNS_CONTAINER
+    ? findColumnByPath(typed?.columns, path.names)
+    : undefined;
 };
 
 // The description's Existing side: the payload's snapshot when it has one,
@@ -744,11 +880,7 @@ const withExistingDescription = (
   entity?: EntityUnion
 ): ActivityChange => {
   const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
-  const existing = getField(
-    entity,
-    fieldPath,
-    COLUMN_DESCRIPTION_PATH
-  )?.description?.trim();
+  const existing = getField(entity, fieldPath)?.description?.trim();
 
   return change.before.length || !existing
     ? change
@@ -766,7 +898,7 @@ const withKeptTags = (
   // Tasks often carry an empty currentTags by default rather than a
   // snapshot, so only a non-empty one stands in for the asset.
   const current = isEmpty(payload.currentTags)
-    ? getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags
+    ? getField(entity, payload.fieldPath)?.tags
     : payload.currentTags;
   const changed = new Set([...change.before, ...change.after]);
   const unchanged = tagNames(current).filter((name) => !changed.has(name));

@@ -56,14 +56,16 @@ describe('CustomPropertiesListTable', () => {
       <CustomPropertiesListTable {...baseProps} canDelete canEdit={false} />
     );
 
-    fireEvent.click(screen.getAllByTestId('property-actions')[0]);
+    const actionsButton = screen.getAllByTestId('property-actions')[0];
+    fireEvent.click(actionsButton);
     const item = await screen.findByTestId('delete-button');
 
     expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
 
     fireEvent.click(item);
 
-    expect(baseProps.onDelete).toHaveBeenCalledWith(property);
+    // The row's actions button comes along to anchor a confirmation to.
+    expect(baseProps.onDelete).toHaveBeenCalledWith(property, actionsButton);
   });
 
   it('uses the given test id and empty text', () => {

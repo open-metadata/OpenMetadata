@@ -20,6 +20,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  clickIgnoringToasts,
   clickOutside,
   createNewPage,
   fillDescriptionBox,
@@ -189,6 +190,10 @@ test('Classification Page', async ({ page }) => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).toBeVisible();
+    // The domain widget is lazy; until it mounts, not.toBeVisible passes vacuously.
+    await expect(page.getByTestId('KnowledgePanel.Domain')).toContainText(
+      /domain/i
+    );
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
@@ -196,7 +201,7 @@ test('Classification Page', async ({ page }) => {
     await table.visitEntityPage(page);
 
     const disabledTrigger = page.locator(
-      '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
+      '[data-testid="classification-tags-0"] [data-testid="add-tag"]'
     );
     await openClassificationTagPicker(page, disabledTrigger);
 
@@ -414,9 +419,7 @@ test('Classification Page', async ({ page }) => {
 
     const acceptSuggestion = waitForTaskResolveResponse(page);
 
-    const acceptButton = page.getByTestId('approve-button').first();
-    await acceptButton.waitFor({ state: 'visible' });
-    await acceptButton.click();
+    await clickIgnoringToasts(page.getByTestId('approve-button').first());
     await acceptSuggestion;
     await page.click('[data-testid="table"]');
 

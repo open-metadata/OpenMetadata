@@ -12,13 +12,17 @@
  */
 package org.openmetadata.service.security.session;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.lettuce.core.Range;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
@@ -37,9 +41,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class RedisSessionStoreTest extends SessionStoreContractTest {
 
+  // A single cluster-mode node owns every slot, so plain single-key commands behave as on a
+  // standalone server, but a command whose keys hash to different slots fails with CROSSSLOT, as it
+  // does on a Redis Cluster or a cluster proxy endpoint.
   @Container
   static final GenericContainer<?> REDIS =
-      new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+      new GenericContainer<>("redis:7-alpine")
+          .withExposedPorts(6379)
+          .withCommand("redis-server", "--cluster-enabled", "yes");
 
   private static RedisClient client;
   private static StatefulRedisConnection<String, String> connection;
@@ -52,6 +61,10 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
     client = RedisClient.create(uri);
     connection = client.connect();
     commands = connection.sync();
+    commands.clusterAddSlotsRange(Range.create(0, 16383));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .until(() -> commands.clusterInfo().contains("cluster_state:ok"));
   }
 
   @AfterAll
@@ -75,8 +88,7 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
   }
 
   @Test
-  void updateIfVersionMovesNonTerminalIndexInCasScript() {
-    RedisSessionStore redisStore = (RedisSessionStore) store;
+  void refreshedSessionLeavesNoIndexEntryOnceRedisEvictsIt() {
     String userId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
     UserSession active =
@@ -91,14 +103,17 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
             .expiresAt(now + TimeUnit.HOURS.toMillis(1))
             .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(30))
             .build();
-    redisStore.create(active);
-
+    store.create(active);
     UserSession refreshing =
         active.toBuilder().status(SessionStatus.REFRESHING).version(1L).build();
+    assertTrue(store.updateIfVersion(refreshing, 0L));
+    UserSession refreshed = refreshing.toBuilder().status(SessionStatus.ACTIVE).version(2L).build();
+    assertTrue(store.updateIfVersion(refreshed, 1L));
 
-    assertTrue(redisStore.updateIfVersion(refreshing, 0L));
-    assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
-    assertEquals(1L, redisStore.userIndexSize(userId, SessionStatus.REFRESHING));
+    commands.del("om-test:session:" + active.getId());
+
+    assertTrue(store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty());
+    assertEquals(List.of(), commands.keys("om-test:session:idx:user:" + userId + ":*"));
   }
 
   @Test

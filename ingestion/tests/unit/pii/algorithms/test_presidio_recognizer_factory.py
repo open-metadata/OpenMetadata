@@ -157,6 +157,77 @@ class TestPresidioRecognizerFactory:
             assert pattern.name == f"context_{word}"
             assert abs(pattern.score - 0.6) < 0.0001  # (0.4 + 0.8) / 2
 
+    @pytest.mark.parametrize(
+        ("context_word", "text", "expected_match"),
+        [
+            ("c++", "c++ developer", "c++ developer"),
+            ("id (internal", "id (internal 42", "id (internal 42"),
+            ("a.k.a", "aXkXa smith", None),
+        ],
+    )
+    def test_context_words_are_matched_literally(self, context_word, text, expected_match):
+        recognizer_config = Recognizer(
+            name="context_recognizer",
+            enabled=True,
+            recognizerConfig=RecognizerConfig(
+                root=ContextRecognizer(
+                    type="context",
+                    contextWords=[context_word],
+                    supportedLanguage=ClassificationLanguage.en,
+                )
+            ),
+        )
+
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Sensitive")
+
+        assert isinstance(result, PatternRecognizer)
+        matches = [text[r.start : r.end] for r in result.analyze(text, entities=["PII.Sensitive"])]
+        assert matches == ([expected_match] if expected_match else [])
+
+    def test_context_recognizer_keeps_zero_min_score(self):
+        recognizer_config = Recognizer(
+            name="context_recognizer",
+            enabled=True,
+            recognizerConfig=RecognizerConfig(
+                root=ContextRecognizer(
+                    type="context",
+                    contextWords=["secret"],
+                    supportedLanguage=ClassificationLanguage.en,
+                    minScore=0.0,
+                    maxScore=0.4,
+                )
+            ),
+        )
+
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Sensitive")
+
+        assert isinstance(result, PatternRecognizer)
+        assert result.patterns[0].score == pytest.approx(0.2)
+
+    @pytest.mark.parametrize(
+        "patterns",
+        [
+            pytest.param([Pattern(name="badge", regex=r"EMP-(\d{6}", score=0.8)], id="invalid-regex"),
+            pytest.param([], id="no-patterns"),
+        ],
+    )
+    def test_pattern_recognizer_presidio_cannot_build_is_skipped(self, patterns):
+        recognizer_config = Recognizer(
+            name="badge_recognizer",
+            enabled=True,
+            recognizerConfig=RecognizerConfig(
+                root=PatternRecognizerConfig(
+                    type="pattern",
+                    patterns=patterns,
+                    regexFlags=RegexFlags(),
+                    context=[],
+                    supportedLanguage="en",
+                )
+            ),
+        )
+
+        assert PresidioRecognizerFactory.create_recognizer(recognizer_config, "PII.Sensitive") is None
+
     def test_create_custom_recognizer(self):
         """Test that custom recognizers return None with a warning"""
         recognizer_config = Recognizer(
@@ -192,6 +263,58 @@ class TestPresidioRecognizerFactory:
         result = PresidioRecognizerFactory.create_recognizer(recognizer_config, "Some.Tag")
 
         assert isinstance(result, EntityRecognizer)
+
+    @pytest.mark.parametrize(
+        ("name", "language", "text", "expected", "entity", "expected_score"),
+        [
+            (
+                PredefinedRecognizerName.CreditCardRecognizer,
+                ClassificationLanguage.es,
+                "Card 4111-1111-1111-1111 issued",
+                "4111-1111-1111-1111",
+                "CREDIT_CARD",
+                1.0,
+            ),
+            (
+                PredefinedRecognizerName.UrlRecognizer,
+                ClassificationLanguage.en,
+                "Visit https://example.org/a?x=1",
+                "https://example.org/a?x=1",
+                "URL",
+                0.6,
+            ),
+            (
+                PredefinedRecognizerName.IpRecognizer,
+                ClassificationLanguage.en,
+                "IP 2001:db8::1",
+                "2001:db8::1",
+                "IP_ADDRESS",
+                0.6,
+            ),
+        ],
+    )
+    def test_configured_predefined_candidate_spans(self, name, language, text, expected, entity, expected_score):
+        config = Recognizer(
+            name=f"configured_{name.value}",
+            enabled=True,
+            confidenceThreshold=0.6,
+            recognizerConfig=RecognizerConfig(
+                root=PredefinedRecognizer(
+                    type="predefined",
+                    name=name,
+                    supportedLanguage=language,
+                    context=["customer"],
+                )
+            ),
+        )
+        recognizer = PresidioRecognizerFactory.create_recognizer(config, "PII.Test")
+
+        assert recognizer is not None
+        assert recognizer.supported_language == language.value
+        assert recognizer.context == ["customer"]
+        assert recognizer.supported_entities == [entity]
+        results = recognizer.analyze(text, [entity])
+        assert [(text[result.start : result.end], result.score) for result in results] == [(expected, expected_score)]
 
     def test_create_predefined_recognizer_invalid_name(self):
         """Test that invalid predefined recognizer names return None"""

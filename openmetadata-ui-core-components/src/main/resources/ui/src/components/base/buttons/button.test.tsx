@@ -1,8 +1,43 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { Dialog, DialogTrigger, Popover } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
+import { Edit01 } from '@/icons';
 import { Button } from './button';
+import { ButtonUtility } from './button-utility';
+
+describe('ButtonUtility activation', () => {
+  it('supports pointer and keyboard presses', async () => {
+    const user = userEvent.setup();
+    const onPress = vi.fn();
+    render(<ButtonUtility tooltip="Edit" onPress={onPress} />);
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    await user.click(button);
+    await user.keyboard('{Enter}');
+    await user.keyboard(' ');
+
+    expect(onPress.mock.calls.map(([event]) => event.pointerType)).toEqual([
+      'mouse',
+      'keyboard',
+      'keyboard',
+    ]);
+  });
+
+  it('does not press a disabled button', async () => {
+    const user = userEvent.setup();
+    const onPress = vi.fn();
+    render(<ButtonUtility isDisabled tooltip="Edit" onPress={onPress} />);
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+
+    expect(onPress).not.toHaveBeenCalled();
+  });
+});
 
 describe('Button', () => {
   it('renders its children', () => {
@@ -18,6 +53,40 @@ describe('Button', () => {
     fireEvent.click(screen.getByText('Click me'));
 
     expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onFocus and onBlur as keyboard focus enters and leaves', async () => {
+    const handleFocus = vi.fn();
+    const handleBlur = vi.fn();
+    render(
+      <>
+        <Button onBlur={handleBlur} onFocus={handleFocus}>
+          Click me
+        </Button>
+        <Button>Next</Button>
+      </>
+    );
+
+    await userEvent.tab();
+
+    expect(handleFocus).toHaveBeenCalledTimes(1);
+
+    await userEvent.tab();
+
+    expect(handleBlur).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onFocus on the link variant', () => {
+    const handleFocus = vi.fn();
+    render(
+      <Button href="/somewhere" onFocus={handleFocus}>
+        Go
+      </Button>
+    );
+
+    screen.getByRole('link', { name: 'Go' }).focus();
+
+    expect(handleFocus).toHaveBeenCalledTimes(1);
   });
 
   it('omits focus outline classes only when explicitly requested', () => {
@@ -71,7 +140,7 @@ describe('Button — link box', () => {
 
   it('keeps the size padding and label padding when boxed', () => {
     render(
-      <Button boxed color="link-color" size="md">
+      <Button boxed color="link-color" size="lg">
         Back
       </Button>
     );
@@ -84,7 +153,7 @@ describe('Button — link box', () => {
 
   it('ignores boxed on non-link colours', () => {
     render(
-      <Button boxed color="primary" size="md">
+      <Button boxed color="primary" size="lg">
         Save
       </Button>
     );
@@ -132,5 +201,360 @@ describe('Button — tooltip prop', () => {
     // With isDisabled, Tooltip receives isDisabled={true} and should not render
     // the tooltip overlay even when isOpen would normally show it.
     expect(screen.queryByText('Hint')).not.toBeInTheDocument();
+  });
+});
+
+describe('Button — icon size and color', () => {
+  it('sizes compact icons to the 18px leading / 16px trailing frame', () => {
+    render(
+      <Button iconLeading={Edit01} iconTrailing={Edit01} size="xs">
+        Edit
+      </Button>
+    );
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'tw:*:data-icon:size-4.5',
+      'tw:*:data-icon:p-[0.25px]',
+      'tw:*:data-[icon=trailing]:size-4',
+      'tw:*:data-[icon=trailing]:p-[0.5px]'
+    );
+  });
+
+  it.each([
+    ['xs', 'tw:py-1.25'],
+    ['sm', 'tw:py-1.5'],
+    ['md', 'tw:py-2'],
+    ['lg', 'tw:py-2.5'],
+    ['xl', 'tw:py-2.5'],
+  ] as const)('applies the %s height padding', (size, padding) => {
+    render(<Button size={size}>Edit</Button>);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
+  });
+
+  it('keeps the 20px leading frame and an 18px trailing frame on regular sizes', () => {
+    render(
+      <Button iconLeading={Edit01} iconTrailing={Edit01} size="md">
+        Edit
+      </Button>
+    );
+
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toHaveClass(
+      'tw:*:data-icon:size-5',
+      'tw:*:data-[icon=trailing]:size-4.5'
+    );
+    expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
+    expect(button.querySelector('[data-icon="trailing"]')).toBeInTheDocument();
+  });
+
+  it('uses gray-500 icons with a gray-600 hover on neutral buttons', () => {
+    render(
+      <Button color="secondary" iconLeading={Edit01}>
+        Edit
+      </Button>
+    );
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'tw:*:data-icon:text-utility-gray-500',
+      'tw:hover:*:data-icon:text-utility-gray-600'
+    );
+  });
+
+  it('uses white icons on primary buttons', () => {
+    render(
+      <Button color="primary" iconLeading={Edit01}>
+        Edit
+      </Button>
+    );
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'tw:*:data-icon:text-white'
+    );
+  });
+});
+
+describe('Button — numeric label', () => {
+  it('treats a count of 0 as a label', () => {
+    render(<Button iconLeading={Edit01}>{0}</Button>);
+    const button = screen.getByRole('button');
+
+    expect(button).not.toHaveAttribute('data-icon-only');
+    expect(button.querySelector('[data-text]')).toHaveTextContent('0');
+  });
+
+  it('lets the label follow the root colour transition instead of running its own', () => {
+    render(<Button>Add</Button>);
+    const label = screen.getByRole('button').querySelector('[data-text]');
+
+    expect(label).not.toHaveClass('tw:transition-inherit-all');
+    expect(label).toHaveClass('tw:transition-[text-decoration-color]');
+  });
+});
+
+describe('ButtonUtility — icon size and color', () => {
+  it.each([
+    ['xs', 'tw:p-0.5', 'tw:*:data-icon:size-4', 'tw:*:data-icon:p-[0.5px]'],
+    ['sm', 'tw:p-0.75', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['md', 'tw:p-1.25', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['lg', 'tw:p-1.5', 'tw:*:data-icon:size-5', 'tw:p-1.5'],
+    ['xl', 'tw:p-2', 'tw:*:data-icon:size-5', 'tw:p-2'],
+  ] as const)(
+    'applies the %s box padding and icon frame',
+    (size, padding, icon, glyphPadding) => {
+      render(<ButtonUtility icon={Edit01} size={size} tooltip="Edit" />);
+
+      const button = screen.getByRole('button', { name: 'Edit' });
+
+      expect(button).toHaveClass(padding, icon, glyphPadding);
+      expect(button.querySelector('svg[data-icon]')).toBeInTheDocument();
+    }
+  );
+
+  it.each([
+    ['xs', 'tw:rounded-sm'],
+    ['sm', 'tw:rounded-md'],
+    ['md', 'tw:rounded-md'],
+    ['lg', 'tw:rounded-lg'],
+    ['xl', 'tw:rounded-lg'],
+  ] as const)('rounds the %s size with %s', (size, radius) => {
+    render(<ButtonUtility icon={Edit01} size={size} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(radius);
+  });
+
+  it('defaults to the 24px sm size', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'tw:p-0.75',
+      'tw:rounded-md'
+    );
+  });
+
+  it('drops the border at xs', () => {
+    const { rerender } = render(
+      <ButtonUtility color="secondary" icon={Edit01} size="xs" tooltip="Edit" />
+    );
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).not.toHaveClass('tw:after:outline-primary', 'tw:bg-surface');
+
+    rerender(
+      <ButtonUtility
+        color="secondary-destructive"
+        icon={Edit01}
+        size="xs"
+        tooltip="Edit"
+      />
+    );
+
+    expect(button).not.toHaveClass('tw:after:outline-error_subtle');
+    expect(button).toHaveClass('tw:text-error-primary');
+
+    rerender(
+      <ButtonUtility color="secondary" icon={Edit01} size="sm" tooltip="Edit" />
+    );
+
+    expect(button).toHaveClass('tw:after:outline-primary');
+  });
+
+  it('uses gray-500 icons with a gray-600 hover on neutral colors', () => {
+    render(<ButtonUtility color="tertiary" icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+      'tw:text-utility-gray-500',
+      'tw:hover:text-utility-gray-600'
+    );
+  });
+
+  it('supports primary and destructive colors', () => {
+    const { rerender } = render(
+      <ButtonUtility color="primary" icon={Edit01} tooltip="Edit" />
+    );
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toHaveClass(
+      'tw:bg-brand-solid',
+      'tw:*:data-icon:text-white'
+    );
+
+    rerender(
+      <ButtonUtility
+        color="secondary-destructive"
+        icon={Edit01}
+        tooltip="Edit"
+      />
+    );
+
+    expect(button).toHaveClass(
+      'tw:text-error-primary',
+      'tw:*:data-icon:text-fg-error-secondary'
+    );
+  });
+
+  it('defaults to the borderless tertiary color', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveClass(
+      'tw:after:outline-primary'
+    );
+  });
+
+  it('forwards its ref to the button', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<ButtonUtility icon={Edit01} ref={ref} tooltip="Edit" />);
+
+    expect(ref.current).toBe(screen.getByRole('button', { name: 'Edit' }));
+  });
+
+  it('disables a button with a tooltip natively and keeps the tooltip reachable', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isDisabled
+        icon={Edit01}
+        tooltip="Needs an owner first"
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Needs an owner first' });
+
+    expect(button).toBeDisabled();
+
+    // Tooltip wraps the disabled button in one focusable span, so the tooltip
+    // that explains why it is disabled still opens on hover.
+    const wrapper = button.parentElement as HTMLElement;
+
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).toHaveAttribute('tabindex', '0');
+
+    fireEvent.mouseMove(document);
+    await user.hover(wrapper);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Needs an owner first'
+      )
+    );
+
+    await user.click(wrapper);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not open a parent trigger while disabled with a tooltip', async () => {
+    render(
+      <DialogTrigger>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Edit" />
+        <Popover>
+          <Dialog>Menu body</Dialog>
+        </Popover>
+      </DialogTrigger>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+  });
+
+  it('does not submit its form while disabled with a tooltip', async () => {
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => onSubmit(event.nativeEvent as SubmitEvent)}>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Save" type="submit" />
+      </form>
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    await userEvent.click(button);
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('disables a button without a tooltip natively', () => {
+    render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+  });
+
+  it('swaps its icon for a spinner and ignores presses while loading', () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isLoading
+        aria-label="Save"
+        icon={Edit01}
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(button.querySelector('[data-icon="loading"]')).not.toBeNull();
+    expect(button.querySelector('[data-icon="true"]')).toBeNull();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('ButtonUtility — toggle', () => {
+  it('shows a toggle that is on in brand and as pressed', () => {
+    render(
+      <ButtonUtility isSelected color="tertiary" icon={Edit01} tooltip="Bar" />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).toHaveClass(
+      'tw:bg-brand-primary',
+      'tw:text-brand-secondary'
+    );
+  });
+
+  // Secondary hovers to bg-raised in dark mode; on, it must stay brand.
+  it('keeps a secondary toggle that is on in brand when hovered in dark mode', () => {
+    render(
+      <ButtonUtility isSelected color="secondary" icon={Edit01} tooltip="Bar" />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveClass('tw:dark:hover:bg-brand-primary');
+    expect(button).not.toHaveClass('tw:dark:hover:bg-raised');
+  });
+
+  it('shows a toggle that is off in its resting colour, as not pressed', () => {
+    render(
+      <ButtonUtility
+        color="tertiary"
+        icon={Edit01}
+        isSelected={false}
+        tooltip="Bar"
+      />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(button).not.toHaveClass('tw:bg-brand-primary');
+  });
+
+  it('is a plain action, with no pressed state, when isSelected is unset', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveAttribute(
+      'aria-pressed'
+    );
   });
 });

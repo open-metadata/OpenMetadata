@@ -10,11 +10,15 @@
 #  limitations under the License.
 """Unit tests for DB2 connection handling."""
 
+import importlib.metadata
 import sys
 import types
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
 from sqlalchemy import column, table
 from sqlalchemy.sql.elements import TextClause
 
@@ -36,6 +40,30 @@ from metadata.ingestion.source.database.db2.utils import (
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.db2.connection"
 UTILS_MODULE = "metadata.ingestion.source.database.db2.utils"
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
+
+def test_ibmi_lock_metadata_correction_preserves_driver_requirements():
+    config = tomllib.loads((Path(__file__).resolve().parents[5] / "pyproject.toml").read_text())
+    correction = next(item for item in config["tool"]["uv"]["dependency-metadata"] if item["name"] == "sqlalchemy-ibmi")
+    installed = importlib.metadata.distribution("sqlalchemy-ibmi")
+    assert installed.version == correction["version"] == "0.9.3"
+    requirements = [Requirement(raw) for raw in installed.requires or []]
+    sqlalchemy_requirement = next(
+        requirement for requirement in requirements if requirement.name.lower() == "sqlalchemy"
+    )
+    assert sqlalchemy_requirement.specifier == SpecifierSet(">=1.3.0,<2.0")
+    assert sqlalchemy_requirement.marker is None
+    requirements.remove(sqlalchemy_requirement)
+    corrected = Requirement("sqlalchemy>=2.0,<2.1")
+    assert {str(Requirement(raw)) for raw in correction["requires-dist"]} == {
+        str(requirement) for requirement in [*requirements, corrected]
+    }
+    assert importlib.metadata.version("sqlalchemy") in corrected.specifier
 
 
 def _ibmi_config() -> Db2ConnectionConfig:

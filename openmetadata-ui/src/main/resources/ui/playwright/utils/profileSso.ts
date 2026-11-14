@@ -89,13 +89,9 @@ export const openProfileSso = async (page: Page) => {
   await expect(page.getByTestId('sso-panel')).toBeVisible();
 };
 
-/** Picks a provider on the grid and opens its setup form. */
+/** Clicking a provider card on the grid opens its setup form directly. */
 export const configureProvider = async (page: Page, provider: string) => {
   await page.getByTestId(`sso-provider-${provider}`).click();
-  await page
-    .getByTestId('profile-content-header')
-    .getByTestId('sso-configure-provider')
-    .click();
   await expect(page.getByTestId('sso-configure-form')).toBeVisible();
 };
 

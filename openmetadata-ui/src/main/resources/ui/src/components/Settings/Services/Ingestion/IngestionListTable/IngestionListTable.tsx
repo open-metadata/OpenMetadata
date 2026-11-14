@@ -15,7 +15,6 @@ import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { FixedType } from 'rc-table/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -54,7 +53,6 @@ import { ColumnsType } from '../../../../common/Table/Table.interface';
 import Table from '../../../../common/Table/TableV2';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
-import './ingestion-list-table.less';
 import {
   IngestionListTableProps,
   ModifiedIngestionPipeline,
@@ -62,10 +60,9 @@ import {
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
 
-// Derived from symbols already in scope rather than imported from antd directly: tw-guard blocks
-// new antd specifiers, and this file's table is legacy AntD that is not being migrated here.
-type AntdSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
-type AntdTableChangeHandler = NonNullable<
+// Derived from the table's own prop types.
+type ColumnSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
+type TableChangeHandler = NonNullable<
   NonNullable<IngestionListTableProps['extraTableProps']>['onChange']
 >;
 
@@ -296,8 +293,8 @@ function IngestionListTable({
 
   const isServerSorted = !isUndefined(onSortChange);
 
-  const antdSortOrder = useMemo<AntdSortOrder>(() => {
-    let order: AntdSortOrder = null;
+  const columnSortOrder = useMemo<ColumnSortOrder>(() => {
+    let order: ColumnSortOrder = null;
     if (sortOrder === SORT_ORDER.ASC) {
       order = 'ascend';
     } else if (sortOrder === SORT_ORDER.DESC) {
@@ -307,7 +304,7 @@ function IngestionListTable({
     return order;
   }, [sortOrder]);
 
-  const toSortOrder = (order?: AntdSortOrder): SORT_ORDER | undefined => {
+  const toSortOrder = (order?: ColumnSortOrder): SORT_ORDER | undefined => {
     let updatedSortOrder: SORT_ORDER | undefined;
     if (order === 'ascend') {
       updatedSortOrder = SORT_ORDER.ASC;
@@ -320,7 +317,7 @@ function IngestionListTable({
 
   // AntD reports sort, filter and pagination through the same `onChange`. Only the sort action is
   // ours; everything else stays with the caller's handler, which must still receive every action.
-  const handleTableChange = useCallback<AntdTableChangeHandler>(
+  const handleTableChange = useCallback<TableChangeHandler>(
     (pagination, filters, sorter, extra) => {
       extraTableProps?.onChange?.(pagination, filters, sorter, extra);
 
@@ -339,13 +336,13 @@ function IngestionListTable({
         className: 'name-column',
         dataIndex: 'name',
         key: 'name',
-        fixed: 'left' as FixedType,
+        fixed: 'left' as const,
         // Sort on the same value the cell renders (getEntityName), not the raw
         // `name`: agents created from the UI get a machine-generated name that
         // has no relation to the label the user sees. `sorter: true` hands
         // ordering to the server so it spans every page, not just the loaded one.
         ...(isServerSorted
-          ? { sorter: true, sortOrder: antdSortOrder }
+          ? { sorter: true, sortOrder: columnSortOrder }
           : { sorter: columnSorter }),
         render: customRenderNameField ?? renderNameField(searchText),
       },
@@ -434,7 +431,7 @@ function IngestionListTable({
               dataIndex: 'actions',
               key: 'actions',
               width: 240,
-              fixed: 'right' as FixedType,
+              fixed: 'right' as const,
               render: renderActionsField,
             },
           ]
@@ -451,7 +448,7 @@ function IngestionListTable({
       pipelineTypeColumnObj,
       isLoading,
       isServerSorted,
-      antdSortOrder,
+      columnSortOrder,
     ]
   );
 
@@ -476,6 +473,9 @@ function IngestionListTable({
         className={classNames('ingestion-list-table', tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
+          // The 48px run-count tiles set the row height; centring every cell keeps
+          // the name, type, schedule and checkbox on the same line as them.
+          cellClassName="tw:p-2 tw:align-middle"
           columns={tableColumn}
           containerClassName={tableClassName}
           {...(!isUndefined(ingestionPagingInfo) &&

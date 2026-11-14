@@ -10,28 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Dropdown,
-  SimpleModal,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Form } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
+import { isEmpty, isUndefined, last, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
-import {
-  deleteCustomMetric,
-  putCustomMetric,
-} from '../../../../../rest/customMetricAPI';
+import { deleteCustomMetric } from '../../../../../rest/customMetricAPI';
 import {
   axisTickFormatter,
   tooltipFormatter,
@@ -47,9 +39,8 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ProfileExecutionSource } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -70,27 +61,39 @@ const Y_AXIS: ChartYAxisProps = {
   formatter: (value) => String(axisTickFormatter(Number(value))),
 };
 
-const TOOLTIP: ChartTooltipRenderProps<MetricRow> = {
-  render: (items, row) => (
-    <DQTooltipContent
-      header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
-      rows={chartTooltipRows(items)}
-      valueFormatter={(value) => tooltipFormatter(value)}
-    />
-  ),
-};
-
 const CustomMetricGraphs = ({
   customMetricsGraphData,
   isLoading,
   customMetrics,
+  profiles,
+  isSharded,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<CustomMetric>();
+  const tooltip = useMemo<ChartTooltipRenderProps<MetricRow>>(
+    () => ({
+      render: (items, row) => (
+        <DQTooltipContent
+          footer={
+            <ProfileExecutionSource
+              isSharded={isSharded}
+              profiles={profiles}
+              timestamp={Number(row?.timestamp)}
+            />
+          }
+          header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
+          rows={chartTooltipRows(items)}
+          valueFormatter={(value) => tooltipFormatter(value)}
+        />
+      ),
+    }),
+    [profiles, isSharded]
+  );
+
   const {
     permissions,
     customMetric: tableDetails,
     onCustomMetricUpdate,
+    onCustomMetricDrawerOpen,
   } = useTableProfiler();
   const editPermission =
     permissions &&
@@ -99,7 +102,6 @@ const CustomMetricGraphs = ({
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
@@ -132,7 +134,6 @@ const CustomMetricGraphs = ({
 
   const handleModalCancel = () => {
     setIsDeleteModalVisible(false);
-    setIsEditModalVisible(false);
     setSelectedMetrics(undefined);
   };
 
@@ -160,43 +161,19 @@ const CustomMetricGraphs = ({
     }
   };
 
-  const handleEditFormSubmit = async (values: CustomMetric) => {
-    if (tableDetails) {
-      setIsActionLoading(true);
-      const updatedMetric = {
-        ...omit(selectedMetrics, ['id']),
-        ...values,
-      };
-
-      try {
-        const { data } = await putCustomMetric(tableDetails.id, updatedMetric);
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: selectedMetrics?.name,
-          })
-        );
-        onCustomMetricUpdate(data);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        handleModalCancel();
-        setIsActionLoading(false);
-      }
-    }
-  };
-
   const handleMenuClick = (key: string, metricName: string) => {
-    setSelectedMetrics(
-      customMetrics?.find((metric) => metric.name === metricName)
-    );
+    const metric = customMetrics?.find((metric) => metric.name === metricName);
     setOpenMenuKey(null);
 
     switch (key) {
       case MenuOptions.EDIT:
-        setIsEditModalVisible(true);
+        if (metric) {
+          onCustomMetricDrawerOpen(!isUndefined(metric.columnName), metric);
+        }
 
         break;
       case MenuOptions.DELETE:
+        setSelectedMetrics(metric);
         setIsDeleteModalVisible(true);
 
         break;
@@ -234,12 +211,11 @@ const CustomMetricGraphs = ({
                       onOpenChange={(isOpen) =>
                         setOpenMenuKey(isOpen ? key : null)
                       }>
-                      <Button
-                        aria-label={t('label.more-action')}
-                        color="secondary"
+                      <ButtonUtility
                         data-testid={`${key}-custom-metrics-menu`}
-                        iconLeading={DotsVertical}
-                        size="sm"
+                        icon={DotsVertical}
+                        size="lg"
+                        tooltip={t('label.more-action')}
                       />
                       <Dropdown.Popover className="tw:w-max">
                         <Dropdown.Menu items={items}>
@@ -260,7 +236,9 @@ const CustomMetricGraphs = ({
               <div>
                 {isEmpty(metric) ? (
                   <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
-                    <ErrorPlaceHolder className="mt-0-important" />
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoDataPlaceholder data-testid="no-data-placeholder" />
+                    </div>
                   </div>
                 ) : (
                   <div className="tw:w-full" id={`${key}-graph`}>
@@ -269,7 +247,7 @@ const CustomMetricGraphs = ({
                       data={metric}
                       height={CHART_HEIGHT}
                       series={seriesByMetric[key]}
-                      tooltip={TOOLTIP}
+                      tooltip={tooltip}
                       xKey="formattedTimestamp"
                       yAxis={Y_AXIS}
                     />
@@ -292,28 +270,6 @@ const CustomMetricGraphs = ({
         onCancel={handleModalCancel}
         onDelete={handleDeleteClick}
       />
-      {isEditModalVisible && !isUndefined(selectedMetrics) && (
-        <SimpleModal
-          isOpen
-          isDismissable={false}
-          isOkLoading={isActionLoading}
-          okText={t('label.save')}
-          title={t('label.edit-entity', { entity: selectedMetrics.name })}
-          width={650}
-          onCancel={handleModalCancel}
-          onOk={() => form.submit()}>
-          <DrawerPopupContainerProvider>
-            <CustomMetricForm
-              isEditMode
-              form={form}
-              initialValues={selectedMetrics}
-              isColumnMetric={!isUndefined(selectedMetrics.columnName)}
-              table={tableDetails}
-              onFinish={handleEditFormSubmit}
-            />
-          </DrawerPopupContainerProvider>
-        </SimpleModal>
-      )}
     </div>
   );
 };

@@ -31,9 +31,6 @@ export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
 export interface FeedPanelHeaderProp
   extends HTMLAttributes<HTMLHeadingElement>,
     Pick<ActivityFeedPanelProp, 'onCancel'> {
-  entityLink: string;
-  noun?: string;
   onShowNewConversation?: (v: boolean) => void;
   hideCloseIcon?: boolean;
-  feed?: Conversation;
 }

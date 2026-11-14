@@ -12,7 +12,7 @@
 Unit tests for PII classifiers
 """
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from dirty_equals import HasAttributes, IsFloat, IsInstance, IsNumeric
@@ -215,6 +215,58 @@ class TestTagScorer:
             ),
             score=IsNumeric(gt=0.5),
         )
+
+    @pytest.mark.parametrize(
+        "patterns, language",
+        [
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")],
+                ClassificationLanguage.en,
+                id="invalid-regex",
+            ),
+            pytest.param([], ClassificationLanguage.en, id="no-patterns"),
+            # Too deeply nested to compile; the recognizer is not even for the language analyzed.
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.de,
+                id="too-deeply-nested-other-language",
+            ),
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.en,
+                id="too-deeply-nested",
+            ),
+        ],
+    )
+    def test_broken_recognizer_does_not_drop_other_tags(
+        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns, language
+    ):
+        broken_tag = TagFactory.create(
+            tag_name="BadgeTag",
+            tag_classification=general_classification,
+            autoClassificationEnabled=True,
+            recognizers=[
+                RecognizerFactory.create(
+                    name="BadgeRecognizer",
+                    recognizerConfig=PatternRecognizerFactory.create(
+                        patterns=patterns,
+                        context=[],
+                        supportedLanguage=language,
+                    ),
+                    target=Target.content,
+                )
+            ],
+        )
+        classifier = TagScorer(
+            tag_analyzers=[
+                TagAnalyzer(tag=email_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+                TagAnalyzer(tag=broken_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+            ],
+        )
+
+        scores = classifier.predict_scores(["john.doe@example.com", "jane.smith@test.org"])
+
+        assert [scored_tag.tag.fullyQualifiedName for scored_tag in scores] == ["PII.EmailTag"]
 
     def test_empty_data_returns_empty(self, classifier):
         """Test that empty data returns empty scores"""
@@ -459,6 +511,40 @@ class TestTagAnalyzer:
         analysis = analyzer.analyze(str_values=["François"])
 
         assert analysis.score == 1.0
+
+    def test_analyze_content_detects_upper_cased_names(self, person_tag_analyzer: TagAnalyzer):
+        names = ["SERGE DUPONT", "GENEVIÈVE DURAND", "CÉLINE FOURNIER", "NATHALIE MERCIER"]
+
+        analysis = person_tag_analyzer.analyze(str_values=names)
+
+        assert analysis.score >= 0.8
+        assert {result.entity_type for result in analysis.recognizer_results} == {PIIEntity.PERSON.value}
+
+    def test_analyze_content_does_not_tag_upper_cased_status_values(self, person_tag_analyzer: TagAnalyzer):
+        statuses = ["ACTIVE", "PENDING", "CLOSED", "ARCHIVED", "CANCELLED", "APPROVED", "REJECTED"]
+
+        analysis = person_tag_analyzer.analyze(str_values=statuses)
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_skips_name_pass_without_spacy_recognizers(self, tag_analyzer: TagAnalyzer, nlp_engine):
+        statuses = ["ACTIVE", "PENDING", "CLOSED"]
+
+        tag_analyzer.analyze(str_values=statuses)
+
+        assert [call.args[0] for call in nlp_engine.process_text.call_args_list] == statuses
+
+    def test_analyze_content_reanalyzes_only_upper_cased_values(self, person_tag: Tag, column: Column):
+        nlp_engine = load_nlp_engine()
+        analyzer = TagAnalyzer(tag=person_tag, column=column, nlp_engine=nlp_engine)
+        names = ["SERGE DUPONT", "GENEVIÈVE DURAND", "Céline Fournier", "Nathalie Mercier"]
+
+        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
+            analysis = analyzer.analyze(str_values=names)
+
+        assert [call.args[0] for call in process_text.call_args_list] == names + ["Serge Dupont", "Geneviève Durand"]
+        assert {result.entity_type for result in analysis.recognizer_results} == {PIIEntity.PERSON.value}
 
     def test_analyze_content_corroborates_each_spacy_entity_type_independently(self, column: Column):
         spacy_recognizer = RecognizerFactory.create(

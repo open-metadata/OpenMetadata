@@ -4,9 +4,14 @@ from textwrap import dedent
 
 import pytest
 import testcontainers.core.network
+from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
+from confluent_kafka.schema_registry import Schema, SchemaReference, SchemaRegistryClient
+from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
+from confluent_kafka.serialization import MessageField, SerializationContext
 from docker.types import EndpointConfig
+from google.protobuf import descriptor_pb2, descriptor_pool
+from google.protobuf.message_factory import GetMessageClass
 from testcontainers.core.container import DockerContainer
 from testcontainers.kafka import KafkaContainer
 
@@ -41,6 +46,12 @@ LOANS_PROTOBUF_SCHEMA = dedent(
     }
     """
 ).strip()
+LOANS_RECORDS = [
+    {"my_field1": 1, "my_field2": 1.5, "my_field3": "first loan"},
+    {"my_field1": 2, "my_field2": 2.5, "my_field3": "second loan"},
+    {"my_field1": 3, "my_field2": 3.5, "my_field3": "third loan"},
+    {"my_field1": 0, "my_field2": 0.0, "my_field3": "préstamo"},
+]
 
 
 def _connect_to_network(ctr: DockerContainer, network: testcontainers.core.network, alias: str):
@@ -129,7 +140,78 @@ def protobuf_topic(kafka_container, schema_registry_container):
         f"{LOANS_TOPIC}-value",
         Schema(LOANS_PROTOBUF_SCHEMA, "PROTOBUF"),
     )
+    _produce_protobuf_records(kafka_container, schema_registry_client)
     return LOANS_TOPIC
+
+
+PAYMENTS_TOPIC = "payments"
+MONEY_PROTOBUF_SCHEMA = 'syntax = "proto3";\npackage org.example.money;\nmessage Money { int64 units = 1; }'
+PAYMENTS_PROTOBUF_SCHEMA = (
+    'syntax = "proto3";\npackage org.example.payments;\nimport "money.proto";\n'
+    "message Payment { org.example.money.Money amount = 1; }"
+)
+# Payment with amount.units = 5, encoded by hand so the fixture does not depend on the parser.
+PAYMENT_RECORD = b"\x0a\x02\x08\x05"
+
+
+@pytest.fixture(scope="module")
+def protobuf_reference_topic(kafka_container, schema_registry_container):
+    """A topic whose Protobuf schema imports a file of another package."""
+    admin_client = AdminClient({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    admin_client.create_topics([NewTopic(PAYMENTS_TOPIC, num_partitions=1, replication_factor=1)])[
+        PAYMENTS_TOPIC
+    ].result(timeout=10)
+
+    schema_registry_client = SchemaRegistryClient({"url": schema_registry_container.get_connection_url()})
+    schema_registry_client.register_schema("money.proto", Schema(MONEY_PROTOBUF_SCHEMA, "PROTOBUF"))
+    schema_id = schema_registry_client.register_schema(
+        f"{PAYMENTS_TOPIC}-value",
+        Schema(
+            PAYMENTS_PROTOBUF_SCHEMA,
+            "PROTOBUF",
+            references=[SchemaReference("money.proto", "money.proto", 1)],
+        ),
+    )
+    producer = Producer({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    # Confluent framing: magic byte, schema id, message index [0].
+    producer.produce(PAYMENTS_TOPIC, value=b"\x00" + schema_id.to_bytes(4, "big") + b"\x00" + PAYMENT_RECORD)
+    assert producer.flush(timeout=30) == 0
+    return PAYMENTS_TOPIC
+
+
+def _loan_record_class():
+    """MyLoanRecord of LOANS_PROTOBUF_SCHEMA, built without the parser under test."""
+    file_proto = descriptor_pb2.FileDescriptorProto(name="loans.proto", package="org.example.loans", syntax="proto3")
+    message_proto = file_proto.message_type.add(name="MyLoanRecord")
+    for number, (name, field_type) in enumerate(
+        [
+            ("my_field1", descriptor_pb2.FieldDescriptorProto.TYPE_INT32),
+            ("my_field2", descriptor_pb2.FieldDescriptorProto.TYPE_DOUBLE),
+            ("my_field3", descriptor_pb2.FieldDescriptorProto.TYPE_STRING),
+        ],
+        start=1,
+    ):
+        message_proto.field.add(name=name, number=number, type=field_type)
+    pool = descriptor_pool.DescriptorPool()
+    pool.Add(file_proto)
+    return GetMessageClass(pool.FindMessageTypeByName("org.example.loans.MyLoanRecord"))
+
+
+def _produce_protobuf_records(kafka_container, schema_registry_client):
+    """Write LOANS_RECORDS the way a Confluent Protobuf producer does: framed, schema id first."""
+    loan_class = _loan_record_class()
+    serializer = ProtobufSerializer(
+        loan_class,
+        schema_registry_client,
+        {"use.deprecated.format": False},
+    )
+    producer = Producer({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    for record in LOANS_RECORDS:
+        producer.produce(
+            LOANS_TOPIC,
+            value=serializer(loan_class(**record), SerializationContext(LOANS_TOPIC, MessageField.VALUE)),
+        )
+    assert producer.flush(timeout=30) == 0
 
 
 @pytest.fixture(scope="module")
@@ -157,6 +239,15 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
+    }
+
+
+@pytest.fixture(scope="module")
+def sample_data_ingestion_config(ingestion_config):
+    source_config = {**ingestion_config["source"]["sourceConfig"]["config"], "generateSampleData": True}
+    return {
+        **ingestion_config,
+        "source": {**ingestion_config["source"], "sourceConfig": {"config": source_config}},
     }
 
 

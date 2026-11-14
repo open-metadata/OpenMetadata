@@ -64,11 +64,13 @@ export * from './base/form/hook-form';
 export * from './base/grid/grid';
 export * from './base/input/hint-text';
 export * from './base/input/input';
+export * from './base/input/number-input';
 export * from './base/input/input-group';
 export * from './base/input/label';
 export * from './base/input/password-input';
 export * from './base/progress-indicators/progress-circles';
 export * from './base/progress-indicators/progress-indicators';
+export * from './base/progress-indicators/run-history-bar';
 export * from './base/progress-indicators/simple-circle';
 export * from './base/radio-buttons/radio-buttons';
 export * from './base/select/combobox';
@@ -145,6 +147,12 @@ export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
 export * from './application/filter-select/filter-select';
 export * from './application/filter-select/filter-select.types';
+// Active-filter look for toolbar triggers built on Dropdown rather than FilterSelect
+// (ADR:2026-11-06-filter-triggers-turn-brand-only-when-filtering).
+export {
+  selectedTriggerClassName,
+  TriggerCountBadge,
+} from './application/filter-select/filter-select.shared';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';
@@ -162,6 +170,7 @@ export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
 export * from './application/pagination/pagination-line';
 export * from './application/popover/popover';
+export * from './application/confirm-popover/confirm-popover';
 export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
 export * from './application/table/table';
@@ -211,3 +220,5 @@ export type {
   OwnerChipProps,
   OwnerAvatarStackProps,
 } from './application/owner/owner.types';
+
+export * from './base/input/number-input';

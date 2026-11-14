@@ -19,12 +19,6 @@
     display: flex;
     gap: var(--om-space-8);
     align-items: center;
-
-    .data-products-title {
-      font-size: var(--om-font-size-13);
-      font-weight: var(--om-font-weight-semibold);
-      color: @grey-900;
-    }
   }
 
   .data-products-content {
@@ -32,67 +26,11 @@
     padding-right: var(--om-space-14);
     padding-bottom: var(--om-space-16);
 
-    .no-data-placeholder {
-      color: @grey-500;
-      font-size: var(--om-font-size-xs);
-    }
-
     .data-products-display {
       .data-products-list {
         display: flex;
         flex-wrap: wrap;
         gap: var(--om-space-8);
-
-        .data-product-item {
-          display: flex;
-          align-items: center;
-          height: 26px;
-          border: 1px solid @grey-40;
-          border-radius: var(--om-radius-md) !important;
-          background-color: var(--tw-color-bg-primary);
-          min-width: 0;
-          transition: all var(--om-duration-200) ease;
-          overflow: hidden;
-
-          .data-product-card-bar {
-            height: 100%;
-            border-left: 6px solid @primary-color;
-            display: flex;
-            align-items: center;
-            width: 100%;
-            min-width: 0;
-            padding-top: var(--om-space-3);
-            padding-bottom: var(--om-space-3);
-
-            .data-product-card-content {
-              display: flex;
-              align-items: center;
-              width: 100%;
-              min-width: 0;
-              gap: var(--om-space-4);
-
-              .data-product-icon {
-                width: 14px;
-                height: 14px;
-                flex-shrink: 0;
-
-                svg {
-                  width: 14px;
-                  height: 14px;
-                }
-              }
-
-              .data-product-name {
-                font-size: var(--om-font-size-xs);
-                color: @grey-700;
-                font-weight: var(--om-font-weight-regular);
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-            }
-          }
-        }
 
         .show-more-data-products-button {
           display: flex;

@@ -73,8 +73,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
 
   private Boolean checkAttributes(
       MessageParser.EntityLink entityLink, EntityInterface<?> entity, String rules) {
-    Map<String, Object> entityMap = JsonUtils.getMap(entity);
-    enrichTransientCounts(entityLink.getEntityType(), entity, entityMap);
+    Map<String, Object> entityMap = attributesOf(entityLink.getEntityType(), entity);
 
     boolean result;
     try {
@@ -85,7 +84,14 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     return result;
   }
 
-  private void enrichTransientCounts(
+  /** The entity as the rules see it, including the counts a data product does not store. */
+  public static Map<String, Object> attributesOf(String entityType, EntityInterface<?> entity) {
+    Map<String, Object> entityMap = JsonUtils.getMap(entity);
+    enrichTransientCounts(entityType, entity, entityMap);
+    return entityMap;
+  }
+
+  private static void enrichTransientCounts(
       String entityType, EntityInterface<?> entity, Map<String, Object> entityMap) {
     if (!DATA_PRODUCT.equals(entityType)) {
       return;

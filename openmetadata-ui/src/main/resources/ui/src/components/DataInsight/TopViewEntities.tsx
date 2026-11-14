@@ -138,19 +138,18 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         {isLoading ? (
           <SkeletonParagraph rows={4} />
         ) : (
-          <>
-            <Table
-              className="data-insight-table-wrapper"
-              columns={columns}
-              dataSource={mostViewedEntities}
-              loading={isLoading}
-              locale={{
-                emptyText: <EmptyGraphPlaceholder />,
-              }}
-              pagination={false}
-              size="small"
-            />
-          </>
+          <Table
+            className="data-insight-table-wrapper"
+            columns={columns}
+            dataSource={mostViewedEntities}
+            loading={isLoading}
+            locale={{
+              emptyText: <EmptyGraphPlaceholder />,
+            }}
+            pagination={false}
+            size="small"
+            tableLayout="auto"
+          />
         )}
       </Card.Content>
     </Card>

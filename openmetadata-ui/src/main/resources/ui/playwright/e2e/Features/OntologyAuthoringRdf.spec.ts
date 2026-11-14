@@ -22,7 +22,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { chooseSelectOption, uuid } from '../../utils/common';
 import {
   navigateToOntologyStudio,
   readGraphEdges,
@@ -166,78 +166,83 @@ test.describe(
       }
     });
 
-    // TODO(ontology-tabs): the "Term" Edit sub-nav tab was removed; term editing now
-    // happens through the Edit-Graph inline inspector (ontology-authoring-inspector).
-    // Re-route this custom-relationship flow through node selection or delete it.
-    test.fixme(
-      'authors a custom relationship through the structured Term surface',
-      async ({ browser }) => {
-        test.slow();
-        const { page, apiContext, afterAction } = await performAdminLogin(
-          browser,
-          { navigate: true }
+    test('authors a custom relationship from the inline inspector', async ({
+      browser,
+    }) => {
+      test.slow();
+      const { page, apiContext, afterAction } = await performAdminLogin(
+        browser,
+        { navigate: true }
+      );
+
+      try {
+        await navigateToOntologyStudio(page);
+        await fixture.selectInStudio(page);
+        await page.getByTestId('mode-tab-edit').click();
+        await expect(
+          page.getByTestId('ontology-edit-lease-status')
+        ).toContainText('Active');
+        await waitForGraphLoaded(page);
+
+        const positions = await readNodePositions(page);
+        const sourcePosition = positions[source.responseData.id];
+        expect(sourcePosition).toBeDefined();
+        await page.mouse.click(sourcePosition.x, sourcePosition.y);
+
+        const inspector = page.getByTestId('ontology-authoring-inspector');
+        await expect(inspector).toContainText(source.responseData.displayName);
+        await inspector.getByTestId('authoring-add-relationship').click();
+        const draft = inspector.getByTestId('authoring-relationship-draft');
+        await expect(draft).toBeVisible();
+
+        await chooseSelectOption(
+          draft.getByTestId('authoring-relation-type'),
+          page.getByTestId(`authoring-relation-type-${relationshipType.name}`)
+        );
+        await chooseSelectOption(
+          draft.getByTestId('authoring-target-search'),
+          page.getByTestId(`authoring-target-${target.responseData.id}`)
         );
 
-        try {
-          await navigateToOntologyStudio(page);
-          await fixture.selectInStudio(page);
-          await page.getByTestId('mode-tab-edit').click();
-          await expect(
-            page.getByTestId('ontology-edit-lease-status')
-          ).toContainText('Active');
-          await page.getByTestId('submode-tab-term').click();
-          await expect(page.getByTestId('ontology-term-editor')).toBeVisible();
+        const relationResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .endsWith(
+                `/api/v1/glossaryTerms/${source.responseData.id}/relations`
+              ) && response.request().method() === 'POST'
+        );
+        await draft.getByTestId('authoring-save-relationship').click();
+        expect((await relationResponse).ok()).toBe(true);
 
-          await page
-            .getByTestId('ontology-term-editor')
-            .getByRole('button', { name: / Term$/ })
-            .click();
-          await page
-            .getByRole('listbox', { name: 'Term', exact: true })
-            .getByRole('option', { name: source.responseData.displayName })
-            .click();
-          await page
-            .getByTestId(`term-editor-relation-${relationshipType.name}`)
-            .click();
-          await page
-            .getByTestId('ontology-term-editor')
-            .getByRole('button', { name: / Target term$/ })
-            .click();
-          await page
-            .getByRole('listbox', { name: 'Target term' })
-            .getByRole('option', { name: target.responseData.displayName })
-            .click();
+        await expect(draft).toBeHidden();
+        await expect(
+          inspector.getByTestId('authoring-relationships')
+        ).toContainText(target.responseData.displayName);
+        await expect
+          .poll(async () => {
+            const edges = await readGraphEdges(page);
 
-          const relationResponse = page.waitForResponse(
-            (response) =>
-              response
-                .url()
-                .endsWith(
-                  `/api/v1/glossaryTerms/${source.responseData.id}/relations`
-                ) && response.request().method() === 'POST'
-          );
-          await page.getByTestId('term-editor-add-relationship').click();
-          expect((await relationResponse).ok()).toBe(true);
+            return edges.some(
+              (edge) =>
+                edge.from === source.responseData.id &&
+                edge.to === target.responseData.id &&
+                edge.relationType === relationshipType.name
+            );
+          })
+          .toBe(true);
 
-          await releaseOntologyEditLease(
-            page,
-            fixture.glossary.responseData.id
-          );
-          await fixture.expectRelationProjected(
-            apiContext,
-            source,
-            relationshipTypeRequest.rdfPredicate,
-            target
-          );
-          const versions = await apiContext.get(
-            `/api/v1/glossaryTerms/${source.responseData.id}/versions`
-          );
-          expect(versions.ok()).toBe(true);
-        } finally {
-          await afterAction();
-        }
+        await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
+        await fixture.expectRelationProjected(
+          apiContext,
+          source,
+          relationshipTypeRequest.rdfPredicate,
+          target
+        );
+      } finally {
+        await afterAction();
       }
-    );
+    });
 
     test('opens the design-matched inline inspector in Edit Graph mode', async ({
       browser,
@@ -262,7 +267,12 @@ test.describe(
 
         const inspector = page.getByTestId('ontology-authoring-inspector');
         await expect(inspector).toBeVisible();
-        await expect(inspector).toHaveCSS('width', '300px');
+        const viewportWidth = page.viewportSize()?.width ?? 0;
+        // The inspector is an overlay drawer sized w-[max(420px,40vw)].
+        await expect(inspector).toHaveCSS(
+          'width',
+          `${Math.max(420, viewportWidth * 0.4)}px`
+        );
         await expect(inspector).toContainText(source.responseData.displayName);
         await expect(page.locator('.ontology-slideout-open')).toHaveCount(0);
         await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
@@ -354,7 +364,12 @@ test.describe(
           })
           .toBe(true);
         await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
-        await fixture.expectProjected(apiContext, broaderTarget);
+        await fixture.expectRelationProjected(
+          apiContext,
+          target,
+          'http://www.w3.org/2004/02/skos/core#broader',
+          broaderTarget
+        );
       } finally {
         await afterAction();
       }

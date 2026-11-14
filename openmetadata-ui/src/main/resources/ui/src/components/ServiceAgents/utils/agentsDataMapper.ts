@@ -52,6 +52,7 @@ const PIPELINE_TYPE_TO_AGENT_TYPE: Record<PipelineType, string> = {
   [PipelineType.DataInsight]: 'Metadata',
   [PipelineType.ElasticSearchReindex]: 'Metadata',
   [PipelineType.PolicyAgent]: 'Metadata',
+  [PipelineType.ReverseMetadata]: 'Metadata',
   [PipelineType.TestSuite]: 'Data Quality',
 };
 
@@ -412,6 +413,7 @@ export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
 
   return {
     id: status.runId ?? String(status.timestamp),
+    runId: status.runId,
     status: toRunStatus(status.pipelineState),
     startedAt: startedAtMillis
       ? customFormatDateTime(startedAtMillis, RUN_STARTED_AT_FORMAT)

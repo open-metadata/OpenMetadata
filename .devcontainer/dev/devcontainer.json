@@ -15,10 +15,10 @@
       "version": "3.11"
     },
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "22.17.0"
+      "version": "none"
     }
   },
-  "postCreateCommand": "npm install -g yarn@1.22.22 --force && bash .devcontainer/dev/post-create.sh",
+  "postCreateCommand": "bash .devcontainer/dev/post-create.sh",
   "customizations": {
     "vscode": {
       "extensions": [

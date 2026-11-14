@@ -56,14 +56,15 @@ import org.openmetadata.sdk.services.ontology.OntologyAiService;
 import org.openmetadata.sdk.services.ontology.OntologyAxiomService;
 import org.openmetadata.sdk.services.ontology.OntologyBulkService;
 import org.openmetadata.sdk.services.ontology.OntologyChangeSetService;
+import org.openmetadata.sdk.services.ontology.OntologyConceptService;
 import org.openmetadata.sdk.services.ontology.OntologyEditLockService;
 import org.openmetadata.sdk.services.ontology.OntologyImpactService;
-import org.openmetadata.sdk.services.ontology.OntologyModelingService;
 import org.openmetadata.sdk.services.ontology.OntologyPackService;
 import org.openmetadata.sdk.services.ontology.OntologyPatternService;
+import org.openmetadata.sdk.services.ontology.OntologyPropertyService;
 import org.openmetadata.sdk.services.ontology.OntologyReasoningService;
-import org.openmetadata.sdk.services.ontology.OntologyStructureService;
-import org.openmetadata.sdk.services.ontology.OntologySubsetService;
+import org.openmetadata.sdk.services.ontology.OntologyReleaseService;
+import org.openmetadata.sdk.services.ontology.OntologyService;
 import org.openmetadata.sdk.services.ontology.RelationshipTypeService;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
@@ -72,6 +73,7 @@ import org.openmetadata.sdk.services.services.DashboardServiceService;
 import org.openmetadata.sdk.services.services.DatabaseServiceService;
 import org.openmetadata.sdk.services.services.DriveServiceService;
 import org.openmetadata.sdk.services.services.LLMServiceService;
+import org.openmetadata.sdk.services.services.McpServiceService;
 import org.openmetadata.sdk.services.services.MessagingServiceService;
 import org.openmetadata.sdk.services.services.MetadataServiceService;
 import org.openmetadata.sdk.services.services.MlModelServiceService;
@@ -144,18 +146,19 @@ public class OpenMetadataClient {
   // Ontology
   private final RelationshipTypeService relationshipTypes;
   private final OntologyAxiomService ontologyAxioms;
+  private final OntologyService ontologies;
+  private final OntologyConceptService ontologyConcepts;
+  private final OntologyPropertyService ontologyProperties;
+  private final OntologyReleaseService ontologyReleases;
   private final OntologyAiService ontologyAi;
   private final OntologyBulkService ontologyBulk;
   private final OntologyChangeSetService ontologyChangeSets;
   private final OntologyEditLockService ontologyEditLocks;
   private final OntologyImpactService ontologyImpacts;
-  private final OntologyModelingService ontologyModeling;
   private final InferenceRuleService inferenceRules;
   private final OntologyPackService ontologyPacks;
   private final OntologyPatternService ontologyPatterns;
   private final OntologyReasoningService ontologyReasoning;
-  private final OntologyStructureService ontologyStructure;
-  private final OntologySubsetService ontologySubsets;
 
   // System settings
   private final SystemSettingsService settings;
@@ -213,6 +216,7 @@ public class OpenMetadataClient {
   private final SearchServiceService searchServices;
   private final StorageServiceService storageServices;
   private final LLMServiceService llmServices;
+  private final McpServiceService mcpServices;
   private final APIServiceService apiServices;
 
   // Ingestion
@@ -287,18 +291,19 @@ public class OpenMetadataClient {
     // Initialize Ontology services
     this.relationshipTypes = new RelationshipTypeService(httpClient);
     this.ontologyAxioms = new OntologyAxiomService(httpClient);
+    this.ontologies = new OntologyService(httpClient);
+    this.ontologyConcepts = new OntologyConceptService(httpClient);
+    this.ontologyProperties = new OntologyPropertyService(httpClient);
+    this.ontologyReleases = new OntologyReleaseService(httpClient);
     this.ontologyAi = new OntologyAiService(httpClient);
     this.ontologyBulk = new OntologyBulkService(httpClient);
     this.ontologyChangeSets = new OntologyChangeSetService(httpClient);
     this.ontologyEditLocks = new OntologyEditLockService(httpClient);
     this.ontologyImpacts = new OntologyImpactService(httpClient);
-    this.ontologyModeling = new OntologyModelingService(httpClient);
     this.inferenceRules = new InferenceRuleService(httpClient);
     this.ontologyPacks = new OntologyPackService(httpClient);
     this.ontologyPatterns = new OntologyPatternService(httpClient);
     this.ontologyReasoning = new OntologyReasoningService(httpClient);
-    this.ontologyStructure = new OntologyStructureService(httpClient);
-    this.ontologySubsets = new OntologySubsetService(httpClient);
 
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
@@ -353,6 +358,7 @@ public class OpenMetadataClient {
     this.searchServices = new SearchServiceService(httpClient);
     this.storageServices = new StorageServiceService(httpClient);
     this.llmServices = new LLMServiceService(httpClient);
+    this.mcpServices = new McpServiceService(httpClient);
     this.apiServices = new APIServiceService(httpClient);
 
     // Initialize ingestion services
@@ -506,6 +512,22 @@ public class OpenMetadataClient {
     return ontologyAxioms;
   }
 
+  public OntologyService ontologies() {
+    return ontologies;
+  }
+
+  public OntologyReleaseService ontologyReleases() {
+    return ontologyReleases;
+  }
+
+  public OntologyConceptService ontologyConcepts() {
+    return ontologyConcepts;
+  }
+
+  public OntologyPropertyService ontologyProperties() {
+    return ontologyProperties;
+  }
+
   public OntologyAiService ontologyAi() {
     return ontologyAi;
   }
@@ -526,10 +548,6 @@ public class OpenMetadataClient {
     return ontologyImpacts;
   }
 
-  public OntologyModelingService ontologyModeling() {
-    return ontologyModeling;
-  }
-
   public InferenceRuleService inferenceRules() {
     return inferenceRules;
   }
@@ -544,14 +562,6 @@ public class OpenMetadataClient {
 
   public OntologyReasoningService ontologyReasoning() {
     return ontologyReasoning;
-  }
-
-  public OntologyStructureService ontologyStructure() {
-    return ontologyStructure;
-  }
-
-  public OntologySubsetService ontologySubsets() {
-    return ontologySubsets;
   }
 
   public SystemSettingsService settings() {
@@ -702,6 +712,10 @@ public class OpenMetadataClient {
 
   public LLMServiceService llmServices() {
     return llmServices;
+  }
+
+  public McpServiceService mcpServices() {
+    return mcpServices;
   }
 
   public APIServiceService apiServices() {

@@ -18,35 +18,69 @@ import static org.openmetadata.service.lineage.LineageSceneSearch.DOMAINS_FQN_FI
 import static org.openmetadata.service.lineage.LineageSceneSearch.UPSTREAM_LINEAGE_DOC_ID_FIELD;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import es.co.elastic.clients.util.MissingRequiredPropertyException;
+import jakarta.json.JsonException;
 import jakarta.json.stream.JsonGenerator;
+import jakarta.ws.rs.BadRequestException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 /** Builds the shared Elasticsearch/OpenSearch query DSL at the search boundary. */
 final class LineageSceneQuery {
   private static final JacksonJsonpMapper JSON_MAPPER = new JacksonJsonpMapper();
+  private static final String INVALID_QUERY_FILTER =
+      "Invalid query_filter: expected an Elasticsearch query object";
+  private static final int BAD_REQUEST = 400;
 
   private LineageSceneQuery() {}
 
   static Query parseQueryFilter(String queryFilter) {
     Query result = null;
     if (!nullOrEmpty(queryFilter)) {
-      JsonNode filter = JsonUtils.readTree(queryFilter);
-      JsonNode innerQuery = filter.has("query") ? filter.path("query") : filter;
-      if (!nullOrEmpty(innerQuery)) {
-        result = Query.of(clause -> clause.withJson(new StringReader(innerQuery.toString())));
+      try {
+        JsonNode filter = JsonUtils.readTree(queryFilter);
+        JsonNode innerQuery = filter.has("query") ? filter.path("query") : filter;
+        if (!nullOrEmpty(innerQuery)) {
+          result = Query.of(clause -> clause.withJson(new StringReader(innerQuery.toString())));
+        }
+      } catch (JsonParsingException | JsonException | MissingRequiredPropertyException e) {
+        throw invalidQueryFilter(e);
       }
     }
     return result;
+  }
+
+  // The client accepts unknown clauses and empty values, so a filter can parse and still be
+  // rejected by the search engine; that rejection is the caller's error, not a server error.
+  static boolean isRejectedBySearchEngine(Throwable error) {
+    boolean rejected = false;
+    for (Throwable cause = error; cause != null && !rejected; cause = cause.getCause()) {
+      rejected = isBadRequest(cause);
+    }
+    return rejected;
+  }
+
+  private static boolean isBadRequest(Throwable error) {
+    return error instanceof ElasticsearchException elasticError
+            && elasticError.status() == BAD_REQUEST
+        || error instanceof OpenSearchException openSearchError
+            && openSearchError.status() == BAD_REQUEST;
+  }
+
+  static BadRequestException invalidQueryFilter(Throwable cause) {
+    return new BadRequestException(INVALID_QUERY_FILTER, cause);
   }
 
   static String rootAssetQuery(LineageSceneRequest request) {

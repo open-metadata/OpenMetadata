@@ -24,7 +24,6 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
@@ -39,9 +38,11 @@ import {
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../../../utils/TableProfilerUtils';
+import { isShardedTable } from '../../../../../utils/TableShardingUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
+import { ProfileExecutionSource } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from '../../ProfilerDetailsCard/ProfilerDetailsCard';
@@ -63,8 +64,10 @@ const TableProfilerChart = ({
     overallSummary,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
+    table: contextTable,
   } = useTableProfiler();
 
+  const isSharded = isShardedTable(tableDetails ?? contextTable);
   const { fqn: datasetFQN } = useFqn();
 
   const dateRangeObject = useMemo(() => {
@@ -112,7 +115,9 @@ const TableProfilerChart = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Tooltip title={t('label.documentation')}>
+      // tw:w-auto overrides the trigger's w-max so the sentence wraps in
+      // narrow containers such as the custom metric drawer preview.
+      <Tooltip title={t('label.documentation')} triggerClassName="tw:w-auto">
         <span>
           <Transi18next
             i18nKey="message.no-profiler-card-message-with-link"
@@ -153,6 +158,12 @@ const TableProfilerChart = ({
   );
   const fetchSystemProfiler = useCallback(
     async (fqn: string, dateRangeObj: DateRangeObject) => {
+      if (isSharded) {
+        setShowSystemMetrics(false);
+        setIsSystemProfilerLoading(false);
+
+        return;
+      }
       setIsSystemProfilerLoading(true);
       try {
         const { data } = await getSystemProfileList(fqn, dateRangeObj);
@@ -168,7 +179,7 @@ const TableProfilerChart = ({
         setIsSystemProfilerLoading(false);
       }
     },
-    [operationMetrics]
+    [operationMetrics, isSharded]
   );
 
   const fetchProfilerData = useCallback(
@@ -191,12 +202,14 @@ const TableProfilerChart = ({
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={t('label.view-entity', {
-          entity: t('label.data-observability'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-observability'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -227,17 +240,23 @@ const TableProfilerChart = ({
       <div
         className="tw:flex tw:flex-col tw:gap-[30px]"
         data-testid="table-profiler-chart-metrics">
+        <ProfileExecutionSource
+          isSharded={isSharded}
+          profiles={profileMetrics}
+        />
         <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}
             chartType="area"
             isLoading={isTableProfilerLoading}
+            isSharded={isSharded}
             name="rowCount"
             noDataPlaceholderText={noProfilerMessage}
+            profiles={profileMetrics}
             title={t('label.data-volume')}
           />
         </div>
-        {showSystemMetrics && (
+        {!isSharded && showSystemMetrics && (
           <ProfilerStateWrapper
             dataTestId="operation-metrics"
             isLoading={isSystemProfilerLoading}
@@ -258,6 +277,8 @@ const TableProfilerChart = ({
           customMetrics={customMetrics}
           customMetricsGraphData={tableCustomMetricsProfiling}
           isLoading={isTableProfilerLoading || isSummaryLoading}
+          isSharded={isSharded}
+          profiles={profileMetrics}
         />
       </div>
     </div>

@@ -185,7 +185,7 @@ const Users = ({
         </div>
 
         {previewAsset && (
-          <div className="user-page-layout-right-panel tw:flex-[0_0_400px]">
+          <div className="user-page-layout-right-panel tw:min-w-0 tw:flex-[0_0_400px]">
             <EntitySummaryPanel
               entityDetails={previewAsset}
               handleClosePanel={() => setPreviewAsset(undefined)}
@@ -474,8 +474,10 @@ const Users = ({
           </div>
         </div>
         <div className="tw:min-w-0 tw:flex-auto">
+          {/* Full height so a tab whose content is an empty state can centre it
+              in the visible column, not just under the tab bar. */}
           <Tabs
-            className="tw:gap-3"
+            className="tw:h-full tw:gap-3"
             data-testid="tabs"
             selectedKey={getRenderedActiveTab(allTabs, currentTab)}
             onSelectionChange={(key) => activeTabHandler(String(key))}>
@@ -488,7 +490,7 @@ const Users = ({
             </Tabs.List>
             {allTabs.map((tab) => (
               <Tabs.Panel
-                className="users-tabs-container"
+                className="users-tabs-container tw:min-h-0 tw:flex-1"
                 id={tab.key}
                 key={tab.key}>
                 {tab.children}

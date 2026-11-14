@@ -130,7 +130,7 @@ test.describe('Data Product Persona customization', () => {
 
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.getByText('Governance').click();
-      await adminPage.getByText('Data Product', { exact: true }).click();
+      await adminPage.getByTestId('DataProduct').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 
@@ -253,7 +253,7 @@ test.describe('Data Product Persona customization', () => {
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await adminPage.getByText('Governance').click();
-      await adminPage.getByText('Data Product', { exact: true }).click();
+      await adminPage.getByTestId('DataProduct').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 

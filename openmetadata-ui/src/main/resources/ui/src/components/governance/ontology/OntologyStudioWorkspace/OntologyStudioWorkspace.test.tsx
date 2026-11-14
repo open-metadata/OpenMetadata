@@ -1,0 +1,240 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { act, fireEvent, screen } from '@testing-library/react';
+import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
+import {
+  listOntologyAxioms,
+  listOntologyConcepts,
+  listOntologyProperties,
+} from '../../../../rest/ontologyAPI';
+import {
+  flushReactQuery,
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../../test/unit/test-utils';
+import OntologyStudioWorkspace from './OntologyStudioWorkspace';
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: { id: 'user-id' } }),
+}));
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({ useEntityPermissions: () => ({ canEditAll: true }) })
+);
+jest.mock('../../../../rest/ontologyAPI', () => ({
+  listOntologyAxioms: jest.fn(),
+  listOntologyConcepts: jest.fn(),
+  listOntologyProperties: jest.fn(),
+}));
+jest.mock(
+  '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace',
+  () =>
+    ({ definitionType = 'concept' }: { definitionType?: string }) =>
+      <div data-testid={`authoring-${definitionType}`} />
+);
+const mockGuard = jest.fn((action: () => void) => action());
+jest.mock(
+  '../../../../hooks/governance/ontology/useOntologyDraftGuard',
+  () => ({ useOntologyDraftGuard: () => mockGuard })
+);
+jest.mock(
+  '../OntologyAxiomWorkspace/OntologyAxiomWorkspace',
+  () =>
+    ({ onOpenConcept }: { onOpenConcept?: (id: string) => void }) =>
+      (
+        <button
+          data-testid="axiom-workspace"
+          onClick={() => onOpenConcept?.('concept-1')}>
+          show on graph
+        </button>
+      )
+);
+jest.mock('../OntologyCreateForm/OntologyCreateForm', () => () => (
+  <div data-testid="settings-form" />
+));
+jest.mock('../OntologyOverview/OntologyOverview', () => () => (
+  <div data-testid="overview" />
+));
+jest.mock('../OntologyGraphView/OntologyGraphView', () => () => (
+  <div data-testid="graph-view" />
+));
+jest.mock('../../../OntologyExplorer/OntologyMemoryReviewPanel', () => () => (
+  <div data-testid="review-panel" />
+));
+
+const mockConcepts = listOntologyConcepts as jest.Mock;
+const mockProperties = listOntologyProperties as jest.Mock;
+const mockAxioms = listOntologyAxioms as jest.Mock;
+
+const ontology: Ontology = {
+  id: 'ontology-id',
+  name: 'pharmacy',
+  displayName: 'Hospital Pharmacy',
+  description: 'Prescriptions and medicines',
+  fullyQualifiedName: 'pharmacy',
+  iri: 'urn:pharmacy',
+  namespace: 'urn:pharmacy#',
+};
+
+const renderDefinitions = () =>
+  renderWithQueryClient(
+    <OntologyStudioWorkspace
+      mode="definitions"
+      ontology={ontology}
+      viewSurface="graph"
+      onRequestGraphSurface={jest.fn()}
+      onSaved={jest.fn()}
+    />
+  );
+
+runQueryNotificationsSynchronously();
+
+beforeAll(() => jest.useRealTimers());
+
+afterAll(() => jest.useFakeTimers());
+
+describe('OntologyStudioWorkspace', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockConcepts.mockResolvedValue({ data: [], paging: { total: 6 } });
+    mockProperties.mockResolvedValue({ data: [], paging: { total: 5 } });
+    mockAxioms.mockResolvedValue({ data: [], paging: { total: 8 } });
+  });
+
+  it('shows the ontology header and counts each tab from one model load', async () => {
+    mockConcepts.mockResolvedValue({
+      data: [
+        { id: 'c1', name: 'Drug', iri: 'urn:pharmacy#Drug' },
+        { id: 'c2', name: 'Dose', iri: 'urn:pharmacy#Dose' },
+      ],
+      paging: { total: 2 },
+    });
+    renderDefinitions();
+    await flushReactQuery();
+
+    expect(
+      screen.getByRole('heading', { name: 'Hospital Pharmacy' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: 'label.concept-plural' })
+    ).toHaveTextContent('2');
+    expect(mockConcepts).toHaveBeenCalledTimes(1);
+  });
+
+  describe('AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('shows the ontology header with the same tabs and one request per definition type', async () => {
+      renderDefinitions();
+      await flushReactQuery();
+
+      expect(
+        screen.getByRole('heading', { name: 'Hospital Pharmacy' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Prescriptions and medicines')
+      ).toBeInTheDocument();
+
+      [
+        'label.concept-plural',
+        'label.property-plural',
+        'label.constraint-plural',
+        'label.setting-plural',
+      ].forEach((name) =>
+        expect(screen.getByRole('tab', { name })).toBeInTheDocument()
+      );
+
+      expect(mockConcepts).toHaveBeenCalledTimes(1);
+      expect(mockProperties).toHaveBeenCalledTimes(1);
+      expect(mockAxioms).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens on Overview and switches between every definition panel', async () => {
+      renderDefinitions();
+      await flushReactQuery();
+
+      expect(screen.getByTestId('overview')).toBeInTheDocument();
+      expect(screen.queryByTestId('authoring-concept')).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.concept-plural/ })
+        );
+      });
+
+      expect(screen.getByTestId('authoring-concept')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.property-plural/ })
+        );
+      });
+
+      expect(screen.getByTestId('authoring-property')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.constraint-plural/ })
+        );
+      });
+
+      expect(screen.getByTestId('axiom-workspace')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: 'label.setting-plural' })
+        );
+      });
+
+      expect(screen.getByTestId('settings-form')).toBeInTheDocument();
+    });
+  });
+
+  it('asks the draft guard before Show on graph leaves for the graph', async () => {
+    const onRequestEdit = jest.fn();
+    let pending: (() => void) | undefined;
+    renderWithQueryClient(
+      <OntologyStudioWorkspace
+        mode="definitions"
+        ontology={ontology}
+        viewSurface="graph"
+        onRequestEdit={onRequestEdit}
+        onRequestGraphSurface={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+    await flushReactQuery();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('tab', { name: 'label.constraint-plural' })
+      );
+    });
+    mockGuard.mockImplementationOnce((action: () => void) => {
+      pending = action;
+    });
+    fireEvent.click(screen.getByTestId('axiom-workspace'));
+
+    expect(onRequestEdit).not.toHaveBeenCalled();
+
+    act(() => pending?.());
+
+    expect(onRequestEdit).toHaveBeenCalledWith('concept-1');
+  });
+});

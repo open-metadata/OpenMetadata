@@ -1012,3 +1012,143 @@ describe('TestConnectionModal', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('TestConnectionModal failure action', () => {
+  const gateAndSchemaSteps = [
+    { name: 'CheckAccess', description: 'Gate', mandatory: true },
+    { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+    { name: 'GetQueries', description: 'Queries', mandatory: false },
+  ];
+
+  const renderFailureAction = jest.fn(
+    (failure: string, onClose: () => void) => (
+      <button data-testid="failure-action" onClick={onClose}>
+        {failure}
+      </button>
+    )
+  );
+
+  const renderModal = (
+    props: Partial<Parameters<typeof TestConnectionModal>[0]>
+  ) =>
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        renderFailureAction={renderFailureAction}
+        testConnectionStep={gateAndSchemaSteps}
+        {...props}
+      />
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should pass the raw log to the action and close the dialog from it when the gate fails', () => {
+    renderModal({
+      testConnectionStepResult: [
+        {
+          name: 'CheckAccess',
+          passed: false,
+          mandatory: true,
+          message: 'Connection refused',
+        },
+      ],
+    });
+
+    expect(renderFailureAction).toHaveBeenCalledWith(
+      expect.stringContaining('Connection refused'),
+      onConfirmMock
+    );
+
+    fireEvent.click(screen.getByTestId('failure-action'));
+
+    expect(onConfirmMock).toHaveBeenCalled();
+  });
+
+  it('should render the action when a required check fails after the gate passes', () => {
+    renderModal({
+      testConnectionStepResult: [
+        { name: 'CheckAccess', passed: true, mandatory: true },
+        { name: 'GetSchemas', passed: false, mandatory: true },
+      ],
+    });
+
+    expect(
+      screen.getByText('message.connection-required-check-failed')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('failure-action')).toBeInTheDocument();
+  });
+
+  it('should render the action when only optional checks fail', () => {
+    renderModal({
+      testConnectionStepResult: [
+        { name: 'CheckAccess', passed: true, mandatory: true },
+        { name: 'GetSchemas', passed: true, mandatory: true },
+        { name: 'GetQueries', passed: false, mandatory: false },
+      ],
+    });
+
+    expect(
+      screen.getByText('message.connection-test-warning')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('failure-action')).toBeInTheDocument();
+  });
+
+  it('should render the action in the timeout widget', () => {
+    renderModal({ isConnectionTimeout: true, testConnectionStepResult: [] });
+
+    expect(
+      within(screen.getByTestId('test-connection-timeout-widget')).getByTestId(
+        'failure-action'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('should pass the timeout message when the test timed out before any step ran', () => {
+    renderModal({ isConnectionTimeout: true, testConnectionStepResult: [] });
+
+    expect(renderFailureAction).toHaveBeenCalledWith(
+      'message.test-connection-taking-too-long.default',
+      onConfirmMock
+    );
+  });
+
+  it('should pass the error message when the test errored before any step ran', () => {
+    renderModal({
+      errorMessage: { description: 'Ingestion pipeline service unavailable' },
+      testConnectionStepResult: [],
+    });
+
+    expect(renderFailureAction).toHaveBeenCalledWith(
+      'Ingestion pipeline service unavailable',
+      onConfirmMock
+    );
+  });
+
+  it('should not render the action when every check passes', () => {
+    renderModal({
+      testConnectionStepResult: [
+        { name: 'CheckAccess', passed: true, mandatory: true },
+        { name: 'GetSchemas', passed: true, mandatory: true },
+        { name: 'GetQueries', passed: true, mandatory: false },
+      ],
+    });
+
+    expect(renderFailureAction).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('failure-action')).not.toBeInTheDocument();
+  });
+
+  it('should not render the action while the test is running', () => {
+    renderModal({
+      isTestingConnection: true,
+      progress: 50,
+      testConnectionStepResult: [
+        { name: 'CheckAccess', passed: false, mandatory: true },
+      ],
+    });
+
+    expect(renderFailureAction).not.toHaveBeenCalled();
+  });
+});

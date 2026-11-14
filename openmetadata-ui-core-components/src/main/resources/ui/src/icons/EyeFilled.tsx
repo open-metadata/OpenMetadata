@@ -18,15 +18,15 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const EyeFilled: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -39,8 +39,9 @@ export const EyeFilled: FC<Props> = ({
       strokeWidth={1.3}
     />
     <path
+      className="tw:stroke-bg-primary"
       d="M12.402 10.006a2.4 2.4 0 1 0-4.8 0 2.4 2.4 0 0 0 4.8 0"
-      stroke="white"
+      stroke="#fff"
       strokeWidth={1.3}
     />
   </svg>

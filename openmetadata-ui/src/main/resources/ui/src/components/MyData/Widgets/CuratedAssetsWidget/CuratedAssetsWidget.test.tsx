@@ -94,15 +94,6 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ children, icon, type, className }) => (
-    <div className={className} data-testid="error-placeholder" data-type={type}>
-      {icon}
-      {children}
-    </div>
-  ))
-);
-
 jest.mock(
   '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () =>
@@ -479,6 +470,22 @@ describe('CuratedAssetsWidget', () => {
         fetchSource: true,
         queryFilter: {},
       });
+    });
+  });
+
+  it('sorts A to Z by the visible title', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+
+    fireEvent.click(await screen.findByTestId('widget-sort-by-dropdown'));
+    fireEvent.click(await screen.findByText('A to Z'));
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        })
+      );
     });
   });
 

@@ -20,16 +20,10 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
-import org.openmetadata.schema.api.events.NotificationTemplateRenderResponse;
-import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
-import org.openmetadata.schema.api.events.TemplateRenderResult;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -37,17 +31,10 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
-import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.channels.email.EmailMessage;
-import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
-import org.openmetadata.service.notifications.template.testing.EntityFixtureLoader;
-import org.openmetadata.service.notifications.template.testing.MockChangeEventFactory;
-import org.openmetadata.service.notifications.template.testing.MockChangeEventRegistry;
+import org.openmetadata.service.alerting.content.TemplateLookup;
+import org.openmetadata.service.alerting.content.template.HandlebarsNotificationTemplateProcessor;
+import org.openmetadata.service.alerting.content.template.NotificationTemplateProcessor;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
@@ -57,14 +44,13 @@ import org.openmetadata.service.util.resourcepath.ResourcePathResolver;
 import org.openmetadata.service.util.resourcepath.providers.NotificationTemplateResourcePathProvider;
 
 @Slf4j
-public class NotificationTemplateRepository extends EntityRepository<NotificationTemplate> {
+public class NotificationTemplateRepository extends EntityRepository<NotificationTemplate>
+    implements TemplateLookup {
 
   static final String PATCH_FIELDS = "templateBody,templateSubject";
   static final String UPDATE_FIELDS = "templateBody,templateSubject";
 
   private final NotificationTemplateProcessor templateProcessor;
-  private final MockChangeEventFactory mockChangeEventFactory;
-  private final HandlebarsNotificationMessageEngine messageEngine;
 
   public NotificationTemplateRepository() {
     super(
@@ -77,14 +63,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     // Initialize template processor
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
-
-    // Initialize mock factory for template testing
-    EntityFixtureLoader fixtureLoader = new EntityFixtureLoader();
-    MockChangeEventRegistry mockRegistry = new MockChangeEventRegistry(fixtureLoader);
-    this.mockChangeEventFactory = new MockChangeEventFactory(mockRegistry);
-
-    // Initialize message engine for template rendering
-    this.messageEngine = new HandlebarsNotificationMessageEngine(this);
   }
 
   @Override
@@ -282,127 +260,14 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     return templateProcessor.validate(request);
   }
 
-  /**
-   * Renders a template with mock data using HandlebarsNotificationMessageEngine.
-   * Called by the REST endpoint for rendering preview.
-   *
-   * @param request The render request with template and resource info
-   * @return The render response with validation and rendering results
-   */
-  public NotificationTemplateRenderResponse render(NotificationTemplateRenderRequest request) {
-    NotificationTemplateValidationResponse validationResponse =
-        templateProcessor.validate(
-            new NotificationTemplateValidationRequest()
-                .withTemplateBody(request.getTemplateBody())
-                .withTemplateSubject(request.getTemplateSubject()));
-
-    if (!validationResponse.getIsValid()) {
-      return new NotificationTemplateRenderResponse()
-          .withValidation(validationResponse)
-          .withRender(null);
-    }
-
-    ChangeEvent mockEvent =
-        mockChangeEventFactory.create(request.getResource(), request.getEventType());
-
-    NotificationTemplate testTemplate =
-        new NotificationTemplate()
-            .withId(UUID.randomUUID())
-            .withName("test-template")
-            .withTemplateSubject(request.getTemplateSubject())
-            .withTemplateBody(request.getTemplateBody());
-
-    EventSubscription testSubscription =
-        new EventSubscription()
-            .withId(UUID.randomUUID())
-            .withName("test-subscription")
-            .withDisplayName("Test Notification");
-
-    SubscriptionDestination emailDestination = BuiltInChannels.previewDestination();
-
-    TemplateRenderResult renderResult =
-        renderWithMessageEngine(mockEvent, testSubscription, emailDestination, testTemplate);
-
-    return new NotificationTemplateRenderResponse()
-        .withValidation(validationResponse)
-        .withRender(renderResult);
+  @Override
+  public NotificationTemplate byName(String name) {
+    return findByNameOrNull(name, Include.ALL);
   }
 
-  private TemplateRenderResult renderWithMessageEngine(
-      ChangeEvent event,
-      EventSubscription subscription,
-      SubscriptionDestination destination,
-      NotificationTemplate template) {
-    try {
-      EmailMessage emailMessage =
-          (EmailMessage)
-              messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
-
-      return new TemplateRenderResult()
-          .withSubject(emailMessage.getSubject())
-          .withBody(emailMessage.getHtmlContent());
-
-    } catch (Exception e) {
-      String errorMessage = "Failed to render template: " + e.getMessage();
-      LOG.error(errorMessage, e);
-      return new TemplateRenderResult().withSubject("").withBody("");
-    }
-  }
-
-  /**
-   * Validates and sends a template to specified destinations.
-   * Called by the REST endpoint for send testing.
-   *
-   * @param request The send request with template, resource, eventType, and destinations
-   * @return The validation response (delivery errors logged server-side only)
-   */
-  public NotificationTemplateValidationResponse send(NotificationTemplateSendRequest request) {
-    NotificationTemplateRenderRequest renderRequest = request.getRenderRequest();
-
-    NotificationTemplateValidationRequest validationRequest =
-        new NotificationTemplateValidationRequest()
-            .withTemplateBody(renderRequest.getTemplateBody())
-            .withTemplateSubject(renderRequest.getTemplateSubject());
-
-    NotificationTemplateValidationResponse validation =
-        templateProcessor.validate(validationRequest);
-
-    if (!validation.getIsValid()) {
-      return validation;
-    }
-
-    validateExternalDestinations(request.getDestinations());
-
-    ChangeEvent mockEvent =
-        mockChangeEventFactory.create(renderRequest.getResource(), renderRequest.getEventType());
-
-    NotificationTemplate testTemplate =
-        new NotificationTemplate()
-            .withId(UUID.randomUUID())
-            .withName("test-template")
-            .withTemplateSubject(renderRequest.getTemplateSubject())
-            .withTemplateBody(renderRequest.getTemplateBody());
-
-    EventSubscription testSubscription =
-        new EventSubscription()
-            .withId(UUID.randomUUID())
-            .withName("test-notification")
-            .withDisplayName("Test Notification Template");
-
-    for (SubscriptionDestination dest : request.getDestinations()) {
-      try {
-        sendToDestination(mockEvent, testSubscription, dest, testTemplate);
-        LOG.info("Successfully sent test notification to {} destination", dest.getType());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to send test notification to {} destination: {}",
-            dest.getType(),
-            e.getMessage(),
-            e);
-      }
-    }
-
-    return validation;
+  @Override
+  public NotificationTemplate byId(UUID id) {
+    return Entity.getEntity(Entity.NOTIFICATION_TEMPLATE, id, "", Include.ALL);
   }
 
   public List<HandlebarsHelperMetadata> getHelperMetadata() {
@@ -430,33 +295,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
             StringUtils.defaultString(template.getTemplateBody()),
             StringUtils.defaultString(template.getTemplateSubject()));
     return EntityUtil.hash(content);
-  }
-
-  private void validateExternalDestinations(List<SubscriptionDestination> destinations) {
-    for (SubscriptionDestination dest : destinations) {
-      if (dest.getCategory() != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
-        throw new IllegalArgumentException(
-            "Only external destinations (Email, Slack, Teams, GChat, Webhook) are supported.");
-      }
-    }
-  }
-
-  private void sendToDestination(
-      ChangeEvent event,
-      EventSubscription subscription,
-      SubscriptionDestination destination,
-      NotificationTemplate template) {
-
-    NotificationMessage message =
-        messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
-
-    Channels.required(destination)
-        .transport()
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "Unsupported destination type: " + destination.getType()))
-        .deliver(message, destination);
   }
 
   public class NotificationTemplateUpdater extends EntityUpdater {

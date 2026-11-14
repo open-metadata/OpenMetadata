@@ -21,20 +21,25 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  CheckCircleFilled,
   ChevronDown,
   ChevronRight,
+  CloseCircleFilled,
   Copy01,
+  DotFilled,
+  ExclamationCircleFilled,
   Lightbulb03,
   RefreshCcw01,
+  StatusSkipped,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import { ReactComponent as IcCheckCircle } from '../assets/svg/ic-check-circle.svg';
-import { ReactComponent as IcTcFail } from '../assets/svg/ic-tc-fail.svg';
-import { ReactComponent as IcTcQueued } from '../assets/svg/ic-tc-queued.svg';
-import { ReactComponent as IcTcSkip } from '../assets/svg/ic-tc-skip.svg';
-import { ReactComponent as IcTcWarn } from '../assets/svg/ic-tc-warn.svg';
+import {
+  useMemo,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import Loader from '../components/common/Loader/Loader';
 import {
   ConnectionStepState,
@@ -122,18 +127,16 @@ export function getConnectionStatusIcon(
 
   if (isSuccessful) {
     icon = (
-      <IcCheckCircle
+      <CheckCircleFilled
         className="tw:shrink-0 tw:text-fg-success-secondary"
-        height={18}
-        width={18}
+        size={18}
       />
     );
   } else if (isFailed) {
     icon = (
-      <IcTcFail
+      <CloseCircleFilled
         className="tw:shrink-0 tw:text-fg-error-primary"
-        height={18}
-        width={18}
+        size={18}
       />
     );
   }
@@ -254,11 +257,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'passed') {
     return (
       <span className="tw:flex tw:items-center" data-testid="success-badge">
-        <IcCheckCircle
-          className="tw:text-fg-success-secondary"
-          height={16}
-          width={16}
-        />
+        <CheckCircleFilled className="tw:text-fg-success-secondary" size={16} />
       </span>
     );
   }
@@ -266,7 +265,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'failed') {
     return (
       <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail className="tw:text-fg-error-primary" height={16} width={16} />
+        <CloseCircleFilled className="tw:text-fg-error-primary" size={16} />
       </span>
     );
   }
@@ -274,24 +273,19 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'warning') {
     return (
       <span className="tw:flex tw:items-center" data-testid="warning-badge">
-        <IcTcWarn
+        <ExclamationCircleFilled
           className="tw:text-fg-warning-secondary"
-          height={16}
-          width={16}
+          size={16}
         />
       </span>
     );
   }
 
   if (state === 'skipped') {
-    return (
-      <IcTcSkip className="tw:text-utility-gray-300" height={16} width={16} />
-    );
+    return <StatusSkipped className="tw:text-utility-gray-300" size={16} />;
   }
 
-  return (
-    <IcTcQueued className="tw:text-utility-gray-300" height={16} width={16} />
-  );
+  return <DotFilled className="tw:text-utility-gray-300" size={16} />;
 }
 
 // A failed step's summary line is the definition's `errorMessage`, not a success
@@ -318,6 +312,7 @@ function renderColoredLines(
 
 export function ConnectionStatusBanner(
   props: Readonly<{
+    action?: ReactNode;
     gateResult: TestConnectionStepResult | undefined;
     isFailed: boolean;
     isSuccessful: boolean;
@@ -330,6 +325,7 @@ export function ConnectionStatusBanner(
   }>
 ) {
   const {
+    action,
     gateResult,
     isFailed,
     isSuccessful,
@@ -355,10 +351,9 @@ export function ConnectionStatusBanner(
   if (isSuccessful) {
     return (
       <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-3 tw:py-2">
-        <IcCheckCircle
+        <CheckCircleFilled
           className="tw:shrink-0 tw:text-fg-success-secondary"
-          height={18}
-          width={18}
+          size={18}
         />
         <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-utility-success-700">
           {statusText}
@@ -370,14 +365,14 @@ export function ConnectionStatusBanner(
   if (isWarning) {
     return (
       <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2">
-        <IcTcWarn
+        <ExclamationCircleFilled
           className="tw:shrink-0 tw:text-fg-warning-secondary"
-          height={18}
-          width={18}
+          size={18}
         />
-        <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
+        <span className="tw:flex-1 tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
           {statusText}
         </span>
+        {action}
       </div>
     );
   }
@@ -416,6 +411,7 @@ export function ConnectionStatusBanner(
             {`${progressPercent}%`}
           </span>
         )}
+        {isFailed && !isTestingConnection && action}
       </div>
     </div>
   );
@@ -486,11 +482,7 @@ function getGateIcon(
   if (gateResult?.passed) {
     return (
       <span className="tw:flex tw:items-center" data-testid="success-badge">
-        <IcCheckCircle
-          className="tw:text-fg-success-secondary"
-          height={18}
-          width={18}
-        />
+        <CheckCircleFilled className="tw:text-fg-success-secondary" size={18} />
       </span>
     );
   }
@@ -498,7 +490,7 @@ function getGateIcon(
   if (gateFailed) {
     return (
       <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail className="tw:text-fg-error-primary" height={18} width={18} />
+        <CloseCircleFilled className="tw:text-fg-error-primary" size={18} />
       </span>
     );
   }
@@ -527,21 +519,19 @@ function getGatePillState(
 function getGatePillIcon(pillState: GatePillState): JSX.Element | null {
   if (pillState === 'pass') {
     return (
-      <IcCheckCircle
+      <CheckCircleFilled
         className="tw:shrink-0 tw:text-fg-success-secondary"
         data-testid="pill-icon-pass"
-        height={12}
-        width={12}
+        size={12}
       />
     );
   }
   if (pillState === 'fail') {
     return (
-      <IcTcFail
+      <CloseCircleFilled
         className="tw:shrink-0 tw:text-fg-error-primary"
         data-testid="pill-icon-fail"
-        height={12}
-        width={12}
+        size={12}
       />
     );
   }
@@ -622,9 +612,9 @@ export function ConnectionGateCard(
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
           <span className={gatePillClass}>{t('label.gate')}</span>
           {isGateExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown size={16} />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           )}
         </div>
       </button>
@@ -633,11 +623,10 @@ export function ConnectionGateCard(
           {GATE_STEPS.map((key) => (
             <span className={pillClass} data-testid="gate-step-pill" key={key}>
               {pillIcon ?? (
-                <IcTcQueued
+                <DotFilled
                   className="tw:shrink-0 tw:text-utility-gray-300"
                   data-testid="pill-icon-queued"
-                  height={12}
-                  width={12}
+                  size={12}
                 />
               )}
               {t(key)}
@@ -1026,7 +1015,7 @@ export function ConnectionFooterActions(
       <Button
         className="test-connection-footer-try-again"
         color="primary"
-        iconLeading={<RefreshCcw01 size={16} />}
+        iconLeading={RefreshCcw01}
         size="sm"
         onClick={onTestConnection}>
         {t('label.try-again')}
@@ -1056,7 +1045,7 @@ export function ConnectionFooterActions(
         className="tw:mr-auto"
         color="secondary"
         data-testid="copy-log-button"
-        iconLeading={<Copy01 size={16} />}
+        iconLeading={Copy01}
         isDisabled={!rawLog}
         size="sm"
         onClick={() => onCopyToClipBoard()}>

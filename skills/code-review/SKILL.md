@@ -9,6 +9,10 @@ argument-hint: "[branch name, PR number, or file paths]"
 
 Two-stage review process: requirements compliance first, then code quality.
 
+**The bar is `REVIEW.md` at the repository root.** Read it first. Its "How to review" order, its
+finding format (trigger → result → fix), its test and flaky-test shapes and its "Do not report" list
+override the generic checklist below wherever they differ.
+
 ## When to Use
 
 - Before creating a PR
@@ -98,7 +102,7 @@ Now review the implementation quality.
 - [ ] CSS custom properties for colors/spacing, no hardcoded values
 - [ ] Loading states and error handling with `showErrorToast`/`showSuccessToast`
 
-**Testing (use `/test-enforcement` for full analysis):**
+**Testing (use `/test-enforcement` for full analysis; `REVIEW.md` § Tests lists the shapes reviewers reject):**
 - [ ] 90% line coverage on changed Java classes
 - [ ] Integration tests for new/changed API endpoints
 - [ ] Jest tests for new/changed React components

@@ -30,6 +30,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.PersonaContextCacheState;
+import org.openmetadata.schema.type.personaContext.PersonaContextStatus;
 import org.openmetadata.schema.type.personaContext.RuleResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -91,6 +93,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation(FIELDS, MetadataOperation.VIEW_BASIC);
+    addViewOperation("userCount", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
@@ -360,7 +363,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
-      @Valid ContextRule requestedRule) {
+      @NotNull @Valid ContextRule requestedRule) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
     PersonaContextDefinition definition = storedDefinition(original);
@@ -384,7 +387,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @PathParam("ruleId") UUID ruleId,
-      @Valid ContextRule requestedRule) {
+      @NotNull @Valid ContextRule requestedRule) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
     PersonaContextDefinition definition = storedDefinition(original);
@@ -437,7 +440,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
-      @Valid ContextRule rule) {
+      @NotNull @Valid ContextRule rule) {
     authorizer.authorizeAdmin(securityContext);
     getPersona(uriInfo, id);
     return PersonaContextBuilder.preview(rule);
@@ -470,6 +473,51 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     authorizer.authorizeAdmin(securityContext);
     Persona persona = getPersona(uriInfo, id);
     return documentResponse(PersonaContextCache.getInstance().refresh(persona));
+  }
+
+  @GET
+  @Path("/aiContext/status")
+  @Operation(
+      operationId = "listPersonaAiContextStatus",
+      summary = "List the compiled AI context state of personas",
+      description =
+          "Pages exactly like `GET /personas`, so the same cursor returns the status of the same "
+              + "personas. Reads the context cache only; a persona whose document is not cached "
+              + "reports `STALE` with zero counts rather than being compiled.")
+  public ResultList<PersonaContextStatus> listAiContextStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Limit the number of statuses returned. (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns statuses before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns statuses after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    authorizer.authorizeAdmin(securityContext);
+    ResultList<Persona> personas =
+        listInternal(
+            uriInfo,
+            securityContext,
+            "contextDefinition",
+            new ListFilter(null),
+            limitParam,
+            before,
+            after);
+    // The persona page's cursors are already encoded; the (data, before, after, total) constructor
+    // would encode them again and hand out cursors that page to nothing.
+    return new ResultList<>(
+            personas.getData().stream().map(PersonaResource::contextStatus).toList())
+        .setPaging(personas.getPaging());
   }
 
   @Override
@@ -547,14 +595,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
 
   private Response renderPersonaContext(
       Persona persona, SecurityContext securityContext, String format, boolean refresh) {
-    PersonaContextAccess.authorize(securityContext, persona);
-    if (refresh) {
-      PersonaContextAccess.authorizeRefresh(securityContext);
-    }
     PersonaContextCache.CachedResult cached =
-        refresh
-            ? PersonaContextCache.getInstance().refresh(persona)
-            : PersonaContextCache.getInstance().get(persona, false);
+        PersonaContextAccess.materialize(authorizer, securityContext, persona, refresh);
     PersonaContextBuilder.MaterializedPersonaContext value = cached.value();
     Response.ResponseBuilder response =
         AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)
@@ -646,17 +688,12 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     PersonaContextBuilder.MaterializedPersonaContext materialized = cached.value();
     PersonaContext context = materialized.context();
     String markdown = materialized.markdown();
-    int entitiesIncluded =
-        listOrEmpty(context.getRules()).stream()
-            .mapToInt(
-                result -> value(result.getRenderedFull()) + value(result.getRenderedCompact()))
-            .sum();
     PersonaContextDocument document =
         new PersonaContextDocument(
             markdown,
-            entitiesIncluded,
+            entitiesIncluded(context),
             listOrEmpty(context.getManifest()).size(),
-            Math.max(1, (int) Math.ceil(markdown.length() / 4.0)),
+            tokensEstimate(markdown),
             markdown.getBytes(StandardCharsets.UTF_8).length,
             context.getGeneratedAt(),
             Boolean.TRUE.equals(context.getTruncated()),
@@ -664,6 +701,36 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return Response.ok(document)
         .header(PersonaContextCache.CACHE_HEADER, cached.status().name())
         .build();
+  }
+
+  private static PersonaContextStatus contextStatus(Persona persona) {
+    PersonaContextCache.CacheSnapshot snapshot =
+        PersonaContextCache.getInstance().snapshot(persona);
+    PersonaContextStatus status =
+        new PersonaContextStatus()
+            .withPersonaId(persona.getId())
+            .withCacheState(snapshot.state())
+            .withLastError(snapshot.error())
+            .withEntitiesIncluded(0)
+            .withTokensEst(0);
+    if (snapshot.value() == null) {
+      return status;
+    }
+    PersonaContext context = snapshot.value().context();
+    return status
+        .withLastGeneratedAt(context.getGeneratedAt())
+        .withEntitiesIncluded(entitiesIncluded(context))
+        .withTokensEst(tokensEstimate(snapshot.value().markdown()));
+  }
+
+  private static int tokensEstimate(String markdown) {
+    return Math.max(1, (int) Math.ceil(markdown.length() / 4.0));
+  }
+
+  private static int entitiesIncluded(PersonaContext context) {
+    return listOrEmpty(context.getRules()).stream()
+        .mapToInt(result -> value(result.getRenderedFull()) + value(result.getRenderedCompact()))
+        .sum();
   }
 
   private static int value(Integer number) {

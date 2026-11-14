@@ -27,6 +27,10 @@ import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -101,7 +105,8 @@ const renderFailedContent = (
             columns={columns}
             dataSource={failedStatus?.failedRequest ?? []}
             pagination={{
-              pageSize: 5,
+              pageSize: PAGE_SIZE_BASE,
+              pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
               showSizeChanger: true,
             }}
             rowKey={(record) => record.request?.id}
@@ -183,7 +188,17 @@ export const GlossaryUpdateConfirmationModal = ({
     switch (updateState) {
       case UpdateState.INITIAL:
         return {
-          footer: null,
+          // The footer gives the buttons the dialog's bottom padding; content has none.
+          footer: (
+            <Box className="tw:w-full" gap={2} justify="center">
+              <Button color="secondary" onPress={onCancel}>
+                {t('label.no-comma-cancel')}
+              </Button>
+              <Button color="primary" onPress={handleUpdateConfirmation}>
+                {t('label.yes-comma-confirm')}
+              </Button>
+            </Box>
+          ),
           content: (
             <Box align="center" direction="col" gap={2}>
               <FeaturedIcon
@@ -202,14 +217,6 @@ export const GlossaryUpdateConfirmationModal = ({
                   {getEntityName(glossaryTerm)}
                 </Typography>
               </Typography>
-              <Box align="center" className="tw:mt-6" gap={2}>
-                <Button color="secondary" onPress={onCancel}>
-                  {t('label.no-comma-cancel')}
-                </Button>
-                <Button color="primary" onPress={handleUpdateConfirmation}>
-                  {t('label.yes-comma-confirm')}
-                </Button>
-              </Box>
             </Box>
           ),
         };

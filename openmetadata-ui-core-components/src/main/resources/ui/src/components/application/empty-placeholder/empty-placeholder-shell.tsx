@@ -23,11 +23,10 @@ export type EmptyPlaceholderIcon = FC<{ className?: string }> | ReactNode;
 
 /** Shared icon-container styling for both variants */
 export const EMPTY_PLACEHOLDER_ICON_BOX =
-  // `text-featured-icon-light-fg-gray` (gray-500 light / gray-200 dark) is the
-  // default glyph color so a bare component icon stays visible in both themes
-  // instead of inheriting the ambient text color (invisible dark-on-dark).
-  // Icons passed as elements with their own `text-*` class still override it.
-  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:dark:bg-surface tw:text-featured-icon-light-fg-gray tw:shadow-empty-placeholder-icon tw:dark:shadow-xs tw:*:data-icon:size-7';
+  // A borderless tile: `bg-primary` + soft shadow lift it off light surfaces and make it a darker
+  // well on dark `bg-surface` cards. The glyph defaults to the brand colour; icons passed as
+  // elements with their own `text-*` class still override it.
+  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:bg-primary tw:text-fg-brand-primary tw:shadow-empty-placeholder-icon tw:dark:shadow-xs tw:*:data-icon:size-7';
 
 export interface EmptyPlaceholderAction extends Omit<ButtonProps, 'children'> {
   key: string;
@@ -50,8 +49,10 @@ export interface EmptyPlaceholderShellProps
   /** Replaces the generated action buttons entirely */
   footer?: ReactNode;
   /**
-   * Content width. The root is absolutely positioned and fills its nearest
-   * positioned ancestor, so the host container MUST set `position: relative`.
+   * Maximum content width. The content fills the container up to this cap, so
+   * copy uses the space it has without overflowing narrow hosts. The root is
+   * absolutely positioned and fills its nearest positioned ancestor, so the
+   * host container MUST set `position: relative`.
    */
   width?: number | string;
   /** Vertical gap between the content items */
@@ -122,7 +123,14 @@ export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
       justify="center"
       style={style}
       {...otherProps}>
-      <Box align="center" direction="col" gap={gap} style={{ width }}>
+      <Box
+        align="center"
+        className="tw:text-center"
+        direction="col"
+        gap={gap}
+        style={
+          width === undefined ? undefined : { width: '100%', maxWidth: width }
+        }>
         {children}
         {footer ?? renderEmptyPlaceholderActions(actions)}
       </Box>

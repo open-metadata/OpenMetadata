@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Badge, List } from 'antd';
+import {
+  Button,
+  Dot,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  TextEditorMention,
+  TotalOccurrences,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
-import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -239,22 +244,30 @@ const NotificationBox = ({
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
+    const NotificationIcon =
+      key === NotificationTabsKey.TASK ? TotalOccurrences : TextEditorMention;
+
     return (
-      <Badge
-        dot={
-          key === NotificationTabsKey.TASK
-            ? hasTaskNotification
-            : hasMentionNotification
-        }
-        offset={[5, 0]}>
-        <Icon
-          alt="notification-icon"
-          className="align-middle m-r-xs"
-          component={key === NotificationTabsKey.TASK ? IconTask : IconMentions}
-          style={{ fontSize: '16px' }}
+      <span className="tw:relative tw:inline-flex tw:items-center">
+        <NotificationIcon
+          aria-label="notification-icon"
+          className="tw:align-middle tw:mr-2 tw:shrink-0"
+          height={16}
+          role="img"
+          width={16}
         />
         {name}
-      </Badge>
+        {(key === NotificationTabsKey.TASK
+          ? hasTaskNotification
+          : hasMentionNotification) && (
+          <Dot
+            aria-label={t('label.notification-plural')}
+            className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+            role="img"
+            size="sm"
+          />
+        )}
+      </span>
     );
   };
 
@@ -265,10 +278,17 @@ const NotificationBox = ({
           <p>{t('message.no-notification-found')}</p>
         </div>
       ) : (
-        <List
-          className="notification-content-container"
-          dataSource={notificationDropDownList}
-          footer={
+        <div className="notification-content-container">
+          <ul className="tw:m-0 tw:h-50 tw:list-none tw:overflow-y-auto tw:p-0">
+            {notificationDropDownList.map((item, index) => (
+              <li
+                className="notification-dropdown-list-btn cursor-pointer tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+                key={notifications[index].id}>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="notification-list-footer tw:px-4 tw:py-3">
             <Button className="tw:w-full" color="link-color" href={viewAllPath}>
               <Typography>
                 {t('label.view-entity', {
@@ -276,15 +296,8 @@ const NotificationBox = ({
                 })}
               </Typography>
             </Button>
-          }
-          itemLayout="vertical"
-          renderItem={(item) => (
-            <List.Item className="notification-dropdown-list-btn cursor-pointer">
-              {item}
-            </List.Item>
-          )}
-          size="small"
-        />
+          </div>
+        </div>
       ),
     [notifications, notificationDropDownList, viewAllPath, t]
   );

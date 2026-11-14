@@ -23,10 +23,16 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { PopoverTitleProps } from './UserPopOverCard.interface';
 
 export const PopoverTitle = React.memo(
-  ({ userName, profilePicture, type = OwnerType.USER }: PopoverTitleProps) => {
+  ({
+    userName,
+    profilePicture,
+    type = OwnerType.USER,
+    onTitleClick,
+  }: PopoverTitleProps) => {
     const navigate = useNavigate();
     const { data: userData } = useEntityPopoverData(userName, type);
 
@@ -43,10 +49,17 @@ export const PopoverTitle = React.memo(
             size="sm"
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
+              // Inside the Settings modal the caller routes in-app instead of
+              // leaving for the classic user page.
+              if (onTitleClick) {
+                onTitleClick();
+
+                return;
+              }
               navigate(
                 type === OwnerType.TEAM
-                  ? getTeamAndUserDetailsPath(name)
-                  : getUserPath(name)
+                  ? getSettingsLink(getTeamAndUserDetailsPath(name))
+                  : getSettingsLink(getUserPath(name))
               );
             }}>
             <span className="font-medium m-r-xs" data-testid="user-name">

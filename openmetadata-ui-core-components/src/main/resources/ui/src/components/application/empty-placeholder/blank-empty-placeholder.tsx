@@ -23,7 +23,8 @@ import {
   renderEmptyPlaceholderIcon,
 } from './empty-placeholder-shell';
 
-const DEFAULT_BLANK_WIDTH = 300;
+// Matches the `tw:max-w-lg` text block so long copy wraps at a readable width.
+const DEFAULT_BLANK_WIDTH = 512;
 
 export interface BlankEmptyPlaceholderProps
   extends Omit<EmptyPlaceholderShellProps, 'children'> {
@@ -51,7 +52,12 @@ export const BlankEmptyPlaceholder = ({
         className="tw:max-w-lg tw:gap-1.5 tw:text-center"
         direction="col">
         {title && (
-          <Typography size="text-sm" weight="semibold">
+          // Explicit colour: hosts that tint their text (table empty rows) must
+          // not turn the heading into description-grey.
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
             {title}
           </Typography>
         )}

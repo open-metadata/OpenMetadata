@@ -27,14 +27,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
-import org.openmetadata.schema.api.data.BuildOntologySubset;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateRelationshipType;
 import org.openmetadata.schema.api.data.DeleteOntologyResource;
 import org.openmetadata.schema.api.data.InstallOntologyPack;
 import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
-import org.openmetadata.schema.api.data.MergeOntologyStructure;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyDeleteResult;
 import org.openmetadata.schema.api.data.OntologyDomainDraftRequest;
@@ -42,8 +40,6 @@ import org.openmetadata.schema.api.data.OntologyDomainDraftResult;
 import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.api.data.OntologyInferenceExplanation;
 import org.openmetadata.schema.api.data.OntologyInferenceExplanationRequest;
-import org.openmetadata.schema.api.data.OntologyIriPreview;
-import org.openmetadata.schema.api.data.OntologyIriPreviewRequest;
 import org.openmetadata.schema.api.data.OntologyMappingSuggestionList;
 import org.openmetadata.schema.api.data.OntologyMappingSuggestionRequest;
 import org.openmetadata.schema.api.data.OntologyNaturalLanguageQueryRequest;
@@ -56,10 +52,6 @@ import org.openmetadata.schema.api.data.OntologyPatternList;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionList;
 import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionRequest;
-import org.openmetadata.schema.api.data.OntologyStructuralDiff;
-import org.openmetadata.schema.api.data.OntologyStructuralDiffRequest;
-import org.openmetadata.schema.api.data.OntologyStructuralMergeResult;
-import org.openmetadata.schema.api.data.OntologySubsetResult;
 import org.openmetadata.schema.api.data.UpdateOntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -204,21 +196,6 @@ class OntologyServicesMockTest {
   }
 
   @Test
-  void ontologyModelingServiceUsesTypedIriPreviewEndpoint() {
-    final OntologyModelingService service = new OntologyModelingService(httpClient);
-    final OntologyIriPreviewRequest request = new OntologyIriPreviewRequest();
-    final OntologyIriPreview expected = new OntologyIriPreview();
-    when(httpClient.execute(
-            HttpMethod.POST,
-            "/v1/ontology/modeling/iris/preview",
-            request,
-            OntologyIriPreview.class))
-        .thenReturn(expected);
-
-    assertSame(expected, service.previewIri(request));
-  }
-
-  @Test
   void ontologyPatternServiceUsesTypedDraftEndpoints() {
     final OntologyPatternService service = new OntologyPatternService(httpClient);
     final InstantiateOntologyPattern request = new InstantiateOntologyPattern();
@@ -236,42 +213,6 @@ class OntologyServicesMockTest {
 
     assertSame(list, service.list());
     assertSame(result, service.instantiate(request));
-  }
-
-  @Test
-  void ontologySubsetServiceUsesTypedDraftEndpoint() {
-    final OntologySubsetService service = new OntologySubsetService(httpClient);
-    final BuildOntologySubset request = new BuildOntologySubset();
-    final OntologySubsetResult result = new OntologySubsetResult();
-    when(httpClient.execute(
-            HttpMethod.POST, "/v1/ontology/subsets", request, OntologySubsetResult.class))
-        .thenReturn(result);
-
-    assertSame(result, service.build(request));
-  }
-
-  @Test
-  void ontologyStructureServiceUsesTypedDiffAndMergeEndpoints() {
-    final OntologyStructureService service = new OntologyStructureService(httpClient);
-    final OntologyStructuralDiffRequest diffRequest = new OntologyStructuralDiffRequest();
-    final MergeOntologyStructure mergeRequest = new MergeOntologyStructure();
-    final OntologyStructuralDiff diff = new OntologyStructuralDiff();
-    final OntologyStructuralMergeResult merge = new OntologyStructuralMergeResult();
-    when(httpClient.execute(
-            HttpMethod.POST,
-            "/v1/ontology/structure/diff",
-            diffRequest,
-            OntologyStructuralDiff.class))
-        .thenReturn(diff);
-    when(httpClient.execute(
-            HttpMethod.POST,
-            "/v1/ontology/structure/merge",
-            mergeRequest,
-            OntologyStructuralMergeResult.class))
-        .thenReturn(merge);
-
-    assertSame(diff, service.diff(diffRequest));
-    assertSame(merge, service.merge(mergeRequest));
   }
 
   @Test

@@ -19,6 +19,8 @@ from metadata.pii.algorithms.preprocessing import (
     ner_normalize_values,
     preprocess_values,
 )
+from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 @pytest.mark.parametrize(
@@ -184,3 +186,15 @@ def test_preprocess_values_all_oversized_returns_truncated(mock_logger):
     assert result[0] == "a" * MAX_NLP_TEXT_LENGTH
     assert result[1] == "b" * MAX_NLP_TEXT_LENGTH
     assert mock_logger.warning.call_count == 2
+
+
+@patch("metadata.pii.algorithms.preprocessing.logger")
+def test_value_truncated_by_sampler_is_not_reported_again(mock_logger):
+    # Issue #34299: the sampler reports its own truncation, so preprocessing must not
+    # report the same value a second time.
+    sampled_value = SamplerInterface._truncate_cell("a" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1))
+
+    result = preprocess_values([sampled_value])
+
+    assert result == [sampled_value]
+    mock_logger.warning.assert_not_called()

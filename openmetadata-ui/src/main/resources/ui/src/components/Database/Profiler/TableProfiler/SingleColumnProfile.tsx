@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   PieChart,
@@ -43,7 +48,9 @@ import {
   getColumnCustomMetric,
 } from '../../../../utils/TableProfilerUtils';
 import { ColumnMetricsInterface } from '../../../../utils/TableProfilerUtils.interface';
+import { isShardedTable } from '../../../../utils/TableShardingUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { ProfileExecutionSource } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import CardinalityDistributionChart from '../../../Visualisations/Chart/CardinalityDistributionChart.component';
 import DataDistributionHistogram from '../../../Visualisations/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
@@ -71,7 +78,9 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     customMetric: tableCustomMetric,
     isProfilingEnabled,
     testCaseSummary,
+    table: contextTable,
   } = useTableProfiler();
+  const isSharded = isShardedTable(tableDetails ?? contextTable);
   const { t } = useTranslation();
 
   const dateRangeObject = useMemo(() => {
@@ -126,7 +135,9 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Tooltip title={t('label.documentation')}>
+      // tw:w-auto overrides the trigger's w-max so the sentence wraps in
+      // narrow containers such as the custom metric drawer preview.
+      <Tooltip title={t('label.documentation')} triggerClassName="tw:w-auto">
         <span>
           <Transi18next
             i18nKey="message.no-profiler-card-message-with-link"
@@ -225,106 +236,113 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   }, [activeColumnFqn, dateRangeObject]);
 
   return (
-    <div
-      className="tw:mb-lg tw:flex tw:flex-col tw:gap-8"
-      data-testid="profiler-tab-container">
+    <Box
+      className="tw:mb-lg"
+      data-testid="profiler-tab-container"
+      direction="col"
+      gap={8}>
       {selectedColumn && (
-        <div className="tw:grid tw:grid-cols-24 tw:gap-5">
-          <div className="tw:col-span-14">
-            <ColumnSummary column={selectedColumn} />
-          </div>
-          <div className="tw:col-span-10">
-            <div className="tw:h-full tw:rounded-[10px] tw:border tw:border-border-secondary tw:shadow-none">
-              <div className="tw:p-4">
-                <p className="tw:m-0 tw:text-md tw:font-medium tw:text-primary">
-                  {t('label.data-quality-test-plural')}
-                </p>
-              </div>
-              <hr className="tw:my-0 tw:h-px tw:border-0 tw:bg-border-secondary" />
-              <div className="tw:grid tw:grid-cols-12 tw:gap-3 tw:p-4">
-                <div className="tw:col-span-5">
-                  <div style={{ width: PIE_SIZE }}>
-                    <PieChart
-                      track
-                      ariaLabel={t('label.data-quality-test-plural')}
-                      centerLabel={
-                        <div className="tw:flex tw:flex-col tw:items-center">
-                          <Typography
-                            className="tw:text-primary"
-                            data-testid="column-test-total"
-                            size="text-sm"
-                            weight="semibold">
-                            {activeColumnTests?.total ?? 0}
-                          </Typography>
-                          <Typography
-                            color="secondary"
-                            size="text-xs"
-                            weight="medium">
-                            {t('label.total-test-plural')}
-                          </Typography>
-                        </div>
-                      }
-                      data={columnTestData}
-                      height={PIE_SIZE}
-                      innerRadius="62%"
-                      legend={LEGEND_HIDDEN}
-                      outerRadius="88%"
-                    />
-                  </div>
+        // Side by side on the page; wraps to a stack in narrow columns such as
+        // the custom metric drawer preview (each card needs at least 20rem).
+        <Box gap={5} wrap="wrap">
+          <ColumnSummary
+            className="tw:min-w-80 tw:grow-14 tw:basis-0"
+            column={selectedColumn}
+          />
+          <Card className="tw:min-w-80 tw:grow-10 tw:basis-0">
+            <Card.Header title={t('label.data-quality-test-plural')} />
+            <Card.Content>
+              <Box align="center" gap={3}>
+                <div className="tw:shrink-0" style={{ width: PIE_SIZE }}>
+                  <PieChart
+                    track
+                    ariaLabel={t('label.data-quality-test-plural')}
+                    centerLabel={
+                      <Box align="center" direction="col">
+                        <Typography
+                          className="tw:text-primary"
+                          data-testid="column-test-total"
+                          size="text-sm"
+                          weight="semibold">
+                          {activeColumnTests?.total ?? 0}
+                        </Typography>
+                        <Typography
+                          color="secondary"
+                          size="text-xs"
+                          weight="medium">
+                          {t('label.total-test-plural')}
+                        </Typography>
+                      </Box>
+                    }
+                    data={columnTestData}
+                    height={PIE_SIZE}
+                    innerRadius="62%"
+                    legend={LEGEND_HIDDEN}
+                    outerRadius="88%"
+                  />
                 </div>
-
-                <div className="tw:col-span-7">
-                  <div className="tw:w-full tw:rounded-md tw:bg-secondary tw:p-4">
-                    {columnTestData.map((item, index) => (
-                      <div
-                        className="tw:mb-1 tw:flex tw:items-center tw:justify-between"
-                        key={item.name}>
-                        <span
-                          className="tw:text-sm tw:text-secondary"
-                          style={{
-                            borderLeft: `4px solid ${chartColor(
-                              palette,
-                              index,
-                              item.status
-                            )}`,
-                            paddingLeft: '8px',
-                            lineHeight: '10px',
-                          }}>
-                          {item.name}
-                        </span>
-                        <span className="tw:text-sm tw:font-medium tw:text-primary">
-                          {formatNumberWithComma(item.value)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="tw:flex-1 tw:rounded-md tw:bg-secondary tw:p-4">
+                  {columnTestData.map((item, index) => (
+                    <Box
+                      align="center"
+                      className="tw:mb-1"
+                      justify="between"
+                      key={item.name}>
+                      <span
+                        className="tw:text-sm tw:text-secondary"
+                        style={{
+                          borderLeft: `4px solid ${chartColor(
+                            palette,
+                            index,
+                            item.status
+                          )}`,
+                          paddingLeft: '8px',
+                          lineHeight: '10px',
+                        }}>
+                        {item.name}
+                      </span>
+                      <span className="tw:text-sm tw:font-medium tw:text-primary">
+                        {formatNumberWithComma(item.value)}
+                      </span>
+                    </Box>
+                  ))}
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
+              </Box>
+            </Card.Content>
+          </Card>
+        </Box>
       )}
 
+      <ProfileExecutionSource
+        isSharded={isSharded}
+        profiles={columnProfilerData}
+      />
       <ProfilerDetailsCard
         chartCollection={columnMetric.countMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="count"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         title={t('label.data-count-plural')}
       />
       <ProfilerDetailsCard
         chartCollection={columnMetric.proportionMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="proportion"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         tickFormatter="%"
         title={t('label.data-proportion-plural')}
       />
       <ProfilerDetailsCard
         chartCollection={columnMetric.mathMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="math"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         showYAxisCategory={isMinMaxStringData}
         // only min/max category can be string
         title={t('label.data-range')}
@@ -333,15 +351,19 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         chartCollection={columnMetric.sumMetrics}
         chartType="area"
         isLoading={isLoading}
+        isSharded={isSharded}
         name="sum"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         title={t('label.data-aggregate')}
       />
       <ProfilerDetailsCard
         chartCollection={columnMetric.quartileMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="quartile"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         title={t('label.data-quartile-plural')}
       />
       {firstDay?.histogram || currentDay?.histogram ? (
@@ -354,6 +376,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
               firstDayData: firstDay,
               currentDayData: currentDay,
             }}
+            isSharded={isSharded}
             noDataPlaceholderText={noProfilerMessage}
           />
         </ProfilerStateWrapper>
@@ -369,6 +392,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
               firstDayData: firstDay,
               currentDayData: currentDay,
             }}
+            isSharded={isSharded}
             noDataPlaceholderText={noProfilerMessage}
           />
         </ProfilerStateWrapper>
@@ -377,8 +401,10 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         customMetrics={customMetrics}
         customMetricsGraphData={columnCustomMetrics}
         isLoading={isLoading || isProfilerDataLoading}
+        isSharded={isSharded}
+        profiles={columnProfilerData}
       />
-    </div>
+    </Box>
   );
 };
 

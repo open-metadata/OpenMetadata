@@ -20,6 +20,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
 import AsyncSelectList from './AsyncSelectList';
 
@@ -34,15 +35,28 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  ClassificationTag: jest
-    .fn()
-    .mockImplementation(({ label }) => <div title={label}>{label}</div>),
-  GlossaryTag: jest
-    .fn()
-    .mockImplementation(({ label }) => <div title={label}>{label}</div>),
-}));
+jest.mock('@openmetadata/ui-core-components', () => {
+  const mockTag = ({
+    label,
+    tooltip,
+    onDelete,
+  }: {
+    label: string;
+    tooltip?: string;
+    onDelete?: () => void;
+  }) => (
+    <div data-tooltip={tooltip} title={label}>
+      {label}
+      {onDelete && <button aria-label={`remove ${label}`} onClick={onDelete} />}
+    </div>
+  );
+
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    ClassificationTag: jest.fn().mockImplementation(mockTag),
+    GlossaryTag: jest.fn().mockImplementation(mockTag),
+  };
+});
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -79,6 +93,74 @@ describe('Test AsyncSelect List Component', () => {
     expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
 
     expect(screen.getByTitle('select-1')).toBeInTheDocument();
+  });
+
+  it('Should lock derived chips and leave a lineage-propagated one removable', async () => {
+    const initialOptions = [
+      {
+        label: 'Revenue',
+        value: 'Finance.Revenue',
+        data: {
+          name: 'Revenue',
+          tagFQN: 'Finance.Revenue',
+          source: TagSource.Glossary,
+          labelType: LabelType.Derived,
+          state: State.Confirmed,
+        },
+      },
+      {
+        label: 'Sensitive',
+        value: 'PII.Sensitive',
+        data: {
+          name: 'Sensitive',
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Derived,
+          state: State.Confirmed,
+        },
+      },
+      {
+        label: 'Upstream',
+        value: 'Lineage.Upstream',
+        data: {
+          name: 'Upstream',
+          tagFQN: 'Lineage.Upstream',
+          source: TagSource.Classification,
+          labelType: LabelType.Propagated,
+          state: State.Confirmed,
+        },
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <AsyncSelectList
+          {...mockProps}
+          initialOptions={initialOptions}
+          value={initialOptions.map((option) => option.value)}
+        />
+      );
+    });
+
+    // An inherited glossary term and the tag a term implies are both computed by the server.
+    expect(screen.getByTitle('Revenue')).toHaveAttribute(
+      'data-tooltip',
+      'message.inherited-tag-warning'
+    );
+    expect(screen.getByTitle('Sensitive')).toHaveAttribute(
+      'data-tooltip',
+      'message.derived-tag-warning'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'remove Revenue' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'remove Sensitive' })
+    ).not.toBeInTheDocument();
+    // A label propagated along lineage is stored for the asset, so it can be removed.
+    expect(
+      screen.getByRole('button', { name: 'remove Upstream' })
+    ).toBeInTheDocument();
   });
 
   it('Should trigger fetchOptions when focus on select input', async () => {

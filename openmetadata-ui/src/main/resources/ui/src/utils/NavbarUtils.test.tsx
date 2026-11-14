@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/constants';
@@ -194,9 +193,10 @@ describe('NavbarUtils test', () => {
         // Second child should be the external link icon
         const externalIcon = secondColumn.props.children[1];
 
-        expect(externalIcon.type).toBe(Icon);
-        expect(externalIcon.props.className).toBe('m-l-xss text-base-color');
-        expect(externalIcon.props.style).toEqual({ fontSize: '16px' });
+        expect(externalIcon.props.className).toBe(
+          'tw:ml-1 tw:text-secondary tw:shrink-0'
+        );
+        expect(externalIcon.props.size).toBe(16);
       });
     });
 

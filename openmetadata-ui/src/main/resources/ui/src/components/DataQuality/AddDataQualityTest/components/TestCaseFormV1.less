@@ -18,19 +18,7 @@
   min-height: 100vh;
   padding-bottom: var(--om-space-80); // Space for fixed buttons
 
-  .ant-form-item {
-    margin-bottom: @size-lg;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
   .form-card-section .custom-select-test-type-style {
-    &.ant-form-item {
-      margin-bottom: @size-md;
-    }
-
     position: relative;
 
     .custom-test-type-container {
@@ -56,22 +44,8 @@
     }
   }
 
-  .form-switch-container {
-    .ant-form-item-control-input {
-      align-items: baseline;
-    }
-  }
-
   .form-card-section {
     margin-bottom: @size-mlg;
-
-    .ant-form-item {
-      margin-bottom: @size-lg;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
 
     .card-title-container {
       .card-title-text {
@@ -109,7 +83,7 @@
       line-height: 1.4;
     }
 
-    .ant-form-item-explain-error {
+    .form-field-error {
       margin-top: @size-xs;
       color: @error-color;
       font-size: @font-size-base;
@@ -156,6 +130,8 @@
       .bar-menu-wrapper--format--button--icon {
         width: @size-mlg;
         height: @size-mlg;
+        // core icons draw edge to edge, so pad to a 16px frame inside the 20px box
+        padding: calc(var(--tw-spacing) * 0.5);
       }
     }
   }
@@ -172,75 +148,20 @@
   }
 }
 
-.test-case-form-drawer {
-  .ant-drawer-body {
-    padding: 0 @padding-lg;
-
-    .test-case-form-v1,
-    .edit-test-case-form-v1 {
-      padding-top: @padding-lg;
-      padding-bottom: @padding-lg;
-    }
-  }
-
-  .drawer-content-wrapper .drawer-doc-panel {
-    .entity-summary-in-docs {
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-
-    .entity-summary-panel-container {
-      padding-top: @padding-xs;
-    }
-  }
-}
-
-// Drawer specific styles
-.drawer-content-wrapper {
-  display: grid;
-  grid-template-columns: 65% 35%;
-  gap: var(--om-space-24);
-  height: calc(100vh - 120px); // Account for drawer header and footer
-
-  // No doc panel (e.g. params-only edit): the form spans the full drawer.
-  &.no-doc-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .drawer-form-content {
-    overflow-y: auto;
-    padding-right: var(--om-space-8);
-    height: 100%;
-
-    .test-case-form-v1,
-    .edit-test-case-form-v1 {
-      padding-bottom: 0;
-    }
-  }
-
-  .drawer-doc-panel {
-    overflow-y: auto;
-    border: 1px solid @grey-15;
-    border-radius: @border-rad-sm;
-    margin: @margin-lg @margin-lg @margin-lg 0;
-    padding: 0 @padding-mlg;
-  }
-}
-
 .drawer-footer-actions {
   display: flex;
   justify-content: flex-end;
   width: 100%;
 
-  :is(.ant-space, .layout-space) {
+  .layout-space {
     width: auto;
   }
 }
 
 .test-case-form-v1,
 .bundle-suite-form {
-  // Overlay the Custom Query action on the Select Test Type label row for both
-  // the classic drawer and the AI modal, like the legacy absolute header row.
+  // Overlay the Custom Query action on the Select Test Type label row, like
+  // the legacy absolute header row.
   // In custom query mode the container holds its own Test Type label and must
   // flow normally so it does not overlap the SQL Expression label.
   .test-type-card {
@@ -261,45 +182,18 @@
   }
 }
 
-// Classic drawer only: compact the core-components controls to match the
-// legacy antd form (~32px controls, 4px radius, medium gray labels, no
-// leading search icon). The AI modal keeps design-system defaults.
-.drawer-content-wrapper {
-  .test-case-form-v1,
-  .bundle-suite-form {
-    [data-testid='form-item-label'] {
-      color: @grey-700;
-      font-weight: @font-medium;
-    }
-
-    div[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'],
-    button[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'] {
-      border-radius: var(--om-radius-sm);
-      padding-top: var(--om-space-4);
-      padding-bottom: var(--om-space-4);
-      height: 32px;
-      min-height: 32px;
-    }
-
-    [role='group'][data-rac] {
-      border-radius: var(--om-radius-sm);
-      padding-top: var(--om-space-4);
-      padding-bottom: var(--om-space-4);
-      min-height: 32px;
-    }
-
-    [role='group'][data-rac] > svg:first-child {
-      display: none;
-    }
-  }
-}
-
 // The core SlideoutMenu overlay carries no z-index, so positioned page
 // elements (e.g. the table's sticky Actions column) paint through it.
 // 40 sits above page chrome but below the select popovers (z-50).
 .test-case-form-drawer,
 .bundle-suite-form-drawer {
   z-index: 40;
+}
+
+// Narrow in step with the hint column's 240ms collapse, or the form is
+// squeezed mid-animation.
+.test-case-form-drawer {
+  transition: max-width var(--om-duration-240) var(--om-ease-standard);
 }
 
 // Test type dropdown: show the full option description instead of a

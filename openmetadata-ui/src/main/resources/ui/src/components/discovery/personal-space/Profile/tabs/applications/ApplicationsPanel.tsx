@@ -12,13 +12,14 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { GridView, Lock01 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppDetail from './AppDetail';
 import { AppFooterSlotContext } from './AppFooter';
@@ -38,6 +39,7 @@ import MarketplaceList from './MarketplaceList';
 
 const CRUMB_MARKETPLACE = 'marketplace-crumb';
 const CRUMB_APP = 'marketplace-app';
+const CRUMB_SUB_PAGE_PARENT = 'sub-page-parent';
 const VIEW_INSTALL = 'install';
 const VIEW_MARKETPLACE = 'marketplace';
 const VIEW_MARKETPLACE_DETAIL = 'marketplace-detail';
@@ -68,7 +70,7 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
   );
 
   const handleHeaderChange = useCallback(
-    ({ crumb, ...header }: ApplicationsHeader) => {
+    ({ crumb, subPage, ...header }: ApplicationsHeader) => {
       const appsLabel = t('label.application-plural');
       const isMarketplaceView = MARKETPLACE_VIEWS.has(view.type);
 
@@ -85,7 +87,12 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
       if (view.type === VIEW_INSTALL) {
         breadcrumbs.push({ id: CRUMB_APP, label: crumb ?? '' });
       }
-      if (view.type !== 'list' && view.type !== VIEW_MARKETPLACE) {
+      if (subPage) {
+        breadcrumbs.push(
+          { id: CRUMB_SUB_PAGE_PARENT, label: crumb ?? '' },
+          { id: 'current', label: subPage.label }
+        );
+      } else if (view.type !== 'list' && view.type !== VIEW_MARKETPLACE) {
         breadcrumbs.push({
           id: 'current',
           label: view.type === VIEW_INSTALL ? t('label.install') : crumb ?? '',
@@ -97,6 +104,8 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
           onNavigate({ type: 'list' });
         } else if (id === CRUMB_MARKETPLACE) {
           onNavigate({ type: VIEW_MARKETPLACE });
+        } else if (id === CRUMB_SUB_PAGE_PARENT) {
+          subPage?.onBack();
         } else if (id === CRUMB_APP && view.type === VIEW_INSTALL) {
           onNavigate({ type: VIEW_MARKETPLACE_DETAIL, fqn: view.fqn });
         }
@@ -122,10 +131,10 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
     if (MARKETPLACE_VIEWS.has(view.type) && !isAdminUser) {
       return (
         <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-          <EmptyPlaceholder
+          <PermissionPlaceholder
             data-testid="app-no-permission"
+            description={t('message.no-permission-to-view')}
             icon={Lock01}
-            title={t('message.no-permission-to-view')}
           />
         </Box>
       );

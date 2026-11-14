@@ -51,7 +51,7 @@ test.describe.serial('Data Insight Report Application', () => {
     await redirectToHomePage(page);
 
     const appsResponse = page.waitForResponse(
-      `/api/v1/apps?limit=15&include=non-deleted`
+      `/api/v1/apps?limit=12&include=non-deleted`
     );
 
     await settingClick(page, GlobalSettingOptions.APPLICATIONS);
@@ -104,8 +104,13 @@ test.describe.serial('Data Insight Report Application', () => {
     );
 
     await page.click('[data-testid="configuration"]');
-    await page.click('#root\\/sendToAdmins');
-    await page.click('#root\\/sendToTeams');
+    // The switch input carries the field id but is visually hidden; click its label.
+    await page
+      .locator('label', { has: page.locator('#root\\/sendToAdmins') })
+      .click();
+    await page
+      .locator('label', { has: page.locator('#root\\/sendToTeams') })
+      .click();
     await page.click('[data-testid="submit-btn"]');
 
     await toastNotification(page, 'Configuration saved successfully');

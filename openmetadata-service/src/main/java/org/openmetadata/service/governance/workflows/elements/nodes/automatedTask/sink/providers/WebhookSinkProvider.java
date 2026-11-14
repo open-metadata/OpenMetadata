@@ -37,7 +37,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
-import org.openmetadata.service.util.SubscriptionUtil;
+import org.openmetadata.service.util.http.OutboundHttpClients;
 
 /**
  * Sink provider that sends entity data to HTTP webhook endpoints.
@@ -60,7 +60,7 @@ public class WebhookSinkProvider implements SinkProvider {
   public WebhookSinkProvider(Object rawConfig) {
     this.config = JsonUtils.convertValue(rawConfig, WebhookSinkConfig.class);
     this.client =
-        SubscriptionUtil.getClient(SINK_CONNECT_TIMEOUT_SECONDS, SINK_READ_TIMEOUT_SECONDS);
+        OutboundHttpClients.newClient(SINK_CONNECT_TIMEOUT_SECONDS, SINK_READ_TIMEOUT_SECONDS);
   }
 
   @Override

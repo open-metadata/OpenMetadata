@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Skeleton,
   Table,
@@ -36,11 +35,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -55,11 +50,12 @@ import {
   getAlertsFromName,
   getAllAlerts,
 } from '../../../../../../rest/alertsAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { NotificationView } from './Notification.types';
 
@@ -78,16 +74,14 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
@@ -98,13 +92,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const fetchAlertsRef = useRef<typeof fetchAlerts>(null!);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(alerts);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -235,22 +223,6 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     fetchAlertsRef.current(undefined, 1);
   }, [setHashPage, pageSize]);
 
-  const handleAlertDelete = useCallback(async () => {
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(selectedAlert).toString(),
-      selectedAlert?.id ?? '',
-      EntityType.SUBSCRIPTION
-    );
-
-    if (isSuccess) {
-      handleAfterDeleteAction();
-    }
-
-    setSelectedAlert(undefined);
-    setIsDeleting(false);
-  }, [selectedAlert, handleAfterDeleteAction]);
-
   const navigateSequentially = async (newPage: number) => {
     const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
@@ -327,6 +299,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -372,10 +345,9 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       <Box direction="row" gap={1}>
         {hasEdit && (
           <ButtonUtility
-            color="tertiary"
             data-testid={`alert-edit-${getEntityName(alert)}`}
             icon={Edit}
-            size="xs"
+            size="lg"
             tooltip={t('label.edit')}
             onPress={() =>
               onNavigate({
@@ -386,14 +358,23 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           />
         )}
         {hasDelete && (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`alert-delete-${getEntityName(alert)}`}
-            icon={Delete}
-            size="xs"
-            tooltip={t('label.delete')}
-            onPress={() => setSelectedAlert(alert)}
-          />
+          <DeleteEntityPopover
+            afterDeleteAction={handleAfterDeleteAction}
+            allowSoftDelete={false}
+            data-testid="delete-alert-popover"
+            description={t('message.permanently-delete-common-message', {
+              entity: t('label.alert-lowercase'),
+            })}
+            entityId={alert.id}
+            entityName={getEntityName(alert)}
+            entityType={EntityType.SUBSCRIPTION}>
+            <ButtonUtility
+              data-testid={`alert-delete-${getEntityName(alert)}`}
+              icon={Delete}
+              size="lg"
+              tooltip={t('label.delete')}
+            />
+          </DeleteEntityPopover>
         )}
       </Box>
     );
@@ -460,7 +441,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           align="center"
           className="tw:min-h-32 tw:relative"
           justify="center">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.alert-plural'),
             })}
@@ -478,7 +459,10 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       data-testid="alerts-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <Box className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.alert-plural')}
@@ -519,30 +503,13 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>
-
-      {selectedAlert && (
-        <DeleteModal
-          open
-          entityTitle={getEntityName(selectedAlert).toString()}
-          isDeleting={isDeleting}
-          message={t('message.permanently-delete-common-message', {
-            entity: getEntityName(selectedAlert).toString().toLowerCase(),
-          })}
-          onCancel={() => setSelectedAlert(undefined)}
-          onDelete={handleAlertDelete}
-        />
-      )}
     </Box>
   );
 };

@@ -16,23 +16,37 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.QueryType;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
+import org.apache.jena.sparql.exec.http.Service;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
+import org.openmetadata.service.rdf.SparqlQueryLimits.BoundedOutputStream;
+import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededException;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 /** Executes read-only SPARQL against one database-primary ontology model. */
 public final class OntologySparqlQueryService {
+  static final String SERVED_GRAPH_INFERENCE_MESSAGE =
+      "RDFS and OWL inference run in memory, and this ontology is too large for the in-memory"
+          + " query budget; query it without inference";
+
   private final OntologyModelProvider modelProvider;
   private final OntologySparqlQueryValidator queryValidator;
 
@@ -40,7 +54,7 @@ public final class OntologySparqlQueryService {
     this(exporter::materialize, new SparqlFederationGuard(null));
   }
 
-  OntologySparqlQueryService(
+  public OntologySparqlQueryService(
       final OntologyModelProvider modelProvider, final SparqlFederationGuard federationGuard) {
     this.modelProvider = Objects.requireNonNull(modelProvider);
     queryValidator = new OntologySparqlQueryValidator(Objects.requireNonNull(federationGuard));
@@ -48,12 +62,74 @@ public final class OntologySparqlQueryService {
 
   public QueryResult query(final UUID glossaryId, final SparqlQuery request) {
     final ValidatedQuery validated = validate(request);
-    final Model ontology = modelProvider.materialize(glossaryId, true);
-    try {
-      return executeWithInference(ontology, validated);
-    } finally {
-      ontology.close();
+    try (final OntologySparqlWorker worker =
+        OntologySparqlWorker.acquire(validated.timeoutMillis())) {
+      final Model ontology = modelProvider.materialize(glossaryId, true);
+      try {
+        return new QueryResult(
+            worker.execute(ontology, request),
+            validated.format().externalName(),
+            validated.format().mediaType());
+      } finally {
+        ontology.close();
+      }
     }
+  }
+
+  /**
+   * Answers over a named graph the triplestore serves, for an ontology too large for the worker.
+   * The query's dataset is that graph alone; inference stays local, so it is refused here. The
+   * read gets what is left of the request's timeout, counted from {@code startedNanos}.
+   */
+  public QueryResult queryServedGraph(
+      final SparqlQuery request, final ServedGraph served, final long startedNanos) {
+    final ValidatedQuery validated = validate(request);
+    if (validated.inference() != Inference.NONE) {
+      throw new QueryLimitExceededException(SERVED_GRAPH_INFERENCE_MESSAGE);
+    }
+    final Query scoped = scopedTo(validated.query(), served.graphUri());
+    final ByteArrayOutputStream body = new ByteArrayOutputStream();
+    served.read(
+        scoped,
+        remainingMillis(request, startedNanos),
+        execution -> writeBounded(execution, scoped, validated.format(), body));
+    return new QueryResult(
+        body.toString(StandardCharsets.UTF_8),
+        validated.format().externalName(),
+        validated.format().mediaType());
+  }
+
+  /** What a request that started at {@code startedNanos} has left of its timeout. */
+  public static long remainingMillis(final SparqlQuery request, final long startedNanos) {
+    final int timeout = timeoutMillis(request.getTimeout());
+    final long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNanos);
+    if (elapsed >= timeout) {
+      throw new QueryTimeoutException(timeout, null);
+    }
+    return timeout - elapsed;
+  }
+
+  /**
+   * Names the graph as both FROM and FROM NAMED: the store's default graph is the union of the
+   * dataset's named graphs, so FROM alone would leave the query an empty dataset
+   * (ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph).
+   */
+  public static Query scopedTo(final Query query, final String graphUri) {
+    final Query scoped = SparqlQueryLimits.applyResultLimit(query.cloneQuery());
+    scoped.addGraphURI(graphUri);
+    scoped.addNamedGraphURI(graphUri);
+    return scoped;
+  }
+
+  private static void writeBounded(
+      final QueryExecution execution,
+      final Query query,
+      final ResultFormat format,
+      final OutputStream body) {
+    final OutputStream bounded =
+        new BoundedOutputStream(
+            body, SparqlQueryLimits.MAX_OUTPUT_BYTES, OntologySparqlWorker.OUTPUT_LIMIT_MESSAGE);
+    executeByType(execution, query, format, bounded);
   }
 
   private ValidatedQuery validate(final SparqlQuery request) {
@@ -95,10 +171,11 @@ public final class OntologySparqlQueryService {
     };
   }
 
-  private QueryResult executeWithInference(final Model ontology, final ValidatedQuery validated) {
+  private static void executeWithInference(
+      final Model ontology, final ValidatedQuery validated, final OutputStream output) {
     final Model queryModel = inferenceModel(ontology, validated.inference());
     try {
-      return execute(queryModel, validated);
+      execute(queryModel, validated, output);
     } finally {
       closeDerivedModel(ontology, queryModel);
     }
@@ -118,26 +195,35 @@ public final class OntologySparqlQueryService {
     }
   }
 
-  private static QueryResult execute(final Model model, final ValidatedQuery validated) {
+  /**
+   * The worker's model is self-contained, so SERVICE stays disabled even if validation allows it.
+   */
+  private static void execute(
+      final Model model, final ValidatedQuery validated, final OutputStream output) {
     final QueryExecution execution =
         QueryExecution.model(model)
             .query(validated.query())
+            .set(Service.httpServiceAllowed, false)
             .timeout(validated.timeoutMillis(), TimeUnit.MILLISECONDS)
             .build();
     try (execution) {
-      return executeByType(execution, validated.query(), validated.format());
+      executeByType(execution, validated.query(), validated.format(), output);
     }
   }
 
-  private static QueryResult executeByType(
-      final QueryExecution execution, final Query query, final ResultFormat format) {
-    return switch (query.queryType()) {
-      case SELECT -> serializeSelect(execution.execSelect(), requireTupleFormat(format));
-      case ASK -> serializeAsk(execution.execAsk(), requireTupleFormat(format));
-      case CONSTRUCT -> serializeGraph(execution.execConstruct(), requireGraphFormat(format));
-      case DESCRIBE -> serializeGraph(execution.execDescribe(), requireGraphFormat(format));
+  private static void executeByType(
+      final QueryExecution execution,
+      final Query query,
+      final ResultFormat format,
+      final OutputStream output) {
+    switch (query.queryType()) {
+      case SELECT -> requireTupleFormat(format).write(output, execution.execSelect());
+      case ASK -> requireTupleFormat(format).write(output, execution.execAsk());
+      case CONSTRUCT -> serializeGraph(
+          output, execution.execConstruct(), requireGraphFormat(format));
+      case DESCRIBE -> serializeGraph(output, execution.execDescribe(), requireGraphFormat(format));
       default -> throw new IllegalArgumentException("Unsupported SPARQL query type");
-    };
+    }
   }
 
   private static TupleFormat requireTupleFormat(final ResultFormat format) {
@@ -154,33 +240,13 @@ public final class OntologySparqlQueryService {
     return graphFormat;
   }
 
-  private static QueryResult serializeSelect(final ResultSet resultSet, final TupleFormat format) {
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
-    format.write(output, resultSet);
-    return result(output, format);
-  }
-
-  private static QueryResult serializeAsk(final boolean value, final TupleFormat format) {
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
-    format.write(output, value);
-    return result(output, format);
-  }
-
-  private static QueryResult serializeGraph(final Model model, final GraphFormat format) {
-    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+  private static void serializeGraph(
+      final OutputStream output, final Model model, final GraphFormat format) {
     try {
       RdfGraphSerializer.write(output, model, format.serialization());
     } finally {
       model.close();
     }
-    return result(output, format);
-  }
-
-  private static QueryResult result(final ByteArrayOutputStream output, final ResultFormat format) {
-    return new QueryResult(
-        SparqlQueryLimits.requireBoundedOutput(output.toString(StandardCharsets.UTF_8)),
-        format.externalName(),
-        format.mediaType());
   }
 
   private static ResultFormat resultFormat(final SparqlQuery.Format requested, final Query query) {
@@ -218,10 +284,57 @@ public final class OntologySparqlQueryService {
 
   public record QueryResult(String body, String format, String mediaType) {}
 
-  record ValidatedQuery(Query query, ResultFormat format, int timeoutMillis, Inference inference) {}
+  private record ValidatedQuery(
+      Query query, ResultFormat format, int timeoutMillis, Inference inference) {}
+
+  public static final class Worker {
+    private Worker() {}
+
+    public static void main(final String[] arguments) throws IOException {
+      final Path directory = Path.of(arguments[0]);
+      try {
+        executeRequest(directory);
+        OntologySparqlWorker.writeStatus(directory, OntologySparqlWorker.Status.SUCCESS, "");
+      } catch (final StackOverflowError error) {
+        OntologySparqlWorker.writeStatus(
+            directory,
+            OntologySparqlWorker.Status.LIMIT,
+            "SPARQL query exceeds the execution stack budget");
+      } catch (final RuntimeException exception) {
+        OntologySparqlWorker.writeFailure(directory, exception);
+      }
+    }
+
+    private static void executeRequest(final Path directory) throws IOException {
+      final Model model = ModelFactory.createDefaultModel();
+      try (final DataInputStream input = OntologySparqlWorker.openInput(directory);
+          final OutputStream output = OntologySparqlWorker.openOutput(directory)) {
+        final SparqlQuery request = OntologySparqlWorker.readRequest(input);
+        final Query query =
+            SparqlQueryLimits.applyResultLimit(QueryFactory.create(request.getQuery()));
+        final ValidatedQuery validated =
+            new ValidatedQuery(
+                query,
+                resultFormat(request.getFormat(), query),
+                timeoutMillis(request.getTimeout()),
+                inference(request.getInference()));
+        OntologySparqlWorker.readModel(directory, input, model);
+        executeWithInference(model, validated, output);
+      } finally {
+        model.close();
+      }
+    }
+  }
+
+  /** A named graph the triplestore serves, read through a streaming query execution. */
+  public interface ServedGraph {
+    String graphUri();
+
+    void read(Query query, long timeoutMillis, Consumer<QueryExecution> reader);
+  }
 
   @FunctionalInterface
-  interface OntologyModelProvider {
+  public interface OntologyModelProvider {
     Model materialize(UUID glossaryId, boolean includeRelations);
   }
 
@@ -253,7 +366,7 @@ public final class OntologySparqlQueryService {
       this.mediaType = mediaType;
     }
 
-    private void write(final ByteArrayOutputStream output, final ResultSet resultSet) {
+    private void write(final OutputStream output, final ResultSet resultSet) {
       switch (this) {
         case JSON -> ResultSetFormatter.outputAsJSON(output, resultSet);
         case XML -> ResultSetFormatter.outputAsXML(output, resultSet);
@@ -262,7 +375,7 @@ public final class OntologySparqlQueryService {
       }
     }
 
-    private void write(final ByteArrayOutputStream output, final boolean value) {
+    private void write(final OutputStream output, final boolean value) {
       switch (this) {
         case JSON -> ResultSetFormatter.outputAsJSON(output, value);
         case XML -> ResultSetFormatter.outputAsXML(output, value);

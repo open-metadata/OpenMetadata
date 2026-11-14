@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { RouterProvider } from 'react-aria-components';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 
 const mockNavigate = jest.fn();
@@ -23,7 +24,11 @@ jest.mock('react-router-dom', () => ({
 
 describe('Test Data insight left panel', () => {
   it('Should render the menu items', async () => {
-    render(<DataInsightLeftPanel />);
+    render(
+      <RouterProvider navigate={mockNavigate}>
+        <DataInsightLeftPanel />
+      </RouterProvider>
+    );
 
     const menuContainer = await screen.findByTestId('data-insight-left-panel');
 
@@ -38,7 +43,11 @@ describe('Test Data insight left panel', () => {
   });
 
   it('On clicking the menu item, route should change', async () => {
-    render(<DataInsightLeftPanel />);
+    render(
+      <RouterProvider navigate={mockNavigate}>
+        <DataInsightLeftPanel />
+      </RouterProvider>
+    );
 
     const appAnalytics = await screen.findByText('label.app-analytic-plural');
     const kpi = await screen.findByText('label.kpi-uppercase-plural');

@@ -57,6 +57,7 @@ import {
   hydrateBackendSyncedPreferences,
   resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AppModeHint,
@@ -104,6 +105,7 @@ import {
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isRefreshableAuthError,
+  isServerDrivenLogin,
   prepareUserProfileFromClaims,
   validateAuthFieldsDetailed,
 } from '../../../utils/AuthProvider.util';
@@ -111,6 +113,7 @@ import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
   getOidcToken,
+  setApiOnlyTokenListener,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -149,6 +152,7 @@ const userAPIQueryFields = [
   TabSpecificField.ROLES,
   TabSpecificField.PERSONAS,
   TabSpecificField.DEFAULT_PERSONA,
+  TabSpecificField.DEFAULT_DOMAIN,
   TabSpecificField.DOMAINS,
 ];
 
@@ -185,6 +189,42 @@ const shouldAdoptHint = (
   hint.mode !== existingSession?.mode;
 
 /**
+ * Checks if we should skip the full persona/preference resolution chain
+ * because we already have a sticky session or a fresh cross-tab hint.
+ */
+const shouldSkipResolution = (
+  existingSession: AppModeSession | null,
+  hint: AppModeHint | null
+): boolean => {
+  if (existingSession?.mode && existingSession.source !== 'boot') {
+    return true;
+  }
+  if (shouldAdoptHint(hint, existingSession) && hint?.mode) {
+    writeAppMode(hint.mode, null, { source: 'boot' });
+
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Fetches the persona document and resolves the forced app mode.
+ * Extracted to reduce cyclomatic complexity of the boot resolver.
+ */
+const resolvePersonaMode = async (
+  defaultPersona: User['defaultPersona']
+): Promise<string | null> => {
+  const personaFqn = personaDocFqn(defaultPersona ?? null);
+  if (!personaFqn) {
+    return null;
+  }
+  const personaDoc = await getDocumentByFQN(personaFqn).catch(() => undefined);
+
+  return resolvePersonaAppMode(personaDoc, defaultPersona?.id);
+};
+
+/**
  * Boot-time app-mode plumbing, run once `currentUser` is known (both the
  * returning-session path and the fresh-login path need it). Fetches the
  * user's own preferences bag and the tenant-wide app-mode default in
@@ -212,71 +252,30 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     getAppConfiguration().catch(() => null),
   ]);
   hydrateBackendSyncedPreferences(user, prefsRes);
-
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
   useApplicationStore.getState().setAppPreferences({
     defaultColumnOrder: appConfig?.defaultColumnOrder ?? undefined,
   });
 
-  // Skip the boot-time write when this tab already has a stickier
-  // signal:
-  //
-  //   1. A session tuple this tab already owns from a manual toggle or a
-  //      prior resolve (`source !== 'boot'`) — the user's active in-tab
-  //      choice wins over persona / preference. A `'boot'` tuple from an
-  //      earlier auth cycle is NOT sticky and should be re-resolved, so
-  //      don't skip on that.
-  //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
-  //      sibling tab's active mode carries into a newly-opened tab
-  //      (cmd+click). We still need to seed THIS tab's store from that
-  //      hint (module init deliberately never reads the hint, so the
-  //      store is at `DEFAULT_APP_MODE` here), but we must not run the
-  //      persona/preference chain — the sibling's active choice wins.
+  // Hydrate tenant-wide time format after authentication
+  useApplicationStore
+    .getState()
+    .setTimeFormat(appConfig?.defaultTimeFormat === '24h' ? '24h' : '12h');
+
   const existingSession = readAppModeSession();
-  if (existingSession?.mode && existingSession.source !== 'boot') {
-    return;
-  }
   const hint = readAppModeHint();
-  if (shouldAdoptHint(hint, existingSession) && hint?.mode) {
-    // Adopt the sibling tab's mode so this new tab renders the right
-    // shell. `source: 'boot'` keeps the tuple re-resolvable on the next
-    // reload and skips re-writing the hint (no self-leak).
-    writeAppMode(hint.mode, null, { source: 'boot' });
 
+  if (shouldSkipResolution(existingSession, hint)) {
     return;
   }
 
-  // `appMode` off the wire is the preference's WIRE token ("classic" /
-  // "ai" / legacy "ai"), not the runtime mode string — translate
-  // before feeding it into the resolver. See `translatePreferenceMode` in
-  // `useAppMode.ts` (#31906 follow-up: the switcher's remember checkbox
-  // writes the wire token, so the boot read must undo that translation).
   const userPref = translatePreferenceMode(
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null
   );
 
-  // Persona precedence: only fetched here (not in the Promise.all above)
-  // so a returning tab that short-circuits on its session tuple / hint
-  // pays no persona-doc round-trip. Best-effort — a failed fetch or a
-  // persona with no forced `appMode` yields `null` and the chain falls
-  // through to userPref / tenant default.
-  const personaFqn = personaDocFqn(user.defaultPersona ?? null);
-  const personaDoc = personaFqn
-    ? await getDocumentByFQN(personaFqn).catch(() => undefined)
-    : undefined;
-  const personaMode = resolvePersonaAppMode(
-    personaDoc,
-    user.defaultPersona?.id
-  );
+  const personaMode = await resolvePersonaMode(user.defaultPersona);
 
-  // Final boot write — persona is now known, so this is the authoritative
-  // mode (the old async `useResolvedAppMode` refinement is gone). Marked
-  // `source: 'boot'` so it stays re-resolvable on the next reload (a later
-  // persona-doc edit takes effect) while a manual toggle's `'manual'`
-  // tuple remains sticky. The `writeHint` inside `writeAppMode` is skipped
-  // for `'boot'` writes so this doesn't leak to sibling tabs as an
-  // authoritative hint.
   writeAppMode(
     resolveEffectiveAppMode(userPref, personaMode, appDefault),
     personaMode,
@@ -436,6 +435,11 @@ export const AuthProvider = ({
       clearEtagCache();
       queryClient.clear();
 
+      // End a tour this user left running, before the app mode is cleared:
+      // its step, return page and mode snapshot are theirs, and its mock
+      // must not answer the next user's requests.
+      useProductTourStore.getState().exit();
+
       // Drop the tab-scoped app-mode session so the next user boots into
       // their own persona/preference-resolved mode rather than inheriting
       // this user's transient mode.
@@ -457,6 +461,8 @@ export const AuthProvider = ({
       // `handleRefreshFailed` recovery would never see the logout finish and
       // the SPA would be left half-logged-out with the flag stuck armed.
       isSigningOutRef.current = false;
+      // Refreshes were held off for the logout; the next sign-in needs them.
+      authCoordinator.resume();
       // A recovery that stood down for this logout returned without
       // navigating, so nothing reset this. Logout lands on /signin without a
       // reload; left set, it would swallow every refresh failure after the
@@ -467,6 +473,17 @@ export const AuthProvider = ({
 
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(() => signOut(true), [signOut]);
+
+  // Bot and personal access tokens are API-only: a full sign-out pauses the
+  // AuthCoordinator, so a silent renewal cannot restore the session.
+  useEffect(() => {
+    setApiOnlyTokenListener(() => {
+      showErrorToast(t('server.api-only-token-ui-access-denied'));
+      onLogoutHandler();
+    });
+
+    return () => setApiOnlyTokenListener();
+  }, [onLogoutHandler, t]);
 
   // Signing out in one tab signs every tab out. Without this the others kept
   // showing a signed-in app until their next request failed.
@@ -579,6 +596,9 @@ export const AuthProvider = ({
 
       return;
     }
+    // Not resumed here: invokeSilentReauth leaves the page, and its failure
+    // signs out, which resumes.
+    // ADR:2026-10-28-auth-coordinator-pause-is-always-resumed-or-unloaded
     authCoordinator.pause();
     setApplicationLoading(true);
     try {
@@ -820,17 +840,25 @@ export const AuthProvider = ({
           ? userAPIQueryFields + ',' + isEmailVerifyField
           : userAPIQueryFields;
       try {
-        const newUser = prepareUserProfileFromClaims({
-          user,
-          jwtPrincipalClaims,
-          principalDomain: authorizerConfig?.principalDomain ?? '',
-          jwtPrincipalClaimsMapping,
-          clientType,
-        });
-
         const res = await getLoggedInUser({ fields });
         if (res) {
-          const userDetails = await checkIfUpdateRequired(res, newUser);
+          // A server-driven login has already synced the profile, and the name it handed the
+          // browser is the username, which must not become the display name.
+          const userDetails = isServerDrivenLogin(
+            clientType,
+            authConfig?.provider
+          )
+            ? res
+            : await checkIfUpdateRequired(
+                res,
+                prepareUserProfileFromClaims({
+                  user,
+                  jwtPrincipalClaims,
+                  principalDomain: authorizerConfig?.principalDomain ?? '',
+                  jwtPrincipalClaimsMapping,
+                  clientType,
+                })
+              );
           setCurrentUser(userDetails);
           await hydrateAndResolveAppMode(userDetails);
 
@@ -862,6 +890,7 @@ export const AuthProvider = ({
     },
     [
       authConfig?.enableSelfSignup,
+      authConfig?.provider,
       clientType,
       authorizerConfig?.principalDomain,
       jwtPrincipalClaims,
@@ -971,8 +1000,8 @@ export const AuthProvider = ({
     // fresh token, and fetching with a token left over from before a silent
     // re-authentication would 401 into a refresh that races it.
     if (
-      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].includes(
-        location.pathname
+      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].some(
+        (route) => route === location.pathname
       )
     ) {
       // Fire-and-forget: `getLoggedInUserDetails` now re-throws a
@@ -1179,10 +1208,7 @@ export const AuthProvider = ({
       );
 
     // Handling for SAML moved to GenericAuthenticator
-    if (
-      clientType === ClientType.Confidential ||
-      authConfig?.provider === AuthProviderEnum.Saml
-    ) {
+    if (isServerDrivenLogin(clientType, authConfig?.provider)) {
       return (
         <LazyGenericAuthenticator ref={authenticatorRef}>
           {childElement}

@@ -238,9 +238,9 @@ describe('ProfileSectionUserDetailsCard', () => {
         '[data-testid="user-online-status"]'
       );
 
-      const statusDot = badge?.querySelector('.ant-badge-status-dot');
+      const statusDot = badge?.querySelector('svg');
 
-      expect(statusDot).toHaveClass('ant-badge-status-success');
+      expect(statusDot).toHaveClass('tw:text-utility-success-500');
     });
 
     it('should be positioned below the email', () => {

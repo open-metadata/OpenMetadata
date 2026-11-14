@@ -17,11 +17,16 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
+import { Conversation } from '../../../generated/entity/feed/conversation';
+import { Task } from '../../../generated/entity/tasks/task';
+import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { ReactionType } from '../../../generated/type/reaction';
 import {
   DummyActivityCommentComponent,
+  DummyActivityDrawerComponent,
   DummyActivityFeedComponent,
   DummyActivityFilterSwitchComponent,
   DummyActivityReactionComponent,
@@ -55,12 +60,22 @@ import {
   createConversationReply,
   deleteConversation,
   deleteConversationReply,
+  listConversationReplies,
   listConversations,
   patchConversationReply,
 } from '../../../rest/conversationsAPI';
-import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
+import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
+import {
+  getTaskById,
+  listMyVisibleTasks,
+  listTasks,
+  TaskEntityType,
+} from '../../../rest/tasksAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ActivityFeedProvider from './ActivityFeedProvider';
+import TaskTabIncidentManagerHeaderNewFromTask from '../../Entity/Task/TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from './ActivityFeedProvider';
 
 const mockUseApplicationStore = jest.fn(() => ({
   currentUser: mockUserData,
@@ -131,6 +146,15 @@ jest.mock('../../../rest/tasksAPI', () => ({
     Open: 'open',
   },
 }));
+
+jest.mock(
+  '../../DataQuality/IncidentManager/Severity/Severity.component',
+  () => () => null
+);
+jest.mock(
+  '../../common/RichTextEditor/RichTextEditorPreviewerV1',
+  () => () => null
+);
 
 jest.mock('../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentByStateId: jest.fn(),
@@ -242,7 +266,7 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
-  it('lists conversations through the conversation API', async () => {
+  it('lists the entity conversations, including those on its fields', async () => {
     render(
       <ActivityFeedProvider>
         <DummyChildrenEntityComponent />
@@ -251,7 +275,10 @@ describe('ActivityFeedProvider', () => {
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenCalledWith(
-        expect.objectContaining({ entityLink: '<#E::table::admin>' })
+        expect.objectContaining({
+          entityLink: '<#E::table::admin>',
+          includeFields: true,
+        })
       )
     );
   });
@@ -407,6 +434,27 @@ describe('ActivityFeedProvider', () => {
 
       expect(screen.getByTestId('task-ids')).toHaveTextContent('task-closed');
       expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
+    });
+
+    // An empty list after a failure must be told apart from an empty result.
+    it('exposes a failed fetch as listError until the next request succeeds', async () => {
+      (listTasks as jest.Mock)
+        .mockRejectedValueOnce({ response: { status: 500 } })
+        .mockResolvedValueOnce({ data: [], paging: {} });
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+
+      expect(screen.getByTestId('list-error')).toHaveTextContent('500');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      expect(screen.getByTestId('list-error')).toHaveTextContent('none');
     });
 
     it('ignores a response that resolves after a newer request started', async () => {
@@ -812,6 +860,120 @@ describe('ActivityFeedProvider', () => {
     });
   });
 
+  // The entity Activity tab's side panel reads the same selection the drawer
+  // opens on, so closing the drawer must not empty the panel.
+  it('keeps the activity and its replies selected when its drawer closes', async () => {
+    (listActivityReplies as jest.Mock).mockResolvedValue({
+      data: [activityReply],
+      paging: { total: 1 },
+    });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+
+    expect(screen.getByTestId('drawer-open')).toHaveTextContent('false');
+    expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+      activity.id
+    );
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1');
+  });
+
+  // Closing keeps the activity selected, so reopening must still fetch: a
+  // failed first fetch, or replies posted meanwhile, would otherwise stay hidden.
+  it('refetches the replies when the selected activity drawer reopens', async () => {
+    (listActivityReplies as jest.Mock)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ data: [activityReply], paging: { total: 1 } });
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    await waitFor(() => expect(listActivityReplies).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
+
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('1')
+    );
+
+    expect(listActivityReplies).toHaveBeenCalledTimes(2);
+  });
+
+  // The drawer shows an activity ahead of a thread.
+  it('drops the selected activity when a conversation drawer opens', async () => {
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={{ id: 'thread-1' } as Conversation}
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-activity-drawer'));
+    fireEvent.click(screen.getByTestId('hide-drawer'));
+    fireEvent.click(screen.getByTestId('open-thread-drawer'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+        'none'
+      )
+    );
+
+    expect(screen.getByTestId('drawer-open')).toHaveTextContent('true');
+  });
+
+  it('keeps the replies loading while a conversation drawer fetches them', async () => {
+    (listConversationReplies as jest.Mock).mockReturnValue(
+      new Promise(() => undefined)
+    );
+
+    render(
+      <ActivityFeedProvider>
+        <DummyActivityDrawerComponent
+          activity={activity}
+          thread={
+            {
+              id: 'thread-1',
+              replyCount: 10,
+              replies: [],
+            } as unknown as Conversation
+          }
+        />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByTestId('open-thread-drawer'));
+
+    await waitFor(() =>
+      expect(listConversationReplies).toHaveBeenCalledWith('thread-1', {
+        limit: 100,
+      })
+    );
+
+    expect(screen.getByTestId('posts-loading')).toHaveTextContent('true');
+  });
+
   describe('updateReactions rejection handling', () => {
     const conversationReaction = {
       id: 'feed-thread',
@@ -886,5 +1048,370 @@ describe('ActivityFeedProvider', () => {
         'done'
       );
     });
+  });
+});
+
+const IncidentHistoryConsumer = () => {
+  const {
+    setActiveTask,
+    testCaseResolutionStatus,
+    incidentAfter,
+    loadMoreIncidentHistory,
+    updateTestCaseIncidentStatus,
+  } = useActivityFeedProvider();
+  const select = (id: string) =>
+    setActiveTask({ id, type: TaskEntityType.TestCaseResolution } as Task);
+
+  return (
+    <>
+      <button onClick={() => select('first')}>first</button>
+      <button onClick={() => select('second')}>second</button>
+      <button onClick={() => setActiveTask()}>clear</button>
+      <button
+        onClick={() =>
+          updateTestCaseIncidentStatus([
+            ...testCaseResolutionStatus,
+            {
+              ...testCaseResolutionStatus[testCaseResolutionStatus.length - 1],
+              testCaseResolutionStatusType:
+                TestCaseResolutionStatusTypes.Resolved,
+            },
+          ])
+        }>
+        resolve
+      </button>
+      {incidentAfter && (
+        <button onClick={loadMoreIncidentHistory}>older</button>
+      )}
+      <output data-testid="incident-latest-status">
+        {
+          testCaseResolutionStatus[testCaseResolutionStatus.length - 1]
+            ?.testCaseResolutionStatusType
+        }
+      </output>
+      <output data-testid="incident-rows">
+        {testCaseResolutionStatus.map((row) => row.id).join(',')}
+      </output>
+    </>
+  );
+};
+
+const IncidentHeaderConsumer = () => {
+  const { setActiveTask } = useActivityFeedProvider();
+  const task = {
+    id: 'incident-history',
+    type: TaskEntityType.TestCaseResolution,
+  } as Task;
+
+  return (
+    <>
+      <button onClick={() => setActiveTask(task)}>Open incident</button>
+      <TaskTabIncidentManagerHeaderNewFromTask task={task} />
+    </>
+  );
+};
+
+describe('incident history paging', () => {
+  const history = getListTestCaseIncidentByStateId as jest.Mock;
+
+  beforeEach(() => history.mockReset());
+
+  it('loads older steps through the production control while retaining the latest status', async () => {
+    let finishOlder: (value: unknown) => void = () => {};
+    history
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'resolved',
+            timestamp: 300,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
+            testCaseResolutionStatusDetails: {
+              testCaseFailureReason: 'FalsePositive',
+            },
+          },
+          {
+            id: 'assigned',
+            timestamp: 200,
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+          },
+        ],
+        paging: { after: 'older', total: 4 },
+      })
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishOlder = resolve;
+        })
+      );
+    render(
+      <ActivityFeedProvider>
+        <IncidentHeaderConsumer />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open incident' }));
+    const steps = screen.getByTestId('task-resolution-steps');
+    await waitFor(() =>
+      expect(
+        within(steps)
+          .getAllByText(/^(Assigned|Resolved)$/)
+          .map((node) => node.textContent)
+      ).toEqual(['Assigned', 'Resolved'])
+    );
+
+    expect(screen.getByTestId('failure-reason')).toHaveTextContent(
+      'FalsePositive'
+    );
+
+    const loadMore = screen.getByRole('button', { name: 'label.load-more' });
+
+    expect(loadMore).toBeEnabled();
+
+    fireEvent.click(loadMore);
+    await waitFor(() => expect(loadMore).toBeDisabled());
+
+    expect(screen.getByTestId('failure-reason')).toHaveTextContent(
+      'FalsePositive'
+    );
+
+    await act(async () =>
+      finishOlder({
+        data: [
+          {
+            id: 'ack',
+            timestamp: 100,
+            testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+          },
+          {
+            id: 'new',
+            timestamp: 0,
+            testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+          },
+        ],
+        paging: { total: 4 },
+      })
+    );
+    await waitFor(() =>
+      expect(
+        within(steps)
+          .getAllByText(/^(New|Ack|Assigned|Resolved)$/)
+          .map((node) => node.textContent)
+      ).toEqual(['New', 'Ack', 'Assigned', 'Resolved'])
+    );
+
+    expect(screen.getByTestId('failure-reason')).toHaveTextContent(
+      'FalsePositive'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'label.load-more' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('prepends older events chronologically, deduplicates, and resets paging on reload', async () => {
+    history
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'd', timestamp: 4 },
+          { id: 'c', timestamp: 3 },
+        ],
+        paging: { after: 'older-page', total: 4 },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'c', timestamp: 3 },
+          { id: 'b', timestamp: 2 },
+          { id: 'a', timestamp: 1 },
+        ],
+        paging: { total: 4 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'e', timestamp: 5 }],
+        paging: { total: 5 },
+      });
+    render(
+      <ActivityFeedProvider>
+        <IncidentHistoryConsumer />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByText('first'));
+    await waitFor(() =>
+      expect(screen.getByTestId('incident-rows')).toHaveTextContent('c,d')
+    );
+    fireEvent.click(screen.getByText('older'));
+    await waitFor(() =>
+      expect(screen.getByTestId('incident-rows')).toHaveTextContent('a,b,c,d')
+    );
+
+    expect(screen.queryByText('older')).not.toBeInTheDocument();
+    expect(history.mock.calls[1]).toEqual([
+      'first',
+      expect.objectContaining({ after: 'older-page' }),
+    ]);
+
+    fireEvent.click(screen.getByText('first'));
+    await waitFor(() =>
+      expect(screen.getByTestId('incident-rows')).toHaveTextContent('e')
+    );
+
+    expect(history.mock.calls[2][1].after).toBeUndefined();
+  });
+
+  it('keeps the replacement status when an update repeats an existing record id', async () => {
+    (getTaskById as jest.Mock).mockResolvedValueOnce({
+      data: { id: 'first', type: TaskEntityType.TestCaseResolution },
+    });
+    history.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'r',
+          timestamp: 3,
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+        },
+      ],
+      paging: { total: 1 },
+    });
+    render(
+      <ActivityFeedProvider>
+        <IncidentHistoryConsumer />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByText('first'));
+    await waitFor(() =>
+      expect(screen.getByTestId('incident-latest-status')).toHaveTextContent(
+        'Assigned'
+      )
+    );
+    fireEvent.click(screen.getByText('resolve'));
+    await waitFor(() =>
+      expect(screen.getByTestId('incident-latest-status')).toHaveTextContent(
+        'Resolved'
+      )
+    );
+
+    expect(screen.getByTestId('incident-rows')).toHaveTextContent(/^r$/);
+  });
+
+  it('ignores a pending page after switching tasks or clearing selection', async () => {
+    let resolveOld: (value: unknown) => void = () => {};
+    history
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOld = resolve;
+        })
+      )
+      .mockResolvedValueOnce({
+        data: [{ id: 'new', timestamp: 3 }],
+        paging: { total: 1 },
+      });
+    render(
+      <ActivityFeedProvider>
+        <IncidentHistoryConsumer />
+      </ActivityFeedProvider>
+    );
+    fireEvent.click(screen.getByText('first'));
+    fireEvent.click(screen.getByText('second'));
+    await waitFor(() =>
+      expect(screen.getByTestId('incident-rows')).toHaveTextContent('new')
+    );
+    await act(async () =>
+      resolveOld({
+        data: [{ id: 'stale', timestamp: 1 }],
+        paging: { after: 'stale' },
+      })
+    );
+
+    expect(screen.getByTestId('incident-rows')).toHaveTextContent('new');
+    expect(screen.queryByText('older')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('clear'));
+
+    expect(screen.getByTestId('incident-rows')).toBeEmptyDOMElement();
+  });
+});
+
+const USER_A = { id: 'user-a', name: 'userA', type: 'user' };
+
+const TASK_ASSIGNED_TO_USER_AND_TEAM = {
+  id: 'task-reassign',
+  createdAt: 1,
+  assignees: [USER_A, { id: 'team-b', name: 'teamB', type: 'team' }],
+} as Task;
+
+const getAssigneeNames = (task?: Task) =>
+  (task?.assignees ?? []).map((assignee) => assignee.name).join(',');
+
+const TaskReassignConsumer = () => {
+  const { getTaskData, tasks, selectedTask, setActiveTask, updateTask } =
+    useActivityFeedProvider();
+
+  return (
+    <>
+      <button onClick={() => getTaskData()}>fetch</button>
+      <button onClick={() => setActiveTask(tasks[0])}>open</button>
+      <button
+        onClick={() =>
+          updateTask({
+            ...TASK_ASSIGNED_TO_USER_AND_TEAM,
+            assignees: [USER_A],
+          })
+        }>
+        reassign
+      </button>
+      <button
+        onClick={() =>
+          updateTask({ id: 'other-task', assignees: [] } as unknown as Task)
+        }>
+        update other
+      </button>
+      <output data-testid="list-assignees">{getAssigneeNames(tasks[0])}</output>
+      <output data-testid="selected-assignees">
+        {getAssigneeNames(selectedTask)}
+      </output>
+    </>
+  );
+};
+
+describe('updateTask keeps the open task drawer in sync', () => {
+  const renderAndOpenTask = async () => {
+    (listMyVisibleTasks as jest.Mock).mockResolvedValue({
+      data: [TASK_ASSIGNED_TO_USER_AND_TEAM],
+      paging: {},
+    });
+
+    render(
+      <ActivityFeedProvider>
+        <TaskReassignConsumer />
+      </ActivityFeedProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('fetch'));
+    });
+    fireEvent.click(screen.getByText('open'));
+
+    expect(screen.getByTestId('selected-assignees')).toHaveTextContent(
+      'userA,teamB'
+    );
+  };
+
+  it('shows the saved assignees in both the list and the open drawer', async () => {
+    await renderAndOpenTask();
+
+    fireEvent.click(screen.getByText('reassign'));
+
+    expect(screen.getByTestId('list-assignees')).toHaveTextContent(/^userA$/);
+    expect(screen.getByTestId('selected-assignees')).toHaveTextContent(
+      /^userA$/
+    );
+  });
+
+  it('leaves the open drawer alone when a different task is updated', async () => {
+    await renderAndOpenTask();
+
+    fireEvent.click(screen.getByText('update other'));
+
+    expect(screen.getByTestId('selected-assignees')).toHaveTextContent(
+      'userA,teamB'
+    );
   });
 });

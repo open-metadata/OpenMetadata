@@ -18,6 +18,8 @@ export interface DqSectionCardProps {
   subtitle?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Marks the section as the product tour step of that name. */
+  tourStep?: string;
 }
 
 /**
@@ -31,9 +33,12 @@ export const DqSectionCard: React.FC<DqSectionCardProps> = ({
   subtitle,
   children,
   className,
+  tourStep,
 }) => {
   return (
-    <div className={`export-pdf-container ${className ?? ''}`}>
+    <div
+      className={`export-pdf-container ${className ?? ''}`}
+      data-tour-step={tourStep}>
       <Box className="tw:mb-5" direction="col" gap={1}>
         <Typography size="text-md" weight="semibold">
           {title}

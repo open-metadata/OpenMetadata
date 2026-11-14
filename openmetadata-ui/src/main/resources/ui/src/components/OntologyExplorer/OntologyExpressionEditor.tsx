@@ -18,17 +18,22 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Key } from 'react';
+import { Key, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ExpressionKind,
   OntologyExpression,
   RestrictionKind,
 } from '../../generated/api/data/createOntologyAxiom';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { generateUUID } from '../../utils/StringUtils';
+import OntologyIriInput from '../governance/ontology/OntologyIriInput/OntologyIriInput';
+import { ONTOLOGY_DATATYPE_OPTIONS } from '../governance/ontology/OntologyIriInput/OntologyIriInput.constants';
+import { OntologyReferenceOptions } from '../governance/ontology/OntologyIriInput/OntologyIriInput.types';
 
 interface OntologyExpressionEditorProps {
   depth?: number;
+  references?: OntologyReferenceOptions;
   expression: OntologyExpression;
   onChange: (expression: OntologyExpression) => void;
   onRemove?: () => void;
@@ -112,6 +117,26 @@ const usesCardinality = (kind: RestrictionKind) =>
     kind
   );
 
+const hasFillerEditor = (
+  kind: RestrictionKind,
+  expression: OntologyExpression
+) =>
+  kind !== RestrictionKind.Value &&
+  (!usesCardinality(kind) || Boolean(expression.filler));
+
+const restrictionFiller = (
+  kind: RestrictionKind,
+  expression: OntologyExpression
+) => {
+  if (kind === RestrictionKind.Value) {
+    return undefined;
+  }
+
+  return usesCardinality(kind)
+    ? expression.filler
+    : expression.filler ?? defaultExpression(ExpressionKind.NamedClass);
+};
+
 const nonNegative = (value: string) => Math.max(0, Number(value) || 0);
 
 const splitValues = (value: string) =>
@@ -169,9 +194,9 @@ const OntologyValueRestrictionFields = ({
         }
       />
       {expression.literal ? (
-        <Input
-          className="tw:md:col-span-2"
-          label={`${t('label.data-type')} ${t('label.concept-iri')}`}
+        <OntologyIriInput
+          label={t('label.data-type')}
+          options={ONTOLOGY_DATATYPE_OPTIONS}
           value={expression.literal.datatypeIri ?? ''}
           onChange={(datatypeIri) =>
             updateExpression({
@@ -189,6 +214,7 @@ const OntologyValueRestrictionFields = ({
 };
 
 interface OntologyRestrictionFieldsProps {
+  references?: OntologyReferenceOptions;
   depth: number;
   expression: OntologyExpression;
   hasCardinality: boolean;
@@ -202,6 +228,7 @@ interface OntologyRestrictionFieldsProps {
 }
 
 const OntologyRestrictionFields = ({
+  references,
   depth,
   expression,
   hasCardinality,
@@ -216,9 +243,10 @@ const OntologyRestrictionFields = ({
   return (
     <div className="tw:flex tw:flex-col tw:gap-3">
       <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
-        <Input
+        <OntologyIriInput
           isRequired
           label={`${t('label.property')} ${t('label.concept-iri')}`}
+          options={references?.properties}
           value={expression.propertyIri ?? ''}
           onChange={(propertyIri) =>
             updateExpression({ ...expression, propertyIri })
@@ -308,8 +336,36 @@ const OntologyBooleanOperands = ({
   );
 };
 
+const ExpressionFrame = ({
+  depth,
+  children,
+}: {
+  depth: number;
+  children: ReactNode;
+}) => {
+  const isAiMode = useIsAiMode();
+
+  return isAiMode ? (
+    <Card
+      data-testid={`ontology-expression-${depth}`}
+      size="sm"
+      variant="muted">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+        {children}
+      </Card.Content>
+    </Card>
+  ) : (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4"
+      data-testid={`ontology-expression-${depth}`}>
+      {children}
+    </Card>
+  );
+};
+
 const OntologyExpressionEditor = ({
   depth = 0,
+  references,
   expression,
   onChange: onExpressionChange,
   onRemove,
@@ -323,8 +379,8 @@ const OntologyExpressionEditor = ({
     { id: ExpressionKind.OneOf, label: t('label.select') },
   ];
   const restrictionOptions = [
-    { id: RestrictionKind.Some, label: t('label.include') },
-    { id: RestrictionKind.Only, label: t('label.only-specific-entity') },
+    { id: RestrictionKind.Some, label: t('label.ontology-some-values') },
+    { id: RestrictionKind.Only, label: t('label.ontology-only-values') },
     { id: RestrictionKind.Min, label: `${t('label.cardinality')} ≥` },
     { id: RestrictionKind.Max, label: `${t('label.cardinality')} ≤` },
     { id: RestrictionKind.Exact, label: `${t('label.cardinality')} =` },
@@ -332,12 +388,8 @@ const OntologyExpressionEditor = ({
   ];
   const restrictionKind = expression.restrictionKind ?? RestrictionKind.Some;
   const operands = expression.operands ?? [];
-  const hasNestedFiller = restrictionKind !== RestrictionKind.Value;
-  const hasCardinality = [
-    RestrictionKind.Exact,
-    RestrictionKind.Max,
-    RestrictionKind.Min,
-  ].includes(restrictionKind);
+  const hasNestedFiller = hasFillerEditor(restrictionKind, expression);
+  const hasCardinality = usesCardinality(restrictionKind);
   const updateExpression = (next: OntologyExpression) =>
     onExpressionChange(carryExpressionRenderKey(expression, next));
 
@@ -355,10 +407,7 @@ const OntologyExpressionEditor = ({
         cardinality: usesCardinality(nextKind)
           ? expression.cardinality ?? 1
           : undefined,
-        filler:
-          nextKind === RestrictionKind.Value
-            ? undefined
-            : expression.filler ?? defaultExpression(ExpressionKind.NamedClass),
+        filler: restrictionFiller(nextKind, expression),
         individualIri:
           nextKind === RestrictionKind.Value
             ? expression.individualIri
@@ -400,15 +449,14 @@ const OntologyExpressionEditor = ({
       depth={childDepth}
       expression={childExpression}
       key={key}
+      references={references}
       onChange={onChildChange}
       onRemove={onChildRemove}
     />
   );
 
   return (
-    <Card
-      className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4"
-      data-testid={`ontology-expression-${depth}`}>
+    <ExpressionFrame depth={depth}>
       <div className="tw:flex tw:items-end tw:gap-2">
         <div className="tw:min-w-0 tw:flex-1">
           <Select
@@ -429,9 +477,10 @@ const OntologyExpressionEditor = ({
       </div>
 
       {expression.kind === ExpressionKind.NamedClass ? (
-        <Input
+        <OntologyIriInput
           isRequired
           label={t('label.concept-iri')}
+          options={references?.concepts}
           value={expression.classIri ?? ''}
           onChange={(classIri) => updateExpression({ ...expression, classIri })}
         />
@@ -457,6 +506,7 @@ const OntologyExpressionEditor = ({
           expression={expression}
           hasCardinality={hasCardinality}
           hasNestedFiller={hasNestedFiller}
+          references={references}
           renderChildExpression={renderChildExpression}
           restrictionKind={restrictionKind}
           restrictionOptions={restrictionOptions}
@@ -477,7 +527,7 @@ const OntologyExpressionEditor = ({
           t={t}
         />
       ) : null}
-    </Card>
+    </ExpressionFrame>
   );
 };
 

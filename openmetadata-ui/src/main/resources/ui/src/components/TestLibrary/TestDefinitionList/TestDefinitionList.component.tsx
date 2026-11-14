@@ -23,7 +23,6 @@ import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -34,7 +33,7 @@ import {
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
 import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from './TestDefinitionTable.component';
@@ -112,7 +111,11 @@ const TestDefinitionList = () => {
   });
 
   if (!viewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder data-testid="permission-error-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -131,11 +134,11 @@ const TestDefinitionList = () => {
                       className="m-b-0"
                       size="text-md"
                       weight="semibold">
-                      {t('label.data-quality-rule-plural')}
+                      {t('label.test-library')}
                     </Typography>
                     <LearningIcon
                       pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                      title={t('label.data-quality-rule-plural')}
+                      title={t('label.test-library')}
                     />
                   </div>
                   <Typography color="secondary">

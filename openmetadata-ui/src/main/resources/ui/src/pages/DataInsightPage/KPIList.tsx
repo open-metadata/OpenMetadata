@@ -16,36 +16,32 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-  pagingObject,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
@@ -54,6 +50,7 @@ const KPIList = () => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
+  const { savedPageSize: kpiPageSize } = useSavedPageSize();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const viewKPIPermission = useMemo(
@@ -67,30 +64,33 @@ const KPIList = () => {
   const [selectedKpi, setSelectedKpi] = useState<Kpi>();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchKpiList = async (param?: Record<string, string>) => {
-    try {
-      setIsLoading(true);
-      const response = await getListKPIs({
-        fields: [
-          TabSpecificField.START_DATE,
-          TabSpecificField.END_DATE,
-          TabSpecificField.TARGET_VALUE,
-          TabSpecificField.DATA_INSIGHT_CHART,
-          TabSpecificField.METRIC_TYPE,
-        ],
-        limit: PAGE_SIZE_MEDIUM,
-        before: param && param.before,
-        after: param && param.after,
-      });
-      setKpiList(response.data);
-      setKpiPaging(response.paging);
-    } catch {
-      setKpiList([]);
-      setKpiPaging(pagingObject);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchKpiList = useCallback(
+    async (param?: Record<string, string>) => {
+      try {
+        setIsLoading(true);
+        const response = await getListKPIs({
+          fields: [
+            TabSpecificField.START_DATE,
+            TabSpecificField.END_DATE,
+            TabSpecificField.TARGET_VALUE,
+            TabSpecificField.DATA_INSIGHT_CHART,
+            TabSpecificField.METRIC_TYPE,
+          ],
+          limit: kpiPageSize,
+          before: param && param.before,
+          after: param && param.after,
+        });
+        setKpiList(response.data);
+        setKpiPaging(response.paging);
+      } catch {
+        setKpiList([]);
+        setKpiPaging(pagingObject);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [kpiPageSize]
+  );
 
   const columns = useMemo(() => {
     const col: ColumnsType<Kpi> = [
@@ -162,11 +162,10 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  icon={EditIcon}
+                  icon={Edit01}
                   isDisabled={!isAdminUser}
-                  size="sm"
+                  size="lg"
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
@@ -179,11 +178,10 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`delete-action-${getEntityName(record)}`}
-                  icon={IconDelete}
+                  icon={Trash01}
                   isDisabled={!isAdminUser}
-                  size="sm"
+                  size="lg"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>
@@ -209,8 +207,9 @@ const KPIList = () => {
   };
 
   useEffect(() => {
+    setKpiPage(INITIAL_PAGING_VALUE);
     fetchKpiList();
-  }, []);
+  }, [fetchKpiList]);
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchKpiList();
@@ -235,13 +234,14 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.kpi-uppercase'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
+          />
+        </div>
       ),
     [viewKPIPermission]
   );
@@ -254,8 +254,8 @@ const KPIList = () => {
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,
-          showPagination: kpiList.length > PAGE_SIZE_MEDIUM,
-          pageSize: PAGE_SIZE_MEDIUM,
+          showPagination: shouldShowPager(kpiList),
+          pageSize: kpiPageSize,
           paging: kpiPaging,
           pagingHandler: kpiPagingHandler,
         }}
@@ -268,6 +268,7 @@ const KPIList = () => {
         pagination={false}
         rowKey="name"
         size="small"
+        tableLayout="auto"
       />
 
       {selectedKpi && (

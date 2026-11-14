@@ -72,8 +72,8 @@ public class AIContextResource {
           "REST surface of the find_context MCP tool. Runs a semantic search over the knowledge "
               + "layer (glossary terms, metrics, articles) and returns the matching definitions "
               + "together with the candidate data assets each item routes to (glossary terms via "
-              + "tag usage, metrics via APPLIED_TO, articles via HAS). Candidate assets are "
-              + "filtered to those the caller can view.",
+              + "tag usage, metrics via APPLIED_TO, articles via HAS). Knowledge items and "
+              + "candidate assets are filtered to those the caller can view.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -96,7 +96,10 @@ public class AIContextResource {
     validateVectorSearchEnabled();
     AIContextFinderAccess.authorizeKnowledgeAccess(authorizer, securityContext);
     SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
-    FoundContext found = new AIContextFinder(subjectContext).find(query, size);
+    FoundContext found =
+        new AIContextFinder(
+                subjectContext, AIContextFinderAccess.knowledgeViewer(authorizer, securityContext))
+            .find(query, size);
     FoundContext visible =
         AIContextFinderAccess.filterCandidates(found, authorizer, securityContext);
     return Response.ok(visible).build();
@@ -112,8 +115,8 @@ public class AIContextResource {
           "For each asset (fqn + entityType), returns the knowledge linked to it: glossary terms "
               + "from asset and column tags, metrics applied to it, and articles about it. "
               + "Deliberately lightweight (no profile, lineage, or budgeting; item content capped) "
-              + "so search layers can annotate a whole result page in one call. Assets the caller "
-              + "cannot view are skipped.",
+              + "so search layers can annotate a whole result page in one call. Assets and "
+              + "knowledge items the caller cannot view are skipped.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -139,7 +142,10 @@ public class AIContextResource {
                         authorizer,
                         securityContext))
             .toList();
-    return Response.ok(AttachedKnowledgeBatch.resolve(viewable)).build();
+    return Response.ok(
+            AttachedKnowledgeBatch.resolve(
+                viewable, AIContextFinderAccess.knowledgeViewer(authorizer, securityContext)))
+        .build();
   }
 
   private void validateVectorSearchEnabled() {

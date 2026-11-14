@@ -102,6 +102,7 @@ export const ColumnSummaryList = ({
 
     return (
       <Button
+        boxed
         className="tw:w-full"
         color="link-color"
         isLoading={loading && currentPage > 1}

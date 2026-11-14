@@ -15,12 +15,24 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.Entity;
 
 @DisplayName("RdfExcludedEntities policy")
 class RdfExcludedEntitiesTest {
+
+  @Test
+  void nativeWorkingDefinitionsNeverEnterGenericProjection() {
+    List.of(
+            Entity.ONTOLOGY,
+            Entity.ONTOLOGY_CONCEPT,
+            Entity.ONTOLOGY_PROPERTY,
+            Entity.ONTOLOGY_AXIOM,
+            Entity.ONTOLOGY_RELEASE)
+        .forEach(type -> assertTrue(RdfExcludedEntities.isExcluded(type)));
+  }
 
   @Test
   @DisplayName("aiChart is excluded from RDF")

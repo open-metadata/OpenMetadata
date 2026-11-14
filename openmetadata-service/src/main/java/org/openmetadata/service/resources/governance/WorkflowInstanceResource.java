@@ -40,6 +40,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -132,6 +133,7 @@ public class WorkflowInstanceResource
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(workflowDefinitionName));
     if (entityLink != null) {
       filter.addQueryParam("entityLink", entityLink);
+      filter.addQueryParam("entityLinkHash", EntityUtil.hash(entityLink));
     }
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }

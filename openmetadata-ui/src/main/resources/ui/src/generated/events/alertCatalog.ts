@@ -29,8 +29,9 @@ export interface AlertCatalog {
      */
     observabilitySources: AlertCatalogSource[];
     /**
-     * Who inside the platform alerts can be sent to, for a source that does not say. Offered in
-     * the form, never enforced on save.
+     * Who inside the platform alerts can be sent to, for a source that does not say. An entity
+     * source offers owners and followers only when its entity type holds them. Offered in the
+     * form, never enforced on save.
      */
     recipientCategories: SubscriptionCategory[];
     /**
@@ -115,7 +116,8 @@ export interface AlertCatalogSource {
     kind:     SourceKind;
     /**
      * Labels by filter or trigger name, where this source calls one differently from its
-     * definition.
+     * definition. A label applies when an alert watches this source alone: a filter several
+     * sources share keeps the name its definition gives it.
      */
     labels?: { [key: string]: any };
     /**
@@ -129,7 +131,8 @@ export interface AlertCatalogSource {
     parameters?: { [key: string]: any };
     /**
      * Who inside the platform alerts on this source can be sent to, when not the catalog's
-     * default. Offered in the form, never enforced on save.
+     * default. An entity source offers owners and followers only when its entity type holds
+     * them. Offered in the form, never enforced on save.
      */
     recipientCategories?: SubscriptionCategory[];
     /**

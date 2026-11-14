@@ -73,11 +73,6 @@ jest.mock('../../../components/common/EntityDescription/Description', () =>
 );
 
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
-);
-
-jest.mock(
   '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );

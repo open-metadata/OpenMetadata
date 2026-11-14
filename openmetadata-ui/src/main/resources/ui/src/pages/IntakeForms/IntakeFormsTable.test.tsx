@@ -135,18 +135,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: React.PropsWithChildren<Record<string, unknown>>) => (
       <div {...props}>{children}</div>
     ),
-    Button: ({
-      children,
+    ButtonUtility: ({
       onClick,
+      tooltip,
       'data-testid': testId,
     }: {
-      children?: React.ReactNode;
       onClick?: React.MouseEventHandler;
+      tooltip?: string;
       'data-testid'?: string;
     }) => (
-      <button data-testid={testId} onClick={onClick}>
-        {children}
-      </button>
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick} />
     ),
     Table,
     TableCard: {
@@ -170,9 +168,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         type="checkbox"
         onChange={(e) => onChange?.(e.target.checked)}
       />
-    ),
-    Tooltip: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
     ),
     Typography: ({ children }: { children?: React.ReactNode }) => (
       <span>{children}</span>
@@ -276,7 +271,11 @@ describe('IntakeFormsTable', () => {
       screen.getByTestId(`delete-${TargetEntityType.DataProduct}`)
     );
 
-    expect(mockOnDelete).toHaveBeenCalledWith(mockForms[0]);
+    // The pressed button comes along to anchor a confirmation to.
+    expect(mockOnDelete).toHaveBeenCalledWith(
+      mockForms[0],
+      expect.any(HTMLButtonElement)
+    );
   });
 
   it('calls onToggleEnabled when the toggle is changed', () => {

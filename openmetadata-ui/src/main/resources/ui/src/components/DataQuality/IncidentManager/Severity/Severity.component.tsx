@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { startCase, toLower } from 'lodash';
+import { toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
@@ -23,17 +24,16 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
 import InlineSeverity from './InlineSeverity.component';
 import { SeverityProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 import SeverityModal from './SeverityModal.component';
 
 const Severity = ({
   severity,
   onSubmit,
   hasPermission,
-  newLook = false,
   headerName,
   isInline = false,
 }: SeverityProps) => {
@@ -80,7 +80,7 @@ const Severity = ({
   if (headerName) {
     return (
       <div className="tw:flex tw:flex-col tw:gap-1.5">
-        <div className="tw:flex tw:items-center tw:gap-1">
+        <div className="tw:flex tw:min-h-6 tw:items-center tw:gap-1">
           <Typography
             as="span"
             className="tw:whitespace-nowrap tw:text-secondary"
@@ -89,11 +89,10 @@ const Severity = ({
             {headerName}
           </Typography>
           {canEditSeverity && (
-            <EditIconButton
+            <ButtonUtility
               data-testid="edit-severity-icon"
-              newLook={newLook}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.severity'),
               })}
               onClick={onEditSeverity}
@@ -104,7 +103,7 @@ const Severity = ({
           {severity ? (
             <AppBadge
               className={classNames('severity', toLower(severity))}
-              label={startCase(severity)}
+              label={getSeverityLabel(severity, t)}
             />
           ) : (
             NO_DATA_PLACEHOLDER
@@ -122,19 +121,17 @@ const Severity = ({
         {severity ? (
           <AppBadge
             className={classNames('severity', toLower(severity))}
-            label={startCase(severity)}
+            label={getSeverityLabel(severity, t)}
           />
         ) : (
           NO_DATA_PLACEHOLDER
         )}
         {canEditSeverity && (
-          <EditIconButton
-            newLook
-            className="flex-center"
+          <ButtonUtility
             data-testid="edit-severity-icon"
-            disabled={!hasEditPermission}
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            isDisabled={!hasEditPermission}
+            tooltip={t('label.edit-entity', {
               entity: t('label.severity'),
             })}
             onClick={onEditSeverity}

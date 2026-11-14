@@ -29,20 +29,9 @@ const userWithoutPermissions = new UserClass();
 const table = new TableClass();
 const domain = new Domain();
 
-const ALERT_KINDS = [
-  {
-    alertType: 'Observability',
-    listPath: '/observability/alerts',
-    detailsPath: (fqn: string) =>
-      `/observability/alert/${encodeURIComponent(fqn)}`,
-  },
-  {
-    alertType: 'Notification',
-    listPath: '/settings/notifications/alerts',
-    detailsPath: (fqn: string) =>
-      `/settings/notifications/alerts/${encodeURIComponent(fqn)}/configuration`,
-  },
-] as const;
+// Notification alerts live in the settings modal in AI mode; the /settings
+// pages are classic-only (ADR:2026-10-21-settings-pages-are-classic-only).
+const NOTIFICATION_ALERTS_ROUTE = '/my-data#notification/alerts';
 
 // The list is name-sorted and cursor-paged; this prefix keeps the alerts on page 1.
 const alerts = {
@@ -103,76 +92,144 @@ test.describe('AI mode — alert permissions match the classic alert pages', () 
     await afterAction();
   });
 
-  for (const kind of ALERT_KINDS) {
-    test(`${kind.alertType}: a view-only user cannot create, edit, or delete`, async ({
-      browser,
-    }) => {
-      const alert = alerts[kind.alertType].responseData;
-      const page = await openAiPageAs(browser, userWithoutPermissions);
+  test('Observability: a view-only user cannot create, edit, or delete', async ({
+    browser,
+  }) => {
+    const alert = alerts.Observability.responseData;
+    const page = await openAiPageAs(browser, userWithoutPermissions);
 
-      await test.step('list hides create and row actions', async () => {
-        await gotoAndSettle(page, kind.listPath);
+    await test.step('list hides create and row actions', async () => {
+      await gotoAndSettle(page, '/observability/alerts');
 
-        await expect(
-          page.getByTestId('observability-page-shell')
-        ).toBeVisible();
-        await expect(
-          page.getByRole('link', { name: alert.displayName })
-        ).toBeVisible();
-        await expect(page.getByTestId('add-alert-button')).not.toBeAttached();
-        await expect(
-          page.getByTestId(`alert-edit-${alert.name}`)
-        ).not.toBeAttached();
-        await expect(
-          page.getByTestId(`alert-delete-${alert.name}`)
-        ).not.toBeAttached();
-      });
-
-      await test.step('details hide edit, delete, owner, and description edits', async () => {
-        await gotoAndSettle(page, kind.detailsPath(alert.fullyQualifiedName));
-
-        // The page body replaces its loader only once permissions resolve
-        // (permission loading counts toward loadingCount), so the negative
-        // checks below cannot pass before the permissions arrive.
-        await expect(page.getByTestId('alert-details-ai-page')).toBeVisible();
-        await expect(page.getByTestId('alert-description')).toBeVisible();
-        await expect(page.getByTestId('edit-button')).not.toBeAttached();
-        await expect(page.getByTestId('delete-button')).not.toBeAttached();
-        await expect(page.getByTestId('edit-owner')).not.toBeAttached();
-        await expect(page.getByTestId('edit-description')).not.toBeAttached();
-        // Sync stays available to viewers, as in classic.
-        await expect(page.getByTestId('sync-button')).toBeVisible();
-      });
-
-      await page.close();
+      await expect(page.getByTestId('observability-page-shell')).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: alert.displayName })
+      ).toBeVisible();
+      await expect(page.getByTestId('add-alert-button')).not.toBeAttached();
+      await expect(
+        page.getByTestId(`alert-edit-${alert.name}`)
+      ).not.toBeAttached();
+      await expect(
+        page.getByTestId(`alert-delete-${alert.name}`)
+      ).not.toBeAttached();
     });
 
-    test(`${kind.alertType}: a user with alert permissions sees create, edit and delete controls`, async ({
-      browser,
-    }) => {
-      const alert = alerts[kind.alertType].responseData;
-      const page = await openAiPageAs(browser, userWithPermissions);
+    await test.step('details hide edit, delete, owner, and description edits', async () => {
+      await gotoAndSettle(
+        page,
+        `/observability/alert/${encodeURIComponent(alert.fullyQualifiedName)}`
+      );
 
-      await test.step('list shows create and row actions', async () => {
-        await gotoAndSettle(page, kind.listPath);
-
-        await expect(page.getByTestId('add-alert-button')).toBeVisible();
-        await expect(
-          page.getByTestId(`alert-edit-${alert.name}`)
-        ).toBeEnabled();
-        await expect(
-          page.getByTestId(`alert-delete-${alert.name}`)
-        ).toBeEnabled();
-      });
-
-      await test.step('details show edit and delete', async () => {
-        await gotoAndSettle(page, kind.detailsPath(alert.fullyQualifiedName));
-
-        await expect(page.getByTestId('edit-button')).toBeVisible();
-        await expect(page.getByTestId('delete-button')).toBeVisible();
-      });
-
-      await page.close();
+      // The page body replaces its loader only once permissions resolve
+      // (permission loading counts toward loadingCount), so the negative
+      // checks below cannot pass before the permissions arrive.
+      await expect(page.getByTestId('alert-details-ai-page')).toBeVisible();
+      await expect(page.getByTestId('alert-description')).toBeVisible();
+      await expect(page.getByTestId('edit-button')).not.toBeAttached();
+      await expect(page.getByTestId('delete-button')).not.toBeAttached();
+      await expect(page.getByTestId('edit-owner')).not.toBeAttached();
+      await expect(page.getByTestId('edit-description')).not.toBeAttached();
+      // Sync stays available to viewers, as in classic.
+      await expect(page.getByTestId('sync-button')).toBeVisible();
     });
-  }
+
+    await page.close();
+  });
+
+  test('Observability: a user with alert permissions sees create, edit and delete controls', async ({
+    browser,
+  }) => {
+    const alert = alerts.Observability.responseData;
+    const page = await openAiPageAs(browser, userWithPermissions);
+
+    await test.step('list shows create and row actions', async () => {
+      await gotoAndSettle(page, '/observability/alerts');
+
+      await expect(page.getByTestId('add-alert-button')).toBeVisible();
+      await expect(page.getByTestId(`alert-edit-${alert.name}`)).toBeEnabled();
+      await expect(
+        page.getByTestId(`alert-delete-${alert.name}`)
+      ).toBeEnabled();
+    });
+
+    await test.step('details show edit and delete', async () => {
+      await gotoAndSettle(
+        page,
+        `/observability/alert/${encodeURIComponent(alert.fullyQualifiedName)}`
+      );
+
+      await expect(page.getByTestId('edit-button')).toBeVisible();
+      await expect(page.getByTestId('delete-button')).toBeVisible();
+    });
+
+    await page.close();
+  });
+
+  test('Notification: a view-only user cannot create, edit, or delete', async ({
+    browser,
+  }) => {
+    const alert = alerts.Notification.responseData;
+    const page = await openAiPageAs(browser, userWithoutPermissions);
+
+    await test.step('modal list hides create and row actions', async () => {
+      await gotoAndSettle(page, NOTIFICATION_ALERTS_ROUTE);
+      const row = page.getByTestId(`alert-${alert.displayName}`);
+
+      // The actions cell shows `--` only once the row's permissions resolve,
+      // so the negative checks below cannot pass before they arrive.
+      await expect(row.getByText('--', { exact: true })).toBeVisible();
+      await expect(page.getByTestId('add-alert')).not.toBeAttached();
+      await expect(
+        page.getByTestId(`alert-edit-${alert.displayName}`)
+      ).not.toBeAttached();
+      await expect(
+        page.getByTestId(`alert-delete-${alert.displayName}`)
+      ).not.toBeAttached();
+    });
+
+    await test.step('modal details hide edit and delete', async () => {
+      await page
+        .getByTestId(`alert-${alert.displayName}`)
+        .getByTestId('alert-name')
+        .click();
+
+      // Rendered once the alert's permissions resolve.
+      await expect(page.getByTestId('sync-alert-btn')).toBeVisible();
+      await expect(page.getByTestId('edit-alert-btn')).not.toBeAttached();
+      await expect(page.getByTestId('delete-alert-btn')).not.toBeAttached();
+    });
+
+    await page.close();
+  });
+
+  test('Notification: a user with alert permissions sees create, edit and delete controls', async ({
+    browser,
+  }) => {
+    const alert = alerts.Notification.responseData;
+    const page = await openAiPageAs(browser, userWithPermissions);
+
+    await test.step('modal list shows create and row actions', async () => {
+      await gotoAndSettle(page, NOTIFICATION_ALERTS_ROUTE);
+
+      await expect(page.getByTestId('add-alert')).toBeVisible();
+      await expect(
+        page.getByTestId(`alert-edit-${alert.displayName}`)
+      ).toBeEnabled();
+      await expect(
+        page.getByTestId(`alert-delete-${alert.displayName}`)
+      ).toBeEnabled();
+    });
+
+    await test.step('modal details show edit and delete', async () => {
+      await page
+        .getByTestId(`alert-${alert.displayName}`)
+        .getByTestId('alert-name')
+        .click();
+
+      await expect(page.getByTestId('edit-alert-btn')).toBeVisible();
+      await expect(page.getByTestId('delete-alert-btn')).toBeVisible();
+    });
+
+    await page.close();
+  });
 });

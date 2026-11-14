@@ -19,6 +19,7 @@ import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import {
   BundleSuiteBulkAddRequestClass,
+  Filter as BundleSuiteBulkAddFilter,
   Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
 import type { BundleSuiteBulkRemoveRequest } from '../generated/api/tests/bundleSuiteBulkRemoveRequest';
@@ -93,6 +94,27 @@ export type ListTestCaseParamsBySearch = Omit<
   includePermissions?: boolean;
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
+
+/**
+ * The test case list filters that `/name/{name}/export` and `/exportAsync`
+ * accept, so an export selects the rows the user filtered the list to.
+ */
+export type TestCaseExportFilters = Pick<
+  ListTestCaseParamsBySearch,
+  | 'testCaseStatus'
+  | 'testCaseType'
+  | 'entityLink'
+  | 'tags'
+  | 'tier'
+  | 'owner'
+  | 'q'
+  | 'testPlatforms'
+  | 'dataQualityDimension'
+  | 'serviceName'
+  | 'dataProductFqn'
+  | 'startTimestamp'
+  | 'endTimestamp'
+>;
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
@@ -255,14 +277,10 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
-export type AddTestCaseListFilter = {
-  q?: string;
-  testCaseStatus?: string;
-  testCaseType?: string;
-  entityLink?: string;
-  includeAllTests?: boolean;
-  columnName?: string;
-};
+export type AddTestCaseListFilter = Omit<
+  BundleSuiteBulkAddFilter,
+  'excludeIds'
+>;
 
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;
@@ -549,7 +567,7 @@ export const listTestCases = async (params: ListTestCasesParams) => {
 
 export const exportTestCasesInCSV = async (
   name: string,
-  params?: { recursive?: boolean }
+  params?: { recursive?: boolean } & TestCaseExportFilters
 ): Promise<CSVImportAsyncResponse> => {
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,

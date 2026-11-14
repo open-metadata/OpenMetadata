@@ -5,12 +5,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from requests.exceptions import HTTPError, SSLError
-from tableauserverclient.server.endpoint.exceptions import ServerResponseError
+from tableauserverclient.server.endpoint.exceptions import (
+    FailedSignInError,
+    ServerResponseError,
+)
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
+    TableauConnection as TableauConnectionConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.tableau.client import (
     TableauChartsException,
     TableauDataModelsException,
@@ -22,6 +29,7 @@ from metadata.ingestion.source.dashboard.tableau.connection import (
     TABLEAU_ERRORS,
     TableauChecks,
     TableauConnection,
+    get_connection,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.tableau.connection"
@@ -244,6 +252,7 @@ def test_get_source_tables_wraps_failure_as_check_error():
     [
         (_server_error("401001"), "Authentication failed"),
         (_server_error("401002"), "Authentication failed"),
+        (FailedSignInError("401001", "Signin Error", "detail"), "Authentication failed"),
         (_server_error("403004"), "Insufficient permissions"),
         (_server_error("404000"), "Resource not found"),
         (_raw_http_error(401), "Authentication failed"),
@@ -272,6 +281,29 @@ def test_error_pack_classifies_a_wrapped_cause():
     wrapper.__cause__ = _server_error("401001")
 
     diagnosis = TABLEAU_ERRORS.classify(wrapper)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Authentication failed"
+
+
+def test_error_pack_classifies_a_failed_sign_in_from_get_connection():
+    # A wrong token, password or site makes TSC raise FailedSignInError, which is an
+    # XMLError but not a ServerResponseError; get_connection re-raises it as
+    # SourceConnectionException. The user must still be told the credentials were rejected.
+    config = TableauConnectionConfig(
+        hostPort="https://tableau.example.com",
+        siteName="site",
+        authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "wrong"},
+    )
+    sign_in = FailedSignInError("401001", "Signin Error", "Error signing in to Tableau Server")
+
+    with (
+        patch(f"{CONNECTION_MODULE}.TableauClient", side_effect=sign_in),
+        pytest.raises(SourceConnectionException) as exc_info,
+    ):
+        get_connection(config)
+
+    diagnosis = TABLEAU_ERRORS.classify(exc_info.value)
 
     assert diagnosis is not None
     assert diagnosis.title == "Authentication failed"

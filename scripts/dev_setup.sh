@@ -34,6 +34,8 @@ cd "$REPO_ROOT"
 # ---------------------------------------------------------------------------
 JAVA_VERSION=21
 NODE_VERSION=22
+# The UI's engines floor; an older 22.x passes the major check but fails `yarn install`.
+NODE_MIN="$(sed 's/^v//' "$REPO_ROOT/openmetadata-ui/src/main/resources/ui/.nvmrc")"
 PYTHON_PREFERRED="3.11"
 PYTHON_MIN="3.10"
 # The package metadata intentionally has no Python ceiling, but the current dev
@@ -86,7 +88,8 @@ Options:
   --skip-ui            Skip `yarn install` for the frontend.
   --skip-generate      Skip `make generate` (Pydantic/TS model generation).
   --skip-precommit     Skip installing the pre-commit hooks.
-  --slim               Install ingestion `[dev]` only, not `[all-dev-env]`.
+  --slim               Install ingestion `dev` dependencies only, not the full
+                       test environment.
                        Much faster; omits most connector dependencies.
   --with-build         Also run `mvn clean install -DskipTests`.
   --with-docker        Also start docker/development/docker-compose.yml.
@@ -474,19 +477,38 @@ node_major() {
   node --version | sed 's/^v//' | cut -d. -f1
 }
 
-ensure_node() {
-  local major found_display
-  major="$(node_major || true)"
-  if [ "$major" = "$NODE_VERSION" ]; then
+node_at_least_min() {
+  version_ge "$(node --version | sed 's/^v//')" "$NODE_MIN"
+}
+
+# nvm/mise resolve "22" to the newest 22.x, which clears the .nvmrc floor.
+node_meets_min() {
+  NODE_BIN_DIR="$(dirname "$(command -v node)")"
+  if ! node_at_least_min && [ "$DO_TOOLS" -eq 1 ] && [ "$CHECK_ONLY" -eq 0 ]; then
+    info "Node $(node --version) is older than v$NODE_MIN (.nvmrc); upgrading."
+    install_node_via_version_manager || true
+  fi
+  if node_at_least_min; then
     NODE_BIN_DIR="$(dirname "$(command -v node)")"
     ok "Node $(node --version)"
     return 0
   fi
+  warn "Node $(node --version) is older than v$NODE_MIN (.nvmrc); yarn install will reject it. Run: nvm install $NODE_MIN"
+  return 1
+}
+
+ensure_node() {
+  local major found_display
+  major="$(node_major || true)"
+  if [ "$major" = "$NODE_VERSION" ]; then
+    node_meets_min
+    return
+  fi
   [ -n "$major" ] && info "Found Node v$major; the current UI dependency tree requires Node $NODE_VERSION."
 
   if activate_installed_node; then
-    ok "Node $(node --version)"
-    return 0
+    node_meets_min
+    return
   fi
 
   if [ "$DO_TOOLS" -eq 0 ] || [ "$CHECK_ONLY" -eq 1 ]; then
@@ -516,8 +538,7 @@ ensure_node() {
 
   major="$(node_major || true)"
   if [ "$major" = "$NODE_VERSION" ]; then
-    NODE_BIN_DIR="$(dirname "$(command -v node)")"
-    ok "Node $(node --version)"
+    node_meets_min
   else
     fail "Could not provision Node $NODE_VERSION; install it manually (https://nodejs.org)."
   fi
@@ -861,34 +882,32 @@ export_brew_build_flags() {
 
 install_ingestion() {
   export_brew_build_flags
-  run python -m pip install --upgrade pip "setuptools<81"
   if [ "$SLIM_PYTHON" -eq 1 ]; then
-    info "Slim mode: installing ingestion[dev] only."
-    run make -C "$REPO_ROOT" install_dev
+    info "Slim mode: installing the locked dev profile."
+    run make -C "$REPO_ROOT" install_dev OM_VENV_DIR="$VENV_DIR"
   else
     info "Installing the full dev environment; this pulls every connector's dependencies and takes a while."
-    run make -C "$REPO_ROOT" install_dev_env
+    run make -C "$REPO_ROOT" install_test OM_VENV_DIR="$VENV_DIR"
   fi
   ok "Ingestion framework installed"
 }
 
 generate_models() {
   # `make generate` wipes and regenerates ingestion/src/metadata/generated and
-  # the ANTLR parsers, then reinstalls the ingestion package.
+  # the ANTLR parsers.
   run make -C "$REPO_ROOT" generate
   ok "Generated Pydantic models and ANTLR parsers"
 }
 
 install_ui_deps() {
-  if [ "$(node_major || true)" != "$NODE_VERSION" ]; then
-    fail "Refusing to run Yarn with $(node --version 2>/dev/null || echo no Node); the current UI dependencies require Node $NODE_VERSION."
+  if [ "$(node_major || true)" != "$NODE_VERSION" ] || ! node_at_least_min; then
+    fail "Refusing to run Yarn with $(node --version 2>/dev/null || echo no Node); the current UI dependencies require Node $NODE_VERSION (>= v$NODE_MIN)."
   fi
   run make -C "$REPO_ROOT" yarn_install_cache
   ok "UI dependencies installed"
 }
 
 install_precommit() {
-  run make -C "$REPO_ROOT" install_test
   run make -C "$REPO_ROOT" precommit_install
   ok "pre-commit hooks installed (format + license gate on every commit)"
 }

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
 import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { EntityInfoItemV1 } from './CommonEntitySummaryInfoV1.interface';
 
@@ -20,15 +19,6 @@ jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
   }),
-}));
-
-// Mock Link from react-router-dom to avoid Router dependency
-jest.mock('react-router-dom', () => ({
-  Link: ({ to, children }: { to?: unknown; children?: ReactNode }) => (
-    <a data-testid="internal-link" href={typeof to === 'string' ? to : '/'}>
-      {children}
-    </a>
-  ),
 }));
 
 const defaultItems: EntityInfoItemV1[] = [
@@ -121,11 +111,31 @@ describe('CommonEntitySummaryInfoV1', () => {
       <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={items} />
     );
 
-    const link = screen.getByTestId('internal-link');
+    const link = screen.getByRole('link', { name: 'OpenMetadata' });
 
-    expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/docs');
     expect(screen.getByTestId('Docs-value')).toHaveTextContent('OpenMetadata');
+  });
+
+  it('builds the href from an object linkProps', () => {
+    const items: EntityInfoItemV1[] = [
+      {
+        name: 'Schema',
+        value: 'shop.big',
+        isLink: true,
+        linkProps: { pathname: '/databaseSchema/shop.big', search: '?tab=x' },
+        visible: ['explore'],
+      },
+    ];
+
+    render(
+      <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={items} />
+    );
+
+    expect(screen.getByRole('link', { name: 'shop.big' })).toHaveAttribute(
+      'href',
+      '/databaseSchema/shop.big?tab=x'
+    );
   });
 
   it('renders external link with icon when isExternal is true', () => {
@@ -140,16 +150,51 @@ describe('CommonEntitySummaryInfoV1', () => {
       },
     ];
 
-    const { container } = render(
+    render(
       <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={items} />
     );
 
-    const anchor = container.querySelector('a.summary-item-link');
+    const anchor = screen.getByRole('link', { name: /OpenMetadata/ });
 
-    expect(anchor).toBeInTheDocument();
     expect(anchor).toHaveAttribute('href', 'https://open-metadata.org');
     expect(anchor).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.getByTestId('external-link-icon')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['javascript:alert(1)'],
+    ['JaVaScRiPt:alert(1)'],
+    ['data:text/html,<script>alert(1)</script>'],
+  ])('does not render the external url %s as an href', (url) => {
+    const items: EntityInfoItemV1[] = [
+      {
+        name: 'Pipeline URL',
+        value: 'Daily ETL',
+        isLink: true,
+        isExternal: true,
+        url,
+        visible: ['explore'],
+      },
+      {
+        name: 'Dashboard URL',
+        value: '-',
+        isLink: true,
+        isExternal: true,
+        url,
+        visible: ['explore'],
+      },
+    ];
+
+    render(
+      <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={items} />
+    );
+
+    expect(screen.getByTestId('Pipeline URL-value')).toHaveTextContent(
+      'Daily ETL'
+    );
+    expect(screen.getByTestId('Dashboard URL-value')).toHaveTextContent('-');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(document.querySelector('[href]')).toBeNull();
   });
 
   it('renders dash when value is null or undefined', () => {

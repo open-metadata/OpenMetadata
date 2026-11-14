@@ -19,11 +19,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { mapValues } from 'lodash';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
-import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes as CreateStatusTypes,
 } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -60,17 +55,30 @@ export const INCIDENT_GROUP_BY_PARAM = 'groupBy';
  */
 export const INCIDENT_GROUP_DETAIL_PARAM = 'group';
 
+/**
+ * Query string params holding the groups' order, named after the API params
+ * like the dimension's, so a reload or a shared link keeps the order
+ * (ADR:2026-10-28-incident-group-sort-lives-in-the-url).
+ */
+export const INCIDENT_GROUP_SORT_FIELD_PARAM = 'sortField';
+export const INCIDENT_GROUP_SORT_TYPE_PARAM = 'sortType';
+
 /** Dimension the page opens with when the URL does not carry a valid one. */
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
-export const INCIDENT_GROUPS_PAGE_SIZE = PAGE_SIZE_BASE;
+/**
+ * The incident tables' card, as designed: the core TableCard edge with no
+ * shadow. That edge stays visible along a sticky header, so no border of its
+ * own is needed (one would draw a second line inside it).
+ */
+export const INCIDENT_TABLE_CARD_CLASS = 'tw:shadow-none';
 
-/** The page sizes the application's paged lists offer. */
-export const INCIDENT_GROUPS_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
+/**
+ * The pager under an incident table: one line above it, and none of its own
+ * side and bottom borders, which would double the card's.
+ */
+export const INCIDENT_TABLE_PAGER_CLASS =
+  'tw:shrink-0 tw:border-0 tw:border-t tw:border-secondary tw:shadow-none';
 
 /** Query string params the filters live in — the filter keys themselves. */
 export const INCIDENT_GROUP_FILTER_KEYS: (keyof IncidentGroupFilters)[] = [
@@ -197,9 +205,9 @@ export const INCIDENT_GROUP_STATUS_BAR_CLASS: Partial<
 export const INCIDENT_GROUP_STATUS_LABELS: Partial<
   Record<TestCaseResolutionStatusTypes, string>
 > = {
-  [TestCaseResolutionStatusTypes.Assigned]: 'label.assigned-lowercase',
-  [TestCaseResolutionStatusTypes.ACK]: 'label.ack-lowercase',
-  [TestCaseResolutionStatusTypes.New]: 'label.new-lowercase',
+  [TestCaseResolutionStatusTypes.Assigned]: 'label.count-incident-assigned',
+  [TestCaseResolutionStatusTypes.ACK]: 'label.count-incident-ack',
+  [TestCaseResolutionStatusTypes.New]: 'label.count-incident-new',
 };
 
 /**

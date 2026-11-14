@@ -1,0 +1,10 @@
+{
+  "name": "YoursAndFollowed",
+  "displayName": "Yours and Followed",
+  "description": "The assets the user owns alongside the ones they follow, so the things they are accountable for stay in one place.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.YoursAndFollowed",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}

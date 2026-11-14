@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   FeaturedIcon,
   FileUploadDropZone,
@@ -22,7 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert as AlertIcon,
   Check,
   CheckCircle,
   ChevronRight,
@@ -55,6 +56,7 @@ import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from '../../../../../../interface/entity/csv.interface';
+import { resolveCsvImportResult } from '../../../../../../rest/csvAPI';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import { STAGE_ICON_CLASS } from './Members.constants';
@@ -132,7 +134,7 @@ const SelectedFileCard: FC<{
     <Card
       className="tw:w-full tw:text-left"
       data-testid="selected-file-card"
-      variant="elevated">
+      variant="muted">
       <Box align="center" className="tw:p-4" gap={3}>
         <FeaturedIcon color="brand" icon={File06} size="md" theme="light" />
         <Box align="start" className="tw:min-w-0 tw:flex-1" direction="col">
@@ -143,12 +145,12 @@ const SelectedFileCard: FC<{
             {`${file.sizeLabel} · ${rowCountLabel}`}
           </Typography>
         </Box>
-        <Button
-          aria-label={t('label.remove')}
-          color="tertiary"
+        <ButtonUtility
           data-testid="remove-file"
-          iconLeading={XClose}
-          onPress={onRemove}
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={onRemove}
         />
       </Box>
     </Card>
@@ -196,7 +198,7 @@ const ProcessingBanner: FC<{
   <Card
     className="tw:mx-auto tw:w-full tw:max-w-[520px]"
     data-testid="import-processing"
-    variant="elevated">
+    variant="muted">
     <Box align="center" className="tw:p-10" direction="col" gap={5}>
       <Box
         align="center"
@@ -253,14 +255,9 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
     <Card
       className="tw:mx-auto tw:w-full tw:max-w-[520px]"
       data-testid="import-aborted"
-      variant="elevated">
+      variant="muted">
       <Box align="center" className="tw:p-10" direction="col" gap={4}>
-        <FeaturedIcon
-          color="error"
-          icon={AlertTriangle}
-          size="lg"
-          theme="light"
-        />
+        <FeaturedIcon color="error" icon={AlertIcon} size="lg" theme="light" />
         <Box align="center" direction="col" gap={1}>
           <Typography className="tw:text-primary" weight="semibold">
             {t('label.aborted')}
@@ -409,7 +406,7 @@ const ImportFooter: FC<{
 
   return (
     <Box
-      className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+      className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
       data-testid="members-import-footer"
       direction="row"
       gap={3}
@@ -522,7 +519,10 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   );
 
   const processImportResponse = useCallback(
-    (response: CSVImportAsyncWebsocketResponse, job: CSVImportJobType) => {
+    async (
+      response: CSVImportAsyncWebsocketResponse,
+      job: CSVImportJobType
+    ) => {
       setActiveJob({ jobId: response.jobId, status: response.status });
       // A FAILED job must clear the spinner and drop back to an actionable step,
       // otherwise the form hangs on the ProcessingBanner with no footer/retry.
@@ -541,13 +541,37 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       if (response.status !== 'COMPLETED') {
         return;
       }
-      setCsvImportResult(response.result);
+      // The completion frame is thin; fetch the persisted result by job id so a large
+      // result never travels through the websocket relay (an inline result is used as-is).
+      let importResult = response.result;
+      try {
+        importResult = await resolveCsvImportResult(
+          response.jobId,
+          response.result
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+      if (!importResult) {
+        // The result could not be fetched; the toast above already informed the user.
+        // Keep the user on an actionable step instead of advancing to an empty preview.
+        setProcessingType(undefined);
+        setActiveStep(
+          job.type === 'initialLoad'
+            ? VALIDATION_STEP.UPLOAD
+            : VALIDATION_STEP.EDIT_VALIDATE
+        );
+        activeJobRef.current = undefined;
+
+        return;
+      }
+      setCsvImportResult(importResult);
       setProcessingType(undefined);
       // An aborted dry-run keeps the user on the upload step so the abort card
       // can offer a retry; a clean one advances to preview.
       if (
         job.type === 'initialLoad' &&
-        response.result?.status !== Status.Aborted
+        importResult?.status !== Status.Aborted
       ) {
         setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
       }
@@ -565,7 +589,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       const buffered = pendingResponseRef.current;
       if (buffered && buffered.jobId === job.jobId) {
         pendingResponseRef.current = undefined;
-        processImportResponse(buffered, job);
+        void processImportResponse(buffered, job);
       }
     },
     [processImportResponse]
@@ -642,7 +666,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       if (response.jobId !== job.jobId) {
         return;
       }
-      processImportResponse(response, job);
+      void processImportResponse(response, job);
     };
 
     socket.on(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, handleCsvImportChannel);

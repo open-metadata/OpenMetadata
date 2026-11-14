@@ -1,6 +1,7 @@
 package org.openmetadata.service.rules;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -98,6 +99,33 @@ class RuleEngineTest {
           .thenReturn(null);
 
       assertEquals(List.of(), RuleEngine.getInstance().evaluateAndReturn(table, null, true, false));
+    }
+  }
+
+  @Test
+  void isOperationEnabledMatchesRuleLogicNotItsName() {
+    String domainMatch = "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"}]}";
+    SemanticsRule renamed =
+        new SemanticsRule().withName("Renamed by admin").withRule(domainMatch).withEnabled(true);
+    SemanticsRule other =
+        new SemanticsRule()
+            .withName("Data Product Domain Validation")
+            .withRule("{\"<=\":[{\"length\":{\"var\":\"domains\"}},1]}")
+            .withEnabled(true);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class)) {
+      entity.when(Entity::getSystemRepository).thenReturn(mock(SystemRepository.class));
+      settingsCache
+          .when(
+              () ->
+                  SettingsCache.getSetting(
+                      SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class))
+          .thenReturn(new EntityRulesSettings().withEntitySemantics(List.of(renamed, other)));
+      assertTrue(RuleEngine.getInstance().isOperationEnabled("validateDataProductDomainMatch"));
+
+      renamed.setEnabled(false);
+      assertFalse(RuleEngine.getInstance().isOperationEnabled("validateDataProductDomainMatch"));
     }
   }
 
@@ -216,5 +244,89 @@ class RuleEngineTest {
         RuleEngine.getInstance().evaluateAndReturn(table, List.of(trueRule), false, false);
 
     assertTrue(failed.isEmpty(), "Rule evaluating to true should pass");
+  }
+
+  private static final String DATA_PRODUCT_DOMAIN_RULE =
+      "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}";
+  private static final String OWNERSHIP_RULE =
+      "{\"multipleUsersOrSingleTeamOwnership\":{\"var\":\"owners\"}}";
+
+  private static EntityReference ref(String type) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type).withName(type);
+  }
+
+  @Test
+  void dataProductWithoutAnyDomainFailsTheDomainRule() {
+    Map<String, Object> facts =
+        Map.of("dataProducts", List.of(ref(Entity.DATA_PRODUCT)), "domains", List.of());
+
+    assertEquals(false, RuleEngine.getInstance().apply(DATA_PRODUCT_DOMAIN_RULE, facts));
+  }
+
+  @Test
+  void inheritedDomainSatisfiesTheDataProductDomainRule() {
+    EntityReference dataProduct = ref(Entity.DATA_PRODUCT);
+    EntityReference domain = ref(Entity.DOMAIN).withInherited(true);
+    Map<String, Object> facts =
+        Map.of("dataProducts", List.of(dataProduct), "domains", List.of(domain));
+    var relationshipRepository =
+        mock(org.openmetadata.service.jdbi3.EntityRelationshipRepository.class);
+    var collectionDao =
+        mock(
+            org.openmetadata.service.jdbi3.CollectionDAO.class,
+            org.mockito.Answers.RETURNS_DEEP_STUBS);
+    when(collectionDao
+            .relationshipDAO()
+            .findFrom(
+                dataProduct.getId(),
+                Entity.DATA_PRODUCT,
+                org.openmetadata.schema.type.Relationship.CONTAINS.ordinal()))
+        .thenReturn(List.of());
+    when(relationshipRepository.getEntityReferences(
+            org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(
+            List.of(
+                new EntityReference()
+                    .withId(domain.getId())
+                    .withType(Entity.DOMAIN)
+                    .withName(domain.getName())));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getEntityRelationshipRepository).thenReturn(relationshipRepository);
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDao);
+
+      assertEquals(true, RuleEngine.getInstance().apply(DATA_PRODUCT_DOMAIN_RULE, facts));
+    }
+  }
+
+  @Test
+  void inheritedOwnersAreCheckedByTheOwnershipRule() {
+    EntityReference team = ref(Entity.TEAM).withInherited(true);
+    EntityReference otherTeam = ref(Entity.TEAM).withInherited(true);
+
+    assertEquals(
+        true, RuleEngine.getInstance().apply(OWNERSHIP_RULE, Map.of("owners", List.of(team))));
+    assertEquals(
+        false,
+        RuleEngine.getInstance().apply(OWNERSHIP_RULE, Map.of("owners", List.of(team, otherTeam))));
+  }
+
+  @Test
+  void onlyDataProductsWithoutOwnDomainsWaitForInheritance() {
+    EntityReference dataProduct = ref(Entity.DATA_PRODUCT);
+    EntityReference ownDomain = ref(Entity.DOMAIN);
+    EntityReference inheritedDomain = ref(Entity.DOMAIN).withInherited(true);
+
+    assertTrue(
+        RuleEngine.dependsOnInheritedDomains(new Table().withDataProducts(List.of(dataProduct))));
+    assertTrue(
+        RuleEngine.dependsOnInheritedDomains(
+            new Table()
+                .withDataProducts(List.of(dataProduct))
+                .withDomains(List.of(inheritedDomain))));
+    assertFalse(
+        RuleEngine.dependsOnInheritedDomains(
+            new Table().withDataProducts(List.of(dataProduct)).withDomains(List.of(ownDomain))));
+    assertFalse(RuleEngine.dependsOnInheritedDomains(new Table()));
   }
 }

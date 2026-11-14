@@ -141,10 +141,10 @@
       ]
     },
     "securityConfig": {
-      "mask": true,
       "description": "OpenMetadata Client security configuration.",
       "title": "openMetadataJWTClientConfig",
       "type": "object",
+      "mask": true,
       "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
       "properties": {
         "jwtToken": {

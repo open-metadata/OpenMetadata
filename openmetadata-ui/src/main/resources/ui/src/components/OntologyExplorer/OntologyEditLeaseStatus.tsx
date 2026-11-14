@@ -15,7 +15,7 @@ import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { OntologyEditLock } from '../../generated/type/ontologyEditLock';
-import { OntologyEditLeaseState } from './hooks/useOntologyEditLease';
+import { OntologyEditLeaseState } from '../../hooks/governance/ontology/useOntologyEditLease';
 
 interface OntologyEditLeaseStatusProps {
   hasResource: boolean;

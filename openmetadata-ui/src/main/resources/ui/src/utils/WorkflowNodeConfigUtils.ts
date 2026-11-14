@@ -180,6 +180,7 @@ const NODE_SPECIFIC_CONFIG_HANDLERS: Record<
   [NodeSubType.CheckChangeDescriptionTask]: applyCheckChangeDescriptionConfig,
   [NodeSubType.RollbackEntityTask]: applyPassthroughConfig,
   [NodeSubType.SinkTask]: applyPassthroughConfig,
+  [NodeSubType.CollectMetadataTask]: applyPassthroughConfig,
 };
 
 const addNodeSpecificConfig = (
@@ -198,6 +199,12 @@ const AUTOMATED_TASK_SINGLE_INPUT_SUBTYPES: string[] = [
   NodeSubType.CheckEntityAttributesTask,
   NodeSubType.CheckChangeDescriptionTask,
   NodeSubType.DataCompletenessTask,
+  NodeSubType.CollectMetadataTask,
+];
+
+// Nodes whose schema declares no output variables, so the request may not carry one.
+const AUTOMATED_TASK_WITHOUT_OUTPUT_SUBTYPES: string[] = [
+  NodeSubType.CollectMetadataTask,
 ];
 
 const AUTOMATED_TASK_OUTPUT_MAP: Record<
@@ -245,7 +252,9 @@ const configureAutomatedTaskIO = (
     : ['relatedEntity', 'updatedBy'];
 
   const outputConfig = AUTOMATED_TASK_OUTPUT_MAP[subType];
-  config.output = outputConfig?.output ?? [];
+  if (!AUTOMATED_TASK_WITHOUT_OUTPUT_SUBTYPES.includes(subType)) {
+    config.output = outputConfig?.output ?? [];
+  }
   if (outputConfig?.branches) {
     config.branches = outputConfig.branches;
   }
@@ -270,8 +279,11 @@ const applyUserApprovalConfig = (
         }>;
       }
     | undefined;
-  config.config = {};
+  // Start from the step's stored config so settings this builder does not edit (partial
+  // decisions, transition metadata, task status, domain-owner approvers) survive a save.
+  config.config = { ...nodeData.config };
   config.config.assignees = {
+    ...assigneesFromNode,
     addReviewers: assigneesFromNode?.addReviewers ?? true,
     addOwners: assigneesFromNode?.addOwners ?? false,
     emptyAssigneeStrategy: assigneesFromNode?.emptyAssigneeStrategy ?? 'none',

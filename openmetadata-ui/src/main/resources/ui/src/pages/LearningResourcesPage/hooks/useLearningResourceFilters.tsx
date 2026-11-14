@@ -251,7 +251,7 @@ export const useLearningResourceFilters = (
         <Box className="tw:flex-1" gap={2} wrap="wrap">
           {selectedFilters.map((filter) => (
             <Badge
-              className="filter-selection-chip tw:outline-0 tw:gap-1"
+              className="tw:outline-0 tw:gap-1"
               color="brand"
               key={filter.key}
               size="lg"
@@ -277,8 +277,8 @@ export const useLearningResourceFilters = (
               </Box>
               <ButtonUtility
                 aria-label={t('label.remove')}
-                color="tertiary"
-                icon={<XClose size={14} />}
+                icon={XClose}
+                size="xs"
                 onClick={() => handleRemoveFilter(filter.key)}
               />
             </Badge>

@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.GlossaryTermCollection;
+import org.openmetadata.sdk.fluent.request.BulkCreateRequest;
 
 /**
  * Pure Fluent API for GlossaryTerm operations.
@@ -82,6 +83,12 @@ public final class GlossaryTerms {
 
   public static GlossaryTerm create(CreateGlossaryTerm request) {
     return getClient().glossaryTerms().create(request);
+  }
+
+  public static BulkCreateRequest createMany(final List<CreateGlossaryTerm> requests) {
+    final OpenMetadataClient client = getClient();
+    final List<CreateGlossaryTerm> batch = List.copyOf(requests);
+    return new BulkCreateRequest(policy -> client.glossaryTerms().createMany(batch, policy));
   }
 
   // ==================== Finding/Retrieval ====================

@@ -10,21 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  ButtonUtility,
-  TextArea,
-} from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Box, ButtonUtility, TextArea } from '@openmetadata/ui-core-components';
+import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import classNames from 'classnames';
+import renderMathInElement from 'katex/contrib/auto-render';
 import 'katex/dist/katex.min.css';
-import { FC, useRef, useState } from 'react';
+import { noop } from 'lodash';
+import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Latex from 'react-latex-next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import './math-equation.less';
+
+// The delimiters react-latex-next used, so stored `$…$` / `$$…$$` equations
+// render as before.
+const LATEX_DELIMITERS = [
+  { left: '$$', right: '$$', display: true },
+  { left: String.raw`\(`, right: String.raw`\)`, display: false },
+  { left: '$', right: '$', display: false },
+  { left: String.raw`\[`, right: String.raw`\]`, display: true },
+];
+
+// auto-render keeps everything outside the delimiters as text nodes, so the
+// stored attribute is never parsed as HTML.
+const RenderedEquation: FC<{ equation: string }> = ({ equation }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.textContent = equation;
+      renderMathInElement(ref.current, {
+        delimiters: LATEX_DELIMITERS,
+        // Malformed math stays as its source text, without logging per render.
+        errorCallback: noop,
+      });
+    }
+  }, [equation]);
+
+  return <span ref={ref} />;
+};
 
 export const MathEquationComponent: FC<NodeViewProps> = ({
   node,
@@ -72,32 +95,30 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
               textAreaRef={inputRef}
             />
             <Box align="center" gap={2}>
-              <Button
-                aria-label={t('label.cancel')}
-                color="secondary"
-                iconLeading={XClose}
-                size="xs"
-                onPress={() => setIsEditing(false)}
+              <ButtonUtility
+                icon={XClose}
+                size="sm"
+                tooltip={t('label.cancel')}
+                onClick={() => setIsEditing(false)}
               />
-              <Button
-                aria-label={t('label.save')}
+              <ButtonUtility
                 color="primary"
-                iconLeading={Check}
-                size="xs"
-                onPress={handleSaveEquation}
+                icon={Check}
+                size="sm"
+                tooltip={t('label.save')}
+                onClick={handleSaveEquation}
               />
             </Box>
           </div>
         ) : (
-          <Latex>{equation}</Latex>
+          <RenderedEquation equation={equation} />
         )}
         {/* Show edit button only when the editor is editable */}
         {!isEditing && editor.isEditable && (
           <ButtonUtility
             className="edit-button"
-            color="tertiary"
-            icon={<EditIcon width={16} />}
-            size="xs"
+            icon={Edit01}
+            size="lg"
             tooltip={t('label.edit-entity', { entity: t('label.equation') })}
             onClick={() => setIsEditing(true)}
           />

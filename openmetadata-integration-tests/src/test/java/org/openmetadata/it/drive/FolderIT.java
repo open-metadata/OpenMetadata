@@ -17,6 +17,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
@@ -34,6 +36,7 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 class FolderIT {
 
   private static final String PATH = "v1/contextCenter/drive/folders";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
 
   private Folder createFolder(RestClient rest, CreateFolder request) throws HttpResponseException {
     return rest.create(PATH, request, Folder.class);
@@ -326,6 +329,56 @@ class FolderIT {
               assertEquals(404, parentStatus);
               assertEquals(404, childStatus);
             });
+  }
+
+  /**
+   * Viewing a folder must not reveal a private document inside it. The contents listing returns
+   * whole file entities, extracted text included, so it has to apply the same visibility as reading
+   * the file itself.
+   */
+  @Test
+  void testFolderContentsHideFilesNotVisibleToTheCaller(TestNamespace ns) throws Exception {
+    RestClient adminRest = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "private-owner");
+    Folder folder =
+        createFolder(adminRest, new CreateFolder().withName(ns.prefix("mixed-visibility")));
+    ContextFile orgWide =
+        adminRest.create(
+            FILE_PATH, fileIn(folder, ns.prefix("org-wide-file"), owner), ContextFile.class);
+    ContextFile privateFile =
+        adminRest.create(
+            FILE_PATH, fileIn(folder, ns.prefix("private-file"), owner), ContextFile.class);
+    String original = JsonUtils.pojoToJson(privateFile);
+    privateFile.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    adminRest.patch(FILE_PATH, privateFile.getId(), original, privateFile, ContextFile.class);
+
+    jakarta.json.JsonObject outsiderView =
+        contentsOf(RestClient.forUser("test@open-metadata.org", new String[] {}), folder.getId());
+    assertEquals(1, outsiderView.getInt("childrenFileCount"));
+    assertEquals(
+        orgWide.getName(), outsiderView.getJsonArray("files").getJsonObject(0).getString("name"));
+
+    jakarta.json.JsonObject ownerView =
+        contentsOf(RestClient.forUser(owner.getEmail(), new String[] {}), folder.getId());
+    assertEquals(2, ownerView.getInt("childrenFileCount"));
+  }
+
+  private static CreateContextFile fileIn(Folder folder, String name, User owner) {
+    return new CreateContextFile()
+        .withName(name)
+        .withFileType(ContextFileType.PDF)
+        .withFolder(folder.getFullyQualifiedName())
+        .withOwners(List.of(owner.getEntityReference()))
+        .withProcessingStatus(ProcessingStatus.Uploaded);
+  }
+
+  private static jakarta.json.JsonObject contentsOf(RestClient rest, UUID folderId) {
+    try (Response response = rest.rawGet(PATH + "/" + folderId + "/contents")) {
+      assertEquals(200, response.getStatus());
+      return jakarta.json.Json.createReader(
+              new java.io.StringReader(response.readEntity(String.class)))
+          .readObject();
+    }
   }
 
   @Test

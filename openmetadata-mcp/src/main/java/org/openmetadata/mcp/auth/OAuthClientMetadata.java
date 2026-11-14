@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * RFC 7591 OAuth 2.0 Dynamic Client Registration metadata. See
@@ -14,6 +16,14 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OAuthClientMetadata {
+
+  /**
+   * Every scope the server's OAuth metadata can advertise. Authorization and refresh keep only
+   * these and drop the rest, so a granted list stays this short however many scopes a request
+   * names. ADR:2026-10-27-mcp-oauth-keeps-only-the-scopes-it-knows
+   */
+  public static final Set<String> KNOWN_SCOPES =
+      Set.of("openid", "profile", "email", "offline_access");
 
   @JsonProperty("redirect_uris")
   private List<URI> redirectUris;
@@ -84,7 +94,7 @@ public class OAuthClientMetadata {
 
     // If client didn't register specific scopes, allow any scope
     if (scope == null || scope.trim().isEmpty()) {
-      return requestedScopes;
+      return grantedScopes(requestedScopes);
     }
 
     List<String> allowedScopes = Arrays.asList(scope.split(" "));
@@ -96,7 +106,18 @@ public class OAuthClientMetadata {
       }
     }
 
-    return requestedScopes;
+    return grantedScopes(requestedScopes);
+  }
+
+  /** The known scopes among {@code scopes}, each once, in request order. */
+  public static List<String> keepKnownScopes(Collection<String> scopes) {
+    return scopes.stream().filter(KNOWN_SCOPES::contains).distinct().toList();
+  }
+
+  /** Null when no known scope is left, so the request gets the default scopes. */
+  private static List<String> grantedScopes(List<String> requestedScopes) {
+    List<String> known = keepKnownScopes(requestedScopes);
+    return known.isEmpty() ? null : known;
   }
 
   /**

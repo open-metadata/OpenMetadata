@@ -1,0 +1,169 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyImportSummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyImportSummary",
+  "description": "What a native ontology import would change, counted from one parse of the source. Nothing is persisted.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSummary",
+  "definitions": {
+    "skipReason": {
+      "description": "Why an RDF statement was left out. NON_PREFERRED_LANGUAGE: another language of a text the import keeps in its preferred language (untagged, then `en`, then the lexicographically first tag). EXTRA_VALUE: a further value of a single-valued field; the import keeps the lexicographically first. UNSUPPORTED_ANNOTATION: an annotation the native model has no field for. UNSUPPORTED_STRUCTURE: a construct the native model cannot represent faithfully, such as a union domain or a SHACL shape. INDIVIDUAL: a statement about a named individual that is not a class or concept. IMPORTS: an `owl:imports` statement; the importer never fetches other documents. UNDECLARED_REFERENCE: a link, such as `rdfs:subPropertyOf`, to a property that neither the source nor the target ontology declares; the definition is kept without the link.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSkipReason",
+      "enum": [
+        "NON_PREFERRED_LANGUAGE",
+        "EXTRA_VALUE",
+        "UNSUPPORTED_ANNOTATION",
+        "UNSUPPORTED_STRUCTURE",
+        "INDIVIDUAL",
+        "IMPORTS",
+        "UNDECLARED_REFERENCE"
+      ]
+    },
+    "skipGroup": {
+      "description": "RDF statements skipped for one reason and predicate. Blank-node structure hanging off a skipped statement is part of that statement and is not counted separately.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSkipGroup",
+      "properties": {
+        "reason": {
+          "$ref": "#/definitions/skipReason"
+        },
+        "predicate": {
+          "description": "IRI of the skipped statements' predicate. Absent for INDIVIDUAL, which covers every predicate of the individual.",
+          "type": "string"
+        },
+        "object": {
+          "description": "IRI of the object, set only when the predicate is rdf:type.",
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "subjects": {
+          "description": "A bounded sample of the subjects, the lexicographically first, so the sample is the same on every parse.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      },
+      "required": ["reason", "count"],
+      "additionalProperties": false
+    },
+    "skippedStatements": {
+      "description": "What the importer left out of an RDF source because the native model cannot hold it, so a reviewer sees what the preview does not cover. A native export re-imported skips nothing.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSkipped",
+      "properties": {
+        "total": {
+          "description": "Statements skipped across all groups, including groups omitted from the list.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "groups": {
+          "description": "At most 100 groups, largest first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/skipGroup"
+          },
+          "default": []
+        },
+        "omittedGroups": {
+          "description": "Groups beyond the listed ones.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["total", "groups", "omittedGroups"],
+      "additionalProperties": false
+    },
+    "counts": {
+      "description": "Every parsed concept, property, and axiom is counted once as new, updated, or skipped. `newMappings` counts mappings inside new and updated concepts, so it overlaps the concept counts.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportCounts",
+      "properties": {
+        "newConcepts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedConcepts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "newProperties": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedProperties": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "newRelations": {
+          "description": "Parsed axioms the target does not hold yet.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "newMappings": {
+          "description": "Concept mappings the target does not hold yet.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedDefinitions": {
+          "description": "Parsed concepts and properties identical to the stored ones.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedRelations": {
+          "description": "Parsed axioms the target already holds.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "newConcepts",
+        "updatedConcepts",
+        "newProperties",
+        "updatedProperties",
+        "newRelations",
+        "newMappings",
+        "skippedDefinitions",
+        "skippedRelations"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "detectedFormat": {
+      "description": "Format the server parsed: the requested format, or the detected one when the request omits it.",
+      "$ref": "previewNativeOntologyImport.json#/definitions/format"
+    },
+    "ontologyLabel": {
+      "description": "Label of the source ontology, when the source declares exactly one ontology header with a label.",
+      "type": "string"
+    },
+    "counts": {
+      "$ref": "#/definitions/counts"
+    },
+    "skippedStatements": {
+      "$ref": "#/definitions/skippedStatements"
+    },
+    "items": {
+      "description": "The parsed definitions in the order the source lists them, each with the status applying it would give, at most 5,000 of them. Past that budget ALREADY_EXISTS items are left out first, since nothing can be done with them; `counts` still covers every definition. On a preview against a target each NEW or UPDATE item names its change set operation; a preview against a new ontology has no operations yet.",
+      "type": "array",
+      "items": {
+        "$ref": "nativeOntologyImportItem.json"
+      },
+      "default": []
+    },
+    "omittedItems": {
+      "description": "Parsed definitions beyond the listed items.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    }
+  },
+  "required": ["detectedFormat", "counts"],
+  "additionalProperties": false
+}

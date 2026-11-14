@@ -1,0 +1,9 @@
+{
+  "$id": "https://open-metadata.org/schema/type/nativeOntologyExportFormat.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyExportFormat",
+  "description": "Serializations and concept projections available for sealed native ontology releases. SKOS and SKOS-XL are written as Turtle, and CSV is the native ontology spreadsheet.",
+  "javaType": "org.openmetadata.schema.type.NativeOntologyExportFormat",
+  "type": "string",
+  "enum": ["turtle", "rdfxml", "ntriples", "jsonld", "skos", "skos-xl", "csv"]
+}

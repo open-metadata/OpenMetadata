@@ -23,8 +23,19 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../../common/Table/TableV2', () => ({
   __esModule: true,
-  default: ({ 'data-testid': testId }: { 'data-testid': string }) => (
-    <div data-testid={testId} />
+  default: ({
+    'data-testid': testId,
+    renderToolbar,
+    locale,
+  }: {
+    'data-testid': string;
+    renderToolbar?: () => React.ReactNode;
+    locale?: { emptyText?: React.ReactNode };
+  }) => (
+    <div data-testid={testId}>
+      {renderToolbar?.()}
+      {locale?.emptyText}
+    </div>
   ),
 }));
 
@@ -39,6 +50,8 @@ const baseProps = {
   available: [],
   entityLabel: 'Role',
   entityPluralLabel: 'Roles',
+  entityDescription: 'Assign roles to teams',
+  emptyIcon: <svg data-testid="role-empty-icon" />,
   tableTestId: 'team-roles-table',
   addButtonTestId: 'add-role',
   addSelectTestId: 'add-role-select',
@@ -60,6 +73,12 @@ describe('MembersInlineEntityTab', () => {
     fireEvent.click(screen.getByTestId('add-role'));
 
     expect(onStartAdd).toHaveBeenCalled();
+  });
+
+  it('shows the entity icon in the empty state', () => {
+    render(<MembersInlineEntityTab {...baseProps} />);
+
+    expect(screen.getByTestId('role-empty-icon')).toBeInTheDocument();
   });
 
   it('hides the add button without edit permission', () => {
@@ -103,5 +122,13 @@ describe('MembersInlineEntityTab', () => {
 
     expect(onCancelAdd).toHaveBeenCalled();
     expect(onConfirmAdd).toHaveBeenCalled();
+  });
+
+  it('titles the table with the entity name and description, beside the Add button', () => {
+    render(<MembersInlineEntityTab {...baseProps} />);
+
+    expect(screen.getByText('Roles')).toBeInTheDocument();
+    expect(screen.getByText('Assign roles to teams')).toBeInTheDocument();
+    expect(screen.getByTestId('add-role')).toBeInTheDocument();
   });
 });

@@ -97,8 +97,10 @@ describe('KPILatestResultsV1', () => {
       backgroundColor: '#100000@0.1',
       color: '#100000',
     });
-    expect(container.querySelector('.ant-progress-bg')).toHaveStyle({
-      backgroundColor: '#100000',
-    });
+    expect(screen.getAllByRole('progressbar')[0].firstElementChild).toHaveStyle(
+      {
+        backgroundColor: '#100000',
+      }
+    );
   });
 });

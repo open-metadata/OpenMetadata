@@ -31,7 +31,9 @@ let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  error?: unknown;
 };
+const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
 // What the Mentions feed returns, read separately to mark mentioned cards.
 let mockMentionItems: MockInboxItem[] = [];
@@ -50,6 +52,8 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      error: activityState.error ?? null,
+      refetch: mockRefetch,
     };
   },
   useInboxActivityCounts: () => ({}),
@@ -59,15 +63,22 @@ jest.mock('../useInboxActivity', () => ({
 jest.mock('../components/ActivityToolbar', () => ({
   __esModule: true,
   default: ({
+    datePreset,
+    onDatePresetChange,
     onFilterChange,
     onGroupingChange,
     onTypeKeysChange,
   }: {
+    datePreset: string;
+    onDatePresetChange: (key: string) => void;
     onFilterChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeKeysChange: (value: string[]) => void;
   }) => (
-    <div>
+    <div data-preset={datePreset} data-testid="toolbar">
+      <button onClick={() => onDatePresetChange('last7days')}>
+        last-7-days
+      </button>
       <button onClick={() => onFilterChange('following')}>following</button>
       <button onClick={() => onGroupingChange('user')}>by-user</button>
       <button onClick={() => onGroupingChange('asset')}>by-asset</button>
@@ -84,15 +95,18 @@ jest.mock('../components/ActivityFeedItem', () => ({
     activity,
     feed,
     isMentioned,
+    mentionedName,
     timeFormat,
   }: {
     activity?: MockItem;
     feed?: MockItem;
     isMentioned?: boolean;
+    mentionedName?: string;
     timeFormat?: string;
   }) => (
     <div
       data-mentioned={isMentioned}
+      data-mentioned-name={mentionedName}
       data-testid="feed-item"
       data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
@@ -135,15 +149,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({
     title,
     description,
+    actions,
     ...props
   }: {
     title?: ReactNode;
     description?: ReactNode;
+    actions?: { key: string; label: ReactNode; onPress?: () => void }[];
     'data-testid'?: string;
   }) => (
     <div data-testid={props['data-testid']}>
       <span>{title}</span>
       <span>{description}</span>
+      {actions?.map(({ key, label, onPress }) => (
+        <button key={key} onClick={onPress}>
+          {label}
+        </button>
+      ))}
     </div>
   ),
 }));
@@ -155,7 +176,22 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockMarkInboxActivitySeen = jest.fn();
+
+jest.mock('../../../../../hooks/usePersonalSpaceStore', () => ({
+  usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
+    selector({ markInboxActivitySeen: mockMarkInboxActivitySeen }),
+}));
+
+import { User } from '../../../../../generated/entity/teams/user';
+import { ActivityFilter, getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
+
+const alice = {
+  id: 'alice-id',
+  name: 'alice.johnson',
+  displayName: 'Alice Johnson',
+} as User;
 
 describe('ActivityTab', () => {
   beforeEach(() => {
@@ -179,6 +215,69 @@ describe('ActivityTab', () => {
     render(<ActivityTab isFiltered />);
 
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  it('shows the filter empty state with a clear action when a type filter empties the feed', () => {
+    activityState = {
+      items: [{ activity: { id: 'created', eventType: 'EntityCreated' } }],
+      total: 1,
+      isLoading: false,
+    };
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('inbox-activity-no-results')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.no-result-for-these-filter-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-activity-in-period')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.clear-filter-plural'));
+
+    expect(
+      screen.getAllByTestId('feed-item').map((el) => el.textContent)
+    ).toEqual(['created']);
+  });
+
+  it('keeps the feed empty state when the feed itself is empty under a type filter', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-result-for-these-filter-plural')
+    ).not.toBeInTheDocument();
+  });
+
+  // A failed feed must not read as an empty one.
+  it('shows an error with a retry, not the empty state, when the feed fails', () => {
+    activityState = { ...activityState, error: { response: { status: 500 } } };
+    render(<ActivityTab />);
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.activity-feed-starts-here')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('shows a permission placeholder when the feed is forbidden', () => {
+    activityState = { ...activityState, error: { response: { status: 403 } } };
+    render(<ActivityTab />);
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the skeleton while loading', () => {
@@ -239,13 +338,104 @@ describe('ActivityTab', () => {
   it('fetches the sub-tab the toolbar selects', () => {
     render(<ActivityTab />);
 
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+    // Uncontrolled, the tab keeps its own window at the default preset.
+    const defaultWindow = expect.objectContaining({ key: 'last30days' });
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      defaultWindow,
+      undefined
+    );
 
     fireEvent.click(screen.getByText('following'));
 
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
+      defaultWindow,
       undefined
+    );
+  });
+
+  it('opens on the sub-tab a link asks for', () => {
+    render(<ActivityTab initialFilter={ActivityFilter.MyAssets} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'my-assets',
+      expect.objectContaining({ key: 'last30days' }),
+      undefined
+    );
+  });
+
+  // Without a window from the parent, the tab keeps and narrows its own.
+  it('narrows its own window when a preset is picked without a parent window', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      { ...getInboxDateRange(7), key: 'last7days' },
+      undefined
+    );
+    expect(screen.getByTestId('toolbar')).toHaveAttribute(
+      'data-preset',
+      'last7days'
+    );
+    // A narrowed window empties to "no activity in period", not first-run.
+    expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  it("uses the parent's window and hands it the preset when given one", () => {
+    const dateRange = { startTs: 100, endTs: 200, key: 'last30days' };
+    const onDatePresetChange = jest.fn();
+
+    render(
+      <ActivityTab
+        dateRange={dateRange}
+        onDatePresetChange={onDatePresetChange}
+      />
+    );
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      dateRange,
+      undefined
+    );
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
+  });
+
+  it("fetches another user's feeds when given a user", () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      expect.anything(),
+      'alice-id'
+    );
+  });
+
+  it('names the viewed user, not "you", on mentions and the empty state', () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByText('label.no-activity-yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.user-activity-empty-description')
+    ).toBeInTheDocument();
+
+    activityState = {
+      items: [{ feed: { id: 't1' } }],
+      total: 1,
+      isLoading: false,
+    };
+    mockMentionItems = [{ feed: { id: 't1' } }];
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByTestId('feed-item')).toHaveAttribute(
+      'data-mentioned-name',
+      'Alice'
     );
   });
 
@@ -382,5 +572,89 @@ describe('ActivityTab', () => {
 
     expect(screen.getByTestId('activity-group')).toHaveTextContent('orders');
     expect(screen.getByTestId('group-icon-table')).toBeInTheDocument();
+  });
+
+  // The seen-mark drives the sidebar's unread badge and is the only state
+  // persisted to localStorage, so stamping it at the wrong time permanently
+  // loses unread mentions. The mark must only fire once the viewer's own feed
+  // has loaded successfully — not while loading, not on error, and not for
+  // another user's feed.
+  describe('seen-mark timing', () => {
+    it('stamps the seen-mark once the feed has loaded', () => {
+      activityState = { items: [], total: 0, isLoading: false };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark while the feed is loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed errors', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed is forbidden', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 403 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it("does not stamp the seen-mark for another user's feed", () => {
+      activityState = {
+        items: [{ feed: { id: 't1' } }],
+        total: 1,
+        isLoading: false,
+      };
+      render(<ActivityTab user={alice} />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    // The bug: the mark fired on mount regardless of feed state. A feed that
+    // starts loading and then resolves must stamp the mark only after the
+    // transition to loaded.
+    it('stamps the seen-mark after the feed finishes loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    // A failed visit must leave the unread state intact; retrying successfully
+    // is what stamps the mark.
+    it('stamps the seen-mark after a failed feed succeeds on retry', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
   });
 });

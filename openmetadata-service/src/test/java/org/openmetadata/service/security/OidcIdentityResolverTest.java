@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -111,6 +112,33 @@ class OidcIdentityResolverTest {
     assertEquals("legacy-user", identity.userName());
     assertEquals("legacy-user@openmetadata.org", identity.email());
     assertFalse(identity.emailFirstFlow());
+  }
+
+  @Test
+  void testResolveCarriesThePictureClaimInBothFlows() {
+    String picture = "https://lh3.googleusercontent.com/a/ACg8ocJ=s96-c";
+    OidcIdentityResolver emailFirst =
+        new OidcIdentityResolver(
+            authConfig(true, List.of(), new ArrayList<>(), "email", "name"),
+            authzConfig(Set.of(), Set.of(), false),
+            Map.of(),
+            List.of(),
+            "openmetadata.org");
+    OidcIdentityResolver legacy =
+        new OidcIdentityResolver(
+            authConfig(true, List.of("preferred_username"), new ArrayList<>(), null, "name"),
+            authzConfig(null, Set.of(), false),
+            Map.of(),
+            List.of("preferred_username"),
+            "openmetadata.org");
+
+    OidcIdentityResolver.ResolvedOidcIdentity emailFirstIdentity =
+        emailFirst.resolve(Map.of("email", "jdoe@company.com", "picture", picture));
+    OidcIdentityResolver.ResolvedOidcIdentity legacyIdentity =
+        legacy.resolve(Map.of("preferred_username", "jdoe", "picture", picture));
+
+    assertEquals(URI.create(picture), emailFirstIdentity.picture());
+    assertEquals(URI.create(picture), legacyIdentity.picture());
   }
 
   @Test

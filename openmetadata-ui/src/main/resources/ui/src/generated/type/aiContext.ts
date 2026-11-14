@@ -115,6 +115,10 @@ export interface AIContext {
  */
 export interface KnowledgeItem {
     /**
+     * For a metric found by find_context, how many non-deleted variants (child metrics) it has.
+     */
+    childrenCount?: number;
+    /**
      * The definition, business rule, metric expression, or article body for this item. May be a
      * bounded lead excerpt when contentTruncated is true, or null when omitted to stay within
      * the context budget.
@@ -133,6 +137,10 @@ export interface KnowledgeItem {
     id?:   string;
     name?: string;
     /**
+     * For a metric found by find_context, the parent metric it is a variant of.
+     */
+    parent?: EntityReference;
+    /**
      * True when read-time trust signals indicate this item may no longer reflect the asset it
      * is attached to (e.g. the asset changed after the knowledge was last updated, or the
      * asset's data-quality tests are failing). Absent means no staleness signal.
@@ -149,131 +157,7 @@ export interface KnowledgeItem {
 }
 
 /**
- * The entity type of the knowledge item.
- */
-export enum Type {
-    ContextMemory = "contextMemory",
-    GlossaryTerm = "glossaryTerm",
-    Metric = "metric",
-    Page = "page",
-}
-
-/**
- * Type-specific structural context for the asset.
- *
- * Type-specific structural context, selected by the asset's entity type. Metrics carry both
- * their generic expression/source-assets context and conceptContext. New asset types are
- * added as optional sub-contexts without breaking existing consumers.
- */
-export interface AssetContext {
-    conceptContext?: ConceptContext;
-    dashboard?:      DashboardContext;
-    generic?:        GenericAssetContext;
-    pipeline?:       PipelineContext;
-    table?:          TableContext;
-    topic?:          TopicContext;
-}
-
-/**
- * A business concept's definition and its physical bindings, related metrics and
- * saved-query evidence. Counts include only caller-visible bindings, including those
- * omitted by the response caps.
- */
-export interface ConceptContext {
-    /**
-     * Declared ontology attributes, including their units and ENUM values.
-     */
-    attributes?: OntologyAttribute[];
-    bindings?:   ConceptBinding[];
-    definition?: string;
-    evidence?:   ConceptEvidence[];
-    /**
-     * Applied or related metrics with their expressions, sharing the envelope's knowledge
-     * budget.
-     */
-    metrics?:      KnowledgeItem[];
-    relatedTerms?: TermRelation[];
-    synonyms?:     string[];
-    /**
-     * Number of caller-visible assets with bindings, before the ten-asset cap. Counting stops
-     * after 500 candidate assets, so the value is a lower bound when that scan cap is reached.
-     */
-    totalAssets?: number;
-    /**
-     * Number of caller-visible asset and column bindings, before the per-asset and asset-count
-     * caps. A lower bound when the 500-candidate scan cap is reached.
-     */
-    totalBindings?: number;
-    /**
-     * True when bindings were omitted by the ten-asset or 25-bindings-per-asset cap, or when
-     * the 500-candidate scan cap stopped counting early.
-     */
-    truncated?: boolean;
-}
-
-/**
- * A typed attribute governed by an ontology concept.
- */
-export interface OntologyAttribute {
-    dataType: DataType;
-    /**
-     * Exact RDF datatype IRI preserved for ontology round trips.
-     */
-    datatypeIri?: string;
-    /**
-     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
-     */
-    declaringTerm?: EntityReference;
-    /**
-     * Human-readable meaning of the attribute.
-     */
-    description?: string;
-    /**
-     * Allowed values when dataType is ENUM.
-     */
-    enumValues?: string[];
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id: string;
-    /**
-     * True when the attribute is contributed by an ancestor concept rather than declared on the
-     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
-     * concept's own `attributes`.
-     */
-    inherited?: boolean;
-    /**
-     * Canonical IRI of the OWL datatype property.
-     */
-    iri?: string;
-    /**
-     * Whether the attribute identifies instances of the concept.
-     */
-    isIdentifier: boolean;
-    /**
-     * Name of the attribute within its concept.
-     */
-    name: string;
-    /**
-     * Optional unit IRI or display symbol.
-     */
-    unit?: string;
-}
-
-/**
- * Supported value type for an ontology attribute.
- */
-export enum DataType {
-    Boolean = "BOOLEAN",
-    Date = "DATE",
-    Decimal = "DECIMAL",
-    Enum = "ENUM",
-    Integer = "INTEGER",
-    String = "STRING",
-}
-
-/**
- * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ * For a metric found by find_context, the parent metric it is a variant of.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -327,6 +211,79 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * The entity type of the knowledge item.
+ */
+export enum Type {
+    ContextMemory = "contextMemory",
+    GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
+    Page = "page",
+}
+
+/**
+ * Type-specific structural context for the asset.
+ *
+ * Type-specific structural context, selected by the asset's entity type. Metrics carry both
+ * their generic expression/source-assets context and conceptContext. New asset types are
+ * added as optional sub-contexts without breaking existing consumers.
+ */
+export interface AssetContext {
+    conceptContext?: ConceptContext;
+    dashboard?:      DashboardContext;
+    generic?:        GenericAssetContext;
+    pipeline?:       PipelineContext;
+    table?:          TableContext;
+    topic?:          TopicContext;
+}
+
+/**
+ * A business concept's definition and its physical bindings, related metrics and
+ * saved-query evidence. Counts include only caller-visible bindings, including those
+ * omitted by the response caps.
+ */
+export interface ConceptContext {
+    bindings?:   ConceptBinding[];
+    definition?: string;
+    evidence?:   ConceptEvidence[];
+    /**
+     * Metrics only: the SQL conditions the metric is defined under, each to be applied with the
+     * definition. The number is wrong without them.
+     */
+    filters?: string[];
+    /**
+     * Metrics only: the time grain the metric is reported at (DAY, MONTH, ...).
+     */
+    granularity?: string;
+    /**
+     * Applied or related metrics with their expressions, sharing the envelope's knowledge
+     * budget.
+     */
+    metrics?:      KnowledgeItem[];
+    relatedTerms?: TermRelation[];
+    synonyms?:     string[];
+    /**
+     * Number of caller-visible assets with bindings, before the ten-asset cap. Counting stops
+     * after 500 candidate assets, so the value is a lower bound when that scan cap is reached.
+     */
+    totalAssets?: number;
+    /**
+     * Number of caller-visible asset and column bindings, before the per-asset and asset-count
+     * caps. A lower bound when the 500-candidate scan cap is reached.
+     */
+    totalBindings?: number;
+    /**
+     * True when bindings were omitted by the ten-asset or 25-bindings-per-asset cap, or when
+     * the 500-candidate scan cap stopped counting early.
+     */
+    truncated?: boolean;
+    /**
+     * Metrics only: the unit the value is measured in. The custom unit when unitOfMeasurement
+     * is OTHER, otherwise the unitOfMeasurement value.
+     */
+    unit?: string;
 }
 
 /**
@@ -698,11 +655,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

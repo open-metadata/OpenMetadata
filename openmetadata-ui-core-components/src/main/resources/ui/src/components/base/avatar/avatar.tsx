@@ -41,10 +41,12 @@ export interface AvatarProps {
    * - `solid`: a solid `utility-*` fill with white initials.
    * - `neutral`: the plain gray surface with muted initials (e.g. the "+N"
    *   overflow bubble).
+   * - `plain`: the page surface, white in light mode, with muted initials
+   *   (e.g. an icon standing in for a person, such as an AI agent).
    *
    * @default 'auto'
    */
-  colorVariant?: 'auto' | 'solid' | 'neutral';
+  colorVariant?: 'auto' | 'solid' | 'neutral' | 'plain';
   /**
    * An icon to display if no image is available.
    */
@@ -133,8 +135,10 @@ export const Avatar = ({
   // image). `auto`/`solid` derive a theme-adapting utility color from the name;
   // `neutral` keeps the plain gray surface.
   const showingInitials = Boolean(initials) && !(src && !isFailed);
+  const isTinted = colorVariant === 'auto' || colorVariant === 'solid';
+  const surface = colorVariant === 'plain' ? 'tw:bg-primary' : 'tw:bg-tertiary';
   const initialsColor =
-    showingInitials && colorVariant !== 'neutral'
+    showingInitials && isTinted
       ? getAvatarColorClasses(
           alt || initials || '',
           colorVariant === 'solid' ? 'solid' : 'outlined'
@@ -209,8 +213,8 @@ export const Avatar = ({
       className={cx(
         'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:outline-transparent',
         // Colored initials bring their own tinted surface (+ border for the
-        // outlined variant); otherwise fall back to the neutral gray surface.
-        initialsColor ? initialsColor.container : 'tw:bg-tertiary',
+        // outlined variant); otherwise the plain or neutral gray surface.
+        initialsColor ? initialsColor.container : surface,
         // Initials text color lives on the root (the span inherits it) so a
         // caller's `className` — applied last — can still override it.
         showingInitials && (initialsColor?.text ?? 'tw:text-quaternary'),

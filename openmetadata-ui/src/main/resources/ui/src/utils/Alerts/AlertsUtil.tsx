@@ -11,66 +11,43 @@
  *  limitations under the License.
  */
 
+import { Divider, Skeleton } from '@openmetadata/ui-core-components';
 import {
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
-import {
-  Divider,
-  Grid,
-  Skeleton,
-  Tooltip,
-} from '@openmetadata/ui-core-components';
-import { AlertProps, Checkbox, Select } from 'antd';
-import Form from 'antd/lib/form';
+  Alert,
+  AlertCircle,
+  Check,
+  CheckCircle,
+  Clock02,
+  GridView,
+  Mail,
+  Webhook,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, uniq, uniqBy } from 'lodash';
+import { uniq, uniqBy } from 'lodash';
 import { Fragment } from 'react';
-import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
-import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
-import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
-import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
-import FQNListSelect from '../../components/Alerts/FQNListSelect/FQNListSelect.component';
-import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
-import { DATA_CONTRACT_STATUS_OPTIONS } from '../../constants/Alerts.constants';
+import { InlineAlertType } from '../../components/common/InlineAlert/InlineAlert.interface';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { UUID_REGEX } from '../../constants/regex.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { StatusType } from '../../generated/entity/data/pipeline';
-import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import { Status } from '../../generated/events/api/typedEvent';
-import {
-  EventFilterRule,
-  InputType,
-  SubscriptionType,
-} from '../../generated/events/eventSubscription';
+import { SubscriptionType } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
-import { TestCaseStatus } from '../../generated/tests/testCase';
-import { EventType } from '../../generated/type/changeEvent';
+import { SearchIndexSearchSourceMapping } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import alertsClassBase from '../AlertsClassBase';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
-import { EntityIconSize } from '../EntityIconUtils';
-import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
+import { getEntityName } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
-import type { AlertSourceSearch } from './AlertSourceSearch';
-import {
-  getAlertEventsFilterLabels,
-  getMessageFromArgumentName,
-  getSelectOptionsFromEnum,
-  getSelectOptionsFromValues,
-} from './AlertsUtilPure';
+import { formatEventCount, getAlertEventsFilterLabels } from './AlertsUtilPure';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -79,16 +56,30 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
     case SubscriptionType.MSTeams:
       return <MSTeamsIcon height={16} width={16} />;
     case SubscriptionType.Email:
-      return <MailIcon height={16} width={16} />;
+      return <Mail className="tw:text-utility-gray-500" size={16} />;
     case SubscriptionType.ActivityFeed:
-      return <AllActivityIcon height={16} width={16} />;
+      return <GridView size={16} />;
     case SubscriptionType.Webhook:
     default:
-      return <WebhookIcon height={16} width={16} />;
+      return <Webhook className="tw:text-utility-gray-500" size={16} />;
   }
 };
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
+
+const getSearchEntityName = (
+  source: SearchIndexSearchSourceMapping[SearchIndex]
+) =>
+  getEntityName({
+    name:
+      'name' in source && typeof source.name === 'string'
+        ? source.name
+        : undefined,
+    displayName:
+      'displayName' in source && typeof source.displayName === 'string'
+        ? source.displayName
+        : undefined,
+  });
 
 export const searchEntity = async ({
   searchText,
@@ -116,13 +107,18 @@ export const searchEntity = async ({
 
     return uniqBy(
       response.hits.hits.map((d) => {
+        const fullyQualifiedName =
+          'fullyQualifiedName' in d._source
+            ? d._source.fullyQualifiedName ?? ''
+            : '';
+
         // Providing an option to hide display names, for inputs like 'fqnList',
         // where users can input text alongside selection options.
         // This helps avoid displaying the same option twice
         // when using regular expressions as inputs in the same field.
         const displayName = showDisplayNameAsLabel
-          ? getEntityName(d._source)
-          : d._source.fullyQualifiedName ?? '';
+          ? getSearchEntityName(d._source)
+          : fullyQualifiedName;
 
         // Container options (a type that has in-scope descendants) show a display-only ".*" hint
         // to convey "matches everything under this FQN"; the stored value stays the plain FQN.
@@ -136,7 +132,7 @@ export const searchEntity = async ({
               ...d._source,
               type: d._source.entityType,
             })
-          : d._source.fullyQualifiedName ?? '';
+          : fullyQualifiedName;
 
         return {
           label,
@@ -209,6 +205,17 @@ export const getOwnerOptions = async (searchText: string) => {
   });
 };
 
+// Resolves saved FQNs to display-name options, since a saved value may be outside the first page.
+export const getOptionsByFqns = (
+  fqns: string[],
+  searchIndex: SearchIndex | SearchIndex[]
+) =>
+  searchEntity({
+    searchText: '',
+    searchIndex,
+    queryFilter: getTermQuery({ fullyQualifiedName: fqns }, 'should', 1),
+  });
+
 export const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
@@ -245,8 +252,11 @@ export const getEntityByIdOptions = async (
 
     return uniqBy(
       response.hits.hits.map((d) => {
-        const id = d._source.id ?? '';
-        const fqn = d._source.fullyQualifiedName ?? '';
+        const id = 'id' in d._source ? d._source.id ?? '' : '';
+        const fqn =
+          'fullyQualifiedName' in d._source
+            ? d._source.fullyQualifiedName ?? ''
+            : '';
 
         return { label: `${id} (${fqn})`, value: id };
       }),
@@ -262,336 +272,6 @@ export const getEntityByIdOptions = async (
   }
 };
 
-export const getSupportedFilterOptions = (
-  selectedFilters: EventFilterRule[],
-  supportedFilters?: EventFilterRule[]
-) =>
-  supportedFilters?.map((func) => ({
-    label: (
-      <Tooltip
-        arrow
-        excludeTriggerFromTabOrder
-        delay={800}
-        title={getEntityName(func)}
-        triggerClassName="tw:inline-flex">
-        <span data-testid={`${getEntityName(func)}-filter-option`}>
-          {getEntityName(func)}
-        </span>
-      </Tooltip>
-    ),
-    value: func.name,
-    disabled: selectedFilters?.some((d) => d.name === func.name),
-  }));
-
-export const getFieldByArgumentType = (
-  fieldName: number,
-  argument: string,
-  index: number,
-  search: AlertSourceSearch,
-  supportedEventTypes: EventType[] = []
-) => {
-  const getEntityByIdSuggestions = async (searchText?: string) => {
-    try {
-      const found = await search.byId(searchText);
-
-      return uniqBy(
-        found.map(({ id, fullyQualifiedName }) => ({
-          uuid: id,
-          value: id,
-          label: (
-            <div className="entity-id-option">
-              <div>{id}</div>
-              <div className="entity-id-option-fqn">{fullyQualifiedName}</div>
-            </div>
-          ),
-        })),
-        'value'
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.search') })
-      );
-
-      return [];
-    }
-  };
-  const translatedContractStatusOptions = DATA_CONTRACT_STATUS_OPTIONS.map(
-    (option) => ({
-      ...option,
-      label: t(option.label),
-    })
-  );
-
-  const fieldRenderers: Record<string, () => JSX.Element> = {
-    fqnList: () => (
-      <FQNListSelect
-        api={search.byName}
-        className="w-full"
-        containerEntities={search.containerEntities}
-        data-testid="fqn-list-select"
-        mode="multiple"
-        optionFilterProp="label"
-        placeholder={t('label.search-by-type', {
-          type: t('label.fqn-uppercase'),
-        })}
-        searchIndex={search.indexes}
-      />
-    ),
-    domainList: () => (
-      <AsyncSelect
-        api={getDomainOptions}
-        className="w-full"
-        data-testid="domain-select"
-        mode="multiple"
-        placeholder={t('label.search-by-type', {
-          type: t('label.domain-lowercase'),
-        })}
-      />
-    ),
-    tableNameList: () => (
-      <AsyncSelect
-        api={getTableSuggestions}
-        className="w-full"
-        data-testid="table-name-select"
-        maxTagTextLength={45}
-        mode="multiple"
-        optionFilterProp="label"
-        placeholder={t('label.search-by-type', {
-          type: t('label.table-lowercase'),
-        })}
-      />
-    ),
-    entityNameList: () => (
-      <AsyncSelect
-        api={getTableSuggestions}
-        className="w-full"
-        data-testid="entity-name-select"
-        maxTagTextLength={45}
-        mode="multiple"
-        optionFilterProp="label"
-        placeholder={t('label.search-by-type', {
-          type: t('label.entity-lowercase'),
-        })}
-      />
-    ),
-    ownerNameList: () => (
-      <AsyncSelect
-        api={getOwnerOptions}
-        className="w-full"
-        data-testid="owner-name-select"
-        mode="multiple"
-        placeholder={t('label.search-by-type', {
-          type: t('label.owner-lowercase-plural'),
-        })}
-      />
-    ),
-    // For updateByUserList, we need to show bot users as well; for userList,
-    // which is an argument for `conversation` filters, only non-bot users.
-    updateByUserList: () => (
-      <AsyncSelect
-        api={getUserBotOptions}
-        className="w-full"
-        data-testid="user-name-select"
-        mode="multiple"
-        placeholder={t('label.search-by-type', {
-          type: t('label.user'),
-        })}
-      />
-    ),
-    userList: () => (
-      <AsyncSelect
-        api={getUserOptions}
-        className="w-full"
-        data-testid="user-name-select"
-        mode="multiple"
-        placeholder={t('label.search-by-type', {
-          type: t('label.user'),
-        })}
-      />
-    ),
-    eventTypeList: () => (
-      <Select
-        className="w-full"
-        data-testid="event-type-select"
-        mode="multiple"
-        options={
-          isEmpty(supportedEventTypes)
-            ? getSelectOptionsFromEnum(EventType)
-            : getSelectOptionsFromValues(supportedEventTypes)
-        }
-        placeholder={t('label.search-by-type', {
-          type: t('label.event-type-lowercase'),
-        })}
-      />
-    ),
-    entityIdList: () => (
-      <AsyncSelect
-        api={getEntityByIdSuggestions}
-        className="w-full"
-        data-testid="entity-id-select"
-        maxTagTextLength={45}
-        mode="multiple"
-        optionLabelProp="uuid"
-        placeholder={t('label.search-by-type', {
-          type: t('label.entity-id', {
-            entity: t('label.data-asset'),
-          }),
-        })}
-      />
-    ),
-    pipelineStateList: () => (
-      <Select
-        className="w-full"
-        data-testid="pipeline-status-select"
-        mode="multiple"
-        options={getSelectOptionsFromEnum(StatusType)}
-        placeholder={t('label.select-field', {
-          field: t('label.pipeline-state'),
-        })}
-      />
-    ),
-    ingestionPipelineStateList: () => (
-      <Select
-        className="w-full"
-        data-testid="pipeline-status-select"
-        mode="multiple"
-        options={getSelectOptionsFromEnum(PipelineState)}
-        placeholder={t('label.select-field', {
-          field: t('label.pipeline-state'),
-        })}
-      />
-    ),
-    testStatusList: () => (
-      <Select
-        className="w-full"
-        data-testid="test-status-select"
-        mode="multiple"
-        options={getSelectOptionsFromEnum(TestCaseStatus)}
-        placeholder={t('label.select-field', {
-          field: t('label.test-suite-status'),
-        })}
-      />
-    ),
-    testResultList: () => (
-      <Select
-        className="w-full"
-        data-testid="test-result-select"
-        mode="multiple"
-        options={getSelectOptionsFromEnum(TestCaseStatus)}
-        placeholder={t('label.select-field', {
-          field: t('label.test-case-result'),
-        })}
-      />
-    ),
-    contractStatusList: () => (
-      <Select
-        className="w-full"
-        data-testid="contract-status-select"
-        mode="multiple"
-        options={translatedContractStatusOptions}
-        placeholder={t('label.select-field', {
-          field: t('label.data-contract-status'),
-        })}
-      />
-    ),
-    testSuiteList: () => (
-      <AsyncSelect
-        api={getTestSuiteSuggestions}
-        className="w-full"
-        data-testid="test-suite-select"
-        mode="multiple"
-        placeholder={t('label.search-by-type', {
-          type: t('label.test-suite'),
-        })}
-      />
-    ),
-  };
-
-  const field = fieldRenderers[argument]?.() ?? <></>;
-
-  return (
-    <>
-      <Grid.Item className="layout-column" key={argument} span={12}>
-        <Form.Item
-          name={[fieldName, 'arguments', index, 'input']}
-          rules={[
-            {
-              required: true,
-              message: getMessageFromArgumentName(argument),
-            },
-          ]}>
-          {field}
-        </Form.Item>
-      </Grid.Item>
-      <Form.Item
-        hidden
-        dependencies={[fieldName, 'arguments', index, 'input']}
-        initialValue={argument}
-        key={`${argument}-name`}
-        name={[fieldName, 'arguments', index, 'name']}
-      />
-    </>
-  );
-};
-
-export const getConditionalField = (
-  condition: string,
-  name: number,
-  search: AlertSourceSearch,
-  supportedActions?: EventFilterRule[],
-  supportedEventTypes?: EventType[]
-) => {
-  const selectedAction = supportedActions?.find(
-    (action) => action.name === condition
-  );
-  const requireInput = selectedAction?.inputType === InputType.Runtime;
-  const requiredArguments = selectedAction?.arguments;
-
-  if (!requireInput) {
-    return <></>;
-  }
-
-  return (
-    <>
-      {requiredArguments?.map((argument, index) => {
-        return getFieldByArgumentType(
-          name,
-          argument,
-          index,
-          search,
-          supportedEventTypes
-        );
-      })}
-    </>
-  );
-};
-
-export const getSourceOptionsFromResourceList = (
-  resources: Array<string>,
-  showCheckbox?: boolean,
-  selectedResource?: string[],
-  showIcon?: boolean
-) =>
-  resources.map((resource) => ({
-    label: (
-      <div
-        className="d-flex items-center gap-2"
-        data-testid={`${resource}-option`}>
-        {showCheckbox && (
-          <Checkbox checked={selectedResource?.includes(resource)} />
-        )}
-        {showIcon &&
-          searchClassBase.getEntityIconWithBg(
-            resource ?? '',
-            EntityIconSize.Size14
-          )}
-        <span>{getEntityNameLabel(resource ?? '')}</span>
-      </div>
-    ),
-    value: resource ?? '',
-  }));
-
 export const getAlertRecentEventsFilterOptions = () =>
   Object.values(AlertRecentEventFilters).map((status) => ({
     label: getAlertEventsFilterLabels(status),
@@ -601,11 +281,11 @@ export const getAlertRecentEventsFilterOptions = () =>
 export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
   switch (status) {
     case Status.Successful:
-      return <CheckIcon className="status-icon successful-icon" />;
+      return <Check className="status-icon successful-icon" />;
     case Status.Failed:
-      return <AlertIcon className="status-icon failed-icon" />;
+      return <Alert className="status-icon failed-icon" />;
     case Status.Unprocessed:
-      return <ClockIcon className="status-icon unprocessed-icon" />;
+      return <Clock02 className="status-icon unprocessed-icon" />;
     default:
       return null;
   }
@@ -641,7 +321,10 @@ export const getAlertExtraInfo = (
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.totalEventsCount ?? 0}
+        value={formatEventCount(
+          alertEventCounts?.totalEventsCount,
+          alertEventCounts?.countsAreLowerBound
+        )}
       />
       <ExtraInfoLabel
         inlineLayout
@@ -649,7 +332,10 @@ export const getAlertExtraInfo = (
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.pendingEventsCount ?? 0}
+        value={formatEventCount(
+          alertEventCounts?.pendingEventsCount,
+          alertEventCounts?.countsAreLowerBound
+        )}
       />
       <ExtraInfoLabel
         inlineLayout
@@ -668,7 +354,7 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
     destinationStatus === DestinationStatus.Success
       ? t('label.success')
       : t('label.failed');
-  const alertType: AlertProps['type'] =
+  const alertType: InlineAlertType =
     destinationStatus === DestinationStatus.Success ? 'success' : 'error';
   const alertClassName =
     destinationStatus === DestinationStatus.Success
@@ -676,9 +362,9 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
       : 'destination-error-status';
   const alertIcon =
     destinationStatus === DestinationStatus.Success ? (
-      <CheckCircleOutlined height={14} />
+      <CheckCircle size={14} />
     ) : (
-      <ExclamationCircleOutlined height={14} />
+      <AlertCircle size={14} />
     );
 
   return {

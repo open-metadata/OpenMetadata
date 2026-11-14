@@ -14,11 +14,10 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.OntologyChangeSetTestSupport.applyOntologyChangeSet;
 
-import java.net.URI;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,8 +37,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.OntologyChangeSetState;
-import org.openmetadata.schema.type.OntologyConfiguration;
-import org.openmetadata.schema.type.OntologyLayer;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
 
@@ -81,7 +78,7 @@ public class OntologyPatternIT {
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
     assertEquals(5, applied.getApplicationResult().getOperationsApplied());
     assertEquals(control.getId(), requirement.getParent().getId());
-    assertTrue(control.getIri().toString().startsWith("https://example.org/patterns/concept/"));
+    assertNull(control.getIri(), "A glossary pattern must not mint native ontology identity");
     assertTrue(
         control.getRelatedTerms().stream()
             .anyMatch(relation -> relation.getRelationType().equals("hasPart")));
@@ -89,23 +86,13 @@ public class OntologyPatternIT {
 
   private static Glossary createGlossary(
       final OpenMetadataClient client, final TestNamespace namespace) {
-    final OntologyConfiguration configuration =
-        new OntologyConfiguration()
-            .withBaseIri(URI.create("https://example.org/patterns/"))
-            .withLayer(OntologyLayer.L_3)
-            .withImports(List.of())
-            .withPrefixes(List.of())
-            .withIriMintingPattern("concept/{term}/{uuid}")
-            .withReadOnly(false)
-            .withInstalledPacks(List.of());
     final Glossary glossary =
         client
             .glossaries()
             .create(
                 new CreateGlossary()
                     .withName(namespace.prefix("PatternGlossary"))
-                    .withDescription("Ontology pattern integration model")
-                    .withOntologyConfiguration(configuration));
+                    .withDescription("Ontology pattern integration model"));
     return namespace.trackRoot(Entity.GLOSSARY, glossary);
   }
 

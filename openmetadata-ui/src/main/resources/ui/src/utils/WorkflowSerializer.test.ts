@@ -26,16 +26,16 @@ const createWorkflow = (condition?: string): WorkflowDefinition => ({
 describe('WorkflowSerializer', () => {
   it('uses semantic tokens for workflow edge roles', () => {
     expect(WORKFLOW_EDGE_THEME).toEqual({
-      customBackground: 'var(--om-color-bg-brand, #EFF8FF)',
-      customLabel: 'var(--om-color-fg-brand, #1570EF)',
+      customBackground: 'var(--tw-color-utility-brand-50)',
+      customLabel: 'var(--tw-color-utility-brand-600)',
       edge: 'var(--om-color-border-hover)',
-      labelBorder: 'var(--om-color-bg-primary, #FFFFFF)',
-      negativeBackground: 'var(--om-color-bg-error, #FEF3F2)',
-      negativeLabel: 'var(--om-color-fg-error, #D92D20)',
-      positiveBackground: 'var(--om-color-bg-success, #ECFDF3)',
-      positiveLabel: 'var(--om-color-fg-success, #079455)',
-      warningBackground: 'var(--om-color-bg-warning, #FFFAEB)',
-      warningLabel: 'var(--om-color-fg-warning, #DC6803)',
+      labelBorder: 'var(--tw-background-color-primary)',
+      negativeBackground: 'var(--tw-color-utility-error-50)',
+      negativeLabel: 'var(--tw-color-utility-error-600)',
+      positiveBackground: 'var(--tw-color-utility-success-50)',
+      positiveLabel: 'var(--tw-color-utility-success-600)',
+      warningBackground: 'var(--tw-color-utility-warning-50)',
+      warningLabel: 'var(--tw-color-utility-warning-600)',
     });
   });
 
@@ -43,32 +43,32 @@ describe('WorkflowSerializer', () => {
     [
       'true',
       'TRUE',
-      'var(--om-color-fg-success, #079455)',
-      'var(--om-color-bg-success, #ECFDF3)',
+      'var(--tw-color-utility-success-600)',
+      'var(--tw-color-utility-success-50)',
     ],
     [
       'approve',
       ConditionValue.APPROVE,
-      'var(--om-color-fg-success, #079455)',
-      'var(--om-color-bg-success, #ECFDF3)',
+      'var(--tw-color-utility-success-600)',
+      'var(--tw-color-utility-success-50)',
     ],
     [
       'false',
       'FALSE',
-      'var(--om-color-fg-warning, #DC6803)',
-      'var(--om-color-bg-warning, #FFFAEB)',
+      'var(--tw-color-utility-warning-600)',
+      'var(--tw-color-utility-warning-50)',
     ],
     [
       'reject',
       ConditionValue.REJECT,
-      'var(--om-color-fg-error, #D92D20)',
-      'var(--om-color-bg-error, #FEF3F2)',
+      'var(--tw-color-utility-error-600)',
+      'var(--tw-color-utility-error-50)',
     ],
     [
       'qualityBand',
       'qualityBand',
-      'var(--om-color-fg-brand, #1570EF)',
-      'var(--om-color-bg-brand, #EFF8FF)',
+      'var(--tw-color-utility-brand-600)',
+      'var(--tw-color-utility-brand-50)',
     ],
   ])(
     'serializes the %s condition with theme-aware label colors',
@@ -81,7 +81,7 @@ describe('WorkflowSerializer', () => {
           label,
           labelBgStyle: expect.objectContaining({
             fill: labelBackground,
-            stroke: 'var(--om-color-bg-primary, #FFFFFF)',
+            stroke: 'var(--tw-background-color-primary)',
           }),
           labelStyle: expect.objectContaining({ color: labelColor }),
           markerEnd: expect.objectContaining({

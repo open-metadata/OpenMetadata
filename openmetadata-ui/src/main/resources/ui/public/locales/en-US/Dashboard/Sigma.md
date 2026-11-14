@@ -46,6 +46,36 @@ Version of the Sigma REST API by default `v2`.
 To get to know the Sigma REST API Version visit <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#identify-your-api-request-url" target="_blank">here</a> and look into the `Token URL` section.
 $$
 
+$$section
+### List All Assets $(id="listAllAssets")
+
+Sigma's API lists the workbooks and data models that the owner of the client credentials can access: the ones in their **My Documents** folder and the ones shared with them, directly or through a folder or workspace. Workbooks nobody shared with that user are not ingested.
+
+Turn this on to ingest every workbook and data model in the organization instead. The connector then adds Sigma's `skipPermissionCheck=true` parameter to the workbook and data model listings, and `excludeExplorations=true` to the workbook listing. Sigma documents `skipPermissionCheck` as <a href="https://help.sigmacomputing.com/reference/list-workbooks" target="_blank">"Only available to Sigma admins"</a>, so the credentials' owner must have the **Admin** account type. `excludeExplorations` leaves out custom views, the private per-user views of a workbook, so they are never ingested. The connection test uses the same listing, so it shows what Sigma answers for your credentials.
+
+A workbook that is listed this way but that the user still cannot open is skipped when its details cannot be read; when only its pages cannot be read, its dashboard is created without charts or data models. If you cannot use an Admin credential, share each workspace with the user that owns the credentials instead.
+$$
+
+## Certification Badges
+
+When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning or Deprecated) is added to its dashboard as a tag in the `SigmaBadge` classification.
+
+## Projects
+
+A Sigma workbook's project is its workspace, the first part of the workbook's path in Sigma (for example `My Documents`). **Project Filter Pattern** includes or excludes workbooks by that workspace name.
+
+## Data Models
+
+When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it. A column computed by a formula shows that formula in its description when it has none; turn on **Override Metadata** to refresh it.
+
+A Sigma Data Model also gets lineage from the warehouse tables and the other Sigma Data Models its elements read. Its tables are looked up as described under **Lineage**.
+
+## Custom Properties
+
+When **Include Custom Properties** is on, each workbook's dashboard gets a `latestVersion` custom property: the most recently published version of the workbook in Sigma. The property is added to every dashboard in OpenMetadata, and is left alone when a property of that name already exists with another type.
+
 ## Lineage
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
+
+Source tables are looked up in the database services listed in **Database Service Prefixes**, or in every database service when it is empty. A table is linked only when exactly one table matches across the services searched; a table that matches several, for example the same schema and table in two services, is left without lineage. Set **Database Service Prefixes** to the services Sigma reads from to resolve such tables. When a table's Sigma path finds no single table, the connector also asks Sigma for the table's connection path (database, schema and table) and tries that. Without SQL, a calculated column gets the source columns its formula reads: `Total` from `[Cost] + [MRP]` gets the sources of `Cost` and `MRP`, and `[ORDERS/Amount] * 2` gets `AMOUNT` of the table or element named `ORDERS` that the element reads. When the workbook's formulas are read, a calculated column is never linked to a warehouse column only because it shares its name, so one whose formula cannot be traced gets no column lineage.

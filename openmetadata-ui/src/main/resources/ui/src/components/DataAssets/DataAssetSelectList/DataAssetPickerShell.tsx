@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   Divider,
   Input,
@@ -20,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Check,
-  CornerDownLeft,
   Search,
   SlashDivider,
 } from '@openmetadata/ui-core-components/icons';
@@ -29,6 +27,9 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListBox as AriaListBox, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { DataAssetPickerShellProps } from './DataAssetPicker.interface';
+import DataAssetPickerCountBar from './DataAssetPickerCountBar';
+import DataAssetPickerFooter from './DataAssetPickerFooter';
+import DataAssetPickerLoading from './DataAssetPickerLoading';
 import DataAssetPickerRow from './DataAssetPickerRow';
 
 // Index -1 = "All Assets" button (only when allowAllOption=true).
@@ -269,7 +270,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           </Box>
 
           {selectedIds.size === 0 && (
-            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
+            <Check className="tw:shrink-0" size={18} />
           )}
         </button>
         <Divider className="tw:my-1" />
@@ -341,9 +342,9 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               <Input
                 // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
                 autoFocus
+                autoComplete="off"
                 className="tw:w-full"
                 icon={Search}
-                iconClassName="tw:size-3.5"
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??
@@ -357,26 +358,16 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           )}
 
           {showCountBar && (
-            <Box className="tw:px-3.5 tw:py-1.5 tw:bg-secondary tw:border-b tw:border-t tw:border-secondary">
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {t('label.showing-count-of-total-assets', {
-                  count: options.length,
-                  total: resolvedTotal,
-                })}
-              </Typography>
-            </Box>
+            <DataAssetPickerCountBar
+              count={options.length}
+              total={resolvedTotal}
+            />
           )}
 
           <div
             className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col"
             onScroll={onScroll}>
-            {isLoading && (
-              <Box align="center" className="tw:py-4" justify="center">
-                <Typography className="tw:text-quaternary" size="text-sm">
-                  {t('label.loading')}...
-                </Typography>
-              </Box>
-            )}
+            {isLoading && <DataAssetPickerLoading />}
 
             {allAssetsSection}
 
@@ -391,32 +382,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             {listSection}
           </div>
 
-          {showFooterHints && (
-            <Box
-              align="center"
-              className="tw:px-3 tw:py-2 tw:border-t tw:border-secondary tw:bg-secondary tw:shrink-0"
-              gap={2}>
-              <Box align="center" gap={1}>
-                <Badge size="xs" type="color">
-                  <CornerDownLeft className="tw:text-tertiary" size={12} />
-                </Badge>
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.select-lowercase')}
-                </Typography>
-              </Box>
-              <Typography className="tw:text-tertiary" size="text-xs">
-                ·
-              </Typography>
-              <Box align="center" gap={1}>
-                <Badge size="xs" type="color">
-                  {t('label.esc')}
-                </Badge>
-                <Typography className="tw:text-tertiary" size="text-xs">
-                  {t('label.close-lowercase')}
-                </Typography>
-              </Box>
-            </Box>
-          )}
+          {showFooterHints && <DataAssetPickerFooter />}
         </Box>
       </Popover>
     </div>

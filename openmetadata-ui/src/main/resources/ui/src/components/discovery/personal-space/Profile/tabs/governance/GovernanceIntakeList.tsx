@@ -15,16 +15,13 @@
 import {
   Box,
   Button,
-  Dialog,
+  ConfirmPopover,
   Dropdown,
-  Modal,
-  ModalOverlay,
   Tooltip,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Building01,
   ChevronDown,
+  IntakeForms,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,6 +31,7 @@ import {
   IntakeForm,
   TargetEntityType,
 } from '../../../../../../generated/governance/intakeForm';
+import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import IntakeFormsTable from '../../../../../../pages/IntakeForms/IntakeFormsTable';
 import {
   deleteIntakeForm,
@@ -58,8 +56,12 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
 }) => {
   const { t } = useTranslation();
   const [forms, setForms] = useState<IntakeForm[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<IntakeForm | null>(null);
+  const [loading, setLoading] = useState(true);
+  const {
+    target: deleteTarget,
+    open: openDeleteConfirm,
+    popoverProps,
+  } = useAnchoredConfirm<IntakeForm>();
 
   const entityTypeLabel = useCallback(
     (et: TargetEntityType) => t(ENTITY_TYPE_LABEL_KEYS[et]),
@@ -119,20 +121,20 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
     [fetchForms, t]
   );
 
-  const handleDeleteConfirm = useCallback(async () => {
-    if (!deleteTarget) {
-      return;
-    }
-    const form = deleteTarget;
-    setDeleteTarget(null);
+  /** Resolves `false` when the delete failed, keeping the confirmation open. */
+  const handleDelete = async (form: IntakeForm) => {
     try {
       await deleteIntakeForm(form.id);
       showSuccessToast(t('message.intake-form-deleted-successfully'));
       await fetchForms();
+
+      return true;
     } catch (err) {
       showErrorToast(err as AxiosError);
+
+      return false;
     }
-  }, [deleteTarget, fetchForms, t]);
+  };
 
   const renderAddButton = useCallback(() => {
     if (allEntityTypesCovered) {
@@ -143,7 +145,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
             color="primary"
             data-testid="add-intake-form"
             iconTrailing={ChevronDown}
-            size="sm">
+            size="xs">
             {t('label.add-entity', { entity: t('label.intake-form') })}
           </Button>
         </Tooltip>
@@ -156,7 +158,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
           color="primary"
           data-testid="add-intake-form"
           iconTrailing={ChevronDown}
-          size="sm">
+          size="xs">
           {t('label.add-entity', { entity: t('label.intake-form') })}
         </Button>
         <Dropdown.Popover className="tw:w-max">
@@ -196,61 +198,36 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
           <CreatePlaceholder
             data-testid="intake-forms-empty"
             description={t('message.no-intake-form-yet-description')}
-            icon={<Building01 className="tw:text-fg-brand-primary" />}
+            icon={<IntakeForms className="tw:text-fg-brand-primary" />}
             title={t('message.no-intake-form-yet')}
           />
         </div>
       ) : (
-        <IntakeFormsTable
-          forms={forms}
-          loading={loading}
-          onDelete={setDeleteTarget}
-          onEdit={(form) => onNavigate({ type: 'intake-edit', id: form.id })}
-          onToggleEnabled={handleToggleEnabled}
-        />
+        <>
+          <IntakeFormsTable
+            compactActionColumns
+            forms={forms}
+            loading={loading}
+            variant="muted"
+            onDelete={openDeleteConfirm}
+            onEdit={(form) => onNavigate({ type: 'intake-edit', id: form.id })}
+            onToggleEnabled={handleToggleEnabled}
+          />
+          {deleteTarget && (
+            <ConfirmPopover
+              {...popoverProps}
+              data-testid="intake-form-delete-popover"
+              description={t('message.delete-intake-form-confirmation')}
+              title={t('label.delete-entity', {
+                entity: t('label.entity-intake-form', {
+                  entity: entityTypeLabel(deleteTarget.entityType),
+                }),
+              })}
+              onConfirm={() => handleDelete(deleteTarget)}
+            />
+          )}
+        </>
       )}
-
-      <ModalOverlay
-        isDismissable
-        isOpen={Boolean(deleteTarget)}
-        onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}>
-        <Modal>
-          <Dialog
-            showCloseButton
-            data-testid="intake-form-delete-confirm"
-            title={t('label.delete-entity', {
-              entity: t('label.entity-intake-form', {
-                entity: deleteTarget
-                  ? entityTypeLabel(deleteTarget.entityType)
-                  : '',
-              }),
-            })}
-            width={480}
-            onClose={() => setDeleteTarget(null)}>
-            <Dialog.Content>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('message.delete-intake-form-confirmation')}
-              </Typography>
-            </Dialog.Content>
-            <Dialog.Footer>
-              <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
-                <Button
-                  color="tertiary"
-                  size="sm"
-                  onPress={() => setDeleteTarget(null)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary-destructive"
-                  size="sm"
-                  onPress={handleDeleteConfirm}>
-                  {t('label.delete')}
-                </Button>
-              </div>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
     </Box>
   );
 };

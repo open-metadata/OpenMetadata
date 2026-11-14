@@ -25,6 +25,7 @@ import java.time.ZoneOffset;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -39,21 +40,25 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
 @Tag("rdf")
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfLiveWriteRecoveryIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
@@ -62,20 +67,50 @@ public class RdfLiveWriteRecoveryIT {
   private static GenericContainer<?> fuseki;
   private static String endpoint;
 
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void callerTransactionCommitsOrRollsBackItsOutboxAndWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long previous = fixture.primary.enqueuedWatermark();
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              fixture
+                  .database
+                  .jdbi()
+                  .useTransaction(
+                      handle -> {
+                        fixture.primary.enqueue(handle, insert(0));
+                        assertEquals(
+                            0, CompletableFuture.supplyAsync(fixture.other::pendingWrites).join());
+                        throw new IllegalStateException("metadata mutation failed");
+                      }));
+      assertEquals(0, fixture.other.pendingWrites());
+      assertEquals(previous, fixture.other.enqueuedWatermark());
+      fixture
+          .database
+          .jdbi()
+          .useHandle(
+              handle ->
+                  assertThrows(
+                      IllegalStateException.class,
+                      () -> fixture.primary.enqueue(handle, insert(0))));
+      fixture.database.jdbi().useTransaction(handle -> fixture.primary.enqueue(handle, insert(0)));
+      assertEquals(1, fixture.other.pendingWrites());
+      assertTrue(fixture.other.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(1, fixture.storage.getTripleCount(GRAPH));
+    }
+  }
+
   @BeforeAll
   static void startServices() {
     endpoint = System.getProperty("rdfRebuildFusekiEndpoint");
     if (endpoint == null) {
-      fuseki =
-          new GenericContainer<>(
-                  new ImageFromDockerfile()
-                      .withFileFromPath(
-                          ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
-              .withExposedPorts(3030)
-              .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
-              .waitingFor(Wait.forHttp("/$/ping"));
+      fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx1g");
       fuseki.start();
-      endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
+      endpoint = FusekiTestImage.serverUrl(fuseki);
     }
     for (RdfTestDatabase.Backend backend : RdfTestDatabase.Backend.values()) {
       DATABASES.put(backend, new RdfTestDatabase(backend));
@@ -528,7 +563,7 @@ public class RdfLiveWriteRecoveryIT {
                   .withBaseUri(URI.create(BASE))
                   .withRemoteEndpoint(URI.create(endpoint + "/openmetadata"))
                   .withUsername("admin")
-                  .withPassword("admin")
+                  .withPassword(FusekiTestImage.ADMIN_PASSWORD)
                   .withWriteMaxRetries(0));
       storage.clearGraph(GRAPH);
     }
@@ -555,7 +590,7 @@ public class RdfLiveWriteRecoveryIT {
     }
 
     void apply(final String payload) {
-      JsonUtils.readValue(payload, RdfMutation.class).apply(storage);
+      JsonUtils.readValue(payload, RdfMutation.class).apply(storage, NO_RELEASES);
     }
 
     String lastError() {

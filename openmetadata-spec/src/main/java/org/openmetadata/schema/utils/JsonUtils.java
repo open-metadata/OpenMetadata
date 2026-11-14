@@ -38,8 +38,6 @@ import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.fasterxml.jackson.datatype.jsonp.JSONPModule;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
-import com.github.fge.jsonpatch.JsonPatchException;
-import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.Schema;
@@ -53,6 +51,9 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.text.DateFormat;
@@ -65,6 +66,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -84,7 +86,6 @@ import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -323,9 +324,16 @@ public final class JsonUtils {
   }
 
   /** Applies the patch on original object and returns the updated object */
+  /**
+   * How far a single patch may grow the document through {@code copy}, which can double a growing
+   * array each time. Every other operation only adds values the patch body carries, which the input
+   * bound the reader applies already caps (ADR:2026-11-03-input-parsing-is-bounded).
+   */
+  public static final int MAX_PATCH_GROWTH_BYTES = 10 * 1024 * 1024;
+
   public static JsonValue applyPatch(Object original, JsonPatch patch) {
-    JsonStructure targetJson = JsonUtils.getJsonStructure(original);
-    JsonStructure currentJson = targetJson;
+    JsonStructure currentJson = JsonUtils.getJsonStructure(original);
+    long copiedLength = 0;
 
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
@@ -374,9 +382,26 @@ public final class JsonUtils {
       JsonArrayBuilder singleOp = Json.createArrayBuilder();
       singleOp.add(operation);
       JsonPatch singlePatch = Json.createPatch(singleOp.build());
+      JsonStructure previousJson = currentJson;
       currentJson = singlePatch.apply(currentJson);
+
+      // Measure only what a copy duplicates: serializing the whole document after each operation
+      // would make a patch cost its operation count times the document size.
+      String op = operation.getString("op", "");
+      if (JsonPatch.Operation.COPY.operationName().equalsIgnoreCase(op)) {
+        copiedLength += copiedValueLength(previousJson, operation);
+        if (copiedLength > MAX_PATCH_GROWTH_BYTES) {
+          throw new IllegalArgumentException(
+              "JSON Patch grows the document beyond the allowed size");
+        }
+      }
     }
     return currentJson;
+  }
+
+  // Read from the document the copy ran on: a copy onto an ancestor of its source replaces it.
+  private static long copiedValueLength(JsonStructure document, JsonObject copy) {
+    return Json.createPointer(copy.getString("from")).getValue(document).toString().length();
   }
 
   private static void validateJsonPointer(String pointer, String fieldName) {
@@ -491,14 +516,14 @@ public final class JsonUtils {
    * Message for a patch that names a real field but supplies a value the field cannot hold - a stale
    * enum constant or the wrong JSON type. Enumerating the accepted constants matters more than the
    * raw Jackson text here, because the caller that just guessed a field name will guess the value
-   * next.
+   * next. The rejected value is never quoted: a patch can copy it from anywhere in the entity.
    */
   private static String invalidValueMessage(JsonMappingException e, Class<?> clz) {
     String field = mappingFieldPath(e);
     List<String> allowed = allowedValuesFor(e);
     String detail =
         allowed.isEmpty()
-            ? String.format(": %s", rootReason(e))
+            ? String.format(": must be %s%s", expectedValue(e), uriSyntaxReason(e))
             : String.format(". Allowed values are: %s", String.join(", ", allowed));
     return String.format(
         "Invalid value for field '%s' on %s%s", field, clz.getSimpleName(), detail);
@@ -543,10 +568,59 @@ public final class JsonUtils {
     return result;
   }
 
-  /** Jackson's own reason, minus the "at [Source: UNKNOWN...]" location noise it appends. */
-  private static String rootReason(JsonMappingException e) {
-    String message = e.getOriginalMessage();
-    return message == null ? e.toString() : message;
+  /**
+   * Says why {@link #convertValue} rejected a document: the path of the offending field and the
+   * constraint its value broke. Jackson's own message quotes the rejected value, which may be a
+   * credential, so it is never used here. Empty when the failure is not a binding failure.
+   */
+  public static Optional<String> describeBindingFailure(Throwable failure) {
+    return findCause(failure, JsonMappingException.class).map(JsonUtils::bindingFailureMessage);
+  }
+
+  private static String bindingFailureMessage(JsonMappingException e) {
+    String message;
+    if (e instanceof UnrecognizedPropertyException) {
+      message = String.format("unknown field '%s'", mappingFieldPath(e));
+    } else {
+      message =
+          String.format(
+              "'%s' must be %s%s", mappingFieldPath(e), expectedValue(e), uriSyntaxReason(e));
+    }
+    return message;
+  }
+
+  private static String expectedValue(JsonMappingException e) {
+    Class<?> target = rejectedTargetType(e);
+    List<String> allowed = allowedValuesFor(e);
+    String expected;
+    if (!allowed.isEmpty()) {
+      expected = "one of: " + String.join(", ", allowed);
+    } else if (URI.class.equals(target) || URL.class.equals(target)) {
+      expected = "a valid URI";
+    } else {
+      expected = target == null ? "a valid value" : "a valid " + target.getSimpleName();
+    }
+    return expected;
+  }
+
+  /** Locates a URI parse failure by reason and index, without quoting the input. */
+  private static String uriSyntaxReason(JsonMappingException e) {
+    return findCause(e, URISyntaxException.class)
+        .map(
+            syntax ->
+                syntax.getIndex() < 0
+                    ? String.format(" (%s)", syntax.getReason())
+                    : String.format(" (%s at index %d)", syntax.getReason(), syntax.getIndex()))
+        .orElse("");
+  }
+
+  private static <T extends Throwable> Optional<T> findCause(Throwable failure, Class<T> type) {
+    Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    Throwable current = failure;
+    while (current != null && visited.add(current) && !type.isInstance(current)) {
+      current = current.getCause();
+    }
+    return type.isInstance(current) ? Optional.of(type.cast(current)) : Optional.empty();
   }
 
   /**
@@ -571,14 +645,14 @@ public final class JsonUtils {
   public static JsonPatch getJsonPatch(String v1, String v2) {
     JsonNode source = readTree(v1);
     JsonNode dest = readTree(v2);
-    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    JsonNode patchNode = JsonDiff.of(source, dest);
     return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {
     JsonNode source = valueToTree(v1);
     JsonNode dest = valueToTree(v2);
-    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    JsonNode patchNode = JsonDiff.of(source, dest);
     return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
@@ -600,41 +674,6 @@ public final class JsonUtils {
     String stripped = path.startsWith("/") ? path.substring(1) : path;
     int slash = stripped.indexOf('/');
     fields.add(slash > 0 ? stripped.substring(0, slash) : stripped);
-  }
-
-  private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
-      throws JsonPatchException, IOException {
-    // Convert jakarta.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
-    String patchString = patch.toString();
-    JsonNode patchNode;
-    try {
-      patchNode = OBJECT_MAPPER.readTree(patchString);
-    } catch (JsonProcessingException e) {
-      LOG.error("Failed to parse JsonPatch string: {}", patchString, e);
-      throw new RuntimeException("Invalid JsonPatch format", e);
-    }
-    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
-        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
-    return jacksonPatch.apply(targetNode);
-  }
-
-  public static <T extends EntityInterface<?>> T applyJsonPatch(
-      T original, JsonPatch patch, Class<T> clz) {
-    try {
-      // Convert original entity to JsonNode
-      JsonNode originalNode = OBJECT_MAPPER.valueToTree(original);
-
-      // Apply the JSON Patch
-      JsonNode patchedNode = applyJsonPatch(patch, originalNode);
-
-      // Deserialize the patched JsonNode back to the entity class
-      return OBJECT_MAPPER.treeToValue(patchedNode, clz);
-    } catch (JsonPatchException | JsonProcessingException e) {
-      LOG.error("Failed to apply JSON Patch: {}", e.getMessage(), e);
-      throw new RuntimeException("Failed to apply JSON Patch", e);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   public static JsonValue readJson(String s) {
@@ -1046,15 +1085,6 @@ public final class JsonUtils {
     return JsonUtils.convertValue(result, clazz);
   }
 
-  public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {
-    String jsonString = fgeJsonPatch.toString();
-
-    try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
-      JsonArray patchArray = reader.readArray();
-      return Json.createPatch(patchArray);
-    }
-  }
-
   public static List<String> getJsonDataResources(Pattern pattern) throws IOException {
     return CommonUtil.getResources(pattern);
   }
@@ -1093,6 +1123,12 @@ public final class JsonUtils {
       }
       if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
         return null;
+      }
+      if (t == com.fasterxml.jackson.core.JsonToken.START_OBJECT
+          || t == com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+        // getValueAsString() is null for these, and returning without consuming the structure
+        // would leave its members to be read as fields of the enclosing object.
+        return (Date) ctxt.handleUnexpectedToken(Date.class, p);
       }
       String value = p.getValueAsString();
       if (value == null) {

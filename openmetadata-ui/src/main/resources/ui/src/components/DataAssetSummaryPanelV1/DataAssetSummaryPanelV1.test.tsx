@@ -22,10 +22,14 @@ import { AxiosError } from 'axios';
 import { act } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
-import { TagSource } from '../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
@@ -67,10 +71,6 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(),
-}));
-
-jest.mock('../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(),
 }));
 
 jest.mock('../../hooks/useChangeSummary', () => ({
@@ -332,9 +332,18 @@ jest.mock('../common/GlossaryTermsSection/GlossaryTermsSection', () => {
 jest.mock('../common/TagsSection/TagsSection', () => {
   return jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="tags-section">Tags Section</div>
-    ));
+    .mockImplementation(
+      (props: { tags?: Array<{ tagFQN?: string; source?: string }> }) => (
+        <div data-testid="tags-section">
+          Tags Section
+          {(props?.tags ?? []).map((tag) => (
+            <span data-testid={`mock-tag-${tag.tagFQN}`} key={tag.tagFQN ?? ''}>
+              {tag.source}:{tag.tagFQN}
+            </span>
+          ))}
+        </div>
+      )
+    );
 });
 
 jest.mock('../common/DataProductsSection/DataProductsSection', () => {
@@ -475,9 +484,6 @@ describe('DataAssetSummaryPanelV1', () => {
     (useTranslation as jest.Mock).mockReturnValue({ t: mockT });
     (usePermissionProvider as jest.Mock).mockReturnValue({
       getEntityPermission: mockGetEntityPermission,
-    });
-    (useTourProvider as jest.Mock).mockReturnValue({
-      isTourPage: false,
     });
     (useChangeSummary as jest.Mock).mockReturnValue({
       changeSummary: {},
@@ -693,20 +699,6 @@ describe('DataAssetSummaryPanelV1', () => {
           'table',
           mockDataAsset.id
         );
-      });
-    });
-
-    it('should not fetch data when on tour page', async () => {
-      (useTourProvider as jest.Mock).mockReturnValue({
-        isTourPage: true,
-      });
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
-      });
-
-      await waitFor(() => {
-        expect(mockGetEntityPermission).not.toHaveBeenCalled();
       });
     });
   });
@@ -1081,5 +1073,143 @@ describe('DataAssetSummaryPanelV1', () => {
         ).not.toBeInTheDocument();
       });
     });
+  });
+
+  describe('i18n: stale section headers after language switch', () => {
+    // Regression test for the missing `t` in the `commonEntitySummaryInfo`
+    // `useMemo` dependency array. When the UI language changes, react-i18next
+    // hands the component a new `t` function instance. If `t` is not listed as
+    // a dependency, the memo returns the previously cached JSX and the owners
+    // section header (e.g. "Owners") keeps rendering in the previous language
+    // until some other dependency changes. All four summary branches bake
+    // `t('label.owner-plural')` into the memoized output, so each must
+    // recompute when `t`'s identity changes.
+    const branches: Array<{ name: string; summaryEntityType: EntityType }> = [
+      // DATABASE exercises the common-layout branch. It is intentionally NOT
+      // TABLE: `fetchTestCases`/`fetchIncidentCount` early-return when the
+      // `entityType` prop is not TABLE, which keeps init's async chain shallow
+      // (only `setEntityPermissions` lands post-mount). With TABLE, the deeper
+      // `listTestCases`/incident `setState`s can land after the `t` switch below
+      // and force a memo recompute that masks the missing-`t`-dep bug.
+      { name: 'common layout', summaryEntityType: EntityType.DATABASE },
+      { name: 'knowledge page', summaryEntityType: EntityType.KNOWLEDGE_PAGE },
+      { name: 'data product', summaryEntityType: EntityType.DATA_PRODUCT },
+      { name: 'misc layout', summaryEntityType: EntityType.USER },
+    ];
+
+    it.each(branches)(
+      'recomputes the owners-title header for the $name branch after `t` identity changes',
+      async ({ summaryEntityType }) => {
+        const tEN = jest.fn((key: string) => `EN:${key}`);
+        const tFR = jest.fn((key: string) => `FR:${key}`);
+
+        (useTranslation as jest.Mock).mockReturnValue({ t: tEN });
+
+        const { rerender } = render(
+          <DataAssetSummaryPanelV1
+            {...defaultProps}
+            entityType={summaryEntityType}
+            summaryEntityType={summaryEntityType}
+          />
+        );
+
+        await waitFor(() => {
+          expect(screen.getByText('EN:label.owner-plural')).toBeInTheDocument();
+        });
+
+        // Simulate the `languageChanged` event: react-i18next replaces `t`
+        // with a new function instance while every other memo dep is unchanged.
+        (useTranslation as jest.Mock).mockReturnValue({ t: tFR });
+
+        await act(async () => {
+          rerender(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              entityType={summaryEntityType}
+              summaryEntityType={summaryEntityType}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('FR:label.owner-plural')).toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByText('EN:label.owner-plural')
+        ).not.toBeInTheDocument();
+      }
+    );
+  });
+
+  describe('Glossary tag preservation in TagsSection prop (regression)', () => {
+    const tierTag: TagLabel = {
+      tagFQN: 'Tier.Tier1',
+      source: TagSource.Classification,
+      name: 'Tier1',
+      displayName: 'Tier 1',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+    const classificationTag: TagLabel = {
+      tagFQN: 'PII.Sensitive',
+      source: TagSource.Classification,
+      name: 'Sensitive',
+      displayName: 'Sensitive',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+    const glossaryTag: TagLabel = {
+      tagFQN: 'Glossary.CustomerData',
+      source: TagSource.Glossary,
+      name: 'CustomerData',
+      displayName: 'Customer Data',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+
+    const dataAssetWithGlossaryTags = {
+      ...mockDataAsset,
+      tags: [tierTag, classificationTag, glossaryTag],
+    } as unknown as DataAssetType;
+
+    // Regression for bug where the Data Product and misc summary layouts
+    // filtered glossary tags out of the `tags` prop passed to TagsSection.
+    // TagsSection treats the `tags` prop as a full replacement on save, so
+    // filtering glossary tags upstream caused classification-tag edits to
+    // silently delete all glossary term taggings on the entity.
+    it.each([
+      ['DATA_PRODUCT', EntityType.DATA_PRODUCT],
+      ['USER (misc layout)', EntityType.USER],
+      ['TABLE (common layout)', EntityType.TABLE],
+    ])(
+      'passes unfiltered tags (including glossary) to TagsSection for %s',
+      async (_label, type) => {
+        await act(async () => {
+          render(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              dataAsset={dataAssetWithGlossaryTags}
+              entityType={type}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        });
+
+        // The glossary tag must be present in the tags passed to TagsSection
+        expect(
+          screen.getByTestId('mock-tag-Glossary.CustomerData')
+        ).toBeInTheDocument();
+        // The classification tag must also be present
+        expect(
+          screen.getByTestId('mock-tag-PII.Sensitive')
+        ).toBeInTheDocument();
+        // The tier tag must also be present
+        expect(screen.getByTestId('mock-tag-Tier.Tier1')).toBeInTheDocument();
+      }
+    );
   });
 });

@@ -111,7 +111,7 @@ jest.mock(
 );
 
 jest.mock('../../../../../../rest/teamsAPI', () => ({
-  getTeamByName: jest.fn().mockResolvedValue(TEAM),
+  getTeamByName: jest.fn().mockImplementation(() => Promise.resolve(TEAM)),
   patchTeamDetail: jest.fn().mockResolvedValue({}),
   getTeams: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
   restoreTeam: jest.fn().mockResolvedValue({}),
@@ -185,10 +185,6 @@ jest.mock(
 jest.mock('../../../../../common/Loader/Loader', () => () => (
   <div data-testid="loader" />
 ));
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () => () => (
-  <div data-testid="delete-modal" />
-));
-
 // Non-stub TableV2: renders a controlled search input that calls onSearch on
 // change (no debounce, so the test is deterministic), plus each dataSource row
 // so we can assert which members surface.

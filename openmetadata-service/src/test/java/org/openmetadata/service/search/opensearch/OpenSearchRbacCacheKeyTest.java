@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -26,6 +27,8 @@ class OpenSearchRbacCacheKeyTest {
 
   private static final UUID USER_ID = UUID.randomUUID();
   private static final UUID ROLE_ID = UUID.randomUUID();
+  private static final long GENERATION = 7L;
+  private static final long POLICY_GENERATION = 3L;
 
   @Test
   @DisplayName("Two subjects sharing roles but not domains do not share a cached query")
@@ -33,9 +36,7 @@ class OpenSearchRbacCacheKeyTest {
     SubjectContext financeSubject = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
     SubjectContext marketingSubject = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
 
-    assertNotEquals(
-        OpenSearchSearchManager.rbacCacheKey(financeSubject),
-        OpenSearchSearchManager.rbacCacheKey(marketingSubject));
+    assertNotEquals(pinnedKey(financeSubject), pinnedKey(marketingSubject));
   }
 
   @Test
@@ -45,10 +46,8 @@ class OpenSearchRbacCacheKeyTest {
     UUID domainId = UUID.randomUUID();
 
     assertEquals(
-        OpenSearchSearchManager.rbacCacheKey(
-            subject(List.of(ROLE_ID, secondRoleId), List.of(domainId))),
-        OpenSearchSearchManager.rbacCacheKey(
-            subject(List.of(secondRoleId, ROLE_ID), List.of(domainId))));
+        pinnedKey(subject(List.of(ROLE_ID, secondRoleId), List.of(domainId))),
+        pinnedKey(subject(List.of(secondRoleId, ROLE_ID), List.of(domainId))));
   }
 
   @Test
@@ -61,8 +60,8 @@ class OpenSearchRbacCacheKeyTest {
         subject(List.of(ROLE_ID), List.of(domainId), List.of(UUID.randomUUID()));
 
     assertNotEquals(
-        OpenSearchSearchManager.rbacCacheKey(engineering),
-        OpenSearchSearchManager.rbacCacheKey(marketing),
+        pinnedKey(engineering),
+        pinnedKey(marketing),
         "isOwner, isReviewer and inAnyTeam compile team ids into the query");
   }
 
@@ -72,8 +71,31 @@ class OpenSearchRbacCacheKeyTest {
     SubjectContext bareSubject = subject(null, null, null);
 
     assertEquals(
-        ServiceAttributeResolver.generation() + ":" + USER_ID + ":::",
-        OpenSearchSearchManager.rbacCacheKey(bareSubject));
+        GENERATION + ":" + POLICY_GENERATION + ":" + USER_ID + ":::", pinnedKey(bareSubject));
+  }
+
+  /**
+   * A policy-rule or role-policy edit leaves the subject's role, domain and team ids unchanged but
+   * bumps the policy generation, so the compiled query is re-evaluated rather than served stale.
+   */
+  @Test
+  @DisplayName("A policy-cache invalidation produces a different key")
+  void testPolicyGenerationChangeChangesTheKey() {
+    SubjectContext subjectContext = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
+
+    String beforeKey;
+    String afterKey;
+    try (MockedStatic<ServiceAttributeResolver> resolver =
+            mockStatic(ServiceAttributeResolver.class);
+        MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      resolver.when(ServiceAttributeResolver::generation).thenReturn(GENERATION);
+      subjectCache.when(SubjectCache::policyGeneration).thenReturn(1L);
+      beforeKey = OpenSearchSearchManager.rbacCacheKey(subjectContext);
+      subjectCache.when(SubjectCache::policyGeneration).thenReturn(2L);
+      afterKey = OpenSearchSearchManager.rbacCacheKey(subjectContext);
+    }
+
+    assertNotEquals(beforeKey, afterKey);
   }
 
   /**
@@ -98,6 +120,21 @@ class OpenSearchRbacCacheKeyTest {
     }
 
     assertNotEquals(beforeKey, afterKey);
+  }
+
+  /**
+   * The generation is the signature of a process-wide snapshot that refreshes in the background
+   * once it is a minute old, so two unpinned reads in one test can straddle a reload and differ for
+   * a reason the test is not about. Pinning it keeps each test on the subject fields it varies.
+   */
+  private static String pinnedKey(SubjectContext subjectContext) {
+    try (MockedStatic<ServiceAttributeResolver> resolver =
+            mockStatic(ServiceAttributeResolver.class);
+        MockedStatic<SubjectCache> subjectCache = mockStatic(SubjectCache.class)) {
+      resolver.when(ServiceAttributeResolver::generation).thenReturn(GENERATION);
+      subjectCache.when(SubjectCache::policyGeneration).thenReturn(POLICY_GENERATION);
+      return OpenSearchSearchManager.rbacCacheKey(subjectContext);
+    }
   }
 
   private static SubjectContext subject(List<UUID> roleIds, List<UUID> domainIds) {

@@ -34,7 +34,7 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
+import { getTestCaseListFilterParams } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -103,9 +103,10 @@ export const useTestCaseList = ({
       // Visibility, filters, and sorting can overlap requests; only the newest
       // response may update the rows or clear the shared loading state.
       const requestId = ++latestRequestId.current;
-      const updatedParams = getTestCaseFiltersValue(
+      const filterParams = getTestCaseListFilterParams(
         params,
-        activeFilters ?? selectedFilter
+        activeFilters ?? selectedFilter,
+        searchValue
       );
 
       setIsLoading(true);
@@ -115,11 +116,8 @@ export const useTestCaseList = ({
           paging: pagingResponse,
           entityPermissions: listPermissions,
         } = await getListTestCaseBySearch({
-          ...updatedParams,
+          ...filterParams,
           ...sortOptions,
-          testCaseStatus: isEmpty(params?.testCaseStatus)
-            ? undefined
-            : params?.testCaseStatus,
           limit: pageSize,
           includeAllTests: true,
           includePermissions: true,
@@ -129,7 +127,6 @@ export const useTestCaseList = ({
             TabSpecificField.INCIDENT_ID,
             TabSpecificField.INCIDENT_STATUS,
           ],
-          q: searchValue || undefined,
           offset: (page - 1) * pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...apiParams,

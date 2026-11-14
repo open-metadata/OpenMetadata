@@ -11,16 +11,78 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
+import {
+  Access,
+  Operation,
+} from '../../generated/entity/policies/accessControl/resourcePermission';
+import { getEntityPermissionById } from '../../rest/permissionAPI';
+import { renderWithQueryClient as render } from '../../test/unit/test-utils';
 import OntologyImportExportMenu from './OntologyImportExportMenu';
+
+jest.mock('../../rest/permissionAPI');
 
 jest.mock('./OntologyImportExportModal', () => ({
   __esModule: true,
-  default: () => <div data-testid="ontology-import-export-modal-stub" />,
+  default: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="ontology-import-export-modal-stub">
+      <button onClick={onClose}>Close glossary export</button>
+    </div>
+  ),
 }));
 
+jest.mock(
+  '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal',
+  () => ({
+    __esModule: true,
+    default: ({
+      ontology: owner,
+      onClose,
+    }: {
+      ontology: Ontology;
+      onClose: () => void;
+    }) => (
+      <div data-testid="ontology-release-export-modal-stub" role="dialog">
+        <span>{owner.name}</span>
+        <button onClick={onClose}>Close export</button>
+      </div>
+    ),
+  })
+);
+
+jest.mock(
+  '../governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog',
+  () => ({
+    __esModule: true,
+    default: ({
+      ontology: owner,
+      canImport,
+      onClose,
+    }: {
+      ontology?: Ontology;
+      canImport?: boolean;
+      onClose: () => void;
+    }) => (
+      <div data-testid="ontology-native-import-dialog-stub" role="dialog">
+        <span>{owner?.name ?? 'no ontology'}</span>
+        <button disabled={!canImport}>Import</button>
+        <button onClick={onClose}>Close import</button>
+      </div>
+    ),
+  })
+);
+
 const glossaries = [{ id: 'g1', name: 'FIBO' }] as Glossary[];
+const ontology = {
+  fullyQualifiedName: 'Sales',
+  id: 'ontology-id',
+  iri: 'urn:sales',
+  name: 'Sales',
+  namespace: 'urn:sales:',
+} satisfies Ontology;
 
 describe('OntologyImportExportMenu', () => {
   it('opens the import/export modal from the header trigger', () => {
@@ -28,6 +90,7 @@ describe('OntologyImportExportMenu', () => {
       <OntologyImportExportMenu
         isAdminUser
         glossaries={glossaries}
+        kind="glossary"
         relationCount="7"
         termCount="20"
       />
@@ -37,10 +100,222 @@ describe('OntologyImportExportMenu', () => {
       screen.queryByTestId('ontology-import-export-modal-stub')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
 
     expect(
       screen.getByTestId('ontology-import-export-modal-stub')
     ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Close glossary export' })
+    );
+
+    expect(
+      screen.queryByTestId('ontology-import-export-modal-stub')
+    ).not.toBeInTheDocument();
   });
+
+  it('opens Import straight away when no ontology exists yet', () => {
+    render(
+      <MemoryRouter>
+        <OntologyImportExportMenu
+          isCatalogEmpty
+          kind="allOntologies"
+          ontologies={[]}
+          onApplied={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(
+      screen.getByTestId('ontology-native-import-dialog-stub')
+    ).toHaveTextContent('no ontology');
+    expect(
+      screen.queryByTestId('ontology-import-target-picker')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the ontology picker when the list is empty only because it failed to load', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyImportExportMenu
+          isCatalogEmpty={false}
+          kind="allOntologies"
+          ontologies={[]}
+          onApplied={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+    fireEvent.click(await screen.findByTestId('ontology-export-menu-item'));
+
+    expect(screen.getByTestId('ontology-import-target-picker')).toBeVisible();
+    expect(
+      screen.getByRole('dialog', { name: 'label.export-ontology-title' })
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-native-import-dialog-stub')
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the active-release export modal for a native ontology', async () => {
+    render(
+      <OntologyImportExportMenu
+        canImport
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+    fireEvent.click(await screen.findByTestId('ontology-export-menu-item'));
+
+    expect(
+      screen.getByTestId('ontology-release-export-modal-stub')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-import-export-modal-stub')
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the import dialog into the ontology', async () => {
+    render(
+      <OntologyImportExportMenu
+        canImport
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+    fireEvent.click(await screen.findByTestId('ontology-import-menu-item'));
+
+    const dialog = screen.getByTestId('ontology-native-import-dialog-stub');
+
+    expect(dialog).toHaveTextContent('Sales');
+    expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-release-export-modal-stub')
+    ).not.toBeInTheDocument();
+  });
+
+  it('describes each action under its title', async () => {
+    render(
+      <OntologyImportExportMenu
+        canImport
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(
+      await screen.findByTestId('ontology-import-menu-item')
+    ).toHaveTextContent('label.importmessage.ontology-import-menu-description');
+    expect(screen.getByTestId('ontology-export-menu-item')).toHaveTextContent(
+      'label.exportmessage.ontology-export-menu-description'
+    );
+  });
+
+  it('offers no Import without import rights on the ontology', async () => {
+    render(
+      <OntologyImportExportMenu
+        canImport={false}
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(
+      await screen.findByTestId('ontology-export-menu-item')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-import-menu-item')
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([Access.Allow, Access.Deny])(
+    'requires a full-scope target and checks its %s import permission independently',
+    async (access) => {
+      const permission = getEntityPermissionById as jest.MockedFunction<
+        typeof getEntityPermissionById
+      >;
+      permission.mockClear();
+      permission.mockResolvedValue({
+        resource: 'ontology',
+        permissions: [{ operation: Operation.EditAll, access }],
+      });
+      const owners = Array.from({ length: 25 }, (_, i) => ({
+        ...ontology,
+        id: 'owner-' + i,
+        name: 'Owner ' + i,
+      }));
+      render(
+        <OntologyImportExportMenu
+          isCatalogEmpty={false}
+          kind="allOntologies"
+          ontologies={owners}
+          onApplied={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
+      fireEvent.click(await screen.findByTestId('ontology-import-menu-item'));
+
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+      expect(permission).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /label.select-entity/ })
+      );
+      fireEvent.click(await screen.findByRole('option', { name: 'Owner 24' }));
+      await waitFor(() =>
+        expect(permission).toHaveBeenCalledWith('ontology', 'owner-24')
+      );
+
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+      expect(
+        screen.getByTestId('ontology-native-import-dialog-stub')
+      ).toHaveTextContent('Owner 24');
+
+      await waitFor(() =>
+        expect(
+          screen
+            .getByRole('button', { name: 'Import' })
+            .hasAttribute('disabled')
+        ).toBe(access !== Access.Allow)
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Close import' }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
+      fireEvent.click(await screen.findByTestId('ontology-export-menu-item'));
+
+      expect(screen.getByTestId('ontology-import-target-picker')).toBeVisible();
+    }
+  );
 });

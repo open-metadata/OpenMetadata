@@ -19,6 +19,7 @@ from unittest import TestCase
 
 import pytest
 
+from metadata.generated.schema.api.data.createPage import CreatePage
 from metadata.generated.schema.entity.ai.aiApplication import AIApplication
 from metadata.generated.schema.entity.ai.llmModel import LLMModel
 from metadata.generated.schema.entity.ai.mcpServer import McpServer
@@ -30,13 +31,16 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.page import Page
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -57,6 +61,7 @@ from metadata.ingestion.models.topology import (
     get_entity_hierarchy,
     get_entity_hierarchy_depth,
 )
+from metadata.ingestion.ometa.routes import ROUTES
 from metadata.ingestion.ometa.utils import (
     build_entity_reference,
     decode_jwt_token,
@@ -65,6 +70,7 @@ from metadata.ingestion.ometa.utils import (
     model_str,
 )
 from metadata.utils.constants import ENTITY_REFERENCE_CLASS_MAP
+from metadata.utils.elasticsearch import ES_INDEX_MAP
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -106,6 +112,26 @@ class OMetaUtilsTest(TestCase):
 
         self.assertEqual(get_entity_type("hello"), "hello")
         self.assertEqual(get_entity_type(MlModel), "mlmodel")
+
+    def test_get_entity_type_data_contract(self):
+        self.assertEqual(get_entity_type(DataContract), "dataContract")
+
+    def test_es_index_map_data_contract(self):
+        self.assertEqual(ES_INDEX_MAP[DataContract.__name__], "data_contract_search_index")
+
+    def test_es_index_map_data_product(self):
+        self.assertEqual(ES_INDEX_MAP[DataProduct.__name__], "data_product_search_index")
+
+    def test_es_index_map_page(self):
+        self.assertEqual(ES_INDEX_MAP[Page.__name__], "knowledge_page_search_index")
+
+    def test_entity_reference_class_map_page(self):
+        self.assertIs(ENTITY_REFERENCE_CLASS_MAP["page"], Page)
+        self.assertEqual(get_entity_type(Page), "page")
+
+    def test_routes_page(self):
+        self.assertEqual(ROUTES[Page.__name__], "/contextCenter/pages")
+        self.assertEqual(ROUTES[CreatePage.__name__], "/contextCenter/pages")
 
     def test_get_entity_type_camel_case_consistency(self):
         """

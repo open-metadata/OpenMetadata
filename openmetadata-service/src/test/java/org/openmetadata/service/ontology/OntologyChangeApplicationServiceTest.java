@@ -98,7 +98,16 @@ class OntologyChangeApplicationServiceTest {
         .when(cacheInvalidator)
         .invalidate(any());
     final Dependencies dependencies =
-        new Dependencies(preflight, executor, eventPublisher, transaction, cacheInvalidator);
+        new Dependencies(
+            preflight,
+            executor,
+            eventPublisher,
+            transaction,
+            cacheInvalidator,
+            OntologyPackCatalog.bundled(),
+            null,
+            (install, user) -> {},
+            (jobId, ontologyId) -> null);
     service = new OntologyChangeApplicationService(repository, dependencies, clock);
   }
 

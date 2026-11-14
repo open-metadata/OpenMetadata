@@ -14,28 +14,33 @@
 import {
   Box,
   Button,
-  DatePicker,
   Dialog,
   FeaturedIcon,
   FormField,
-  HintText,
   HookForm,
   Input,
   Label,
   Modal,
   ModalOverlay,
-  parseDate,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
-import { useRef } from 'react';
+import { Heading } from 'react-aria-components';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import { fromCalendarValue, toCalendarDay } from './announcementFormUtils';
+import {
+  AnnouncementDateField,
+  AnnouncementFieldError,
+} from './AnnouncementDateField';
+import {
+  ANNOUNCEMENT_TITLE_MAX_LENGTH,
+  ANNOUNCEMENT_TITLE_MIN_LENGTH,
+  applyAnnouncementTypeChange,
+} from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
   AnnouncementColorSelect,
@@ -53,97 +58,6 @@ interface AnnouncementFormProps {
   onCancel: () => void;
   onSubmit: (values: AnnouncementFormValues) => void;
 }
-
-/**
- * The error line under a field that is not an `Input` — an `Input` takes the
- * message as its own `hint`, which also wires `aria-describedby` to it. Core's
- * `HintText` is the same element either way, so the two read alike.
- */
-const FieldError = ({
-  message,
-  testId,
-}: {
-  message?: string;
-  testId: string;
-}) =>
-  message ? (
-    <HintText isInvalid data-testid={testId}>
-      {message}
-    </HintText>
-  ) : null;
-
-/**
- * The design system's `DatePicker` in its `input` trigger variant: a
- * field-shaped control with a leading calendar icon, opening a popover with a
- * calendar, a typable date field and a Today preset. The `input` shape is what
- * the design calls for here — these two sit in a labelled column between Title
- * and Description, so they have to line up with those fields rather than read
- * as a pair of loose buttons.
- *
- * The epoch-millis bridge crosses as a `yyyy-MM-dd` string and is rebuilt with
- * core's own `parseDate`. The app and the design system each resolve their own
- * `@internationalized/date`, so a `DateValue` built here is a different type
- * from the one this prop expects; a plain day string has no such identity.
- */
-const DateField = ({
-  boundary = 'start',
-  error,
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
-  boundary?: 'start' | 'end';
-  error?: string;
-  id: string;
-  label: string;
-  value?: number | null;
-  onChange: (value: number | null) => void;
-}) => {
-  // What the field held when the popover opened. Core's `DatePicker` commits
-  // every day click straight through `onChange`, so without restoring this a
-  // mis-click survives dismissing the popover and gets submitted.
-  const valueOnOpen = useRef<number | null>(value ?? null);
-  // Apply is the only confirming exit. Cancel, Escape and an outside click all
-  // leave through `onOpenChange(false)` — and react-aria calls `onCancel` for
-  // the button alone — so the revert hangs off the close, not off Cancel.
-  const wasApplied = useRef(false);
-
-  return (
-    <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
-      <Label isRequired htmlFor={id}>
-        {label}
-      </Label>
-      <DatePicker
-        aria-label={label}
-        data-testid={id}
-        id={id}
-        isInvalid={Boolean(error)}
-        triggerVariant="input"
-        value={value == null ? null : parseDate(toCalendarDay(value))}
-        onApply={() => {
-          wasApplied.current = true;
-        }}
-        onChange={(selected) =>
-          onChange(fromCalendarValue(selected?.toString() ?? null, boundary))
-        }
-        onOpenChange={(isOpen) => {
-          if (isOpen) {
-            valueOnOpen.current = value ?? null;
-            wasApplied.current = false;
-          } else if (!wasApplied.current) {
-            onChange(valueOnOpen.current);
-          }
-        }}
-      />
-      <FieldError message={error} testId={`${id}-error`} />
-    </Box>
-  );
-};
-
-const TITLE_MIN_LENGTH = 5;
-const TITLE_MAX_LENGTH = 124;
 
 /**
  * The add and edit dialogs differ only in their title, submit label and where
@@ -171,10 +85,7 @@ const AnnouncementForm = ({
     onChange: (value: AnnouncementType) => void
   ) => {
     onChange(value);
-    // Leaving Custom drops its colour/name requirements, so their errors go too.
-    if (value !== AnnouncementType.Custom) {
-      form.clearErrors(['color', 'customTypeName']);
-    }
+    applyAnnouncementTypeChange(form, value);
   };
 
   return (
@@ -184,11 +95,11 @@ const AnnouncementForm = ({
       isOpen={open}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
-        {/* Named here rather than through Dialog's `title`: that renders a
-            bare heading, and this header carries an icon and a subtitle. */}
+        {/* Titled here rather than through Dialog's `title`: that renders a
+            bare heading, and this header carries an icon and a subtitle. The
+            title-slot Heading still names the dialog. */}
         <Dialog
           showCloseButton
-          aria-label={title}
           data-testid={testId}
           width={600}
           onClose={onCancel}>
@@ -200,14 +111,15 @@ const AnnouncementForm = ({
               theme="modern"
             />
             <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
-              <Typography
-                as="h2"
-                className="tw:text-primary"
+              {/* A Heading, not Typography: Typography wraps an h2 in `.prose`,
+                  whose heading size and weight outrank the utilities. */}
+              <Heading
+                className="tw:m-0 tw:text-sm tw:font-medium tw:text-primary"
                 data-testid="announcement-form-title"
-                size="text-md"
-                weight="semibold">
+                level={2}
+                slot="title">
                 {title}
-              </Typography>
+              </Heading>
               <Typography as="p" className="tw:text-tertiary" size="text-sm">
                 {description}
               </Typography>
@@ -281,7 +193,7 @@ const AnnouncementForm = ({
                           value={field.value}
                           onChange={field.onChange}
                         />
-                        <FieldError
+                        <AnnouncementFieldError
                           message={fieldState.error?.message}
                           testId="color-error"
                         />
@@ -296,8 +208,8 @@ const AnnouncementForm = ({
                 name="title"
                 rules={{
                   required: true,
-                  minLength: TITLE_MIN_LENGTH,
-                  maxLength: TITLE_MAX_LENGTH,
+                  minLength: ANNOUNCEMENT_TITLE_MIN_LENGTH,
+                  maxLength: ANNOUNCEMENT_TITLE_MAX_LENGTH,
                 }}>
                 {({ field, fieldState }) => (
                   <Input
@@ -323,7 +235,7 @@ const AnnouncementForm = ({
                       value != null || requiredMessage(t('label.start-date')),
                   }}>
                   {({ field, fieldState }) => (
-                    <DateField
+                    <AnnouncementDateField
                       error={fieldState.error?.message}
                       id="startTime"
                       label={t('label.start-date')}
@@ -365,7 +277,7 @@ const AnnouncementForm = ({
                     },
                   }}>
                   {({ field, fieldState }) => (
-                    <DateField
+                    <AnnouncementDateField
                       boundary="end"
                       error={fieldState.error?.message}
                       id="endTime"

@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import {
+  Code01,
+  Italic01,
+  Link03,
+  TextEditorBold,
+  TextEditorStrikethrough,
+} from '@openmetadata/ui-core-components/icons';
 import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
-} from '@tiptap/react';
+} from '@tiptap/react/menus';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, MouseEvent, useMemo } from 'react';
-import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
-import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
-import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
-import { ReactComponent as FormatLinkIcon } from '../../../assets/svg/ic-format-link.svg';
-import { ReactComponent as FormatStrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
 
 interface BubbleMenuProps {
   editor: Editor;
@@ -65,25 +67,25 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
         ariaLabel: 'Bold',
         command: () => editor.chain().focus().toggleBold().run(),
         isActive: () => editor.isActive('bold'),
-        icon: FormatBoldIcon,
+        icon: TextEditorBold,
       },
       {
         ariaLabel: 'Italic',
         command: () => editor.chain().focus().toggleItalic().run(),
         isActive: () => editor.isActive('italic'),
-        icon: FormatItalicIcon,
+        icon: Italic01,
       },
       {
         ariaLabel: 'Strike',
         command: () => editor.chain().focus().toggleStrike().run(),
         isActive: () => editor.isActive('strike'),
-        icon: FormatStrikeIcon,
+        icon: TextEditorStrikethrough,
       },
       {
         ariaLabel: 'Inline code',
         command: () => editor.chain().focus().toggleCode().run(),
         isActive: () => editor.isActive('code'),
-        icon: FormatInlineCodeIcon,
+        icon: Code01,
       },
       {
         ariaLabel: 'Link',
@@ -92,7 +94,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
           toggleLink();
         },
         isActive: () => editor.isActive('link'),
-        icon: FormatLinkIcon,
+        icon: Link03,
       },
     ];
 
@@ -137,7 +139,6 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
             className={classNames('p-0 tw:h-8', className, {
               'is-format-active': isActive(),
             })}
-            color="tertiary"
             icon={
               isString(Icon) ? (
                 <Typography as="article" className="format-label">

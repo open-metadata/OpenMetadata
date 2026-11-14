@@ -18,20 +18,29 @@ import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.PipelineRepository;
 
 /** Replayable live hooks. Entity payloads stay in the authoritative metadata tables. */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "operation")
 @JsonSubTypes({
+  @JsonSubTypes.Type(value = RdfLiveWrite.OntologyGraph.class, name = "ontologyGraph"),
   @JsonSubTypes.Type(value = RdfLiveWrite.EntityUpdate.class, name = "entity"),
   @JsonSubTypes.Type(value = RdfLiveWrite.EntityDelete.class, name = "delete"),
   @JsonSubTypes.Type(value = RdfLiveWrite.RelationshipChange.class, name = "relationship"),
-  @JsonSubTypes.Type(value = RdfLiveWrite.GlossaryRelationChange.class, name = "glossaryRelation")
+  @JsonSubTypes.Type(value = RdfLiveWrite.GlossaryRelationChange.class, name = "glossaryRelation"),
+  @JsonSubTypes.Type(value = RdfLiveWrite.PipelineExecution.class, name = "pipelineExecution")
 })
 public sealed interface RdfLiveWrite {
   void apply(RdfRepository repository);
+
+  record OntologyGraph(UUID ontologyId) implements RdfLiveWrite {
+    @Override
+    public void apply(final RdfRepository repository) {
+      repository.refreshOntologyGraph(ontologyId);
+    }
+  }
 
   record EntityUpdate(String entityType, UUID entityId) implements RdfLiveWrite {
     public static EntityUpdate capture(final EntityInterface<?> entity) {
@@ -63,10 +72,8 @@ public sealed interface RdfLiveWrite {
           JsonUtils.readValue(relationshipJson, EntityRelationship.class);
       if (remove) {
         repository.removeRelationship(relationship);
-      } else if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
-        repository.refreshLineage(relationship);
       } else {
-        repository.addRelationship(relationship);
+        repository.refreshRelationship(relationship);
       }
     }
   }
@@ -78,8 +85,18 @@ public sealed interface RdfLiveWrite {
       if (remove) {
         repository.removeGlossaryTermRelation(fromId, toId, relationType);
       } else {
-        repository.addGlossaryTermRelation(fromId, toId, relationType);
+        repository.refreshGlossaryTermRelation(fromId, toId, relationType);
       }
+    }
+  }
+
+  /** One pipeline run's PROV-O triples, read back from the run's stored status when applied. */
+  record PipelineExecution(UUID pipelineId, long timestamp) implements RdfLiveWrite {
+    @Override
+    public void apply(final RdfRepository repository) {
+      final PipelineRepository pipelines =
+          (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+      pipelines.writePipelineExecutionToRdf(repository, pipelineId, timestamp);
     }
   }
 }

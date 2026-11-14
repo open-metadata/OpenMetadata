@@ -258,4 +258,41 @@ describe('TestCaseConfigurationCard', () => {
       'Table Row Count To Equal'
     );
   });
+
+  describe('threshold sentence', () => {
+    const thresholdProps: Partial<TestCaseConfigurationCardProps> = {
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        parameterValues: [{ name: 'threshold', value: '1' }],
+      } as TestCase,
+      testDefinition: {
+        name: 'columnValuesToBeNotNull',
+        parameterDefinition: [{ name: 'threshold' }, { name: 'thresholdUnit' }],
+      } as TestDefinition,
+    };
+
+    it('restates the configured threshold', () => {
+      renderCard(thresholdProps);
+
+      expect(
+        screen.getByTestId('configuration-threshold-sentence')
+      ).toHaveTextContent('message.dq-threshold-preview-row-countable');
+    });
+
+    it('leaves it out on the version page, which shows the diff instead', () => {
+      renderCard({ ...thresholdProps, isVersionPage: true });
+
+      expect(
+        screen.queryByTestId('configuration-threshold-sentence')
+      ).not.toBeInTheDocument();
+    });
+
+    it('has none for a test without a threshold parameter', () => {
+      renderCard();
+
+      expect(
+        screen.queryByTestId('configuration-threshold-sentence')
+      ).not.toBeInTheDocument();
+    });
+  });
 });

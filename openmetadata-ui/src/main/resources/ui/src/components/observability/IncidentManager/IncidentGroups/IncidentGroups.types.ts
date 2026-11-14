@@ -81,6 +81,11 @@ export interface IncidentGroupsLoadErrorProps {
 export interface IncidentListProps {
   incidents: TestCaseResolutionStatus[];
   isLoading: boolean;
+  /**
+   * Scroll the rows inside the space the list is given, under a header that
+   * stays put, rather than growing the list to fit them.
+   */
+  isScrollable?: boolean;
   /** An incident's status or severity was changed from its row. */
   onIncidentChange?: () => void;
 }
@@ -105,6 +110,9 @@ export interface IncidentGroupDetailProps {
 }
 
 export interface IncidentGroupStatProps {
+  icon: FC<{ className?: string }>;
+  /** Foreground token colouring the icon, e.g. `tw:text-fg-error-primary`. */
+  iconClassName: string;
   label: string;
   value: ReactNode;
   testId: string;

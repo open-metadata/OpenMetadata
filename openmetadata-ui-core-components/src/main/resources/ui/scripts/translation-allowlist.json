@@ -1,6 +1,7 @@
 {
   "de-de": ["label.ok"],
   "fr-fr": ["label.page", "label.pagination"],
+  "it-it": ["label.ok"],
   "ja-jp": ["label.ok"],
   "nl-nl": ["label.records"]
 }

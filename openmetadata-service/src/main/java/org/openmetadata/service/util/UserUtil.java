@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -31,12 +32,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -52,14 +56,19 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
@@ -99,7 +108,7 @@ public final class UserUtil {
       throw new IllegalArgumentException("ExistsChecker predicate cannot be null");
     }
 
-    String baseUsername = email.toLowerCase().split("@")[0];
+    String baseUsername = email.toLowerCase(Locale.ROOT).split("@")[0];
 
     if (!existsChecker.test(baseUsername)) {
       return baseUsername;
@@ -230,7 +239,7 @@ public final class UserUtil {
         if (nullOrEmpty(email)) {
           continue;
         }
-        String normalizedEmail = email.toLowerCase();
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
         if (processedEmails.contains(normalizedEmail)) {
           continue;
         }
@@ -253,7 +262,7 @@ public final class UserUtil {
         if (nullOrEmpty(principal)) {
           continue;
         }
-        String email = (principal + "@" + domain).toLowerCase();
+        String email = (principal + "@" + domain).toLowerCase(Locale.ROOT);
         if (processedEmails.contains(email)) {
           LOG.debug(
               "[BootstrapUser] Skipping adminPrincipal '{}' - already processed via adminEmails",
@@ -425,40 +434,46 @@ public final class UserUtil {
   }
 
   /**
-   * Create and persist a ChangeEvent for SSO/LDAP user operations.
-   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   * Create and persist a ChangeEvent for a user written outside the REST layer, such as an SSO/LDAP
+   * sign-in or a bot token regeneration, which would otherwise reach no audit log or subscription.
+   * The actor is the name the audit log records: the user itself for a sign-in, the operator for a
+   * write made on its behalf. Profile webhook secrets are masked as the user repository's own
+   * events mask them. Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
    */
-  private static void createUserChangeEvent(User user, EventType eventType) {
+  public static void createUserChangeEvent(User user, EventType eventType, String actor) {
     try {
+      User eventUser = ProfileWebhookSecrets.masked(user);
       ChangeEvent changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
               .withEventType(eventType)
-              .withEntityId(user.getId())
+              .withEntityId(eventUser.getId())
               .withEntityType(Entity.USER)
-              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
-              .withUserName(user.getName())
-              .withTimestamp(user.getUpdatedAt())
-              .withCurrentVersion(user.getVersion())
+              .withEntityFullyQualifiedName(eventUser.getFullyQualifiedName())
+              .withUserName(actor)
+              .withTimestamp(eventUser.getUpdatedAt())
+              .withCurrentVersion(eventUser.getVersion())
               .withPreviousVersion(
-                  user.getChangeDescription() != null
-                      ? user.getChangeDescription().getPreviousVersion()
-                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
-              .withEntity(user);
+                  eventUser.getChangeDescription() != null
+                      ? eventUser.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : eventUser.getVersion()))
+              .withEntity(eventUser);
 
       // Include changeDescription if present (for updates)
-      if (user.getChangeDescription() != null) {
-        changeEvent.withChangeDescription(user.getChangeDescription());
+      if (eventUser.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(eventUser.getChangeDescription());
       }
 
       // Populate domains if available
-      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+      if (eventUser.getDomains() != null && !eventUser.getDomains().isEmpty()) {
         changeEvent.withDomains(
-            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+            eventUser.getDomains().stream()
+                .map(EntityReference::getId)
+                .collect(Collectors.toList()));
       }
 
-      // Insert directly into change event DAO
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      // Change events never carry a user's authentication mechanism.
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     } catch (Exception e) {
       // Don't fail user creation if ChangeEvent fails
       LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);
@@ -482,7 +497,7 @@ public final class UserUtil {
 
       // Create ChangeEvent for EventSubscription evaluation
       EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      createUserChangeEvent(addedUser.getEntity(), eventType);
+      createUserChangeEvent(addedUser.getEntity(), eventType, addedUser.getEntity().getName());
 
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
@@ -598,12 +613,12 @@ public final class UserUtil {
     User user =
         new User()
             .withId(UUID.randomUUID())
-            .withName(botName.toLowerCase())
-            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase()))
+            .withName(botName.toLowerCase(Locale.ROOT))
+            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase(Locale.ROOT)))
             .withEmail(botEmail)
             .withIsBot(true)
             .withIsAdmin(false)
-            .withUpdatedBy(botName.toLowerCase())
+            .withUpdatedBy(botName.toLowerCase(Locale.ROOT))
             .withUpdatedAt(System.currentTimeMillis());
 
     return addOrUpdateBotUser(user);
@@ -629,6 +644,15 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
+    if (originalUser != null && !Boolean.TRUE.equals(originalUser.getIsBot())) {
+      // Turning a person's account into a bot would hand the bot's role to every credential the
+      // account already holds, such as its password and personal access tokens.
+      throw new IllegalStateException(
+          String.format(
+              "User '%s' already exists and is not a bot, so the bot of that name was not created. "
+                  + "Rename or delete that user, then restart the server.",
+              user.getName()));
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -708,7 +732,7 @@ public final class UserUtil {
   }
 
   // The raw accessor, not getUserRoles(): the latter normalizes null to an empty set, which would
-  // make "no roles claim in the token" indistinguishable from "the provider revoked every role".
+  // make "nothing to sync from" indistinguishable from "the provider revoked every role".
   public static Set<String> getRolesFromAuthorizationToken(
       CatalogSecurityContext catalogSecurityContext) {
     return catalogSecurityContext.userRoles();
@@ -733,32 +757,37 @@ public final class UserUtil {
   }
 
   /**
-   * Syncs a user's roles to what the identity provider reported. {@code rolesFromToken} is
-   * authoritative when non-null, including when empty - that is the provider revoking every role. A
-   * null set means the provider said nothing (no roles claim, or the feature is off) and the user's
-   * OpenMetadata roles are left alone.
+   * Syncs a user's roles and admin status to what the identity provider reported. {@code
+   * rolesFromToken} is authoritative when non-null, including when empty - that is the provider
+   * revoking every role. A null set means there is nothing to sync from (the feature is off, or the
+   * token was minted by OpenMetadata) and the user is left alone.
    *
-   * <p>Admin is promotion-only. Demoting on a missing admin role would lock out anyone who is an
-   * admin through the {@code adminPrincipals} configuration rather than through the provider.
+   * <p>Admin follows the provider's {@code Admin} role, except for users named in {@code
+   * adminEmails} or {@code adminPrincipals}: the provider never granted them admin, so its silence
+   * must not demote them. ADR:2026-10-13-provider-token-is-authoritative-for-roles-and-admin
    */
   public static boolean reSyncUserRolesFromToken(
-      UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+      UriInfo uriInfo,
+      User user,
+      Set<String> rolesFromToken,
+      AuthorizerConfiguration authorizerConfiguration) {
     if (rolesFromToken == null) {
       return false;
     }
     boolean syncUser = false;
     Set<String> mutableRolesFromToken = new HashSet<>(rolesFromToken);
+    boolean adminFromProvider = mutableRolesFromToken.remove(ADMIN_ROLE);
 
     User updatedUser = JsonUtils.deepCopy(user, User.class);
-    // Check if Admin User
-    if (mutableRolesFromToken.contains(ADMIN_ROLE)) {
-      if (Boolean.FALSE.equals(user.getIsAdmin())) {
-        syncUser = true;
-        updatedUser.setIsAdmin(true);
-      }
-
-      // Remove the Admin Role from the list
-      mutableRolesFromToken.remove(ADMIN_ROLE);
+    boolean isAdmin = Boolean.TRUE.equals(user.getIsAdmin());
+    if (adminFromProvider && !isAdmin) {
+      syncUser = true;
+      updatedUser.setIsAdmin(true);
+    } else if (!adminFromProvider
+        && isAdmin
+        && !isConfiguredAdmin(authorizerConfiguration, user.getEmail(), user.getName())) {
+      syncUser = true;
+      updatedUser.setIsAdmin(false);
     }
 
     Set<String> rolesFromUser = getRoleListFromUser(user);
@@ -788,9 +817,10 @@ public final class UserUtil {
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName().toLowerCase())
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
-        .withEmail(create.getEmail().toLowerCase())
+        .withName(create.getName().toLowerCase(Locale.ROOT))
+        .withFullyQualifiedName(
+            EntityInterfaceUtil.quoteName(create.getName().toLowerCase(Locale.ROOT)))
+        .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
@@ -800,7 +830,7 @@ public final class UserUtil {
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withExtension(create.getExtension())
-        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedBy(updatedBy.toLowerCase(Locale.ROOT))
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
@@ -824,9 +854,8 @@ public final class UserUtil {
       return false;
     }
 
-    String normalizedEmail = email.toLowerCase();
     return adminEmails.stream()
-        .anyMatch(adminEmail -> adminEmail.equalsIgnoreCase(normalizedEmail));
+        .anyMatch(adminEmail -> SecurityUtil.sameIdentifier(adminEmail, email));
   }
 
   /**
@@ -866,7 +895,64 @@ public final class UserUtil {
     if (nullOrEmpty(botDomain)) {
       throw new IllegalArgumentException("Bot domain cannot be null or empty");
     }
-    return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
+    return String.format(
+        "%s@%s", botName.toLowerCase(Locale.ROOT), botDomain.toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * Rejects a user that the sign-in email-domain rule would refuse, so an admin learns it when
+   * creating the user instead of at the user's first login (issue #19306). Called from the
+   * user-facing create paths only: users that server-side code creates, such as the bootstrap
+   * admins or support access, sign in with OpenMetadata-issued tokens and are not checked.
+   * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+   */
+  public static void validateEmailDomain(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    Optional<String> rejection = emailDomainRejection(user, authConfig, authorizerConfig);
+    if (rejection.isPresent()) {
+      throw new BadRequestException(rejection.get());
+    }
+  }
+
+  /**
+   * Why the sign-in email-domain rule would refuse this user, or empty when it would not. The rule
+   * applies only where login applies it: never to bots, and never under the native-password
+   * providers, whose sessions use OpenMetadata-issued tokens that login does not domain-check.
+   */
+  public static Optional<String> emailDomainRejection(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    List<String> allowedDomains = signInEmailDomains(user, authConfig, authorizerConfig);
+    String emailDomain = emailDomainOf(user.getEmail());
+    boolean isRefused =
+        !allowedDomains.isEmpty()
+            && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase);
+    return isRefused
+        ? Optional.of(CatalogExceptionMessage.invalidEmailDomain(emailDomain, allowedDomains))
+        : Optional.empty();
+  }
+
+  /** Empty when no sign-in email-domain rule applies to this user. */
+  private static List<String> signInEmailDomains(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    if (Boolean.TRUE.equals(user.getIsBot())
+        || authConfig == null
+        || authorizerConfig == null
+        || SecurityConfigurationManager.isNativePasswordProvider(authConfig.getProvider())) {
+      return List.of();
+    }
+    Set<String> allowedEmailDomains = authorizerConfig.getAllowedEmailDomains();
+    return SecurityUtil.configuredEmailDomains(
+        allowedEmailDomains == null ? List.of() : new ArrayList<>(allowedEmailDomains),
+        authorizerConfig.getPrincipalDomain(),
+        authorizerConfig.getAllowedDomains(),
+        authorizerConfig.getEnforcePrincipalDomain());
+  }
+
+  private static String emailDomainOf(String email) {
+    if (nullOrEmpty(email) || !email.contains("@")) {
+      return "";
+    }
+    return email.substring(email.indexOf('@') + 1);
   }
 
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
@@ -881,5 +967,39 @@ public final class UserUtil {
         throw new BadRequestException("Header image must be a valid URL: " + e.getMessage());
       }
     }
+  }
+
+  /** Every admin user. */
+  public static List<EntityReference> getAdmins() {
+    final List<EntityReference> admins = new ArrayList<>();
+    final UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    final ListFilter filter = new ListFilter(NON_DELETED);
+    filter.addQueryParam("isAdmin", "true");
+    String after = null;
+    do {
+      final ResultList<User> page = users.listAfter(null, Fields.EMPTY_FIELDS, filter, 50, after);
+      page.getData().forEach(user -> admins.add(user.getEntityReference()));
+      after = page.getPaging().getAfter();
+    } while (after != null);
+    return admins;
+  }
+
+  /** The email of every admin user. */
+  public static Set<String> getAdminEmails() {
+    Set<String> emails = new HashSet<>();
+    UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    ListFilter admins = new ListFilter(Include.ALL);
+    admins.addQueryParam("isAdmin", "true");
+    String after = null;
+    try {
+      do {
+        ResultList<User> page = users.listAfter(null, users.getFields("email"), admins, 50, after);
+        page.getData().stream().map(User::getEmail).forEach(emails::add);
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Users , Reason", ex);
+    }
+    return emails;
   }
 }

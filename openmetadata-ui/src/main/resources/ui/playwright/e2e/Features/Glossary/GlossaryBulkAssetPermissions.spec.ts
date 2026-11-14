@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, APIResponse } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { VIEW_ALL_RULE } from '../../../constant/permission';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
@@ -26,9 +26,10 @@ import { getApiContext } from '../../../utils/common';
 /**
  * Broken-access-control regression for the glossary-term bulk asset endpoints
  * (GHSA-jmw6-578h-gw4r): PUT /v1/glossaryTerms/{id}/assets/add and /assets/remove
- * must require EDIT_GLOSSARY_TERMS on every target asset's type. A view-only
- * user gets 403 on both, the denied calls must not mutate the asset, and an
- * admin succeeds (positive control proving the endpoint itself works).
+ * authorize each target asset as that asset's own PATCH. A view-only user's call
+ * reports the asset as a failed row with the authorization message, the denied
+ * calls must not mutate the asset, and an admin succeeds (positive control
+ * proving the endpoint itself works).
  */
 test.describe(
   'Glossary Term Bulk Asset Permissions',
@@ -73,6 +74,26 @@ test.describe(
         (tag: { tagFQN?: string; source?: string }) =>
           tag.tagFQN === glossaryTerm.responseData.fullyQualifiedName &&
           tag.source === 'Glossary'
+      );
+    };
+
+    // The request itself is not refused: the result reports the asset the user
+    // may not edit as a failed row carrying the authorization message.
+    const expectAssetRefused = async (
+      response: APIResponse,
+      targetTable: TableClass
+    ) => {
+      expect(response.status(), await response.text()).toBe(200);
+
+      const result = await response.json();
+
+      expect(result.status).toBe('failure');
+      expect(result.numberOfRowsFailed).toBe(1);
+      expect(result.failedRequest[0].request.id).toBe(
+        targetTable.entityResponseData?.id
+      );
+      expect(result.failedRequest[0].message).toContain(
+        viewOnlyUser.getUserName()
       );
     };
 
@@ -149,7 +170,7 @@ test.describe(
           { data: assetsPayload() }
         );
 
-        expect(response.status()).toBe(403);
+        await expectAssetRefused(response, table);
         // Postcondition checked immediately: the denied remove left the term in place.
         expect(await tableHasGlossaryTerm(apiContext)).toBe(true);
       } finally {
@@ -171,7 +192,7 @@ test.describe(
           { data: assetsPayloadFor(unassociatedTable) }
         );
 
-        expect(response.status()).toBe(403);
+        await expectAssetRefused(response, unassociatedTable);
         // Denied add on an unassociated asset must leave it unassociated.
         expect(await tableHasGlossaryTerm(apiContext, unassociatedTable)).toBe(
           false

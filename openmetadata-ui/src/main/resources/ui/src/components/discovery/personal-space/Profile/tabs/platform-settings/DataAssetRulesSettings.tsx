@@ -13,7 +13,6 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Table,
   TableCard,
   Toggle,
@@ -23,6 +22,7 @@ import { FileCheck02 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SemanticsRule } from '../../../../../../generated/settings/settings';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerNew from '../../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { useSemanticsRulesState } from '../../../../../DataAssetRules/DataAssetRules.component';
 import { SettingsSkeleton } from './SettingsFormLayout';
@@ -30,7 +30,7 @@ import { SettingsSkeleton } from './SettingsFormLayout';
 /** Rules are toggled on and off in place; adding rules is not supported yet. */
 const DataAssetRulesSettings = () => {
   const { t } = useTranslation();
-  const { semanticsRules, isLoading, isSaveLoading, updateSemanticsRules } =
+  const { semanticsRules, isLoading, isSaveLoading, toggleRuleEnabled } =
     useSemanticsRulesState();
 
   const columns = useMemo(
@@ -43,11 +43,7 @@ const DataAssetRulesSettings = () => {
   );
 
   const toggleRule = (rule: SemanticsRule) =>
-    updateSemanticsRules(
-      semanticsRules.map((item) =>
-        item.name === rule.name ? { ...item, enabled: !item.enabled } : item
-      )
-    ).catch(() => undefined);
+    toggleRuleEnabled(rule.name, !rule.enabled).catch(() => undefined);
 
   const renderCell = (rule: SemanticsRule, columnId: string) => {
     if (columnId === 'name') {
@@ -82,9 +78,9 @@ const DataAssetRulesSettings = () => {
     return (
       // The placeholder centres itself in its nearest positioned ancestor.
       <div className="tw:relative tw:min-h-90">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="data-asset-rules-empty"
-          icon={<FileCheck02 className="tw:text-quaternary" />}
+          icon={<FileCheck02 />}
           title={t('label.no-entity', { entity: t('label.data-asset-rules') })}
         />
       </div>
@@ -93,7 +89,7 @@ const DataAssetRulesSettings = () => {
 
   return (
     <Box data-testid="data-asset-rules-settings" direction="col">
-      <TableCard.Root size="compact">
+      <TableCard.Root size="compact" variant="muted">
         <Table
           aria-label={t('label.data-asset-rules')}
           data-testid="data-asset-rules-table"

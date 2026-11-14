@@ -186,6 +186,23 @@ describe('Test Pagination Component', () => {
     expect(previous).not.toBeDisabled();
   });
 
+  it('Next should be disabled when there are no results with isNumberBased as true', () => {
+    const { getByTestId } = render(
+      <NextPrevious
+        isNumberBased
+        currentPage={1}
+        pageSize={PAGE_SIZE}
+        paging={{ total: 0 }}
+        pagingHandler={mockCallback}
+      />
+    );
+
+    fireEvent.click(getByTestId('next'));
+
+    expect(getByTestId('next')).toBeDisabled();
+    expect(mockCallback).not.toHaveBeenCalled();
+  });
+
   it('should render proper page indicator', () => {
     const paging = {
       before: 'test',

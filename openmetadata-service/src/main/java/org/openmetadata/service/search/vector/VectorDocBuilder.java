@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,12 +29,15 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -278,8 +282,7 @@ public class VectorDocBuilder {
   private static Map<String, Object> buildChunkDoc(
       ChunkContext ctx, int index, ChunkEmbeddingSource embeddingSource) {
     int chunkCount = ctx.chunks().size();
-    String semanticChunk =
-        index < ctx.semanticChunks().size() ? ctx.semanticChunks().get(index) : "";
+    String semanticChunk = semanticChunkFor(ctx.chunks(), ctx.semanticChunks(), index);
     String textToEmbed = joinSemanticParts(ctx.semanticMetaLight(), semanticChunk);
     String textToLLMContext =
         String.format(
@@ -294,6 +297,20 @@ public class VectorDocBuilder {
     fields.put("parentId", ctx.parentId());
     fields.put("fingerprint", ctx.fingerprint());
     return fields;
+  }
+
+  /**
+   * The embedded body for chunk doc {@code index}. One doc is written per context chunk, but the
+   * semantic body is chunked on its own and can need one more chunk than the context body (its
+   * labels and child-name phrase differ in length). The last doc carries that overflow so no
+   * semantic text is silently left out of the embedding.
+   */
+  static String semanticChunkFor(List<String> chunks, List<String> semanticChunks, int index) {
+    if (index >= semanticChunks.size()) {
+      return "";
+    }
+    int end = index == chunks.size() - 1 ? semanticChunks.size() : index + 1;
+    return String.join(" ", semanticChunks.subList(index, end));
   }
 
   /**
@@ -576,7 +593,7 @@ public class VectorDocBuilder {
     String contTag = "";
     String textToLLMContext =
         String.format("%s%s%s | chunk %d/%d", metaLight, contTag, chunks.get(0), 1, chunkCount);
-    String semanticBodyChunk = semanticChunks.get(0);
+    String semanticBodyChunk = semanticChunkFor(chunks, semanticChunks, 0);
     String textToEmbed = joinSemanticParts(semanticMetaLight, semanticBodyChunk);
 
     float[] embedding = embeddingClient.embed(textToEmbed);
@@ -724,14 +741,28 @@ public class VectorDocBuilder {
 
     parts.add("owners: " + joinOrEmpty(ownerNames));
 
-    Object customProperties = entity.getExtension();
-    parts.add(
-        "customProperties: "
-            + (customProperties != null && !String.valueOf(customProperties).isBlank()
-                ? String.valueOf(customProperties)
-                : "[]"));
+    parts.add("customProperties: " + customPropertiesText(entity.getExtension()));
 
     return String.join("; ", parts) + " | ";
+  }
+
+  /**
+   * The same custom properties reach this method as a {@code Map} in the entity's input order on the
+   * live write path and as an {@code ObjectNode} in database order on a reindex. Rendering both as
+   * JSON with sorted top-level keys gives them one fingerprint, so a reindex does not pay to
+   * re-embed an unchanged entity; a reindexed extension whose keys were already sorted renders as
+   * it did before. ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
+   */
+  static String customPropertiesText(Object extension) {
+    String text = extension == null ? "" : String.valueOf(extension);
+    if (extension != null && JsonUtils.valueToTree(extension) instanceof ObjectNode properties) {
+      ObjectNode sorted = JsonUtils.getObjectNode();
+      properties.properties().stream()
+          .sorted(Map.Entry.comparingByKey())
+          .forEach(property -> sorted.set(property.getKey(), property.getValue()));
+      text = sorted.toString();
+    }
+    return text.isBlank() ? "[]" : text;
   }
 
   static String buildBodyText(EntityInterface<?> entity, String entityType) {
@@ -755,6 +786,14 @@ public class VectorDocBuilder {
 
     if (entity instanceof Table table) {
       bodyParts.add("columns: " + columnsToString(table.getColumns()));
+    }
+    // Topics reuse the "columns:" label so consumers that parse a hit's column section (CAIP's
+    // HybridSearchTool keeps it when trimming a long context) read schema fields the same way.
+    // A topic without fields gets no section, keeping its fingerprint (and embedding) unchanged.
+    // ADR:2026-11-11-chunk-llm-context-lists-child-fields-under-columns
+    String schemaFields = schemaFieldsText(entity);
+    if (!schemaFields.isEmpty()) {
+      bodyParts.add("columns: " + schemaFields);
     }
 
     return String.join("; ", bodyParts);
@@ -934,6 +973,10 @@ public class VectorDocBuilder {
         bodyParts.add("Columns include " + columnsToString(columns));
       }
     }
+    String schemaFields = schemaFieldsText(entity);
+    if (!schemaFields.isEmpty()) {
+      bodyParts.add("Fields include " + schemaFields);
+    }
 
     String childContext = buildChildContextPhrase(entity, entityType);
     if (childContext != null) {
@@ -1046,15 +1089,37 @@ public class VectorDocBuilder {
   static String columnsToString(List<Column> columns) {
     if (columns == null || columns.isEmpty()) return "[]";
     return columns.stream()
-        .map(
-            col -> {
-              String name = col.getName();
-              String desc = col.getDescription();
-              desc = desc == null ? "" : desc.trim();
-              return desc.isEmpty() || "null".equalsIgnoreCase(desc)
-                  ? name
-                  : name + " (" + desc + ")";
-            })
+        .map(col -> nameWithDescription(col.getName(), col.getDescription()))
         .collect(Collectors.joining(", "));
+  }
+
+  /**
+   * A topic's message schema fields in the column format ({@code name (description)}), nested
+   * fields flattened depth-first as dotted paths so a term that only appears on a nested field
+   * still reaches the embedded and lexical text. Empty for any other entity or a schema-less topic.
+   */
+  static String schemaFieldsText(EntityInterface<?> entity) {
+    List<String> entries = new ArrayList<>();
+    if (entity instanceof Topic topic && topic.getMessageSchema() != null) {
+      appendSchemaFields(entries, null, topic.getMessageSchema().getSchemaFields());
+    }
+    return String.join(", ", entries);
+  }
+
+  private static void appendSchemaFields(
+      List<String> entries, String parentPath, List<Field> fields) {
+    if (nullOrEmpty(fields)) {
+      return;
+    }
+    for (Field field : fields) {
+      String path = parentPath == null ? field.getName() : parentPath + "." + field.getName();
+      entries.add(nameWithDescription(path, field.getDescription()));
+      appendSchemaFields(entries, path, field.getChildren());
+    }
+  }
+
+  private static String nameWithDescription(String name, String description) {
+    String desc = description == null ? "" : description.trim();
+    return desc.isEmpty() || "null".equalsIgnoreCase(desc) ? name : name + " (" + desc + ")";
   }
 }

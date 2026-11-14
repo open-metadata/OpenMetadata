@@ -57,6 +57,7 @@ public class OpenLineageEntityResolver {
   private final String defaultPipelineService;
   private final OpenLineageNamespaceMapping namespaceMapping;
   private final OpenLineageEntityCreator entityCreator;
+  private final OpenLineageTopicResolver topicResolver = new OpenLineageTopicResolver();
 
   public OpenLineageEntityResolver(boolean autoCreateEntities, String defaultPipelineService) {
     this(autoCreateEntities, defaultPipelineService, null);
@@ -135,11 +136,23 @@ public class OpenLineageEntityResolver {
   }
 
   /**
+   * A {@code kafka://} dataset is a topic and never goes through table matching: a dotted topic
+   * name such as {@code dbserver1.inventory.customers} would otherwise suffix-match an unrelated
+   * table.
+   */
+  private OpenLineageResolution resolveDataset(
+      String namespace, String name, DatasetFacets facets, String updatedBy) {
+    return OpenLineageTopicResolver.isKafkaNamespace(namespace)
+        ? topicResolver.resolve(namespace, name)
+        : resolveTableOrContainer(namespace, name, facets, updatedBy);
+  }
+
+  /**
    * Resolves a dataset to an existing table or container, or creates its table under the service
    * its namespace is mapped to. Anything else comes back unresolved with the reason, so the caller
    * learns about it instead of the edge silently disappearing.
    */
-  private OpenLineageResolution resolveDataset(
+  private OpenLineageResolution resolveTableOrContainer(
       String namespace, String name, DatasetFacets facets, String updatedBy) {
     EntityReference existing = resolveExisting(namespace, name, facets);
     return existing != null

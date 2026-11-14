@@ -41,12 +41,18 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
+  conflictEdgeKey,
+  CONFLICT_COLOR,
+  CONFLICT_COLOR_FALLBACK,
+} from '../utils/conflictHighlight';
+import {
   METRIC_NODE_TYPE,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
+  MODEL_NODE_MAX_LABEL_WIDTH,
   MODEL_NODE_MAX_WIDTH,
   NODE_HEIGHT,
   truncateNodeLabelByWidth,
@@ -56,7 +62,10 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  buildStudioConflictNodeStyle,
   buildStudioMetricNodeStyle,
+  buildStudioProposedEdgeStyle,
+  buildStudioProposedNodeStyle,
   formatRelationLabel,
   getCanvasColor,
   getEdgeRelationLabelStyle,
@@ -95,13 +104,18 @@ export function getStudioNodeAccentColor(node: OntologyNode): string {
 }
 
 export function getOntologyEdgeId(edge: MergedEdge): string {
-  const identity =
-    edge.id ??
-    `${edge.from}-${edge.to}-${edge.relationType}-${
-      edge.edgeKind ?? 'ontology'
-    }`;
+  if (edge.id) {
+    return `edge-${edge.id}`;
+  }
+  // A proposal can repeat a relationship that already exists; G6 rejects two
+  // edges with one id, so a proposal is keyed by the operation proposing it.
+  if (edge.proposal) {
+    return `edge-proposal-${edge.proposal.operationId}`;
+  }
 
-  return `edge-${identity}`;
+  return `edge-${edge.from}-${edge.to}-${edge.relationType}-${
+    edge.edgeKind ?? 'ontology'
+  }`;
 }
 
 function getCardinalityEndLabels(
@@ -180,7 +194,11 @@ function findMirrorEdgeIndex(
     if (other.from !== edge.to || other.to !== edge.from) {
       continue;
     }
-    if (other.edgeKind !== edge.edgeKind) {
+    // A proposal never folds into a live edge, so each stays reviewable alone.
+    if (
+      other.edgeKind !== edge.edgeKind ||
+      other.proposal?.operationId !== edge.proposal?.operationId
+    ) {
       continue;
     }
     const isSymmetricMatch =
@@ -225,6 +243,7 @@ function buildMergedEdge(
 ): MergedEdge {
   return {
     ...buildOptionalEdgeFields(edge, match),
+    ...(edge.proposal && { proposal: edge.proposal }),
     from: edge.from,
     to: edge.to,
     relationType: edge.relationType,
@@ -403,7 +422,7 @@ function computeTermLabelHSpacing(
       return max;
     }
     const rawLabel = n.originalLabel ?? n.label;
-    const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
+    const w = Math.min(MODEL_NODE_MAX_LABEL_WIDTH, estimateNodeWidth(rawLabel));
 
     return Math.max(max, w);
   }, 0);
@@ -691,9 +710,10 @@ function computeNodeSelectionState(
     ctx.selectedNodeId !== null && !isSelected && !ctx.neighborSet.has(node.id);
   const isDimmedBySearch =
     ctx.searchNodeSet != null && !ctx.searchNodeSet.has(node.id);
+  // Studio marks a selection with its border only; fading the rest read as disabled.
   const isDimmed = ctx.searchHighlightActive
     ? isDimmedBySearch
-    : isDimmedBySelection;
+    : !ctx.studioMode && isDimmedBySelection;
 
   return { isSelected, isHighlighted, isDimmed };
 }
@@ -711,7 +731,7 @@ function computeNodeVisualState(
     isInModelMode || (ctx.explorationMode === 'data' && !isDataAsset);
   const estimatedWidth = estimateNodeWidth(rawLabel);
   const truncatedWidth = shouldTruncateLabel
-    ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
+    ? Math.min(MODEL_NODE_MAX_LABEL_WIDTH, estimatedWidth)
     : estimatedWidth;
   const nodeWidth = ctx.studioMode ? MODEL_NODE_MAX_WIDTH : truncatedWidth;
   const label = shouldTruncateLabel
@@ -856,6 +876,21 @@ function buildDataModeTermNodeData(
   };
 }
 
+// Metrics and AI-proposed terms are drawn apart from authorable concepts.
+function buildStudioKindStyle(node: OntologyNode, isSelected: boolean) {
+  if (node.proposal) {
+    return buildStudioProposedNodeStyle(getCanvasColor, isSelected);
+  }
+
+  if (node.hasConflict) {
+    return buildStudioConflictNodeStyle(getCanvasColor);
+  }
+
+  return node.type === METRIC_NODE_TYPE
+    ? buildStudioMetricNodeStyle(getCanvasColor)
+    : {};
+}
+
 function buildDefaultNodeData(
   node: OntologyNode,
   state: NodeVisualState,
@@ -896,9 +931,7 @@ function buildDefaultNodeData(
         studioAccentColor: state.studioAccentColor ?? STUDIO_DEFAULT_ACCENT,
         studioEditMode: ctx.isEditMode,
       }),
-      ...(ctx.studioMode &&
-        node.type === METRIC_NODE_TYPE &&
-        buildStudioMetricNodeStyle(getCanvasColor)),
+      ...(ctx.studioMode && buildStudioKindStyle(node, state.isSelected)),
     },
     ...(!ctx.studioMode &&
       node.glossaryId && {
@@ -937,6 +970,7 @@ interface EdgeBuildContext {
   selectedScopedIds: Set<string> | null;
   searchHighlightActive: boolean;
   searchEdgeSet: Set<string> | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   clickedEdgeId: string | null;
   customRelationColorMap: Record<string, string>;
   cardinalityMap: Map<string, RelationshipType>;
@@ -1109,7 +1143,9 @@ function computeEdgeIsDimmed(
   const isDimmedBySearch =
     ctx.searchEdgeSet != null && !ctx.searchEdgeSet.has(edgeKeyStr);
 
-  return ctx.searchHighlightActive ? isDimmedBySearch : isDimmedBySelection;
+  return ctx.searchHighlightActive
+    ? isDimmedBySearch
+    : !ctx.studioMode && isDimmedBySelection;
 }
 
 function computeEdgeLabelVisibility(
@@ -1264,6 +1300,19 @@ function buildEdgeVisibleStyle(
   };
 }
 
+function withProposedEdgeStyle(
+  edge: MergedEdge,
+  displayLabel: string | undefined,
+  style: Record<string, unknown>
+): Record<string, unknown> {
+  return edge.proposal
+    ? {
+        ...style,
+        ...buildStudioProposedEdgeStyle(getCanvasColor, displayLabel),
+      }
+    : style;
+}
+
 function buildG6EdgeForSingle(
   singleEdge: MergedEdge,
   i: number,
@@ -1288,11 +1337,13 @@ function buildG6EdgeForSingle(
     isTermTermInDataMode,
     isSemanticProjection
   );
-  const edgeColor = computeEdgeColor(
-    singleEdge,
-    isDataModeAssetEdge,
-    ctx.customRelationColorMap
-  );
+  const edgeColor = ctx.conflictEdgeKeys?.has(conflictEdgeKey(singleEdge))
+    ? getCanvasColor(CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK)
+    : computeEdgeColor(
+        singleEdge,
+        isDataModeAssetEdge,
+        ctx.customRelationColorMap
+      );
 
   const showLabel = computeEdgeLabelVisibility(
     isClickedEdge,
@@ -1363,6 +1414,7 @@ function buildG6EdgeForSingle(
       relationshipType: singleEdge.relationshipType,
       edgeKind: singleEdge.edgeKind,
       provenance: singleEdge.provenance,
+      proposal: singleEdge.proposal,
       status: singleEdge.status,
       edgeColor,
       isHighlighted,
@@ -1370,7 +1422,9 @@ function buildG6EdgeForSingle(
       isCrossTeam: info.isCrossTeam,
       isEdgeDimmed,
     },
-    style:
+    style: withProposedEdgeStyle(
+      singleEdge,
+      displayLabel,
       isPrimary || ctx.studioMode
         ? visibleStyle
         : {
@@ -1379,7 +1433,8 @@ function buildG6EdgeForSingle(
             lineWidth: 0,
             endArrow: false,
             ...commonStyle,
-          },
+          }
+    ),
   };
 }
 
@@ -1546,8 +1601,10 @@ export function useGraphDataBuilder({
   layoutType,
   hierarchyCombos = [],
   graphSearchHighlight = null,
+  conflictEdgeKeys,
   isEditMode = false,
   relationTypes,
+  relationColors,
   studioMode = false,
 }: BuildGraphDataProps) {
   const { theme } = useTheme();
@@ -1575,7 +1632,7 @@ export function useGraphDataBuilder({
   );
 
   const customRelationColorMap = useMemo<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, string> = { ...relationColors };
     relationTypes?.forEach((relationshipType) => {
       map[relationshipType.name] =
         RELATION_META[relationshipType.name]?.color ??
@@ -1583,7 +1640,7 @@ export function useGraphDataBuilder({
     });
 
     return map;
-  }, [relationTypes]);
+  }, [relationColors, relationTypes]);
 
   const cardinalityMap = useMemo<Map<string, RelationshipType>>(() => {
     const map = new Map<string, RelationshipType>();
@@ -1716,6 +1773,7 @@ export function useGraphDataBuilder({
       selectedScopedIds,
       searchHighlightActive,
       searchEdgeSet,
+      conflictEdgeKeys,
       clickedEdgeId,
       customRelationColorMap,
       cardinalityMap,
@@ -1762,6 +1820,7 @@ export function useGraphDataBuilder({
     explorationMode,
     hierarchyCombos,
     graphSearchHighlight,
+    conflictEdgeKeys,
     glossaries,
     cardinalityMap,
     customRelationColorMap,

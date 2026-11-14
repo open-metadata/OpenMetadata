@@ -45,6 +45,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.grafana.client import (
@@ -138,6 +139,15 @@ class GrafanaSource(DashboardServiceSource):
         except Exception as err:
             logger.debug("Could not fetch owner data: %s", err)
         return None
+
+    def yield_tags(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Publish native dashboard tag definitions."""
+        yield from self.yield_tag_definitions(
+            tags=dashboard_details.dashboard.tags or [],
+            classification_name=GRAFANA_TAG_CATEGORY,
+            classification_description="Tags associated with Grafana dashboards",
+            tag_description="Grafana Tag",
+        )
 
     def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""

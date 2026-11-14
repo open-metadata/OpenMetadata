@@ -127,6 +127,7 @@ gh api repos/$REPO/contents/<path/to/test_file>?ref=$HEAD --jq '.content' | base
 
 | PR touches | Read |
 |---|---|
+| anything | `REVIEW.md`: the review bar, with the recurring logic defects, test gaps and flaky-test shapes, plus what not to report |
 | `**/*.java` | `.claude/rules/java.md` |
 | UI `*.{ts,tsx}` | `.claude/rules/frontend-react.md`, `component-library.md`, `frontend-styling.md`, `frontend-a11y.md`, `frontend-performance.md`, `i18n.md` |
 | `openmetadata-ui/src/main/resources/ui/playwright/**` | `.claude/rules/frontend-playwright.md` |
@@ -217,7 +218,7 @@ gh pr checks <n> -R "$REPO" | awk -F'\t' '$2!="pass" && $2!="skipping"'   # curr
 gh api "repos/$REPO/actions/jobs/<job-id>/logs"                          # the one failing job
 ```
 
-**Use `gh pr checks`, not `--json statusCheckRollup`, to decide what is red.** Any label event (`safe to test`, a team label) fires a second `pull_request_target` batch, so the rollup lists the *same* check name twice — once FAILURE from the old run, once SUCCESS from the new one — and reading it naively inverts the answer. `gh pr checks` reports the current state per check. Related tell: skipped matrix jobs publish their check name with the expression unexpanded (`Integration Test Lane (${{ matrix.lane.name }})`), which is the "required context stuck on Expected" case, not a failure.
+**Use `gh pr checks`, not `--json statusCheckRollup`, to decide what is red.** A re-run or a second event on the same head SHA leaves the *same* check name twice in the rollup — once FAILURE from the old run, once SUCCESS from the new one — and reading it naively inverts the answer. `gh pr checks` reports the current state per check. Related tell: skipped matrix jobs publish their check name with the expression unexpanded (`Integration Test Lane (${{ matrix.lane.name }})`), which is the "required context stuck on Expected" case, not a failure.
 
 Cascade jobs (`py-tests-status`, `Verify Expected Jobs`, `*-summary`) only restate an upstream result — walk to the job that actually failed before quoting anything.
 

@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -76,7 +77,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -98,6 +101,9 @@ public class ElasticSearchClient implements SearchClient {
   // New Java API client support for migration
   @Getter protected final ElasticsearchClient newClient;
   private final Rest5Client lowLevelClient;
+
+  /** Caps bulk requests in flight on this client's connection pool, across all bulk sinks. */
+  @Getter private final BulkConnectionBudget bulkConnectionBudget;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -157,6 +163,7 @@ public class ElasticSearchClient implements SearchClient {
   public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
     this.lowLevelClient = getLowLevelRestClient(config);
     this.newClient = createElasticSearchNewClient(lowLevelClient);
+    this.bulkConnectionBudget = BulkConnectionBudget.forHttpClientPool(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = newClient != null;
     isNewClientAvailable = newClient != null;
@@ -169,7 +176,8 @@ public class ElasticSearchClient implements SearchClient {
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new ElasticSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -373,6 +381,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    return searchManager.searchSimilarContextMemories(text, filterJson, size);
+  }
+
+  @Override
   public Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
@@ -456,6 +470,11 @@ public class ElasticSearchClient implements SearchClient {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return ensureLineageBuilder().getLineageRoot(fqn);
   }
 
   @Override
@@ -550,15 +569,23 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchManager.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   @Override
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchManager.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   @Override
@@ -785,6 +812,20 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
+  }
+
+  @Override
   public void updateChildren(
       List<String> indexNames,
       String field,
@@ -792,6 +833,32 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildrenByNestedField(
+        indexNames, docIds, nestedPaths, field, values, updates);
+  }
+
+  @Override
+  public void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateReferenceCopies(
+        indexNames, nestedPaths, objectPaths, field, values, updates);
   }
 
   @Override
@@ -877,6 +944,17 @@ public class ElasticSearchClient implements SearchClient {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
   }
 
   @Override
@@ -1256,14 +1334,46 @@ public class ElasticSearchClient implements SearchClient {
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchy(
       String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
-    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
+    return listPageHierarchy(parentFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchy(
+      String parentFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        ElasticRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQuery(parentFqn, pageType), caller, rbacConditionEvaluator);
+    return getPageHierarchyFromSearch(pages, sortFilter, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchyForActivePage(
       String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
-    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        ElasticRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType),
+            caller,
+            rbacConditionEvaluator);
+    return getPageHierarchyFromSearchForActivePage(pages, sortFilter, offset, limit);
   }
 
   private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
@@ -1289,9 +1399,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearch(
-      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
-      throws IOException {
-    Query boolQuery = buildPageHierarchyBoolQuery(parentFqn, pageType);
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
     List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
@@ -1318,9 +1426,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
-      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
-      throws IOException {
-    Query boolQuery = buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
     List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =

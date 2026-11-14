@@ -175,7 +175,12 @@ class LightdashApiClient:
             dashboard_external_uuid_charts = []
             dashboard_internal_charts = []
             for chart in charts_properties:
-                if chart["belongsToDashboard"]:
+                # SQL Runner (sql_chart) tiles reference savedSqlUuid and carry
+                # neither belongsToDashboard nor savedChartUuid
+                if "savedChartUuid" not in chart:
+                    logger.debug("Skipping Lightdash tile without savedChartUuid: %s", chart.get("chartName"))
+                    continue
+                if chart.get("belongsToDashboard"):
                     dashboard_internal_charts.append(
                         LightdashChart(
                             uuid=chart["savedChartUuid"],

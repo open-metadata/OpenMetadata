@@ -18,14 +18,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 class AssertedGraphTrackingRdfStorageTest {
@@ -75,6 +81,38 @@ class AssertedGraphTrackingRdfStorageTest {
         AssertedGraphTrackingRdfStorage.targetGraphs(
             "INSERT { GRAPH ?g { ?s <urn:copy> ?o } } WHERE { GRAPH ?g { ?s <urn:p> ?o } }"));
     assertEquals(Optional.empty(), AssertedGraphTrackingRdfStorage.targetGraphs("not sparql"));
+  }
+
+  @Test
+  void onlyAnEntityWriteThatChangedTheGraphMakesQueriesRelistGraphs() {
+    final List<String> graphs = new ArrayList<>(List.of(CENTRALITY));
+    final AtomicInteger listings = new AtomicInteger();
+    final AssertedOnlyQueries queries =
+        new AssertedOnlyQueries(
+            () -> {
+              listings.incrementAndGet();
+              return List.copyOf(graphs);
+            },
+            () -> "https://open-metadata.org/graph/inferred/",
+            Duration.ofMinutes(1));
+    final RdfStorageInterface fuseki = mock(RdfStorageInterface.class);
+    final UUID id = UUID.randomUUID();
+    final Model model = ModelFactory.createDefaultModel();
+    when(fuseki.storeEntity("table", id, model, RdfEntityWriteStrategy.DIFFERENCE))
+        .thenReturn(RdfEntityWriteResult.UNCHANGED)
+        .thenReturn(RdfEntityWriteResult.changedTriples(0, 3));
+    final AssertedGraphTrackingRdfStorage storage =
+        new AssertedGraphTrackingRdfStorage(fuseki, queries, KNOWLEDGE);
+    queries.restrict("ASK { ?s ?p ?o }");
+    graphs.add(KNOWLEDGE);
+
+    storage.storeEntity("table", id, model);
+    assertEquals(false, queries.restrict("ASK { ?s ?p ?o }").contains("<" + KNOWLEDGE + ">"));
+    assertEquals(1, listings.get());
+
+    storage.storeEntity("table", id, model);
+    assertEquals(true, queries.restrict("ASK { ?s ?p ?o }").contains("<" + KNOWLEDGE + ">"));
+    assertEquals(2, listings.get());
   }
 
   @Test

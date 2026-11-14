@@ -12,6 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
+import { User } from '../../../generated/entity/teams/user';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import LineageConfigModal from './LineageConfigModal';
 
 const onCancel = jest.fn();
@@ -20,7 +23,7 @@ const onSave = jest.fn();
 const config = {
   upstreamDepth: 2,
   downstreamDepth: 3,
-  nodesPerLayer: 4,
+  nodesPerLayer: 5,
   pipelineViewMode: PipelineViewMode.Node,
 };
 
@@ -45,9 +48,9 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    expect(fieldUpstream).toBeInTheDocument();
-    expect(fieldDownstream).toBeInTheDocument();
-    expect(fieldNodesPerLayer).toBeInTheDocument();
+    expect(fieldUpstream).toHaveValue(2);
+    expect(fieldDownstream).toHaveValue(3);
+    expect(fieldNodesPerLayer).toHaveValue(5);
   });
 
   it('calls onCancel when Cancel button is clicked', () => {
@@ -65,7 +68,7 @@ describe('LineageConfigModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSave with updated values when form is submitted', async () => {
+  it('calls onSave with updated values and keeps the pipeline view mode', async () => {
     render(
       <LineageConfigModal
         visible
@@ -81,12 +84,9 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    // Update values
     fireEvent.change(fieldUpstream, { target: { value: '5' } });
     fireEvent.change(fieldDownstream, { target: { value: '6' } });
     fireEvent.change(fieldNodesPerLayer, { target: { value: '7' } });
-
-    // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
@@ -94,7 +94,91 @@ describe('LineageConfigModal', () => {
         upstreamDepth: 5,
         downstreamDepth: 6,
         nodesPerLayer: 7,
+        pipelineViewMode: PipelineViewMode.Node,
       });
+    });
+  });
+
+  describe('show temporary tables', () => {
+    beforeEach(() => {
+      useApplicationStore.setState({
+        currentUser: { id: 'u-admin', name: 'admin' } as User,
+      });
+    });
+
+    afterEach(() => {
+      usePersistentStorage.getState().clearUserPreference('admin');
+    });
+
+    const renderModal = () =>
+      render(
+        <LineageConfigModal
+          showTempTablesToggle
+          visible
+          config={config}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+    it('is absent where temp tables are not drawn', async () => {
+      render(
+        <LineageConfigModal
+          visible
+          config={config}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+      await screen.findByTestId('field-upstream');
+
+      expect(
+        screen.queryByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).not.toBeInTheDocument();
+    });
+
+    it('is on when the user has not chosen', async () => {
+      renderModal();
+
+      expect(
+        await screen.findByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).toBeChecked();
+    });
+
+    it('reflects the saved preference', async () => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('admin', { showLineageTempTables: false });
+      renderModal();
+
+      expect(
+        await screen.findByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).not.toBeChecked();
+    });
+
+    it('saves the switch to the user preference, not the lineage config', async () => {
+      renderModal();
+
+      fireEvent.click(
+        await screen.findByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(config));
+
+      expect(
+        usePersistentStorage.getState().getUserPreference('admin')
+          .showLineageTempTables
+      ).toBe(false);
     });
   });
 
@@ -110,15 +194,14 @@ describe('LineageConfigModal', () => {
 
     const fieldUpstream = await screen.findByTestId('field-upstream');
 
-    // Try to set negative value
     fireEvent.change(fieldUpstream, { target: { value: '-1' } });
-
-    // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText('message.entity-size-less-than')
+    ).toBeInTheDocument();
+    expect(fieldUpstream).toHaveAttribute('aria-invalid', 'true');
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('validates minimum value for downstream depth', async () => {
@@ -133,15 +216,14 @@ describe('LineageConfigModal', () => {
 
     const fieldDownstream = await screen.findByTestId('field-downstream');
 
-    // Try to set negative value
     fireEvent.change(fieldDownstream, { target: { value: '-1' } });
-
-    // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText('message.entity-size-less-than')
+    ).toBeInTheDocument();
+    expect(fieldDownstream).toHaveAttribute('aria-invalid', 'true');
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('validates minimum value for nodes per layer', async () => {
@@ -158,15 +240,14 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    // Try to set value less than minimum (5)
     fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
-
-    // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText('message.entity-size-less-than')
+    ).toBeInTheDocument();
+    expect(fieldNodesPerLayer).toHaveAttribute('aria-invalid', 'true');
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('validates required fields', async () => {
@@ -185,16 +266,52 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    // Clear all fields
     fireEvent.change(fieldUpstream, { target: { value: '' } });
     fireEvent.change(fieldDownstream, { target: { value: '' } });
     fireEvent.change(fieldNodesPerLayer, { target: { value: '' } });
-
-    // Submit form
     fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).toHaveLength(3);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('shows the latest config and drops cancelled edits when reopened', async () => {
+    const { rerender } = render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.change(await screen.findByTestId('field-upstream'), {
+      target: { value: '9' },
     });
+
+    rerender(
+      <LineageConfigModal
+        config={config}
+        visible={false}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+    rerender(
+      <LineageConfigModal
+        visible
+        config={{ ...config, downstreamDepth: 7 }}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('field-upstream')).toHaveValue(2)
+    );
+
+    expect(screen.getByTestId('field-downstream')).toHaveValue(7);
   });
 });

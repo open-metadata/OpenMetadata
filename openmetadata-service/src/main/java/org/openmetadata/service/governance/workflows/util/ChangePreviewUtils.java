@@ -23,12 +23,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -40,6 +44,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 public final class ChangePreviewUtils {
 
   public static final String PROPOSED_CHANGES_KEY = "proposedChanges";
+  public static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
+  public static final String CHANGE_REQUEST_REVISION_KEY = "changeRequestRevision";
 
   private static final List<String> ID_KEYS =
       List.of("tagFQN", "fullyQualifiedName", "displayName", "name");
@@ -210,8 +216,32 @@ public final class ChangePreviewUtils {
    */
   public static Object buildProposedChangesPayload(
       EntityInterface<?> entity, Object existingPayload) {
+    return buildProposedChangesPayload(entity, existingPayload, null);
+  }
+
+  /**
+   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object)} for a task that reviews a
+   * change request: the request's pending revision is what the reviewer approves, so it wins over
+   * the entity's persisted diffs, which never contain it.
+   */
+  public static Object buildProposedChangesPayload(
+      EntityInterface<?> entity, Object existingPayload, ChangeDescription pending) {
+    return buildProposedChangesPayload(entity, existingPayload, pending, null);
+  }
+
+  /**
+   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object, ChangeDescription)} for a
+   * task that opens an approval cycle: {@code openingChange} is the change of the edit that started
+   * it, and the preview starts from it instead of the entity's latest hop, which is the workflow's
+   * own status write. A task that continues a cycle passes none and folds in the latest hop.
+   */
+  public static Object buildProposedChangesPayload(
+      EntityInterface<?> entity,
+      Object existingPayload,
+      ChangeDescription pending,
+      ChangeDescription openingChange) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription = pickIncrementalOrFull(entity);
+    ChangeDescription changeDescription = changeToPreview(entity, pending, openingChange);
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -222,9 +252,21 @@ public final class ChangePreviewUtils {
       return existingPayload;
     }
     try {
-      Map<String, FieldDiff> priorMap = extractProposedChanges(existingPayload);
+      // A change-request revision is already cumulative, so it replaces rather than merges any
+      // proposedChanges carried over from a prior revision's task.
+      Map<String, FieldDiff> priorMap =
+          hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
+      if (entity instanceof McpServer) {
+        changeDescription = JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
+        McpServerMasker.maskChangeDescription(changeDescription);
+      }
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
+      if (hasNoChanges(pending)) {
+        // An approval workflow moves the entity's status itself (e.g. to In Review right before it
+        // opens the task), so a status change read off the entity is the workflow's own write.
+        merged.remove(Entity.FIELD_ENTITY_STATUS);
+      }
       if (LOG.isDebugEnabled()) {
         LOG.debug(
             "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",
@@ -253,6 +295,15 @@ public final class ChangePreviewUtils {
     }
   }
 
+  private static ChangeDescription changeToPreview(
+      EntityInterface<?> entity, ChangeDescription pending, ChangeDescription openingChange) {
+    ChangeDescription change = pending;
+    if (hasNoChanges(pending)) {
+      change = hasNoChanges(openingChange) ? pickIncrementalOrFull(entity) : openingChange;
+    }
+    return change;
+  }
+
   /**
    * Prefer {@code incrementalChangeDescription} (per-edit hop diff) over {@code changeDescription}
    * (cumulative-between-versions diff). The cumulative form double-counts when prior task payload
@@ -277,6 +328,17 @@ public final class ChangePreviewUtils {
    * the prior payload so the running merge base is preserved. Returns {@code requestedPayload}
    * unchanged when there is nothing to preserve.
    */
+  /**
+   * Stamps the change request and the exact revision a review task decides, so the resolver echoes
+   * the revision back and a decision can never be recorded against a different one.
+   */
+  public static Object withChangeRequestLink(Object payload, UUID changeRequestId, int revision) {
+    Map<String, Object> linked = cloneAsMutableMap(payload);
+    linked.put(CHANGE_REQUEST_ID_KEY, changeRequestId.toString());
+    linked.put(CHANGE_REQUEST_REVISION_KEY, revision);
+    return linked;
+  }
+
   public static Object preserveProposedChanges(Object requestedPayload, Object priorPayload) {
     if (!(requestedPayload instanceof Map<?, ?> requestedMap)) return requestedPayload;
     if (requestedMap.get(PROPOSED_CHANGES_KEY) != null) return requestedPayload;

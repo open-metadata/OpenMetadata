@@ -13,6 +13,8 @@
 
 import type { TFunction } from 'i18next';
 import Qs from 'qs';
+import type { Viewport } from 'reactflow';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
   LineageLens,
@@ -48,7 +50,12 @@ const LENS_CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.DataProduct,
 ]);
 
-const COUNT_SUBTITLE_LEVEL_KINDS = new Set<LineageLevelKind>([
+const LENS_BY_CONTAINER_ENTITY_TYPE: Record<string, LineageLens | undefined> = {
+  [EntityType.DOMAIN]: LineageLens.Domain,
+  [EntityType.DATA_PRODUCT]: LineageLens.DataProduct,
+};
+
+const CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Service,
   LineageLevelKind.Database,
   LineageLevelKind.Schema,
@@ -215,38 +222,117 @@ export const getSceneOriginFocus = (
     ? routeFocus
     : getSceneFocus(scene?.originFqn, scene?.originEntityType);
 
+type SceneSearchParams = ReturnType<typeof Qs.parse>;
+
+const getStringParam = (params: SceneSearchParams, key: string) =>
+  typeof params[key] === 'string' ? (params[key] as string) : undefined;
+
+const findEnumValue = <T extends string>(
+  values: Record<string, T>,
+  value?: string
+) => Object.values(values).find((candidate) => candidate === value);
+
+// A domain or data product opens as its own card among its peers, through its
+// own lens, as it did in 2.0. Once the map writes a band to the URL the usual
+// rules apply, so the root breadcrumb still leaves the domain
+// (ADR:2026-11-13-lineage-page-opens-containers-as-their-own-card).
+const getContainerLanding = (
+  params: SceneSearchParams,
+  defaultFocus: LineageSceneFocus,
+  isPlatformLineage: boolean
+) => {
+  const lens = isPlatformLineage
+    ? LENS_BY_CONTAINER_ENTITY_TYPE[defaultFocus.entityType ?? '']
+    : undefined;
+
+  return {
+    lens,
+    isLanding: lens !== undefined && params.lineageBand === undefined,
+  };
+};
+
+const getRequestLens = (
+  params: SceneSearchParams,
+  containerLens?: LineageLens
+) =>
+  findEnumValue(LineageLens, getStringParam(params, 'lineageLens')) ??
+  containerLens ??
+  LineageLens.Service;
+
+const getRequestBand = (params: SceneSearchParams, showsPlatform: boolean) =>
+  findEnumValue(LineageBand, getStringParam(params, 'lineageBand')) ??
+  (showsPlatform ? LineageBand.Layer : LineageBand.Asset);
+
+const getRequestFocus = (
+  params: SceneSearchParams,
+  fallbackFocus: LineageSceneFocus
+) =>
+  getSceneFocus(
+    getStringParam(params, 'lineageFocus') ?? fallbackFocus.focusFqn,
+    getStringParam(params, 'lineageEntityType') ?? fallbackFocus.entityType
+  );
+
 export const getSceneRequestFromSearch = (
   search: string,
   defaultFocus: LineageSceneFocus,
   isPlatformLineage = false
 ): LineageSceneRequest => {
   const params = Qs.parse(search, { ignoreQueryPrefix: true });
-  const lens =
-    Object.values(LineageLens).find((value) => value === params.lineageLens) ??
-    LineageLens.Service;
-  const defaultBand =
-    isPlatformLineage && !defaultFocus.focusFqn
-      ? LineageBand.Layer
-      : LineageBand.Asset;
-  const band =
-    Object.values(LineageBand).find((value) => value === params.lineageBand) ??
-    defaultBand;
-  const fallbackFocus: LineageSceneFocus =
-    band === LineageBand.Layer ? {} : defaultFocus;
+  const container = getContainerLanding(
+    params,
+    defaultFocus,
+    isPlatformLineage
+  );
+  const band = getRequestBand(
+    params,
+    isPlatformLineage && (!defaultFocus.focusFqn || container.isLanding)
+  );
+  // An asset page's Layer band (its Service / Domain / Data Product view) stays
+  // focused on that asset; only the main Lineage page shows the whole hierarchy.
+  const isRootLayer =
+    band === LineageBand.Layer && isPlatformLineage && !container.isLanding;
 
   return {
-    lens,
+    lens: getRequestLens(params, container.lens),
     band,
-    ...getSceneFocus(
-      typeof params.lineageFocus === 'string'
-        ? params.lineageFocus
-        : fallbackFocus.focusFqn,
-      typeof params.lineageEntityType === 'string'
-        ? params.lineageEntityType
-        : fallbackFocus.entityType
-    ),
+    ...getRequestFocus(params, isRootLayer ? {} : defaultFocus),
   };
 };
+
+// Services, domains and data products exist only in their own lens.
+const LENS_CONTAINER_ENTITY_TYPES = new Set<string>([
+  EntityType.DOMAIN,
+  EntityType.DATA_PRODUCT,
+  EntityType.SERVICE,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.LLM_SERVICE,
+  EntityType.MCP_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.DRIVE_SERVICE,
+  EntityType.API_SERVICE,
+]);
+
+/**
+ * The request a lens switch makes. An asset stays in focus, seen through the
+ * new lens; a service, domain or data product does not exist in another lens,
+ * so the switch opens the new lens's root instead of keeping a focus it cannot
+ * show (ADR:2026-11-13-lineage-page-opens-containers-as-their-own-card).
+ */
+export const getLensChangeRequest = (
+  request: LineageSceneRequest,
+  lens: LineageLens,
+  band: LineageBand = request.band
+): LineageSceneRequest =>
+  LENS_CONTAINER_ENTITY_TYPES.has(request.entityType ?? '')
+    ? { lens, band: LineageBand.Layer }
+    : { ...request, lens, band };
 
 export const getSceneSearch = (
   search: string,
@@ -283,9 +369,14 @@ interface LineageFieldPathConnection {
   nodeId: string;
 }
 
+interface LineageNodePathConnection {
+  edgeId: string;
+  nodeId: string;
+}
+
 export interface LineagePathHighlightIndex {
-  edgeIdsByNodeId: Map<string, Set<string>>;
-  adjacentNodeIdsByNodeId: Map<string, Set<string>>;
+  incomingConnectionsByNodeId: Map<string, LineageNodePathConnection[]>;
+  outgoingConnectionsByNodeId: Map<string, LineageNodePathConnection[]>;
   incomingFieldConnectionsByFieldId: Map<string, LineageFieldPathConnection[]>;
   outgoingFieldConnectionsByFieldId: Map<string, LineageFieldPathConnection[]>;
   nodeIdsByFieldId: Map<string, Set<string>>;
@@ -302,11 +393,45 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
   }
 };
 
+export const getLensLabelKey = (lens: LineageLens) => {
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service';
+  }
+};
+
+/**
+ * The root breadcrumb of a scene that has been drilled into, i.e. the way back
+ * to "All services" (or domains / data products). Undefined at the root itself.
+ */
+export const getDrilledRootBreadcrumb = (
+  scene?: Pick<LineageScene, 'breadcrumb' | 'band' | 'focusFqn'>
+): LineageSceneBreadcrumb | undefined => {
+  // An empty drilled scene comes back with only the root crumb, so whether it
+  // is drilled is read from its focus and band, not from the trail's length.
+  const isDrilled =
+    Boolean(scene?.focusFqn) || (scene && scene.band !== LineageBand.Layer);
+
+  return isDrilled
+    ? scene?.breadcrumb.find((breadcrumb) => !breadcrumb.fullyQualifiedName)
+    : undefined;
+};
+
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {
-  const edgeIdsByNodeId = new Map<string, Set<string>>();
-  const adjacentNodeIdsByNodeId = new Map<string, Set<string>>();
+  const incomingConnectionsByNodeId = new Map<
+    string,
+    LineageNodePathConnection[]
+  >();
+  const outgoingConnectionsByNodeId = new Map<
+    string,
+    LineageNodePathConnection[]
+  >();
   const incomingFieldConnectionsByFieldId = new Map<
     string,
     LineageFieldPathConnection[]
@@ -318,19 +443,13 @@ export const buildLineagePathHighlightIndex = (
   const nodeIdsByFieldId = new Map<string, Set<string>>();
 
   edges.forEach((edge) => {
-    [
-      [edge.source, edge.target],
-      [edge.target, edge.source],
-    ].forEach(([nodeId, adjacentNodeId]) => {
-      const edgeIds = edgeIdsByNodeId.get(nodeId) ?? new Set<string>();
-      const adjacentNodeIds =
-        adjacentNodeIdsByNodeId.get(nodeId) ?? new Set<string>();
+    const outgoing = outgoingConnectionsByNodeId.get(edge.source) ?? [];
+    const incoming = incomingConnectionsByNodeId.get(edge.target) ?? [];
 
-      edgeIds.add(edge.id);
-      adjacentNodeIds.add(adjacentNodeId);
-      edgeIdsByNodeId.set(nodeId, edgeIds);
-      adjacentNodeIdsByNodeId.set(nodeId, adjacentNodeIds);
-    });
+    outgoing.push({ edgeId: edge.id, nodeId: edge.target });
+    incoming.push({ edgeId: edge.id, nodeId: edge.source });
+    outgoingConnectionsByNodeId.set(edge.source, outgoing);
+    incomingConnectionsByNodeId.set(edge.target, incoming);
 
     if (edge.sourceHandle && edge.targetHandle) {
       const sourceNodeIds =
@@ -368,8 +487,8 @@ export const buildLineagePathHighlightIndex = (
   });
 
   return {
-    edgeIdsByNodeId,
-    adjacentNodeIdsByNodeId,
+    incomingConnectionsByNodeId,
+    outgoingConnectionsByNodeId,
     incomingFieldConnectionsByFieldId,
     outgoingFieldConnectionsByFieldId,
     nodeIdsByFieldId,
@@ -386,25 +505,34 @@ export const getConnectedLineagePathHighlight = (
 
   const edgeIds = new Set<string>();
   const nodeIds = new Set<string>([nodeId]);
-  const queue = [nodeId];
-  let queueIndex = 0;
 
-  while (queueIndex < queue.length) {
-    const currentNodeId = queue[queueIndex];
-    queueIndex += 1;
+  // Upstream and downstream are walked separately: an undirected walk would
+  // also reach a sibling input of a downstream node, which is not on this
+  // node's path.
+  const traceNodes = (
+    connectionsByNodeId: Map<string, LineageNodePathConnection[]>
+  ) => {
+    const visitedNodeIds = new Set<string>([nodeId]);
+    const queue = [nodeId];
+    let queueIndex = 0;
 
-    index.edgeIdsByNodeId
-      .get(currentNodeId)
-      ?.forEach((edgeId) => edgeIds.add(edgeId));
-    index.adjacentNodeIdsByNodeId
-      .get(currentNodeId)
-      ?.forEach((adjacentNodeId) => {
-        if (!nodeIds.has(adjacentNodeId)) {
-          nodeIds.add(adjacentNodeId);
-          queue.push(adjacentNodeId);
+    while (queueIndex < queue.length) {
+      const currentNodeId = queue[queueIndex];
+      queueIndex += 1;
+
+      connectionsByNodeId.get(currentNodeId)?.forEach((connection) => {
+        edgeIds.add(connection.edgeId);
+        nodeIds.add(connection.nodeId);
+        if (!visitedNodeIds.has(connection.nodeId)) {
+          visitedNodeIds.add(connection.nodeId);
+          queue.push(connection.nodeId);
         }
       });
-  }
+    }
+  };
+
+  traceNodes(index.outgoingConnectionsByNodeId);
+  traceNodes(index.incomingConnectionsByNodeId);
 
   return {
     edgeIds,
@@ -463,6 +591,10 @@ export const getConnectedFieldLineagePathHighlight = (
   };
 };
 
+/**
+ * What the truncation notice counts: the one kind of card the scene shows
+ * (services at the root, tables in a schema), else assets.
+ */
 const getLowercaseLabel = (
   t: TFunction,
   levelKind: LineageLevelKind,
@@ -475,11 +607,45 @@ const getLowercaseLabel = (
   ).toLocaleLowerCase();
 };
 
-export const getSceneNodeCountSubtitle = (
+export const getSceneCountLabel = (
+  t: TFunction,
+  scene: LineageScene,
+  count: number
+): string => {
+  const kinds = new Set(
+    scene.nodes.filter((node) => !node.isGhost).map((node) => node.levelKind)
+  );
+  const [onlyKind] = kinds;
+
+  return kinds.size === 1 && onlyKind
+    ? getLowercaseLabel(t, onlyKind, count)
+    : t('label.asset-plural').toLocaleLowerCase();
+};
+
+export const isContainerSceneNode = (node: LineageSceneNode) =>
+  CONTAINER_LEVEL_KINDS.has(node.levelKind);
+
+// Container nodes (service, database, schema, domain, data product) say what
+// they are under the name and how many assets they hold in a count pill.
+export const getSceneNodeTypeSubtitle = (
   node: LineageSceneNode,
   t: TFunction
 ) => {
-  if (!COUNT_SUBTITLE_LEVEL_KINDS.has(node.levelKind)) {
+  if (!isContainerSceneNode(node)) {
+    return undefined;
+  }
+  const kind = getLowercaseLabel(t, node.levelKind);
+
+  return node.serviceType
+    ? t('label.lineage-map-node-type-subtitle', {
+        type: node.serviceType,
+        kind,
+      })
+    : kind;
+};
+
+export const getSceneNodeCount = (node: LineageSceneNode, t: TFunction) => {
+  if (!isContainerSceneNode(node)) {
     return undefined;
   }
 
@@ -492,17 +658,13 @@ export const getSceneNodeCountSubtitle = (
     return undefined;
   }
 
-  const totalCount = countEntries.reduce((sum, entry) => sum + entry.count, 0);
+  const count = countEntries.reduce((sum, entry) => sum + entry.count, 0);
   const countedLevelKind =
     countEntries.length === 1
       ? countEntries[0].levelKind
       : LineageLevelKind.Asset;
 
-  return t('label.lineage-map-node-count-subtitle', {
-    kind: getLowercaseLabel(t, node.levelKind),
-    count: totalCount,
-    entity: getLowercaseLabel(t, countedLevelKind, totalCount),
-  });
+  return { count, entity: getLowercaseLabel(t, countedLevelKind, count) };
 };
 
 const LEVEL_LABEL_KEYS: Partial<Record<LineageLevelKind, string>> = {
@@ -546,6 +708,100 @@ export const getSceneLevelLabelKey = (scene: LineageScene) => {
     : getBandLabelKey(scene.band);
 };
 
+// The level rail has three stops. Everything between the lens containers
+// (service / domain / data product) and fields — databases, schemas, tables —
+// reads as "Data Assets", whichever band the scene is drawn in.
+export const LINEAGE_MAP_RAIL_STOPS = [
+  LineageBand.Layer,
+  LineageBand.Asset,
+  LineageBand.Field,
+];
+
+export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
+
+/**
+ * A scene holding only the focused entity, with no edges, has no lineage to
+ * show; the focus is always returned, so the node count alone cannot tell.
+ */
+// A lone service, domain or data product card is not empty: its lineage is
+// inside it, one drill away.
+export const isSceneEmpty = (scene: LineageScene): boolean =>
+  scene.nodes.length === 0 ||
+  (scene.edges.length === 0 &&
+    scene.nodes.every(
+      (node) =>
+        (node.isFocus || node.isOrigin) &&
+        !LENS_CONTAINER_LEVEL_KINDS.has(node.levelKind)
+    ));
+
+/** Which placeholder the map shows while it has no nodes to draw. */
+export const getLineageMapEmptyState = ({
+  scene,
+  loading,
+  hasError,
+}: {
+  scene?: LineageScene;
+  loading: boolean;
+  hasError: boolean;
+}): LineageMapEmptyState => {
+  if (scene) {
+    return 'empty';
+  }
+  if (loading) {
+    return 'loading';
+  }
+
+  return hasError ? 'error' : 'empty';
+};
+
+export const getRailStop = (scene: LineageScene): LineageBand => {
+  if (scene.band === LineageBand.Field) {
+    return LineageBand.Field;
+  }
+  const showsOnlyLensContainers = scene.nodes.every((node) =>
+    LENS_CONTAINER_LEVEL_KINDS.has(node.levelKind)
+  );
+
+  return scene.band === LineageBand.Layer && showsOnlyLensContainers
+    ? LineageBand.Layer
+    : LineageBand.Asset;
+};
+
+export const getRailStopLabelKey = (stop: LineageBand, lens: LineageLens) => {
+  if (stop === LineageBand.Field) {
+    return 'label.field-level-lineage';
+  }
+  if (stop === LineageBand.Asset) {
+    return 'label.data-asset-plural';
+  }
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service-level-view';
+  }
+};
+
+export const isSceneNodeDrillable = (
+  node?: LineageSceneNode
+): node is LineageSceneNode & {
+  fullyQualifiedName: string;
+  entityType: string;
+} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
+
+// The scene API marks every container expandable, even a service with no
+// assets left, so a drill that the user did not aim at a node lands only on a
+// node with children. The childrenCount check can go once the API stops
+// marking empty containers.
+export const isSceneNodeDrillableWithChildren = (node?: LineageSceneNode) =>
+  isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0;
+
+export const getRailDrillFallbackNode = (nodes: LineageSceneNode[]) =>
+  nodes.find(isSceneNodeDrillableWithChildren) ??
+  nodes.find(isSceneNodeDrillable);
+
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {
     return LineageBand.Asset;
@@ -578,6 +834,40 @@ export const getBreadcrumbSceneRequest = (
     focusFqn: breadcrumb.fullyQualifiedName,
     entityType: breadcrumb.entityType,
   };
+};
+
+export type DeleteKeyAction = 'node' | 'edge';
+
+export interface DeleteKeyActionContext {
+  canEdit: boolean;
+  hasSelectedNode: boolean;
+  hasSelectedEdge: boolean;
+}
+
+export const getDeleteKeyAction = (
+  event: KeyboardEvent,
+  { canEdit, hasSelectedNode, hasSelectedEdge }: DeleteKeyActionContext
+): DeleteKeyAction | undefined => {
+  if (!canEdit || (event.key !== 'Delete' && event.key !== 'Backspace')) {
+    return undefined;
+  }
+
+  // Only act while focus is on the page or the canvas: never while typing,
+  // and never from a drawer, modal or menu stacked over the canvas.
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.closest('input, textarea, [contenteditable="true"]') ||
+      (target !== document.body && !target.closest('.react-flow')))
+  ) {
+    return undefined;
+  }
+
+  if (hasSelectedNode) {
+    return 'node';
+  }
+
+  return hasSelectedEdge ? 'edge' : undefined;
 };
 
 export const getParentSceneRequest = (
@@ -626,4 +916,198 @@ export const getParentSceneRequest = (
   }
 
   return undefined;
+};
+
+/**
+ * Kept out of LineageMap.component.tsx so the upstream/downstream branch does
+ * not nest inside the "both FQNs present" branch (sonarjs/no-nested-conditional).
+ */
+export const getLineageEditColumnPair = (
+  isUpstream: boolean,
+  requestColumnFqn?: string,
+  pickedColumnFqn?: string
+): { fromColumn: string; toColumn: string } | undefined => {
+  if (!requestColumnFqn || !pickedColumnFqn) {
+    return undefined;
+  }
+
+  return isUpstream
+    ? { fromColumn: pickedColumnFqn, toColumn: requestColumnFqn }
+    : { fromColumn: requestColumnFqn, toColumn: pickedColumnFqn };
+};
+
+// Semantic zoom switches level by how much of the screen the graph or a card
+// fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
+export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
+// A 340px container on a ~1400px canvas drills at zoom ~1.43, well short of
+// the 2.5 maximum. ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
+export const ZOOM_IN_SCREEN_FILL = 0.35;
+
+interface Size {
+  width: number;
+  height: number;
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+/** The box whose centre is closest to `point`, or undefined when there is none. */
+export const getBoxNearestPoint = <T extends Point & Size>(
+  boxes: T[],
+  point: Point
+): T | undefined =>
+  boxes.reduce<{ box?: T; distance: number }>(
+    (nearest, box) => {
+      const distance = Math.hypot(
+        box.x + box.width / 2 - point.x,
+        box.y + box.height / 2 - point.y
+      );
+
+      return distance < nearest.distance ? { box, distance } : nearest;
+    },
+    { distance: Number.POSITIVE_INFINITY }
+  ).box;
+
+/** Largest share of the screen's width or height that `size` covers at `zoom`. */
+export const getScreenFill = (size: Size, zoom: number, screen: Size) =>
+  Math.max(
+    (size.width * zoom) / screen.width,
+    (size.height * zoom) / screen.height
+  );
+
+/**
+ * Zooming out goes up a level once the whole graph fits and fills less than a
+ * third of the screen, or once it reaches the minimum zoom (a graph too large
+ * to shrink that far); zooming in goes down a level once a card fills most of
+ * the screen, or once it reaches the maximum zoom (a card too narrow to fill
+ * a wide screen). Anything else is a plain zoom.
+ */
+export const getSemanticZoomDirection = ({
+  previousZoom,
+  zoom,
+  graph,
+  card,
+  screen,
+  minZoom,
+  maxZoom,
+}: {
+  previousZoom: number;
+  zoom: number;
+  minZoom: number;
+  maxZoom: number;
+  graph: Size;
+  card: Size;
+  screen: Size;
+}): 'in' | 'out' | undefined => {
+  if (
+    zoom > previousZoom &&
+    (getScreenFill(card, zoom, screen) >= ZOOM_IN_SCREEN_FILL ||
+      zoom >= maxZoom)
+  ) {
+    return 'in';
+  }
+  if (
+    zoom < previousZoom &&
+    (getScreenFill(graph, zoom, screen) < ZOOM_OUT_SCREEN_FILL ||
+      zoom <= minZoom)
+  ) {
+    return 'out';
+  }
+
+  return undefined;
+};
+
+export interface SceneLayoutBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isFocus?: boolean;
+  isOrigin?: boolean;
+  isGhost?: boolean;
+}
+
+const getBoxesBounds = (boxes: SceneLayoutBox[]) =>
+  boxes.reduce(
+    (bounds, box) => ({
+      minX: Math.min(bounds.minX, box.x),
+      minY: Math.min(bounds.minY, box.y),
+      maxX: Math.max(bounds.maxX, box.x + box.width),
+      maxY: Math.max(bounds.maxY, box.y + box.height),
+    }),
+    {
+      minX: Number.POSITIVE_INFINITY,
+      minY: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      maxY: Number.NEGATIVE_INFINITY,
+    }
+  );
+
+/**
+ * The viewport a scene opens at when it is too big for the canvas at its
+ * minimum readable zoom; undefined when it fits and a plain fit applies.
+ *
+ * Clamping a fit's zoom keeps the centre of the whole scene in view. In the
+ * layered layout that centre falls between layers, where only the collapsed
+ * context nodes sit, so the scene's own nodes would open off-screen. Instead
+ * the scene opens at the minimum zoom on what it was opened for: the focus
+ * node, else the origin node, centred; or else the top of the left-most column
+ * of real nodes, inset the way a fit would pad it.
+ */
+export const getSceneLandingViewport = (
+  boxes: SceneLayoutBox[],
+  canvas: { width: number; height: number },
+  minZoom: number,
+  padding: number
+): Viewport | undefined => {
+  if (boxes.length === 0 || canvas.width <= 0 || canvas.height <= 0) {
+    return undefined;
+  }
+  const bounds = getBoxesBounds(boxes);
+  const fitZoom = Math.min(
+    canvas.width / ((bounds.maxX - bounds.minX) * (1 + padding)),
+    canvas.height / ((bounds.maxY - bounds.minY) * (1 + padding))
+  );
+  if (fitZoom >= minZoom) {
+    return undefined;
+  }
+
+  const inset = padding / (2 * (1 + padding));
+  const focusBoxes = boxes.filter((box) => box.isFocus);
+  const rootBoxes =
+    focusBoxes.length > 0 ? focusBoxes : boxes.filter((box) => box.isOrigin);
+  if (rootBoxes.length > 0) {
+    const rootBounds = getBoxesBounds(rootBoxes);
+
+    // A root taller or wider than the canvas (a field-level focus asset with
+    // many columns) would centre with its top under the breadcrumb, so its
+    // top-left corner never goes past the fit inset.
+    return {
+      x: Math.max(
+        canvas.width / 2 - ((rootBounds.minX + rootBounds.maxX) / 2) * minZoom,
+        canvas.width * inset - rootBounds.minX * minZoom
+      ),
+      y: Math.max(
+        canvas.height / 2 - ((rootBounds.minY + rootBounds.maxY) / 2) * minZoom,
+        canvas.height * inset - rootBounds.minY * minZoom
+      ),
+      zoom: minZoom,
+    };
+  }
+
+  const realBoxes = boxes.filter((box) => !box.isGhost);
+  const candidates = realBoxes.length > 0 ? realBoxes : boxes;
+  const firstBox = candidates.reduce(
+    (first, box) =>
+      box.x < first.x || (box.x === first.x && box.y < first.y) ? box : first,
+    candidates[0]
+  );
+
+  return {
+    x: canvas.width * inset - firstBox.x * minZoom,
+    y: canvas.height * inset - firstBox.y * minZoom,
+    zoom: minZoom,
+  };
 };

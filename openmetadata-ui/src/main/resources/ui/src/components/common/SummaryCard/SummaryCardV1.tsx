@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { FeaturedIcon, Skeleton } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
-import { ReactComponent as AddItemIcon } from '../../../assets/svg/add-item-icon.svg';
 
 const SummaryCardV1 = ({
   extra,
@@ -22,7 +21,7 @@ const SummaryCardV1 = ({
   value,
 }: {
   extra?: ReactNode;
-  icon?: SvgComponent;
+  icon: SvgComponent;
   isLoading: boolean;
   title: ReactNode;
   value: string | number;
@@ -31,17 +30,16 @@ const SummaryCardV1 = ({
     return <Skeleton height={100} variant="rounded" width={210} />;
   }
 
-  const Icon = icon ?? AddItemIcon;
-
   return (
     <div>
       <div className="tw:flex tw:w-full tw:min-w-52 tw:items-center tw:gap-3 tw:rounded-lg tw:border tw:border-secondary tw:px-2.5 tw:py-4 tw:shadow-xs">
-        {/* The stat icons bake a pale backdrop square into the SVG; in dark it
-            reads as a white box, so fade it to a 16% tint (light unchanged). */}
-        <Icon
-          className="tw:dark:[&>rect:first-child]:[fill-opacity:0.16]"
-          height={40}
-          width={40}
+        <FeaturedIcon
+          color="gray"
+          icon={icon}
+          radius="lg"
+          shape="square"
+          size="md"
+          theme="modern"
         />
         <div>
           <p className="tw:m-0 tw:text-base tw:font-semibold tw:text-primary">

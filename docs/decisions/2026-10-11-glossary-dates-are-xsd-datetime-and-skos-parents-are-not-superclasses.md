@@ -1,6 +1,6 @@
 # Glossary DATE attributes range over xsd:dateTime, and SKOS_CONCEPT parents are not superclasses
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-10-17-glossaries-do-not-own-ontology-models
 - **Revisions:** v1 2026-10-11 (initial)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `GlossaryOntologyModelBuilderTest#mapsAttributesIntoTheOwl2DatatypeMap` and

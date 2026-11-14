@@ -25,7 +25,7 @@ set -e
 declare -A python
 python["name"]="Python"
 python["version_command"]="python --version 2>&1 | awk '{print \$2}'"
-python["required_version"]=">=3.10"
+python["required_version"]="any"
 python["minimum_version"]="3.10"
 
 declare -A docker
@@ -52,6 +52,7 @@ declare -A node
 node["name"]="Node"
 node["version_command"]="node --version"
 node["required_version"]="22"
+node["minimum_version"]="$(sed 's/^v//' "$(dirname "${BASH_SOURCE[0]}")/../openmetadata-ui/src/main/resources/ui/.nvmrc")"
 
 declare -A yarn
 yarn["name"]="Yarn"
@@ -90,13 +91,14 @@ check_version() {
         return
     fi
     for v in "${required_versions[@]}"; do
-        if [[ "$current" =~ $v.* ]]; then
+        if [[ "$current" =~ ^v?$v ]]; then
             echo "✓ $tool_name version $current is supported."
             return
         fi
     done
     print_error "$tool_name version $current is not supported. Supported versions are: $required"
     code=1
+    return 1
 }
 
 check_minimum_version() {
@@ -133,9 +135,12 @@ for dependency in python docker java maven jq node yarn antlr; do
     required_version=${dependency["required_version"]}
     minimum_version=${dependency["minimum_version"]:-}
     if [[ -n "$minimum_version" ]]; then
-      check_minimum_version "$tool_name" "$version" "$minimum_version"
+      # Errors go to stderr; drop only the major check's ✓ so a pass prints once.
+      if check_version "$tool_name" "$version" "$required_version" > /dev/null; then
+        check_minimum_version "$tool_name" "$version" "$minimum_version"
+      fi
     else
-      check_version "$tool_name" "$version" "$required_version"
+      check_version "$tool_name" "$version" "$required_version" || true
     fi
 done
 if [[ $code -eq 0 ]]; then

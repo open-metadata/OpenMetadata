@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyState.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyState",
+  "description": "SQL concurrency revisions and the active immutable release of an ontology.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyState",
+  "properties": {
+    "ontologyId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "workingRevision": {
+      "description": "Monotonic revision of committed working-model mutations.",
+      "type": "integer",
+      "minimum": 0,
+      "existingJavaType": "java.lang.Long"
+    },
+    "lastReleaseRevision": {
+      "type": "integer",
+      "minimum": 0,
+      "existingJavaType": "java.lang.Long"
+    },
+    "activeReleaseId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "activationRevision": {
+      "description": "Compare-and-set revision, advanced by both activation and rollback.",
+      "type": "integer",
+      "minimum": 0,
+      "existingJavaType": "java.lang.Long"
+    }
+  },
+  "required": ["ontologyId", "workingRevision", "lastReleaseRevision", "activationRevision"],
+  "additionalProperties": false
+}

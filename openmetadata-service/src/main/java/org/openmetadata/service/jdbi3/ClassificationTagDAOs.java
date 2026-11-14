@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -39,7 +38,6 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
-import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -559,26 +557,8 @@ public interface ClassificationTagDAOs {
         @Bind("tagFQNPrefix") String tagFQNPrefix,
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
 
-    @SqlUpdate(
-        "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
-    void deleteTagsByTagAndTargetEntity(
-        @BindFQN("tagFqnHash") String tagFqnHash,
-        @BindConcat(
-                value = "targetFQNHash",
-                parts = {":targetFQNHashPrefix", "%"},
-                hash = true)
-            String targetFQNHashPrefix);
-
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
-
-    @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash ORDER BY tagFQN",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash",
-        connectionType = POSTGRES)
-    void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -621,28 +601,26 @@ public interface ClassificationTagDAOs {
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, '%s.', '%s.'), tagFQNHash = REPLACE(tagFQNHash, '%s.', '%s.') WHERE source = %s AND tagFQNHash LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              FullyQualifiedName.buildHash(oldPrefix),
-              FullyQualifiedName.buildHash(newPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldPrefix));
-      updateTagPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+      String newHash = FullyQualifiedName.buildHash(newPrefix);
+      updateTagPrefixInternal(
+          source,
+          oldPrefix + Entity.SEPARATOR,
+          newPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
 
     default void updateTargetFQNHashPrefix(
         int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
-              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
-      updateTagPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldTargetFQNHashPrefix);
+      String newHash = FullyQualifiedName.buildHash(newTargetFQNHashPrefix);
+      updateTargetFQNHashPrefixInternal(
+          source,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
 
     default void rename(int source, String oldFQN, String newFQN) {
@@ -675,8 +653,26 @@ public interface ClassificationTagDAOs {
         @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
         @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
-    @SqlUpdate("<update>")
-    void updateTagPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, :oldPrefix, :newPrefix), "
+            + "tagFQNHash = REPLACE(tagFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE source = :source AND tagFQNHash LIKE :oldHashLike")
+    void updateTagPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
+
+    @SqlUpdate(
+        "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE source = :source AND targetFQNHash LIKE :oldHashLike")
+    void updateTargetFQNHashPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
@@ -735,14 +731,26 @@ public interface ClassificationTagDAOs {
                 .withAppliedBy(r.getString("appliedBy"))
                 .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
+        String json = r.getString("json");
+        if (json == null) {
+          // An orphaned tag_usage row: its tag or glossary term no longer exists. Return the label
+          // unenriched so one bad row does not fail the whole read, and log it so it can be found.
+          TAG_USAGE_LOG.warn(
+              "Orphaned tag_usage row: {} tag '{}' on target '{}' has no tag or glossary term."
+                  + " Returning the label without enrichment.",
+              source,
+              label.getTagFQN(),
+              r.getString("targetFQNHash"));
+          return Pair.of(r.getString("targetFQNHash"), label);
+        }
         if (source == TagLabel.TagSource.CLASSIFICATION) {
-          Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
+          Tag tag = JsonUtils.readValue(json, Tag.class);
           label.setName(tag.getName());
           label.setDisplayName(tag.getDisplayName());
           label.setDescription(tag.getDescription());
           label.setStyle(tag.getStyle());
         } else if (source == TagLabel.TagSource.GLOSSARY) {
-          GlossaryTerm glossaryTerm = JsonUtils.readValue(r.getString("json"), GlossaryTerm.class);
+          GlossaryTerm glossaryTerm = JsonUtils.readValue(json, GlossaryTerm.class);
           label.setName(glossaryTerm.getName());
           label.setDisplayName(glossaryTerm.getDisplayName());
           label.setDescription(glossaryTerm.getDescription());
@@ -1023,7 +1031,7 @@ public interface ClassificationTagDAOs {
 
         String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
         for (TagLabel tagLabel : tagLabels) {
-          if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+          if (TagLabelUtil.isSystemGenerated(tagLabel)) {
             continue;
           }
           rows.add(

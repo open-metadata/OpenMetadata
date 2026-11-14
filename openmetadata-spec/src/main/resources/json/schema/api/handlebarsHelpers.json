@@ -10,7 +10,7 @@
   "definitions": {
     "handlebarsHelperUsage": {
       "type": "object",
-      "javaType": "org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage",
+      "javaType": "org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage",
       "description": "Usage example for a Handlebars helper",
       "properties": {
         "syntax": {
@@ -27,7 +27,7 @@
     },
     "handlebarsHelperMetadata": {
       "type": "object",
-      "javaType": "org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata",
+      "javaType": "org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata",
       "description": "Metadata describing a Handlebars helper",
       "properties": {
         "name": {

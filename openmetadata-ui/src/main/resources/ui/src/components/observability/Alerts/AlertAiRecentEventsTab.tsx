@@ -18,10 +18,12 @@ import {
   AccordionPanel,
   BadgeWithIcon,
   Box,
-  EmptyPlaceholder,
+  Button,
+  Dropdown,
   PaginationCardWithControls,
-  Select,
   Skeleton,
+  TableCard,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
@@ -36,9 +38,7 @@ import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../enums/Alerts.enum';
 import { Status, TypedEvent } from '../../../generated/events/api/typedEvent';
@@ -56,9 +56,10 @@ import { computeTotalPages } from '../../../utils/PaginationUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AlertEventDetailsToDisplay } from '../../Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
-import { renderSelectItem } from './AlertAiFormFieldsSelectUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 const SKELETON_ROWS = 5;
 
 const STATUS_BADGES: Record<
@@ -190,7 +191,7 @@ const AlertAiRecentEventsTab = ({
     pageSize,
     paging,
     showPagination,
-  } = usePaging(PAGE_SIZE_BASE, PAGE_SIZE_OPTIONS);
+  } = usePaging(undefined, LIST_PAGE_SIZE_OPTIONS);
   const { id } = alertDetails;
   const isFiltered = filter !== AlertRecentEventFilters.ALL;
 
@@ -231,6 +232,10 @@ const AlertAiRecentEventsTab = ({
     fetchEvents((currentPage - 1) * pageSize);
   }, [currentPage, fetchEvents, pageSize]);
 
+  const appliedFilterText = isFiltered
+    ? ` : ${getAlertEventsFilterLabels(filter)}`
+    : '';
+
   const handleFilterChange = (key: Key | null) => {
     setFilter((key as AlertRecentEventFilters) ?? AlertRecentEventFilters.ALL);
     handlePageChange(INITIAL_PAGING_VALUE);
@@ -252,9 +257,15 @@ const AlertAiRecentEventsTab = ({
     }
 
     if (isEmpty(events)) {
+      const EmptyStatePlaceholder = isFiltered
+        ? NoFilteredResultsPlaceholder
+        : NoDataPlaceholder;
+
       return (
-        <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+        // Fills the rest of the viewport so the placeholder centres in the
+        // free space below the header instead of hugging the filter row.
+        <Box className="tw:relative tw:h-[calc(100vh_-_20rem)] tw:min-h-80 tw:w-full">
+          <EmptyStatePlaceholder
             description={t(
               isFiltered
                 ? 'message.no-data-available-for-selected-filter'
@@ -262,7 +273,7 @@ const AlertAiRecentEventsTab = ({
             )}
             icon={
               isFiltered ? (
-                <FilterLines className="tw:text-fg-quaternary" />
+                <FilterLines />
               ) : (
                 <Bell01 className="tw:text-fg-brand-primary" />
               )
@@ -272,7 +283,6 @@ const AlertAiRecentEventsTab = ({
                 ? 'message.no-results-for-filters'
                 : 'message.no-recent-events'
             )}
-            variant="blank"
           />
         </Box>
       );
@@ -305,37 +315,59 @@ const AlertAiRecentEventsTab = ({
   return (
     <Box data-testid="alert-recent-events" direction="col" gap={4}>
       <Box align="start" gap={4} justify="between">
-        <Box direction="col" gap={1}>
+        <Box className="tw:min-w-0 tw:max-w-[85%]" direction="col" gap={1}>
           <span className="tw:text-sm tw:font-medium tw:text-primary">
             {`${t('label.description')}:`}
           </span>
-          <span className="tw:text-sm tw:text-tertiary">
-            {t('message.alert-recent-events-description', {
+          <RichTextEditorPreviewNew
+            clampByLines
+            className="tw:text-sm tw:text-tertiary"
+            markdown={t('message.alert-recent-events-description', {
               alertName: getEntityName(alertDetails),
             })}
-          </span>
+            maxLineLength="1"
+          />
         </Box>
-        <Select
-          aria-label={t('label.filter')}
-          className="tw:w-40 tw:shrink-0"
-          data-testid="recent-events-filter"
-          items={filterItems}
-          size="sm"
-          value={filter}
-          onChange={handleFilterChange}>
-          {renderSelectItem}
-        </Select>
+        <Dropdown.Root>
+          <Button
+            aria-label={`${t('label.filter-plural')}${appliedFilterText}`}
+            className="tw:shrink-0"
+            color="secondary"
+            data-testid="filter-button"
+            iconLeading={FilterLines}
+            size="sm">
+            {appliedFilterText && (
+              <Typography data-testid="applied-filter-text" weight="medium">
+                {appliedFilterText}
+              </Typography>
+            )}
+          </Button>
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.filter-plural')}
+              selectedKeys={[filter]}
+              onAction={handleFilterChange}>
+              {filterItems.map((item) => (
+                <Dropdown.Item id={item.id} key={item.id} label={item.label} />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       </Box>
       {renderEvents()}
       {showPagination && !loading && (
-        <PaginationCardWithControls
-          page={currentPage}
-          pageSize={pageSize}
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          total={computeTotalPages(pageSize, paging.total)}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        // The pager is a card footer with no top edge; below the events list
+        // the card frame supplies the full outline.
+        <TableCard.Root>
+          <PaginationCardWithControls
+            page={currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            total={computeTotalPages(pageSize, paging.total)}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </TableCard.Root>
       )}
     </Box>
   );

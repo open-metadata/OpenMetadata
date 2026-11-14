@@ -1,0 +1,10 @@
+{
+  "name": "DataEstate",
+  "displayName": "Your Data Estate",
+  "description": "How large the data estate is, which connectors it comes from, and how much of it carries a description.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.DataEstate",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}

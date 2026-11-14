@@ -13,16 +13,17 @@
 import {
   Box,
   Button,
-  Divider,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { renderVersionButton } from '../../../utils/EntityVersionUtils';
-import CloseIcon from '../../Modals/CloseIcon.component';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import './entity-version-timeline.less';
 import { EntityVersionTimelineProps } from './EntityVersionTimeline.interface';
 
@@ -91,7 +92,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               <Button
                 className="m-t-lg tw:w-full"
                 color="primary"
-                href="/settings/billing/plans">
+                href={getSettingsLink('/settings/billing/plans')}>
                 {t('label.see-upgrade-option-plural')}
               </Button>
             </div>
@@ -112,9 +113,13 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
           <Typography className="font-medium tw:text-primary">
             {t('label.version-plural-history')}
           </Typography>
-          <CloseIcon handleCancel={onBack} />
+          <ButtonUtility
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onBack}
+          />
         </Box>
-        <Divider className="m-0" />
       </div>
       <div className="versions-list-body">{versions}</div>
     </aside>

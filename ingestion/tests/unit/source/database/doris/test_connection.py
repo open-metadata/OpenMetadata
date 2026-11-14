@@ -10,6 +10,8 @@
 #  limitations under the License.
 """Unit tests for Doris connection handling."""
 
+import sys
+
 import pytest
 from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy import DATETIME, TIMESTAMP, Column, Integer, MetaData, Table, select, text
@@ -82,3 +84,14 @@ def test_basic_auth_builds_doris_engine(
             owned.client.url.render_as_string(hide_password=False)
             == "doris://openmetadata_user:openmetadata_password@localhost:9030/openmetadata_db"
         )
+
+
+def test_doris_engine_does_not_need_mysqlclient(
+    doris_connection_config: DorisConnectionConfig,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setitem(sys.modules, "MySQLdb", None)
+
+    with DorisConnection(doris_connection_config) as owned:
+        assert owned.client.dialect.driver == "pymysql"
+        assert isinstance(owned.client.dialect, DorisDialect)

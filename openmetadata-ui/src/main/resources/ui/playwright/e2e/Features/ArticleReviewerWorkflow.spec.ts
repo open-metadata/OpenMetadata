@@ -25,13 +25,32 @@ import {
 import { test } from '../fixtures/pages';
 
 let article: { fullyQualifiedName: string; id: string };
+let workflowId: string;
 
 test.beforeAll('Setup workflow and article', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await createUserApprovalWorkflow(apiContext, 'page');
   article = await createArticleViaApi(apiContext, {
     description: 'This is a test description for the article',
   });
+  // An unscoped page workflow is server-wide: it moves every article other specs create
+  // through In Review -> Approved seconds later, bumping their version and discarding the
+  // drafts stamped with the old one. Exclude every page but this spec's own.
+  const workflow = await createUserApprovalWorkflow(
+    apiContext,
+    'page',
+    undefined,
+    { page: JSON.stringify({ '!=': [{ var: 'id' }, article.id] }) }
+  );
+  workflowId = workflow.id;
+
+  await afterAction();
+});
+
+test.afterAll('Delete workflow', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await apiContext.delete(
+    `/api/v1/governance/workflowDefinitions/${workflowId}?hardDelete=true`
+  );
 
   await afterAction();
 });

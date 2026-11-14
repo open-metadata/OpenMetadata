@@ -186,7 +186,10 @@ describe('KnowledgeGraph.relations', () => {
       RELATION_CATEGORIES.forEach((category) => {
         const style = getRelationStyle(category);
 
-        expect(style.color).toMatch(/^#[0-9a-f]{6}$/i);
+        // `color` is a BadgeColor identifier (e.g. "blue-dark", "purple") the
+        // BadgeWithDot component maps to its palette, not a raw CSS colour.
+        expect(typeof style.color).toBe('string');
+        expect(style.color.length).toBeGreaterThan(0);
         expect(style.labelKey).toMatch(/^label\./);
         expect(Array.isArray(style.lineDash)).toBe(true);
       });

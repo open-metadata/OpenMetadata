@@ -34,6 +34,7 @@ public class TestCaseResultMapper
         .withMinBound(create.getMinBound())
         .withDimensionResults(create.getDimensionResults())
         .withDuration(create.getDuration())
-        .withErrorDetails(create.getErrorDetails());
+        .withErrorDetails(create.getErrorDetails())
+        .withEvaluationScope(create.getEvaluationScope());
   }
 }

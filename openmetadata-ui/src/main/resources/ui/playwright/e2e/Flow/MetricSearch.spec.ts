@@ -13,7 +13,12 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  expectNoErrorToast,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -77,24 +82,7 @@ test.describe(
       await test.step('Select Metric search index and search', async () => {
         await page.getByTestId('global-search-selector').click();
 
-        // Wait for dropdown to be visible
-        await page.getByTestId('global-search-select-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // Scroll within the dropdown to find Metric option
-        const dropdownMenu = page.locator(
-          '.global-search-select-menu .rc-virtual-list-holder'
-        );
-        await dropdownMenu.evaluate((el) => {
-          el.scrollTop = el.scrollHeight;
-        });
-
-        const metricOption = page.getByTestId(
-          'global-search-select-option-Metric'
-        );
-        await metricOption.waitFor({ state: 'visible' });
-        await metricOption.click();
+        await page.getByTestId('global-search-select-option-Metric').click();
 
         const searchQuery = `AcceleratedConnection WBA Ethernet ${metricSuffix}`;
 
@@ -125,7 +113,7 @@ test.describe(
           state: 'visible',
         });
 
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        await expectNoErrorToast(page);
       });
     });
   }

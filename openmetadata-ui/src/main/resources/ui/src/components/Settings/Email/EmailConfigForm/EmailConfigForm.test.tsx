@@ -150,10 +150,11 @@ describe('Email Config Form Component', () => {
       fireEvent.click(screen.getByText('label.save'));
     });
 
+    // Empty optional credentials are dropped rather than sent as ''.
     expect(mockOnSubmit).toHaveBeenCalledWith({
       ...emailConfigValues,
-      password: '',
-      username: '',
+      password: undefined,
+      username: undefined,
     });
   });
 
@@ -173,9 +174,11 @@ describe('Email Config Form Component', () => {
     expect(
       within(screen.getByTestId('smtp-server-input')).getByRole('switch')
     ).toBeDisabled();
-    expect(screen.getByTestId('transportation-strategy-input')).toHaveClass(
-      'ant-select-disabled'
-    );
+    expect(
+      within(screen.getByTestId('transportation-strategy-input')).getByRole(
+        'button'
+      )
+    ).toBeDisabled();
     expect(screen.getByTestId('username-input')).toBeEnabled();
     expect(screen.getByTestId('server-port-input')).toBeEnabled();
     expect(screen.getByText('label.save')).toBeInTheDocument();

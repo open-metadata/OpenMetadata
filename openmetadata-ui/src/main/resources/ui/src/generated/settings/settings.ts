@@ -346,7 +346,8 @@ export interface PipelineServiceClientConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection?: boolean;
     /**
@@ -523,6 +524,11 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -530,6 +536,13 @@ export interface PipelineServiceClientConfiguration {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -683,6 +696,13 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Names of MCP tools to turn off for every user, admins included. A change applies right
+     * away to tool calls and to the next tools/list, on each server as it reloads the setting;
+     * an MCP client that already listed the tools sees the change when it lists them again. A
+     * name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
      * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
      * it bounds how much of the MCP client's context one call can use. A saved change applies
      * right away on the server that handled the save; other servers in a cluster pick it up on
@@ -690,11 +710,11 @@ export interface PipelineServiceClientConfiguration {
      */
     maxResponseChars?: number;
     /**
-     * Name of the MCP server
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
     /**
@@ -709,6 +729,13 @@ export interface PipelineServiceClientConfiguration {
      * Base path for MCP endpoints
      */
     path?: string;
+    /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. A change applies right away to tool calls and to the next
+     * tools/list, on each server as it reloads the setting; an MCP client that already listed
+     * the tools sees the change when it lists them again.
+     */
+    readOnly?: boolean;
     /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)
@@ -739,6 +766,10 @@ export interface PipelineServiceClientConfiguration {
      * is configured, and columns are ordered alphabetically.
      */
     defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1653,12 +1684,9 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
-     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
-     * renews the provider's tokens on the provider's schedule while the user is active, and
-     * signs the user out once the provider rejects its refresh token: after the provider's idle
-     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
-     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
-     * configured session expiry whatever the provider does. Applies to confidential clients.
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
      */
     endSessionWithProvider?: boolean;
     /**
@@ -1711,7 +1739,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -1931,7 +1961,8 @@ export interface AuthorizerConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection: boolean;
     /**
@@ -1972,6 +2003,17 @@ export interface Aws {
     [property: string]: any;
 }
 
+/**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
@@ -1980,6 +2022,14 @@ export enum DefaultAppMode {
 export enum DefaultColumnOrder {
     Alphabetical = "alphabetical",
     SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**
@@ -2540,8 +2590,8 @@ export interface NaturalLanguageSearch {
     keywordWeight?: number;
     /**
      * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
-     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
-     * cost of latency. Defaults to 2.
+     * search. num_candidates = max(k * multiplier, 100), clamped to Elasticsearch's engine
+     * maximum of 10,000. Higher values improve recall at the cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
     /**
@@ -3019,6 +3069,7 @@ export interface SampleDataIngestionConfig {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

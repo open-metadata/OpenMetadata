@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/base/avatar/avatar';
+import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { SelectContext } from '@/components/base/select/select';
 import type { SelectItemType } from '@/components/base/select/select';
 import { cx } from '@/utils/cx';
@@ -6,8 +7,9 @@ import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { Check } from '../../../icons';
 import type { ReactNode } from 'react';
-import { isValidElement, useContext } from 'react';
+import { createContext, isValidElement, useContext } from 'react';
 import type {
+  Key,
   ListBoxItemProps as AriaListBoxItemProps,
   ListBoxItemRenderProps,
 } from 'react-aria-components';
@@ -15,6 +17,13 @@ import {
   ListBoxItem as AriaListBoxItem,
   Text as AriaText,
 } from 'react-aria-components';
+
+/**
+ * Keys of the selected values when the Autocomplete lists them as checked
+ * rows (its capped mode); null when selected values leave the list instead.
+ */
+export const AutocompleteCheckedKeysContext =
+  createContext<ReadonlySet<Key> | null>(null);
 
 const sizes = {
   sm: 'tw:p-2 tw:pr-2.5',
@@ -86,6 +95,7 @@ interface DefaultItemContentProps {
   icon: SelectItemType['icon'];
   dataTestId: string | undefined;
   stringChild: string;
+  leading: ReactNode;
 }
 
 const DefaultItemContent = ({
@@ -98,6 +108,7 @@ const DefaultItemContent = ({
   icon,
   dataTestId,
   stringChild,
+  leading,
 }: DefaultItemContentProps) => (
   <div
     className={itemWrapperClass(
@@ -109,6 +120,7 @@ const DefaultItemContent = ({
       )
     )}
     data-testid={dataTestId}>
+    {leading}
     {renderItemIcon(avatarUrl, icon, label)}
 
     <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
@@ -150,6 +162,7 @@ interface CustomItemContentProps {
   size: 'sm' | 'md';
   dataTestId: string | undefined;
   children: ReactNode | ((state: ListBoxItemRenderProps) => ReactNode);
+  leading: ReactNode;
 }
 
 const CustomItemContent = ({
@@ -157,8 +170,10 @@ const CustomItemContent = ({
   size,
   dataTestId,
   children,
+  leading,
 }: CustomItemContentProps) => (
   <div className={itemWrapperClass(state, size)} data-testid={dataTestId}>
+    {leading}
     {typeof children === 'function' ? children(state) : children}
     {state.isSelected && (
       <Check
@@ -183,6 +198,7 @@ export const AutocompleteItem = ({
   ...props
 }: AutocompleteItemProps) => {
   const { size, fontSize } = useContext(SelectContext);
+  const checkedKeys = useContext(AutocompleteCheckedKeysContext);
 
   const stringChild = typeof children === 'string' ? children : '';
   const labelOrChildren = label || stringChild;
@@ -213,9 +229,20 @@ export const AutocompleteItem = ({
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {(state) =>
-        hasCustomChildren ? (
-          <CustomItemContent dataTestId={dataTestId} size={size} state={state}>
+      {(state) => {
+        const leading = checkedKeys && (
+          <CheckboxBase
+            isDisabled={state.isDisabled}
+            isSelected={checkedKeys.has(id)}
+          />
+        );
+
+        return hasCustomChildren ? (
+          <CustomItemContent
+            dataTestId={dataTestId}
+            leading={leading}
+            size={size}
+            state={state}>
             {
               children as
                 | ReactNode
@@ -229,13 +256,14 @@ export const AutocompleteItem = ({
             fontSize={fontSize}
             icon={Icon}
             label={label}
+            leading={leading}
             size={size}
             state={state}
             stringChild={stringChild}
             supportingText={supportingText}
           />
-        )
-      }
+        );
+      }}
     </AriaListBoxItem>
   );
 };

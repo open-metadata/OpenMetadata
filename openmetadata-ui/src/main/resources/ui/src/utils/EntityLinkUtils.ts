@@ -39,6 +39,7 @@ import {
   getTeamsWithFqnPath,
   getTestCaseDetailPagePath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 const DIRECT_DETAILS_PATH_ENTITY_TYPES: ReadonlyArray<EntityType> = [
   EntityType.TABLE,
@@ -83,7 +84,7 @@ const getEventSubscriptionLink = (
 ) =>
   (entity as EventSubscription)?.alertType === AlertType.Observability
     ? getObservabilityAlertDetailsPath(fullyQualifiedName)
-    : getNotificationAlertDetailsPath(fullyQualifiedName);
+    : getSettingsLink(getNotificationAlertDetailsPath(fullyQualifiedName));
 
 const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
   Record<EntityType, (fullyQualifiedName: string) => string>
@@ -93,9 +94,10 @@ const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
   [EntityType.GLOSSARY_TERM]: getGlossaryTermDetailsPath,
   [EntityType.TAG]: getClassificationTagPath,
   [EntityType.CLASSIFICATION]: getTagsDetailsPath,
-  [EntityType.BOT]: getBotsPath,
-  [EntityType.TEAM]: getTeamsWithFqnPath,
-  [EntityType.APPLICATION]: getApplicationDetailsPath,
+  [EntityType.BOT]: (fqn) => getSettingsLink(getBotsPath(fqn)),
+  [EntityType.TEAM]: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
+  [EntityType.APPLICATION]: (fqn) =>
+    getSettingsLink(getApplicationDetailsPath(fqn)),
   [EntityType.TEST_CASE]: getTestCaseDetailPagePath,
   [EntityType.TEST_SUITE]: (fullyQualifiedName: string) =>
     getEntityDetailsPath(
@@ -104,9 +106,9 @@ const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
       EntityTabs.PROFILER
     ),
   [EntityType.DOMAIN]: getDomainDetailsPath,
-  [EntityType.ROLE]: getRoleWithFqnPath,
-  [EntityType.POLICY]: getPolicyWithFqnPath,
-  [EntityType.PERSONA]: getPersonaDetailsPath,
+  [EntityType.ROLE]: (fqn) => getSettingsLink(getRoleWithFqnPath(fqn)),
+  [EntityType.POLICY]: (fqn) => getSettingsLink(getPolicyWithFqnPath(fqn)),
+  [EntityType.PERSONA]: (fqn) => getSettingsLink(getPersonaDetailsPath(fqn)),
   [EntityType.KPI]: getKpiPath,
   [EntityType.KNOWLEDGE_PAGE]: getKnowledgePagePath,
 };

@@ -12,7 +12,10 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { LearningResource } from '../../../rest/learningResourceAPI';
+import {
+  deleteLearningResource,
+  LearningResource,
+} from '../../../rest/learningResourceAPI';
 import { useLearningResourceActions } from './useLearningResourceActions';
 
 jest.mock('../../../rest/learningResourceAPI', () => ({
@@ -83,5 +86,28 @@ describe('useLearningResourceActions', () => {
     expect(openSpy).not.toHaveBeenCalled();
     expect(result.current.isPlayerOpen).toBe(true);
     expect(result.current.selectedResource).toBe(pdfResource);
+  });
+
+  it('should hard delete the resource when the delete is confirmed', async () => {
+    const onRefetch = jest.fn();
+    const { result } = renderHook(() =>
+      useLearningResourceActions({ onRefetch })
+    );
+    const videoResource = createResource(
+      'Video',
+      'https://www.youtube.com/watch?v=abc'
+    );
+
+    act(() => {
+      result.current.handleDelete(videoResource);
+    });
+
+    await act(async () => {
+      await result.current.handleDeleteConfirm();
+    });
+
+    expect(deleteLearningResource).toHaveBeenCalledWith(videoResource.id, true);
+    expect(onRefetch).toHaveBeenCalled();
+    expect(result.current.isDeleteModalOpen).toBe(false);
   });
 });

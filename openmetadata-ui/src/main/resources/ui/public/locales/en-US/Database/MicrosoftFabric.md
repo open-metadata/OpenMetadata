@@ -47,10 +47,10 @@ To run profiler workflows or data quality tests, the Service Principal needs `SE
 - System views for metadata collection
 
 More information:
-- <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">Profiler Workflow Setup</a>
-- <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">Data Quality Tests</a>
+- <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">Profiler Workflow Setup</a>
+- <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">Data Quality Tests</a>
 
-You can find further information on the Microsoft Fabric connector in the <a href="https://docs.open-metadata.org/connectors/database/microsoft-fabric" target="_blank">docs</a>.
+You can find further information on the Microsoft Fabric connector in the <a href="https://docs.getcollate.io/connectors/database/microsoftfabric" target="_blank">docs</a>.
 
 ## Connection Details
 

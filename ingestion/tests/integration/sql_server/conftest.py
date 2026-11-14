@@ -42,6 +42,13 @@ def db_name():
 
 
 class CustomSqlServerContainer(SqlServerContainer):
+    @property
+    def host_port(self):
+        host = self.get_container_host_ip()
+        if host == "localhost":
+            host = "127.0.0.1"
+        return f"{host}:{self.get_exposed_port(self.port)}"
+
     def start(self) -> "DbContainer":  # noqa: F821
         dockerfile = f"""
             FROM {self.image}
@@ -197,7 +204,7 @@ def create_service_request(mssql_container, scheme, db_name):
             config=MssqlConnection(
                 username=mssql_container.username,
                 password=mssql_container.password,
-                hostPort="localhost:" + mssql_container.get_exposed_port(mssql_container.port),
+                hostPort=mssql_container.host_port,
                 database=db_name,
                 scheme=scheme,
                 ingestAllDatabases=True,

@@ -13,6 +13,7 @@ Hive source methods.
 """
 
 import traceback
+from collections.abc import Iterable
 from typing import cast
 
 from pyhive.sqlalchemy_hive import HiveDialect
@@ -34,9 +35,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.hive.connection import (
     get_validated_metastore_connection,
+)
+from metadata.ingestion.source.database.hive.metastore_dialects.mixin import (
+    HiveMetaStoreDialectMixin,
 )
 from metadata.ingestion.source.database.hive.utils import (
     get_columns,
@@ -57,6 +64,8 @@ HiveDialect.get_table_comment = get_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
+# Compared lower-cased: Trino writes 'DELTA', Spark writes 'delta'.
+DELTA_LAKE_PROVIDER = "delta"
 _RAW_COLUMNS_CACHE_MAX = 512
 
 
@@ -75,6 +84,35 @@ class HiveSource(CommonDbSourceService):
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
+
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+        """Type Delta tables from the metastore's own `spark.sql.sources.provider` parameter.
+
+        Only the metastore-database mode can answer this in one query per schema; over HiveServer2
+        the same parameter costs a `SHOW TBLPROPERTIES` per table, so that mode keeps the default.
+        """
+        tables = super().query_table_names_and_types(schema_name)
+
+        if not get_validated_metastore_connection(self.service_connection.metastoreConnection):
+            return tables
+
+        dialect = self.connection.dialect
+        if not isinstance(dialect, HiveMetaStoreDialectMixin):
+            return tables
+
+        try:
+            providers = dialect.get_table_providers(self.connection, schema_name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Skipping Delta detection for schema %s: %s", schema_name, exc)
+            return tables
+
+        return [
+            TableNameAndType(name=table.name, type_=TableType.DeltaLake)
+            if (providers.get(table.name) or "").lower() == DELTA_LAKE_PROVIDER
+            else table
+            for table in tables
+        ]
 
     def _columns_cache(self) -> "LRUCache[list[ReflectedColumn]]":
         # Bounded + thread-safe (table processing is multi-threaded). Lazily

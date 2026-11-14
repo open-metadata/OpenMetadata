@@ -27,15 +27,22 @@ const NoDataPlaceholder = ({
   icon,
   title,
   description,
+  footer,
   ...props
 }: EmptyPlaceholderVariantProps) => {
   const { t } = useTranslation();
+  // The default heading only fills a placeholder that has no copy of its own;
+  // caller copy stays in the slot it was passed in, never promoted or
+  // stacked under an invented heading.
+  const defaultTitle =
+    description || footer ? undefined : t('message.no-data-available');
 
   return (
     <EmptyPlaceholder
-      description={description ?? t('message.no-data-available')}
-      icon={icon ?? <Database01 className="tw:text-secondary" />}
-      title={title}
+      description={description}
+      footer={footer}
+      icon={icon ?? <Database01 />}
+      title={title ?? defaultTitle}
       variant="blank"
       {...props}
     />

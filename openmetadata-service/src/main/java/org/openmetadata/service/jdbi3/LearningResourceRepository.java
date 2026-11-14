@@ -48,10 +48,9 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   private static final String UPDATE_FIELDS =
       "owners,reviewers,tags,contexts,categories,difficulty,source,estimatedDuration,status";
   private static final String PATCH_FIELDS = UPDATE_FIELDS;
-  // The UI opens Link URLs in a new tab and frames PDF URLs, so other schemes (javascript:, data:)
-  // would run in the product's origin.
-  private static final Set<ResourceType> WEB_URL_ONLY_TYPES =
-      EnumSet.of(ResourceType.LINK, ResourceType.PDF);
+  // Every type's URL is framed, linked or opened by the UI, so a javascript: or data: URL would run
+  // in the product's origin. Require an http(s) URL for all of them, not only Link and PDF.
+  private static final Set<ResourceType> WEB_URL_ONLY_TYPES = EnumSet.allOf(ResourceType.class);
   private static final Set<String> WEB_URL_SCHEMES = Set.of("http", "https");
 
   public LearningResourceRepository() {

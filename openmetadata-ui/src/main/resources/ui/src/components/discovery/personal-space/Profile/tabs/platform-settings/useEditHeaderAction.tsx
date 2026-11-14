@@ -45,7 +45,7 @@ export const useEditHeaderAction = (
               color="primary"
               data-testid="edit-button"
               iconLeading={Edit01}
-              size="sm"
+              size="xs"
               onPress={() =>
                 onNavigate({ type: 'page', page, isEditing: true })
               }>

@@ -13,6 +13,8 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LOGIN_FAILED_ERROR } from '../../../constants/Auth.constants';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import BasicAuthProvider, { useBasicAuth } from './BasicAuthProvider';
 
 const mockBasicAuthSignIn = jest.fn().mockResolvedValue({});
@@ -105,5 +107,40 @@ describe('BasicAuthProvider handleLogin', () => {
     const password = 'Test§123£';
 
     expect(await login(password)).not.toBe(btoa(password));
+  });
+});
+
+describe('BasicAuthProvider failed login', () => {
+  const LOCKED_OUT =
+    'Failed Login Attempts Exceeded. Use Forgot Password or retry after some time.';
+
+  const failLoginWith = async (data?: Record<string, unknown>) => {
+    mockBasicAuthSignIn.mockRejectedValueOnce({
+      response: { status: 401, data },
+    });
+    await login('Passw0rd!');
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+  };
+
+  // Regression for open-metadata/openmetadata-collate#4719: the login servlet
+  // reports a lockout as `error`, which was dropped in favour of the generic
+  // invalid-credentials text, so a locked-out user was told their password was
+  // wrong.
+  it('should show the error the login servlet reports', async () => {
+    await failLoginWith({ error: LOCKED_OUT });
+
+    expect(showErrorToast).toHaveBeenCalledWith(LOCKED_OUT);
+  });
+
+  it('should show the message the REST API reports', async () => {
+    await failLoginWith({ code: 401, message: LOCKED_OUT });
+
+    expect(showErrorToast).toHaveBeenCalledWith(LOCKED_OUT);
+  });
+
+  it('should fall back to the generic message when the server sends none', async () => {
+    await failLoginWith();
+
+    expect(showErrorToast).toHaveBeenCalledWith(LOGIN_FAILED_ERROR);
   });
 });

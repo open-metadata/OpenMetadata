@@ -84,7 +84,7 @@ test.describe('BlockEditor math equations', { tag: ['@Discovery'] }, () => {
     await expect(
       page
         .getByTestId('asset-description-container')
-        .locator('.block-math-equation')
+        .locator('.block-math-equation .katex')
     ).toBeVisible();
   });
 });

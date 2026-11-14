@@ -52,6 +52,12 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  INBOX_ACTIVITY_FILTER_PARAM,
+  INBOX_MY_ASSETS_ACTIVITY_PATH,
+  PERSONAL_SPACE_ROUTES,
+} from '../personalSpace.constants';
+import {
+  ActivityFilter,
   applyReaction,
   formatInboxCount,
   formatInboxDate,
@@ -64,6 +70,7 @@ import {
   isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
+  parseActivityFilter,
   sendReaction,
 } from './inbox.utils';
 
@@ -74,6 +81,28 @@ const mockRemoveConversationReaction = removeConversationReaction as jest.Mock;
 const t = ((key: string) => key) as TFunction;
 
 describe('inbox.utils', () => {
+  describe('parseActivityFilter', () => {
+    it('accepts every Activity sub-tab and ignores anything else', () => {
+      Object.values(ActivityFilter).forEach((filter) =>
+        expect(parseActivityFilter(filter)).toBe(filter)
+      );
+
+      expect(parseActivityFilter('bogus')).toBeUndefined();
+      expect(parseActivityFilter(null)).toBeUndefined();
+    });
+
+    // The landing page spells this link out so it need not import this module;
+    // a renamed filter would otherwise send it to All without a failing test.
+    it('pins the landing My Assets link to the My Assets filter', () => {
+      const url = new URL(INBOX_MY_ASSETS_ACTIVITY_PATH, 'http://localhost');
+
+      expect(url.pathname).toBe(PERSONAL_SPACE_ROUTES.INBOX_ACTIVITY);
+      expect(
+        parseActivityFilter(url.searchParams.get(INBOX_ACTIVITY_FILTER_PARAM))
+      ).toBe(ActivityFilter.MyAssets);
+    });
+  });
+
   describe('isTaskOpen', () => {
     const task = (status: string, type: string) =>
       ({ status, type } as unknown as Task);

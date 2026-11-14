@@ -14,9 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeForMySqlRegexReplacement;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -467,8 +464,16 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
-    List<String> nameHashes =
-        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    return findReferencesByNameHashes(
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList(), include);
+  }
+
+  /** {@link #findReferencesByFqns} for callers that hold name hashes rather than FQNs. */
+  default List<EntityReference> findReferencesByNameHashes(
+      List<String> nameHashes, Include include) {
+    if (CollectionUtils.isEmpty(nameHashes)) {
+      return List.of();
+    }
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
@@ -532,54 +537,59 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
-    // The regex replacement argument to MySQL's REGEXP_REPLACE has its own escape layer
-    // on top of the SQL string-literal layer — `\1`/`\2` are backreferences, `\\` is a
-    // literal backslash. Using escapeBackslashAndApostrophe here would only escape for the
-    // SQL layer, leaving a stray backslash in newPrefix to be interpreted by the regex
-    // engine. escapeForMySqlRegexReplacement applies both layers (regex-replacement first,
-    // then SQL string-literal) so an input backslash round-trips to a single literal
-    // backslash in the replacement output. The source pattern goes through escape() which
-    // already covers the SQL + LIKE-underscore layers — the regex-pattern layer is
-    // tolerated here because OpenMetadata's name validation forbids the regex metas that
-    // would matter (\ . * ? + ^ $ ( ) [ ] { } |).
-    String mySqlUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            escape(oldPrefix),
-            escapeForMySqlRegexReplacement(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
-
-    // Postgres path embeds the prefixes inside a double-quoted JSON pattern, so escape
-    // backslashes and apostrophes first (so a literal "\\" or "''" isn't reparsed by the
-    // SQL string-literal layer), then escape double-quotes so the JSON-pattern delimiter
-    // can't be broken out of. Apostrophe escaping is still required because the JSON
-    // pattern itself sits inside a single-quoted SQL string literal.
-    String postgresUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
-                + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(oldPrefix)),
-            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(newPrefix)),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
-    updateFqnInternal(mySqlUpdate, postgresUpdate);
+    // Names are bound, never formatted into the statement: JDBI re-lexes rendered text with its
+    // own string-literal rules, so escaping a value before rendering is not reliable
+    // (ADR:2026-11-03-dao-statements-bind-every-value).
+    String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+    String newHash = FullyQualifiedName.buildHash(newPrefix);
+    updateFqnInternal(
+        getTableName(),
+        oldPrefix,
+        newPrefix,
+        jsonFqnPrefix(oldPrefix),
+        jsonFqnPrefix(newPrefix),
+        oldHash + Entity.SEPARATOR,
+        newHash + Entity.SEPARATOR,
+        oldHash + Entity.SEPARATOR + "%");
   }
 
-  @ConnectionAwareSqlUpdate(value = "<mySqlUpdate>", connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(value = "<postgresUpdate>", connectionType = POSTGRES)
+  /**
+   * {@code "fullyQualifiedName": "<prefix>.} as the database writes it when it serializes a JSON
+   * document, for a bound {@code REPLACE} over that text.
+   */
+  static String jsonFqnPrefix(String prefix) {
+    return "\"fullyQualifiedName\": \""
+        + ReindexingUtil.escapeDoubleQuotes(prefix.replace("\\", "\\\\"))
+        + Entity.SEPARATOR;
+  }
+
+  // fqnHash LIKE 'oldHash.%' selects only rows whose FQN starts with "oldPrefix.", so MySQL swaps
+  // the prefix by length rather than matching the name as a regular expression.
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = "
+              + "JSON_REPLACE(json, '$.fullyQualifiedName', CONCAT(:newPrefix, SUBSTRING("
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), "
+              + "CHAR_LENGTH(:oldPrefix) + 1))) "
+              + ", fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+              + "WHERE fqnHash LIKE :oldHashLike",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = "
+              + "REPLACE(json::text, :oldJsonPrefix, :newJsonPrefix)::jsonb "
+              + ", fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+              + "WHERE fqnHash LIKE :oldHashLike",
+      connectionType = POSTGRES)
   void updateFqnInternal(
-      @Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
+      @Define("table") String table,
+      @Bind("oldPrefix") String oldPrefix,
+      @Bind("newPrefix") String newPrefix,
+      @Bind("oldJsonPrefix") String oldJsonPrefix,
+      @Bind("newJsonPrefix") String newJsonPrefix,
+      @Bind("oldHashPrefix") String oldHashPrefix,
+      @Bind("newHashPrefix") String newHashPrefix,
+      @Bind("oldHashLike") String oldHashLike);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
@@ -588,6 +598,15 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond> FOR UPDATE")
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT (json->>'version')::text FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = POSTGRES)
+  String findVersionByIdForUpdate(@Define("table") String table, @BindUUID("id") UUID id);
 
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
@@ -601,6 +620,18 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   // batches of endpoints with one query per entity type instead of a read per relationship.
   @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
   List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /**
+   * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
+   * hard delete of these rows wait for the writer's commit, so a reference the writer stores can
+   * never point at a row that is already gone.
+   */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
+  List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /** The delete's side of {@link #lockExistingIds}: an exclusive lock on rows about to go. */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) ORDER BY id FOR UPDATE")
+  List<String> lockIdsForUpdate(@Define("table") String table, @BindList("ids") List<String> ids);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
@@ -977,8 +1008,20 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
-  @SqlUpdate("DELETE FROM <table> WHERE id IN (<ids>)")
-  int deleteByIds(@Define("table") String table, @BindList("ids") List<String> ids);
+  // MySQL plans a full scan when its statistics are stale, as right after a bulk load, and under
+  // REPEATABLE READ that scan next-key locks the rows of a concurrent bulk delete, which holds them
+  // from its own earlier statements while this one holds theirs. The hint pins the primary-key
+  // range so only the rows being deleted are locked. PostgreSQL reads the hint as a comment, and
+  // JDBI does not expand <table> inside a comment, so the hint is defined whole.
+  @SqlUpdate("DELETE <primaryKeyHint> FROM <table> WHERE id IN (<ids>)")
+  int deleteByIds(
+      @Define("table") String table,
+      @Define("primaryKeyHint") String primaryKeyHint,
+      @BindList("ids") List<String> ids);
+
+  private String primaryKeyHint() {
+    return "/*+ INDEX(" + getTableName() + " PRIMARY) */";
+  }
 
   default int deleteByIds(List<UUID> ids) {
     if (ids == null || ids.isEmpty()) {
@@ -987,12 +1030,12 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     List<String> stringIds = ids.stream().map(UUID::toString).toList();
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (stringIds.size() <= maxChunkSize) {
-      return deleteByIds(getTableName(), stringIds);
+      return deleteByIds(getTableName(), primaryKeyHint(), stringIds);
     }
     int deleted = 0;
     for (int i = 0; i < stringIds.size(); i += maxChunkSize) {
       List<String> chunk = stringIds.subList(i, Math.min(i + maxChunkSize, stringIds.size()));
-      deleted += deleteByIds(getTableName(), chunk);
+      deleted += deleteByIds(getTableName(), primaryKeyHint(), chunk);
     }
     return deleted;
   }

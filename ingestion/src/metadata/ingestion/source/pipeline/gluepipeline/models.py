@@ -68,6 +68,31 @@ class S3Target(BaseModel):
     Paths: str | None = None
 
 
+class SnowflakeNodeData(BaseModel):
+    database_name: str | None = Field(default=None, alias="Database")
+    schema_name: str | None = Field(default=None, alias="Schema")
+    table_name: str | None = Field(default=None, alias="Table")
+
+
+class SnowflakeNode(BaseModel):
+    """Glue Studio visual node `SnowflakeSource` / `SnowflakeTarget` (Data is a `SnowflakeNodeData`)."""
+
+    Name: str
+    Data: SnowflakeNodeData | None = None
+
+    @property
+    def table_name(self):
+        return self.Data.table_name if self.Data else None
+
+    @property
+    def schema_name(self):
+        return self.Data.schema_name if self.Data else None
+
+    @property
+    def database_name(self):
+        return self.Data.database_name if self.Data else None
+
+
 class JobCommand(BaseModel):
     Name: str | None = None
     ScriptLocation: str | None = None

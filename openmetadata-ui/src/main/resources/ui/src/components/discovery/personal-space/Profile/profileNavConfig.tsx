@@ -14,13 +14,14 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
+  Bot,
+  Customize,
   GridView,
   Key01,
-  PermissionDebugger as AccessControlIcon,
+  PermissionDebugger,
   Persona as PersonaIcon,
-  Policy as GovernanceTabIcon,
+  Policy,
   Settings01,
-  Settings02,
   ShieldTick,
   SingleSignOn,
   Sliders02,
@@ -29,19 +30,19 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
-import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
 import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
-import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
-import ProfileDetailsPanel from './ProfileDetailsPanel';
+import ProfileTabPanel from './ProfileTabPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
+import CustomPropertiesPanel from './tabs/custom-properties/CustomPropertiesPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
+import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
@@ -60,7 +61,6 @@ export type ProfileNavGroup =
   | 'administration'
   | 'features'
   | 'workspace'
-  | 'application'
   | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
@@ -69,7 +69,6 @@ export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   administration: 'label.administration',
   features: 'label.feature-plural',
   workspace: 'label.workspace',
-  application: 'label.application',
   credentials: 'label.credential-plural',
 };
 
@@ -79,7 +78,6 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'administration',
   'features',
   'workspace',
-  'application',
   'credentials',
 ];
 
@@ -104,6 +102,10 @@ export interface ProfileHeaderOverride {
   titleSuffix?: React.ReactNode;
   /** Extra row rendered under the description (e.g. installed / developer details). */
   meta?: React.ReactNode;
+  /** Tab strip rendered at the bottom of the header (e.g. an app's detail tabs). */
+  tabs?: React.ReactNode;
+  /** Render only the breadcrumb row (a full-page detail that draws its own title). */
+  compact?: boolean;
 }
 
 /**
@@ -114,7 +116,10 @@ export interface ProfileHeaderOverride {
 export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  /** The full profile failed to load; userData is only the partial store copy. */
+  loadError?: boolean;
+  onReload?: () => void;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
@@ -151,13 +156,9 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.profile',
     description: 'message.profile-page-description',
     icon: User01,
-    render: ({ userData, isProfileLoading, updateUserDetails }) => (
-      <ProfileDetailsPanel
-        isProfileLoading={isProfileLoading}
-        updateUserDetails={updateUserDetails}
-        userData={userData}
-      />
-    ),
+    // Draws its own scroll body: another user's detail needs the Members layout.
+    selfContainedLayout: true,
+    render: (ctx) => <ProfileTabPanel {...ctx} />,
   },
   {
     id: 'permissions',
@@ -193,7 +194,9 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'administration',
     label: 'label.access-control',
     description: 'message.access-control-description',
-    icon: AccessControlIcon,
+    icon: PermissionDebugger,
+    // Admin-only whatever view permissions a non-admin holds
+    // (ADR:2026-10-21-settings-pages-are-classic-only).
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
@@ -205,7 +208,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'administration',
     label: 'label.bot-plural',
     description: 'message.page-sub-header-for-bots',
-    icon: BotIcon as FC<{ className?: string }>,
+    icon: Bot as FC<{ className?: string }>,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
@@ -260,7 +263,10 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.member-plural',
     description: 'message.team-member-management-description',
     icon: Users01,
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    // As in classic: anyone who may view teams or users; the panel gates each
+    // section (ADR:2026-10-21-settings-pages-are-classic-only).
+    isVisible: (permissions, isAdmin) =>
+      canOpenMembers(getMembersAccess(permissions, isAdmin)),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <MembersPanel onHeaderChange={onHeaderChange} />
@@ -271,7 +277,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'workspace',
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
-    icon: Settings02 as FC<{ className?: string }>,
+    icon: Customize as FC<{ className?: string }>,
     isVisible: (permissions) =>
       userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
     selfContainedLayout: true,
@@ -281,11 +287,36 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
-export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
+export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'governance',
+    group: 'features',
+    label: 'label.governance',
+    description: 'message.governance-settings-description',
+    icon: Policy as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <GovernancePanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'applications',
+    group: 'features',
+    label: 'label.application-plural',
+    description: 'message.application-settings-description',
+    icon: GridView,
+    // Classic shows the Applications settings card to admins only.
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <ApplicationsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'notification',
-    group: 'application',
-    label: 'label.notification',
+    group: 'features',
+    label: 'label.alerts-and-notifications',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
     isVisible: (permissions) =>
@@ -300,41 +331,7 @@ export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
-export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
-  {
-    id: 'governance',
-    group: 'features',
-    label: 'label.governance',
-    description: 'message.governance-settings-description',
-    icon: GovernanceTabIcon as FC<{ className?: string }>,
-    isVisible: (_permissions, isAdmin) => isAdmin,
-    selfContainedLayout: true,
-    render: ({ onHeaderChange }) => (
-      <GovernancePanel onHeaderChange={onHeaderChange} />
-    ),
-  },
-  {
-    id: 'applications',
-    group: 'features',
-    label: 'label.application-plural',
-    description: 'message.application-settings-description',
-    icon: GridView,
-    isVisible: (permissions) =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.APPLICATION,
-        permissions
-      ),
-    selfContainedLayout: true,
-    render: ({ onHeaderChange }) => (
-      <ApplicationsPanel onHeaderChange={onHeaderChange} />
-    ),
-  },
-];
-
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
-  [
-    ...PROFILE_NAV_ITEMS,
-    ...WORKSPACE_NAV_ITEMS,
-    ...APPLICATION_NAV_ITEMS,
-    ...FEATURES_NAV_ITEMS,
-  ].find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];
+  [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...FEATURES_NAV_ITEMS].find(
+    (item) => item.id === id
+  ) ?? PROFILE_NAV_ITEMS[0];

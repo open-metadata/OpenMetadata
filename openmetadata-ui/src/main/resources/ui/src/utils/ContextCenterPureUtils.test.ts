@@ -13,6 +13,8 @@
 import { PageType } from '../interface/knowledge-center.interface';
 import {
   getContextCenterHeaderPresentation,
+  getMemoryCitations,
+  getSortConfig,
   knowledgePageToArticleItem,
 } from './ContextCenterPureUtils';
 
@@ -112,5 +114,62 @@ describe('knowledgePageToArticleItem href branch', () => {
 
     expect(result.tags).toEqual([{ label: 'Sensitive' }, { label: 'flat' }]);
     expect(result.title).toBe(UNTITLED);
+  });
+});
+
+describe('getMemoryCitations', () => {
+  it('counts the answers a memory was applied to once its outcomes are counted', () => {
+    expect(
+      getMemoryCitations({
+        id: 'm',
+        name: 'm',
+        usageCount: 99,
+        lastUsedAt: 1,
+        outcomes: { appliedCount: 12, lastAppliedAt: 2, countedAt: 3 },
+      })
+    ).toEqual({ count: 12, lastAt: 2 });
+  });
+
+  it('counts zero for counted outcomes that hold no applied count', () => {
+    expect(
+      getMemoryCitations({
+        id: 'm',
+        name: 'm',
+        usageCount: 99,
+        outcomes: { countedAt: 3 },
+      })
+    ).toEqual({ count: 0, lastAt: undefined });
+  });
+
+  it('falls back to the retrieval usage before outcomes are counted', () => {
+    expect(
+      getMemoryCitations({ id: 'm', name: 'm', usageCount: 5, lastUsedAt: 7 })
+    ).toEqual({ count: 5, lastAt: 7 });
+  });
+
+  it('falls back to the retrieval usage when no recount stamped the outcomes', () => {
+    expect(
+      getMemoryCitations({
+        id: 'm',
+        name: 'm',
+        usageCount: 37,
+        lastUsedAt: 7,
+        outcomes: {
+          appliedCount: 0,
+          positiveCount: 0,
+          negativeCount: 0,
+          correctedCount: 0,
+        },
+      })
+    ).toEqual({ count: 37, lastAt: 7 });
+  });
+});
+
+describe('getSortConfig', () => {
+  it('sorts "Most used" by the answers a memory was applied to', () => {
+    expect(getSortConfig('usage')).toEqual({
+      sortBy: 'appliedCount',
+      sortOrder: 'desc',
+    });
   });
 });

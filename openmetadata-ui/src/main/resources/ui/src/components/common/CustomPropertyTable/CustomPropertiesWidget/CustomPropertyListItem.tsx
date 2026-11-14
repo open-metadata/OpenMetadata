@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
 import { TYPE_ICON_TILE_CLASS } from '../CustomPropertyCard/CustomPropertyCard.constants';
 import {
   getPropertyTypeMeta,
@@ -46,9 +46,10 @@ export const CustomPropertyListItem = ({
   const meta = getPropertyTypeMeta(typeName);
   const TypeIcon = meta.icon;
   const propertyLabel = getEntityName(property);
+  const typeLabel = t(meta.labelKey);
   const isEmptyValue = isPropertyValueEmpty(typeName, value);
   const summary = isEmptyValue
-    ? t('label.not-set')
+    ? t('label.no-value-yet')
     : getPropertyValueSummary(typeName, value, t, i18n.language);
 
   const handleSave = async (updatedValue: unknown) => {
@@ -69,19 +70,18 @@ export const CustomPropertyListItem = ({
     }
 
     // Empty rows keep the icon visible: it is their only edit affordance.
-    // Wrapped because WidgetEditButton's className replaces its own padding.
     return (
-      <span
-        className={classNames('tw:flex', {
+      <ButtonUtility
+        className={classNames({
           'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-within:opacity-100':
             !isEmptyValue,
-        })}>
-        <WidgetEditButton
-          data-testid="edit-icon"
-          title={t('label.edit-entity', { entity: propertyLabel })}
-          onClick={() => setIsEditing(true)}
-        />
-      </span>
+        })}
+        data-testid="edit-icon"
+        icon={Edit01}
+        size="sm"
+        tooltip={t('label.edit-entity', { entity: propertyLabel })}
+        onClick={() => setIsEditing(true)}
+      />
     );
   };
 
@@ -93,19 +93,28 @@ export const CustomPropertyListItem = ({
       )}
       data-testid={`custom-property-${property.name}-row`}
       ref={itemRef}>
-      <span
-        aria-hidden
-        className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg ${
-          TYPE_ICON_TILE_CLASS[meta.color]
-        }`}>
-        <TypeIcon className="tw:size-4" />
-      </span>
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+      {/* The tile names the type, so the name gets the row width a type badge would take. */}
+      <Tooltip
+        title={typeLabel}
+        triggerClassName="tw:shrink-0 tw:rounded-lg tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring">
         <span
-          className="tw:truncate tw:text-xs tw:text-secondary"
-          data-testid="property-name">
-          {propertyLabel}
+          className={`tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-lg ${
+            TYPE_ICON_TILE_CLASS[meta.color]
+          }`}>
+          <TypeIcon aria-hidden className="tw:size-4" />
+          <span className="tw:sr-only">{typeLabel}</span>
         </span>
+      </Tooltip>
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+        <Tooltip
+          title={propertyLabel}
+          triggerClassName="tw:block tw:w-full tw:min-w-0 tw:rounded-xs tw:text-left tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring">
+          <span
+            className="tw:block tw:truncate tw:text-xs tw:text-secondary"
+            data-testid="property-name">
+            {propertyLabel}
+          </span>
+        </Tooltip>
         {valueContent ? (
           <div
             className="tw:min-w-0 tw:break-words tw:text-xs tw:text-primary"
@@ -124,9 +133,6 @@ export const CustomPropertyListItem = ({
         )}
       </div>
       <Box align="center" className="tw:ml-auto tw:shrink-0" gap={1}>
-        <Badge color={meta.color} size="sm" type="color">
-          {t(meta.labelKey)}
-        </Badge>
         {renderAction()}
         {actions}
       </Box>

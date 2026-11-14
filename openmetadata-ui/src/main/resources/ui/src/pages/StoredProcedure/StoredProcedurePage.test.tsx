@@ -106,13 +106,6 @@ jest.mock('../../components/Lineage/Lineage.component', () => {
   return jest.fn().mockImplementation(() => <p>testEntityLineageComponent</p>);
 });
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-  }
-);
-
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
@@ -247,7 +240,11 @@ describe('StoredProcedure component', () => {
       renderPage();
     });
 
-    expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('StoredProcedurePage should render page for ViewBasic permissions', async () => {

@@ -1,10 +1,10 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -14,7 +14,10 @@ import java.util.UUID;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -68,23 +71,27 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
   // BULK OPERATIONS
   // ===================================================================
 
-  /**
-   * Create multiple test cases in a single request.
-   *
-   * @param requests List of test case creation requests
-   * @return List of created test cases
-   */
+  /** Returns newly created tests, skipping conflicts and rejecting validation errors. */
   public List<TestCase> createMany(List<CreateTestCase> requests) throws OpenMetadataException {
+    final String response =
+        httpClient.executeForString(HttpMethod.POST, basePath + "/createMany", requests);
     try {
-      String response =
-          httpClient.executeForString(HttpMethod.POST, basePath + "/createMany", requests);
-      if (response == null || response.isEmpty()) {
-        return new ArrayList<>();
-      }
       return objectMapper.readValue(response, new TypeReference<List<TestCase>>() {});
-    } catch (Exception e) {
-      throw new OpenMetadataException("Failed to create test cases: " + e.getMessage(), e);
+    } catch (JsonProcessingException exception) {
+      throw new OpenMetadataException("Failed to parse bulk test case response", exception);
     }
+  }
+
+  /** Conflicts fail or skip only the affected inputs; callers must inspect the returned outcomes. */
+  public BulkCreateResult createMany(
+      List<CreateTestCase> requests, BulkCreateConflictPolicy onConflict)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/createMany",
+        requests,
+        BulkCreateResult.class,
+        RequestOptions.builder().queryParam("onConflict", onConflict.value()).build());
   }
 
   // ===================================================================
@@ -216,7 +223,7 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
       reduceEntityReferences(originalNode);
       reduceEntityReferences(updatedNode);
 
-      JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
+      JsonNode patch = JsonDiff.of(originalNode, updatedNode);
 
       // Build request options with ETag if provided
       RequestOptions options = null;

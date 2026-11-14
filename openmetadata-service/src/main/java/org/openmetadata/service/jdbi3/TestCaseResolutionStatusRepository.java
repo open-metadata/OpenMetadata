@@ -93,6 +93,8 @@ public class TestCaseResolutionStatusRepository
   private static final String SEVERITY_MILDEST_FIRST =
       "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC";
   private static final int TREND_BUCKET_COUNT = 8;
+  // ADR:2026-10-28-incident-history-uses-bounded-keyset-pages
+  private static final int ORPHAN_HISTORY_BATCH_SIZE = 100;
   // A record range that holds every record, for listings whose range applies to the incidents.
   // Boxed, as a listing without a range passes null bounds through the same expression.
   private static final Long ALL_RECORDS_START_TS = 0L;
@@ -188,14 +190,37 @@ public class TestCaseResolutionStatusRepository
     return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
   }
 
-  // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
-  // SearchRepository inheritable-field refactor stopped propagating testCase.testSuites onto
-  // child TCRS docs. The field is absent from the {@link TestCaseResolutionStatus} schema
-  // ({@code additionalProperties: false}), so any surviving polluted source would otherwise
-  // 400 strict Jackson deserialization on /testCaseIncidentStatus/search/list.
+  // Fields a TCRS search doc carries that the {@link TestCaseResolutionStatus} schema
+  // ({@code additionalProperties: false}) does not, so each one left in a hit 400s strict Jackson
+  // deserialization on /testCaseIncidentStatus/search/list. {@code table} is the parent table
+  // reference the tag cascade matches incidents on; {@code database}, {@code databaseSchema} and
+  // {@code service} are the ancestors a soft delete matches them on. {@code testSuites} stays to
+  // scrub legacy docs written before the SearchRepository inheritable-field refactor stopped
+  // propagating testCase.testSuites onto child TCRS docs.
+  static final List<String> SEARCH_ONLY_FIELDS =
+      List.of(
+          "@timestamp",
+          "domains",
+          "testCase",
+          "testSuite",
+          "testSuites",
+          "fqnParts",
+          "table",
+          "database",
+          "databaseSchema",
+          "service",
+          "certification");
+
   @Override
   protected List<String> getExcludeSearchFields() {
-    return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
+    return SEARCH_ONLY_FIELDS;
+  }
+
+  // An incident has no deleted flag of its own: it is deleted with its test case, whose flag the
+  // document embeds.
+  @Override
+  public String getSearchDeletedField() {
+    return "testCase.deleted";
   }
 
   // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
@@ -217,20 +242,90 @@ public class TestCaseResolutionStatusRepository
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
       UUID stateId) {
-    List<TestCaseResolutionStatus> testCaseResolutionStatuses = new ArrayList<>();
-    List<String> jsons =
-        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-            .listTestCaseResolutionStatusesForStateId(stateId.toString());
+    return listTestCaseResolutionStatusesForStateId(stateId, null, null);
+  }
 
-    for (String json : jsons) {
-      TestCaseResolutionStatus testCaseResolutionStatus =
-          JsonUtils.readValue(json, TestCaseResolutionStatus.class);
-      if (resolveTestCaseReference(testCaseResolutionStatus)) {
-        testCaseResolutionStatuses.add(testCaseResolutionStatus);
+  public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
+      UUID stateId, Integer limit, String after) {
+    if (limit == null && after != null) {
+      throw new IllegalArgumentException("An incident history cursor requires a limit");
+    }
+    if (limit != null && (limit < 1 || limit > 1000000)) {
+      throw new IllegalArgumentException("Incident history limit must be between 1 and 1000000");
+    }
+    final ResultList<TestCaseResolutionStatus> result =
+        readStateHistory(stateId, limit, HistoryCursor.parse(after), true);
+    if (limit != null) {
+      result
+          .getPaging()
+          .setTotal(
+              ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+                  .countTestCaseResolutionStatusesForStateId(stateId.toString()));
+    }
+    return result;
+  }
+
+  private ResultList<TestCaseResolutionStatus> readStateHistory(
+      UUID stateId, Integer limit, HistoryCursor cursor, boolean withLookahead) {
+    final var dao = (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
+    final int lookahead = withLookahead ? 1 : 0;
+    final List<TestCaseResolutionStatus> records = new ArrayList<>();
+    String next = null;
+    boolean hasMore;
+    boolean skippedOrphans = false;
+    do {
+      final int remaining = limit == null ? Integer.MAX_VALUE : limit - records.size();
+      final int batchSize =
+          skippedOrphans ? Math.max(remaining, ORPHAN_HISTORY_BATCH_SIZE) : remaining;
+      final List<String> jsons =
+          limit == null
+              ? dao.listTestCaseResolutionStatusesForStateId(stateId.toString())
+              : dao.listTestCaseResolutionStatusesForStateId(
+                  stateId.toString(), cursor.timestamp(), cursor.id(), batchSize + lookahead);
+      final int pageSize = Math.min(batchSize, jsons.size());
+      int consumed = 0;
+      TestCaseResolutionStatus last = null;
+      for (String json : jsons.subList(0, pageSize)) {
+        consumed++;
+        last = JsonUtils.readValue(json, TestCaseResolutionStatus.class);
+        if (resolveTestCaseReference(last)) {
+          records.add(last);
+          if (limit != null && records.size() == limit) {
+            break;
+          }
+        } else {
+          skippedOrphans = true;
+        }
+      }
+      hasMore = jsons.size() > consumed || (!withLookahead && consumed == batchSize);
+      if (hasMore) {
+        cursor = new HistoryCursor(last.getTimestamp(), last.getId().toString());
+        next = withLookahead ? cursor.timestamp() + "|" + cursor.id() : null;
+      } else {
+        next = null;
+      }
+    } while (hasMore && records.size() < limit);
+    return getResultList(records, null, next, records.size());
+  }
+
+  private record HistoryCursor(Long timestamp, String id) {
+    static HistoryCursor parse(String after) {
+      if (after == null) {
+        return new HistoryCursor(null, null);
+      }
+      try {
+        if (after.isBlank()) {
+          throw new IllegalArgumentException("Invalid incident history cursor");
+        }
+        final String[] parts = RestUtil.decodeCursor(after).split("\\|", -1);
+        if (parts.length != 2) {
+          throw new IllegalArgumentException("Invalid incident history cursor");
+        }
+        return new HistoryCursor(Long.valueOf(parts[0]), UUID.fromString(parts[1]).toString());
+      } catch (IllegalArgumentException exception) {
+        throw new IllegalArgumentException("Invalid incident history cursor", exception);
       }
     }
-
-    return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
   }
 
   private TestCaseResolutionStatus listFirstTestCaseResolutionStatusForStateId(UUID stateId) {
@@ -995,17 +1090,9 @@ public class TestCaseResolutionStatusRepository
     if (stateId == null) {
       return null;
     }
-    List<TestCaseResolutionStatus> records =
-        listTestCaseResolutionStatusesForStateId(stateId).getData();
-    if (records == null || records.isEmpty()) {
-      return null;
-    }
-    // listTestCaseResolutionStatusesForStateId doesn't document its ordering; sort defensively
-    // so we always return the highest-timestamp record.
-    return records.stream()
-        .filter(r -> r.getTimestamp() != null)
-        .max((a, b) -> Long.compare(a.getTimestamp(), b.getTimestamp()))
-        .orElse(records.get(records.size() - 1));
+    final List<TestCaseResolutionStatus> records =
+        readStateHistory(stateId, 1, new HistoryCursor(null, null), false).getData();
+    return records.isEmpty() ? null : records.getFirst();
   }
 
   /**

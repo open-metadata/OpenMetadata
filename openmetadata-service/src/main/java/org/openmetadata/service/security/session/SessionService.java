@@ -5,6 +5,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.dropwizard.lifecycle.Managed;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,7 +18,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.fernet.Fernet;
@@ -324,6 +328,66 @@ public class SessionService implements Managed {
     return result;
   }
 
+  /**
+   * Stores what a pending login must later match, such as the id of the SAML request sent to the
+   * identity provider. Loses to any concurrent change of the session, and then returns empty.
+   */
+  public Optional<UserSession> recordPendingState(UserSession pendingSession, String state) {
+    return updatePendingSession(pendingSession, builder -> builder.state(state));
+  }
+
+  /**
+   * Attaches the account an identity provider vouched for to a pending login and returns the
+   * one-time code that completes it. The code goes back only to the browser that delivered the
+   * answer, and completing the login takes it together with the cookie of the browser that started
+   * the login, so only a browser that did both completes it. Only the code's hash is stored. The
+   * state it matched is cleared, so one answer is used once.
+   */
+  public Optional<String> recordPendingUser(UserSession pendingSession, User user) {
+    String completionCode = SessionIdGenerator.newSessionId();
+    return updatePendingSession(
+            pendingSession,
+            builder ->
+                builder
+                    .state(null)
+                    .nonce(completionCodeHash(completionCode))
+                    .userId(user.getId().toString())
+                    .username(user.getName())
+                    .email(user.getEmail()))
+        .map(recorded -> completionCode);
+  }
+
+  /** Whether {@code code} is the one-time code {@link #recordPendingUser} issued for the login. */
+  public boolean isCompletionCode(UserSession pendingSession, String code) {
+    String stored = pendingSession.getNonce();
+    return !nullOrEmpty(stored)
+        && !nullOrEmpty(code)
+        && MessageDigest.isEqual(
+            stored.getBytes(StandardCharsets.UTF_8),
+            completionCodeHash(code).getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static String completionCodeHash(String code) {
+    return DigestUtils.sha256Hex(code);
+  }
+
+  private Optional<UserSession> updatePendingSession(
+      UserSession pendingSession, UnaryOperator<UserSession.UserSessionBuilder> change) {
+    long expectedVersion = safeVersion(pendingSession);
+    UserSession updated =
+        change
+            .apply(pendingSession.toBuilder())
+            .updatedAt(now())
+            .version(expectedVersion + 1)
+            .build();
+    if (!repository.updateIfVersion(updated, expectedVersion)) {
+      cache.invalidate(pendingSession.getId());
+      return Optional.empty();
+    }
+    cache.put(updated.getId(), updated);
+    return Optional.of(updated);
+  }
+
   public Optional<UserSession> getActiveSession(
       jakarta.servlet.http.HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response) {
@@ -352,6 +416,15 @@ public class SessionService implements Managed {
     }
 
     UserSession current = maybeSession.get();
+    if (isFromAnotherProvider(current)) {
+      // Renewing it would mint a token the next request rejects as issued by a provider that is
+      // no longer configured, and the browser would refresh again in a loop. Ending it sends the
+      // user to sign in with the current provider.
+      // ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+      revokeSession(current.getId());
+      SessionCookieUtil.clearSessionCookie(request, response, authConfig);
+      return Optional.empty();
+    }
 
     int maxAttempts = 5;
     for (int attempt = 0; attempt < maxAttempts && current != null; attempt++) {
@@ -408,6 +481,14 @@ public class SessionService implements Managed {
 
     SessionCookieUtil.clearSessionCookie(request, response, authConfig);
     return Optional.empty();
+  }
+
+  private boolean isFromAnotherProvider(UserSession session) {
+    return authConfig != null
+        && authConfig.getProvider() != null
+        && !nullOrEmpty(session.getProvider())
+        && !SessionProviders.isSameProvider(
+            session.getProvider(), authConfig.getProvider().value());
   }
 
   /**

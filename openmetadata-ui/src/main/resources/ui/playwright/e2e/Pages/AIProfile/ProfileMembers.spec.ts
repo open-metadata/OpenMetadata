@@ -26,9 +26,16 @@ import {
   openTeamTab,
   openUsersPanel,
   searchUserRow,
+  userDetailUrl,
 } from '../../../utils/aiProfile';
-import { uuid } from '../../../utils/common';
+import {
+  clickIgnoringToasts,
+  selectOptionWithRetry,
+  uuid,
+} from '../../../utils/common';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import { getRowByName } from '../../../utils/scopedLocators';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 test.describe('AI Profile Members - navigation & basics', () => {
@@ -194,9 +201,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await afterAction();
   });
 
-  test('Should navigate from team detail to a user profile', async ({
-    page,
-  }) => {
+  test('Should open the user detail from team detail', async ({ page }) => {
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
 
@@ -206,14 +211,16 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await openTeamByLink(page, team.responseData.name);
     await teamUsersResponse;
 
-    const userResponse = page.waitForResponse((response) =>
-      response
-        .url()
-        .includes(
+    // Exact path: a prefix match would also catch `<name>@domain` lookups.
+    const userResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
           `/api/v1/users/name/${encodeURIComponent(
             regularUser.responseData.name
-          )}`
-        )
+          )}`,
+      200
     );
     await page
       .getByTestId('team-users-table')
@@ -221,11 +228,11 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
-    // The panel renders the displayName via startCase (spaced/capitalised), so
-    // assert on the email, which is shown verbatim and is unique per run.
-    await expect(page.getByTestId('profile-details-panel')).toContainText(
+    // The email is unique per run and shown verbatim in the user's header.
+    await expect(page.getByTestId('profile-content-header')).toContainText(
       regularUser.responseData.email
     );
+    await expect(page).toHaveURL(userDetailUrl(regularUser.responseData.name));
   });
 
   test('Should navigate from team detail to a role detail', async ({
@@ -300,8 +307,9 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     const searchInput = page
       .getByTestId('users-list-container')
       .getByTestId('searchbar');
-    const roleLink = page
-      .getByTestId('users-list-table')
+    // Scoped to the searched row: the unfiltered first page already shows a
+    // seeded user's role link, which would let the click race the search.
+    const roleLink = getRowByName(page, listUser.responseData.name)
       .getByTestId('role-link')
       .getByRole('link');
     await expect(async () => {
@@ -331,5 +339,156 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await teamResponse;
 
     await expect(page.getByTestId('team-detail')).toBeVisible();
+  });
+});
+
+test.describe('AI Profile Members - online search', () => {
+  // Built in beforeAll so a second beforeAll run in the same worker creates a new user.
+  let searchId: string;
+  let onlineUser: UserClass;
+
+  test.beforeAll(async ({ browser }) => {
+    searchId = uuid();
+    onlineUser = new UserClass({
+      firstName: `pwonline${searchId}`,
+      lastName: 'search',
+      email: `pwonline${searchId}.search@example.com`,
+      password: 'User@OMD123',
+    });
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await onlineUser.create(apiContext);
+    await waitForSearchIndexed(
+      apiContext,
+      onlineUser.responseData.fullyQualifiedName,
+      'user_search_index'
+    );
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await onlineUser.delete(apiContext).catch(() => undefined);
+    await afterAction();
+  });
+
+  test('Should find an online user by a partial name', async ({ page }) => {
+    await navigateToMembersPanel(page);
+    await openOnlineUsersPanel(page);
+
+    // A fresh user has no activity yet, so widen the window to keep it listed.
+    const allTimeResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.url().includes('/api/v1/users/online') &&
+        response.url().includes('timeWindow=0'),
+      200
+    );
+    await selectOptionWithRetry(
+      page.getByTestId('time-window-select').getByRole('button'),
+      page.getByRole('option', { name: 'All time' })
+    );
+    await allTimeResponse;
+
+    const partialName = `online${searchId}`;
+    const searchResponse = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const params = new URL(response.url()).searchParams;
+
+        return (
+          response.url().includes('/api/v1/search/query') &&
+          params.get('index') === 'user' &&
+          params.get('q') === `*${partialName}*`
+        );
+      },
+      200
+    );
+    await page
+      .getByTestId('online-users-panel')
+      .getByTestId('searchbar')
+      .fill(partialName);
+    await searchResponse;
+
+    await expect(
+      page
+        .getByTestId('online-users-table')
+        .getByTestId(onlineUser.responseData.name)
+    ).toBeVisible();
+  });
+});
+
+const isAdminListRequest = (url: URL) =>
+  url.pathname === '/api/v1/users' &&
+  url.searchParams.get('isAdmin') === 'true';
+
+const stubAdmin = (name: string) => ({
+  id: uuid(),
+  name,
+  displayName: name,
+  fullyQualifiedName: name,
+  email: `${name}@example.com`,
+  isAdmin: true,
+  teams: [],
+  roles: [],
+});
+
+test.describe('AI Profile Members - admin paging', () => {
+  // The admins list is stubbed: creating enough real admins to force a second
+  // page would pollute the shared server for every other spec.
+  test('Should page the Admins list with Next and Previous', async ({
+    page,
+  }) => {
+    const firstPageAdmin = `pw-stub-admin-first-${uuid()}`;
+    const secondPageAdmin = `pw-stub-admin-second-${uuid()}`;
+    await page.route(isAdminListRequest, (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const onSecondPage = params.has('after');
+
+      return route.fulfill({
+        json: {
+          data: [stubAdmin(onSecondPage ? secondPageAdmin : firstPageAdmin)],
+          paging: onSecondPage
+            ? { total: 30, before: 'pw-cursor-before' }
+            : { total: 30, after: 'pw-cursor-after' },
+        },
+      });
+    });
+
+    await navigateToMembersPanel(page);
+    await openAdminsPanel(page);
+
+    const usersList = page.getByTestId('users-list-container');
+    const pageIndicator = usersList.getByTestId('page-indicator');
+
+    await expect(pageIndicator).toContainText('Page 1');
+    await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
+
+    const nextResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        isAdminListRequest(url) &&
+        url.searchParams.get('after') === 'pw-cursor-after'
+      );
+    });
+    await clickIgnoringToasts(usersList.getByTestId('next'));
+    await nextResponse;
+
+    await expect(pageIndicator).toContainText('Page 2');
+    await expect(getRowByName(page, secondPageAdmin)).toBeVisible();
+
+    const previousResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        isAdminListRequest(url) &&
+        url.searchParams.get('before') === 'pw-cursor-before'
+      );
+    });
+    await clickIgnoringToasts(usersList.getByTestId('previous'));
+    await previousResponse;
+
+    await expect(pageIndicator).toContainText('Page 1');
+    await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
   });
 });

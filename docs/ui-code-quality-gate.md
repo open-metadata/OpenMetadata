@@ -22,8 +22,8 @@ already chose the wrong pattern. Every rule therefore exists twice.
 `make ui-checkstyle-changed`, and in the `ui-checkstyle` CI job. Prefer an off-the-shelf ESLint plugin
 over a bespoke script: a plugin matches the AST rather than diff text, gives live editor feedback,
 and composes with `--fix` and `eslint-disable`. Reach for a script only when a rule genuinely cannot
-be expressed in ESLint — `tw-guard` qualifies, because its antd/`.less` backlog (864 and 449 files)
-makes added-lines-only scoping unavoidable.
+be expressed in ESLint — `tw-guard` qualifies, because its `.less` and raw-SVG backlog makes
+added-lines-only scoping unavoidable.
 
 Depth behind the rules lives in `skills/vendor/` — `react-best-practices`, `web-design-guidelines`
 and `composition-patterns`, vendored verbatim from
@@ -61,12 +61,12 @@ Warnings remain non-blocking; ESLint errors and formatting changes still fail `u
 | Licence header | changed files | Apache-2.0 header missing/stale |
 | i18n key-sync | all locales | locale files out of sync with `en-us.json` |
 | `tw-audit` | changed files | hardcoded Tailwind value that maps to a design token |
-| `tw-guard` | **added lines** | new `antd` import or new `.less` file |
+| `tw-guard` | **added lines** | new `assets/svg/` `.svg` file or import (fails); new `.less` file (reported) |
 | `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
 | OpenMetadata performance (ESLint) | changed files | eager route page import, unguarded lazy component, or unbounded module cache |
 | OpenMetadata import architecture (ESLint) | changed files | warning-only architecture, cycle, barrel, or request fan-out finding |
-| SonarCloud gate | **new code** | complexity, duplication, or new issues on lines this PR added |
+| SonarCloud analysis | trusted nightly `main` run | branch quality conditions fail after merge |
 
 ## Component reuse — guidance, not a gate
 
@@ -172,12 +172,11 @@ request-review rule separately before making it mandatory.
 
 ## SonarJS in ESLint — the fast half of Sonar
 
-`eslint-plugin-sonarjs` is the *same engine and the same `Sxxxx` rule ids* as the SonarCloud analysis
-that already runs on every UI PR. A finding in your editor is the finding Sonar will report.
+`eslint-plugin-sonarjs` uses the same `Sxxxx` rule ids as the nightly SonarCloud analysis.
+The ESLint checks run on PRs without a Sonar token.
 
-The high-backlog SonarJS rules are also enforced *blockingly* by SonarCloud, whose Clean-as-You-Code
-model scopes them to **new lines** — something ESLint fundamentally cannot express. So
-`cognitive-complexity` warns locally and blocks on new code in the PR gate. The stock
+The high-backlog SonarJS rules remain visible in SonarCloud's branch analysis. They no longer
+block PR merges through a Sonar scan. `cognitive-complexity` warns locally. The stock
 `sonarjs/no-duplicate-string` is `off` because it flags i18n keys (`t('label.…')`) that must stay
 inline; the i18n-aware `openmetadata-i18n/no-duplicate-string` replacement is enforced at `error`.
 
@@ -244,24 +243,16 @@ project settings, not on the gate.
 
 ### Branch protection
 
-Mark these three required on `main`:
+Mark these checks required on `main`:
 
 | Required check | Enforces |
 |---|---|
 | `ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard` |
 | `ui-coverage` | Jest run completed |
-| **`ui-sonar-gate`** | the Clean-as-You-Code quality gate, incl. 90% coverage on new code |
 
-Mark **`ui-sonar-gate`**, **not** SonarCloud's own check. The scan is gated behind
-`dorny/paths-filter` and the `safe to test` label, so a PR with no UI changes never produces that
-check and would block forever waiting on it. `ui-sonar-gate` always runs and passes when the scan
-was legitimately skipped.
-
-The gate result comes from the scanner itself: the PR scan passes `-Dsonar.qualitygate.wait=true`
-(timeout 600s), so SonarCloud decides and the scanner exits non-zero on failure. `ui-sonar-gate`
-turns that outcome into the check contributors see. This is the supported mechanism — do not
-reintroduce polling of `/api/qualitygates/project_status`, which races the asynchronous report
-processing and silently passes when it times out.
+Do not require `ui-sonar-gate` or SonarCloud's PR check. PR jobs do not receive Sonar credentials,
+including same-repository PRs, under ADR:2026-11-10-pr-jobs-never-receive-credentials.
+`ui-sonarcloud-nightly.yml` scans trusted `main` separately after merge.
 
 ## Two behaviours to expect
 
@@ -269,10 +260,8 @@ processing and silently passes when it times out.
 into gate scope. This is the mechanism that retires debt gradually — you clean what you touch — but
 it reads as "the gate failed on code I didn't write". It isn't; the line is in your diff.
 
-**New-code attribution needs confirming once.** The PR scan passes `-Dsonar.scm.disabled=true`
-(the push scan does not). New code for a PR comes from the `sonar.pullrequest.*` parameters, so this
-is probably fine — but on the first gated PR, check that Sonar's **New Code** tab shows only the diff
-and not whole files. If it shows whole files, drop that flag from the PR scan step.
+**PR scans are deferred.** The nightly scan reports branch analysis without `sonar.pullrequest.*`
+parameters. Use the nightly result to track regressions that require Sonar's credentials.
 
 ## Tracking the backlog
 

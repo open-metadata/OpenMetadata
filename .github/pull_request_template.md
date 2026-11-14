@@ -71,13 +71,16 @@ List the user-visible scenarios this PR exercises. Example:
 - Files added/updated:
 
 PR checks run only the Java unit tests; the integration tests run in the merge queue and JavaUIIT /
-search-it nightly. Before requesting review, run the Java tests this PR impacts (selected from
-`.github/java-tests/impact-map.json`):
+search-it nightly. For PR creation, record focused checks and list broader checks as pending. Merge readiness
+requires the full impacted plan. Tests are selected from
+`.github/java-tests/impact-map.json`:
 
-  make java_affected                            # list the impacted unit tests + ITs and the commands
-  make java_affected_run ARGS="--update-pr"     # run them and fill the block below
+  make java_affected ARGS="--scope focused"     # select focused checks; --scope full for merge readiness
+  make java_affected_run ARGS="--scope focused" # run once if no applicable evidence exists
+  make java_affected ARGS="--publish-results"   # publish saved results without rerunning
 
-Without `gh`, drop `--update-pr` and paste `target/java-tests/local-pr-results.md` between the markers.
+Without `gh`, drop `--update-pr`, paste `target/java-tests/local-pr-results.md` between the markers,
+and post `target/java-tests/local-pr-results-details.md` as a PR comment.
 -->
 <!-- local-java-test-results:start -->
 <!-- local-java-test-results:end -->
@@ -106,6 +109,22 @@ Without `gh`, drop `--update-pr` and paste `playwright/output/local-pr-results.m
 -->
 <!-- local-playwright-results:start -->
 <!-- local-playwright-results:end -->
+
+#### Visual regression baselines
+<!--
+- [ ] My change alters what a screen renders, and I refreshed the affected baselines under
+      `playwright/e2e/VisualRegression/__snapshots__/` in this PR.
+- [ ] Not applicable (no rendering change).
+
+PR checks do not run the visual lane; the merge queue does, and a stale baseline blocks it. Baselines
+are captured on the Linux renderer with the regular UI bundle, so do not regenerate them on macOS.
+Dispatch the Playwright workflow on your branch (the visual lane runs on every manual run), review
+each `-diff.png`, then commit the first-attempt `-actual.png` over its baseline:
+
+  gh workflow run playwright-postgresql-e2e.yml --ref <branch> -f full_suite=false
+
+List the refreshed baselines and the run URL here.
+-->
 
 #### Manual testing performed
 <!--
@@ -142,6 +161,7 @@ Standalone fixes, refactors, styling, localization, docs, tests and backend-only
 - [ ] For JSON Schema changes: I updated the migration scripts or explained why it is not needed.
 - [ ] For a UI feature or feature task: as part of PR creation, I ran the PR build in Docker with sample data and embedded a verified GitHub-hosted recording plus build/health evidence above (or explained why this requirement is not applicable).
 - [ ] I have added tests (unit / integration / Playwright as applicable) and listed them above.
+- [ ] Self-review: I reviewed the final diff against `REVIEW.md` (the `pr-checklist` skill runs it) and fixed every 🔴 finding, or answered it on the line below.
 - [ ] Decision check: if this PR decides something the next contributor could undo — a schema field, REST path or format another component or repo must agree with, a new default or limit, an ordering that must hold, or a rule stated only in this description — it adds a record under `docs/decisions/` (see its `README.md`). This description is gone from `git log` after the squash-merge.
 
 <!-- Based on the type(s) of your change, uncomment the required checklist 👇 -->

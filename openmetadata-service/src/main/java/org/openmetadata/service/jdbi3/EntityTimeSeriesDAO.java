@@ -162,6 +162,34 @@ public interface EntityTimeSeriesDAO {
       @Bind("startTs") Long startTs,
       @Bind("endTs") Long endTs);
 
+  // A latest listing without a time range ranks its own rows: without the partitioned query
+  // the plain listing returns every revision, voiding the latest flag it was asked to honor.
+  @SqlQuery(
+      "SELECT json FROM "
+          + "(SELECT id, json, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+          + "FROM <table> <cond> "
+          + "ORDER BY timestamp DESC) ranked "
+          + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+  List<String> listWithOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Define("partition") String partition,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset);
+
+  default List<String> listWithOffset(ListFilter filter, int limit, int offset, boolean latest) {
+    return latest
+        ? listWithOffset(
+            getTimeSeriesTableName(),
+            filter.getQueryParams(),
+            filter.getCondition(),
+            getPartitionFieldName(),
+            limit,
+            offset)
+        : listWithOffset(filter, limit, offset);
+  }
+
   default List<String> listWithOffset(
       ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
     return latest
@@ -304,28 +332,6 @@ public interface EntityTimeSeriesDAO {
         getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), offset);
   }
 
-  @ConnectionAwareSqlUpdate(
-      value =
-          "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(
-      value =
-          "UPDATE <table> set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{operation}' = :operation",
-      connectionType = POSTGRES)
-  void updateExtensionByOperation(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @BindJson("json") String json,
-      @Bind("timestamp") Long timestamp,
-      @Bind("operation") String operation);
-
-  default void updateExtensionByOperation(
-      String entityFQNHash, String extension, String json, Long timestamp, String operation) {
-    updateExtensionByOperation(
-        getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
-  }
-
   @SqlQuery(
       "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
   String getExtension(
@@ -385,6 +391,29 @@ public interface EntityTimeSeriesDAO {
             filter.getCondition(),
             startTs,
             endTs);
+  }
+
+  // The count a latest listing without a time range must return: the partition count, not the
+  // revision count, or pagination reports totals the listing can never return.
+  @SqlQuery(
+      "SELECT count(*) FROM "
+          + "(SELECT id, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num FROM "
+          + "<table> <cond>) ranked "
+          + "WHERE ranked.row_num = 1")
+  int listCount(
+      @Define("table") String table,
+      @Define("partition") String partition,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond);
+
+  default int listCount(ListFilter filter, boolean latest) {
+    return latest
+        ? listCount(
+            getTimeSeriesTableName(),
+            getPartitionFieldName(),
+            filter.getQueryParams(),
+            filter.getCondition())
+        : listCount(filter);
   }
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id")
@@ -451,27 +480,6 @@ public interface EntityTimeSeriesDAO {
 
   default String getExtensionAtTimestamp(String entityFQNHash, String extension, long timestamp) {
     return getExtensionAtTimestamp(getTimeSeriesTableName(), entityFQNHash, extension, timestamp);
-  }
-
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json -> '$.operation' = :operation",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json #>>'{operation}' = :operation",
-      connectionType = POSTGRES)
-  String getExtensionAtTimestampWithOperation(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @Bind("timestamp") long timestamp,
-      @Bind("operation") String operation);
-
-  default String getExtensionAtTimestampWithOperation(
-      String entityFQNHash, String extension, long timestamp, String operation) {
-    return getExtensionAtTimestampWithOperation(
-        getTimeSeriesTableName(), entityFQNHash, extension, timestamp, operation);
   }
 
   @SqlQuery(
@@ -683,6 +691,20 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
+      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+          + "AND timestamp IN (<timestamps>)")
+  List<String> listAtTimestamps(
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @BindList("timestamps") List<Long> timestamps);
+
+  default List<String> listAtTimestamps(
+      String entityFQNHash, String extension, List<Long> timestamps) {
+    return listAtTimestamps(getTimeSeriesTableName(), entityFQNHash, extension, timestamps);
+  }
+
+  @SqlQuery(
       "SELECT json FROM <table> where entityFQNHash = :entityFQNHash and extension = :extension "
           + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp <orderBy>")
   List<String> listBetweenTimestampsByOrder(
@@ -815,21 +837,6 @@ public interface EntityTimeSeriesDAO {
     String psqlCond = String.format("AND json->>'%s' = :value", key);
     return getLatestExtensionByKeyInternal(
         getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
-  }
-
-  default void storeTimeSeriesWithOperation(
-      String fqn,
-      String extension,
-      String jsonSchema,
-      String entityJson,
-      Long timestamp,
-      String operation,
-      boolean update) {
-    if (update) {
-      updateExtensionByOperation(fqn, extension, entityJson, timestamp, operation);
-    } else {
-      insert(fqn, extension, jsonSchema, entityJson);
-    }
   }
 
   @ConnectionAwareSqlUpdate(

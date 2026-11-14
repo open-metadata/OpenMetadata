@@ -19,18 +19,18 @@ import {
   Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Bot } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
-import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { ColumnsType } from '../components/common/Table/Table.interface';
-import { TEXT_GREY_MUTED } from '../constants/constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
@@ -63,12 +63,11 @@ export const commonUserDetailColumns = (
             excludeTriggerFromTabOrder
             title={t('label.bot')}
             triggerClassName="tw:inline-flex">
-            <BotIcon
+            <Bot
               aria-label={t('label.bot')}
-              color={TEXT_GREY_MUTED}
+              className="tw:text-utility-gray-500"
               data-testid="bot-icon"
-              height={16}
-              width={16}
+              size={16}
             />
           </Tooltip>
         )}
@@ -111,7 +110,9 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(team)}
               </Link>
             ))}
@@ -141,7 +142,9 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                          getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                        )}>
                         {getEntityName(team)}
                       </Link>
                     ))}
@@ -182,7 +185,9 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(role)}
               </Link>
             ))}
@@ -212,7 +217,9 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                          getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                        )}>
                         {getEntityName(role)}
                       </Link>
                     ))}

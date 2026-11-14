@@ -25,23 +25,24 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ClauseElement, ColumnElement
 
 
+def is_unbounded(bound: Any) -> bool:
+    """Whether that side of the window lets everything through
+
+    An unset bound resolves to ∓inf, and to None for a validator that resolves its bounds
+    dynamically and found none on that side. Neither excludes a value, so neither needs a
+    condition -- and None cannot be compared against at all. Only a float can be infinite:
+    a datetime window -- what a between test on a date column resolves to -- compares fine
+    and must not be handed to `math.isinf`, which only takes a number.
+    """
+    return bound is None or (isinstance(bound, float) and math.isinf(bound))
+
+
 class BetweenBoundsChecker(BaseValidationChecker):
     """Checks if value is outside [min_bound, max_bound]"""
 
     def __init__(self, min_bound: float, max_bound: float):
         self.min_bound = min_bound
         self.max_bound = max_bound
-
-    def _is_unbounded(self, bound: Any) -> bool:
-        """Whether that side of the window lets everything through
-
-        An unset bound resolves to ∓inf, and to None for a validator that resolves its bounds
-        dynamically and found none on that side. Neither excludes a value, so neither needs a
-        condition -- and None cannot be compared against at all. Only a float can be infinite:
-        a datetime window -- what a between test on a date column resolves to -- compares fine
-        and must not be handed to `math.isinf`, which only takes a number.
-        """
-        return bound is None or (isinstance(bound, float) and math.isinf(bound))
 
     def _check_violations(self, values):
         """Core violation check logic - works for both scalar and Series.
@@ -61,9 +62,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         # builds only those conditions: an unset bound excludes nothing, and a None one cannot
         # be compared against at all.
         outside = None
-        if not self._is_unbounded(self.min_bound):
+        if not is_unbounded(self.min_bound):
             outside = values < self.min_bound
-        if not self._is_unbounded(self.max_bound):
+        if not is_unbounded(self.max_bound):
             above = values > self.max_bound
             outside = above if outside is None else (outside | above)
 
@@ -108,9 +109,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         for expr in metrics:
             expr_conditions = []
 
-            if not self._is_unbounded(self.min_bound):
+            if not is_unbounded(self.min_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr < self.min_bound))
-            if not self._is_unbounded(self.max_bound):
+            if not is_unbounded(self.max_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr > self.max_bound))
 
             if expr_conditions:
@@ -138,9 +139,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         # Build condition: value NOT NULL AND (value < min OR value > max)
         conditions = []
 
-        if not self._is_unbounded(self.min_bound):
+        if not is_unbounded(self.min_bound):
             conditions.append(and_(column.isnot(None), column < self.min_bound))
-        if not self._is_unbounded(self.max_bound):
+        if not is_unbounded(self.max_bound):
             conditions.append(and_(column.isnot(None), column > self.max_bound))
 
         if not conditions:

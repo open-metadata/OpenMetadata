@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,12 +21,14 @@ import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { PageType } from '../../../../../../../generated/system/ui/page';
+import { useIsAiMode } from '../../../../../../../hooks/useAppMode';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../../../../../../rest/queries/docStoreQuery';
 import { getEntityName } from '../../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../../common/Loader/Loader';
 import { isFullscreenPersonaCategory } from '../Personas.utils';
 import AiSidebarEditor from './AiSidebarEditor';
@@ -86,7 +84,13 @@ const PersonaCustomizeView = ({
     return parts.length === 2 ? [parts[0], parts[1]] : [parts[0], undefined];
   }, [category]);
 
-  const Editor = entityType ? undefined : EDITORS[baseCategory];
+  const isAiMode = useIsAiMode();
+  // One Navigation category for both shells: AI mode edits the AI sidebar.
+  const editorKey =
+    isAiMode && baseCategory === 'navigation'
+      ? 'askCollateSidebar'
+      : baseCategory;
+  const Editor = entityType ? undefined : EDITORS[editorKey];
 
   const loadDocument = useCallback(
     async (
@@ -194,7 +198,7 @@ const PersonaCustomizeView = ({
   const content = useMemo(() => {
     if (!persona || !personaDocument) {
       return (
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="persona-customize-empty"
           title={t('message.no-data-available')}
         />
@@ -215,7 +219,7 @@ const PersonaCustomizeView = ({
     }
 
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="persona-customize-empty"
         title={t('message.no-data-available')}
       />
@@ -260,7 +264,7 @@ const PersonaCustomizeView = ({
         {content}
       </div>
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
         data-testid="persona-customize-footer"
         direction="row"
         gap={3}

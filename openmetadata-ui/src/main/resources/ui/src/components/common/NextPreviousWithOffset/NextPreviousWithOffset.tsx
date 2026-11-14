@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 
-import {
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DownOutlined,
-} from '@ant-design/icons';
 import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import {
   NextPreviousWithOffsetProps,
@@ -39,10 +35,8 @@ const NextPreviousWithOffset = ({
   ...pagingProps
 }: NextPreviousWithOffsetProps) => {
   const { t } = useTranslation();
-  const {
-    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
-    onShowSizeChange,
-  } = (pagingProps ?? {}) as PagingProps;
+  const { pageSizeOptions = LIST_PAGE_SIZE_OPTIONS, onShowSizeChange } =
+    (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = useCallback(() => {
     pagingHandler({
@@ -64,7 +58,7 @@ const NextPreviousWithOffset = ({
   );
 
   const nextButtonDisabled = useMemo(() => {
-    return currentPage === totalPages;
+    return currentPage >= totalPages;
   }, [currentPage, totalPages]);
 
   return (
@@ -72,7 +66,7 @@ const NextPreviousWithOffset = ({
       <Button
         color="secondary-brand"
         data-testid="previous"
-        iconLeading={<ArrowLeftOutlined />}
+        iconLeading={ArrowLeft}
         isDisabled={currentPage === 1 || isLoading}
         onClick={onPreviousHandler}>
         <Typography>{t('label.previous')}</Typography>
@@ -83,17 +77,17 @@ const NextPreviousWithOffset = ({
       <Button
         color="secondary-brand"
         data-testid="next"
+        iconTrailing={ArrowRight}
         isDisabled={nextButtonDisabled || isLoading}
         onClick={onNextHandler}>
-        <Typography> {t('label.next')}</Typography>
-        <ArrowRightOutlined />
+        <Typography>{t('label.next')}</Typography>
       </Button>
       {onShowSizeChange && (
         <Dropdown.Root>
           <Button
             color="secondary"
             data-testid="page-size-change-button"
-            iconTrailing={<DownOutlined />}
+            iconTrailing={ChevronDown}
             isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
           </Button>

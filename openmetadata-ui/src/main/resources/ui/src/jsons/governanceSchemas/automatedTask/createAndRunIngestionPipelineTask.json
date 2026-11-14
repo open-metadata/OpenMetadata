@@ -26,7 +26,8 @@
             "elasticSearchReindex",
             "dbt",
             "application",
-            "policyAgent"
+            "policyAgent",
+            "reverseMetadata"
           ]
         },
         "shouldRun": {

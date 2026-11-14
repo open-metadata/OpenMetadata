@@ -157,8 +157,10 @@ export const EChart = ({
         </div>
       )}
       {showChart && (
+        // No `lazyUpdate`: with `replaceMerge` it swaps the series models at
+        // once but builds their data a frame later, and a hover in that frame
+        // throws `Cannot read properties of undefined (reading 'getRawIndex')`.
         <ReactEChartsCore
-          lazyUpdate
           echarts={echarts}
           notMerge={false}
           option={resolved}

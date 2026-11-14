@@ -13,6 +13,7 @@
 
 import { render } from '@testing-library/react';
 import { TAG_CONSTANT } from '../../../constants/Tag.constants';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import TableDataCardBody from './TableDataCardBody';
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -148,5 +149,69 @@ describe('Test TableDataCardBody Component', () => {
 
       expect(getByTestId(`${element.key}`)).toBeInTheDocument();
     }
+  });
+
+  it('filters out Tier tags before passing them to TagsViewer', () => {
+    render(
+      <TableDataCardBody
+        description="test"
+        extraInfo={extraInfo}
+        tags={[
+          { ...TAG_CONSTANT, tagFQN: 'Tier.Tier1', name: 'Tier1' },
+          { ...TAG_CONSTANT, tagFQN: 'PersonalData.SpecialCategory' },
+        ]}
+      />
+    );
+
+    const calls = (TagsViewer as jest.Mock).mock.calls;
+    const passedTags = calls[calls.length - 1][0].tags as Array<{
+      tagFQN: string;
+    }>;
+
+    expect(passedTags).toHaveLength(1);
+    expect(passedTags[0].tagFQN).toBe('PersonalData.SpecialCategory');
+    expect(passedTags.some((tag) => tag.tagFQN.startsWith('Tier.'))).toBe(
+      false
+    );
+  });
+
+  it('filters out Tier tags when tags are passed as strings', () => {
+    render(
+      <TableDataCardBody
+        description="test"
+        extraInfo={extraInfo}
+        tags={['Tier.Tier1', 'PersonalData.SpecialCategory']}
+      />
+    );
+
+    const calls = (TagsViewer as jest.Mock).mock.calls;
+    const passedTags = calls[calls.length - 1][0].tags as Array<string>;
+
+    expect(passedTags).toHaveLength(1);
+    expect(passedTags[0]).toBe('PersonalData.SpecialCategory');
+  });
+
+  it('passes through all non-Tier tags unchanged', () => {
+    render(
+      <TableDataCardBody
+        description="test"
+        extraInfo={extraInfo}
+        tags={[
+          { ...TAG_CONSTANT, tagFQN: 'PersonalData.SpecialCategory' },
+          { ...TAG_CONSTANT, tagFQN: 'Tag.OtherTag' },
+        ]}
+      />
+    );
+
+    const calls = (TagsViewer as jest.Mock).mock.calls;
+    const passedTags = calls[calls.length - 1][0].tags as Array<{
+      tagFQN: string;
+    }>;
+
+    expect(passedTags).toHaveLength(2);
+    expect(passedTags.map((t) => t.tagFQN)).toEqual([
+      'PersonalData.SpecialCategory',
+      'Tag.OtherTag',
+    ]);
   });
 });

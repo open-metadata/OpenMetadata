@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { RJSFSchema } from '@rjsf/utils';
 import type { FC, SVGProps } from 'react';
 
 // `import.meta.glob` is a Vite-only syntax extension that ts-jest cannot
@@ -48,6 +49,6 @@ export const appScreenshotUrls = import.meta.glob<string>(
 // producing one lazy chunk per schema (~10). The narrow glob emits the same
 // N chunks but the graph is transparent to reviewers, and future refactors
 // can eager-load them into a single bucket if needed.
-export const applicationSchemaLoaders = import.meta.glob<
-  Record<string, unknown>
->('../../../../jsons/applicationSchemas/*.json');
+export const applicationSchemaLoaders = import.meta.glob<{
+  default: RJSFSchema;
+}>('../../../../jsons/applicationSchemas/*.json');

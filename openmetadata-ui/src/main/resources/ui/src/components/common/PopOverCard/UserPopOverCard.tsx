@@ -20,6 +20,7 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { PopoverContent } from './PopoverContent.component';
 import { PopoverTitle } from './PopoverTitle.component';
@@ -71,6 +72,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
               profilePicture={profilePicture}
               type={type}
               userName={userName}
+              onTitleClick={onTitleClick}
             />
           )}
           {isTeam ? (
@@ -93,8 +95,8 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           to={
             to ??
             (type === OwnerType.TEAM
-              ? getTeamAndUserDetailsPath(userName)
-              : getUserPath(userName))
+              ? getSettingsLink(getTeamAndUserDetailsPath(userName))
+              : getSettingsLink(getUserPath(userName)))
           }
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}

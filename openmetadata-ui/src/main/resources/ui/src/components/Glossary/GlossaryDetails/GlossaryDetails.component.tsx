@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
+import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
-import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,11 +35,11 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getReviewTab } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
@@ -71,14 +72,6 @@ const GenericTab = withSuspenseFallback(
 const OntologyExplorer = withSuspenseFallback(
   lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
 );
-
-const AlignRightIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.AlignRightIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
@@ -147,10 +140,17 @@ const GlossaryDetails = ({
           />
         ),
         key: EntityTabs.TERMS,
-        children: <GenericTab type={PageType.Glossary} variant="flat" />,
+        children: <GenericTab type={PageType.Glossary} />,
       },
       ...(!isVersionView
         ? [
+            getReviewTab({
+              activeTab,
+              entityFqn: glossary.fullyQualifiedName ?? '',
+              name: tabLabelMap[EntityTabs.REVIEW],
+              openTaskCount: feedCount.openTaskCount,
+              onTasksChange: fetchTaskCounts,
+            }),
             {
               label: (
                 <TabsLabel
@@ -210,8 +210,10 @@ const GlossaryDetails = ({
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
-    feedCount.conversationCount,
-    feedCount.totalTasksCount,
+    // Activity and task reads resolve separately, and the tab body consumes
+    // the complete count object as well as the total shown in its label.
+    feedCount,
+    fetchTaskCounts,
     activeTab,
     isVersionView,
   ]);
@@ -244,16 +246,18 @@ const GlossaryDetails = ({
       </div>
       <div className="glossary-page-tabs tw:min-h-0 tw:flex-auto">
         <Tabs
-          className="tw:gap-3"
+          className="tw:min-h-0 tw:flex-1 tw:gap-3"
           data-testid="tabs"
           selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
           onSelectionChange={(key) => handleTabChange(String(key))}>
           <Tabs.List
             actions={
               isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
+                <ButtonUtility
+                  data-testid="tab-expand-button"
+                  icon={isTabExpanded ? Collapse : Expand}
+                  size="lg"
+                  tooltip={
                     isTabExpanded ? t('label.collapse') : t('label.expand')
                   }
                   onClick={toggleTabExpanded}
@@ -271,7 +275,17 @@ const GlossaryDetails = ({
           </Tabs.List>
           {tabs.map(({ key, children }) => (
             <Tabs.Panel
-              className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:flex tw:flex-col tw:overflow-hidden"
+              className={classNames(
+                'tw:flex tw:flex-col',
+                // The graph pins its toolbar to its own bottom edge, so it must
+                // fill the space left under the header rather than a fixed
+                // viewport calc that ignores the header's actual height.
+                key === EntityTabs.RELATIONS_GRAPH
+                  ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden'
+                  : // The widget grid sizes itself to its content, so the panel
+                    // scrolls to keep the last terms and pagination reachable.
+                    'tw:h-[calc(100vh-176px-var(--navbar-height))] tw:overflow-y-auto'
+              )}
               id={key}
               key={key}>
               {children}

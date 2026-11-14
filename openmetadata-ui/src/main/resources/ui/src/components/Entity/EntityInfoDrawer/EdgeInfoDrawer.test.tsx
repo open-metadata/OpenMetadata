@@ -20,6 +20,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
 
 jest.mock(
@@ -213,6 +214,36 @@ describe('EdgeInfoDrawer Component', () => {
     expect(editButton).toBeInTheDocument();
   });
 
+  it('should show no edge actions menu unless actions are provided', async () => {
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
+
+    await screen.findByText('label.description');
+
+    expect(screen.queryByTestId('edge-drawer-menu')).not.toBeInTheDocument();
+  });
+
+  it('should run the chosen edge action from the header menu', async () => {
+    const onEditPipeline = jest.fn();
+    const onDelete = jest.fn();
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        onDelete={onDelete}
+        onEditPipeline={onEditPipeline}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('edge-drawer-menu'));
+    fireEvent.click(await screen.findByText('label.edit-entity'));
+
+    expect(onEditPipeline).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('edge-drawer-menu'));
+    fireEvent.click(await screen.findByText('label.delete'));
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
   it('should not render edit button if has no edit access', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} hasEditAccess={false} />);
 
@@ -258,6 +289,41 @@ describe('EdgeInfoDrawer Component', () => {
     const hasTarget = entityInfoV1.some((item) => item.name === 'label.target');
 
     expect(hasSource || hasTarget).toBe(true);
+  });
+
+  it('lists the column mappings of a table edge and the edge count of a rollup', async () => {
+    (getNameFromFQN as jest.Mock).mockImplementation(
+      (fqn: string) => fqn.split('.').pop() ?? fqn
+    );
+    const edge = {
+      ...mockEdgeInfoDrawer.edge,
+      data: {
+        ...mockEdgeInfoDrawer.edge.data,
+        weight: 3,
+        edge: {
+          ...mockEdgeInfoDrawer.edge.data.edge,
+          columns: [
+            { fromColumns: ['svc.db.s.t1.id'], toColumn: 'svc.db.s.t2.id' },
+            { fromColumns: ['svc.db.s.t1.val'], toColumn: 'svc.db.s.t2.val' },
+          ],
+        },
+      },
+    } as Edge;
+
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} edge={edge} />);
+
+    await waitFor(() => {
+      const calls = (OverviewSection as jest.Mock).mock.calls;
+      const items: Array<{ name: string; value?: unknown }> =
+        calls[calls.length - 1]?.[0]?.entityInfoV1 ?? [];
+
+      expect(items).toEqual(
+        expect.arrayContaining([
+          { name: 'label.column-plural', value: 'id → id; val → val' },
+          { name: 'label.edge-plural', value: '3' },
+        ])
+      );
+    });
   });
 
   it('should pass empty componentType to OverviewSection', async () => {

@@ -615,17 +615,16 @@ class TaskWorkflowLifecycleResolverTest {
   @Test
   void workflowStartVariablesTolerateNullOptionalFields() {
     // Only id set — every optional field null. Keys must still be present (null values), never NPE.
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task = new Task().withId(UUID.randomUUID()).withPriority(null);
     Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
 
     assertEquals(true, v.get(WorkflowStartVariables.TASK_WORKFLOW_MANAGED));
-    // Priority carries the schema default (Medium) even on a bare task.
-    assertEquals(TaskPriority.Medium.value(), v.get(WorkflowStartVariables.TASK_PRIORITY));
     for (String key :
         List.of(
             WorkflowStartVariables.TASK_NAME,
             WorkflowStartVariables.TASK_TYPE,
             WorkflowStartVariables.TASK_CATEGORY,
+            WorkflowStartVariables.TASK_PRIORITY,
             WorkflowStartVariables.TASK_PAYLOAD,
             WorkflowStartVariables.TASK_CREATED_BY,
             WorkflowStartVariables.TASK_ASSIGNEES)) {

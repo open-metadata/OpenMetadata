@@ -18,12 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
@@ -35,14 +32,29 @@ import org.openmetadata.service.Entity;
 
 class ConceptContextMarkdownTest {
   @Test
-  void preservesSynonymsDeclaredUnitsEnumValuesAndTypedRelations() {
+  void preservesSynonymsAndTypedRelations() {
     String markdown = AIContextMarkdown.render(context(concept()));
 
     assertTrue(markdown.contains("**Synonyms:** Revenue, Sales"));
-    assertTrue(markdown.contains("| amount | DECIMAL | cents |"));
-    assertTrue(markdown.contains("Active"));
-    assertTrue(markdown.contains("on\\|hold"));
     assertTrue(markdown.contains("broader → `Business.Finance`"));
+  }
+
+  @Test
+  void rendersWhatDefinesAMetricsNumber() {
+    ConceptContext concept =
+        concept()
+            .withFilters(List.of("fee_category = 'ATM Fee'", " region = 'EU' OR region = 'UK' "))
+            .withGranularity("MONTH")
+            .withUnit("DOLLARS");
+
+    String markdown = AIContextMarkdown.render(context(concept));
+
+    assertTrue(markdown.contains("**Filters (all apply with the definition):**"), markdown);
+    assertTrue(
+        markdown.contains("(fee_category = 'ATM Fee')\nAND (region = 'EU' OR region = 'UK')"),
+        markdown);
+    assertTrue(markdown.contains("**Granularity:** MONTH"), markdown);
+    assertTrue(markdown.contains("**Unit:** DOLLARS"), markdown);
   }
 
   @Test
@@ -100,7 +112,7 @@ class ConceptContextMarkdownTest {
 
     String rendered = markdown.toString();
     assertTrue(rendered.contains("Concept Definition"));
-    assertTrue(rendered.contains("Ontology Attributes"));
+    assertFalse(rendered.contains("Ontology Attributes"));
     assertTrue(rendered.contains("Concept Bindings"));
     assertFalse(rendered.contains("Related Terms"));
     assertFalse(rendered.contains("Bound Profiles"));
@@ -118,18 +130,6 @@ class ConceptContextMarkdownTest {
     return new ConceptContext()
         .withDefinition("An amount stored in cents.")
         .withSynonyms(List.of("Revenue", "Sales"))
-        .withAttributes(
-            List.of(
-                new OntologyAttribute()
-                    .withId(UUID.randomUUID())
-                    .withName("amount")
-                    .withDataType(OntologyAttributeDataType.DECIMAL)
-                    .withUnit("cents"),
-                new OntologyAttribute()
-                    .withId(UUID.randomUUID())
-                    .withName("status")
-                    .withDataType(OntologyAttributeDataType.ENUM)
-                    .withEnumValues(Set.of("Active", "on|hold"))))
         .withRelatedTerms(
             List.of(
                 new TermRelation()

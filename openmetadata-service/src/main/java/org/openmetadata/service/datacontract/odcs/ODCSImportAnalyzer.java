@@ -66,23 +66,35 @@ public final class ODCSImportAnalyzer {
 
   private final ODCSQualityRuleImporter qualityRules;
   private final Function<DataContract, ContractValidation> contractValidator;
+  private final ODCSNativeCustomProperties customProperties;
 
   public ODCSImportAnalyzer(
       ODCSQualityRuleImporter qualityRules,
       Function<DataContract, ContractValidation> contractValidator) {
+    this(
+        qualityRules,
+        contractValidator,
+        new ODCSNativeCustomProperties(name -> false, Function.identity()));
+  }
+
+  public ODCSImportAnalyzer(
+      ODCSQualityRuleImporter qualityRules,
+      Function<DataContract, ContractValidation> contractValidator,
+      ODCSNativeCustomProperties customProperties) {
     this.qualityRules = qualityRules;
     this.contractValidator = contractValidator;
+    this.customProperties = customProperties;
   }
 
   public ContractValidation analyze(Request request) {
     ODCSImportIssues issues = new ODCSImportIssues();
-    JsonNode original = request.document().deepCopy();
-    Optional<ODCSDataContract> odcs =
-        ODCSLenientReader.read(request.mapper(), request.document(), issues);
+    Optional<ODCSImportService.Document> prepared =
+        ODCSImportService.read(request.mapper(), request.document(), issues);
     ContractValidation validation = new ContractValidation().withValid(false);
     List<ODCSRuleOutcome> outcomes = List.of();
     Optional<DataContract> contract =
-        odcs.flatMap(document -> convert(document, original, request, issues));
+        prepared.flatMap(
+            document -> convert(document.contract(), document.original(), request, issues));
     if (contract.isPresent()) {
       try {
         resolveSlaColumn(contract.get(), issues);
@@ -94,13 +106,16 @@ public final class ODCSImportAnalyzer {
     }
     return withReport(
         validation,
-        odcs.map(document -> document.getApiVersion().value()),
+        Optional.ofNullable(request.document())
+            .map(document -> document.get("apiVersion"))
+            .filter(JsonNode::isTextual)
+            .map(JsonNode::asText),
         issues,
         outcomes,
         request);
   }
 
-  private static Optional<DataContract> convert(
+  private Optional<DataContract> convert(
       ODCSDataContract odcs, JsonNode original, Request request, ODCSImportIssues issues) {
     Optional<DataContract> contract = Optional.empty();
     try {
@@ -109,7 +124,10 @@ public final class ODCSImportAnalyzer {
               .orElse(null);
       ODCSFieldCoverage.report(original, importedObject, issues);
       contract =
-          Optional.of(ODCSConverter.fromODCS(odcs, request.entity(), request.objectName(), issues));
+          Optional.of(
+              ODCSConverter.fromODCS(
+                  odcs, request.entity(), request.objectName(), issues, original));
+      customProperties.apply(contract.orElseThrow(), original, issues);
     } catch (IllegalArgumentException e) {
       issues.blocking(ODCSImportIssueCategory.SCHEMA, null, "schema", e.getMessage());
     }

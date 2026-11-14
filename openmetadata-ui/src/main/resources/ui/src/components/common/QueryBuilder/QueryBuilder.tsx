@@ -74,6 +74,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   defaultField,
   subField,
   readonly = false,
+  allowRemoveLastRule = false,
   label,
   showCountPreview = true,
   showExploreLink = true,
@@ -262,6 +263,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
         <QueryBuilderCanvas
           actions={builderProps.actions}
           allowGroups={groupMode === QUERY_BUILDER_GROUP_MODE.NESTED}
+          allowRemoveLastRule={allowRemoveLastRule}
           config={builderProps.config}
           preset={preset}
           readonly={readonly}
@@ -271,7 +273,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
         />
       );
     },
-    [groupMode, preset, readonly, showConjunction, surface]
+    [allowRemoveLastRule, groupMode, preset, readonly, showConjunction, surface]
   );
 
   return (

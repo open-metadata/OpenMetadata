@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Compass03,
+  CustomProperty,
+  DataContract,
+  PlatformLineage,
+  Relations,
+  Schema02,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-vertical-nav-icons/custom-prop.svg';
-import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore-vertical-nav-icons/explore.svg';
-import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-platform-lineage.svg';
-import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-schema.svg';
-import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
-import { ReactComponent as RelationsNavIcon } from '../../../assets/svg/ic_relations.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   hasCustomPropertiesTab,
@@ -57,14 +59,17 @@ const EntityRightPanelVerticalNav: React.FC<
       return [
         {
           key: EntityRightPanelTab.OVERVIEW,
-          icon: <ExploreIcon />,
+          icon: <Compass03 />,
           label: t('label.overview'),
           'data-testid': 'overview-tab',
         },
         {
           key: EntityRightPanelTab.RELATIONS,
           icon: (
-            <RelationsNavIcon className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-quaternary" />
+            <Relations
+              className="tw:shrink-0 tw:text-utility-gray-500"
+              size={18}
+            />
           ),
           label: t('label.relation-plural'),
           'data-testid': 'ontology-relations-tab',
@@ -75,7 +80,7 @@ const EntityRightPanelVerticalNav: React.FC<
     const items = [
       {
         key: EntityRightPanelTab.OVERVIEW,
-        icon: <ExploreIcon />,
+        icon: <Compass03 />,
         label: t('label.overview'),
         'data-testid': 'overview-tab',
       },
@@ -85,7 +90,7 @@ const EntityRightPanelVerticalNav: React.FC<
     if (hasSchemaTab(entityType) && !isColumnDetailPanel) {
       items.push({
         key: EntityRightPanelTab.SCHEMA,
-        icon: <SchemaIcon />,
+        icon: <Schema02 />,
         label: t('label.schema'),
         'data-testid': 'schema-tab',
       });
@@ -94,7 +99,7 @@ const EntityRightPanelVerticalNav: React.FC<
     if (hasLineageTab(entityType) && !isColumnDetailPanel) {
       items.push({
         key: EntityRightPanelTab.LINEAGE,
-        icon: <PlatformLineageIcon />,
+        icon: <PlatformLineage />,
         label: t('label.lineage'),
         'data-testid': 'lineage-tab',
       });
@@ -104,7 +109,7 @@ const EntityRightPanelVerticalNav: React.FC<
     if (entityType === EntityType.TABLE) {
       items.push({
         key: EntityRightPanelTab.DATA_QUALITY,
-        icon: <DataQualityIcon />,
+        icon: <DataContract />,
         label: t('label.data-quality'),
         'data-testid': 'data-quality-tab',
       });
@@ -114,8 +119,8 @@ const EntityRightPanelVerticalNav: React.FC<
     if (shouldShowCustomPropertiesTab(entityType, isColumnDetailPanel)) {
       items.push({
         key: EntityRightPanelTab.CUSTOM_PROPERTIES,
-        icon: <CustomPropertiesIcon />,
-        label: t('label.custom-property'),
+        icon: <CustomProperty />,
+        label: t('label.custom-property-plural'),
         'data-testid': 'custom-properties-tab',
       });
     }
@@ -123,7 +128,7 @@ const EntityRightPanelVerticalNav: React.FC<
     if (appendOntologyRelationsTab) {
       items.push({
         key: EntityRightPanelTab.RELATIONS,
-        icon: <RelationsNavIcon />,
+        icon: <Relations className="tw:text-utility-gray-500" />,
         label: t('label.relation-plural'),
         'data-testid': 'ontology-relations-tab',
       });
@@ -158,9 +163,9 @@ const EntityRightPanelVerticalNav: React.FC<
               id={key}
               key={key}>
               {icon}
-              <span className="tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[11px] tw:leading-[1.2] tw:break-words tw:whitespace-normal">
+              <Typography className="tw:w-[54px] tw:text-center tw:text-[10px] tw:leading-[1.2] tw:break-words">
                 {label}
-              </span>
+              </Typography>
             </Tabs.Item>
           ))}
         </Tabs.List>

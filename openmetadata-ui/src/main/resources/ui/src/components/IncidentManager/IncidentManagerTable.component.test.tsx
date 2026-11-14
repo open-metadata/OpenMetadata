@@ -132,14 +132,6 @@ jest.mock('../common/DateTimeDisplay/DateTimeDisplay', () => {
   return jest.fn().mockImplementation(() => <div>DateTimeDisplay</div>);
 });
 
-jest.mock('../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ placeholderText }: { placeholderText?: string }) => (
-      <div data-testid="filter-table-placeholder">{placeholderText}</div>
-    ));
-});
-
 jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
   return jest.fn().mockImplementation(() => <div>Severity</div>);
 });

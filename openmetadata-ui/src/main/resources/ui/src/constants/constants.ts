@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  CheckCircle02,
+  SuccessfulTests,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { CSSProperties } from 'react';
-import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
-import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -45,6 +47,9 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+// Marks a request whose results must not be narrowed to the selected navbar domain; the
+// domain-filter interceptor reads and removes it before the request is sent.
+export const SKIP_DOMAIN_FILTER_HEADER = 'X-Skip-Domain-Filter';
 export const DOMAIN_ONLY_ACCESS_ROLE = 'DomainOnlyAccessRole';
 export const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -53,10 +58,17 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
-export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
+export const LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
+export const GRID_PAGE_SIZE_BASE = 12;
+export const GRID_PAGE_SIZE_OPTIONS = [GRID_PAGE_SIZE_BASE, 24, 48];
 export const PAGE_SIZE_EXTRA_LARGE = 100;
 export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
@@ -99,7 +111,6 @@ export const COLLATE_SAAS = 'CollateSaaS';
 export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';
 
-export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
@@ -119,7 +130,6 @@ export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
-export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
@@ -212,7 +222,6 @@ export const ROUTES = {
   ENTITY_VERSION_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ENTITY_VERSION_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
-  USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
   USER_PROFILE: `/users/${PLACEHOLDER_ROUTE_FQN}`,
@@ -311,7 +320,6 @@ export const ROUTES = {
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
-  ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
   CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
@@ -328,6 +336,10 @@ export const ROUTES = {
   NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
   NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_ANNOUNCEMENTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}`,
+  SETTINGS_ANNOUNCEMENT_ADD: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/add`,
+  SETTINGS_ANNOUNCEMENT_EDIT: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/edit/${PLACEHOLDER_ROUTE_ID}`,
+  SETTINGS_ANNOUNCEMENT_DUPLICATE: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ANNOUNCEMENTS}/duplicate/${PLACEHOLDER_ROUTE_ID}`,
 
   // Metric Entity
   METRICS: '/metrics',
@@ -341,6 +353,7 @@ export const ROUTES = {
 
   // Settings
   SETTINGS_SSO: '/settings/sso',
+  SETTINGS_DEFAULT_TIME_FORMAT: '/settings/default-time-format',
 };
 
 export const SOCKET_EVENTS = {
@@ -402,6 +415,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  articles: 'page',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
   aiApplications: 'aiApplication',
@@ -413,9 +427,6 @@ export const ENTITY_PATH = {
   teams: 'team',
   users: 'user',
 };
-
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
 
 export const SUPPORTED_FORMAT_MAP = {
   date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],
@@ -468,38 +479,6 @@ export const ENTITY_REFERENCE_OPTIONS = [
   },
 ];
 
-export const VALIDATION_MESSAGES = {
-  required: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  types: {
-    email: i18n.t('message.entity-is-not-valid', {
-      entity: '${label}',
-    }),
-  },
-  whitespace: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  string: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-  },
-  number: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-    min: i18n.t('message.entity-size-less-than', {
-      entity: '${label}',
-      min: '${min}',
-    }),
-  },
-};
-
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
   mutuallyExclusive: 'mutually exclusive',
@@ -531,9 +510,16 @@ export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
 };
 
 export const STATUS_ICON = {
-  success: IconSuccessBadge,
-  failed: IconFailedBadge,
-  completed: IconCompleteBadge,
+  success: CheckCircle02,
+  failed: XCircle,
+  completed: SuccessfulTests,
+};
+
+export const STATUS_ICON_CLASS: Partial<
+  Record<keyof typeof STATUS_ICON, string>
+> = {
+  success: 'tw:text-utility-green-500',
+  failed: 'tw:text-utility-error-600',
 };
 
 export const STATUS_LABEL = {

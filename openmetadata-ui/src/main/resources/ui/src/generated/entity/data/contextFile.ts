@@ -100,6 +100,11 @@ export interface ContextFile {
      */
     name: string;
     /**
+     * Whether this file was processed but its memories were never extracted, so it shows as Not
+     * processed. Computed on read and never stored.
+     */
+    neverExtracted?: boolean;
+    /**
      * Owners of this file.
      */
     owners?: EntityReference[];

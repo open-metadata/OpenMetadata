@@ -92,6 +92,7 @@ jest.mock('./EntityDataBreadcrumbUtils', () => ({
 jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
+  getSafeHttpUrl: jest.requireActual('./StringUtils').getSafeHttpUrl,
 }));
 
 jest.mock('./TablePureUtils', () => ({
@@ -208,6 +209,25 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
     expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
+  });
+
+  it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      {
+        ...MOCK_TABLE,
+        lifeCycle: { created: { timestamp: -62135596800000 } },
+      },
+      'Redshift',
+      []
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'formatted--62135596800000'
+    );
   });
 
   // Test for Topic entity
@@ -414,6 +434,28 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       'getUsagePercentile'
     );
   });
+
+  it.each([
+    ['http://my-server.ai', 'http://my-server.ai'],
+    ['javascript:alert(document.cookie)', null],
+    ['s3://models/forecast', null],
+  ])(
+    'should link the MlModel server %s only when it is an http(s) URL',
+    (server, expectedHref) => {
+      const { extraInfo } = getDataAssetsHeaderInfo(
+        EntityType.MLMODEL,
+        { ...mockMlModelDetails, server, dashboard: undefined },
+        'forecast_sales',
+        []
+      );
+      const { container, getByText } = render(<>{extraInfo}</>);
+
+      expect(getByText(server)).toBeInTheDocument();
+      expect(container.querySelector('a')?.getAttribute('href') ?? null).toBe(
+        expectedHref
+      );
+    }
+  );
 
   // Test for Container entity
   it('Function getDataAssetsHeaderInfo should return data for Container entity', () => {

@@ -1,0 +1,142 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: PR Auto Assign
+
+# Gives every PR exactly one assignee who owns getting it merged
+# (ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner).
+#   * Author has write access -> the author.
+#   * Otherwise (external contributors cannot be assigned) -> an owner of the CODEOWNERS
+#     rule covering the most changed lines. Team owners can't be assigned either, so they
+#     resolve through .github/teams.yml, rotated by PR number to spread the load.
+# A PR that already has an assignee is left alone. Only metadata is read through the API
+# (CODEOWNERS/teams.yml from the base commit, no checkout), so pull_request_target is safe.
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  assign:
+    name: Assign PR owner
+    if: ${{ github.event.pull_request.assignees[0] == null }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign author or code owner
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+
+            async function canPush(username) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({ owner, repo, username });
+                return ['admin', 'write'].includes(data.permission);
+              } catch (error) {
+                return false;
+              }
+            }
+
+            async function assign(username) {
+              await github.rest.issues.addAssignees({ owner, repo, issue_number: pr.number, assignees: [username] });
+              core.info(`Assigned #${pr.number} to ${username}`);
+            }
+
+            if (await canPush(author)) {
+              return assign(author);
+            }
+
+            async function readBaseFile(path) {
+              const { data } = await github.rest.repos.getContent({ owner, repo, path, ref: pr.base.sha });
+              return Buffer.from(data.content, 'base64').toString();
+            }
+
+            // gitignore-style: a slash anywhere but the end anchors to the repo root; a match
+            // on a directory covers everything below it.
+            function toRegex(pattern) {
+              const anchored = pattern.replace(/\/$/, '').includes('/');
+              const body = pattern
+                .replace(/^\//, '')
+                .replace(/\/$/, '')
+                .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+                .replace(/\*\*\//g, '\u0000')
+                .replace(/\*\*/g, '.*')
+                .replace(/\*/g, '[^/]*')
+                .replace(/\?/g, '[^/]')
+                .replace(/\u0000/g, '(?:.*/)?');
+              return new RegExp(`${anchored ? '^' : '(?:^|/)'}${body}(?:/|$)`);
+            }
+
+            const rules = (await readBaseFile('.github/CODEOWNERS'))
+              .split('\n')
+              .map((line) => line.trim())
+              .filter((line) => line && !line.startsWith('#'))
+              .map((line) => {
+                const [pattern, ...owners] = line.split(/\s+/);
+                return { regex: toRegex(pattern), owners };
+              });
+
+            // Last matching rule wins, as in GitHub's own CODEOWNERS resolution.
+            const ownersOf = (path) => rules.findLast((rule) => rule.regex.test(path))?.owners ?? [];
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const weights = new Map();
+            for (const file of files) {
+              const owners = ownersOf(file.filename);
+              if (owners.length) {
+                const key = owners.join(' ');
+                weights.set(key, (weights.get(key) ?? 0) + (file.changes || 1));
+              }
+            }
+            if (!weights.size) {
+              return core.info('No CODEOWNERS rule covers the changed files; leaving unassigned.');
+            }
+            const topOwners = [...weights].sort((a, b) => b[1] - a[1])[0][0].split(' ');
+
+            const teams = {};
+            let currentTeam;
+            for (const line of (await readBaseFile('.github/teams.yml')).split('\n')) {
+              const team = line.match(/^["']?([^"'#:]+)["']?:\s*$/);
+              const member = line.match(/^\s+-\s*["']?@([^"'\s]+)/);
+              if (team) {
+                currentTeam = teams[team[1].toLowerCase()] = [];
+              } else if (member && currentTeam) {
+                currentTeam.push(member[1]);
+              }
+            }
+
+            const candidates = [
+              ...new Set(
+                topOwners.flatMap((handle) => {
+                  const name = handle.replace(/^@/, '');
+                  return name.includes('/') ? (teams[name.split('/')[1].toLowerCase()] ?? []) : [name];
+                })
+              ),
+            ].filter((name) => name !== author);
+
+            for (let i = 0; i < candidates.length; i++) {
+              const candidate = candidates[(pr.number + i) % candidates.length];
+              if (await canPush(candidate)) {
+                return assign(candidate);
+              }
+            }
+            core.info(`No assignable owner among ${topOwners.join(', ')}; leaving unassigned.`);

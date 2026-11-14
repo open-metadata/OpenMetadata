@@ -10,24 +10,68 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
+import { getUserByName } from '../../../rest/userAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import MemoriesView from './MemoriesView.component';
+
+const DISPLAY_NAMES: Record<string, string> = {
+  alice: 'Alice Smith',
+  MemoryReconciliationApplicationBot: 'Memory Reconciliation Agent',
+  tomas: 'Tomas Montiel',
+};
+
+const profileOf = (name: string): User => ({
+  id: name,
+  name,
+  displayName: DISPLAY_NAMES[name],
+  email: '',
+});
+
+jest.mock('../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({
+    // Echoes the count, the Query or the user, so a test can tell which one a label shows.
+    t: (
+      key: string,
+      options?: { count?: number; query?: string; user?: string }
+    ) => {
+      if (options?.count !== undefined) {
+        return `${key}:${options.count}`;
+      }
+      if (options?.query !== undefined) {
+        return `${key}:${options.query}`;
+      }
+
+      return options?.user === undefined ? key : `${key} ${options.user}`;
+    },
+    i18n: { language: 'en-US' },
+  }),
+}));
 
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
 );
 
+jest.mock('../../../rest/contextMemoryAPI', () => ({
+  getContextMemoryVersions: jest.fn(),
+}));
+
 jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
   jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
 );
-
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: jest.fn(() => <svg />),
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -87,9 +131,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
-  Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
+  Typography: jest.fn(
+    ({
+      children,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <span data-testid={testId}>{children}</span>
+  ),
+}));
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  ThumbsDown: jest.fn(() => <svg />),
+  ThumbsUp: jest.fn(() => <svg />),
 }));
 
 const mockMemories: ContextMemory[] = [
@@ -111,21 +167,257 @@ const mockMemories: ContextMemory[] = [
 ];
 
 describe('MemoriesView', () => {
+  beforeEach(() => {
+    useApplicationStore.setState({ userProfilePics: {} });
+    (getUserByName as jest.Mock).mockImplementation(async (name: string) =>
+      profileOf(name)
+    );
+  });
+
+  it.each([
+    ['alice', 'Alice Smith'],
+    ['MemoryReconciliationApplicationBot', 'Memory Reconciliation Agent'],
+  ])('shows the display name of author %s', async (name, displayName) => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[{ ...mockMemories[0], updatedBy: name }]}
+        isLoading={false}
+      />
+    );
+
+    expect(await screen.findByText(displayName)).toBeInTheDocument();
+    expect(screen.queryByText(name)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Reconciliation edits a memory as its app bot: the card still leads with the owner. The avatar
+   * loads only the owner, so the card must load the bot's profile itself.
+   */
+  it('names the owner first and whoever changed the memory last second', async () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'tomas-id',
+                type: 'user',
+                name: 'tomas',
+                displayName: 'Tomas Montiel',
+              },
+            ],
+            updatedBy: 'MemoryReconciliationApplicationBot',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-owner')).toHaveTextContent(
+      'Tomas Montiel'
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
+        'label.updated-by-user-time-ago Memory Reconciliation Agent'
+      )
+    );
+
+    expect(getUserByName).toHaveBeenCalledWith(
+      'MemoryReconciliationApplicationBot',
+      expect.anything()
+    );
+  });
+
+  it('names the last editor as is when their profile cannot be read', async () => {
+    (getUserByName as jest.Mock).mockRejectedValue({
+      response: { status: 403 },
+    });
+
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'tomas-id',
+                type: 'user',
+                name: 'tomas',
+                displayName: 'Tomas Montiel',
+              },
+            ],
+            updatedBy: 'MemoryReconciliationApplicationBot',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    await waitFor(() =>
+      expect(
+        useApplicationStore.getState().userProfilePics
+          .MemoryReconciliationApplicationBot
+      ).toBeDefined()
+    );
+
+    expect(screen.getByTestId('memory-updated-by')).toHaveTextContent(
+      'label.updated-by-user-time-ago MemoryReconciliationApplicationBot'
+    );
+  });
+
+  it('shows a team owner with a team avatar', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'team-id',
+                type: 'team',
+                name: 'finance',
+                displayName: 'Finance',
+              },
+            ],
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(ProfilePicture).toHaveBeenCalledWith(
+      expect.objectContaining({ isTeam: true, name: 'finance' }),
+      expect.anything()
+    );
+  });
+
+  it('shows no updated-by when the owner changed the memory last', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            owners: [
+              {
+                id: 'alice-id',
+                type: 'user',
+                name: 'alice',
+                displayName: 'Alice Smith',
+              },
+            ],
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-owner')).toHaveTextContent('Alice Smith');
+    expect(screen.queryByTestId('memory-updated-by')).not.toBeInTheDocument();
+  });
+
+  it('shows the raw author name until the profile is loaded', async () => {
+    let resolveProfile: (user: User) => void = jest.fn();
+    (getUserByName as jest.Mock).mockReturnValue(
+      new Promise<User>((resolve) => {
+        resolveProfile = resolve;
+      })
+    );
+
+    renderWithQueryClient(
+      <MemoriesView data={[mockMemories[0]]} isLoading={false} />
+    );
+
+    expect(screen.getByText('alice')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveProfile(profileOf('alice'));
+    });
+
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.queryByText('alice')).not.toBeInTheDocument();
+  });
+
+  it.each([undefined, ''])(
+    'falls back to the author name when the display name is %s',
+    async (displayName) => {
+      (getUserByName as jest.Mock).mockImplementation(async (name: string) => ({
+        id: name,
+        name,
+        displayName,
+        email: '',
+      }));
+
+      renderWithQueryClient(
+        <MemoriesView data={[mockMemories[0]]} isLoading={false} />
+      );
+
+      await waitFor(() =>
+        expect(
+          useApplicationStore.getState().userProfilePics.alice
+        ).toBeDefined()
+      );
+
+      expect(screen.getByText('alice')).toBeInTheDocument();
+    }
+  );
+
+  // A memory held for a deleted Query names it where the memory's history shows the viewer its name.
+  it('names the deleted Query a listed memory is held for', async () => {
+    (getContextMemoryVersions as jest.Mock).mockResolvedValue({
+      entityType: 'contextMemory',
+      versions: [
+        JSON.stringify({
+          relatedEntities: [
+            { id: 'query-id', type: 'query', displayName: 'Monthly expenses' },
+          ],
+        }),
+      ],
+    });
+
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            entityStatus: ContextMemoryStatus.Draft,
+            statusReason:
+              'Supporting query query-id was deleted; review whether this memory still holds without it',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(
+      await screen.findByText(
+        'label.reason: message.memory-supporting-query-deleted:Monthly expenses'
+      )
+    ).toBeInTheDocument();
+  });
+
   it('renders the memories view container', () => {
-    render(<MemoriesView data={mockMemories} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={mockMemories} isLoading={false} />
+    );
 
     expect(screen.getByTestId('memory-row-mem-1')).toBeInTheDocument();
   });
 
   it('renders a row for each memory when data is provided', () => {
-    render(<MemoriesView data={mockMemories} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={mockMemories} isLoading={false} />
+    );
 
     expect(screen.getByTestId('memory-row-mem-1')).toBeInTheDocument();
     expect(screen.getByTestId('memory-row-mem-2')).toBeInTheDocument();
   });
 
   it('renders title when provided, falling back to name', () => {
-    render(<MemoriesView data={mockMemories} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={mockMemories} isLoading={false} />
+    );
 
     expect(screen.getByText('My First Memory')).toBeInTheDocument();
     // mem-2 has no title, falls back to name
@@ -133,7 +425,9 @@ describe('MemoriesView', () => {
   });
 
   it('renders the answer text', () => {
-    render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView data={[mockMemories[0]]} isLoading={false} />
+    );
 
     expect(
       screen.getByText('A unified metadata platform.')
@@ -146,7 +440,7 @@ describe('MemoriesView', () => {
     [ContextMemoryStatus.Superseded, 'label.superseded'],
     [ContextMemoryStatus.Invalidated, 'label.invalidated'],
   ])('shows the %s memory status and its reason', (status, label) => {
-    render(
+    renderWithQueryClient(
       <MemoriesView
         data={[
           {
@@ -166,7 +460,9 @@ describe('MemoriesView', () => {
   });
 
   it('renders filter empty placeholder when filtered and data is empty', () => {
-    render(<MemoriesView isFiltered data={[]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView isFiltered data={[]} isLoading={false} />
+    );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
@@ -175,16 +471,166 @@ describe('MemoriesView', () => {
   });
 
   it('renders search empty placeholder when searching and data is empty', () => {
-    render(<MemoriesView isSearching data={[]} isLoading={false} />);
+    renderWithQueryClient(
+      <MemoriesView isSearching data={[]} isLoading={false} />
+    );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(screen.getByText('label.no-matching-results')).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {
-    render(<MemoriesView isLoading data={[]} />);
+    renderWithQueryClient(<MemoriesView isLoading data={[]} />);
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('shows the votes and corrections of a memory whose outcomes are counted', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              positiveCount: 3,
+              negativeCount: 1,
+              correctedCount: 2,
+              countedAt: 1778756959299,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:12'
+    );
+    expect(screen.getByTestId('memory-helpful-count')).toHaveTextContent('3');
+    expect(screen.getByTestId('memory-unhelpful-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('memory-corrected-count')).toHaveTextContent(
+      'label.corrected-n-times:2'
+    );
+  });
+
+  it('names each vote count for screen readers, not just its icon and number', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              positiveCount: 3,
+              negativeCount: 1,
+              countedAt: 1778756959299,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText('label.helpful-vote-count:3')).toHaveClass(
+      'tw:sr-only'
+    );
+    expect(screen.getByText('label.unhelpful-vote-count:1')).toHaveClass(
+      'tw:sr-only'
+    );
+    expect(screen.getByText('3')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('1')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('shows no vote or correction count that is zero', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: { appliedCount: 4, countedAt: 1778756959299 },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-helpful-count')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-unhelpful-count')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-corrected-count')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the legacy usage of a memory whose outcomes are not counted yet', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[{ ...mockMemories[0], usageCount: 5 }]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:5'
+    );
+  });
+
+  it('shows the legacy usage of a search-listed memory never counted', () => {
+    // A search hit carries the indexed usage and, until a recount, no outcomes.
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            usageCount: 37,
+            lastUsedAt: 1778756959299,
+            entityStatus: ContextMemoryStatus.Approved,
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:37'
+    );
+  });
+
+  it('shows the legacy usage when no recount stamped the outcomes', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            usageCount: 37,
+            outcomes: {
+              appliedCount: 0,
+              positiveCount: 0,
+              negativeCount: 0,
+              correctedCount: 0,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:37'
+    );
+  });
+
+  it('shows no usage for a memory never cited', () => {
+    renderWithQueryClient(
+      <MemoriesView data={[mockMemories[1]]} isLoading={false} />
+    );
+
+    expect(screen.queryByTestId('memory-usage-info')).not.toBeInTheDocument();
   });
 });

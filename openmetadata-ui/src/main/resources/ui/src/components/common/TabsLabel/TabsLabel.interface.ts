@@ -22,7 +22,7 @@ export interface TabProps {
 }
 
 export interface TabsLabelProps {
-  name: string;
+  name: React.ReactNode;
   id: string;
   count?: number;
   isActive?: boolean;

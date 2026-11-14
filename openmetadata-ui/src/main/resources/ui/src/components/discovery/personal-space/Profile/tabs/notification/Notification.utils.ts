@@ -16,6 +16,7 @@ import type { UIPermission } from '../../../../../../context/PermissionProvider/
 import type { NotificationSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import type { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import type {
   NotificationIcon,
   NotificationLandingCard,
@@ -111,11 +112,16 @@ export function hashSubPathToView(subPath: string): NotificationView {
       return { type: 'add' };
     }
 
+    // Alert FQNs are URL-encoded in the hash; decode them once here.
     if (parts[1] === 'edit' && parts[2]) {
-      return { type: 'edit', fqn: parts.slice(2).join('/') };
+      return {
+        type: 'edit',
+        fqn: safeDecodeURIComponent(parts.slice(2).join('/')),
+      };
     }
+    const fqn = safeDecodeURIComponent(parts.slice(1).join('/'));
 
-    return { type: 'detail', fqn: parts.slice(1).join('/'), name: parts[1] };
+    return { type: 'detail', fqn, name: fqn };
   }
 
   return { type: 'landing' };
@@ -130,9 +136,9 @@ export function viewToSubPath(view: NotificationView): string | undefined {
     case 'add':
       return 'alerts/add';
     case 'edit':
-      return `alerts/edit/${view.fqn}`;
+      return `alerts/edit/${encodeURIComponent(view.fqn)}`;
     case 'detail':
-      return `alerts/${view.fqn}`;
+      return `alerts/${encodeURIComponent(view.fqn)}`;
     case 'section':
       return `section/${[view.key, view.subPath].filter(Boolean).join('/')}`;
     default:

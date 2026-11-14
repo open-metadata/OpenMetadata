@@ -13,18 +13,18 @@
 import {
   Alert,
   Button,
+  ButtonUtility,
   Dialog,
   Input,
   Modal,
   ModalOverlay,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Duration } from 'luxon';
 import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
@@ -114,16 +114,13 @@ const RetentionPeriod = ({
               {t('label.retention-period')}
             </span>
             {hasPermission && (
-              <Tooltip title={editTitle}>
-                <Button
-                  aria-label={editTitle}
-                  className="tw:size-5 tw:rounded-sm tw:p-0 tw:text-quaternary tw:shadow-none tw:after:outline-secondary tw:data-icon-only:p-0"
-                  color="secondary"
-                  data-testid="edit-retention-period-button"
-                  iconLeading={<EditIcon aria-hidden width="12px" />}
-                  onPress={onEdit}
-                />
-              </Tooltip>
+              <ButtonUtility
+                data-testid="edit-retention-period-button"
+                icon={Edit01}
+                size="sm"
+                tooltip={editTitle}
+                onClick={onEdit}
+              />
             )}
           </div>
 
@@ -156,14 +153,7 @@ const RetentionPeriod = ({
               id="retention-period-form"
               onSubmit={handleSubmit}>
               <Dialog.Content className="tw:gap-3 tw:px-6 tw:pt-6 tw:pb-12 tw:sm:px-6">
-                <Alert
-                  className={classNames(
-                    'tw:rounded-xs tw:border-[var(--ant-info-color-deprecated-border)]',
-                    'tw:bg-[var(--ant-info-color-deprecated-bg)] tw:p-[15px]',
-                    'tw:dark:border-utility-blue-300 tw:dark:bg-utility-blue-50'
-                  )}
-                  showIcon={false}
-                  variant="brand">
+                <Alert showIcon={false} variant="brand">
                   <span className="tw:leading-[22px] tw:text-primary">
                     {t('message.retention-period-description')}
                   </span>
@@ -177,7 +167,7 @@ const RetentionPeriod = ({
               </Dialog.Content>
               <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
                 <Button
-                  className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+                  className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--theme-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--theme-primary-color-hover)]"
                   color="tertiary"
                   data-testid="cancel-button"
                   onPress={onCancel}>

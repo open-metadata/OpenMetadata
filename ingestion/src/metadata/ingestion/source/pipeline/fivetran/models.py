@@ -10,6 +10,8 @@
 #  limitations under the License.
 from pydantic import BaseModel
 
+from metadata.ingestion.source.pipeline.fivetran.fivetran_log import DEFAULT_LOG_SCHEMA
+
 
 class FivetranPipelineDetails(BaseModel):
     """
@@ -20,6 +22,7 @@ class FivetranPipelineDetails(BaseModel):
     destination: dict
     group: dict
     connector_id: str
+    log_schema: str = DEFAULT_LOG_SCHEMA
 
     @property
     def pipeline_name(self) -> str:

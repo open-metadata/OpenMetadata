@@ -12,22 +12,23 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { StatusType } from '../../../components/common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../components/common/StatusBadge/StatusBadgeV2.component';
 import TableV2 from '../../../components/common/Table/TableV2';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import {
@@ -35,6 +36,7 @@ import {
   WorkflowStatus,
 } from '../../../generated/governance/workflows/workflowInstance';
 import { Paging } from '../../../generated/type/paging';
+import { usePageSizeState } from '../../../hooks/paging/usePageSizeState';
 import { useFqn } from '../../../hooks/useFqn';
 import { getWorkflowInstancesByFQN } from '../../../rest/workflowDefinitionsAPI';
 import {
@@ -44,18 +46,27 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { shouldShowPager } from '../../../utils/PaginationUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
-export const WorkflowExecutionHistory: React.FC = () => {
+interface WorkflowExecutionHistoryProps {
+  /** The workflow whose runs are listed; the route's workflow when unset. */
+  workflowFqn?: string;
+}
+
+export const WorkflowExecutionHistory: React.FC<
+  WorkflowExecutionHistoryProps
+> = ({ workflowFqn: workflowFqnProp }) => {
   const { t } = useTranslation();
-  const { fqn: workflowFqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const workflowFqn = workflowFqnProp ?? routeFqn;
   const [instances, setInstances] = useState<WorkflowInstance[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<AxiosError>();
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize] = usePageSizeState();
   const statusMapping = useMemo(() => getStatusMapping(t), [t]);
 
   const getStatusInfo = useCallback(
@@ -188,6 +199,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
 
       try {
         setLoading(true);
+        setLoadError(undefined);
         const response = await getWorkflowInstancesByFQN(workflowFqn, {
           limit: pageSize,
           ...(offsetCursor ? { offset: offsetCursor } : {}),
@@ -195,7 +207,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
         setInstances(response.data ?? []);
         setPaging(response.paging);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        setLoadError(error as AxiosError);
         setInstances([]);
       } finally {
         setLoading(false);
@@ -221,12 +233,40 @@ export const WorkflowExecutionHistory: React.FC = () => {
 
   const isEmpty = !loading && instances.length === 0;
 
+  if (loadError && !loading) {
+    return (
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        {loadError.response?.status === ClientErrors.FORBIDDEN ? (
+          <PermissionPlaceholder
+            permissionValue={t('label.view-entity', {
+              entity: t('label.execution-history'),
+            })}
+          />
+        ) : (
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.execution-history'),
+            })}
+            onReload={() => {
+              // The retry reads the first page, so the pager must show page 1.
+              setCurrentPage(1);
+              void fetchExecutionHistory();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
   if (!workflowFqn || isEmpty) {
     return (
       <div
         className="tw:relative tw:flex-1 tw:min-h-0"
         data-testid="workflow-execution-history-empty">
-        <NoDataPlaceholder />
+        <NoDataPlaceholder
+          description={t('message.no-runs-recorded-yet')}
+          icon={<ClockRewind className="tw:text-secondary" />}
+        />
       </div>
     );
   }
@@ -253,7 +293,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
           tableLayout="auto"
         />
       </div>
-      {paging.total > pageSize && (
+      {shouldShowPager(instances) && (
         <div className="tw:shrink-0">
           <NextPrevious
             currentPage={currentPage}

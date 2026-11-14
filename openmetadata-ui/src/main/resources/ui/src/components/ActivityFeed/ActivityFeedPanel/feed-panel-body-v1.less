@@ -16,9 +16,11 @@
 .activity-feed-card-new {
   border-radius: var(--om-radius-xl);
   background: var(--tw-color-bg-surface);
+  // Clamped descriptions in feed cards sit on the surface card, not the page;
+  // fade into that, or the fade shows as a dark band in dark mode.
+  --markdown-clamp-fade-color: var(--tw-background-color-surface);
   display: flex;
   flex-direction: column;
-  flex-wrap: wrap;
   width: inherit;
 
   &.activity-feed-card-new-surface {
@@ -35,7 +37,6 @@
   }
   .header-link {
     word-wrap: break-word;
-    white-space: normal;
     font-weight: var(--om-font-weight-semibold);
   }
 
@@ -83,18 +84,6 @@
   margin: var(--om-space-20) 0 0 0;
   background: var(--tw-color-bg-surface);
   border: 1px solid var(--tw-color-border-subtle);
-  input.ant-input,
-  textarea.ant-input {
-    border-radius: var(--om-radius-20);
-    background-color: @grey-16;
-    border: 1px solid @grey-15;
-
-    // @grey-16 is a fixed hex: a white pill in dark.
-    .dark-mode & {
-      background-color: var(--om-color-bg-surface);
-      color: var(--om-color-text-primary);
-    }
-  }
 }
 
 .activity-feed-reply-button {
@@ -120,10 +109,5 @@
     font-style: normal;
     font-weight: var(--om-font-weight-regular);
     line-height: normal;
-  }
-  input.ant-input,
-  textarea.ant-input {
-    border-radius: var(--om-radius-20);
-    background-color: @grey-16;
   }
 }

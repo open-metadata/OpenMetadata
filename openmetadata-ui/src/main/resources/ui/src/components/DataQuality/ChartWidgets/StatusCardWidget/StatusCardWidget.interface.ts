@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { IconProps } from '@openmetadata/ui-core-components/icons';
+import { FC } from 'react';
 import { LinkProps } from 'react-router-dom';
 
 export type StatusData = {
@@ -22,7 +24,7 @@ export type StatusData = {
 
 export interface StatusCardWidgetProps {
   statusData: StatusData;
-  icon: SvgComponent;
+  icon: FC<IconProps>;
   redirectPath?: LinkProps['to'];
   isLoading?: boolean;
 }

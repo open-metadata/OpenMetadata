@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle02,
+  ChevronDown,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import type { Column, RenderCellProps } from 'react-data-grid';
-import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
-import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import {
   BulkActionOperation,
@@ -315,6 +317,11 @@ const METRIC_CSV_VALUE_BY_COLUMN = new Map<
   ],
   ['entityStatus', (metric: Metric) => metric.entityStatus],
   ['extension', (metric: Metric) => formatMetricExtension(metric.extension)],
+  // Bulk edit posts every column back, so a column missing here is sent empty and the import
+  // clears it — that is how a description-only edit detached metrics from parent and group.
+  ['parent', (metric: Metric) => metric.parent?.fullyQualifiedName],
+  ['experts', (metric: Metric) => joinEntityReferences(metric.experts)],
+  ['metricGroup', (metric: Metric) => metric.metricGroup?.fullyQualifiedName],
 ]);
 
 const getMetricCsvValue = (metric: Metric, columnName: string) => {
@@ -365,18 +372,16 @@ export const isMetricBulkEditHiddenColumn = (
 
 const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
-    <FailBadgeIcon
-      className="m-t-xss"
+    <XCircle
+      className="m-t-xss tw:text-utility-error-600"
       data-testid="failure-badge"
-      height={16}
-      width={16}
+      size={16}
     />
   ) : (
-    <SuccessBadgeIcon
-      className="m-t-xss"
+    <CheckCircle02
+      className="m-t-xss tw:text-utility-green-500"
       data-testid="success-badge"
-      height={16}
-      width={16}
+      size={16}
     />
   );
 };
@@ -674,7 +679,8 @@ export const getMetricColumnsAndDataSourceFromMetrics = (
     team: boolean;
   },
   cellEditable: boolean,
-  isBulkEdit: boolean
+  isBulkEdit: boolean,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
 ) => ({
   columns: headers.map((header) =>
     getColumnConfig(
@@ -682,7 +688,9 @@ export const getMetricColumnsAndDataSourceFromMetrics = (
       EntityType.METRIC,
       multipleOwner,
       cellEditable,
-      isBulkEdit
+      isBulkEdit,
+      isBulkEdit,
+      onEditCellHeightChange
     )
   ),
   dataSource: getMetricCsvRowsFromMetrics(metrics, headers),

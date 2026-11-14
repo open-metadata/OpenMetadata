@@ -11,24 +11,29 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
 import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Toggle,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsGrid } from '@openmetadata/ui-core-components/icons';
+import {
+  DotsGrid,
+  RefreshCw01,
+  Save,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -55,8 +60,8 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import '../SettingsNavigationPage/settings-navigation-page.less';
 import {
   getSidebarHiddenKeys,
   getSidebarNavigationItems,
@@ -174,7 +179,7 @@ const CustomizeAppModeSidebarPage = () => {
     }
 
     const timer = setTimeout(
-      () => navigate(getPersonaDetailsPath(personaFqn)),
+      () => navigate(getSettingsLink(getPersonaDetailsPath(personaFqn))),
       100
     );
 
@@ -243,7 +248,7 @@ const CustomizeAppModeSidebarPage = () => {
   }, [items]);
 
   const handleCancel = useCallback(() => {
-    navigate(getPersonaDetailsPath(personaFqn));
+    navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
   }, [navigate, personaFqn]);
 
   const handleVisibilityToggle = useCallback(
@@ -297,8 +302,9 @@ const CustomizeAppModeSidebarPage = () => {
             <Box align="center" direction="row" gap={2}>
               <DotsGrid
                 aria-hidden
-                className="tw:size-4 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
+                className="tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
                 data-testid="ask-sidebar-drag-handle"
+                size={16}
               />
               {Icon && (
                 <Icon className="tw:text-fg-tertiary" height={20} width={20} />
@@ -324,7 +330,11 @@ const CustomizeAppModeSidebarPage = () => {
   }
 
   if (!hasPersona) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -360,7 +370,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="secondary"
                     data-testid="reset-button"
-                    iconLeading={<RedoOutlined />}
+                    iconLeading={RefreshCw01}
                     isDisabled={isSaving}
                     onPress={handleReset}>
                     {t('label.reset')}
@@ -368,19 +378,19 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="primary"
                     data-testid="save-button"
-                    iconLeading={<SaveOutlined />}
+                    iconLeading={Save}
                     isDisabled={disableSave}
                     isLoading={isSaving}
                     onPress={handleSave}>
                     {t('label.save')}
                   </Button>
-                  <Button
-                    aria-label={t('label.cancel')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid="cancel-button"
-                    iconLeading={<CloseOutlined />}
+                    icon={XClose}
                     isDisabled={isSaving}
-                    onPress={handleCancel}
+                    size="lg"
+                    tooltip={t('label.cancel')}
+                    onClick={handleCancel}
                   />
                 </Box>
               </Box>

@@ -15,26 +15,17 @@ import {
   SourceKind,
 } from '../../generated/events/api/alertCapabilities';
 import {
+  getAlertSourceChanges,
   getSelectionSupport,
   getSourceKindLabel,
   getSourceOptions,
   groupSourcesByKind,
-  SourceOfTheCatalog,
+  shouldShowRuleSection,
 } from './AlertSelectionUtil';
 
 jest.mock('../EntityNameUtils', () => ({
   getEntityNameLabel: jest.fn().mockImplementation((name: string) => name),
 }));
-
-const CATALOG = [
-  {
-    name: 'table',
-    containerEntities: ['databaseService'],
-    supportedFilters: [{ name: 'filterByOwner' }, { name: 'filterByFqn' }],
-    supportedActions: [{ name: 'GetTableSchemaChanges' }],
-  },
-  { name: 'topic', supportedFilters: [{ name: 'filterByOwner' }] },
-] as SourceOfTheCatalog[];
 
 const TABLE_AND_TOPIC = {
   alertType: 'Observability',
@@ -70,24 +61,45 @@ const TABLE_AND_TOPIC = {
 } as unknown as AlertCapabilities;
 
 describe('getSelectionSupport', () => {
-  it('answers from the catalog until the server has answered', () => {
-    const support = getSelectionSupport(CATALOG, ['table']);
+  it('knows nothing about the selected sources until the server has answered', () => {
+    expect(getSelectionSupport(['table'])).toEqual({});
+  });
 
-    expect(support.supportedFilters).toEqual(CATALOG[0].supportedFilters);
-    expect(support.supportedTriggers).toEqual(CATALOG[0].supportedActions);
-    expect(support.containerEntities).toEqual(['databaseService']);
+  // An answer for an empty form usually arrives before a saved alert has loaded.
+  it('never takes the answer for no sources as the answer for the selected ones', () => {
+    expect(getSelectionSupport(['table'], TABLE_AND_TOPIC, [])).toEqual({});
+  });
+
+  // The save may reject what the answer for other sources lists, so none of it is offered.
+  it('keeps the sections of the answer for another selection, but offers none of its rules', () => {
+    const support = getSelectionSupport(['table'], TABLE_AND_TOPIC, [
+      'table',
+      'topic',
+    ]);
+
+    expect(support).toEqual({ hasFilters: true, hasTriggers: true });
+  });
+
+  it('takes an answer for the same sources in another order as the answer for them', () => {
+    const support = getSelectionSupport(['topic', 'table'], TABLE_AND_TOPIC, [
+      'table',
+      'topic',
+    ]);
+
+    expect(support.supportedFilters).toEqual([{ name: 'filterByOwner' }]);
   });
 
   it('answers nothing selected with nothing', () => {
-    expect(getSelectionSupport(CATALOG, []).supportedFilters).toBeUndefined();
+    expect(
+      getSelectionSupport([], TABLE_AND_TOPIC, []).supportedFilters
+    ).toBeUndefined();
   });
 
   it('answers from what the server said, and labels triggers when there are several sources', () => {
-    const support = getSelectionSupport(
-      CATALOG,
-      ['table', 'topic'],
-      TABLE_AND_TOPIC
-    );
+    const support = getSelectionSupport(['table', 'topic'], TABLE_AND_TOPIC, [
+      'table',
+      'topic',
+    ]);
 
     expect(support.supportedFilters).toEqual([{ name: 'filterByOwner' }]);
     expect(support.supportedTriggers?.[0].displayName).toBe(
@@ -101,7 +113,7 @@ describe('getSelectionSupport', () => {
   });
 
   it('does not label triggers for one source', () => {
-    const support = getSelectionSupport(CATALOG, ['table'], TABLE_AND_TOPIC);
+    const support = getSelectionSupport(['table'], TABLE_AND_TOPIC, ['table']);
 
     expect(support.supportedTriggers?.[0].displayName).toBe('Schema changed');
   });
@@ -113,39 +125,73 @@ describe('getSelectionSupport', () => {
       recipientCategories: ['Owners', 'Followers'],
     } as AlertCapabilities;
 
+    expect(getSelectionSupport([], offered, []).recipientCategories).toEqual([
+      'Owners',
+      'Followers',
+    ]);
     expect(
-      getSelectionSupport(CATALOG, [], offered).recipientCategories
+      getSelectionSupport(['table'], offered, ['table']).recipientCategories
     ).toEqual(['Owners', 'Followers']);
-    expect(
-      getSelectionSupport(CATALOG, ['table'], offered).recipientCategories
-    ).toEqual(['Owners', 'Followers']);
-    expect(
-      getSelectionSupport(CATALOG, ['table']).recipientCategories
-    ).toBeUndefined();
+    expect(getSelectionSupport(['table']).recipientCategories).toBeUndefined();
+  });
+});
+
+describe('shouldShowRuleSection', () => {
+  it('shows an empty section while no source is chosen', () => {
+    expect(shouldShowRuleSection([], undefined, [])).toBe(true);
+  });
+
+  it('follows what the sources support once the server has said it', () => {
+    expect(shouldShowRuleSection(['table'], true, [])).toBe(true);
+    expect(shouldShowRuleSection(['table'], false, [{ name: 'f' }])).toBe(
+      false
+    );
+  });
+
+  it('keeps the rules an alert holds while what its sources support is unknown', () => {
+    expect(shouldShowRuleSection(['table'], undefined, [{ name: 'f' }])).toBe(
+      true
+    );
+    expect(shouldShowRuleSection(['table'], undefined, [])).toBe(false);
   });
 });
 
 describe('getSourceOptions', () => {
-  const NAMES = ['all', 'table', 'topic', 'conversation'];
+  const EVERY_SOURCE = {
+    ...TABLE_AND_TOPIC,
+    sources: [
+      { name: 'all', kind: 'all' },
+      { name: 'table', kind: 'entity' },
+      { name: 'topic', kind: 'entity' },
+      { name: 'conversation', kind: 'activity' },
+    ],
+  } as unknown as AlertCapabilities;
 
-  it('offers everything while nothing is selected', () => {
-    const options = getSourceOptions(NAMES, []);
+  it('lists every source the server lists, in its order', () => {
+    expect(getSourceOptions([], EVERY_SOURCE).map((o) => o.name)).toEqual([
+      'all',
+      'table',
+      'topic',
+      'conversation',
+    ]);
+  });
 
+  it('offers the sources it last listed when the latest answer failed', () => {
+    const options = getSourceOptions(['table'], undefined, [
+      { name: 'table', kind: 'entity' },
+      { name: 'topic', kind: 'entity' },
+    ] as AlertCapabilities['sources']);
+
+    expect(options.map((o) => o.name)).toEqual(['table', 'topic']);
     expect(options.every((option) => !option.disabled)).toBe(true);
   });
 
-  it('offers everything until the server has answered about the selection', () => {
-    const options = getSourceOptions(NAMES, ['table']);
-
-    expect(options.every((option) => !option.disabled)).toBe(true);
+  it('offers nothing before the server has listed anything', () => {
+    expect(getSourceOptions([])).toEqual([]);
   });
 
   it('uses what the server said about the selection', () => {
-    const options = getSourceOptions(
-      NAMES,
-      ['table', 'topic'],
-      TABLE_AND_TOPIC
-    );
+    const options = getSourceOptions(['table', 'topic'], TABLE_AND_TOPIC);
 
     expect(options.find((o) => o.name === 'conversation')?.reason).toBe(
       'Sources of different kinds cannot be combined.'
@@ -178,12 +224,6 @@ describe('groupSourcesByKind', () => {
     ]);
   });
 
-  it('keeps sources whose kind is not known yet in one group with no kind', () => {
-    expect(groupSourcesByKind([{ name: 'table' }, { name: 'topic' }])).toEqual([
-      { kind: undefined, sources: [{ name: 'table' }, { name: 'topic' }] },
-    ]);
-  });
-
   it('names each kind', () => {
     expect(getSourceKindLabel(SourceKind.Entity)).toBe(
       'label.data-asset-plural'
@@ -192,5 +232,34 @@ describe('groupSourcesByKind', () => {
       'label.data-collaboration'
     );
     expect(getSourceKindLabel(SourceKind.All)).toBe('label.all-entity');
+  });
+});
+
+describe('getAlertSourceChanges', () => {
+  it('starts the filters over but keeps the destinations when a source is added', () => {
+    expect(getAlertSourceChanges(['table', 'topic'], ['table'])).toEqual({
+      resources: ['table', 'topic'],
+      input: {},
+    });
+  });
+
+  it('starts the destinations over when a source is removed or replaced', () => {
+    expect(getAlertSourceChanges(['topic'], ['table', 'topic'])).toEqual({
+      resources: ['topic'],
+      input: {},
+      destinations: [],
+    });
+    expect(getAlertSourceChanges(['dashboard'], ['table'])).toEqual({
+      resources: ['dashboard'],
+      input: {},
+      destinations: [],
+    });
+  });
+
+  it('keeps rules stored without selections listed when sources change', () => {
+    expect(getAlertSourceChanges(['topic'], ['table'], true)).toEqual({
+      resources: ['topic'],
+      destinations: [],
+    });
   });
 });

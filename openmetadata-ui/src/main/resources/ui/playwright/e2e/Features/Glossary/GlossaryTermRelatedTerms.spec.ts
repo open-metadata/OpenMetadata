@@ -17,8 +17,12 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addRelatedTermsByRelationType,
+  addRelationRow,
+  getOnlyRelationRow,
+  getRelationRows,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  selectRelationType,
 } from '../../../utils/glossary';
 import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
@@ -52,7 +56,7 @@ test.describe('Glossary Term — Related Terms', () => {
       await selectActiveGlossaryTerm(page, termA.data.displayName);
       await page.getByTestId('related-term-add-button').click();
 
-      const firstRow = page.locator('[data-testid^="relation-row-"]').first();
+      const firstRow = await getOnlyRelationRow(page);
 
       const termBName =
         termB.responseData?.displayName ?? termB.data.displayName;
@@ -66,8 +70,7 @@ test.describe('Glossary Term — Related Terms', () => {
         }
       );
 
-      await page.getByTestId('add-row-button').click();
-      const secondRow = page.locator('[data-testid^="relation-row-"]').last();
+      const secondRow = await addRelationRow(page);
 
       const termCName =
         termC.responseData?.displayName ?? termC.data.displayName;
@@ -130,14 +133,11 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      const row = page.locator('[data-testid^="relation-row-"]').first();
-      await row.getByRole('button').first().click();
-      const seeAlsoOption = page.getByRole('option', {
-        exact: true,
-        name: 'See Also',
-      });
-      await expect(seeAlsoOption).toBeVisible();
-      await seeAlsoOption.click();
+      await selectRelationType(
+        page,
+        await getOnlyRelationRow(page),
+        'See Also'
+      );
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
@@ -200,7 +200,15 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      // Match on the trigger: each row's hidden native <select> lists every type.
+      await getRelationRows(page)
+        .filter({
+          has: page.locator('button[aria-haspopup="listbox"]', {
+            hasText: 'Related To',
+          }),
+        })
+        .locator('[data-testid^="remove-row-"]')
+        .click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
@@ -368,13 +376,28 @@ test.describe('Glossary Term — Related Terms', () => {
         await term.create(apiContext);
       }
 
+      // Seeded over the API: seven picker round-trips through the UI pushed this
+      // test past its timeout, and adding relations is covered by the tests above.
+      await parentTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/relatedTerms',
+          value: relatedTerms.map((term) => ({
+            relationType: 'relatedTo',
+            term: {
+              id: term.responseData.id,
+              type: 'glossaryTerm',
+              name: term.responseData.name,
+              displayName: term.responseData.displayName,
+              fullyQualifiedName: term.responseData.fullyQualifiedName,
+            },
+          })),
+        },
+      ]);
+
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
       await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
-
-      await addRelatedTermsByRelationType(page, [
-        { relationTypeLabel: 'Related To', terms: relatedTerms },
-      ]);
 
       const container = page.getByTestId('related-term-container');
       const toggle = page.getByTestId('related-terms-toggle-relatedTo');
@@ -393,15 +416,15 @@ test.describe('Glossary Term — Related Terms', () => {
 
       await expect(toggle).toBeVisible();
 
-      expect(await countVisibleTerms()).toBe(5);
+      await expect.poll(countVisibleTerms).toBe(5);
 
       await toggle.click();
 
-      expect(await countVisibleTerms()).toBe(7);
+      await expect.poll(countVisibleTerms).toBe(7);
 
       await toggle.click();
 
-      expect(await countVisibleTerms()).toBe(5);
+      await expect.poll(countVisibleTerms).toBe(5);
     } finally {
       for (const term of relatedTerms) {
         await term.delete(apiContext);

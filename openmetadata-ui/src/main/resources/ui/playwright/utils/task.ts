@@ -12,12 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import {
-  clickOutside,
-  dismissHoverPopovers,
-  fillDescriptionBox,
-  toastNotification,
-} from './common';
+import { clickOutside, fillDescriptionBox, toastNotification } from './common';
 
 export type TaskDetails = {
   term: string;
@@ -207,25 +202,4 @@ export const createTagTask = async (
   await taskResponse;
 
   await toastNotification(page, /Task created successfully./);
-};
-
-export const checkTaskCountInActivityFeed = async (
-  page: Page,
-  openTask = 0,
-  closedTask = 0
-) => {
-  await expect(page.locator('.ant-skeleton-element')).toHaveCount(0);
-  await dismissHoverPopovers(page);
-  await page.getByTestId('user-profile-page-task-filter-icon').click();
-  const openTaskItem = page
-    .locator('.task-tab-custom-dropdown .task-count-text')
-    .first();
-
-  await expect(openTaskItem).toHaveText(String(openTask));
-
-  const closedTaskItem = page
-    .locator('.task-tab-custom-dropdown .task-count-text')
-    .last();
-
-  await expect(closedTaskItem).toHaveText(String(closedTask));
 };

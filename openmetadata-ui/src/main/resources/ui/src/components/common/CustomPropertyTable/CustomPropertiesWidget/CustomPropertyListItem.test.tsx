@@ -57,14 +57,16 @@ describe('CustomPropertyListItem', () => {
     expect(screen.getByTestId('property-value')).toHaveTextContent(
       'label.count-line-plural'
     );
-    expect(screen.getByText('label.sql-uppercase')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.sql-uppercase' })
+    ).toBeInTheDocument();
   });
 
   it('shows "not set" for an empty value', () => {
     renderItem({ value: undefined });
 
     expect(screen.getByTestId('property-value')).toHaveTextContent(
-      'label.not-set'
+      'label.no-value-yet'
     );
     expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
   });
@@ -101,7 +103,7 @@ describe('CustomPropertyListItem', () => {
     );
   });
 
-  it('renders the extra actions after the type badge', () => {
+  it('renders the extra actions after the edit button', () => {
     renderItem({
       actions: (
         <button aria-label="layout-action" data-testid="layout-action" />

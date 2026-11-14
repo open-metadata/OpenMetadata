@@ -17,13 +17,18 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
+  Card,
+  ConfirmPopover,
   Input,
   SelectItemType,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  RefreshCcw01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, toLower, uniqBy } from 'lodash';
@@ -42,12 +47,17 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperText
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
-import { Bot } from '../../../../../../generated/entity/bot';
+import { Bot, ProviderType } from '../../../../../../generated/entity/bot';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { User } from '../../../../../../generated/entity/teams/user';
+import { Include } from '../../../../../../generated/type/include';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { getBotByName, updateBotDetail } from '../../../../../../rest/botsAPI';
+import {
+  getBotByName,
+  restoreBot,
+  updateBotDetail,
+} from '../../../../../../rest/botsAPI';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import {
   getAuthMechanismForBotUser,
@@ -55,16 +65,74 @@ import {
   updateUserDetail,
 } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
 import BotTokenSection from './BotTokenSection';
 
+/** Restore for a soft-deleted bot, delete otherwise. */
+const BotHeaderAction: FC<{
+  botData: Bot;
+  canDelete: boolean;
+  canRestore: boolean;
+  afterDelete: () => Promise<void>;
+  onRestore: () => Promise<boolean>;
+}> = ({ botData, canDelete, canRestore, afterDelete, onRestore }) => {
+  const { t } = useTranslation();
+
+  if (botData.deleted) {
+    return (
+      <ConfirmPopover
+        confirmText={t('label.restore')}
+        data-testid="restore-bot-popover"
+        description={t('message.restore-action-description', {
+          entityType: getEntityName(botData),
+        })}
+        title={t('message.are-you-sure')}
+        variant="primary"
+        onConfirm={onRestore}>
+        <Button
+          color="secondary"
+          data-testid="restore-bot-btn"
+          iconLeading={RefreshCcw01}
+          isDisabled={!canRestore}
+          size="xs">
+          {t('label.restore')}
+        </Button>
+      </ConfirmPopover>
+    );
+  }
+
+  return (
+    <DeleteEntityPopover
+      afterDeleteAction={afterDelete}
+      data-testid="delete-bot-popover"
+      entityId={botData.id ?? ''}
+      entityName={getEntityName(botData)}
+      entityType={EntityType.BOT}>
+      <ButtonUtility
+        data-testid="delete-bot-btn"
+        icon={Trash01}
+        isDisabled={!canDelete}
+        size="lg"
+        tooltip={String(
+          canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+        )}
+      />
+    </DeleteEntityPopover>
+  );
+};
+
 function useDetailHeaderInjection({
   botData,
+  allowImpersonation,
   isRenaming,
   renameValue,
   isSavingRename,
@@ -73,12 +141,14 @@ function useDetailHeaderInjection({
   handleSaveRename,
   setIsRenaming,
   setRenameValue,
-  setIsDeleteOpen,
+  afterDelete,
+  onRestore,
   onSetHeaderActions,
   onSetHeaderTitleInput,
   onSetHeaderTitleSuffix,
 }: {
   botData: Bot | null;
+  allowImpersonation?: boolean;
   isRenaming: boolean;
   renameValue: string;
   isSavingRename: boolean;
@@ -87,7 +157,8 @@ function useDetailHeaderInjection({
   handleSaveRename: () => void;
   setIsRenaming: (v: boolean) => void;
   setRenameValue: (v: string) => void;
-  setIsDeleteOpen: (v: boolean) => void;
+  afterDelete: () => Promise<void>;
+  onRestore: () => Promise<boolean>;
   onSetHeaderActions?: (node: React.ReactNode) => void;
   onSetHeaderTitleInput?: (node: React.ReactNode) => void;
   onSetHeaderTitleSuffix?: (node: React.ReactNode) => void;
@@ -129,40 +200,50 @@ function useDetailHeaderInjection({
     ) : undefined;
 
     const renameButtonNode: React.ReactNode = isRenaming ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="rename-bot-btn"
-        icon={Edit01}
-        isDisabled={!canEditAll}
-        size="xs"
-        tooltip={String(
-          canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
+      <Box align="center" direction="row" gap={2}>
+        {!botData.deleted && (
+          <ButtonUtility
+            data-testid="rename-bot-btn"
+            icon={Edit01}
+            isDisabled={!canEditAll}
+            tooltip={String(
+              canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
+            )}
+            onPress={() => {
+              setRenameValue(botData?.displayName || botData?.name || '');
+              setIsRenaming(true);
+            }}
+          />
         )}
-        onPress={() => {
-          setRenameValue(botData?.displayName || botData?.name || '');
-          setIsRenaming(true);
-        }}
-      />
+        {allowImpersonation && (
+          <Badge
+            color="blue"
+            data-testid="impersonation-enabled-badge"
+            size="sm"
+            tooltip={t('message.allow-impersonation-help')}
+            type="color">
+            {t('label.impersonation-enabled')}
+          </Badge>
+        )}
+      </Box>
     );
 
-    const deleteButtonNode: React.ReactNode = isRenaming ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="delete-bot-btn"
-        icon={Trash01}
-        isDisabled={!canDelete}
-        size="xs"
-        tooltip={String(
-          canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        onPress={() => setIsDeleteOpen(true)}
-      />
-    );
+    const deleteButtonNode: React.ReactNode =
+      isRenaming || botData.provider === ProviderType.System ? undefined : (
+        <BotHeaderAction
+          afterDelete={afterDelete}
+          botData={botData}
+          canDelete={canDelete}
+          canRestore={canEditAll}
+          onRestore={onRestore}
+        />
+      );
 
     onSetHeaderTitleSuffix?.(renameButtonNode);
     onSetHeaderActions?.(deleteButtonNode);
     onSetHeaderTitleInput?.(titleInputNode);
   }, [
+    allowImpersonation,
     botData,
     canDelete,
     canEditAll,
@@ -173,7 +254,8 @@ function useDetailHeaderInjection({
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,
     renameValue,
-    setIsDeleteOpen,
+    afterDelete,
+    onRestore,
     setIsRenaming,
     setRenameValue,
     t,
@@ -185,7 +267,7 @@ interface BotDescriptionSectionProps {
   canEditAll: boolean;
   isEditingDesc: boolean;
   isSavingDesc: boolean;
-  descEditorRef: React.RefObject<EditorContentRef | null>;
+  descEditorRef: React.RefObject<EditorContentRef>;
   setIsEditingDesc: (v: boolean) => void;
   handleSaveDescription: () => void;
 }
@@ -202,62 +284,64 @@ const BotDescriptionSection: FC<BotDescriptionSectionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="tw:border tw:border-subtle tw:rounded-xl tw:p-5 tw:px-6">
-      <Box align="center" direction="row" justify="between">
-        <Typography size="text-sm" weight="medium">
-          {t('label.description')}
-        </Typography>
-        {canEditAll && !isEditingDesc && (
-          <Button
-            color="link-color"
-            data-testid="edit-description-btn"
-            size="sm"
-            onPress={() => setIsEditingDesc(true)}>
-            {t('label.edit')}
-          </Button>
-        )}
-      </Box>
-
-      {isEditingDesc ? (
-        <Box
-          className="tw:mt-2"
-          data-testid="edit-description-modal"
-          direction="col"
-          gap={2}>
-          <RichTextEditor
-            className="new-form-style"
-            initialValue={botData.description ?? ''}
-            ref={descEditorRef}
-          />
-          <Box direction="row" gap={2} justify="end">
+    <Card variant="muted">
+      <Card.Content>
+        <Box align="center" direction="row" justify="between">
+          <Typography size="text-sm" weight="medium">
+            {t('label.description')}
+          </Typography>
+          {canEditAll && !isEditingDesc && (
             <Button
-              color="tertiary"
-              isDisabled={isSavingDesc}
+              color="link-color"
+              data-testid="edit-description-btn"
               size="sm"
-              onPress={() => setIsEditingDesc(false)}>
-              {t('label.cancel')}
+              onPress={() => setIsEditingDesc(true)}>
+              {t('label.edit')}
             </Button>
-            <Button
-              color="primary"
-              isLoading={isSavingDesc}
-              size="sm"
-              onPress={handleSaveDescription}>
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
-      ) : (
-        <div className="tw:mt-1.5">
-          {botData.description ? (
-            <RichTextEditorPreviewerV1 markdown={botData.description} />
-          ) : (
-            <Typography className="tw:text-tertiary" size="text-sm">
-              --
-            </Typography>
           )}
-        </div>
-      )}
-    </div>
+        </Box>
+
+        {isEditingDesc ? (
+          <Box
+            className="tw:mt-2"
+            data-testid="edit-description-modal"
+            direction="col"
+            gap={2}>
+            <RichTextEditor
+              className="new-form-style"
+              initialValue={botData.description ?? ''}
+              ref={descEditorRef}
+            />
+            <Box direction="row" gap={2} justify="end">
+              <Button
+                color="tertiary"
+                isDisabled={isSavingDesc}
+                size="sm"
+                onPress={() => setIsEditingDesc(false)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isLoading={isSavingDesc}
+                size="sm"
+                onPress={handleSaveDescription}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box className="tw:mt-1.5">
+            {botData.description ? (
+              <RichTextEditorPreviewerV1 markdown={botData.description} />
+            ) : (
+              <Typography className="tw:text-tertiary" size="text-sm">
+                --
+              </Typography>
+            )}
+          </Box>
+        )}
+      </Card.Content>
+    </Card>
   );
 };
 
@@ -299,7 +383,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
         weight="medium">
         {t('label.access')}
       </Typography>
-      <div className="tw:border tw:border-subtle tw:rounded-xl">
+      <Card variant="muted">
         {/* Roles */}
         <div className="tw:p-4 tw:px-6 tw:border-b tw:border-subtle">
           <Box align="center" direction="row" justify="between">
@@ -320,7 +404,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
             {isRolesEdit && (
               <Box align="center" direction="row" gap={3}>
                 <Button
-                  color="link-gray"
+                  color="secondary"
                   data-testid="cancel-roles"
                   size="sm"
                   onPress={() => setIsRolesEdit(false)}>
@@ -339,12 +423,12 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
           {isRolesEdit ? (
             <Box className="tw:mt-2.5 tw:max-w-lg">
               <Autocomplete
+                aria-busy={isRolesLoading}
                 data-testid="select-role"
                 filterOption={(item, filterText) =>
                   contains(item.label || '', filterText) ||
                   contains(String(item.id), filterText)
                 }
-                isLoading={isRolesLoading}
                 items={roleItems}
                 placeholder={t('label.search-entity', {
                   entity: t('label.role-lowercase-plural'),
@@ -358,7 +442,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                 onItemInserted={(key) =>
                   setSelectedRoles((prev) => [...prev, String(key)])
                 }
-                onSearch={debouncedFetchRoles}>
+                onSearchChange={debouncedFetchRoles}>
                 {(item) => (
                   <Autocomplete.Item id={item.id} key={item.id}>
                     {item.label}
@@ -374,7 +458,11 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                 </Badge>
               )}
               {botUserData.roles?.map((role) => (
-                <Badge key={role.id} size="md" type="modern">
+                <Badge
+                  key={role.id}
+                  size="md"
+                  tooltip={getEntityName(role)}
+                  type="modern">
                   {getEntityName(role)}
                 </Badge>
               ))}
@@ -392,21 +480,26 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
           <Typography size="text-sm" weight="medium">
             {t('label.inherited-role-plural')}
           </Typography>
-          <Box className="tw:mt-2.5 tw:flex-wrap" direction="row" gap={1.5}>
+          <Box className="tw:mt-2.5 tw:flex-wrap tw:gap-1.5" direction="row">
             {isEmpty(botUserData.inheritedRoles) ? (
               <Typography className="tw:text-tertiary" size="text-sm">
                 {t('message.no-inherited-roles-found')}
               </Typography>
             ) : (
               botUserData.inheritedRoles?.map((role) => (
-                <Badge color="gray" key={role.id} size="sm" type="pill-color">
+                <Badge
+                  color="gray"
+                  key={role.id}
+                  size="sm"
+                  tooltip={getEntityName(role)}
+                  type="pill-color">
                   {getEntityName(role)}
                 </Badge>
               ))
             )}
           </Box>
         </div>
-      </div>
+      </Card>
     </>
   );
 };
@@ -445,8 +538,6 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isRolesLoading, setIsRolesLoading] = useState(false);
@@ -461,13 +552,18 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Include.All so a soft-deleted bot opened from "Show deleted" can load and be restored.
       const bot = await getBotByName(fqn, {
         fields: 'displayName,description',
+        include: Include.All,
       });
       const userFqn =
         bot.botUser?.fullyQualifiedName ?? bot.botUser?.name ?? '';
       const [user, authMechanism] = await Promise.all([
-        getUserByName(userFqn, { fields: 'roles,inheritedRoles' }),
+        getUserByName(userFqn, {
+          fields: 'roles,inheritedRoles',
+          include: Include.All,
+        }),
         getAuthMechanismForBotUser(bot.botUser?.id ?? '').catch(
           () => undefined
         ),
@@ -578,9 +674,27 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
 
   const handleDeleteAction = useCallback(async () => {
     await getResourceLimit('bot', true, true);
-    setIsDeleteOpen(false);
     onNavigate({ type: 'list' });
   }, [onNavigate, getResourceLimit]);
+
+  const handleRestore = useCallback(async () => {
+    if (!botData) {
+      return false;
+    }
+    try {
+      await restoreBot(botData.id);
+      showSuccessToast(
+        t('message.entity-restored-success', { entity: t('label.bot') })
+      );
+      await fetchData();
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+  }, [botData, fetchData, t]);
 
   const handleUpdateUserDetails = useCallback(
     async (data: Partial<User>) => {
@@ -642,6 +756,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
 
   useDetailHeaderInjection({
     botData,
+    allowImpersonation: botUserData?.allowImpersonation,
     isRenaming,
     renameValue,
     isSavingRename,
@@ -650,7 +765,8 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
     handleSaveRename,
     setIsRenaming,
     setRenameValue,
-    setIsDeleteOpen,
+    afterDelete: handleDeleteAction,
+    onRestore: handleRestore,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,
@@ -669,7 +785,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   if (!botData || !botUserData) {
     return (
       <div className="tw:relative tw:h-full tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           title={t('label.no-entity-found', {
             entity: t('label.bot'),
           })}
@@ -677,6 +793,9 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
       </div>
     );
   }
+
+  // A soft-deleted bot (opened via Include.All) is read-only until restored.
+  const canEditBot = canEditAll && !botData.deleted;
 
   return (
     <Box
@@ -686,7 +805,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
       gap={4}>
       <BotDescriptionSection
         botData={botData}
-        canEditAll={canEditAll}
+        canEditAll={canEditBot}
         descEditorRef={descEditorRef}
         handleSaveDescription={handleSaveDescription}
         isEditingDesc={isEditingDesc}
@@ -697,6 +816,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
       {/* Token */}
       <BotTokenSection
         botUserData={botUserData}
+        isDisabled={Boolean(botData.deleted)}
         onTokenUpdate={handleTokenUpdate}
       />
 
@@ -705,7 +825,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
         contains={contains}
         debouncedFetchRoles={debouncedFetchRoles}
         handleRolesChange={handleRolesChange}
-        isAdminUser={isAdminUser}
+        isAdminUser={Boolean(isAdminUser) && !botData.deleted}
         isRolesEdit={isRolesEdit}
         isRolesLoading={isRolesLoading}
         roleItems={roleItems}
@@ -713,15 +833,6 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
         selectedRoleItems={selectedRoleItems}
         setIsRolesEdit={setIsRolesEdit}
         setSelectedRoles={setSelectedRoles}
-      />
-
-      <DeleteEntityModal
-        afterDeleteAction={handleDeleteAction}
-        entityId={botData.id ?? ''}
-        entityName={getEntityName(botData)}
-        entityType={EntityType.BOT}
-        visible={isDeleteOpen}
-        onCancel={() => setIsDeleteOpen(false)}
       />
     </Box>
   );

@@ -44,7 +44,7 @@ describe('Severity', () => {
   it('Should render component', async () => {
     render(<Severity severity={Severities.Severity1} />);
 
-    expect(await screen.findByText('Severity 1')).toBeInTheDocument();
+    expect(await screen.findByText('label.severity 1')).toBeInTheDocument();
   });
 
   it("Should render no data placeholder if severity doesn't exist", async () => {

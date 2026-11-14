@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
   DATA_CONSUMER_RULES,
@@ -33,6 +33,10 @@ import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
+
+// Mirrors REDIRECT_PATHNAME in src/constants/router.constants.ts, which specs
+// may not import.
+const REDIRECT_COOKIE_NAME = 'redirectUrlPath';
 
 export type UserData = {
   email: string;
@@ -322,6 +326,19 @@ export class UserClass {
    * locator in the spec.
    */
   protected async completeSignIn(page: Page) {
+    // After sign-in the app navigates to the stored path and leaves that cookie
+    // alive for one more second; a page opened inside that second is sent to
+    // the stored path instead of its own URL.
+    await expect
+      .poll(
+        async () =>
+          (
+            await page.context().cookies()
+          ).some(({ name }) => name === REDIRECT_COOKIE_NAME),
+        { message: 'the post-login redirect cookie should expire' }
+      )
+      .toBe(false);
+
     await disableEtagConditionalReads(page);
 
     const modal = await page
@@ -345,7 +362,7 @@ export class UserClass {
       .catch(() => false);
 
     if (hasOpenClass) {
-      await page.getByTestId('sidebar-toggle').click();
+      await page.getByTestId('sidebar-toggle').dispatchEvent('click');
     }
   }
 
@@ -382,7 +399,7 @@ export class UserClass {
   }
 
   async logout(page: Page) {
-    await page.getByRole('menuitem', { name: 'Logout' }).click();
+    await page.getByTestId('app-bar-item-logout').click();
 
     // Wait for logout confirmation modal specifically
     await page

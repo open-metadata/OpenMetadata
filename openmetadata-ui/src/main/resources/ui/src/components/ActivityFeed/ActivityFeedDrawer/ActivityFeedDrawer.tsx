@@ -15,10 +15,11 @@ import { SlideoutMenu } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FEED_DRAWER_WIDTH } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { useCloseOnNavigation } from '../../../hooks/useCloseOnNavigation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
-import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
@@ -26,8 +27,7 @@ import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedPro
 import './activity-feed-drawer.less';
 
 const PANEL_HEADER_CLASS_NAME =
-  'tw:px-4 tw:shrink-0 tw:text-md tw:font-medium tw:leading-snug tw:text-(color:--om-heading-color)';
-const DRAWER_WIDTH = 576;
+  'tw:px-4 tw:shrink-0 tw:text-lg tw:font-medium tw:leading-snug tw:text-(color:--om-heading-color)';
 
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
@@ -49,6 +49,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   const { t } = useTranslation();
   const { hideDrawer, selectedThread, selectedTask, selectedActivity } =
     useActivityFeedProvider();
+  useCloseOnNavigation(hideDrawer);
 
   const entityType = useMemo(() => {
     if (selectedTask?.about?.type) {
@@ -79,33 +80,28 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       };
     }
 
+    const header = (
+      <FeedPanelHeader
+        className={PANEL_HEADER_CLASS_NAME}
+        onCancel={hideDrawer}
+      />
+    );
+
     if (selectedActivity) {
       return {
-        header: (
-          <ActivityPanelHeader
-            activity={selectedActivity}
-            className={PANEL_HEADER_CLASS_NAME}
-            onCancel={hideDrawer}
-          />
-        ),
+        header,
         body: <ActivityPanelBody activity={selectedActivity} />,
       };
     }
 
     if (selectedThread) {
       return {
-        header: (
-          <FeedPanelHeader
-            className={PANEL_HEADER_CLASS_NAME}
-            entityLink={selectedThread.about ?? ''}
-            feed={selectedThread}
-            onCancel={hideDrawer}
-          />
-        ),
+        header,
         body: (
           <FeedPanelBodyV1
             isForFeedTab
             isOpenInDrawer
+            isThreadPanel
             showThread
             feed={selectedThread}
           />
@@ -127,7 +123,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       data-testid="activity-feed-drawer"
       dialogClassName={classNames('tw:items-stretch tw:gap-0', className)}
       isOpen={open}
-      width={DRAWER_WIDTH}
+      width={FEED_DRAWER_WIDTH}
       onOpenChange={(isOpen) => !isOpen && hideDrawer()}>
       {panel.header}
       <SlideoutMenu.Content className="tw:min-h-0 tw:flex-1 tw:h-auto tw:gap-0 tw:px-0 tw:md:px-0">

@@ -57,7 +57,7 @@ const CsvWorkflowHeader = ({
   return (
     <Box
       align="center"
-      className="csv-workflow-header tw:-mx-6 tw:border-b tw:border-secondary tw:bg-surface tw:px-8 tw:py-3"
+      className="csv-workflow-header tw:-mx-6 tw:border-b tw:in-[.assistant-content]:-mx-10 tw:border-secondary tw:bg-surface tw:px-8 tw:py-3"
       gap={4}
       justify="between">
       <Box className="tw:min-w-0 tw:flex-auto" direction="col" gap={1}>

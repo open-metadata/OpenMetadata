@@ -13,8 +13,13 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
@@ -25,14 +30,118 @@ import jakarta.ws.rs.sse.SseEventSink;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
+import org.slf4j.LoggerFactory;
 
 class ServiceProgressStreamerTest {
+  private final List<CapturingSink> sinks = new ArrayList<>();
+
+  private CapturingSink sink() {
+    CapturingSink sink = new CapturingSink();
+    sinks.add(sink);
+    return sink;
+  }
+
+  @AfterEach
+  void closeStreams() {
+    sinks.forEach(ProgressSseManager.getInstance()::close);
+  }
+
+  @Test
+  void filtersReplayedAndLiveEventsForEachSubscriber() {
+    IngestionProgressTracker tracker = new IngestionProgressTracker(new SimpleMeterRegistry());
+    UUID hiddenRun = UUID.randomUUID();
+    UUID visibleRun = UUID.randomUUID();
+    tracker.updateProgress("svc.hidden", hiddenRun, processing(hiddenRun));
+    tracker.updateProgress("svc.visible", visibleRun, processing(visibleRun));
+    CapturingSink restricted = sink();
+    CapturingSink unrestricted = sink();
+
+    ServiceProgressStreamer.stream(
+        "svc",
+        restricted,
+        new StubSse(),
+        tracker,
+        event ->
+            "svc.visible".equals(event.event().getPipelineFqn())
+                ? Optional.of(event.event())
+                : Optional.empty());
+    ServiceProgressStreamer.stream(
+        "svc", unrestricted, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
+    assertEquals(1, restricted.data.size());
+    assertEquals(2, unrestricted.data.size());
+
+    tracker.updateProgress("svc.hidden", hiddenRun, terminal(hiddenRun));
+    tracker.updateProgress("svc.visible", visibleRun, terminal(visibleRun));
+    assertEquals(2, restricted.data.size());
+    assertTrue(restricted.data.stream().allMatch(data -> data.contains("svc.visible")));
+    assertEquals(4, unrestricted.data.size());
+  }
+
+  @Test
+  void subscriberFailureClosesOnlyItsConnection() {
+    IngestionProgressTracker tracker = new IngestionProgressTracker(new SimpleMeterRegistry());
+    UUID run = UUID.randomUUID();
+    tracker.updateProgress("svc.metadata", run, processing(run));
+    CapturingSink broken = sink();
+    CapturingSink healthy = sink();
+    Logger logger = (Logger) LoggerFactory.getLogger(ServiceProgressStreamer.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      ServiceProgressStreamer.stream(
+          "svc",
+          broken,
+          new StubSse(),
+          tracker,
+          event -> {
+            throw new IllegalStateException("secret-bearing exception details");
+          });
+      ServiceProgressStreamer.stream(
+          "svc", healthy, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
+      assertTrue(broken.isClosed());
+      assertTrue(broken.data.isEmpty());
+      tracker.updateProgress("svc.metadata", run, terminal(run));
+      assertEquals(2, healthy.data.size());
+      List<ILoggingEvent> failures =
+          appender.list.stream()
+              .filter(event -> event.getFormattedMessage().contains(run.toString()))
+              .toList();
+      assertEquals(1, failures.size());
+      String message = failures.getFirst().getFormattedMessage();
+      assertTrue(message.contains("svc.metadata"));
+      assertTrue(message.contains("IllegalStateException"));
+      assertFalse(message.contains("secret-bearing"));
+      assertNull(failures.getFirst().getThrowableProxy());
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void failedSendClosesTheConnection() {
+    IngestionProgressTracker tracker = new IngestionProgressTracker(new SimpleMeterRegistry());
+    CapturingSink sink = sink();
+    sink.failSends = true;
+    ServiceProgressStreamer.stream(
+        "svc", sink, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
+
+    UUID run = UUID.randomUUID();
+    tracker.updateProgress("svc.metadata", run, processing(run));
+
+    assertTrue(sink.isClosed());
+    assertTrue(sink.data.isEmpty());
+  }
 
   @Test
   void testReplayThenLiveMultiplexAcrossPipelines() {
@@ -41,8 +150,9 @@ class ServiceProgressStreamerTest {
     UUID run2 = UUID.randomUUID();
     tracker.updateProgress("svc.metadata", run1, processing(run1));
 
-    CapturingSink sink = new CapturingSink();
-    ServiceProgressStreamer.stream("svc", sink, new StubSse(), tracker);
+    CapturingSink sink = sink();
+    ServiceProgressStreamer.stream(
+        "svc", sink, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
 
     assertEquals(1, sink.data.size());
 
@@ -58,8 +168,9 @@ class ServiceProgressStreamerTest {
     UUID run1 = UUID.randomUUID();
     UUID run2 = UUID.randomUUID();
 
-    CapturingSink sink = new CapturingSink();
-    ServiceProgressStreamer.stream("svc", sink, new StubSse(), tracker);
+    CapturingSink sink = sink();
+    ServiceProgressStreamer.stream(
+        "svc", sink, new StubSse(), tracker, snapshot -> Optional.of(snapshot.event()));
 
     tracker.updateProgress("svc.metadata", run1, terminal(run1));
     tracker.updateProgress("svc.lineage", run2, processing(run2));
@@ -84,6 +195,7 @@ class ServiceProgressStreamerTest {
 
   static class CapturingSink implements SseEventSink {
     final List<String> data = new ArrayList<>();
+    boolean failSends;
     private boolean closed = false;
 
     @Override
@@ -93,6 +205,9 @@ class ServiceProgressStreamerTest {
 
     @Override
     public CompletionStage<?> send(OutboundSseEvent event) {
+      if (failSends) {
+        return CompletableFuture.failedFuture(new IllegalStateException("Disconnected"));
+      }
       Object payload = event.getData();
       // Ignore data-less frames (e.g. the ProgressSseManager heartbeat comment) so a
       // heartbeat sweep firing mid-test cannot perturb the payload assertions.

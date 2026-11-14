@@ -193,6 +193,80 @@ describe('ApplicationsProvider', () => {
     });
   });
 
+  it('drops contributionsReady while the fetch that follows late permissions is in flight', async () => {
+    // Permissions usually load after mount: the empty-permission pass marks
+    // contributions ready, then the real fetch starts. Until its plugins have
+    // contributed, a contributed deep link must keep waiting.
+    mockUsePermissionProvider.mockReturnValue({ permissions: {} });
+    const applicationsRequest = createDeferredPromise<EntityReference[]>();
+    mockGetInstalledApplicationList.mockReturnValue(
+      applicationsRequest.promise
+    );
+    const { rerender } = render(
+      <ApplicationsProvider>
+        <ApplicationsLoadingStatus />
+      </ApplicationsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+        'data-ready',
+        'true'
+      );
+    });
+
+    mockUsePermissionProvider.mockReturnValue({ permissions: { app: {} } });
+    rerender(
+      <ApplicationsProvider>
+        <ApplicationsLoadingStatus />
+      </ApplicationsProvider>
+    );
+
+    expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+      'data-ready',
+      'false'
+    );
+
+    await act(async () => {
+      applicationsRequest.resolve([]);
+      await applicationsRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+        'data-ready',
+        'true'
+      );
+    });
+  });
+
+  it('marks contributions ready again when the fetch after late permissions fails', async () => {
+    mockUsePermissionProvider.mockReturnValue({ permissions: {} });
+    mockGetInstalledApplicationList.mockRejectedValue(new Error('boom'));
+    const { rerender } = render(
+      <ApplicationsProvider>
+        <ApplicationsLoadingStatus />
+      </ApplicationsProvider>
+    );
+    mockUsePermissionProvider.mockReturnValue({ permissions: { app: {} } });
+    await act(async () => {
+      rerender(
+        <ApplicationsProvider>
+          <ApplicationsLoadingStatus />
+        </ApplicationsProvider>
+      );
+    });
+
+    expect(mockGetInstalledApplicationList).toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+        'data-ready',
+        'true'
+      );
+    });
+  });
+
   it('preserves child state when the permissions object changes', async () => {
     mockGetInstalledApplicationList.mockResolvedValue([]);
     const { rerender } = render(

@@ -14,21 +14,19 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { PlusCircle } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useFormDrawerWithHook } from '../../components/common/atoms/drawer/useFormDrawer';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import {
-  DeleteIconButton,
-  EditIconButton,
-} from '../../components/common/IconButtons/EditIconButton';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
@@ -38,7 +36,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../../constants/constants';
 import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   DataQualityDimension,
   ProviderType,
@@ -307,21 +304,23 @@ const DataQualitySettingsPage = () => {
 
           return (
             <Box gap={1}>
-              <EditIconButton
+              <ButtonUtility
                 data-testid={`edit-${record.name}`}
-                disabled={isSystem}
-                size="small"
-                title={
+                icon={Edit01}
+                isDisabled={isSystem}
+                size="lg"
+                tooltip={
                   disabledTitle ??
                   t('label.edit-entity', { entity: t('label.dimension') })
                 }
                 onClick={() => setDrawer({ mode: 'edit', dimension: record })}
               />
-              <DeleteIconButton
+              <ButtonUtility
                 data-testid={`delete-${record.name}`}
-                disabled={isSystem}
-                size="small"
-                title={
+                icon={Trash01}
+                isDisabled={isSystem}
+                size="lg"
+                tooltip={
                   disabledTitle ??
                   t('label.delete-entity', { entity: t('label.dimension') })
                 }
@@ -417,7 +416,7 @@ const DataQualitySettingsPage = () => {
             <Button
               color="primary"
               data-testid="add-dimension"
-              iconLeading={PlusCircle}
+              iconLeading={Plus}
               size="md"
               onClick={() => setDrawer({ mode: 'create' })}>
               {t('label.add-entity', {
@@ -435,20 +434,23 @@ const DataQualitySettingsPage = () => {
             dataSource={filteredDimensions}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
-                  permission
-                  className="border-none"
-                  heading={t('label.dimension')}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.dimension'),
-                  })}
-                  type={
-                    searchTerm
-                      ? ERROR_PLACEHOLDER_TYPE.FILTER
-                      : ERROR_PLACEHOLDER_TYPE.CREATE
-                  }
-                  onClick={() => setDrawer({ mode: 'create' })}
-                />
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  {searchTerm ? (
+                    <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+                  ) : (
+                    <CreatePlaceholder
+                      permission
+                      data-testid={`create-error-placeholder-${t(
+                        'label.dimension'
+                      )}`}
+                      heading={t('label.dimension')}
+                      permissionValue={t('label.create-entity', {
+                        entity: t('label.dimension'),
+                      })}
+                      onCreate={() => setDrawer({ mode: 'create' })}
+                    />
+                  )}
+                </div>
               ),
             }}
             pagination={false}

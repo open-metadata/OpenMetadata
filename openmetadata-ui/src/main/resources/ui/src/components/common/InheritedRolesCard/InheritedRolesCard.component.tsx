@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Card, Typography } from '@openmetadata/ui-core-components';
 
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { InheritedRolesCardProps } from './InheritedRolesCard.interface';
 
@@ -41,10 +40,11 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
                 <div
                   className="mb-2 d-flex items-center gap-2"
                   key={inheritedRole.id}>
-                  <Icon component={IconUser} style={{ fontSize: '16px' }} />
-                  <Typography
-                    className="ant-typography-ellipsis-custom w-48"
-                    ellipsis={{ tooltip: true }}>
+                  <User01
+                    className="tw:shrink-0 tw:text-utility-gray-500"
+                    size={16}
+                  />
+                  <Typography className="w-48" ellipsis={{ tooltip: true }}>
                     {getEntityName(inheritedRole)}
                   </Typography>
                 </div>

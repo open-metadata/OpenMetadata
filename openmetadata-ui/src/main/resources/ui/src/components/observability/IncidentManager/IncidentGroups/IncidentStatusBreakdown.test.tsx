@@ -16,6 +16,14 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { INCIDENT_GROUP_STATUS_BAR_CLASS } from './IncidentGroups.constants';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+  }),
+}));
+
 const barClass = (status: TestCaseResolutionStatusTypes) =>
   INCIDENT_GROUP_STATUS_BAR_CLASS[status] ?? '';
 
@@ -52,7 +60,7 @@ describe('IncidentStatusBreakdown', () => {
     );
 
     expect(screen.getByTestId('group-status-counts')).toHaveTextContent(
-      '3 label.assigned-lowercase · 2 label.new-lowercase'
+      'label.count-incident-assigned:3 · label.count-incident-new:2'
     );
   });
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export type AgentStatus = 'running' | 'success' | 'failed' | 'queued' | 'none';
@@ -103,12 +104,26 @@ export interface RunTotals {
 
 export interface AgentRun {
   id: string;
+  // The server run id. Absent when the status carries none; `id` is then a timestamp the
+  // run-scoped logs endpoint cannot address.
+  runId?: string;
   status: RunStatus;
   startedAt: string;
   duration: number;
   totals: RunTotals;
   steps: RunStep[];
 }
+
+/**
+ * Renders an extra action (e.g. a plugin's "diagnose" button) in the header of
+ * a run that failed or partly failed. Receives a callback that closes the
+ * run history drawer.
+ */
+export type RenderRunAction = (
+  agent: Agent,
+  run: AgentRun,
+  onClose: () => void
+) => ReactNode;
 
 export interface LogLine {
   time: string;

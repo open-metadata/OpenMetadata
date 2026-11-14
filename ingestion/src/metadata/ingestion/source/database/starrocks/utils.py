@@ -13,12 +13,10 @@
 StarRocks SQLAlchemy Helper Methods
 """
 
-from sqlalchemy import sql, text
-from sqlalchemy.engine import reflection
+from sqlalchemy import text
 
 from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_GET_TABLE_NAMES,
-    STARROCKS_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -32,17 +30,3 @@ def get_table_names_and_type(_, connection, schema=None, **kw):
         {"schema": database},
     )
     return list(rows)
-
-
-@reflection.cache
-def get_table_comment(_, connection, table_name, schema=None, **kw):
-    comment = None
-    rows = connection.execute(
-        sql.text(STARROCKS_TABLE_COMMENTS),
-        {"table_name": table_name, "schema": schema},
-        **kw,
-    )
-    for table_comment in rows:
-        comment = table_comment
-        break
-    return {"text": comment}

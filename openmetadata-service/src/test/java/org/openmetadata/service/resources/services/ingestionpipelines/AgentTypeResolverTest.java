@@ -21,7 +21,14 @@ class AgentTypeResolverTest {
   void metadataAgentTypeResolvesToTheMetadataPipelineTypes() {
     assertEquals(
         Set.of(
-            "metadata", "usage", "lineage", "profiler", "autoClassification", "dbt", "policyAgent"),
+            "metadata",
+            "usage",
+            "lineage",
+            "profiler",
+            "autoClassification",
+            "dbt",
+            "policyAgent",
+            "reverseMetadata"),
         resolvedTypes(AgentType.METADATA, null));
   }
 

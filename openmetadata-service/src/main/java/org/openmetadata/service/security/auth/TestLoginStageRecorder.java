@@ -48,12 +48,25 @@ public final class TestLoginStageRecorder {
     return new TestLoginStageRecorder(applicableStagesFor(protocol));
   }
 
+  /**
+   * A public client's browser holds the provider's tokens and renews them itself, so there is no
+   * refresh token on the server to test.
+   */
+  public static TestLoginStageRecorder forPublicOidcClient() {
+    Set<TestLoginStage> stages = applicableStagesFor(TestLoginProtocol.OIDC);
+    stages.remove(TestLoginStage.TOKEN_REFRESHED);
+    return new TestLoginStageRecorder(stages);
+  }
+
   private static Set<TestLoginStage> applicableStagesFor(TestLoginProtocol protocol) {
     Set<TestLoginStage> stages = EnumSet.allOf(TestLoginStage.class);
     if (isCredentialBased(protocol)) {
       stages.removeAll(BROWSER_REDIRECT_STAGES);
     } else {
       stages.remove(TestLoginStage.CREDENTIALS_VERIFIED);
+    }
+    if (protocol != TestLoginProtocol.OIDC) {
+      stages.remove(TestLoginStage.TOKEN_REFRESHED);
     }
     return stages;
   }

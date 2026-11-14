@@ -38,13 +38,13 @@ describe('useWorkflowEdgeManagement', () => {
   it.each([
     [
       'reject',
-      'var(--om-color-fg-error, #D92D20)',
-      'var(--om-color-bg-error, #FEF3F2)',
+      'var(--tw-color-utility-error-600)',
+      'var(--tw-color-utility-error-50)',
     ],
     [
       'qualityBand',
-      'var(--om-color-fg-brand, #1570EF)',
-      'var(--om-color-bg-brand, #EFF8FF)',
+      'var(--tw-color-utility-brand-600)',
+      'var(--tw-color-utility-brand-50)',
     ],
   ])(
     'applies theme-aware colors when saving a %s connection',
@@ -76,7 +76,7 @@ describe('useWorkflowEdgeManagement', () => {
       expect(edge.labelBgStyle).toEqual(
         expect.objectContaining({
           fill: backgroundColor,
-          stroke: 'var(--om-color-bg-primary, #FFFFFF)',
+          stroke: 'var(--tw-background-color-primary)',
         })
       );
       expect(edge.markerEnd).toEqual(
@@ -111,12 +111,12 @@ describe('useWorkflowEdgeManagement', () => {
 
     expect(edge.labelStyle).toEqual(
       expect.objectContaining({
-        color: 'var(--om-color-fg-brand, #1570EF)',
+        color: 'var(--tw-color-utility-brand-600)',
       })
     );
     expect(edge.labelBgStyle).toEqual(
       expect.objectContaining({
-        fill: 'var(--om-color-bg-brand, #EFF8FF)',
+        fill: 'var(--tw-color-utility-brand-50)',
       })
     );
   });

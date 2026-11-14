@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Grid } from '@openmetadata/ui-core-components';
-
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
@@ -19,7 +18,6 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import incidentManagerClassBase from './IncidentManagerClassBase';
 
 const IncidentManagerPage = () => {
@@ -39,9 +37,7 @@ const IncidentManagerPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.incident-manager')}>
-      <Grid
-        className="layout-row layout-grid m-t-xs"
-        style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid className="layout-row layout-grid m-t-xs" rowGap="4">
         <Grid.Item className="layout-column" span={24}>
           <Card>
             <Card.Content>

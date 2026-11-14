@@ -173,7 +173,19 @@ public class CsvUtilTest {
             new TagLabel()
                 .withTagFQN("Ignore.Derived")
                 .withSource(TagLabel.TagSource.CLASSIFICATION)
-                .withLabelType(TagLabel.LabelType.DERIVED));
+                .withLabelType(TagLabel.LabelType.DERIVED),
+            new TagLabel()
+                .withTagFQN("Lineage.Propagated")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.PROPAGATED),
+            new TagLabel()
+                .withTagFQN("Glossary.IgnoreDerived")
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.DERIVED),
+            new TagLabel()
+                .withTagFQN("Glossary.Lineage")
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.PROPAGATED));
 
     List<String> csvRecord = new ArrayList<>();
     CsvUtil.addTagLabels(csvRecord, tags);
@@ -192,10 +204,12 @@ public class CsvUtilTest {
     CsvUtil.addReviewers(
         csvRecord, List.of(new EntityReference().withType("user").withName("bob")));
 
+    // DERIVED labels (implied by a term, or inherited from a parent) stay out of the export; labels
+    // propagated along lineage are the asset's own and go in.
     assertEquals(
         List.of(
-            "PersonalData.Personal",
-            "Glossary.Term",
+            "PersonalData.Personal;Lineage.Propagated",
+            "Glossary.Term;Glossary.Lineage",
             "Tier.Tier1",
             "user:alice;team:engineering",
             "finance;marketing",

@@ -18,28 +18,23 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Column: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
+    <path d="M13.367 2.27h-6v16.144h6z" fill="currentColor" opacity={0.15} />
     <path
-      d="M15.778 2.5H4.222C2.995 2.5 2 3.433 2 4.583v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path d="M13 2.5H7v15h6z" fill="currentColor" opacity={0.16} />
-    <path
-      d="M7 2.5v15m6-15v15M2 8h16"
+      d="M2 10.414c0-3.771 0-5.657 1.172-6.828S6.229 2.414 10 2.414s5.657 0 6.828 1.172S18 6.643 18 10.414s0 5.657-1.172 6.829-3.057 1.171-6.828 1.171-5.657 0-6.828-1.172S2 14.186 2 10.415m5-7.29v15.288m6-15.288v15.288M2.367 7.77h15.276"
       stroke="currentColor"
       strokeWidth={1.3}
     />

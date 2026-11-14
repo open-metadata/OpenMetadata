@@ -166,7 +166,9 @@ $$section
 
 Workgroups are used to separate users, teams, applications or workloads.
 
-Select here the workgroup that the ingestion workflow should use.
+Select here the workgroup that the ingestion workflow should use. Usage and lineage workflows only read the query history of this workgroup.
+
+Leave it empty to run the ingestion queries in the default workgroup (`primary`) and to read the query history of every enabled workgroup. Reading every workgroup requires the `athena:ListWorkGroups` permission; without it, only the default workgroup's history is read.
 
 You can find more information about <a href="https://docs.aws.amazon.com/athena/latest/ug/user-created-workgroups.html" target="_blank">How workgroups work</a>.
 $$

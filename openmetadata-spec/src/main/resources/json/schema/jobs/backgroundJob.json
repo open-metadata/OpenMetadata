@@ -12,7 +12,7 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT", "AUDIT_EXPORT", "ONTOLOGY_BULK", "CONTEXT_MEMORY_EXTRACTION", "ONTOLOGY_MEMORY_DERIVATION"],
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT", "AUDIT_EXPORT", "ONTOLOGY_BULK", "ONTOLOGY_PACK_INSTALL", "CONTEXT_MEMORY_EXTRACTION", "MEMORY_GLOSSARY_DERIVATION", "ADMIN_OPS_REINDEX", "ADMIN_OPS_DEPLOY_PIPELINES", "ADMIN_OPS_SSO_CONFIG", "ADMIN_OPS_AUTHORIZER_CONFIG", "ADMIN_OPS_LIMITS_CONFIG", "ADMIN_OPS_APP_CONFIG"],
       "description": "Type of the job."
     },
     "methodName": {
@@ -26,6 +26,9 @@
         },
         {
           "$ref": "../api/data/ontologyBulkJobArguments.json"
+        },
+        {
+          "$ref": "../api/data/ontologyPackInstallJobArguments.json"
         },
         {
           "type": "object",

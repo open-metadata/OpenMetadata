@@ -12,17 +12,21 @@
  */
 
 import {
-  CheckOutlined,
-  CloseOutlined,
-  ExclamationCircleFilled,
-} from '@ant-design/icons';
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
+  Box,
+  ButtonUtility,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 
+import {
+  Check,
+  Edit01,
+  ExclamationCircleFilled,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -115,19 +119,18 @@ const TeamsHeadingLabel = ({
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
-      <EditIconButton
-        newLook
+      <ButtonUtility
         data-testid="edit-team-name"
-        disabled={!hasEditDisplayNamePermission}
-        size="small"
-        title={
+        icon={Edit01}
+        isDisabled={!hasEditDisplayNamePermission}
+        tooltip={
           hasEditDisplayNamePermission
             ? t('label.edit-entity', {
                 entity: t('label.display-name'),
               })
             : t('message.no-permission-for-action')
         }
-        onClick={(e) => {
+        onClick={(e: MouseEvent) => {
           // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
           e.stopPropagation();
           setIsHeadingEditing(true);
@@ -143,14 +146,14 @@ const TeamsHeadingLabel = ({
         role="presentation"
         onClick={(e) => e.stopPropagation()}>
         <Input
-          className="flex-1 w-min-0"
-          data-testid="team-name-input"
+          aria-label={t('label.display-name')}
+          className="tw:min-w-0 tw:flex-1"
+          inputDataTestId="team-name-input"
           placeholder={t('message.enter-comma-separated-field', {
             field: t('label.term-lowercase'),
           })}
-          type="text"
           value={heading}
-          onChange={(e) => setHeading(e.target.value)}
+          onChange={setHeading}
         />
         <Box
           inline
@@ -159,20 +162,22 @@ const TeamsHeadingLabel = ({
           data-testid="buttons"
           gap={1}
           itemClassName="layout-space-item">
-          <Button
+          <ButtonUtility
             color="primary"
             data-testid="cancelAssociatedTag"
+            icon={XClose}
             isDisabled={isLoading}
-            onMouseDown={handleClose}>
-            <CloseOutlined />
-          </Button>
-          <Button
+            tooltip={t('label.cancel')}
+            onMouseDown={handleClose}
+          />
+          <ButtonUtility
             color="primary"
             data-testid="saveAssociatedTag"
+            icon={Check}
             isLoading={isLoading}
-            onMouseDown={onHeadingSave}>
-            <CheckOutlined />
-          </Button>
+            tooltip={t('label.save')}
+            onMouseDown={onHeadingSave}
+          />
         </Box>
       </div>
     ) : (
@@ -185,7 +190,10 @@ const TeamsHeadingLabel = ({
           <div
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss" />
+            <ExclamationCircleFilled
+              className="tw:mr-1 tw:shrink-0"
+              size={12}
+            />
             {t('label.deleted')}
           </div>
         )}

@@ -544,6 +544,26 @@ describe('prepareChartData', () => {
     });
   });
 
+  it('should leave out the Table Diff values that are not numbers', () => {
+    const result = prepareChartData({
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Failed',
+          testResultValue: [
+            { name: 'diffCount', value: '52' },
+            { name: 'columnDiffCounts', value: '{"city": 49, "name": 3}' },
+          ],
+        },
+      ],
+      tasks: [],
+    } as PrepareChartDataType);
+
+    expect(result.information.map(({ label }) => label)).toEqual(['diffCount']);
+    expect(result.data[0]).not.toHaveProperty('columnDiffCounts');
+  });
+
   it('should name no series when there are no runs', () => {
     expect(
       prepareChartData({
@@ -849,6 +869,39 @@ describe('applyStatusPlacements', () => {
     const point = { name: 1, status: TestCaseStatus.Failed, rowCount: 5 };
 
     expect(applyStatusPlacements([point], series)).toEqual([point]);
+  });
+
+  it('should pin passed and failed runs that reported no value to the expectation line', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 0, status: TestCaseStatus.Success, rowCount: 40 },
+        { name: 1, status: TestCaseStatus.Success },
+        { name: 2, status: TestCaseStatus.Failed },
+      ],
+      series,
+      100
+    );
+
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      undefined,
+      100,
+      100,
+    ]);
+    expect(data.map((point) => point[series[0]])).toEqual([
+      40,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  // tableDiff reports its column counts only when the schemas differ, so an
+  // older run lacks series a newer one names.
+  it('should not place series a passed or failed run that measured others never reported', () => {
+    const point = { name: 1, status: TestCaseStatus.Failed, diffCount: 3 };
+
+    expect(
+      applyStatusPlacements([point], ['diffCount', 'addedColumns'], 0)
+    ).toEqual([point]);
   });
 
   it('should place runs on the zero line when no run plotted a value and no line exists', () => {

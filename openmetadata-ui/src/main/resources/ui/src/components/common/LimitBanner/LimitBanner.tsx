@@ -10,52 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Header } from 'antd/lib/layout/layout';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Alert, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { ReactComponent as CloseIcon } from './../../../assets/svg/close.svg';
-import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import './limit-banner.less';
 
 export const LimitBanner = () => {
   const { t } = useTranslation();
   const { bannerDetails, setBannerDetails } = useLimitStore();
-  const { isTourPage, isTourOpen } = useTourProvider();
-
-  const showBanner = bannerDetails && !(isTourOpen || isTourPage);
 
   return (
-    <Header
+    <header
       className={classNames('pricing-banner', {
         errored: bannerDetails?.type === 'danger',
       })}
-      hidden={!showBanner}>
+      hidden={!bannerDetails}>
       <div className="d-flex ">
-        <Icon
-          className="self-center"
-          component={WarningIcon}
-          style={{ fontSize: '24px' }}
-        />
+        <Alert className="tw:self-center tw:shrink-0" size={24} />
         <div className="p-l-sm">
           <p className="pricing-header">{bannerDetails?.header}</p>
           <p className="pricing-subheader">
             {bannerDetails?.subheader} {t('message.learn-more-about')}{' '}
-            <Link to="/settings/billing/plans">
+            <Link to={getSettingsLink('/settings/billing/plans')}>
               {t('label.plans-and-pricing')}
             </Link>
           </p>
         </div>
       </div>
-      <Icon
-        className="close-btn p-0 cursor-pointer"
-        component={CloseIcon}
-        style={{ color: '#546E7A', fontSize: '14px' }}
+      <ButtonUtility
+        icon={XClose}
+        size="lg"
+        tooltip={t('label.close')}
         onClick={() => setBannerDetails(null)}
       />
-    </Header>
+    </header>
   );
 };

@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   LogViewerModalProps,
   LogViewerStatusTone,
 } from '../components/common/LogViewerModal/LogViewerModal.interface';
-import { AgentStatus } from '../components/ServiceAgents/AgentsPage.interface';
+import {
+  AgentStatus,
+  RunStatus,
+} from '../components/ServiceAgents/AgentsPage.interface';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -129,7 +133,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         className={className}
         description={getPipelineExtraInfo(
           isPlatFormDisabled,
@@ -138,7 +142,6 @@ export const getErrorPlaceHolder = (
         )}
         icon={<Code01 className="tw:text-fg-brand-primary" />}
         title={t('message.no-agents-set-up-yet') as string}
-        variant="blank"
       />
     );
   }
@@ -198,6 +201,21 @@ const agentStatusToneMap: Record<AgentStatus, LogViewerStatusTone> = {
   queued: 'muted',
   none: 'muted',
 };
+
+const runStatusToneMap: Record<RunStatus, LogViewerStatusTone> = {
+  success: 'success',
+  partial: 'warning',
+  failed: 'error',
+  running: 'muted',
+  skipped: 'muted',
+};
+
+export const getLogViewerStatusFromRunStatus = (
+  runStatus: RunStatus
+): LogViewerModalProps['status'] => ({
+  label: startCase(runStatus),
+  tone: runStatusToneMap[runStatus],
+});
 
 export const getLogViewerStatusFromAgentStatus = (
   agentStatus?: AgentStatus

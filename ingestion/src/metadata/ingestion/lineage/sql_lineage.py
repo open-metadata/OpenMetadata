@@ -14,6 +14,7 @@ Helper functions to handle SQL lineage operations
 
 import functools
 import itertools
+import re
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
@@ -26,13 +27,21 @@ from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
+from metadata.entity_resolution.table_search import (
+    DEFAULT_SCHEMA_NAME,
+    database_service_type_cache,  # noqa: F401 - compatibility import of the shared cache
+    get_database_service_type,  # noqa: F401 - compatibility import
+    get_table_fqn_from_query_name,
+    search_cache,  # noqa: F401 - compatibility import of the shared cache
+    search_table_entities,
+)
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
     StoredProcedureType,
 )
+from metadata.generated.schema.entity.data.table import Column as TableColumn
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -47,7 +56,12 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
+from metadata.ingestion.lineage.parser import (
+    LINEAGE_PARSING_TIMEOUT,
+    NOTHING_COPIED,
+    CopiedColumns,
+    LineageParser,
+)
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
     OMetaFQNLineageRequest,
@@ -58,13 +72,14 @@ from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
-from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.timeout import timeout
 
 logger = utils_logger()
-DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
 NODE_PROCESSING_TIMEOUT = 30  # seconds
+# Column lineage map key for fields read through a STRUCT path (`customer.email`,
+# `customer.*`): the parser reports `customer` as a table the query never reads.
+STRUCT_FIELD_PARENT = "<struct>"
 
 
 # pylint: disable=too-many-function-args,protected-access
@@ -98,269 +113,6 @@ def get_column_fqn(
             )
 
     return None
-
-
-search_cache = LRUCache(LRU_CACHE_SIZE)
-database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
-alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
-
-# Connection field a connector sets to opt into alias resolution. Read by name
-# rather than by service type so any connector exposing alternate names (SQL
-# Server synonyms today, Oracle synonyms later) participates without this
-# service-agnostic module learning connector names.
-ALIAS_OPT_IN_FIELD = "includeSynonyms"
-
-
-def service_resolves_aliases(metadata: OpenMetadata, service_name: str) -> bool:
-    """
-    Whether this service's connection opts into resolving alternate table names.
-
-    Resolving an alias costs an extra exact-match search per unresolved name, so
-    connectors that cannot produce aliases must not pay for it. Absent field
-    means no.
-    """
-    if service_name in alias_resolution_cache:
-        return bool(alias_resolution_cache.get(service_name))
-
-    resolves = False
-    try:
-        service: DatabaseService | None = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-        if service:
-            resolves = bool(getattr(service.connection.config, ALIAS_OPT_IN_FIELD, False))
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning("Could not read alias opt-in for service '%s', assuming disabled: %s", service_name, exc)
-
-    alias_resolution_cache.put(service_name, resolves)
-
-    return resolves
-
-
-def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str | None:
-    """
-    Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
-
-    Args:
-        metadata: OMeta client
-        service_name: service name
-
-    Returns:
-        The database service type or None if not found.
-    """
-    if service_name in database_service_type_cache:
-        return database_service_type_cache.get(service_name)
-
-    try:
-        # try ES search first
-        es_result_entities = metadata.es_search_from_fqn(
-            entity_type=DatabaseService,
-            fqn_search_string=service_name,
-        )
-
-        service: DatabaseService | None = None
-        if es_result_entities:
-            service = es_result_entities[0] if es_result_entities else None
-
-        # try API search if ES is empty
-        if not service:
-            service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-
-        if service:
-            service_type = service.connection.config.type.value.lower()
-            logger.debug(f"Service (name={service.name.root}) is of type '{service_type}'")
-
-            # cache the result
-            database_service_type_cache.put(service_name, service_type)
-            return service_type
-
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Could not determine service type for service '{service_name}': {exc}")
-
-    return None
-
-
-def normalize_table_params_by_service(
-    metadata: OpenMetadata,
-    service_name: str,
-    database: str | None,
-    database_schema: str | None,
-) -> tuple[str | None, str | None]:
-    """
-    Normalize database and schema parameters based on service type.
-
-    Certain database types require parameter normalization:
-    - ClickHouse: Uses database_schema as schema, sets database to None
-
-    Args:
-        metadata: OMeta client
-        service_name: service name
-        database: database name
-        database_schema: schema name
-
-    Returns:
-        Tuple of (normalized_database, normalized_schema)
-    """
-    conn_type = get_database_service_type(metadata, service_name)
-
-    # ClickHouse normalization
-    if conn_type == "clickhouse" and database:
-        return None, database_schema
-
-    return database, database_schema
-
-
-def search_table_entities(
-    metadata: OpenMetadata,
-    service_names: str | list[str],
-    database: str | None,
-    database_schema: str | None,
-    table: str,
-) -> list[Table] | None:
-    """
-    Method to get table entity from database, database_schema & table name.
-    Now supports searching across multiple services (cross-database lineage).
-
-    Args:
-        metadata: OMeta client
-        service_names: service name or list of service names (current + cross db)
-        database: database name
-        database_schema: schema name
-        table: table name
-
-    Returns:
-        A list of Table entities from the first service where found, otherwise None
-    """
-    if not table:
-        logger.debug(
-            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
-        )
-        return None
-
-    if isinstance(service_names, str):
-        service_names = [service_names]
-
-    for service_name in service_names:
-        # normalize database and schema parameters based on service type
-        normalized_db, normalized_schema = normalize_table_params_by_service(
-            metadata, service_name, database, database_schema
-        )
-
-        search_tuple = (service_name, normalized_db, normalized_schema, table)
-        if search_tuple in search_cache:
-            result = search_cache.get(search_tuple)
-            if result:
-                return result
-
-        try:
-            table_entities: list[Table] | None = []
-
-            # search on ES first
-            fqn_search_string = build_es_fqn_search_string(normalized_db, normalized_schema, service_name, table)
-            es_result_entities = metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-            )
-            if es_result_entities:
-                table_entities = es_result_entities
-            else:
-                # build FQNs and search with the API in case ES response is empty
-                table_fqns = fqn.build(
-                    metadata,
-                    entity_type=Table,
-                    service_name=service_name,
-                    database_name=normalized_db,
-                    schema_name=normalized_schema,
-                    table_name=table,
-                    fetch_multiple_entities=True,
-                    skip_es_search=True,
-                )
-                for table_fqn in table_fqns or []:
-                    table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
-                    if table_entity:
-                        table_entities.append(table_entity)
-
-            # added the search tuple to the cache
-            search_cache.put(search_tuple, table_entities)
-            if table_entities:
-                return table_entities
-
-            # An alias name resolves to the canonical table it points at.
-            # Gated per service so connectors that cannot produce aliases never
-            # pay for the extra lookup.
-            if not service_resolves_aliases(metadata, service_name):
-                continue
-
-            alias_fqn = fqn.build(
-                metadata,
-                entity_type=Table,
-                service_name=service_name,
-                database_name=normalized_db,
-                schema_name=normalized_schema,
-                table_name=table,
-                skip_es_search=True,
-            )
-            if alias_fqn:
-                alias_entities = metadata.es_search_from_alias(
-                    entity_type=Table,
-                    alias_fqn=alias_fqn,
-                )
-                if alias_entities:
-                    # LRUCache.put's `key` is typed as `str`, but this cache is keyed by the
-                    # same (service, db, schema, table) tuple as the `search_cache.put` call
-                    # above (line ~251, pre-existing and baselined) -- a real annotation gap,
-                    # not a bug: dict keys accept any hashable value.
-                    search_cache.put(search_tuple, alias_entities)  # pyright: ignore[reportArgumentType]
-                    return alias_entities
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error searching for table entities for service [{service_name}]: {exc}")
-
-    return None
-
-
-def get_table_fqn_from_query_name(
-    table_name: str,
-) -> tuple[str | None, str | None, str | None]:
-    """
-    Method to extract database, schema and table name
-    from raw table name used in query
-
-    The split is quote-aware: connectors are free to put a `.` inside a single name
-    component (Dremio flattens nested folder paths into `folder.subfolder`), in which
-    case that component reaches us quoted. Splitting such a name on every `.` would
-    tear the quoted identifier in half and yield components with unbalanced quotes,
-    which `fqn.quote_name` then rejects with `Invalid name "folder`.
-    """
-
-    split_table = fqn.split_raw_name(table_name)
-    empty_list: list[Any] = [None]  # Otherwise, there's a typing error in the concat
-
-    if len(split_table) > 3:
-        # In case of bigquery, it is possible that tables within information schema when
-        # referred with their fully qualified name may look like this
-        # `project-id.dataset-id.information_schema.table-name` in such cases there
-        # will be 4 values to unpack vs the expected 3 values, hence in such case we
-        # just pick the table name and keep the database and schema name as none
-
-        table = split_table[-1]
-        database_query, schema_query = None, None
-    else:
-        database_query, schema_query, table = (empty_list * (3 - len(split_table))) + split_table
-
-        logger.debug(
-            f"[UsageSink] Extracted components before cleanup -> "
-            f"database: {database_query}, schema: {schema_query}, table: {table}"
-        )
-
-    if schema_query == DEFAULT_SCHEMA_NAME:
-        schema_query = None
-
-    if database_query == DEFAULT_SCHEMA_NAME:
-        database_query = None
-
-    return database_query, schema_query, table
 
 
 def __process_intermediate_column_lineage(
@@ -654,6 +406,7 @@ def get_column_lineage(
     to_table_raw_name: str,
     from_table_raw_name: str,
     column_lineage_map: dict,
+    copied_columns: CopiedColumns = NOTHING_COPIED,
 ) -> list[ColumnLineage]:
     """Get column lineage
 
@@ -663,12 +416,19 @@ def get_column_lineage(
         to_table_raw_name (str): table entity raw name we link to
         from_table_raw_name (str): table entity raw name we link from
         column_lineage_map (dict): map of the column lineage
+        copied_columns (CopiedColumns): the columns the query copies unchanged
+            (`LineageParser.copied_columns`); only those carry nested fields by name
 
     Returns:
         List[ColumnLineage]
     """
+    if "*" in to_table_raw_name:
+        return []
     column_lineage = []
-    pairs = column_lineage_map.get(to_table_raw_name, {}).get(from_table_raw_name, [])
+    sources = column_lineage_map.get(to_table_raw_name, {})
+    pairs = sources.get(from_table_raw_name, [])
+    if "*" in from_table_raw_name:
+        pairs = [(to_col, from_col) for to_col, from_col in pairs if "*" not in to_col and "*" not in from_col]
     if pairs:
         # COUNT(*) yields ("alias", "*"), which must not expand source columns.
         if ("*", "*") in pairs:
@@ -678,11 +438,122 @@ def get_column_lineage(
             column_lineage_map[to_table_raw_name][from_table_raw_name] = pairs
 
         for to_col, from_col in pairs:
-            to_col_fqn = get_column_fqn(to_entity, to_col)
-            from_col_fqn = get_column_fqn(from_entity, from_col)
-            if to_col_fqn and from_col_fqn:
-                column_lineage.append(ColumnLineage(fromColumns=[from_col_fqn], toColumn=to_col_fqn))
+            from_column = _find_column(from_entity.columns, from_col)
+            to_column = _find_column(to_entity.columns, to_col)
+            if from_column and to_column:
+                copied = copied_columns.copies(to_col, from_col)
+                column_lineage.extend(_nested_column_lineage(from_column, to_column, copied))
+    for key, struct_pairs in sources.items():
+        if key.startswith(f"{STRUCT_FIELD_PARENT}."):
+            struct_name = key.removeprefix(f"{STRUCT_FIELD_PARENT}.")
+            column_lineage.extend(
+                _struct_field_lineage(from_entity, to_entity, struct_name, struct_pairs, copied_columns)
+            )
     return column_lineage
+
+
+def _find_column(columns: list[TableColumn] | None, name: str) -> TableColumn | None:
+    """Column of that name among `columns`, ignoring case"""
+    return next((column for column in columns or [] if column.name.root.lower() == name.lower()), None)
+
+
+def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn, copied: bool) -> list[ColumnLineage]:
+    """
+    Lineage from one column to another and, when the query copies the column unchanged, one
+    edge per nested field the two share by name, at any depth: selecting a STRUCT or
+    ARRAY<STRUCT> as-is carries every field with it. A column built by an expression
+    (`STRUCT(billing AS address)`) keeps only the column edge: its fields may sit anywhere.
+    """
+    if not from_column.fullyQualifiedName or not to_column.fullyQualifiedName:
+        return []
+    edges = [
+        ColumnLineage(
+            fromColumns=[from_column.fullyQualifiedName],
+            toColumn=to_column.fullyQualifiedName,
+        )
+    ]
+    for from_child in from_column.children or [] if copied else []:
+        if to_child := _find_column(to_column.children, from_child.name.root):
+            edges.extend(_nested_column_lineage(from_child, to_child, copied))
+    return edges
+
+
+def _find_struct(columns: list[TableColumn], name: str) -> TableColumn | None:
+    """
+    The STRUCT a field path runs through. The parser keeps only the path segment above the
+    field, so `address.zip` and `customer.address.zip` both arrive as `address`: the path is
+    resolved only when exactly one STRUCT, at any depth, has that name.
+    """
+    found = []
+    pending = list(columns or [])
+    while pending:
+        column = pending.pop()
+        if column.children:
+            pending.extend(column.children)
+            if column.name.root.lower() == name.lower():
+                found.append(column)
+    return found[0] if len(found) == 1 else None
+
+
+def _struct_field_lineage(
+    from_entity: Table,
+    to_entity: Table,
+    struct_name: str,
+    pairs: list[tuple[str, str]],
+    copied_columns: CopiedColumns,
+) -> list[ColumnLineage]:
+    """Lineage for fields read through a STRUCT path: `struct.field AS alias` or `struct.*`"""
+    struct = _find_struct(from_entity.columns, struct_name)
+    if struct is None:
+        return []
+    edges = []
+    for to_col, from_col in pairs:
+        if from_col == "*":
+            # A plain `struct.*` copies each field under its own name, except one another item produces.
+            fields = [
+                (field, field.name.root, True)
+                for field in struct.children or []
+                if copied_columns.star_copies(field.name.root)
+            ]
+        else:
+            field = _find_column(struct.children, from_col)
+            fields = [(field, to_col, copied_columns.copies(to_col, from_col, struct_field=True))] if field else []
+        for field, target_name, copied in fields:
+            if target := _find_column(to_entity.columns, target_name):
+                edges.extend(_nested_column_lineage(field, target, copied))
+    return edges
+
+
+def _key_struct_field_parents(column_lineage_map: dict, lineage_parser: LineageParser) -> None:
+    """
+    Move the column lineage the parser attributes to a table the query never reads under
+    STRUCT_FIELD_PARENT. The parser reads `customer.email` and `customer.*` as columns of a
+    table `customer`; only an unqualified name can be such a STRUCT, and a name the query
+    does read as a table keeps its key.
+
+    The parser drops the qualifier of such a path, so it is resolved only when nothing else
+    in the query can own that name: one source, which is a table (a table-valued function or a
+    stage can read several), no intermediate table, and no subquery or CTE that could rename a
+    column to it. Otherwise the path keeps its key and gets no lineage rather than lineage from
+    the wrong column. ADR:2026-11-06-sql-column-lineage-follows-nested-fields
+    """
+    source_tables = cast("list", lineage_parser.source_tables)
+    intermediate_tables = cast("list", lineage_parser.intermediate_tables)
+    target_tables = cast("list", lineage_parser.target_tables)
+    single_table_source = len(source_tables) == 1 and isinstance(source_tables[0], LineageTable)
+    if not single_table_source or intermediate_tables or lineage_parser.has_subqueries:
+        return
+    read_tables = {str(table) for table in (*source_tables, *intermediate_tables, *target_tables)}
+    default_prefix = f"{DEFAULT_SCHEMA_NAME}."
+    for sources in column_lineage_map.values():
+        struct_keys = [
+            key
+            for key in sources
+            if key.startswith(default_prefix) and "." not in key.removeprefix(default_prefix) and key not in read_tables
+        ]
+        for key in struct_keys:
+            name = key.removeprefix(default_prefix)
+            sources.setdefault(f"{STRUCT_FIELD_PARENT}.{name}", []).extend(sources.pop(key))
 
 
 # pylint: disable=too-many-arguments
@@ -696,6 +567,7 @@ def _build_table_lineage(
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: EntityReference | None = None,
     temp_lineage_tables: list | None = None,
+    copied_columns: CopiedColumns = NOTHING_COPIED,
 ) -> Either[LineageRequest]:
     """
     Prepare the lineage request generator
@@ -735,6 +607,7 @@ def _build_table_lineage(
             from_entity=from_entity,
             from_table_raw_name=str(from_table_raw_name),
             column_lineage_map=column_lineage_map,
+            copied_columns=copied_columns,
         )
         lineage_details = LineageDetails(sqlQuery=masked_query, source=lineage_source, pipeline=procedure)
         if temp_lineage_tables:
@@ -747,6 +620,8 @@ def _build_table_lineage(
             to_entity_fqn=model_str(to_entity_fqn),
             to_entity_type="table",
             lineage_details=lineage_details,
+            from_entity_id=from_entity.id,
+            to_entity_id=to_entity.id,
         )
         return Either(right=lineage)
     except Exception as e:
@@ -773,9 +648,14 @@ def _create_lineage_by_table_name(
     procedure: EntityReference | None = None,
     graph: DiGraph | None = None,
     schema_fallback: bool = False,
+    to_table_entities: list[Table] | None = None,
+    copied_columns: CopiedColumns = NOTHING_COPIED,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method is to create a lineage between two tables
+
+    `to_table_entities` are the target entities when the caller already has them, so
+    `to_table` is not resolved again by name.
     """
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -790,7 +670,7 @@ def _create_lineage_by_table_name(
             schema_fallback=schema_fallback,
         )
 
-        to_table_entities = get_table_entities_from_query(
+        to_table_entities = to_table_entities or get_table_entities_from_query(
             metadata=metadata,
             service_names=service_names,
             database_name=database_name,
@@ -829,6 +709,7 @@ def _create_lineage_by_table_name(
                     column_lineage_map=column_lineage_map,
                     lineage_source=lineage_source,
                     procedure=procedure,
+                    copied_columns=copied_columns,
                 )
 
     except Exception as exc:
@@ -870,6 +751,24 @@ def populate_column_lineage_map(raw_column_lineage):
     return lineage_map
 
 
+def _view_target(view_entity: Table | None, target_table: object) -> list[Table] | None:
+    """Bind only the view's own SQL name, preserving its catalog qualifications."""
+    if view_entity is None:
+        return None
+    target_name = re.sub(r'[\[\]"`]', "", str(target_table)).lower()
+    # An unqualified target prints with the parser's placeholder schema.
+    target_name = target_name.removeprefix(f"{DEFAULT_SCHEMA_NAME}.")
+    # Some parsers drop the qualifiers around a dotted leaf name entirely.
+    if target_name == model_str(view_entity.name).lower():
+        return [view_entity]
+    if view_entity.fullyQualifiedName is None:
+        return None
+    view_parts = [fqn.unquote_name(part).lower() for part in fqn.split(model_str(view_entity.fullyQualifiedName))[1:]]
+    if any(target_name == ".".join(view_parts[index:]) for index in range(len(view_parts))):
+        return [view_entity]
+    return None
+
+
 # pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
@@ -885,12 +784,16 @@ def get_lineage_by_query(
     schema_fallback: bool = False,
     service_name: str | None = None,  # backward compatibility for python sdk
     parser_type: QueryParserType = QueryParserType.Auto,
+    view_entity: Table | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
 
     Now supports cross-database lineage by accepting a list of service names.
+
+    `view_entity` is the view whose definition is `query`. A target that names it uses
+    the entity as is instead of being resolved again by its dotted name.
     """
     column_lineage = {}
 
@@ -908,6 +811,9 @@ def get_lineage_by_query(
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
+        _key_struct_field_parents(column_lineage, lineage_parser)
+        # Read the projections only when there is column lineage to follow into nested fields.
+        copied_columns = cast("CopiedColumns", lineage_parser.copied_columns) if column_lineage else NOTHING_COPIED
 
         for intermediate_table in lineage_parser.intermediate_tables:
             for source_table in lineage_parser.source_tables:
@@ -930,6 +836,7 @@ def get_lineage_by_query(
                         schema_name=schema_name,
                         masked_query=masked_query,
                         column_lineage_map=column_lineage,
+                        copied_columns=copied_columns,
                         lineage_source=lineage_source,
                         procedure=procedure,
                         graph=graph,
@@ -945,9 +852,11 @@ def get_lineage_by_query(
                     schema_name=schema_name,
                     masked_query=masked_query,
                     column_lineage_map=column_lineage,
+                    copied_columns=copied_columns,
                     lineage_source=lineage_source,
                     schema_fallback=schema_fallback,
                     graph=graph,
+                    to_table_entities=_view_target(view_entity, target_table),
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -971,10 +880,12 @@ def get_lineage_by_query(
                             schema_name=schema_name,
                             masked_query=masked_query,
                             column_lineage_map=column_lineage,
+                            copied_columns=copied_columns,
                             lineage_source=lineage_source,
                             procedure=procedure,
                             graph=graph,
                             schema_fallback=schema_fallback,
+                            to_table_entities=_view_target(view_entity, target_table),
                         )
     except Exception as exc:
         yield Either(
@@ -1039,6 +950,9 @@ def get_lineage_via_table_entity(
                         procedure=procedure,
                         graph=graph,
                         schema_fallback=schema_fallback,
+                        # The view was looked up by its FQN already. Joining its names
+                        # with dots loses the boundary of a name that contains one.
+                        to_table_entities=[table_entity],
                     )
                     or []
                 )

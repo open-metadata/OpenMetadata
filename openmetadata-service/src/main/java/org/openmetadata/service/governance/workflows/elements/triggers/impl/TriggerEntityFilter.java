@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -32,12 +33,31 @@ public final class TriggerEntityFilter {
       if (filterConfig instanceof String filterString) {
         filter = fromFilterString(filterString, entityType);
       } else if (filterConfig instanceof Map) {
-        filter = fromFilterMap(JsonUtils.convertValue(filterConfig, FILTER_MAP_TYPE), entityType);
+        filter = fromFilterMap(textEntries(filterConfig), entityType);
       } else {
         LOG.error("Unexpected filter object type: {}", filterConfig.getClass().getName());
       }
     }
     return filter;
+  }
+
+  /**
+   * The string entries of a filter object. The schema allows only string values; any other value is
+   * left out, so the entity type it names reads as having no filter and is not excluded.
+   */
+  public static Map<String, String> textEntries(Object filterObject) {
+    Map<String, String> entries = new HashMap<>();
+    JsonUtils.valueToTree(filterObject)
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              if (entry.getValue().isTextual()) {
+                entries.put(entry.getKey(), entry.getValue().asText());
+              } else if (!entry.getValue().isNull()) {
+                LOG.warn("Ignoring non-string trigger filter entry for '{}'", entry.getKey());
+              }
+            });
+    return entries;
   }
 
   // If the JsonLogic evaluates to TRUE, the entity is excluded from triggering the workflow.

@@ -170,6 +170,43 @@ describe('QueryBuilder', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('should show the delete button on a single rule when the caller allows removing the last rule', () => {
+      renderBuilder({ groupMode: 'flat', allowRemoveLastRule: true });
+
+      expect(screen.getByTestId('delete-condition-button')).toBeInTheDocument();
+    });
+
+    // The caller resets its screen on an emptied tree, so mounting must never emit one, and deleting the last rule
+    // must emit one rather than re-seed a blank rule.
+    it('should emit a tree with no rules once the last rule is removed', async () => {
+      const onChange = jest.fn();
+      const ruleCount = (tree?: JsonTree): number =>
+        tree?.children1
+          ? (tree.children1 as JsonTree[]).reduce(
+              (total, child) => total + ruleCount(child),
+              0
+            )
+          : 1;
+
+      renderBuilder({ groupMode: 'flat', allowRemoveLastRule: true, onChange });
+
+      expect(
+        onChange.mock.calls.some(([, tree]) => ruleCount(tree) === 0)
+      ).toBe(false);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('delete-condition-button'));
+      });
+
+      await waitFor(() =>
+        expect(ruleCount(onChange.mock.calls.at(-1)?.[1])).toBe(0)
+      );
+
+      expect(
+        screen.queryByTestId('delete-condition-button')
+      ).not.toBeInTheDocument();
+    });
+
     it('should show delete buttons once a second rule is added', async () => {
       renderBuilder({ groupMode: 'flat' });
 

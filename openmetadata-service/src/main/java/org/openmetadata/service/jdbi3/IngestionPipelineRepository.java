@@ -25,20 +25,28 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
@@ -55,8 +63,10 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -81,16 +91,21 @@ import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
+import org.openmetadata.service.secrets.DBSecretsManager;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -111,6 +126,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   private static final int DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS = 3600;
+  private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]+");
+  private static final Pattern NON_ALPHANUMERIC_ANY_CASE = Pattern.compile("[^A-Za-z0-9]+");
+  private static final String RUNNER_NAME_SEPARATOR = "-";
+  private static final String RUNNER_NAME_TAKEN =
+      "Ingestion pipeline '%s' cannot be sent to the ingestion runner: the runner knows it by the"
+          + " same name as the deployed pipeline '%s'. Recreate one of the two under another name.";
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -338,6 +359,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @VisibleForTesting
   record DisplayNameCursor(String displayName, String id) {}
 
+  /** A display-name ordered listing pages on that key, so a cursor built from a row carries it. */
+  @Override
+  public String getCursorValue(IngestionPipeline pipeline, ListFilter filter) {
+    return filter == null || nullOrEmpty(filter.getSortField())
+        ? super.getCursorValue(pipeline, filter)
+        : displayNameCursorValue(pipeline);
+  }
+
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline.getService() == null) {
@@ -550,6 +579,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  public void restorePatchAttributes(
+      final IngestionPipeline original, final IngestionPipeline updated) {
+    super.restorePatchAttributes(original, updated);
+    updated.setService(original.getService());
+  }
+
+  @Override
   protected IngestionPipeline restorePatchSecrets(
       IngestionPipeline original, IngestionPipeline updated) {
     EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(updated, original);
@@ -704,31 +740,149 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       secretsManager.encryptIngestionPipeline(ingestionPipeline);
     }
+    return ingestionPipeline;
+  }
+
+  @Override
+  protected IngestionPipeline prepareForVersionHistory(IngestionPipeline ingestionPipeline) {
+    final IngestionPipeline snapshot =
+        JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null) {
+      // Recording history must not overwrite credentials in an external vault.
+      DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsManager.getSecretsConfig())
+          .encryptIngestionPipeline(snapshot);
+    }
+    return snapshot;
+  }
+
+  @Override
+  protected void store(IngestionPipeline pipeline, boolean update, Double expectedVersion) {
+    writeWithSecretOwnership(
+        List.of(pipeline),
+        update,
+        () -> {
+          super.store(pipeline, update, expectedVersion);
+        });
+  }
+
+  @Override
+  protected void storeMany(List<IngestionPipeline> pipelines) {
+    writeWithSecretOwnership(
+        pipelines,
+        false,
+        () -> {
+          super.storeMany(pipelines);
+        });
+  }
+
+  @Override
+  protected void updateMany(List<IngestionPipeline> pipelines) {
+    writeWithSecretOwnership(
+        pipelines,
+        true,
+        () -> {
+          super.updateMany(pipelines);
+        });
+  }
+
+  private SecretInventory secretInventory(SecretsManager manager, IngestionPipeline entity) {
+    return manager.secretInventory(entity);
+  }
+
+  private void writeWithSecretOwnership(
+      List<IngestionPipeline> entities, boolean update, Runnable write) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      write.run();
+      return;
+    }
+    List<SecretInventory> inputs =
+        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          List<SecretInventory> originals =
+              entities.stream()
+                  .map(
+                      entity ->
+                          update
+                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
+                              : null)
+                  .toList();
+          SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
+          write.run();
+          for (int i = 0; i < entities.size(); i++) {
+            IngestionPipeline entity = entities.get(i);
+            ownership.recordWrite(
+                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
+            String root = inputs.get(i).root();
+            PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
+          }
+          return null;
+        });
+  }
+
+  private IngestionPipeline lockStoredForSecretWrite(IngestionPipeline entity) {
+    String stored = dao.findJsonByIdForUpdate(entity.getId(), Include.ALL);
+    if (stored == null) {
+      throw EntityNotFoundException.byId(entity.getId().toString());
+    }
+    return JsonUtils.readValue(stored, IngestionPipeline.class);
+  }
+
+  private void cleanOwnedSecrets(SecretsManager manager, String root) {
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          ownership.clean(root);
+          return null;
+        });
+  }
+
+  private void scheduleSecretDeletion(IngestionPipeline entity) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return;
+    }
+    SecretInventory deleted = secretInventory(manager, entity);
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          executeInTransaction(
+              () -> {
+                SecretMapOwnership ownership =
+                    new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+                ownership.lock();
+                ownership.removeOwner(entity.getId(), deleted);
+                return null;
+              });
+          cleanOwnedSecrets(manager, deleted.root());
+        });
+  }
+
+  @Override
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
     store(ingestionPipeline, update);
   }
 
   @Override
   public void storeEntities(List<IngestionPipeline> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    for (IngestionPipeline ingestionPipeline : entities) {
-      if (secretsManager != null) {
-        secretsManager.encryptIngestionPipeline(ingestionPipeline);
-      }
-
-      fqns.add(ingestionPipeline.getFullyQualifiedName());
-      jsons.add(serializeForStorage(ingestionPipeline));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override
@@ -807,6 +961,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
+    if (hardDelete) {
+      scheduleSecretDeletion(entity);
+    }
     super.postDelete(entity, hardDelete);
     boolean wasRunnerCleanupSkipped = false;
     if (hardDelete) {
@@ -846,7 +1003,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     //     runner happens to be unreachable. The proper fix is a compensating
     //     cleanup at deploy-readiness-timeout time, tracked separately.
     boolean wasRunnerCleanupSkipped = false;
-    if (pipelineServiceClient != null) {
+    Optional<EntityReference> deployedNamesake = findDeployedNamesake(entity);
+    if (deployedNamesake.isPresent()) {
+      LOG.warn(
+          "Not deleting '{}' from the ingestion runner: it is known there by the same name as the deployed pipeline '{}'",
+          entity.getFullyQualifiedName(),
+          deployedNamesake.get().getFullyQualifiedName());
+      redeployNamesakeOf(entity, deployedNamesake.get());
+    } else if (pipelineServiceClient != null) {
       try {
         pipelineServiceClient.deletePipeline(entity);
       } catch (IngestionRunnerUnavailableException exception) {
@@ -864,6 +1028,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           entity.getFullyQualifiedName());
     }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Two pipelines deployed under one runner name before the namesake guard overwrote each other's
+   * runner object, so it may still hold the deleted pipeline's config. Redeploying the survivor gives
+   * it back its own; a failure leaves it as it was, since the delete itself has already happened.
+   */
+  private void redeployNamesakeOf(IngestionPipeline deleted, EntityReference namesake) {
+    IngestionPipeline survivor =
+        Boolean.TRUE.equals(deleted.getDeployed())
+            ? findByNameOrNull(namesake.getFullyQualifiedName(), Include.NON_DELETED)
+            : null;
+    if (survivor != null) {
+      try {
+        deployPipelineBeforeUpdate(survivor);
+      } catch (PipelineServiceClientException | BadRequestException | IllegalStateException e) {
+        LOG.warn(
+            "Could not redeploy '{}' after deleting its namesake '{}'; redeploy it by hand: {}",
+            survivor.getFullyQualifiedName(),
+            deleted.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
   }
 
   private void deletePipelineStatuses(IngestionPipeline entity) {
@@ -894,6 +1081,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   protected EntityReference getParentReference(IngestionPipeline entity) {
     return entity.getService();
+  }
+
+  @Override
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      IngestionPipeline entity, Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
   }
 
   @Override
@@ -1269,6 +1468,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
+    @Override
+    protected IngestionPipeline getPreviousVersion(IngestionPipeline original) {
+      final IngestionPipeline previous = super.getPreviousVersion(original);
+      return previous == null ? null : buildIngestionPipelineDecrypted(previous);
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -1326,6 +1531,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
             updated.getName(),
             e);
+        throw e;
+      } catch (BadRequestException e) {
         throw e;
       } catch (Exception e) {
         LOG.error(
@@ -1626,8 +1833,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  public void streamServiceProgress(String serviceFqn, SseEventSink eventSink, Sse sse) {
-    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker);
+  public void streamServiceProgress(
+      String serviceFqn,
+      SseEventSink eventSink,
+      Sse sse,
+      Function<ServiceProgressSnapshot, Optional<ServiceProgressEvent>> subscriber) {
+    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker, subscriber);
   }
 
   private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {
@@ -1658,27 +1869,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
     }
 
-    progressTracker.updateProgress(
-        fqn, runId, progressUpdate, discoveredPipeline(fqn, progressUpdate));
+    progressTracker.updateProgress(fqn, runId, progressUpdate, progressPipeline(fqn));
     return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
   }
 
   /**
-   * The pipeline entity to attach to the run's opening event, so the UI can discover a newly
-   * created agent from the stream itself. Loaded only for the DISCOVERY update (once per run) and
-   * never fails the progress update — a lookup error just omits the entity.
+   * Bind every service event to the pipeline instance so a reused name cannot expose an older run.
+   * A lookup failure must not fail progress reporting; subscribers omit events with no identity.
    */
-  private IngestionPipeline discoveredPipeline(String fqn, ProgressUpdate update) {
-    IngestionPipeline result = null;
-    if (update.getUpdateType() == ProgressUpdateType.DISCOVERY) {
-      try {
-        result = getByName(null, fqn, getFields(""));
-      } catch (Exception e) {
-        LOG.debug(
-            "Could not load ingestion pipeline {} for progress discovery: {}", fqn, e.getMessage());
-      }
+  private IngestionPipeline progressPipeline(String fqn) {
+    try {
+      return getByName(null, fqn, getFields(""));
+    } catch (Exception e) {
+      LOG.debug("Could not load pipeline {} for progress: {}", fqn, e.getClass().getSimpleName());
+      return null;
     }
-    return result;
   }
 
   public RestUtil.PutResponse<?> addOperationMetrics(
@@ -1695,8 +1900,65 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     validateSourceConfigHasType(ingestionPipeline);
+    assertOwnsRunnerName(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  /**
+   * Some runners know a pipeline by its name alone (the Airflow dag_id, the Kubernetes object
+   * names), but a name is unique only within its service. A runner call for a pipeline whose name
+   * maps onto a deployed pipeline of another service would act on that pipeline instead, so it is
+   * refused (ADR:2026-11-05-a-runner-name-belongs-to-the-deployed-pipeline).
+   */
+  public void assertOwnsRunnerName(IngestionPipeline ingestionPipeline) {
+    findDeployedNamesake(ingestionPipeline)
+        .ifPresent(
+            namesake -> {
+              throw new BadRequestException(
+                  String.format(
+                      RUNNER_NAME_TAKEN,
+                      ingestionPipeline.getFullyQualifiedName(),
+                      namesake.getFullyQualifiedName()));
+            });
+  }
+
+  protected Optional<EntityReference> findDeployedNamesake(IngestionPipeline ingestionPipeline) {
+    boolean isAddressedByName =
+        pipelineServiceClient != null && pipelineServiceClient.addressesPipelinesByName();
+    return isAddressedByName ? findAmongDeployed(ingestionPipeline) : Optional.empty();
+  }
+
+  private Optional<EntityReference> findAmongDeployed(IngestionPipeline ingestionPipeline) {
+    Set<String> runnerNames = runnerNames(ingestionPipeline.getName());
+    return listOtherDeployedPipelines(ingestionPipeline).stream()
+        .filter(other -> !Collections.disjoint(runnerNames, runnerNames(other.getName())))
+        .findFirst();
+  }
+
+  /** Soft-deleted pipelines count: soft delete leaves their runner objects in place. */
+  protected List<EntityReference> listOtherDeployedPipelines(IngestionPipeline ingestionPipeline) {
+    return daoCollection
+        .ingestionPipelineDAO()
+        .listOtherDeployed(String.valueOf(ingestionPipeline.getId()));
+  }
+
+  /**
+   * Coarser than any runner on purpose: case, separators and edge punctuation are ignored, so two
+   * names a runner could confuse always compare equal. Airflow replaces non-ASCII letters,
+   * Kubernetes lower-cases them first, and some (İ, the Kelvin sign) lower-case to ASCII.
+   */
+  static Set<String> runnerNames(String name) {
+    String replacedFirst =
+        NON_ALPHANUMERIC_ANY_CASE
+            .matcher(name)
+            .replaceAll(RUNNER_NAME_SEPARATOR)
+            .toLowerCase(Locale.ROOT);
+    String lowerCasedFirst =
+        NON_ALPHANUMERIC.matcher(name.toLowerCase(Locale.ROOT)).replaceAll(RUNNER_NAME_SEPARATOR);
+    return Stream.of(replacedFirst, lowerCasedFirst)
+        .map(runnerName -> StringUtils.strip(runnerName, RUNNER_NAME_SEPARATOR))
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   public PipelineServiceClientResponse runIngestionPipeline(
@@ -1726,6 +1988,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           .withCode(200)
           .withReason("Pipeline Client Disabled");
     }
+    assertOwnsRunnerName(ingestionPipeline);
     PipelineServiceClientResponse response =
         pipelineServiceClient.runPipelineWithOptions(ingestionPipeline, service, options);
     recordQueuedPipelineStatus(

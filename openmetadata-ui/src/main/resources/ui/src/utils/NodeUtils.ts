@@ -224,6 +224,7 @@ const getNodeConfigFromSavedData = (node: Node): NodeConfig => ({
   batchSize: orDefault(node.data.batchSize, 100),
   dataAssetFilters: orDefault(node.data.dataAssetFilters, []),
   triggerFilter: orDefault(node.data.triggerFilter, ''),
+  approvalMode: node.data.approvalMode,
 });
 
 const getTriggerConfig = (trigger: WorkflowDefinition['trigger']) =>
@@ -329,6 +330,7 @@ const getNodeConfigFromStartNode = (
       entityTypes
     ),
     triggerFilter: getStartNodeTriggerFilter(trigger, config, entityTypes),
+    approvalMode: config.approvalMode,
   };
 };
 

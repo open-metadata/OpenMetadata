@@ -13,17 +13,18 @@
 
 import { Badge, Skeleton } from '@openmetadata/ui-core-components';
 import {
-  BarChartSquare02,
-  Brackets,
-  Cube01,
-  Database01,
-  Dataflow03,
-  HardDrive,
-  LayersThree01,
-  MessageSquare01,
+  ApiService,
+  DashboardService,
+  DatabaseService,
+  DriveService,
+  MessagingService,
+  MetadataService,
+  MlModelService,
+  Pipeline,
   Search,
-  Server01,
-  Shield01,
+  SearchService,
+  SecurityService,
+  StorageService,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
@@ -38,18 +39,19 @@ import { ConnectionsCategory } from './useConnectionsData';
 
 type NavigationIcon = React.ComponentType<React.ComponentProps<'svg'>>;
 
+// Same service icons the Explore tree shows for these categories.
 const CATEGORY_ICONS: Record<ConnectionsServiceCategory, NavigationIcon> = {
-  [ServiceCategory.API_SERVICES]: Brackets,
-  [ServiceCategory.DASHBOARD_SERVICES]: BarChartSquare02,
-  [ServiceCategory.DATABASE_SERVICES]: Database01,
-  [ServiceCategory.MESSAGING_SERVICES]: MessageSquare01,
-  [ServiceCategory.METADATA_SERVICES]: LayersThree01,
-  [ServiceCategory.ML_MODEL_SERVICES]: Cube01,
-  [ServiceCategory.PIPELINE_SERVICES]: Dataflow03,
-  [ServiceCategory.STORAGE_SERVICES]: Server01,
-  [ServiceCategory.SEARCH_SERVICES]: Search,
-  [ServiceCategory.DRIVE_SERVICES]: HardDrive,
-  [ServiceCategory.SECURITY_SERVICES]: Shield01,
+  [ServiceCategory.API_SERVICES]: ApiService,
+  [ServiceCategory.DASHBOARD_SERVICES]: DashboardService,
+  [ServiceCategory.DATABASE_SERVICES]: DatabaseService,
+  [ServiceCategory.MESSAGING_SERVICES]: MessagingService,
+  [ServiceCategory.METADATA_SERVICES]: MetadataService,
+  [ServiceCategory.ML_MODEL_SERVICES]: MlModelService,
+  [ServiceCategory.PIPELINE_SERVICES]: Pipeline,
+  [ServiceCategory.STORAGE_SERVICES]: StorageService,
+  [ServiceCategory.SEARCH_SERVICES]: SearchService,
+  [ServiceCategory.DRIVE_SERVICES]: DriveService,
+  [ServiceCategory.SECURITY_SERVICES]: SecurityService,
 };
 
 interface ConnectionsSecondaryNavProps {
@@ -128,8 +130,9 @@ const ConnectionsSecondaryNav = ({
 
   return (
     <aside
-      className="tw:w-66 tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-surface tw:px-3.5 tw:pb-48 tw:pt-5 tw:dark:rounded-xl tw:dark:border"
-      data-testid="connections-secondary-nav">
+      className="tw:w-66 tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-3.5 tw:pb-48 tw:pt-5"
+      data-testid="connections-secondary-nav"
+      data-tour-step="connections">
       <nav aria-label={t('label.connection-plural')}>
         <NavigationItem
           count={total}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -19,13 +18,13 @@ import {
   ButtonGroupItem,
   Dropdown,
   Grid,
+  selectedTriggerClassName,
 } from '@openmetadata/ui-core-components';
+import { WeeklyEmailPreferences } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isNaN, map } from 'lodash';
+import { findKey, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
 import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,
@@ -36,17 +35,14 @@ import {
   SEGMENT_TOGGLE_ITEM_CLASS,
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
-import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getAllPipelineStatuses } from '../../../rest/pipelineAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import DatePicker, {
-  RangePickerProps,
-} from '../../common/DatePicker/DatePicker';
-import './execution.less';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
 
@@ -68,61 +64,58 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPipelineStatus = async (startRange: number, endRange: number) => {
+  const fetchPipelineStatus = async (
+    startRange: number,
+    endRange: number,
+    signal: AbortSignal
+  ) => {
     try {
       setIsLoading(true);
 
-      const response = await getPipelineStatus(pipelineFQN, {
-        startTs: startRange,
-        endTs: endRange,
-      });
-      setExecutions(response.data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.fetch-pipeline-status-error')
+      const statuses = await getAllPipelineStatuses(
+        pipelineFQN,
+        { startTs: startRange, endTs: endRange },
+        signal
       );
+      if (!signal.aborted) {
+        setExecutions(statuses);
+      }
+    } catch (error) {
+      if (!signal.aborted) {
+        showErrorToast(
+          error as AxiosError,
+          t('message.fetch-pipeline-status-error')
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
   };
+
+  const isStatusFiltered = status !== MenuOptions.all;
 
   const handleMenuClick = useCallback(
     (key: Key) => setStatus(MenuOptions[key as keyof typeof MenuOptions]),
     []
   );
 
-  const onDateChange: RangePickerProps['onChange'] = (values) => {
-    if (values) {
-      const startTime = values[0]?.startOf('day').valueOf() ?? 0;
-      const endTime = values[1]?.endOf('day').valueOf() ?? 0;
-
-      if (!isNaN(startTime) && !isNaN(endTime)) {
-        setStartTime(startTime);
-        setEndTime(endTime);
-      }
-      if (isNaN(startTime)) {
-        setIsClickedCalendar(false);
-        setStartTime(
-          getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
-        );
-        setEndTime(getCurrentMillis());
-
-        setDatesSelected(false);
-      }
-
-      setDatesSelected(true);
-    } else {
-      setDatesSelected(false);
-      setStartTime(
+  const onDateChange = (range?: { startTs: number; endTs: number }) => {
+    setDatesSelected(Boolean(range));
+    setStartTime(
+      range?.startTs ??
         getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
-      );
-      setEndTime(getCurrentMillis());
-    }
+    );
+    setEndTime(range?.endTs ?? getCurrentMillis());
   };
 
   useEffect(() => {
-    fetchPipelineStatus(startTime, endTime);
+    // Reading a range can take several requests, so a superseded read must not land last.
+    const controller = new AbortController();
+    fetchPipelineStatus(startTime, endTime, controller.signal);
+
+    return () => controller.abort();
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   const handleSearch = (value: string) => {
@@ -173,17 +166,23 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               itemClassName="layout-space-item">
               <Dropdown.Root>
                 <Button
-                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  className={
+                    isStatusFiltered ? selectedTriggerClassName(true) : undefined
+                  }
                   color="secondary"
                   data-testid="status-button"
-                  iconLeading={<FilterIcon height={12} width={12} />}
+                  iconLeading={WeeklyEmailPreferences}
                   size="sm">
-                  {status === MenuOptions.all ? t('label.status') : status}
+                  {isStatusFiltered ? status : t('label.status')}
                 </Button>
                 <Dropdown.Popover className="tw:w-auto" placement="bottom">
                   <Dropdown.Menu
+                    disallowEmptySelection
                     aria-label={t('label.status')}
-                    selectionMode="none"
+                    selectedKeys={[
+                      findKey(MenuOptions, (v) => v === status) ?? 'all',
+                    ]}
+                    selectionMode="single"
                     onAction={handleMenuClick}>
                     {map(MenuOptions, (value, key) => (
                       <Dropdown.Item id={key} key={key}>
@@ -194,16 +193,15 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                 </Dropdown.Popover>
               </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-                <DatePicker.RangePicker
-                  allowClear
-                  showNow
-                  className="executions-date-picker"
-                  clearIcon={<CloseCircleOutlined />}
-                  data-testid="data-range-picker"
-                  placeholder={[t('label.date-filter'), '']}
-                  suffixIcon={<Icon component={Calendar} size={12} />}
-                  onChange={onDateChange}
-                />
+                <div data-testid="data-range-picker">
+                  <DateRangeFilter
+                    endTs={datesSelected ? endTime : undefined}
+                    size="sm"
+                    startTs={datesSelected ? startTime : undefined}
+                    onApply={onDateChange}
+                    onClear={() => onDateChange()}
+                  />
+                </div>
               ) : null}
             </Box>
           </Box>

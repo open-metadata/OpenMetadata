@@ -10,14 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
-import ErrorPlaceHolderNew from '../ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import PanelEmptyPlaceholder from '../EmptyPlaceholder/PanelEmptyPlaceholder';
 import Loader from '../Loader/Loader';
 import SearchBarComponent from '../SearchBarComponent/SearchBar.component';
 import { SEARCH_PLACEHOLDER_MAP } from './EntityDetailsSection.constants';
@@ -73,16 +70,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     </div>
   ) : (
     <div className="lineage-items-list empty-state">
-      <ErrorPlaceHolderNew
-        className="text-grey-14"
-        icon={<AddPlaceHolderIcon height={100} width={100} />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="text-center p-x-md m-t-sm no-data-placeholder">
-          {t('message.no-schema-message')}
-        </Typography>
-      </ErrorPlaceHolderNew>
+      <PanelEmptyPlaceholder description={t('message.no-schema-message')} />
     </div>
   );
 };

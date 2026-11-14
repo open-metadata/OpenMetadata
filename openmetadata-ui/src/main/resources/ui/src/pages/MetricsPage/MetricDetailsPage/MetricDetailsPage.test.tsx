@@ -103,17 +103,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () =>
-    jest.fn().mockImplementation(({ type, permissionValue, children }) => (
-      <div data-testid="error-placeholder" data-type={type}>
-        {permissionValue}
-        {children}
-      </div>
-    ))
-);
-
 jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
   __esModule: true,
   default: jest
@@ -192,9 +181,9 @@ describe('MetricDetailsPage', () => {
 
     renderPage();
 
-    const placeholder = await screen.findByTestId('error-placeholder');
-
-    expect(placeholder).toHaveAttribute('data-type', 'PERMISSION');
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(mockGetMetricByFqn).not.toHaveBeenCalled();
   });
 
@@ -250,7 +239,9 @@ describe('MetricDetailsPage', () => {
 
     renderPage();
 
-    const placeholder = await screen.findByTestId('error-placeholder');
+    const placeholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(placeholder).not.toHaveAttribute('data-type', 'PERMISSION');
     expect(screen.queryByTestId('metric-details')).not.toBeInTheDocument();

@@ -11,7 +11,22 @@
  *  limitations under the License.
  */
 import type { EntityReference } from '../generated/type/entityReference';
-import { getNodeLineageData } from './EntityLineageNodeUtils';
+import type { EdgeDetails } from '../interface/lineage.interface';
+import {
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
+
+const ref = (fqn: string): EntityReference => ({
+  id: `id-${fqn}`,
+  type: 'table',
+  fullyQualifiedName: fqn,
+});
+
+const edge = (from: string, to: string): EdgeDetails => ({
+  fromEntity: ref(from) as EdgeDetails['fromEntity'],
+  toEntity: ref(to) as EdgeDetails['toEntity'],
+});
 
 describe('getNodeLineageData', () => {
   it('should keep lineageSqlQueries on the node so the edge drawer can resolve sqlQueryKey', () => {
@@ -30,5 +45,89 @@ describe('getNodeLineageData', () => {
     };
 
     expect(result.lineageSqlQueries).toEqual(lineageSqlQueries);
+  });
+});
+
+describe('getUpstreamDownstreamNodesEdges', () => {
+  it('visits each node of a cycle once and stops', () => {
+    const nodes = ['root', 'a', 'b'].map(ref);
+    const edges = [edge('root', 'a'), edge('a', 'b'), edge('b', 'root')];
+
+    const { downstreamNodes, upstreamNodes } = getUpstreamDownstreamNodesEdges(
+      edges,
+      nodes,
+      'root'
+    );
+
+    expect(downstreamNodes.map((node) => node.fullyQualifiedName)).toEqual([
+      'a',
+      'b',
+      'root',
+    ]);
+    expect(upstreamNodes.map((node) => node.fullyQualifiedName)).toEqual([
+      'b',
+      'a',
+      'root',
+    ]);
+  });
+
+  it('keeps edges to nodes that were not returned but does not walk past them', () => {
+    const nodes = ['root', 'a'].map(ref);
+    const edges = [edge('unfetched', 'a'), edge('a', 'root')];
+
+    const { upstreamEdges, upstreamNodes } = getUpstreamDownstreamNodesEdges(
+      edges,
+      nodes,
+      'root'
+    );
+
+    expect(upstreamEdges).toEqual([edge('a', 'root'), edge('unfetched', 'a')]);
+    expect(upstreamNodes.map((node) => node.fullyQualifiedName)).toEqual(['a']);
+  });
+
+  describe('at the size a busy table returns', () => {
+    // Counts endpoint reads instead of timing the walk: a wall-clock bound
+    // flaked on loaded CI runners, while the read count tells the indexed walk
+    // (a few reads per edge) from the quadratic scan (every edge per visited
+    // node, #34904) on any machine.
+    it('walks 2,551 nodes and 52,550 edges reading each edge a bounded number of times', () => {
+      const nodes = [ref('root')];
+      const edges: EdgeDetails[] = [];
+      for (let i = 0; i < 50; i++) {
+        nodes.push(ref(`u${i}`));
+        edges.push(edge(`u${i}`, 'root'));
+        for (let j = 0; j < 50; j++) {
+          nodes.push(ref(`u${i}.u${j}`));
+          edges.push(edge(`u${i}.u${j}`, `u${i}`));
+          for (let k = 0; k < 20; k++) {
+            edges.push(edge(`unfetched.u${i}.u${j}.u${k}`, `u${i}.u${j}`));
+          }
+        }
+      }
+
+      let endpointReads = 0;
+      const countedEdges = edges.map(({ fromEntity, toEntity }) => ({
+        get fromEntity() {
+          endpointReads++;
+
+          return fromEntity;
+        },
+        get toEntity() {
+          endpointReads++;
+
+          return toEntity;
+        },
+      }));
+
+      const { upstreamNodes, upstreamEdges } = getUpstreamDownstreamNodesEdges(
+        countedEdges,
+        nodes,
+        'root'
+      );
+
+      expect(upstreamNodes).toHaveLength(2550);
+      expect(upstreamEdges).toHaveLength(52550);
+      expect(endpointReads).toBeLessThanOrEqual(edges.length * 4);
+    });
   });
 });

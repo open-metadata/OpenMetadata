@@ -14,13 +14,17 @@ import {
   Avatar,
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
+  Brush01,
   ChevronDown,
+  Collapse,
   Edit01,
+  Expand,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -31,9 +35,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../../components/Entity/Voting/Voting.component';
 import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -86,6 +90,7 @@ import {
 } from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import {
@@ -122,7 +127,6 @@ import {
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -131,6 +135,7 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -155,6 +160,7 @@ const DomainDetails = ({
   domainFqnOverride,
   onNavigate,
   refreshDomains,
+  onRefresh,
   isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
@@ -863,7 +869,7 @@ const DomainDetails = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
-                icon={StyleIcon}
+                icon={Brush01}
                 id="edit-style-button"
                 name={t('label.style')}
               />
@@ -936,6 +942,7 @@ const DomainDetails = ({
       labelMap: tabLabelMap,
       feedCount,
       onFeedUpdate: getEntityFeedCount,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -958,6 +965,7 @@ const DomainDetails = ({
     openAssetDrawer,
     fetchDomainAssets,
     handleTabChange,
+    onRefresh,
   ]);
 
   // Resolve to the first rendered tab when the selection is absent/not rendered.
@@ -996,6 +1004,14 @@ const DomainDetails = ({
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
     [tabs[0], activeTab]
   );
+
+  // A domain's lifecycle stage reads next to its name, as a data product's does.
+  const statusBadge =
+    entityUtilClassBase.shouldShowEntityStatus(EntityType.DOMAIN) &&
+    domain.entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={domain.entityStatus} />
+    ) : null;
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1031,9 +1047,12 @@ const DomainDetails = ({
               isFollowingLoading={isFollowingLoading}
               serviceName=""
               suffix={
-                !isTreeView && (
-                  <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
-                )
+                <>
+                  {statusBadge}
+                  {!isTreeView && (
+                    <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
+                  )}
+                </>
               }
               titleColor={domain.style?.color}
             />
@@ -1052,7 +1071,7 @@ const DomainDetails = ({
                   <Dropdown.Root>
                     <Button
                       data-testid="domain-details-add-button"
-                      iconTrailing={<ChevronDown size={14} />}
+                      iconTrailing={ChevronDown}
                       size="sm">
                       {t('label.add')}
                     </Button>
@@ -1072,6 +1091,13 @@ const DomainDetails = ({
                       </Dropdown.Menu>
                     </Dropdown.Popover>
                   </Dropdown.Root>
+                )}
+
+                {!isVersionsView && (
+                  <ChangeRequestsIndicator
+                    entityId={domain.id}
+                    entityType={EntityType.DOMAIN}
+                  />
                 )}
 
                 <Box align="center" gap={4}>
@@ -1144,9 +1170,11 @@ const DomainDetails = ({
                 <Tabs.List
                   actions={
                     isExpandViewSupported && (
-                      <AlignRightIconButton
-                        className={isTabExpanded ? 'rotate-180' : ''}
-                        title={
+                      <ButtonUtility
+                        data-testid="tab-expand-button"
+                        icon={isTabExpanded ? Collapse : Expand}
+                        size="lg"
+                        tooltip={
                           isTabExpanded
                             ? t('label.collapse')
                             : t('label.expand')

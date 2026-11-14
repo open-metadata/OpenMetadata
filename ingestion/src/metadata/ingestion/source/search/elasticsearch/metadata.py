@@ -16,7 +16,7 @@ import traceback
 from collections.abc import Iterable
 from typing import Any
 
-from elasticsearch8 import Elasticsearch  # noqa: TC002
+from elasticsearch import Elasticsearch  # noqa: TC002
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,

@@ -38,12 +38,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -131,8 +130,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: MessagingConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = MessagingServiceTopology()
-    context = TopologyContextManager(topology)
-    topic_source_state: set = set()  # noqa: RUF012
+    topic_source_state = PerSourceState(set)
 
     @retry_with_docker_host()
     def __init__(
@@ -146,12 +144,12 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: MessagingServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
-        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
-
-        # Flag the connection for the test connection
-        self.connection_obj = self.connection
+        if self._connection is None:
+            self.connection_obj = get_connection(self.service_connection)
         with close_on_failure(self._connection):
             self.test_connection()
+            self.connection = self._connection.client if self._connection else self.connection_obj
+        self.connection_obj = self.connection
 
     @property
     def name(self) -> str:

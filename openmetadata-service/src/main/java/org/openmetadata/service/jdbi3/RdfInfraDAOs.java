@@ -26,11 +26,17 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
@@ -39,6 +45,27 @@ import org.openmetadata.service.util.jdbi.BindUUID;
 public interface RdfInfraDAOs {
   @CreateSqlObject
   OntologyDAO ontologyDAO();
+
+  @CreateSqlObject
+  OntologyEntityDAO ontologyEntityDAO();
+
+  @CreateSqlObject
+  OntologyConceptDAO ontologyConceptDAO();
+
+  @CreateSqlObject
+  OntologyPropertyDAO ontologyPropertyDAO();
+
+  @CreateSqlObject
+  OntologyStateDAO ontologyStateDAO();
+
+  @CreateSqlObject
+  OntologyReferenceDAO ontologyReferenceDAO();
+
+  @CreateSqlObject
+  OntologyConceptBindingDAO ontologyConceptBindingDAO();
+
+  @CreateSqlObject
+  OntologyReleaseDAO ontologyReleaseDAO();
 
   @CreateSqlObject
   RelationshipTypeDAO relationshipTypeDAO();
@@ -89,6 +116,94 @@ public interface RdfInfraDAOs {
       long renewedAt,
       long expiresAt) {}
 
+  interface OntologyEntityDAO extends EntityDAO<Ontology> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND id > :afterId AND JSON_LENGTH(json, '$.installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND id > :afterId AND jsonb_typeof(json -> 'installedPacks') = 'array' AND jsonb_array_length(json -> 'installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listJsonWithInstalledPacks(
+        @Bind("limit") int limit, @Bind("afterId") String afterId);
+
+    @Override
+    default String getTableName() {
+      return "ontology_entity";
+    }
+
+    @Override
+    default Class<Ontology> getEntityClass() {
+      return Ontology.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface OntologyMemberDAO<T extends OntologyDefinition> extends EntityDAO<T> {
+    @SqlQuery(
+        "SELECT json FROM <table> WHERE ontologyId = :ontologyId AND deleted = FALSE "
+            + "AND iriHash IN (<iriHashes>) ORDER BY name, id LIMIT :limit <locking>")
+    List<String> findDeclarations(
+        @Define("table") String table,
+        @BindUUID("ontologyId") UUID ontologyId,
+        @BindList("iriHashes") List<String> iriHashes,
+        @Bind("limit") int limit,
+        @Define("locking") String locking);
+  }
+
+  interface OntologyConceptDAO extends OntologyMemberDAO<OntologyConcept> {
+    @Override
+    default String getTableName() {
+      return "ontology_concept_entity";
+    }
+
+    @Override
+    default Class<OntologyConcept> getEntityClass() {
+      return OntologyConcept.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface OntologyPropertyDAO extends OntologyMemberDAO<OntologyProperty> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_property_entity WHERE ontologyId = :ontologyId "
+                + "AND iriHash = md5(:iri) "
+                + "AND BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.iri')) = BINARY :iri "
+                + "AND deleted = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_property_entity WHERE ontologyId = :ontologyId "
+                + "AND iriHash = md5(:iri) AND json->>'iri' = :iri AND deleted = FALSE",
+        connectionType = POSTGRES)
+    String findByIri(@BindUUID("ontologyId") UUID ontologyId, @Bind("iri") String iri);
+
+    @Override
+    default String getTableName() {
+      return "ontology_property_entity";
+    }
+
+    @Override
+    default Class<OntologyProperty> getEntityClass() {
+      return OntologyProperty.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface RelationshipTypeDAO extends EntityDAO<RelationshipType> {
     @Override
     default String getTableName() {
@@ -122,7 +237,7 @@ public interface RdfInfraDAOs {
     List<String> listActive();
   }
 
-  interface OntologyAxiomDAO extends EntityDAO<OntologyAxiom> {
+  interface OntologyAxiomDAO extends OntologyMemberDAO<OntologyAxiom> {
     @Override
     default String getTableName() {
       return "ontology_axiom_entity";
@@ -137,53 +252,9 @@ public interface RdfInfraDAOs {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.subjectIri')) = :iri "
-                + "AND axiomType IN ('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'DISJOINT_WITH') "
-                + "AND deleted = FALSE",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity WHERE json->>'subjectIri' = :iri "
-                + "AND axiomType IN ('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'DISJOINT_WITH') "
-                + "AND deleted = FALSE",
-        connectionType = POSTGRES)
-    int countClassSubjects(@Bind("iri") String iri);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.subjectIri')) = :iri "
-                + "AND axiomType = 'CLASS_ASSERTION' AND deleted = FALSE",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity WHERE json->>'subjectIri' = :iri "
-                + "AND axiomType = 'CLASS_ASSERTION' AND deleted = FALSE",
-        connectionType = POSTGRES)
-    int countIndividualSubjects(@Bind("iri") String iri);
   }
 
   interface OntologyChangeSetDAO extends EntityDAO<OntologyChangeSet> {
-    String OPEN_MEMORY_DRAFTS =
-        "FROM ontology_change_set_entity cs JOIN entity_relationship er ON er.fromId = cs.id "
-            + "WHERE er.toId = :memoryId AND er.fromEntity = 'ontologyChangeSet' "
-            + "AND er.toEntity = 'contextMemory' AND er.relation = :relation "
-            + "AND er.deleted = FALSE "
-            + "AND cs.state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
-            + "AND (cs.deleted IS NULL OR cs.deleted = FALSE) "
-            + "ORDER BY cs.updatedAt DESC LIMIT 100";
-
-    @ConnectionAwareSqlQuery(value = "SELECT cs.json " + OPEN_MEMORY_DRAFTS, connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT cs.json::text " + OPEN_MEMORY_DRAFTS,
-        connectionType = POSTGRES)
-    List<String> findOpenBySourceMemoryId(
-        @Bind("memoryId") String memoryId, @Bind("relation") int relation);
-
     @Override
     default String getTableName() {
       return "ontology_change_set_entity";
@@ -584,6 +655,12 @@ public interface RdfInfraDAOs {
     @SqlUpdate("DELETE FROM rdf_reindex_lock WHERE expiresAt < :now")
     int deleteExpiredLocks(@Bind("now") long now);
 
+    @SqlUpdate(
+        "DELETE FROM rdf_reindex_lock WHERE lockKey = :lockKey AND jobId = :jobId "
+            + "AND expiresAt < :now")
+    int deleteExpired(
+        @Bind("lockKey") String lockKey, @Bind("jobId") String jobId, @Bind("now") long now);
+
     default boolean tryAcquireLock(
         String lockKey, String jobId, String serverId, long acquiredAt, long expiresAt) {
       deleteExpiredLocks(System.currentTimeMillis());
@@ -594,7 +671,9 @@ public interface RdfInfraDAOs {
 
       RdfReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        delete(lockKey);
+        // Delete only the expired holder we read: another server may have replaced it since, and
+        // deleting by key alone would let two servers each believe they hold the lock.
+        deleteExpired(lockKey, existing.jobId(), System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }

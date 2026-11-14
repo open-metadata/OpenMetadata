@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlossaryTerm } from '@openmetadata/ui-core-components/icons';
+import {
+  AnnouncementColored,
+  DefaultAppMode,
+  DefaultTime,
+  File06,
+  GlossaryTerm,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
-import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -314,6 +319,15 @@ class GlobalSettingsClassBase {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             ),
+          },
+          {
+            category: t('label.announcement-plural'),
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.${GlobalSettingOptions.ANNOUNCEMENTS}`,
+            icon: AnnouncementColored,
+            description: t('message.system-announcements-description'),
+            // System announcements are written by admins alone — the server
+            // allows no other user — so nobody else is shown the card.
+            isProtected: Boolean(isAdminUser),
           },
         ],
       },
@@ -709,7 +723,8 @@ class GlobalSettingsClassBase {
             description: t('message.default-app-mode-description'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
-            icon: AppModeIcon,
+            icon: DefaultAppMode,
+            iconColor: 'blue',
           },
           {
             label: t('label.glossary'),
@@ -717,6 +732,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.GLOSSARY}`,
             icon: GlossaryTerm,
+            iconColor: 'blue',
+          },
+          {
+            label: t('label.default-time-format'),
+            description: t('message.default-time-format-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.TIME_FORMAT}`,
+            icon: DefaultTime,
+            iconColor: 'blue',
           },
         ],
       },
@@ -727,7 +751,7 @@ class GlobalSettingsClassBase {
         description: t('message.custom-properties-description'),
         items: [
           {
-            label: t('label.api-collection'),
+            label: t('label.api-collection-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-collection'),
             }),
@@ -736,7 +760,7 @@ class GlobalSettingsClassBase {
             icon: APICollectionIcon,
           },
           {
-            label: t('label.api-endpoint'),
+            label: t('label.api-endpoint-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-endpoint'),
             }),
@@ -745,7 +769,7 @@ class GlobalSettingsClassBase {
             icon: APIEndpointIcon,
           },
           {
-            label: t('label.data-product'),
+            label: t('label.data-product-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.data-product'),
             }),
@@ -763,7 +787,7 @@ class GlobalSettingsClassBase {
             icon: DashboardDataModelIcon,
           },
           {
-            label: t('label.database'),
+            label: t('label.database-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database'),
             }),
@@ -772,7 +796,7 @@ class GlobalSettingsClassBase {
             icon: DatabaseIcon,
           },
           {
-            label: t('label.database-schema'),
+            label: t('label.database-schema-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database-schema'),
             }),
@@ -781,7 +805,7 @@ class GlobalSettingsClassBase {
             icon: SchemaIcon,
           },
           {
-            label: t('label.metric'),
+            label: t('label.metric-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.metric'),
             }),
@@ -869,7 +893,7 @@ class GlobalSettingsClassBase {
             icon: ColumnIcon,
           },
           {
-            label: t('label.glossary-term'),
+            label: t('label.glossary-term-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.glossary-term'),
             }),
@@ -878,7 +902,7 @@ class GlobalSettingsClassBase {
             icon: GlossaryIcon,
           },
           {
-            label: t('label.domain'),
+            label: t('label.domain-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.domain'),
             }),
@@ -930,6 +954,16 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
+          },
+          {
+            label: t('label.article-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.article-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.ARTICLES}`,
+            icon: File06,
+            iconColor: 'green' as const,
           },
           {
             label: t('label.team-plural'),

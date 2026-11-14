@@ -1,7 +1,10 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -20,6 +23,9 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
@@ -38,12 +44,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-      ChangeRules changeRules = changeRules(execution);
+      ChangeRules changeRules = changeRules(execution, varHandler);
       BatchEntities.evaluateCondition(
           new BatchEntities.NodeExecution(
               batchExecutionExpr, execution, varHandler, inputNamespaces),
           batchContinuingOutcomeExpr,
-          entityLink -> checkChangeDescription(changeRules, entityLink),
+          entityLink -> checkChangeDescription(changeRules, entityLink, null),
           () -> checkRelatedEntity(varHandler, inputNamespaces, changeRules));
     } catch (Exception exc) {
       LOG.error(
@@ -61,13 +67,20 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
         (String)
             varHandler.getNamespacedVariable(
                 inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
-    return checkChangeDescription(changeRules, entityLinkStr);
+    return checkChangeDescription(
+        changeRules,
+        entityLinkStr,
+        varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE));
   }
 
-  /** The node's condition and rules, read from the execution on the job thread. */
-  private record ChangeRules(String condition, Map<String, List<String>> rules) {}
+  /**
+   * The node's condition and rules, and the change request the run reviews if any, read from the
+   * execution on the job thread.
+   */
+  private record ChangeRules(
+      String condition, Map<String, List<String>> rules, ChangeRequestRun changeRequest) {}
 
-  private ChangeRules changeRules(DelegateExecution execution) {
+  private ChangeRules changeRules(DelegateExecution execution, WorkflowVariableHandler varHandler) {
     String condition = "OR"; // default
     if (conditionExpr != null && conditionExpr.getValue(execution) != null) {
       condition = (String) conditionExpr.getValue(execution);
@@ -76,16 +89,22 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     if (rulesExpr != null && rulesExpr.getValue(execution) != null) {
       rules = JsonUtils.readOrConvertValue(rulesExpr.getValue(execution), Map.class);
     }
-    return new ChangeRules(condition, rules);
+    return new ChangeRules(condition, rules, ChangeRequestRun.from(varHandler).orElse(null));
   }
 
-  private boolean checkChangeDescription(ChangeRules changeRules, String entityLinkStr) {
+  private boolean checkChangeDescription(
+      ChangeRules changeRules, String entityLinkStr, Object triggeringVersion) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface<?> entity = Entity.getEntity(entityLink, "", Include.ALL);
 
-    // No changeDescription means it's a create event - return true
-    ChangeDescription changeDescription = entity.getChangeDescription();
+    // A change-request run evaluates the pending revision it reviews; any other run evaluates the
+    // change of the version its event produced. No change description means a create event -> true.
+    ChangeDescription changeDescription =
+        changeRules.changeRequest() == null
+            ? TriggeringChange.of(entity, triggeringVersion)
+            : ChangeRequestService.proposedChangeDescription(
+                changeRules.changeRequest().changeRequestId());
     if (changeDescription == null) {
       LOG.debug("No changeDescription found (likely a create event), returning true");
       return true;
@@ -100,11 +119,12 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       return true;
     }
 
-    // Collect all changed fields
+    // Collect all changed fields. A held-only change (the pending hold) carries just fieldsUpdated,
+    // leaving fieldsAdded/fieldsDeleted null, so guard each list.
     List<FieldChange> allChanges = new ArrayList<>();
-    allChanges.addAll(changeDescription.getFieldsAdded());
-    allChanges.addAll(changeDescription.getFieldsUpdated());
-    allChanges.addAll(changeDescription.getFieldsDeleted());
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsAdded()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
 
     // Check fields based on condition (AND/OR)
     boolean result;

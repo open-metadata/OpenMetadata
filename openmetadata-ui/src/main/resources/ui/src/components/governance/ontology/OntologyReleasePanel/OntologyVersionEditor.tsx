@@ -1,0 +1,186 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Box,
+  Card,
+  RadioButton,
+  RadioGroup,
+  TextArea,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
+import type { VersionSuggestion } from './OntologyReleaseChanges.utils';
+import { nextSemanticVersion } from './OntologyReleasePanel.utils';
+
+interface OntologyVersionEditorProps {
+  baseVersion?: string;
+  bump?: VersionBump;
+  isPickRequired?: boolean;
+  notes: string;
+  suggestion?: VersionSuggestion;
+  isDisabled: boolean;
+  onBumpChange: (bump: VersionBump) => void;
+  onNotesChange: (notes: string) => void;
+  /** Rendered between the version and release-notes cards, where the review dialog puts its reviewers. */
+  beforeNotes?: ReactNode;
+}
+
+const OntologyVersionEditor = ({
+  baseVersion,
+  bump,
+  isPickRequired,
+  notes,
+  suggestion,
+  isDisabled,
+  onBumpChange,
+  onNotesChange,
+  beforeNotes,
+}: OntologyVersionEditorProps) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const handleBumpChange = (value: string) => {
+    const selected = Object.values(VersionBump).find(
+      (candidate) => candidate === value
+    );
+    if (selected) {
+      onBumpChange(selected);
+    }
+  };
+  const reason = isPickRequired ? (
+    <Typography
+      color="secondary"
+      data-testid="ontology-version-pick-required"
+      role="note"
+      size="text-xs">
+      {t('message.ontology-version-pick-required')}
+    </Typography>
+  ) : (
+    suggestion && (
+      <div
+        className={
+          isAiMode
+            ? 'tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2'
+            : undefined
+        }>
+        <Typography
+          color={isAiMode ? 'brand' : 'secondary'}
+          data-testid="ontology-version-reason"
+          role="note"
+          size={isAiMode ? 'text-sm' : 'text-xs'}>
+          {t(`message.ontology-version-reason-${suggestion.reason}`, {
+            version: nextSemanticVersion(baseVersion, suggestion.bump),
+          })}
+        </Typography>
+      </div>
+    )
+  );
+  const bumpOptions = [VersionBump.Patch, VersionBump.Minor, VersionBump.Major];
+  const notesField = (
+    <TextArea
+      hideRequiredIndicator
+      data-testid="ontology-release-notes"
+      isDisabled={isDisabled}
+      label={t('label.release-notes-lowercase')}
+      maxLength={16384}
+      rows={4}
+      value={notes}
+      onChange={onNotesChange}
+    />
+  );
+
+  if (isAiMode) {
+    return (
+      <>
+        <Card size="sm">
+          <Card.Content>
+            <Box direction="col" gap={3}>
+              <Typography
+                as="h3"
+                className="not-prose tw:m-0"
+                size="text-sm"
+                weight="semibold">
+                {t('label.version')}
+              </Typography>
+              {reason}
+              <RadioGroup
+                aria-label={t('label.version')}
+                className="tw:gap-2"
+                isDisabled={isDisabled}
+                value={bump ?? null}
+                onChange={handleBumpChange}>
+                {bumpOptions.map((option) => (
+                  <RadioButton
+                    data-testid={`ontology-version-${option}`}
+                    hint={t(`message.ontology-version-${option}`)}
+                    key={option}
+                    label={`${t(
+                      `label.version-${option}`
+                    )} · ${nextSemanticVersion(baseVersion, option)}`}
+                    value={option}
+                    variant="card"
+                  />
+                ))}
+              </RadioGroup>
+            </Box>
+          </Card.Content>
+        </Card>
+        {beforeNotes}
+        {/* A plain label and field under the cards, as the design does. */}
+        {notesField}
+      </>
+    );
+  }
+
+  return (
+    <Box direction="col" gap={4}>
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
+        {t('label.version')}
+      </Typography>
+      {reason}
+      <RadioGroup
+        aria-label={t('label.version')}
+        isDisabled={isDisabled}
+        value={bump ?? null}
+        onChange={handleBumpChange}>
+        <div className="tw:grid tw:grid-cols-1 tw:gap-2 tw:sm:grid-cols-3">
+          {bumpOptions.map((option) => (
+            <Card isSelected={bump === option} key={option} size="sm">
+              <Card.Content>
+                <RadioButton
+                  data-testid={`ontology-version-${option}`}
+                  hint={nextSemanticVersion(baseVersion, option)}
+                  label={t(`label.version-${option}`)}
+                  value={option}
+                />
+                <Typography color="secondary" size="text-xs">
+                  {t(`message.ontology-version-${option}`)}
+                </Typography>
+              </Card.Content>
+            </Card>
+          ))}
+        </div>
+      </RadioGroup>
+      {beforeNotes}
+      {notesField}
+    </Box>
+  );
+};
+
+export default OntologyVersionEditor;

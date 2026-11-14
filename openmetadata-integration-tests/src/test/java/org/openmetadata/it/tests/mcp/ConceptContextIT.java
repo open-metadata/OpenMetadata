@@ -71,12 +71,11 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableProfile;
@@ -137,7 +136,59 @@ class ConceptContextIT extends McpTestBase {
   }
 
   @Test
-  void termContextReturnsExactBindingTypeProfileAndOntologyAttributes() throws Exception {
+  void pendingDefinitionsKeepTheirStageButHaveNoGovernedConceptContext() throws Exception {
+    String reviewerName = "concept_reviewer_" + suffix;
+    User reviewer =
+        post(
+            "users",
+            new CreateUser()
+                .withName(reviewerName)
+                .withEmail(reviewerName + "@test.openmetadata.org"),
+            User.class);
+    List<EntityReference> reviewers = List.of(reference(reviewer.getId(), "user"));
+    GlossaryTerm pendingTerm =
+        post(
+            "glossaryTerms",
+            new CreateGlossaryTerm()
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withName("PendingDefinition")
+                .withDescription(DEFINITION)
+                .withReviewers(reviewers),
+            GlossaryTerm.class);
+    Metric pendingMetric =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("pending_metric_" + suffix)
+                .withDescription(DEFINITION)
+                .withMetricExpression(new MetricExpression().withCode(EXPRESSION))
+                .withReviewers(reviewers),
+            Metric.class);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      get(
+                              "glossaryTerms/name/" + pendingTerm.getFullyQualifiedName(),
+                              GlossaryTerm.class)
+                          .getEntityStatus())
+                  .isEqualTo(EntityStatus.IN_REVIEW);
+              assertThat(
+                      get("metrics/name/" + pendingMetric.getFullyQualifiedName(), Metric.class)
+                          .getEntityStatus())
+                  .isEqualTo(EntityStatus.IN_REVIEW);
+            });
+    assertThat(termContext(pendingTerm).isMissingNode()).isTrue();
+    assertThat(metricContext(pendingMetric).at("/assetContext/conceptContext").isMissingNode())
+        .isTrue();
+    assertThat(termContext(term).path("definition").asText()).isEqualTo(DEFINITION);
+    assertThat(metricContext(metric).at("/assetContext/conceptContext").isMissingNode()).isFalse();
+  }
+
+  @Test
+  void termContextReturnsExactBindingTypeAndProfileWithoutOntologyAttributes() throws Exception {
     JsonNode context = termContext(term);
     JsonNode binding = context.path("bindings").get(0);
     assertThat(context.path("definition").asText()).isEqualTo(DEFINITION);
@@ -148,7 +199,7 @@ class ConceptContextIT extends McpTestBase {
     assertThat(binding.path("rowCount").asDouble()).isEqualTo(3.0);
     assertThat(binding.at("/profile/distinctCount").asDouble()).isEqualTo(3.0);
     assertThat(binding.path("sampleValues").size()).isEqualTo(3);
-    assertThat(context.at("/attributes/0/unit").asText()).isEqualTo("cents");
+    assertThat(context.has("attributes")).isFalse();
   }
 
   @Test
@@ -635,8 +686,6 @@ class ConceptContextIT extends McpTestBase {
         .contains(
             "Concept Definition",
             DEFINITION,
-            "Ontology Attributes",
-            "| amount | INTEGER | cents |",
             "Concept Bindings",
             "| "
                 + orders.getFullyQualifiedName()
@@ -649,7 +698,8 @@ class ConceptContextIT extends McpTestBase {
                 + orders.getFullyQualifiedName()
                 + "."
                 + COLUMN
-                + "`: 100, 200, 700");
+                + "`: 100, 200, 700")
+        .doesNotContain("Ontology Attributes");
   }
 
   @Test
@@ -679,15 +729,7 @@ class ConceptContextIT extends McpTestBase {
         new CreateGlossaryTerm()
             .withGlossary(glossary.getFullyQualifiedName())
             .withName(name)
-            .withDescription(DEFINITION)
-            .withAttributes(
-                List.of(
-                    new OntologyAttribute()
-                        .withId(UUID.randomUUID())
-                        .withName("amount")
-                        .withDataType(OntologyAttributeDataType.INTEGER)
-                        .withUnit("cents")
-                        .withIsIdentifier(false))),
+            .withDescription(DEFINITION),
         GlossaryTerm.class);
   }
 

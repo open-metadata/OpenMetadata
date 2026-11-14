@@ -151,6 +151,7 @@ def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
     # Failed tests stay out of Slack: #ci-cleanup gets them via the dequeue report.
     assert "Destination" not in text and "failed test" not in text
     assert "NEW" not in text and "New flaky" not in text
+    assert text.endswith(report_script.CC_UI_TEAM)
     assert slack["channel_id"] == "C1"
     assert slack["file"] == str((tmp_path / PAGE).resolve())
     assert slack["filename"] == PAGE
@@ -208,6 +209,9 @@ def test_untrusted_test_names_are_escaped(tmp_path, monkeypatch):
 def test_quiet_window_still_posts(tmp_path, monkeypatch):
     slack, _ = build(tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1)])
     assert "No flaky tests in the merge queue." in slack["initial_comment"]
+    assert report_script.UI_TEAM not in slack["initial_comment"]
+    fallback = json.loads((tmp_path / "slack-fallback.json").read_text())["text"]
+    assert report_script.UI_TEAM not in fallback
 
 
 def test_window_over_48h_is_refused(monkeypatch):
@@ -404,6 +408,7 @@ def test_fallback_message_lists_top_offenders_and_links_the_run(tmp_path, monkey
     assert "*Top 5 flaky:*" in text and "\n6. " not in text
     assert "<https://github.com/o/r/actions/runs/777|the workflow run>" in text
     assert "`playwright-flaky-report`" in text
+    assert text.endswith(report_script.CC_UI_TEAM)
 
 
 def job(shard):
@@ -451,3 +456,4 @@ def test_fallback_warns_instead_of_all_clear_when_nothing_was_read(
     text = json.loads((tmp_path / "slack-fallback.json").read_text())["text"]
     assert "No run in this window could be read." in text
     assert "No flaky tests" not in text
+    assert report_script.UI_TEAM not in text

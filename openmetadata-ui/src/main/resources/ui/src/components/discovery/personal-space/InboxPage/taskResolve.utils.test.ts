@@ -111,6 +111,20 @@ describe('applyActionLabels', () => {
 });
 
 describe('getTaskResolveActions', () => {
+  it('waits for workflow transitions for a release review', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          type: TaskType.RequestApproval,
+          category: TaskCategory.Approval,
+          about: { id: 'release-id', type: 'ontologyRelease' },
+          availableTransitions: [],
+        }),
+        LABELS
+      )
+    ).toEqual([]);
+  });
+
   // /close and the expiry timer leave the workflow transitions on the task; a
   // task closed that way must not keep offering them.
   it.each([
@@ -227,6 +241,25 @@ describe('getTaskResolveActions', () => {
     }
   );
 
+  it('offers nothing on a Revise and resubmit task, which the next edit completes', () => {
+    const missing = makeTask({
+      category: TaskCategory.MetadataUpdate,
+      type: TaskType.MetadataCompletion,
+      payload: { missingFields: [] },
+    });
+
+    expect(
+      getTaskResolveActions(
+        {
+          ...missing,
+          payload: { missingFields: [], revision: { requestedBy: 'karan' } },
+        },
+        LABELS
+      )
+    ).toEqual([]);
+    expect(getTaskResolveActions(missing, LABELS)).not.toEqual([]);
+  });
+
   it('offers no legacy approve/reject for an incident, which resolves through its own transition', () => {
     expect(
       getTaskResolveActions(
@@ -289,6 +322,27 @@ describe('getTaskResolveActions', () => {
 describe('buildResolveBody', () => {
   const firstAction = (task: Task, schema?: TaskFormSchema) =>
     getTaskResolveActions(task, LABELS, schema);
+
+  it('sends an ontology review decision without an editable entity payload', () => {
+    const task = makeTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'concept-id', type: 'ontologyRelease' },
+      availableTransitions: [DAR_REJECT],
+      payload: { proposedChanges: { description: 'captured definition' } },
+    });
+
+    expect(
+      buildResolveBody(firstAction(task)[0], task, {
+        comment: 'The definition needs a narrower scope',
+        payload: { proposedChanges: { description: 'edited during review' } },
+      })
+    ).toStrictEqual({
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+      comment: 'The definition needs a narrower scope',
+    });
+  });
 
   it('names the transition of a workflow action and omits a resolutionType the transition does not declare', () => {
     const task = makeTask({

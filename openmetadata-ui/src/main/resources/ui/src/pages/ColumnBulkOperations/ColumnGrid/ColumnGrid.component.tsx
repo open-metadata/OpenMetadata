@@ -16,7 +16,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   FeaturedIcon,
   GlossaryTag,
   Input,
@@ -28,6 +27,7 @@ import {
 import {
   ArrowRight,
   ChevronRight,
+  Edit01,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
@@ -50,7 +50,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
@@ -59,6 +58,9 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
@@ -66,9 +68,7 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
@@ -101,6 +101,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import ColumnGridRow from './components/ColumnGridRow';
 import {
+  MAX_EARLY_SOCKET_MESSAGES,
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
   SCROLL_TO_ROW_RETRY_DELAY_MS,
@@ -108,7 +109,7 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
-const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ICON_TRANSITION_CLASS = 'tw:transition-transform';
 const ROTATE_90_CLASS = 'tw:rotate-90';
 
 interface BulkAssetsSocketMessage {
@@ -118,6 +119,32 @@ interface BulkAssetsSocketMessage {
   total?: number;
   result?: BulkOperationResult;
 }
+
+const TERMINAL_BULK_ASSETS_STATUSES = new Set([
+  'COMPLETED',
+  'SUCCESS',
+  'FAILED',
+  'FAILURE',
+]);
+
+const isTerminalBulkAssetsMessage = (message: string) => {
+  try {
+    const { status } = JSON.parse(message) as BulkAssetsSocketMessage;
+
+    return TERMINAL_BULK_ASSETS_STATUSES.has(status?.toUpperCase() ?? '');
+  } catch {
+    return false;
+  }
+};
+
+// Drops the oldest progress message so a terminal one is never lost; the
+// channel carries every job of the user, so another job can fill the buffer.
+const evictOldestEarlyMessage = (messages: string[]) => {
+  const progressIndex = messages.findIndex(
+    (message) => !isTerminalBulkAssetsMessage(message)
+  );
+  messages.splice(Math.max(progressIndex, 0), 1);
+};
 
 interface ColumnEditFormHandle {
   getDisplayName: () => string;
@@ -357,8 +384,10 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
         };
       });
 
-    const glossaryTermValue: TagLabel[] = currentTags.filter(
-      (tag: TagLabel) => tag.source === TagSource.Glossary
+    // Local, not derived from `currentTags`: with several rows selected that is
+    // always empty, so a controlled picker would drop every pick.
+    const [glossaryTermValue, setGlossaryTermValue] = useState<TagLabel[]>(() =>
+      currentTags.filter((tag: TagLabel) => tag.source === TagSource.Glossary)
     );
 
     return (
@@ -502,6 +531,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
                 labelType: term.labelType ?? LabelType.Manual,
                 state: term.state ?? State.Confirmed,
               }));
+              setGlossaryTermValue(newTerms);
               selectedRowsData.forEach((selectedRow) => {
                 const rowId = selectedRow.id;
                 const foundRow = allRows.find(
@@ -570,20 +600,19 @@ const ColumnGridSelectionActions = ({
           className="tw:ml-2.5"
           color="primary"
           data-testid="edit-button"
-          iconLeading={<EditIcon height={14} width={14} />}
+          iconLeading={Edit01}
           isDisabled={isUpdating}
           size="sm"
           onPress={onOpenDrawer}>
           {t('label.edit')}
         </Button>
-        <Button
-          className="tw:text-fg-secondary"
-          color="tertiary"
+        <ButtonUtility
           data-testid="cancel-selection-button"
-          size="sm"
-          onPress={onCancelSelection}>
-          <XClose height={16} width={16} />
-        </Button>
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.cancel')}
+          onClick={onCancelSelection}
+        />
       </>
     ) : (
       <Button
@@ -591,7 +620,7 @@ const ColumnGridSelectionActions = ({
         className="tw:text-tertiary"
         color="tertiary"
         data-testid="edit-button-disabled"
-        iconLeading={<EditIcon height={14} width={14} />}
+        iconLeading={Edit01}
         size="sm"
         onPress={onOpenDrawer}>
         {t('label.edit')}
@@ -620,6 +649,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const editorRef = React.useRef<EditorContentRef>(null);
   const columnEditFormRef = useRef<ColumnEditFormHandle | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  // The server starts the job before answering the POST, so a small job can
+  // finish over the socket before the jobId is known; hold those messages.
+  // ADR:2026-10-16-column-bulk-update-buffers-socket-messages-until-its-job-id-is-known
+  const earlySocketMessagesRef = useRef<string[] | null>(null);
+  const bulkAssetsNotificationRef = useRef<(message: string) => void>(() => {});
   const lastBulkUpdateCountRef = useRef<number>(0);
   const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
   const closeDrawerRef = useRef<() => void>(() => {});
@@ -1367,16 +1401,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       <div className={COLUMN_NAME_CELL_GRID}>
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           <ButtonUtility
-            color="tertiary"
+            aria-label={
+              isGroupExpanded ? t('label.collapse') : t('label.expand')
+            }
             icon={
               <ChevronRight
+                data-icon
                 className={classNames(
                   ICON_TRANSITION_CLASS,
                   isGroupExpanded && ROTATE_90_CLASS
                 )}
               />
             }
-            size="sm"
+            size="xs"
             onClick={expandHandler}
           />
         </div>
@@ -1433,16 +1470,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isStructExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isStructExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -1480,16 +1520,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasStructChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isOccurrenceExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isOccurrenceExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -1744,6 +1787,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         total: cleanedUpdates.length,
       });
 
+      earlySocketMessagesRef.current = [];
       const response = await bulkUpdateColumnsAsync(request);
 
       // Store the jobId to listen for WebSocket notification when job completes
@@ -1771,7 +1815,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         }))
       );
       columnGridListing.clearEditedValues();
+
+      const earlyMessages = earlySocketMessagesRef.current ?? [];
+      earlySocketMessagesRef.current = null;
+      earlyMessages.forEach((message) =>
+        bulkAssetsNotificationRef.current(message)
+      );
     } catch (error) {
+      earlySocketMessagesRef.current = null;
       showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
       setBulkUpdateProgress(null);
@@ -1802,6 +1853,21 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     }
 
     return data;
+  };
+
+  // Returns true while the update POST is in flight, holding the message
+  // until the jobId it belongs to is known.
+  const bufferEarlySocketMessage = (message: string) => {
+    const earlyMessages = earlySocketMessagesRef.current;
+    if (!earlyMessages || activeJobIdRef.current) {
+      return false;
+    }
+    if (earlyMessages.length >= MAX_EARLY_SOCKET_MESSAGES) {
+      evictOldestEarlyMessage(earlyMessages);
+    }
+    earlyMessages.push(message);
+
+    return true;
   };
 
   const clearBulkUpdateJobState = () => {
@@ -1901,6 +1967,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const handleBulkAssetsNotification = useCallback(
     async (message: string) => {
+      if (bufferEarlySocketMessage(message)) {
+        return;
+      }
+
       const data = parseActiveBulkAssetsMessage(
         message,
         activeJobIdRef.current
@@ -2343,7 +2413,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       currentPage: columnGridListing.currentPage,
       isNumberBased: true,
       isLoading: columnGridListing.loading,
-      pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
       onShowSizeChange: columnGridListing.handlePageSizeChange,
     }),
     [
@@ -2528,6 +2598,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   closeDrawerRef.current = closeDrawer;
+  // The replayed early messages are fire-and-forget, so a rejection is surfaced here.
+  bulkAssetsNotificationRef.current = (message: string) => {
+    handleBulkAssetsNotification(message).catch(() =>
+      showErrorToast(t('server.entity-updating-error'))
+    );
+  };
   openDrawerRef.current = openDrawer;
 
   // Automatically turn off "View Selected" when selection is cleared
@@ -2552,18 +2628,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const emptyPlaceholder = useMemo(() => {
     if (hasActiveSearch) {
       return (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           description={t('message.check-spelling-or-try-shorter-term')}
-          icon={<NoSearch className="tw:text-fg-secondary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-result-plural')}
-          variant="blank"
         />
       );
     }
 
     if (hasActiveFilters) {
       return (
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           actions={[
             {
               color: 'primary',
@@ -2573,19 +2648,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             },
           ]}
           description={t('message.nothing-matches-current-filter')}
-          icon={<NoFilterFunnel className="tw:text-fg-secondary" />}
+          icon={<NoFilterFunnel />}
           title={t('label.no-result-for-these-filter-plural')}
-          variant="blank"
         />
       );
     }
 
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={t('message.column-bulk-empty-description')}
-        icon={<TableIcon className="tw:text-fg-secondary" />}
+        icon={<TableIcon />}
         title={t('message.no-columns-to-work-with')}
-        variant="blank"
       />
     );
   }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);
@@ -2724,6 +2797,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               {/* Search */}
               <div className="tw:shrink-0">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   placeholder={t('label.search-columns')}

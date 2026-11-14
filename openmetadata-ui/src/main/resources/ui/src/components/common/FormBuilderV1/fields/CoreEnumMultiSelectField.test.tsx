@@ -12,7 +12,7 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { ReactElement } from 'react';
 import CoreEnumMultiSelectField, {
   ALL_VALUE,
@@ -72,6 +72,15 @@ describe('CoreEnumMultiSelectField', () => {
 
     expect(screen.getByText('label.all')).toBeInTheDocument();
     expect(screen.queryByText('Topic')).not.toBeInTheDocument();
+  });
+
+  it('reports focus to the form so its doc panel can follow the field', () => {
+    const handleFocus = jest.fn();
+    renderField({ formData: [], formContext: { handleFocus } });
+
+    act(() => screen.getByRole('combobox').focus());
+
+    expect(handleFocus).toHaveBeenCalledWith('root/entities');
   });
 
   it('is disabled when read-only', () => {

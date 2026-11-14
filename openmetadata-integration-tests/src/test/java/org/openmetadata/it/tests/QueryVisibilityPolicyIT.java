@@ -16,11 +16,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -53,10 +56,13 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration test for GitHub Issue #22551: Query Visibility Issue with Table Policies
@@ -81,6 +87,142 @@ public class QueryVisibilityPolicyIT {
   private static final String PII_SENSITIVE_TAG = "PII.Sensitive";
   private static final String TIER1_TAG = "Tier.Tier1";
   private static final String GOLD_CERTIFICATION = "Certification.Gold";
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.TABLE, Entity.ALL_RESOURCES})
+  void test_queryVisibility_rejectsMismatchedParentType(String denyResource, TestNamespace ns)
+      throws Exception {
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    Table allowedTable = tableWith(schema, ns.shortPrefix() + "_allowed", c -> {});
+    Table sensitiveTable =
+        tableWith(
+            schema,
+            ns.shortPrefix() + "_sensitive",
+            c -> c.setTags(List.of(tagLabel(PII_SENSITIVE_TAG))));
+    Query allowedQuery = queryForTable(allowedTable, ns.shortPrefix() + "_allowed_query");
+    Query sensitiveQuery = queryForTable(sensitiveTable, ns.shortPrefix() + "_sensitive_query");
+    OpenMetadataClient viewer = queryViewerDeniedSensitiveParents(denyResource, ns);
+    OpenMetadataClient catalogDenied = queryCatalogDeniedViewer(ns);
+
+    assertThrows(ForbiddenException.class, () -> catalogDenied.queries().list(new ListParams()));
+    assertThrows(
+        ForbiddenException.class,
+        () -> catalogDenied.queries().get(sensitiveQuery.getId().toString()));
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            catalogDenied
+                .queries()
+                .list(
+                    new ListParams().addQueryParam("entityId", sensitiveTable.getId().toString())));
+
+    ListResponse<Query> allowed =
+        viewer.queries().list(queriesForParent(allowedTable, Entity.TABLE));
+    assertEquals(
+        List.of(allowedQuery.getId()), allowed.getData().stream().map(Query::getId).toList());
+    assertEquals(allowedQuery.getQuery(), allowed.getData().getFirst().getQuery());
+    assertThrows(
+        ForbiddenException.class,
+        () -> viewer.queries().list(queriesForParent(sensitiveTable, Entity.TABLE)));
+
+    assertMismatchedQueryParentsRejected(viewer, sensitiveTable, 404);
+    assertMismatchedQueryParentsRejected(catalogDenied, sensitiveTable, 403);
+    assertThrows(
+        ForbiddenException.class,
+        () -> catalogDenied.queries().list(queriesForParent(sensitiveTable, Entity.TABLE)));
+
+    SdkClients.adminClient().tables().delete(allowedTable.getId());
+    assertNotNull(
+        viewer.queries().list(queriesForParent(allowedTable, Entity.TABLE)),
+        "A soft-deleted parent must still resolve for authorization");
+  }
+
+  @Test
+  void test_queryVisibility_missingParentRequiresQueryPermission(TestNamespace ns) {
+    Table missingParent = new Table().withId(UUID.randomUUID());
+    ApiException notFound =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .queries()
+                    .list(queriesForParent(missingParent, Entity.TABLE)));
+    assertEquals(404, notFound.getStatusCode());
+    OpenMetadataClient catalogDenied = queryCatalogDeniedViewer(ns);
+    assertThrows(
+        ForbiddenException.class,
+        () -> catalogDenied.queries().list(queriesForParent(missingParent, Entity.TABLE)));
+  }
+
+  private void assertMismatchedQueryParentsRejected(
+      OpenMetadataClient viewer, Table table, int expectedStatus) {
+    for (String parentType :
+        List.of(
+            Entity.DASHBOARD,
+            Entity.USER,
+            Entity.TEAM,
+            Entity.GLOSSARY,
+            Entity.DATABASE_SCHEMA,
+            Entity.STORED_PROCEDURE)) {
+      OpenMetadataException exception =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> viewer.queries().list(queriesForParent(table, parentType)),
+              "A table ID must not authorize query access as " + parentType);
+      assertEquals(expectedStatus, exception.getStatusCode());
+    }
+  }
+
+  private OpenMetadataClient queryViewerDeniedSensitiveParents(
+      String denyResource, TestNamespace ns) {
+    Rule allowView =
+        new Rule()
+            .withName("AllowView")
+            .withResources(List.of(Entity.ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.ALLOW);
+    Rule denySensitiveQueries =
+        new Rule()
+            .withName("DenySensitiveQueries")
+            .withResources(List.of(denyResource))
+            .withOperations(List.of(MetadataOperation.VIEW_QUERIES))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("matchAnyTag('" + PII_SENSITIVE_TAG + "')");
+    String email = principalWithRules("queries", List.of(allowView, denySensitiveQueries), ns);
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private OpenMetadataClient queryCatalogDeniedViewer(TestNamespace ns) {
+    Rule denyQueryCatalog =
+        new Rule()
+            .withName("DenyQueryCatalog")
+            .withResources(List.of(Entity.QUERY))
+            .withOperations(List.of(MetadataOperation.ALL))
+            .withEffect(Rule.Effect.DENY);
+    String email = principalWithRules("querycatalog", List.of(denyQueryCatalog), ns);
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private Query queryForTable(Table table, String name) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Query query =
+        admin
+            .queries()
+            .create(
+                new CreateQuery()
+                    .withName(name)
+                    .withQuery("SELECT * FROM " + table.getFullyQualifiedName())
+                    .withService(table.getService().getFullyQualifiedName())
+                    .withQueryUsedIn(List.of(table.getEntityReference())));
+    fixtureCleanups.push(() -> admin.queries().delete(query.getId()));
+    return query;
+  }
+
+  private ListParams queriesForParent(Table table, String parentType) {
+    return new ListParams()
+        .addQueryParam("entityId", table.getId().toString())
+        .addQueryParam("entityType", parentType);
+  }
 
   @Test
   void test_queryVisibilityWithTableTagPolicy(TestNamespace ns) {

@@ -660,7 +660,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
       description =
-          "Get a list of pipeline status. Use `limit` and `before` or `after` query params for cursor-based pagination. "
+          "Get a page of pipeline statuses, newest first. Use `limit` and `before` or `after` query params for cursor-based pagination. "
               + "Filter by execution status using comma-separated values (e.g., 'Failed,Successful'). "
               + "Search by task name using the `search` parameter.",
       responses = {
@@ -694,12 +694,18 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           Long endTs,
       @Parameter(
               description =
-                  "Limit the number of pipeline statuses returned. If not provided, returns all results.",
+                  "Maximum number of pipeline statuses to return. 0 returns only the total; follow "
+                      + "the `after` cursor in `paging` to read the rest of the range.",
               schema = @Schema(type = "integer"))
+          @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @Max(
+              value = PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE,
+              message =
+                  "must be less than or equal to "
+                      + PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE)
           @QueryParam("limit")
-          Integer limitParam,
+          int limitParam,
       @Parameter(
               description = "Returns list of pipeline statuses before this cursor (timestamp)",
               schema = @Schema(type = "string"))
@@ -851,9 +857,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @GET
@@ -923,6 +927,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
     ListFilter filter =
         new ListFilter(include)

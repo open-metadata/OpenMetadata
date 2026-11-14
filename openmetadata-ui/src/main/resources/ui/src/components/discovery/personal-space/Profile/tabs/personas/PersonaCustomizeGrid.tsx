@@ -13,7 +13,8 @@
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
-import { getCustomizePageCategories } from '../../../../../../utils/Persona/PersonaUtils';
+import { getCustomizePageCategoryCards } from '../../../../../../utils/Persona/PersonaUtils';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 
 interface PersonaCustomizeGridProps {
@@ -23,13 +24,13 @@ interface PersonaCustomizeGridProps {
 const PersonaCustomizeGrid = ({
   onSelectCategory,
 }: PersonaCustomizeGridProps) => {
-  const categories = useMemo(() => getCustomizePageCategories(), []);
+  const categories = useMemo(() => getCustomizePageCategoryCards(), []);
 
   return (
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5"
       data-testid="persona-customize-grid">
-      {categories.map((category) => {
+      {categories.map((category, index) => {
         const Icon = PERSONA_CATEGORY_ICONS[category.key] ?? category.icon;
         const handler = onSelectCategory;
 
@@ -41,6 +42,7 @@ const PersonaCustomizeGrid = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => handler(category.key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -48,11 +50,13 @@ const PersonaCustomizeGrid = ({
                 handler(category.key);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className={`tw:mt-1 tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
                   {Icon && <Icon className="tw:size-6" />}
                 </Box>

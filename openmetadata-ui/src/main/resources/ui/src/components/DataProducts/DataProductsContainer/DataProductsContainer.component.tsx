@@ -11,30 +11,27 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   Button,
+  ButtonUtility,
+  DataProductTag,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 
 import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import {
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
+import { useDomainStyles } from '../../../hooks/governance/domain/useDomainStyles';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
@@ -59,7 +56,7 @@ const DataProductsContainer = ({
   requireDomainForDataProduct = true,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const entityStyles = useDomainStyles();
   const [isEditMode, setIsEditMode] = useState(false);
 
   // When the "Data Product Domain Validation" rule is disabled a Data Product
@@ -86,13 +83,6 @@ const DataProductsContainer = ({
       );
     },
     [activeDomains, requireDomainForDataProduct]
-  );
-
-  const redirectLink = useCallback(
-    (fqn: string) => {
-      navigate(getDataProductDetailsPath(fqn));
-    },
-    [navigate]
   );
 
   const handleSave = async (udpatedValues: DataProduct[]) => {
@@ -146,41 +136,23 @@ const DataProductsContainer = ({
       );
     }
 
-    return dataProducts.map((product) => {
-      return (
-        <Badge
-          className="tag-chip tag-chip-content tw:mr-2 tw:inline-flex"
-          color="gray"
-          key={`dp-tags-${product.fullyQualifiedName}`}
-          size="sm"
-          type="color"
-          onClick={() => redirectLink(product.fullyQualifiedName ?? '')}>
-          <div className="d-flex w-full">
-            <div className="d-flex items-center p-x-xs w-full gap-1">
-              <DataProductIcon
-                className="align-middle"
-                height={12}
-                width={12}
-              />
-              <Typography
-                as="p"
-                className="tw:m-0 tags-label"
-                data-testid={`data-product-${product.fullyQualifiedName}`}
-                size="text-xs"
-                weight="medium">
-                {getEntityName(product)}
-              </Typography>
-            </div>
-          </div>
-        </Badge>
-      );
-    });
+    return dataProducts.map((product) => (
+      <DataProductTag
+        color={entityStyles.get(product.id)?.color}
+        data-testid={`data-product-${product.fullyQualifiedName}`}
+        href={getDataProductDetailsPath(product.fullyQualifiedName ?? '')}
+        icon={entityStyles.get(product.id)?.iconURL}
+        key={`dp-tags-${product.fullyQualifiedName}`}
+        label={getEntityName(product)}
+        size="sm"
+      />
+    ));
   }, [
     dataProducts,
     activeDomains,
     domainMissing,
     hasPermission,
-    redirectLink,
+    entityStyles,
     t,
   ]);
 
@@ -191,35 +163,33 @@ const DataProductsContainer = ({
 
     // The picker owns the toggle; a button onClick would reopen it after a close.
     const actionButton = isEmpty(dataProducts) ? (
-      <WidgetPlusButton
+      <ButtonUtility
         data-testid="add-data-product"
-        title={t('label.add-entity', {
+        icon={Plus}
+        tooltip={t('label.add-entity', {
           entity: t('label.data-product-plural'),
         })}
       />
     ) : (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-button"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.data-product-plural'),
         })}
       />
     );
 
     return (
-      <Box
-        inline
-        align="center"
-        className="layout-space layout-space-horizontal"
-        gap={4}
-        itemClassName="layout-space-item">
+      <Box align="center" gap={2}>
         {hasPermission &&
           (domainMissing
             ? isEmpty(dataProducts) && (
-                <WidgetPlusButton
-                  disabled
+                <ButtonUtility
+                  isDisabled
                   data-testid="add-data-product"
-                  title={t('message.select-domain-to-add-data-product')}
+                  icon={Plus}
+                  tooltip={t('message.select-domain-to-add-data-product')}
                 />
               )
             : withPicker(actionButton))}

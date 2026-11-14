@@ -17,7 +17,7 @@ import shutil
 import ssl
 from pathlib import Path
 
-from elasticsearch8 import Elasticsearch
+from elasticsearch import Elasticsearch
 from httpx import create_ssl_context
 
 from metadata.generated.schema.entity.automations.workflow import (

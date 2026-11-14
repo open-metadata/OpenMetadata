@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/changeRequest/changeLifecycleEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChangeLifecycleEvent",
+  "description": "One recorded step in a change request's life: submission, revision, approval, publication or an ending.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent",
+  "definitions": {
+    "lifecycleEventType": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.LifecycleEventType",
+      "type": "string",
+      "enum": ["Submitted", "Revised", "Approved", "Applied", "Rejected", "Conflicted", "Withdrawn", "Cancelled", "Overridden", "PartiallyApplied", "Superseded"]
+    }
+  },
+  "properties": {
+    "id": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "changeRequestId": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "sequence": { "description": "Position of this event in the request's history, starting at 1.", "type": "integer" },
+    "eventType": { "$ref": "#/definitions/lifecycleEventType" },
+    "fromStatus": { "$ref": "changeRequest.json#/definitions/changeRequestStatus" },
+    "toStatus": { "$ref": "changeRequest.json#/definitions/changeRequestStatus" },
+    "revisionNumber": { "type": "integer" },
+    "actor": { "description": "User who caused the step; absent for steps taken by the system.", "type": "string" },
+    "reason": { "type": "string" },
+    "timestamp": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+  },
+  "required": ["id", "changeRequestId", "sequence", "eventType", "toStatus", "timestamp"],
+  "additionalProperties": false
+}

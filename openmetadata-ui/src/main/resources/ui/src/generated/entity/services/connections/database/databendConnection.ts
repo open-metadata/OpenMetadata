@@ -48,6 +48,7 @@ export interface DatabendConnection {
      * SQLAlchemy driver scheme options.
      */
     scheme?:                     DatabendScheme;
+    supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
     supportsProfiler?:           boolean;
     /**

@@ -11,7 +11,34 @@
  *  limitations under the License.
  */
 import { EntityType } from '../enums/entity.enum';
-import { Task, TaskEntityStatus } from '../rest/tasksAPI';
+import { ResolveTask } from '../generated/api/tasks/resolveTask';
+import {
+  Task,
+  TaskStatus as TaskEntityStatus,
+  TaskType,
+} from '../generated/entity/tasks/task';
+
+export const isOntologyReviewTask = (
+  task: Pick<Task, 'type' | 'about'>
+): boolean =>
+  task.type === TaskType.RequestApproval &&
+  task.about?.type === 'ontologyRelease';
+
+export const getTaskResolveBody = (
+  task: Task,
+  body: ResolveTask
+): ResolveTask => {
+  if (!isOntologyReviewTask(task)) {
+    return body;
+  }
+
+  // A native review votes on server-captured content; it cannot edit that content.
+  return {
+    transitionId: body.transitionId,
+    resolutionType: body.resolutionType,
+    comment: body.comment,
+  };
+};
 
 /**
  * Check if a task is closed (any terminal status)
@@ -28,7 +55,9 @@ export const isTaskClosed = (status?: TaskEntityStatus): boolean => {
 /**
  * Get the entity type from a task's about reference
  */
-export const getTaskEntityType = (task: Task): EntityType | undefined => {
+export const getTaskEntityType = (
+  task: Pick<Task, 'about'>
+): EntityType | undefined => {
   if (!task.about?.type) {
     return undefined;
   }
@@ -39,18 +68,22 @@ export const getTaskEntityType = (task: Task): EntityType | undefined => {
 /**
  * Get the entity FQN from a task's about reference
  */
-export const getTaskEntityFQN = (task: Task): string | undefined => {
+export const getTaskEntityFQN = (
+  task: Pick<Task, 'about'>
+): string | undefined => {
   return task.about?.fullyQualifiedName;
 };
 
 /**
  * Get the detail path for a task
  */
-export const getTaskDetailPath = (task: Task): string => {
+export const getTaskDetailPath = (
+  task: Pick<Task, 'id' | 'type' | 'about' | 'taskId'>
+): string => {
   const entityType = getTaskEntityType(task);
   const entityFQN = getTaskEntityFQN(task);
 
-  if (!entityType || !entityFQN) {
+  if (!entityType || !entityFQN || isOntologyReviewTask(task)) {
     return `/tasks/${task.id}`;
   }
 
@@ -58,3 +91,6 @@ export const getTaskDetailPath = (task: Task): string => {
     task.taskId
   }`;
 };
+
+export const getTaskStatusIconClassName = (isOpen: boolean) =>
+  isOpen ? 'tw:text-utility-success-600' : 'tw:text-utility-blue-700';

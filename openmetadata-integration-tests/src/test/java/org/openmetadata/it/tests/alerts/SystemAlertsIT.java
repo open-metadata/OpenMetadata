@@ -13,6 +13,7 @@
 
 package org.openmetadata.it.tests.alerts;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +23,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 
 /** The test server starts on an empty database, as a fresh install does. */
 class SystemAlertsIT {
@@ -35,7 +37,7 @@ class SystemAlertsIT {
               get("/v1/events/subscriptions/id/" + alert.get("id").asText() + "/scheduling"));
 
       assertTrue(scheduling.get("enabled").asBoolean(), name);
-      assertTrue(scheduling.get("jobClass").asText().endsWith("AlertPublisher"), name);
+      assertEquals(ConsumerJob.class.getName(), scheduling.get("jobClass").asText(), name);
     }
   }
 

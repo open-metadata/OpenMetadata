@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.resources.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,8 +50,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -59,6 +65,7 @@ import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tasks.TaskCount;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
@@ -82,10 +89,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TaskListOrder;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.limits.Limits;
@@ -101,6 +113,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -127,11 +140,29 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   static final String LIST_FIELDS = "assignees,about,createdBy";
 
+  static final String SERVER_OPENED_REVIEW =
+      "Memory conflict reviews are opened and kept by the server: record the conflict as disputes"
+          + " on the memory instead";
+
+  static final String SERVER_OPENED_COMPLETION =
+      "Metadata completion tasks are opened and kept by lifecycle workflows: fill in the asset's"
+          + " missing fields instead";
+
+  /** Task types only the server opens and edits, with why a client may not. */
+  private static final Map<TaskEntityType, String> SERVER_OPENED_TYPES =
+      Map.of(
+          TaskEntityType.MemoryConflictReview, SERVER_OPENED_REVIEW,
+          TaskEntityType.MetadataCompletion, SERVER_OPENED_COMPLETION);
+
   private static final String TASK_SEARCH_DESCRIPTION =
       "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
           + "Matches case-insensitive against task name, displayName, the request "
           + "reason in the payload, and the about-entity displayName / "
           + "fullyQualifiedName.";
+
+  private static final String TASK_SORT_ORDER_DESCRIPTION =
+      "Order by creation time: 'desc' (default) lists the newest tasks first, 'asc' the oldest. "
+          + "Keep the same sortOrder when following a paging cursor.";
 
   private static final String COUNT_VIEW_ALL = "all";
   private static final String COUNT_VIEW_VISIBLE = "visible";
@@ -141,8 +172,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   private static final String COUNT_VIEW_MENTIONED = "mentioned";
   private static final String COUNT_VIEW_ENTITY = "entity";
 
+  private final TaskAboutVisibility aboutVisibility;
+
   public TaskResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK, authorizer, limits);
+    this.aboutVisibility = new TaskAboutVisibility(authorizer);
     // PATCH on assignees / priority must require ReassignTask, not the default EditAll.
     // Without this, any holder of EditAll on the task resource (filer, assignees, reviewers via
     // TaskAuthorPolicy) could reassign or change priority through a JSON Patch, bypassing the
@@ -164,6 +198,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
     ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, TaskRepository.FIELD_REVIEW_VOTES, MetadataOperation.RESOLVE_TASK);
     // PATCH on description must require EditAll, not the default EditDescription. `description`
     // is the task's body text, and DataConsumerPolicy grants EditDescription on every resource to
     // every authenticated user — without this any user could rewrite any task's text (issue
@@ -225,6 +261,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(
+              description =
+                  "Comma-separated entity UUIDs; matches those entities exactly, excluding descendants")
+          @QueryParam("aboutEntityIds")
+          String aboutEntityIds,
       @Parameter(description = "Filter by parent service FQN of the entity the task is about")
           @QueryParam("aboutService")
           String aboutService,
@@ -253,6 +294,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -286,6 +336,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
     }
+    if (aboutEntityIds != null) {
+      filter.addQueryParam(
+          "aboutEntityIds",
+          Arrays.stream(aboutEntityIds.split(","))
+              .map(String::trim)
+              .map(UUID::fromString)
+              .map(UUID::toString)
+              .collect(Collectors.joining(",")));
+    }
     if (aboutService != null) {
       filter.addQueryParam("aboutService", aboutService);
     }
@@ -300,7 +359,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   private void applyTaskSearch(ListFilter filter, String q) {
@@ -352,6 +414,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by user FQN who was mentioned in task comments")
           @QueryParam("mentionedUser")
           String mentionedUser) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
     ListFilter baseFilter =
         buildCountFilter(
             uriInfo,
@@ -547,8 +613,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    return repository.listDataAccessRequests(
-        uriInfo, fields, filter, limitParam, offset, sortOrder);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        repository.listDataAccessRequests(uriInfo, fields, filter, limitParam, offset, sortOrder));
   }
 
   @GET
@@ -582,6 +649,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -600,16 +668,28 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
 
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -644,6 +724,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -662,16 +743,28 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
 
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -705,6 +798,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -723,6 +817,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -739,12 +842,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       ownerIds.addAll(groupTeams.stream().map(team -> "'" + team.getId() + "'").toList());
     }
 
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
 
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -776,6 +882,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                   "Filter by status group: 'open' for open tasks, 'closed' for terminal tasks")
           @QueryParam("statusGroup")
           String statusGroup,
+      @Parameter(description = "Filter by task type") @QueryParam("type") TaskEntityType type,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results", schema = @Schema(type = "integer"))
           @DefaultValue("10")
@@ -794,6 +901,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(description = TASK_SEARCH_DESCRIPTION) @QueryParam("q") String q,
+      @Parameter(
+              description = TASK_SORT_ORDER_DESCRIPTION,
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {TaskListOrder.ASC, TaskListOrder.DESC}))
+          @QueryParam("sortOrder")
+          @DefaultValue(TaskListOrder.DESC)
+          String sortOrder,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -801,12 +917,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
 
-    ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    ListFilter filter = buildTaskListFilter(include, status, statusGroup, type, domain);
     applyTaskSearch(filter, q);
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
 
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -837,7 +956,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Task task = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return task;
   }
 
   @GET
@@ -868,7 +989,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
+    Task task = getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(task.getId()));
+    return task;
   }
 
   @GET
@@ -891,7 +1014,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    EntityHistory history = super.listVersionsInternal(securityContext, id);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return history;
   }
 
   @GET
@@ -921,7 +1046,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    Task task = super.getVersionInternal(securityContext, id, version);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return task;
   }
 
   @POST
@@ -952,6 +1079,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (create == null) {
       throw BadRequestException.of("Request body is required to create a task.");
     }
+    requireCreatableThroughApi(create);
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
@@ -983,10 +1111,24 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (create == null) {
       throw BadRequestException.of("Request body is required to create or update a task.");
     }
+    requireCreatableThroughApi(create);
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
     return createOrUpdate(uriInfo, securityContext, task);
+  }
+
+  /**
+   * A client raises a memory conflict by recording it as {@code disputes} on the Draft memory, which
+   * needs the right to edit that memory, and the server then opens the review. Filing the task
+   * directly would skip that check: resolving it approves or rejects the memory, and being assigned
+   * the task is the authorization
+   * (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+   */
+  private static void requireCreatableThroughApi(CreateTask create) {
+    if (isServerOpenedType(create.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(create.getType()));
+    }
   }
 
   /**
@@ -1007,6 +1149,39 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     OperationContext operationContext =
         new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (OntologyApprovalWorkflow.isReview(task) || isApprovalTaskType(task.getType())) {
+      EntityReference target = aboutRef;
+      if (Entity.ONTOLOGY_RELEASE.equals(aboutRef.getType())) {
+        OntologyRelease release = Entity.getEntity(aboutRef, "", Include.NON_DELETED);
+        target = release.getOntology();
+      }
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(target.getType(), MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(target.getType(), target.getId(), null));
+    }
+  }
+
+  /**
+   * Resolving one of these approves the entity it is about, so filing one through the API takes
+   * the edit rights that approval exercises. Governance workflows open them on their own path.
+   */
+  private static final Set<TaskEntityType> APPROVAL_TASK_TYPES =
+      Set.of(TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval);
+
+  private static boolean isApprovalTaskType(TaskEntityType type) {
+    return type != null && APPROVAL_TASK_TYPES.contains(type);
+  }
+
+  /**
+   * The entity a task is about, read whatever fields the request asked for: a task discloses its
+   * target, so every read of it needs what reading the target needs, its creator and assignees
+   * included (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+   */
+  private EntityReference aboutOf(UUID taskId) {
+    return repository
+        .get(null, taskId, repository.getFields(TaskRepository.FIELD_ABOUT), Include.ALL, false)
+        .getAbout();
   }
 
   private void authorizeViewOnAboutEntity(
@@ -1141,8 +1316,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // populated and JsonUtils.applyPatch does not blow up on a null list. The diff-based
     // checks in validateTaskPatch read a subset of these anyway.
     Task original = repository.get(uriInfo, id, repository.getPatchFields());
-    Task patched = JsonUtils.applyPatch(original, patch, Task.class);
-    validateTaskPatch(original, patched, isAdmin(securityContext));
     // Authorize against TaskResourceContext for the same reason DELETE does: the generic
     // ResourceContext leaves createdBy null and resolves isOwner() to the Task's own owners
     // rather than the target entity's, so both isTaskFiler() and the entity-owner rule would
@@ -1151,7 +1324,23 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         List.of(
             new AuthRequest(
                 new OperationContext(Entity.TASK, patch), new TaskResourceContext(original)));
-    return patchInternal(uriInfo, securityContext, authRequests, AuthorizationLogic.ALL, id, patch);
+    // Authorize before simulating the patch: its errors quote the stored task.
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
+    Task patched = JsonUtils.applyPatch(original, patch, Task.class);
+    validateTaskPatch(original, patched, isAdmin(securityContext));
+    JsonPatch effectivePatch = keepWorkflowBinding(original, patched, patch);
+    List<AuthRequest> effectiveAuthRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(Entity.TASK, effectivePatch),
+                new TaskResourceContext(original)));
+    return patchInternal(
+        uriInfo,
+        securityContext,
+        effectiveAuthRequests,
+        AuthorizationLogic.ALL,
+        id,
+        effectivePatch);
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
@@ -1192,6 +1381,96 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectStatusChangeToWorkflowDecision(original, patched);
     rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
     rejectPayloadOrAboutEditAfterOpen(original, patched);
+    rejectServerOpenedTaskEdit(original, patched);
+    rejectWorkflowBindingEdits(original, patched);
+  }
+
+  /** The type and category of a task decide which resolve rules apply to it. */
+  private void rejectWorkflowBindingEdits(Task original, Task patched) {
+    if (!Objects.equals(original.getType(), patched.getType())) {
+      throw workflowOwnedFieldRejection("type");
+    }
+    if (!Objects.equals(original.getCategory(), patched.getCategory())) {
+      throw workflowOwnedFieldRejection("category");
+    }
+  }
+
+  /**
+   * The workflow instance and change request a task belongs to are the server's: a PATCH keeps
+   * them. A client that diffs a copy taken before the workflow recorded them would otherwise remove
+   * them, so they are restored rather than refused, and the PATCH is rebuilt only when it touched
+   * them.
+   */
+  private static JsonPatch keepWorkflowBinding(Task original, Task patched, JsonPatch patch) {
+    JsonPatch effective = patch;
+    boolean keepsBinding =
+        Objects.equals(original.getWorkflowInstanceId(), patched.getWorkflowInstanceId())
+            && Objects.equals(changeRequestIdOf(original), changeRequestIdOf(patched));
+    if (!keepsBinding) {
+      patched.setWorkflowInstanceId(original.getWorkflowInstanceId());
+      patched.setPayload(withChangeRequestId(patched.getPayload(), changeRequestIdOf(original)));
+      effective = JsonUtils.getJsonPatch(original, patched);
+    }
+    return effective;
+  }
+
+  private static Object changeRequestIdOf(Task task) {
+    return task.getPayload() == null
+        ? null
+        : JsonUtils.getMap(task.getPayload()).get(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY);
+  }
+
+  private static Object withChangeRequestId(Object payload, Object changeRequestId) {
+    Object result = payload;
+    if (payload != null) {
+      Map<String, Object> fields = new LinkedHashMap<>(JsonUtils.getMap(payload));
+      if (changeRequestId == null) {
+        fields.remove(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY);
+      } else {
+        fields.put(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY, changeRequestId);
+      }
+      result = fields;
+    }
+    return result;
+  }
+
+  /**
+   * A memory conflict review is the server's: its payload names the memories a decision acts on
+   * and its assignees are who may decide, so no PATCH edits one, and no task becomes one.
+   */
+  private static void rejectServerOpenedTaskEdit(Task original, Task patched) {
+    if (isServerOpenedType(original.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(original.getType()));
+    }
+    if (isServerOpenedType(patched.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(patched.getType()));
+    }
+  }
+
+  /** Bulk edits reach a task the way PATCH does, so a memory conflict review refuses them too. */
+  private static void requireEditableThroughApi(Task task) {
+    if (isServerOpenedType(task.getType())) {
+      throw BadRequestException.of(SERVER_OPENED_TYPES.get(task.getType()));
+    }
+  }
+
+  /**
+   * Only an open review can still end its memory's review; a closed one, such as a review a delete
+   * cancelled before a restore reopened another, closes or deletes freely.
+   */
+  private static void requireClosable(Task task) {
+    if (MemoryConflictResolution.decides(task) && task.getStatus() == TaskEntityStatus.Open) {
+      MemoryConflictResolution.requireReviewEnded(task);
+    }
+  }
+
+  private static final Set<String> ASSIGNMENT_TRANSITIONS =
+      Set.of(
+          IncidentWorkflowStages.ASSIGN_TRANSITION_ID,
+          IncidentWorkflowStages.REASSIGN_TRANSITION_ID);
+
+  private static boolean isServerOpenedType(TaskEntityType type) {
+    return type != null && SERVER_OPENED_TYPES.containsKey(type);
   }
 
   private void rejectForgeAttributionEdits(Task original, Task patched) {
@@ -1206,6 +1485,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (!Objects.equals(original.getApprovedAt(), patched.getApprovedAt())) {
       throw workflowOwnedFieldRejection("approvedAt");
+    }
+    if (!Objects.equals(original.getReviewVotes(), patched.getReviewVotes())) {
+      throw workflowOwnedFieldRejection(TaskRepository.FIELD_REVIEW_VOTES);
     }
     if (!Objects.equals(original.getAboutFqnHash(), patched.getAboutFqnHash())) {
       throw workflowOwnedFieldRejection("aboutFqnHash");
@@ -1286,7 +1568,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
 
-    repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+    repository.checkPermissionsForResolveTask(
+        authorizer,
+        task,
+        false,
+        securityContext,
+        new TaskRepository.TaskResolutionInput(
+            resolveTask.getPayload(), resolveTask.getNewValue()));
     validateTaskCanBeResolved(task);
 
     // Use TaskWorkflowHandler to resolve the task and apply entity changes. The strict-transition
@@ -1314,6 +1602,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
     validateTransitionComment(task, transitionId, comment);
+    requireReassignForPayloadAssignees(task, transitionId, resolvedPayload, securityContext);
 
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1323,17 +1612,68 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             newValue,
             resolvedPayload,
             comment,
-            userName);
+            userName,
+            ChangeRequestReview.of(resolveTask));
     return Response.ok(resolvedTask).build();
   }
 
+  /**
+   * The assign and reassign transitions carry their new assignees in the payload. On any other
+   * transition, a payload that names different assignees changes who decides the task, which PATCH
+   * and bulk Assign reserve to ReassignTask.
+   */
+  private void requireReassignForPayloadAssignees(
+      Task task, String transitionId, Object payload, SecurityContext securityContext) {
+    if (!isAssignmentTransition(transitionId) && changesAssignees(task, payload)) {
+      repository.checkPermissionsForOwnerOnlyAction(
+          authorizer, securityContext, task, "reassignTask");
+    }
+  }
+
+  private static boolean isAssignmentTransition(String transitionId) {
+    return transitionId != null && ASSIGNMENT_TRANSITIONS.contains(transitionId);
+  }
+
+  static boolean changesAssignees(Task task, Object payload) {
+    JsonNode requested =
+        payload == null ? MissingNode.getInstance() : JsonUtils.valueToTree(payload);
+    JsonNode assignees = requested.path("assignees");
+    boolean changes = false;
+    if (assignees.isArray() && !assignees.isEmpty()) {
+      Set<String> current = new HashSet<>();
+      listOrEmpty(task.getAssignees())
+          .forEach(
+              assignee -> {
+                current.add(String.valueOf(assignee.getId()));
+                current.add(assignee.getName());
+              });
+      Set<String> wanted = new HashSet<>();
+      assignees.forEach(
+          assignee ->
+              wanted.add(
+                  assignee.hasNonNull("id")
+                      ? assignee.get("id").asText()
+                      : assignee.path("name").asText()));
+      changes =
+          !current.containsAll(wanted) || wanted.size() != listOrEmpty(task.getAssignees()).size();
+    }
+    return changes;
+  }
+
   private ListFilter buildTaskListFilter(
-      Include include, TaskEntityStatus status, String statusGroup, String domain) {
+      Include include,
+      TaskEntityStatus status,
+      String statusGroup,
+      TaskEntityType type,
+      String domain) {
     ListFilter filter = new ListFilter(include);
     if (statusGroup != null) {
       filter.addQueryParam("taskStatusGroup", statusGroup);
     } else if (status != null) {
       filter.addQueryParam("taskStatus", status.value());
+    }
+    if (type != null) {
+      filter.addQueryParam("taskType", type.value());
     }
     repository.addDomainFilter(filter, domain);
 
@@ -1496,6 +1836,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
     validateTaskCanBeClosed(task);
+    requireClosable(task);
 
     Task closedTask = repository.closeTask(task, userName, comment);
     return Response.ok(closedTask).build();
@@ -1528,6 +1869,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, getFields(FIELDS), Include.ALL, false);
     OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
+    requireClosable(task);
     RestUtil.DeleteResponse<Task> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     if (hardDelete) {
@@ -1721,6 +2063,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
           throw new IllegalArgumentException("Assignees required for Assign operation");
         }
+        requireEditableThroughApi(task);
         repository.checkPermissionsForOwnerOnlyAction(
             authorizer, securityContext, task, "reassignTask");
         List<EntityReference> newAssignees =
@@ -1734,6 +2077,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getPriority() == null) {
           throw new IllegalArgumentException("Priority required for UpdatePriority operation");
         }
+        requireEditableThroughApi(task);
         repository.checkPermissionsForOwnerOnlyAction(
             authorizer, securityContext, task, "changeTaskPriority");
         task.setPriority(params.getPriority());
@@ -1744,6 +2088,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       case Cancel -> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
         validateTaskCanBeClosed(task);
+        requireClosable(task);
         repository.closeTask(task, userName, comment);
       }
     }

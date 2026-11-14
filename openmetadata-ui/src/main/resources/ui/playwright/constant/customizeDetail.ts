@@ -81,6 +81,7 @@ export enum EntityTabs {
   CONTRACT = 'contract',
   ER_DIAGRAM = 'erDiagram',
   RELATIONS_GRAPH = 'relations_graph',
+  REVIEW = 'review',
   DATA_OBSERVABILITY = 'data_observability',
 }
 
@@ -240,6 +241,7 @@ export const DATA_PRODUCT_DEFAULT_TABS = [
 
 export const GLOSSARY_DEFAULT_TABS = [
   EntityTabs.TERMS,
+  EntityTabs.REVIEW,
   EntityTabs.RELATIONS_GRAPH,
   EntityTabs.ACTIVITY_FEED,
 ];

@@ -596,13 +596,14 @@ public interface SystemTokenDAOs {
         connectionType = POSTGRES)
     void insert(@BindJson("json") String json);
 
+    /** The number of rows changed: 0 once the token was replaced or deleted. */
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = :json WHERE token = :token",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
-    void update(@Bind("token") String token, @BindJson("json") String json);
+    int update(@Bind("token") String token, @BindJson("json") String json);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
@@ -613,6 +614,19 @@ public interface SystemTokenDAOs {
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(
         @BindUUID("userid") UUID userid, @Bind("tokenType") String tokenType);
+
+    /** Every token row of the user, whatever its type. */
+    @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid")
+    void deleteAllForUser(@BindUUID("userid") UUID userid);
+
+    @SqlUpdate(
+        value =
+            "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType"
+                + " AND token IN (<tokenIds>)")
+    void deletePersonalAccessTokens(
+        @BindUUID("userid") UUID userid,
+        @Bind("tokenType") String tokenType,
+        @BindList("tokenIds") List<String> tokenIds);
   }
 
   interface UserSessionDAO {

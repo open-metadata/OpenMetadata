@@ -23,6 +23,7 @@ import { get, sortBy } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
+  NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
@@ -41,6 +42,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { ProviderType } from '../generated/entity/data/glossaryTerm';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -54,6 +56,12 @@ import { matchesTagSelectOption, toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
 const DATE_WIDGET_VALUE_FORMAT = 'YYYY-MM-DD';
+
+const providerListValues = (): Record<ProviderType, string> => ({
+  [ProviderType.User]: t('label.user'),
+  [ProviderType.System]: t('label.system'),
+  [ProviderType.Automation]: t('label.automation'),
+});
 
 class JSONLogicSearchClassBase {
   baseConfig = OMConfig as Config;
@@ -354,6 +362,14 @@ class JSONLogicSearchClassBase {
         label: t('label.tier'),
         type: '!group',
         mode: 'some',
+        // The group keeps the `tier` key (without a `fieldName: 'tags'` alias) so a
+        // saved Tags rule — which also serializes to `{"var":"tags"}` — still loads
+        // back into the Tags field. RAQB therefore emits the group variable as
+        // `{"var":"tier"}`, which has no property on any serialized entity. The
+        // export/import pipeline (utils/queryBuilder/jsonLogicTierVar) rewrites that
+        // variable to `tags` on the way out and routes the `contains`-family rules
+        // (the only operators this multiselect exposes) back to `tier` on the way
+        // in, mirroring the Data Contract semantics builder's `tags` remap.
         defaultField: 'tagFQN',
         subfields: {
           tagFQN: {
@@ -466,11 +482,38 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.ENTITY_STATUS]: {
         label: t('label.status'),
         type: 'select',
-        operators: LIST_VALUE_OPERATORS,
+        // A lifecycle starts an entity that has no stage yet, so a rule may ask whether one is set.
+        operators: [...LIST_VALUE_OPERATORS, ...NULL_CHECK_OPERATORS],
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
           asyncFetch: lifecycleStatusAutocomplete([SearchIndex.TABLE]),
+          showSearch: true,
+          useAsyncSearch: true,
+        },
+      },
+
+      [EntityReferenceFields.PROVIDER]: {
+        label: t('label.provider'),
+        type: 'select',
+        operators: LIST_VALUE_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        // Served like the Status field's values, so the two render the same control side by side.
+        fieldSettings: {
+          listValues: providerListValues(),
+          asyncFetch: async (search) => {
+            const query = (
+              Array.isArray(search) ? search.join(',') : search ?? ''
+            ).toLowerCase();
+
+            return {
+              values: Object.entries(providerListValues())
+                .filter(([, title]) => title.toLowerCase().includes(query))
+                .map(([value, title]) => ({ value, title })),
+              hasMore: false,
+            };
+          },
           showSearch: true,
           useAsyncSearch: true,
         },
@@ -563,6 +606,12 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
             entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+            sourceFields: 'displayName,name',
+            // Entities store updatedBy as the user name, so the rule must compare against it.
+            sourceFieldOptionType: {
+              label: 'displayName',
+              value: 'name',
+            },
           }),
           useAsyncSearch: true,
         },

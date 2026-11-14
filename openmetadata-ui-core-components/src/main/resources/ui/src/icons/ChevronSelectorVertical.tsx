@@ -18,22 +18,22 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const ChevronSelectorVertical: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="m7 15 5 5 5-5M7 9l5-5 5 5"
+      d="M5.833 12.5 10 16.667l4.167-4.167m-8.334-5L10 3.333 14.167 7.5"
       stroke="currentColor"
       strokeWidth={1.3}
     />

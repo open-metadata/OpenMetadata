@@ -168,10 +168,10 @@ describe('IncidentGroupsTable', () => {
     );
     expect(screen.getByTestId('group-incident-count')).toHaveTextContent('5');
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
-      'Severity 1'
+      'label.severity 1'
     );
     expect(screen.getByTestId('group-status-counts')).toHaveTextContent(
-      '3 label.assigned-lowercase · 1 label.ack-lowercase · 1 label.new-lowercase'
+      'label.count-incident-assigned:3 · label.count-incident-ack:1 · label.count-incident-new:1'
     );
     expect(screen.getByTestId('group-last-seen')).toHaveTextContent(
       formatDate(fixtureGroup.lastSeen)

@@ -86,8 +86,9 @@ test.describe('Global Search Column Suggestions', () => {
     await columnListAPI;
     await waitForAllLoadersToDisappear(page);
 
+    // The column detail panel opens as a slideout dialog.
     await expect(
-      page.locator('.ant-drawer-open [data-testid="entity-link"]', {
+      page.getByRole('dialog').getByTestId('entity-link').filter({
         hasText: columnName,
       })
     ).toBeVisible();

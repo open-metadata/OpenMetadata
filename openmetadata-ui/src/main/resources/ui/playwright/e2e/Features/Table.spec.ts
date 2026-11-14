@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
-import { ACTION_TIMEOUT } from '../../constant/common';
+import { expect, Response } from '@playwright/test';
+import { ACTION_TIMEOUT, LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { TaskClass } from '../../support/entity/TaskClass';
@@ -20,7 +20,12 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { okJson } from '../../utils/apiResponse';
+import {
+  clickIgnoringToasts,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
@@ -36,6 +41,7 @@ import {
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -149,7 +155,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
       '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'
     );
 
-    await page.getByTitle('Queued').locator('div').click();
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: 'Queued', exact: true })
+      .click();
 
     await filteredResults;
     await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
@@ -258,7 +267,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     // and a click left outside the loop then waits on a hidden option for the
     // rest of the test. Asserting the trigger's new label retries the whole
     // open-and-pick when it did not take.
-    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
+    const pageSizeOption = page.getByRole('menuitem', { name: '25 / Page' });
     await expect(async () => {
       await pageSizeDropdown.hover();
       if (!(await pageSizeOption.isVisible())) {
@@ -267,7 +276,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
       await pageSizeOption.click({ timeout: 5_000 });
 
-      await expect(pageSizeDropdown).toContainText('15 / Page');
+      await expect(pageSizeDropdown).toContainText('25 / Page');
     }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     await waitForAllLoadersToDisappear(page);
 
@@ -287,7 +296,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .scrollIntoViewIfNeeded();
 
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-      '15 / Page'
+      '25 / Page'
     );
   });
 });
@@ -297,7 +306,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     test.slow();
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_location', {
       waitUntil: 'domcontentloaded',
     });
 
@@ -307,7 +316,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shipping_address"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_location.address"]'
         )
         .getByTestId('expand-icon')
     ).toBeVisible();
@@ -316,7 +325,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_location.location_id"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -325,7 +334,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_location.shop_id"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -339,7 +348,7 @@ test.describe('Table & Data Model columns table pagination', () => {
         response
           .url()
           .includes(
-            '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns'
+            '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_location/columns'
           ) && response.request().method() === 'GET'
     );
     await page.getByRole('tab', { name: 'Column Profile' }).click();
@@ -352,7 +361,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shipping_address"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_location.address"]'
         )
         .getByTestId('expand-icon')
     ).toBeVisible();
@@ -361,7 +370,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_location.location_id"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -370,7 +379,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_location.shop_id"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -379,6 +388,11 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('expand / collapse should not appear after updating nested fields table', async ({
     page,
   }) => {
+    // A page of rich-text column descriptions mounts at once on this page; on a
+    // busy CI runner that stalls the browser long enough to outlast the default
+    // tag-picker open retry and the 60s budget for two tag round-trips.
+    test.slow();
+
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table',
       { waitUntil: 'domcontentloaded' }
@@ -390,15 +404,16 @@ test.describe('Table & Data Model columns table pagination', () => {
       page,
       tag: 'PersonalData.Personal',
       rowId:
-        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0004',
       entityEndpoint: 'tables',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
 
     // Should not show expand icon for non-nested columns
     await expect(
       page
         .locator(
-          '[data-row-key="sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044"]'
+          '[data-row-key="sample_data.ecommerce_db.shopify.performance_test_table.test_col_0004"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -407,8 +422,9 @@ test.describe('Table & Data Model columns table pagination', () => {
       page,
       tags: ['PersonalData.Personal'],
       rowId:
-        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
+        'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0004',
       entityEndpoint: 'tables',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
   });
 });
@@ -434,6 +450,19 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       await glossaryTerm.create(apiContext);
       await testClassification.create(apiContext);
       await testTag.create(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  // Hard-deleting the glossary and classification also strips their labels
+  // from the shared dim_customer columns when a test fails mid-way.
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.delete(apiContext);
+      await testClassification.delete(apiContext);
     } finally {
       await afterAction();
     }
@@ -534,6 +563,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
   test('Tags term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
+    const columnName = 'shop_id';
+    const columnFqn = `sample_data.ecommerce_db.shopify.dim_customer.${columnName}`;
+    const rowSelector = `[data-row-key="${columnFqn}"] [data-testid*="classification-tags"]`;
+
+    const columnSearchUrl =
+      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*';
+
     const columnsResponse = page.waitForResponse(
       '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
     );
@@ -546,9 +582,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
-    // Check if add button exists and is visible
-    const rowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
+    // Searching first finds the row whatever the column page size or sort order.
+    const searchResponse = page.waitForResponse(columnSearchUrl);
+    await page
+      .getByTestId('search-bar-container')
+      .getByTestId('searchbar')
+      .fill(columnName);
+    await searchResponse;
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
     const editButton = page.locator(
@@ -586,18 +626,11 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
+    // The search is kept in the URL, so the reload re-runs it.
+    const reloadSearchResponse = page.waitForResponse(columnSearchUrl);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    // Wait for page to be fully loaded
+    await reloadSearchResponse;
     await waitForAllLoadersToDisappear(page);
-    const getRequest = page.waitForResponse(
-      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
-    );
-    await page
-      .getByTestId('search-bar-container')
-      .getByTestId('searchbar')
-      .fill('shop_id');
-
-    await getRequest;
 
     await expect(
       page
@@ -608,7 +641,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await openClassificationTagPicker(
       page,
       page.locator(
-        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+        `[data-row-key="${columnFqn}"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
       )
     );
 
@@ -649,15 +682,17 @@ test.describe('Large Table Column Search & Copy Link', () => {
   });
 
   const largeTable = new TableClass();
-  const largeTableName = `large_table_${uuid()}`;
   const targetColumnName = 'test_col_071';
   type TableColumn = NonNullable<
     Parameters<TableClass['createAdditionalTable']>[0]['columns']
   >[number];
   type ColumnDataType = TableColumn['dataType'];
-  let createdTable: Record<string, ColumnDataType | string | number>;
+  let createdTable: Awaited<ReturnType<TableClass['createAdditionalTable']>>;
 
   test.beforeAll('Setup large table', async ({ browser }) => {
+    // fullyParallel can rerun this hook in the same worker, so the name must be
+    // minted per run or the second POST collides with the first table (409).
+    const largeTableName = `large_table_${uuid()}`;
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Create base hierarchy (service, db, schema) - assuming create() does this
@@ -739,6 +774,10 @@ test.describe('Large Table Column Search & Copy Link', () => {
     // 4. Read clipboard
     const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
+    // Copying the link must not open the column detail panel (#35350)
+    await expect(rowSelector).toBeVisible();
+    await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+
     // Verify URL format structure
     expect(clipboardText).toContain(
       `/table/${createdTable.fullyQualifiedName}`
@@ -783,6 +822,73 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await expect(page).toHaveURL(
       new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
     );
+  });
+
+  test('Opening and closing a column detail panel on page 2 keeps the columns list on page 2', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const tableFqn = String(createdTable.fullyQualifiedName);
+    const columnsPath = `/api/v1/tables/name/${tableFqn}/columns`;
+    const isColumnsPage = (response: Response, offset: string) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith(columnsPath) &&
+        url.searchParams.get('offset') === offset &&
+        response.request().method() === 'GET'
+      );
+    };
+
+    const firstPageResponse = waitForResponseWithStatus(
+      page,
+      (response) => isColumnsPage(response, '0'),
+      200
+    );
+    await page.goto(`/table/${tableFqn}`, { waitUntil: 'domcontentloaded' });
+    await firstPageResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const pageIndicator = page.getByTestId('page-indicator');
+    await expect(pageIndicator).toContainText('Page 1 of');
+
+    const secondPageResponse = waitForResponseWithStatus(
+      page,
+      (response) => isColumnsPage(response, '15'),
+      200
+    );
+    await clickIgnoringToasts(page.getByTestId('next'));
+    const {
+      data: [pageTwoColumn],
+    } = await okJson<{ data: { name: string; fullyQualifiedName: string }[] }>(
+      await secondPageResponse,
+      'columns page 2'
+    );
+    await waitForAllLoadersToDisappear(page);
+
+    const pageTwoRow = page.locator(
+      `[data-row-key="${pageTwoColumn.fullyQualifiedName}"]`
+    );
+    await expect(pageTwoRow).toBeVisible();
+    await expect(pageIndicator).toContainText('Page 2 of');
+    await expect(page).toHaveURL(/currentPage=2/);
+
+    const sidePanel = page.locator('.column-detail-panel');
+    await pageTwoRow.getByTestId('column-name').click();
+
+    await expect(sidePanel).toBeVisible();
+    await expect(sidePanel).toContainText(pageTwoColumn.name);
+    await expect(page).toHaveURL(/currentPage=2/);
+    await expect(pageIndicator).toContainText('Page 2 of');
+    await expect(pageTwoRow).toBeVisible();
+
+    await sidePanel.getByTestId('close-button').click();
+
+    await expect(sidePanel).not.toBeVisible();
+    await expect(page).toHaveURL(/currentPage=2/);
+    await expect(pageIndicator).toContainText('Page 2 of');
+    await expect(pageTwoRow).toBeVisible();
   });
 });
 
@@ -839,6 +945,11 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
 
     // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(
+      page
+        .getByRole('tabpanel', { name: 'dbt' })
+        .getByTestId('no-data-placeholder')
+    ).toBeVisible();
     await expect(page.getByTestId('query-line')).not.toBeVisible();
     await expect(
       page.getByTestId('query-entity-copy-button')
@@ -890,6 +1001,11 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     );
 
     // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(
+      page
+        .getByRole('tabpanel', { name: 'dbt' })
+        .getByTestId('no-data-placeholder')
+    ).toBeVisible();
     await expect(page.getByTestId('query-line')).not.toBeVisible();
     await expect(
       page.getByTestId('query-entity-copy-button')

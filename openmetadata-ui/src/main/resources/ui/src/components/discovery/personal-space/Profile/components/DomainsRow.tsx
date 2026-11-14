@@ -11,138 +11,90 @@
  *  limitations under the License.
  */
 
-import { Autocomplete } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Key } from 'react-aria-components';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Domain } from '../../../../../generated/entity/domains/domain';
 import { User } from '../../../../../generated/entity/teams/user';
+import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { searchDomains } from '../../../../../rest/domainAPI';
-import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
+import DomainSelect from '../../../../common/DomainSelect/DomainSelect';
 import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../../utils/StringUtils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
+  getDirectDomains,
+  hasDirectDomainChanges,
+  mergeDomainEdits,
+} from '../tabs/members/Members.utils';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
-import RemovableChip from './RemovableChip';
 
 interface DomainsRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
+  canEdit?: boolean;
+  // Overrides the first-person description used on your own profile.
+  description?: string;
 }
 
 const DomainsRow: React.FC<DomainsRowProps> = ({
   userData,
   updateUserDetails,
+  canEdit: canEditProp,
+  description,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
-  const canEdit = Boolean(isAdminUser) && !userData.deleted;
-
-  const initialIds = useMemo(
-    () => (userData.domains ?? []).map((d) => d.id),
-    [userData.domains]
-  );
-  const [draftIds, setDraftIds] = useState<string[]>(initialIds);
-  const [domainList, setDomainList] = useState<Domain[]>([]);
-
-  const fetchDomains = useCallback(async (search: string) => {
-    try {
-      const encoded = getEncodedFqn(escapeESReservedCharacters(search));
-      const results: Domain[] = await searchDomains(encoded);
-      setDomainList(results ?? []);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    }
-  }, []);
-
-  const handleSearchChange = useMemo(
-    () => debounce((value: string) => fetchDomains(value), 300),
-    [fetchDomains]
-  );
-
-  useEffect(() => () => handleSearchChange.cancel(), [handleSearchChange]);
-
-  const options = useMemo(() => {
-    const merged = new Map<string, { id: string; label: string }>();
-    (userData.domains ?? []).forEach((d) =>
-      merged.set(d.id, { id: d.id, label: getEntityName(d) })
-    );
-    domainList.forEach((d) =>
-      merged.set(d.id ?? '', { id: d.id ?? '', label: getEntityName(d) })
-    );
-
-    return Array.from(merged.values());
-  }, [domainList, userData.domains]);
-
-  const selectedItems = useMemo(
-    () => options.filter((o) => draftIds.includes(o.id)),
-    [options, draftIds]
+  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
+  const [draft, setDraft] = useState<EntityReference[]>(
+    getDirectDomains(userData.domains)
   );
 
   const handleSave = async () => {
-    const currentDomains = userData.domains ?? [];
-    const draftIdSet = new Set(draftIds);
-    const currentIdSet = new Set(currentDomains.map((domain) => domain.id));
-    const retainedDomains = currentDomains.filter((domain) =>
-      draftIdSet.has(domain.id)
-    );
-    const newlyAddedDomains = draftIds
-      .filter((id) => !currentIdSet.has(id))
-      .map((id) => ({ id, type: 'domain' }));
-    await updateUserDetails(
-      { domains: [...retainedDomains, ...newlyAddedDomains] },
+    return updateUserDetails(
+      {
+        domains:
+          mergeDomainEdits(
+            userData.domains,
+            draft.map((domain) => domain.id)
+          ) ?? [],
+      },
       'domains'
     );
   };
 
-  const handleItemCleared = useCallback(
-    (key: Key) => setDraftIds((prev) => prev.filter((id) => id !== key)),
-    []
-  );
-
-  const handleItemInserted = useCallback(
-    (key: Key) =>
-      setDraftIds((prev) =>
-        prev.includes(key as string) ? prev : [...prev, key as string]
-      ),
-    []
-  );
-
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.domain-belong-description')}
+      description={
+        description ??
+        copy(
+          'message.domain-belong-description',
+          'message.domain-belong-description-of-user'
+        )
+      }
+      isSaveDisabled={
+        !hasDirectDomainChanges(
+          userData.domains,
+          draft.map((domain) => domain.id)
+        )
+      }
       renderEdit={() => (
-        <Autocomplete
+        <DomainSelect
           multiple
-          aria-label={t('label.domain-plural')}
           data-testid="domains-multiselect"
-          items={options}
           placeholder={t('label.select-entity', {
             entity: t('label.domain-plural'),
           })}
-          renderTag={(item, onRemove) => (
-            <RemovableChip
-              key={item.id}
-              label={item.label ?? ''}
-              testId={`domains-remove-${item.label ?? ''}`}
-              onRemove={onRemove}
-            />
-          )}
-          selectedItems={selectedItems}
-          onItemCleared={handleItemCleared}
-          onItemInserted={handleItemInserted}
-          onSearchChange={handleSearchChange}>
-          {(item) => (
-            <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
-          )}
-        </Autocomplete>
+          selectedDomain={draft}
+          onUpdate={(domains) => {
+            if (Array.isArray(domains)) {
+              setDraft(domains);
+
+              return;
+            }
+            setDraft(domains ? [domains] : []);
+          }}
+        />
       )}
       testId="domains"
       title={t('label.domain-plural')}
@@ -152,11 +104,8 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
           values={userData.domains ?? []}
         />
       }
-      onCancel={() => setDraftIds(initialIds)}
-      onEnterEdit={() => {
-        setDraftIds(initialIds);
-        fetchDomains('');
-      }}
+      onCancel={() => setDraft(getDirectDomains(userData.domains))}
+      onEnterEdit={() => setDraft(getDirectDomains(userData.domains))}
       onSave={handleSave}
     />
   );

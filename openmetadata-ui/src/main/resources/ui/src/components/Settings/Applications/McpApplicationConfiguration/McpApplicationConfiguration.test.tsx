@@ -45,6 +45,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
+  getMcpTools: jest.fn().mockResolvedValue(['search_metadata']),
   updateMcpConfig: jest.fn(),
 }));
 
@@ -77,7 +78,7 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () => {
   ));
 });
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () => {
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -263,7 +264,13 @@ describe('McpApplicationConfiguration', () => {
   it.each([
     [
       'every field the form shows',
-      ['/baseUrl', '/allowedOrigins', '/maxResponseChars'],
+      [
+        '/baseUrl',
+        '/allowedOrigins',
+        '/maxResponseChars',
+        '/readOnly',
+        '/disabledTools',
+      ],
     ],
     ['the whole setting', ['/']],
   ])(
@@ -323,7 +330,13 @@ describe('McpApplicationConfiguration', () => {
 
 describe('McpApplication form schema', () => {
   const formSchema = mcpSchema as RJSFSchema;
-  const editableFields = ['baseUrl', 'allowedOrigins', 'maxResponseChars'];
+  const editableFields = [
+    'baseUrl',
+    'allowedOrigins',
+    'maxResponseChars',
+    'readOnly',
+    'disabledTools',
+  ];
   // Shape of a real stored mcpConfiguration row, including the fields no code reads.
   const storedConfig = {
     path: '/api/v1/mcp',
@@ -333,6 +346,8 @@ describe('McpApplication form schema', () => {
     mcpServerName: 'openmetadata-mcp-server',
     allowedOrigins: ['http://localhost:3000', 'https://app.example.com'],
     maxResponseChars: 100000,
+    readOnly: true,
+    disabledTools: ['create_test_case'],
     connectTimeout: 30000,
     originHeaderUri: 'http://localhost',
     mcpServerVersion: '1.0.0',

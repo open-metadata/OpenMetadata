@@ -219,7 +219,9 @@ export const useTestCaseIncidentHeader = ({
       // would invite the user to repeat a transition the server has applied.
       let latest: TestCaseResolutionStatus | undefined;
       try {
-        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+          limit: 1,
+        });
         latest = refreshed?.data?.[0];
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -276,7 +278,7 @@ export const useTestCaseIncidentHeader = ({
 
   const fetchTestCaseResolution = async (id: string) => {
     try {
-      const { data } = await getListTestCaseIncidentByStateId(id);
+      const { data } = await getListTestCaseIncidentByStateId(id, { limit: 1 });
 
       return first(data);
     } catch {
@@ -426,13 +428,14 @@ export const useTestCaseIncidentHeader = ({
     hasEditOwnerPermission,
     // testCasePermission is undefined until the store's fetch-owner populates it (out of
     // this file's scope); DEFAULT_ENTITY_PERMISSION (all-false) reproduces the old
-    // Boolean(testCasePermission?.EditAll) undefined/absent-is-false behavior.
+    // undefined/absent-is-false behavior. canEditDomains reads EditDomains, falling back
+    // to EditAll, to match how the server authorizes a domain change.
     hasEditDomainPermission:
       !isVersionPage &&
       getDerivedPermissionFlags(
         testCasePermission ?? DEFAULT_ENTITY_PERMISSION,
         isDeleted
-      ).canEditAll,
+      ).canEditDomains,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

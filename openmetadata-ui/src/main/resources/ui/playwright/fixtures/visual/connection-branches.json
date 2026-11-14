@@ -1,0 +1,3216 @@
+[
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-Looker-root-gitCredentials-00f30c618b",
+    "category": "dashboardServices",
+    "connector": "Looker",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gitCredentials",
+        "testId": "select-widget-root/gitCredentials__oneof_select",
+        "value": "1",
+        "label": "Local Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-Looker-root-gitCredentials-68761a6ab2",
+    "category": "dashboardServices",
+    "connector": "Looker",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gitCredentials",
+        "testId": "select-widget-root/gitCredentials__oneof_select",
+        "value": "2",
+        "label": "Git Hub Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-Looker-root-gitCredentials-b82555750d",
+    "category": "dashboardServices",
+    "connector": "Looker",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gitCredentials",
+        "testId": "select-widget-root/gitCredentials__oneof_select",
+        "value": "3",
+        "label": "Bit Bucket Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-Looker-root-gitCredentials-12574f1db3",
+    "category": "dashboardServices",
+    "connector": "Looker",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gitCredentials",
+        "testId": "select-widget-root/gitCredentials__oneof_select",
+        "value": "4",
+        "label": "Gitlab Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-dashboardServices-Looker-root-gitCredentials-12fc2cb575",
+    "category": "dashboardServices",
+    "connector": "Looker",
+    "actions": [],
+    "control": {
+      "id": "root/gitCredentials",
+      "testId": "select-widget-root/gitCredentials__oneof_select",
+      "options": [
+        "No Git Credentials",
+        "Local Path",
+        "Git Hub Credentials",
+        "Bit Bucket Credentials",
+        "Gitlab Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-9e5424077d",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "1",
+        "label": "Azure Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-17f88f37d6",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-01a168405b",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "3",
+        "label": "S3 Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-securityConfig-gcpConfig-e33e53f5d2",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource/securityConfig/gcpConfig",
+        "testId": "select-widget-root/pbitFilesSource/securityConfig/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-securityConfig-gcpConfig-9f1d79292d",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource/securityConfig/gcpConfig",
+        "testId": "select-widget-root/pbitFilesSource/securityConfig/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-securityConfig-gcpConfig-137f6c0894",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource/securityConfig/gcpConfig",
+        "testId": "select-widget-root/pbitFilesSource/securityConfig/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-PowerBI-root-pbitFilesSource-securityConfig-gcpConfig-projectId-c642ce9604",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource/securityConfig/gcpConfig/projectId",
+        "testId": "select-widget-root/pbitFilesSource/securityConfig/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-dashboardServices-PowerBI-root-pbitFilesSource-1763e35ff0",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [],
+    "control": {
+      "id": "root/pbitFilesSource",
+      "testId": "select-widget-root/pbitFilesSource__oneof_select",
+      "options": ["Local Config", "Azure Config", "GCS Config", "S3 Config"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-dashboardServices-PowerBI-root-pbitFilesSource-securityConfig-gcpConfig-87e86ae948",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      }
+    ],
+    "control": {
+      "id": "root/pbitFilesSource/securityConfig/gcpConfig",
+      "testId": "select-widget-root/pbitFilesSource/securityConfig/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-dashboardServices-PowerBI-root-pbitFilesSource-securityConfig-gcpConfig-projectId-9625a2dcfe",
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/pbitFilesSource",
+        "testId": "select-widget-root/pbitFilesSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      }
+    ],
+    "control": {
+      "id": "root/pbitFilesSource/securityConfig/gcpConfig/projectId",
+      "testId": "select-widget-root/pbitFilesSource/securityConfig/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-QlikSense-root-certificates-74bf61345c",
+    "category": "dashboardServices",
+    "connector": "QlikSense",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/certificates",
+        "testId": "select-widget-root/certificates__oneof_select",
+        "value": "1",
+        "label": "Qlik Certificates By File Path"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-dashboardServices-QlikSense-root-certificates-36eef80ee0",
+    "category": "dashboardServices",
+    "connector": "QlikSense",
+    "actions": [],
+    "control": {
+      "id": "root/certificates",
+      "testId": "select-widget-root/certificates__oneof_select",
+      "options": [
+        "Qlik Certificates By Values",
+        "Qlik Certificates By File Path"
+      ]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-dashboardServices-Tableau-root-authType-3512437263",
+    "category": "dashboardServices",
+    "connector": "Tableau",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "AccessTokenAuth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigQuery-root-credentials-gcpConfig-d8c5082a96",
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigQuery-root-credentials-gcpConfig-a67fc48210",
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigQuery-root-credentials-gcpConfig-7871c4e8f4",
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigQuery-root-credentials-gcpConfig-projectId-71282bc42b",
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig/projectId",
+        "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-BigQuery-root-credentials-gcpConfig-d073959541",
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig",
+      "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-BigQuery-root-credentials-gcpConfig-projectId-ebdb1572cd",
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig/projectId",
+      "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigTable-root-credentials-gcpConfig-d8c5082a96",
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigTable-root-credentials-gcpConfig-a67fc48210",
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigTable-root-credentials-gcpConfig-7871c4e8f4",
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-BigTable-root-credentials-gcpConfig-projectId-71282bc42b",
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig/projectId",
+        "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-BigTable-root-credentials-gcpConfig-d073959541",
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig",
+      "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-BigTable-root-credentials-gcpConfig-projectId-ebdb1572cd",
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig/projectId",
+      "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Cassandra-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Cassandra",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Cloud Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Databricks-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Databricks",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Databricks OAuth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Databricks-root-authType-535d2131e0",
+    "category": "databaseServices",
+    "connector": "Databricks",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure AD Setup"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-ff320235fe",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "1",
+        "label": "Azure Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-ced47987aa",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-f2096015cc",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "3",
+        "label": "S3 Config"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-securityConfig-gcpConfig-ad3301a4ca",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/configSource/securityConfig/gcpConfig",
+        "testId": "select-widget-root/configSource/securityConfig/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-securityConfig-gcpConfig-71364197cf",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/configSource/securityConfig/gcpConfig",
+        "testId": "select-widget-root/configSource/securityConfig/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-securityConfig-gcpConfig-bdd281350d",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/configSource/securityConfig/gcpConfig",
+        "testId": "select-widget-root/configSource/securityConfig/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Datalake-root-configSource-securityConfig-gcpConfig-projectId-a87235e7bb",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      },
+      {
+        "kind": "select",
+        "id": "root/configSource/securityConfig/gcpConfig/projectId",
+        "testId": "select-widget-root/configSource/securityConfig/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Datalake-root-configSource-f642fe2ef0",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [],
+    "control": {
+      "id": "root/configSource",
+      "testId": "select-widget-root/configSource__oneof_select",
+      "options": ["Local Config", "Azure Config", "GCS Config", "S3 Config"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Datalake-root-configSource-securityConfig-gcpConfig-4c7f25b05b",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      }
+    ],
+    "control": {
+      "id": "root/configSource/securityConfig/gcpConfig",
+      "testId": "select-widget-root/configSource/securityConfig/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Datalake-root-configSource-securityConfig-gcpConfig-projectId-b768a1dede",
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/configSource",
+        "testId": "select-widget-root/configSource__oneof_select",
+        "value": "2",
+        "label": "GCS Config"
+      }
+    ],
+    "control": {
+      "id": "root/configSource/securityConfig/gcpConfig/projectId",
+      "testId": "select-widget-root/configSource/securityConfig/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Greenplum-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Greenplum",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-fba68b968f",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-84433b459b",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "2",
+        "label": "None"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-4664f90c1a",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-b6ea9ba2bf",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-cb24712533",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-e273911214",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-4084fddee7",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-gcpConfig-gcpConfig-2cf9b261b5",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/metastoreConnection/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-gcpConfig-gcpConfig-5255b74693",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/metastoreConnection/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-gcpConfig-gcpConfig-2506975ba8",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/metastoreConnection/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Hive-root-metastoreConnection-authType-gcpConfig-gcpConfig-projectId-38ac405c19",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType/gcpConfig/gcpConfig/projectId",
+        "testId": "select-widget-root/metastoreConnection/authType/gcpConfig/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Hive-root-metastoreConnection-authType-aabf49820a",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [],
+    "control": {
+      "id": "root/metastoreConnection/authType",
+      "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+      "options": [
+        "Basic Auth",
+        "IAM Auth Configuration Source",
+        "Azure Configuration Source"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Hive-root-metastoreConnection-authType-e8d736a84f",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      }
+    ],
+    "control": {
+      "id": "root/metastoreConnection/authType",
+      "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+      "options": [
+        "Basic Auth",
+        "IAM Auth Configuration Source",
+        "Azure Configuration Source",
+        "GCP Cloud SQL Configuration Source"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Hive-root-metastoreConnection-authType-gcpConfig-gcpConfig-918f3d07a5",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      }
+    ],
+    "control": {
+      "id": "root/metastoreConnection/authType/gcpConfig/gcpConfig",
+      "testId": "select-widget-root/metastoreConnection/authType/gcpConfig/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Hive-root-metastoreConnection-authType-gcpConfig-gcpConfig-projectId-d574f90844",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/metastoreConnection",
+        "value": "1",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/metastoreConnection/authType",
+        "testId": "select-widget-root/metastoreConnection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      }
+    ],
+    "control": {
+      "id": "root/metastoreConnection/authType/gcpConfig/gcpConfig/projectId",
+      "testId": "select-widget-root/metastoreConnection/authType/gcpConfig/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-535d2131e0",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-cb5bbee954",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-gcpConfig-gcpConfig-aab51e2e08",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-gcpConfig-gcpConfig-5371194f91",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-gcpConfig-gcpConfig-615e5b4bf5",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Mysql-root-authType-gcpConfig-gcpConfig-projectId-d7227e97ba",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/authType/gcpConfig/gcpConfig/projectId",
+        "testId": "select-widget-root/authType/gcpConfig/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Mysql-root-authType-gcpConfig-gcpConfig-1cb6b4d8f1",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      }
+    ],
+    "control": {
+      "id": "root/authType/gcpConfig/gcpConfig",
+      "testId": "select-widget-root/authType/gcpConfig/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-Mysql-root-authType-gcpConfig-gcpConfig-projectId-ec76fe3452",
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "GCP CloudSQL Configuration Source"
+      }
+    ],
+    "control": {
+      "id": "root/authType/gcpConfig/gcpConfig/projectId",
+      "testId": "select-widget-root/authType/gcpConfig/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Postgres-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Postgres",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Postgres-root-authType-535d2131e0",
+    "category": "databaseServices",
+    "connector": "Postgres",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Redshift-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Redshift",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-SAS-root-dataTablesCustomFilter-5db1243fb6",
+    "category": "databaseServices",
+    "connector": "SAS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/dataTablesCustomFilter",
+        "testId": "select-widget-root/dataTablesCustomFilter__oneof_select",
+        "value": "1",
+        "label": "Custom Filter"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-SAS-root-reportsCustomFilter-b479a49e61",
+    "category": "databaseServices",
+    "connector": "SAS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/reportsCustomFilter",
+        "testId": "select-widget-root/reportsCustomFilter__oneof_select",
+        "value": "1",
+        "label": "Custom Filter"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-SAS-root-dataflowsCustomFilter-123a674b8f",
+    "category": "databaseServices",
+    "connector": "SAS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/dataflowsCustomFilter",
+        "testId": "select-widget-root/dataflowsCustomFilter__oneof_select",
+        "value": "1",
+        "label": "Custom Filter"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-SAS-root-dataTablesCustomFilter-2bd42a01c6",
+    "category": "databaseServices",
+    "connector": "SAS",
+    "actions": [],
+    "control": {
+      "id": "root/dataTablesCustomFilter",
+      "testId": "select-widget-root/dataTablesCustomFilter__oneof_select",
+      "options": ["No Custom Filter", "Custom Filter"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-SAS-root-reportsCustomFilter-2a1b0b3447",
+    "category": "databaseServices",
+    "connector": "SAS",
+    "actions": [],
+    "control": {
+      "id": "root/reportsCustomFilter",
+      "testId": "select-widget-root/reportsCustomFilter__oneof_select",
+      "options": ["No Custom Filter", "Custom Filter"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-databaseServices-SAS-root-dataflowsCustomFilter-9e62134ae8",
+    "category": "databaseServices",
+    "connector": "SAS",
+    "actions": [],
+    "control": {
+      "id": "root/dataflowsCustomFilter",
+      "testId": "select-widget-root/dataflowsCustomFilter__oneof_select",
+      "options": ["No Custom Filter", "Custom Filter"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Snowflake-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Snowflake",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Key pair"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Timescale-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Timescale",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Timescale-root-authType-535d2131e0",
+    "category": "databaseServices",
+    "connector": "Timescale",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Trino-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "Trino",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "JWT Auth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Trino-root-authType-535d2131e0",
+    "category": "databaseServices",
+    "connector": "Trino",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-Trino-root-authType-cb5bbee954",
+    "category": "databaseServices",
+    "connector": "Trino",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "3",
+        "label": "No Config Authentication Types"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-UnityCatalog-root-authType-3512437263",
+    "category": "databaseServices",
+    "connector": "UnityCatalog",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Databricks OAuth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-databaseServices-UnityCatalog-root-authType-535d2131e0",
+    "category": "databaseServices",
+    "connector": "UnityCatalog",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure AD Setup"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-driveServices-GoogleDrive-root-credentials-gcpConfig-d8c5082a96",
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-driveServices-GoogleDrive-root-credentials-gcpConfig-a67fc48210",
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-driveServices-GoogleDrive-root-credentials-gcpConfig-7871c4e8f4",
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-driveServices-GoogleDrive-root-credentials-gcpConfig-projectId-71282bc42b",
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig/projectId",
+        "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-driveServices-GoogleDrive-root-credentials-gcpConfig-d073959541",
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig",
+      "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-driveServices-GoogleDrive-root-credentials-gcpConfig-projectId-ebdb1572cd",
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig/projectId",
+      "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-driveServices-Sftp-root-authType-3512437263",
+    "category": "driveServices",
+    "connector": "Sftp",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Private Key Authentication"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-messagingServices-Nats-root-authType-3512437263",
+    "category": "messagingServices",
+    "connector": "Nats",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Token"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-messagingServices-Nats-root-authType-535d2131e0",
+    "category": "messagingServices",
+    "connector": "Nats",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "NKey Seed"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-messagingServices-PubSub-root-gcpConfig-gcpConfig-1b38a8b992",
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/gcpConfig/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-messagingServices-PubSub-root-gcpConfig-gcpConfig-827737ad06",
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/gcpConfig/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-messagingServices-PubSub-root-gcpConfig-gcpConfig-4b74e6cd2a",
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/gcpConfig/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-messagingServices-PubSub-root-gcpConfig-gcpConfig-projectId-9ad5f25b70",
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/gcpConfig/gcpConfig/projectId",
+        "testId": "select-widget-root/gcpConfig/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-messagingServices-PubSub-root-gcpConfig-gcpConfig-07ee5aa251",
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "actions": [],
+    "control": {
+      "id": "root/gcpConfig/gcpConfig",
+      "testId": "select-widget-root/gcpConfig/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-messagingServices-PubSub-root-gcpConfig-gcpConfig-projectId-38c113eb58",
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "actions": [],
+    "control": {
+      "id": "root/gcpConfig/gcpConfig/projectId",
+      "testId": "select-widget-root/gcpConfig/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-metadataServices-AlationSink-root-authType-3512437263",
+    "category": "metadataServices",
+    "connector": "AlationSink",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "ApiAccessTokenAuth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airbyte-root-auth-30b02b7795",
+    "category": "pipelineServices",
+    "connector": "Airbyte",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/auth",
+        "testId": "select-widget-root/auth__oneof_select",
+        "value": "1",
+        "label": "OAuth 2 0 Client Credentials Authentication"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airbyte-root-auth-5fbd659b85",
+    "category": "pipelineServices",
+    "connector": "Airbyte",
+    "actions": [],
+    "control": {
+      "id": "root/auth",
+      "testId": "select-widget-root/auth__oneof_select",
+      "options": [
+        "Basic Authentication",
+        "OAuth 2 0 Client Credentials Authentication"
+      ]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-d2141c75e8",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "1",
+        "label": "Backend Connection"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-295a24699e",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-bcc62f6342",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "3",
+        "label": "Postgres Connection"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-cc91117863",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "4",
+        "label": "SQ Lite Connection"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-cabcd8360a",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "1",
+        "label": "Access Token"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-2b4a579e34",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-171772f74f",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "3",
+        "label": "MWAA Authentication"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-5784d8edf4",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-8a0fede305",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-aa0130b414",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-edbf699e72",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "3",
+        "label": "Postgres Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "1",
+        "label": "IAM Auth Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-46542ec80a",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "3",
+        "label": "Postgres Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "2",
+        "label": "Azure Configuration Source"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-credentials-gcpConfig-56dd351f5a",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig/credentials/gcpConfig",
+        "testId": "select-widget-root/connection/authConfig/credentials/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-credentials-gcpConfig-75f7b2e1f4",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig/credentials/gcpConfig",
+        "testId": "select-widget-root/connection/authConfig/credentials/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-credentials-gcpConfig-b266829b84",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig/credentials/gcpConfig",
+        "testId": "select-widget-root/connection/authConfig/credentials/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authConfig-credentials-gcpConfig-projectId-783ec75478",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig/credentials/gcpConfig/projectId",
+        "testId": "select-widget-root/connection/authConfig/credentials/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-gcpConfig-gcpConfig-440438e391",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/connection/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-gcpConfig-gcpConfig-6a3fe4a309",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/connection/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-gcpConfig-gcpConfig-96e252a514",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType/gcpConfig/gcpConfig",
+        "testId": "select-widget-root/connection/authType/gcpConfig/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Airflow-root-connection-authType-gcpConfig-gcpConfig-projectId-542063448d",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType/gcpConfig/gcpConfig/projectId",
+        "testId": "select-widget-root/connection/authType/gcpConfig/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-12b76fcbfd",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [],
+    "control": {
+      "id": "root/connection",
+      "testId": "select-widget-root/connection__oneof_select",
+      "options": [
+        "Airflow Rest API Connection",
+        "Backend Connection",
+        "Mysql Connection",
+        "Postgres Connection",
+        "SQ Lite Connection"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authConfig-a2b7abcf31",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [],
+    "control": {
+      "id": "root/connection/authConfig",
+      "testId": "select-widget-root/connection/authConfig__oneof_select",
+      "options": [
+        "Basic Auth",
+        "Access Token",
+        "GCP Service Account",
+        "MWAA Authentication"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authType-35a1f23d2d",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      }
+    ],
+    "control": {
+      "id": "root/connection/authType",
+      "testId": "select-widget-root/connection/authType__oneof_select",
+      "options": [
+        "Basic Auth",
+        "IAM Auth Configuration Source",
+        "Azure Configuration Source",
+        "GCP Cloud SQL Configuration Source"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authType-bec17a6b35",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "3",
+        "label": "Postgres Connection"
+      }
+    ],
+    "control": {
+      "id": "root/connection/authType",
+      "testId": "select-widget-root/connection/authType__oneof_select",
+      "options": [
+        "Basic Auth",
+        "IAM Auth Configuration Source",
+        "Azure Configuration Source"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authConfig-credentials-gcpConfig-98669b363b",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      }
+    ],
+    "control": {
+      "id": "root/connection/authConfig/credentials/gcpConfig",
+      "testId": "select-widget-root/connection/authConfig/credentials/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authConfig-credentials-gcpConfig-projectId-2978d4f7f0",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection/authConfig",
+        "testId": "select-widget-root/connection/authConfig__oneof_select",
+        "value": "2",
+        "label": "GCP Service Account"
+      }
+    ],
+    "control": {
+      "id": "root/connection/authConfig/credentials/gcpConfig/projectId",
+      "testId": "select-widget-root/connection/authConfig/credentials/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authType-gcpConfig-gcpConfig-fb224795ce",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      }
+    ],
+    "control": {
+      "id": "root/connection/authType/gcpConfig/gcpConfig",
+      "testId": "select-widget-root/connection/authType/gcpConfig/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-pipelineServices-Airflow-root-connection-authType-gcpConfig-gcpConfig-projectId-197315da6e",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/connection",
+        "testId": "select-widget-root/connection__oneof_select",
+        "value": "2",
+        "label": "Mysql Connection"
+      },
+      {
+        "kind": "select",
+        "id": "root/connection/authType",
+        "testId": "select-widget-root/connection/authType__oneof_select",
+        "value": "3",
+        "label": "GCP Cloud SQL Configuration Source"
+      }
+    ],
+    "control": {
+      "id": "root/connection/authType/gcpConfig/gcpConfig/projectId",
+      "testId": "select-widget-root/connection/authType/gcpConfig/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-DatabricksPipeline-root-authType-3512437263",
+    "category": "pipelineServices",
+    "connector": "DatabricksPipeline",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Databricks OAuth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-DatabricksPipeline-root-authType-535d2131e0",
+    "category": "pipelineServices",
+    "connector": "DatabricksPipeline",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "2",
+        "label": "Azure AD Setup"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-Prefect-root-authType-3512437263",
+    "category": "pipelineServices",
+    "connector": "Prefect",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "Prefect Server"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-pipelineServices-TableauPipeline-root-authType-3512437263",
+    "category": "pipelineServices",
+    "connector": "TableauPipeline",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "AccessTokenAuth"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-searchServices-ElasticSearch-root-authType-3512437263",
+    "category": "searchServices",
+    "connector": "ElasticSearch",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "API Key Authentication"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-searchServices-ElasticSearch-root-sslConfig-certificates-ff98f6d085",
+    "category": "searchServices",
+    "connector": "ElasticSearch",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/sslConfig/certificates",
+        "value": "1",
+        "label": "SSL Certificates By Values"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-searchServices-OpenSearch-root-authType-3512437263",
+    "category": "searchServices",
+    "connector": "OpenSearch",
+    "actions": [
+      {
+        "kind": "auth",
+        "id": "root/authType__title",
+        "value": "1",
+        "label": "AWSCredentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-searchServices-OpenSearch-root-sslConfig-certificates-ff98f6d085",
+    "category": "searchServices",
+    "connector": "OpenSearch",
+    "actions": [
+      {
+        "kind": "tabs",
+        "id": "root/sslConfig/certificates",
+        "value": "1",
+        "label": "SSL Certificates By Values"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-storageServices-GCS-root-credentials-gcpConfig-d8c5082a96",
+    "category": "storageServices",
+    "connector": "GCS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "1",
+        "label": "GCP Credentials Path"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-storageServices-GCS-root-credentials-gcpConfig-a67fc48210",
+    "category": "storageServices",
+    "connector": "GCS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "2",
+        "label": "GCP External Account"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-storageServices-GCS-root-credentials-gcpConfig-7871c4e8f4",
+    "category": "storageServices",
+    "connector": "GCS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig",
+        "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+        "value": "3",
+        "label": "GCP Application Default Credentials"
+      }
+    ]
+  },
+  {
+    "kind": "branch",
+    "id": "connection-branch-storageServices-GCS-root-credentials-gcpConfig-projectId-71282bc42b",
+    "category": "storageServices",
+    "connector": "GCS",
+    "actions": [
+      {
+        "kind": "select",
+        "id": "root/credentials/gcpConfig/projectId",
+        "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+        "value": "1",
+        "label": "Multiple Project ID"
+      }
+    ]
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-storageServices-GCS-root-credentials-gcpConfig-d073959541",
+    "category": "storageServices",
+    "connector": "GCS",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig",
+      "testId": "select-widget-root/credentials/gcpConfig__oneof_select",
+      "options": [
+        "GCP Credentials Values",
+        "GCP Credentials Path",
+        "GCP External Account",
+        "GCP Application Default Credentials"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-menu-storageServices-GCS-root-credentials-gcpConfig-projectId-ebdb1572cd",
+    "category": "storageServices",
+    "connector": "GCS",
+    "actions": [],
+    "control": {
+      "id": "root/credentials/gcpConfig/projectId",
+      "testId": "select-widget-root/credentials/gcpConfig/projectId__oneof_select",
+      "options": ["Single Project ID", "Multiple Project ID"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-apiServices-Rest-root-verifySSL-2b1209e71a",
+    "category": "apiServices",
+    "connector": "Rest",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-Hex-root-tokenType-b6009be81a",
+    "category": "dashboardServices",
+    "connector": "Hex",
+    "actions": [],
+    "control": {
+      "id": "root/tokenType",
+      "testId": "select-widget-root/tokenType",
+      "options": ["personal", "workspace"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-Omni-root-verifySSL-2b1209e71a",
+    "category": "dashboardServices",
+    "connector": "Omni",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-QuickSight-root-identityType-4c5fe9f409",
+    "category": "dashboardServices",
+    "connector": "QuickSight",
+    "actions": [],
+    "control": {
+      "id": "root/identityType",
+      "testId": "select-widget-root/identityType",
+      "options": ["IAM", "QUICKSIGHT", "ANONYMOUS"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-Ssrs-root-verifySSL-2b1209e71a",
+    "category": "dashboardServices",
+    "connector": "Ssrs",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-Superset-root-connection-provider-3195d6582d",
+    "category": "dashboardServices",
+    "connector": "Superset",
+    "actions": [],
+    "control": {
+      "id": "root/connection/provider",
+      "testId": "select-widget-root/connection/provider",
+      "options": ["db", "ldap"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-Superset-root-connection-verifySSL-8799ba14f6",
+    "category": "dashboardServices",
+    "connector": "Superset",
+    "actions": [],
+    "control": {
+      "id": "root/connection/verifySSL",
+      "testId": "select-widget-root/connection/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-dashboardServices-Tableau-root-verifySSL-2b1209e71a",
+    "category": "dashboardServices",
+    "connector": "Tableau",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-AzureSQL-root-authenticationMode-authentication-9a03b11337",
+    "category": "databaseServices",
+    "connector": "AzureSQL",
+    "actions": [],
+    "control": {
+      "id": "root/authenticationMode/authentication",
+      "testId": "select-widget-root/authenticationMode/authentication",
+      "options": ["ActiveDirectoryIntegrated", "ActiveDirectoryPassword"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Cassandra-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Cassandra",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Clickhouse-root-scheme-aba2dff3c4",
+    "category": "databaseServices",
+    "connector": "Clickhouse",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["clickhouse+http", "clickhouse+native"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Clickzetta-root-protocol-61078c31af",
+    "category": "databaseServices",
+    "connector": "Clickzetta",
+    "actions": [],
+    "control": {
+      "id": "root/protocol",
+      "testId": "select-widget-root/protocol",
+      "options": ["https", "http"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Cockroach-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Cockroach",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Db2-root-scheme-ed085bcbdb",
+    "category": "databaseServices",
+    "connector": "Db2",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["db2+ibm_db", "ibmi"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Db2-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Db2",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Druid-root-scheme-91012cb4dd",
+    "category": "databaseServices",
+    "connector": "Druid",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["druid", "druid+http", "druid+https"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Exasol-root-tls-28644d578f",
+    "category": "databaseServices",
+    "connector": "Exasol",
+    "actions": [],
+    "control": {
+      "id": "root/tls",
+      "testId": "select-widget-root/tls",
+      "options": ["disable-tls", "ignore-certificate", "validate-certificate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Greenplum-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Greenplum",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Hive-root-auth-aa17cc2f00",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [],
+    "control": {
+      "id": "root/auth",
+      "testId": "select-widget-root/auth",
+      "options": [
+        "NONE",
+        "LDAP",
+        "KERBEROS",
+        "CUSTOM",
+        "NOSASL",
+        "BASIC",
+        "GSSAPI",
+        "JWT",
+        "PLAIN"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Hive-root-scheme-8e61c62876",
+    "category": "databaseServices",
+    "connector": "Hive",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["hive", "hive+http", "hive+https"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Impala-root-authMechanism-286675540d",
+    "category": "databaseServices",
+    "connector": "Impala",
+    "actions": [],
+    "control": {
+      "id": "root/authMechanism",
+      "testId": "select-widget-root/authMechanism",
+      "options": ["NOSASL", "PLAIN", "GSSAPI", "LDAP", "JWT"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Impala-root-scheme-da32b4c2c3",
+    "category": "databaseServices",
+    "connector": "Impala",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["impala", "impala4"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-MongoDB-root-scheme-37bb90cc5d",
+    "category": "databaseServices",
+    "connector": "MongoDB",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["mongodb", "mongodb+srv"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-MongoDB-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "MongoDB",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Mssql-root-scheme-87d5b52fa3",
+    "category": "databaseServices",
+    "connector": "Mssql",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Neo4j-root-scheme-dc2f8f555b",
+    "category": "databaseServices",
+    "connector": "Neo4j",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["neo4j", "neo4j+s", "neo4j+ssc", "bolt", "bolt+s", "bolt+ssc"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Oracle-root-scheme-decd13a5c5",
+    "category": "databaseServices",
+    "connector": "Oracle",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["oracle+oracledb", "oracle+cx_oracle"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-PinotDB-root-scheme-ef569f294c",
+    "category": "databaseServices",
+    "connector": "PinotDB",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["pinot", "pinot+http", "pinot+https"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Postgres-root-scheme-bec9bb51f5",
+    "category": "databaseServices",
+    "connector": "Postgres",
+    "actions": [],
+    "control": {
+      "id": "root/scheme",
+      "testId": "select-widget-root/scheme",
+      "options": ["postgresql+psycopg2", "pgspider+psycopg2"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Postgres-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Postgres",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Redshift-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Redshift",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-SapErp-root-verifySSL-2b1209e71a",
+    "category": "databaseServices",
+    "connector": "SapErp",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Teradata-root-logmech-2c9c8411f3",
+    "category": "databaseServices",
+    "connector": "Teradata",
+    "actions": [],
+    "control": {
+      "id": "root/logmech",
+      "testId": "select-widget-root/logmech",
+      "options": ["TD2", "LDAP", "JWT", "KRB5", "CUSTOM", "TDNEGO"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Teradata-root-tmode-97931f56ea",
+    "category": "databaseServices",
+    "connector": "Teradata",
+    "actions": [],
+    "control": {
+      "id": "root/tmode",
+      "testId": "select-widget-root/tmode",
+      "options": ["ANSI", "TERA", "DEFAULT"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-databaseServices-Timescale-root-sslMode-95c420f014",
+    "category": "databaseServices",
+    "connector": "Timescale",
+    "actions": [],
+    "control": {
+      "id": "root/sslMode",
+      "testId": "select-widget-root/sslMode",
+      "options": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-messagingServices-Kafka-root-securityProtocol-451f29302d",
+    "category": "messagingServices",
+    "connector": "Kafka",
+    "actions": [],
+    "control": {
+      "id": "root/securityProtocol",
+      "testId": "select-widget-root/securityProtocol",
+      "options": ["PLAINTEXT", "SASL_PLAINTEXT", "SASL_SSL", "SSL"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-messagingServices-Kafka-root-saslMechanism-caf48e0d04",
+    "category": "messagingServices",
+    "connector": "Kafka",
+    "actions": [],
+    "control": {
+      "id": "root/saslMechanism",
+      "testId": "select-widget-root/saslMechanism",
+      "options": [
+        "PLAIN",
+        "GSSAPI",
+        "SCRAM-SHA-256",
+        "SCRAM-SHA-512",
+        "OAUTHBEARER"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-messagingServices-Redpanda-root-securityProtocol-451f29302d",
+    "category": "messagingServices",
+    "connector": "Redpanda",
+    "actions": [],
+    "control": {
+      "id": "root/securityProtocol",
+      "testId": "select-widget-root/securityProtocol",
+      "options": ["PLAINTEXT", "SASL_PLAINTEXT", "SASL_SSL", "SSL"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-messagingServices-Redpanda-root-saslMechanism-caf48e0d04",
+    "category": "messagingServices",
+    "connector": "Redpanda",
+    "actions": [],
+    "control": {
+      "id": "root/saslMechanism",
+      "testId": "select-widget-root/saslMechanism",
+      "options": [
+        "PLAIN",
+        "GSSAPI",
+        "SCRAM-SHA-256",
+        "SCRAM-SHA-512",
+        "OAUTHBEARER"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-metadataServices-AlationSink-root-verifySSL-2b1209e71a",
+    "category": "metadataServices",
+    "connector": "AlationSink",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-Airflow-root-connection-apiVersion-8a1ec071a6",
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "actions": [],
+    "control": {
+      "id": "root/connection/apiVersion",
+      "testId": "select-widget-root/connection/apiVersion",
+      "options": ["v1", "v2", "auto"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-Fivetran-root-verifySSL-2b1209e71a",
+    "category": "pipelineServices",
+    "connector": "Fivetran",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-Flink-root-verifySSL-2b1209e71a",
+    "category": "pipelineServices",
+    "connector": "Flink",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-OpenLineage-root-brokerConfig-consumerOffsets-30b3b6fd54",
+    "category": "pipelineServices",
+    "connector": "OpenLineage",
+    "actions": [],
+    "control": {
+      "id": "root/brokerConfig/consumerOffsets",
+      "testId": "select-widget-root/brokerConfig/consumerOffsets",
+      "options": ["earliest", "latest"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-OpenLineage-root-brokerConfig-securityProtocol-e087f6b286",
+    "category": "pipelineServices",
+    "connector": "OpenLineage",
+    "actions": [],
+    "control": {
+      "id": "root/brokerConfig/securityProtocol",
+      "testId": "select-widget-root/brokerConfig/securityProtocol",
+      "options": ["PLAINTEXT", "SASL_PLAINTEXT", "SSL", "SASL_SSL"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-OpenLineage-root-brokerConfig-saslConfig-saslMechanism-037ecfc604",
+    "category": "pipelineServices",
+    "connector": "OpenLineage",
+    "actions": [],
+    "control": {
+      "id": "root/brokerConfig/saslConfig/saslMechanism",
+      "testId": "select-widget-root/brokerConfig/saslConfig/saslMechanism",
+      "options": [
+        "PLAIN",
+        "GSSAPI",
+        "SCRAM-SHA-256",
+        "SCRAM-SHA-512",
+        "OAUTHBEARER"
+      ]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-Prefect-root-verifySSL-2b1209e71a",
+    "category": "pipelineServices",
+    "connector": "Prefect",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-pipelineServices-TableauPipeline-root-verifySSL-2b1209e71a",
+    "category": "pipelineServices",
+    "connector": "TableauPipeline",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  },
+  {
+    "kind": "menu",
+    "id": "connection-enum-searchServices-OpenSearch-root-verifySSL-2b1209e71a",
+    "category": "searchServices",
+    "connector": "OpenSearch",
+    "actions": [],
+    "control": {
+      "id": "root/verifySSL",
+      "testId": "select-widget-root/verifySSL",
+      "options": ["no-ssl", "ignore", "validate"]
+    }
+  }
+]

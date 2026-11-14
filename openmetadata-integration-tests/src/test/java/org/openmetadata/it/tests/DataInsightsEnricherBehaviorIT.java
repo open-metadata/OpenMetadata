@@ -39,6 +39,7 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.Type;
@@ -50,9 +51,11 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -70,6 +73,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.StepFailure;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -134,6 +138,84 @@ class DataInsightsEnricherBehaviorIT {
 
   private SharedEntities shared() {
     return SharedEntities.get();
+  }
+
+  @Test
+  void lifecycleOnlyBulkUpdate_keepsExistingTableInBothDailySnapshots(TestNamespace ns)
+      throws SearchIndexException {
+    Table table = createSnapshotTable(ns);
+    long today = TimestampUtils.getStartOfDayTimestamp(table.getCreatedAt());
+    long yesterday = TimestampUtils.subtractDays(today, 1);
+    EntityRepository<Table> repository = tableRepository();
+    Table stored = repository.getDao().findEntityById(table.getId());
+    stored.setCreatedAt(yesterday);
+    stored.setUpdatedAt(yesterday);
+    repository.getDao().update(stored);
+    EntityRepository.invalidateCacheForEntity(
+        "table", table.getId(), table.getFullyQualifiedName());
+
+    CreateTable request =
+        new CreateTable()
+            .withName(table.getName())
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(table.getColumns())
+            .withLifeCycle(new LifeCycle().withAccessed(new AccessDetails().withTimestamp(today)));
+    SdkClients.adminClient().tables().bulkCreateOrUpdate(List.of(request));
+    Table updated = repository.find(table.getId(), Include.NON_DELETED, false);
+    repository.setFieldsInBulk(repository.getFields("*"), List.of(updated));
+
+    assertEquals(0.1, updated.getVersion());
+    assertEquals(yesterday, updated.getCreatedAt());
+    assertTrue(updated.getUpdatedAt() >= today);
+    assertEquals(today, updated.getLifeCycle().getAccessed().getTimestamp());
+    assertEquals(
+        1,
+        repository
+            .listVersionsWithOffset(table.getId(), 100, 0)
+            .entityHistory()
+            .getVersions()
+            .size());
+    assertEquals(List.of(today, yesterday), snapshotDays(updated, yesterday, today));
+  }
+
+  @Test
+  void tableCreatedToday_hasNoSnapshotBeforeCreation(TestNamespace ns) throws SearchIndexException {
+    Table table = createSnapshotTable(ns);
+    long today = TimestampUtils.getStartOfDayTimestamp(table.getCreatedAt());
+    long yesterday = TimestampUtils.subtractDays(today, 1);
+
+    assertEquals(List.of(today), snapshotDays(table, yesterday, today));
+  }
+
+  private Table createSnapshotTable(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.create(ns, "Postgres");
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    return TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+  }
+
+  @SuppressWarnings("unchecked")
+  private EntityRepository<Table> tableRepository() {
+    return (EntityRepository<Table>) Entity.getEntityRepository("table");
+  }
+
+  private List<Long> snapshotDays(Table table, long start, long today) throws SearchIndexException {
+    EntityRepository<Table> repository = tableRepository();
+    Table loaded = repository.find(table.getId(), Include.NON_DELETED, false);
+    repository.setFieldsInBulk(repository.getFields("*"), List.of(loaded));
+    Map<String, Object> context =
+        Map.of(
+            ENTITY_TYPE_KEY,
+            "table",
+            START_TIMESTAMP_KEY,
+            start,
+            END_TIMESTAMP_KEY,
+            TimestampUtils.getEndOfDayTimestamp(today),
+            ENTITY_TYPE_FIELDS_KEY,
+            new ArrayList<>(TABLE_FIELDS));
+    return enricher.enrichSingle(loaded, context).stream()
+        .map(snapshot -> (Long) snapshot.get("@timestamp"))
+        .toList();
   }
 
   // ────────────────────────────── Test 1: snapshot content ──────────────────────────────
@@ -515,8 +597,7 @@ class DataInsightsEnricherBehaviorIT {
     Map<String, Object> entityMap = JsonUtils.getMap(table);
     EnrichmentContext context = new EnrichmentContext("table", TABLE_FIELDS, 0L, 86_400_000L);
     EnrichmentTarget target =
-        new EnrichmentTarget(
-            table, entityMap, Map.of(), 0L, 86_400_000L, context, VersionShape.LATEST_HYDRATED);
+        new EnrichmentTarget(table, entityMap, Map.of(), context, VersionShape.LATEST_HYDRATED);
 
     List<StepFailure> failures = customPipeline.run(target);
 

@@ -102,15 +102,6 @@ jest.mock('react-router-dom', () => {
   };
 });
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>NoDataPlaceholder.component</div>);
-  }
-);
-
-jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <p>TitleBreadcrumb.component</p>)
 );
@@ -208,7 +199,7 @@ describe('PersonaDetailsPage', () => {
     render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     expect(
-      await screen.findByText('NoDataPlaceholder.component')
+      await screen.findByTestId('no-data-placeholder')
     ).toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
 export type IconComponentType = React.FunctionComponent<{
   className?: string;
+  size?: number;
   strokeWidth?: string | number;
 }>;
 

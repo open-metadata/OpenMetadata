@@ -13,23 +13,26 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
+  FeaturedIcon,
+  Input,
   Modal,
   ModalOverlay,
   Owner,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  TestSuite as TestSuiteIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -40,10 +43,12 @@ import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -136,21 +141,30 @@ const TestSuiteAddTestCaseDialog = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: t('label.test-case-plural'),
             })}
             onClose={onClose}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTests ?? []}
-                getPopupContainer={(trigger) =>
-                  (trigger.closest('[role="dialog"]') as HTMLElement) ??
-                  document.body
-                }
-                onCancel={onClose}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTests ?? []}
+              getPopupContainer={(trigger) =>
+                (trigger.closest('[role="dialog"]') as HTMLElement) ??
+                document.body
+              }
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={onClose}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -179,6 +193,7 @@ const TestSuiteDetail = () => {
     isLoading,
     isTestCaseLoading,
     testCaseResult,
+    testCaseSearchQuery,
     testSuitePermissions,
     permissions,
     extraDropdownContent,
@@ -190,11 +205,13 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
     handleTestCasesRemoved,
     handleSortTestCase,
+    handleTestCaseSearch,
     handleAddTestCaseSubmit,
     onUpdateOwner,
     handleDomainUpdate,
@@ -210,6 +227,19 @@ const TestSuiteDetail = () => {
     () => getDerivedPermissionFlags(testSuitePermissions),
     [testSuitePermissions]
   );
+
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: testCaseSearchQuery,
+    onSearchChange: handleTestCaseSearch,
+  });
+  // UI core and Untitled icons currently resolve React types from separate
+  // package trees even though their runtime component contract is compatible.
+  const searchInputIcon = searchInputProps.icon as ComponentProps<
+    typeof Input
+  >['icon'];
+  const testCaseSearchLabel = t('label.search-entity', {
+    entity: t('label.test-case-plural'),
+  });
 
   const afterDeleteAction = () => {
     navigate(
@@ -265,7 +295,11 @@ const TestSuiteDetail = () => {
     if (activeTab === EntityTabs.PIPELINE) {
       return (
         <div className="tw:w-full">
-          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+          <TestSuitePipelineTab
+            deleted={testSuite?.deleted}
+            testSuite={testSuite}
+            onPipelinesChange={handlePipelinesChange}
+          />
         </div>
       );
     }
@@ -284,12 +318,24 @@ const TestSuiteDetail = () => {
           <DataQualityTab
             afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
-            editVariant="modal"
             fetchTestCases={handleSortTestCase}
+            hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
+            tableHeader={
+              <Box align="center" className="tw:w-full" justify="end">
+                <Input
+                  {...searchInputProps}
+                  aria-label={testCaseSearchLabel}
+                  className="tw:w-full tw:max-w-72"
+                  icon={searchInputIcon}
+                  inputDataTestId="test-suite-test-case-search"
+                  placeholder={testCaseSearchLabel}
+                />
+              </Box>
+            }
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
             onTestUpdate={handleTestSuiteUpdate}
@@ -313,6 +359,10 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     testCaseResult,
+    testCaseSearchQuery,
+    searchInputProps,
+    searchInputIcon,
+    testCaseSearchLabel,
     handleTestSuiteUpdate,
   ]);
 
@@ -322,18 +372,23 @@ const TestSuiteDetail = () => {
 
   if (!flags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testSuite)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -362,16 +417,12 @@ const TestSuiteDetail = () => {
               gap={4}
               wrap="wrap">
               <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-                <Box
-                  align="center"
-                  className={classNames(
-                    'tw:relative tw:size-9 tw:shrink-0',
-                    'tw:overflow-hidden tw:rounded-full',
-                    'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                  )}
-                  justify="center">
-                  <TestSuiteIcon className="tw:size-5" />
-                </Box>
+                <FeaturedIcon
+                  color="gray"
+                  icon={TestSuiteIcon}
+                  size="md"
+                  theme="surface"
+                />
                 <Box
                   align="center"
                   className="tw:min-w-0"
@@ -381,19 +432,13 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
-                    <Button
-                      aria-label={t('label.copy-item', {
-                        item: t('label.url-uppercase'),
-                      })}
-                      color="tertiary"
-                      data-testid="entity-header-copy-button"
-                      iconLeading={Copy01}
-                      size="xs"
-                      type="button"
-                      onClick={handleCopyEntityUrl}
-                    />
-                  </Tooltip>
+                  <ButtonUtility
+                    data-testid="entity-header-copy-button"
+                    icon={Copy01}
+                    size="lg"
+                    tooltip={getCopyTooltipTitle()}
+                    onClick={handleCopyEntityUrl}
+                  />
                 </Box>
               </Box>
               <Box align="center" className="tw:shrink-0" gap={2}>
@@ -429,7 +474,7 @@ const TestSuiteDetail = () => {
                 entityFqn={testSuite?.fullyQualifiedName ?? ''}
                 entityId={testSuite?.id ?? ''}
                 entityType={EntityType.TEST_SUITE}
-                hasPermission={flags.canEditAll}
+                hasPermission={flags.canEditDomains}
                 labelClassName="tw:text-secondary!"
                 multiple={canAddMultipleDomains}
                 textClassName="render-domain-lebel-style tw:text-secondary!"

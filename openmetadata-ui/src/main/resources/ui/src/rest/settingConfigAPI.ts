@@ -29,6 +29,8 @@ import {
 } from '../generated/system/settingsSourceResponse';
 import axiosClient from './axiosClient';
 
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
+
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
 export { RelationCardinality };
 
@@ -70,6 +72,29 @@ export const updateSettingsConfig = async (payload: Settings) => {
 };
 
 /**
+ * Patches one Data Asset Rule, found by name, with operations relative to that rule
+ * (`/enabled`, not `/entitySemantics/2/enabled`). Unlike {@link updateSettingsConfig}, which
+ * replaces the whole rule list and can drop rules another writer added, this sends only the change.
+ */
+export const patchEntityRule = async (
+  ruleName: string,
+  operations: Operation[]
+) => {
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<Settings>
+  >(
+    `/system/settings/entityRulesSettings/rules/${encodeURIComponent(
+      ruleName
+    )}`,
+    operations,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+/**
  * Changes only the fields named by the patch, so a write cannot overwrite fields of the setting
  * that this client never read (unlike {@link updateSettingsConfig}, which replaces the setting).
  */
@@ -81,7 +106,7 @@ export const patchSettingsConfig = async (
     Operation[],
     AxiosResponse<Settings>
   >(`/system/settings/${configType}`, patches, {
-    headers: { 'Content-Type': 'application/json-patch+json' },
+    headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE },
   });
 
   return response.data;
@@ -167,21 +192,28 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Updates only the given keys: the generic `/system/settings` PUT
- * replaces the whole document, and several pages (Default App Mode, Table &
- * Schema) each own one key of it, so the stored value is merged first.
- * See ADR:2026-10-09-app-configuration-keys-are-owned-and-merged-on-write.
+ * Admin-only. Patches the AppConfiguration using RFC 6902 JSON Patch format.
+ * This prevents overwriting other configuration fields and avoids race conditions
+ * by targeting only the specific setting being updated.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
-): Promise<AppConfiguration> => {
-  const current = await getAppConfiguration();
-  const response = await axiosClient.put<Settings>(`/system/settings`, {
-    config_type: SettingType.AppConfiguration,
-    config_value: { ...current, ...patch },
-  });
+): Promise<void> => {
+  const ops = Object.entries(patch).map(([key, value]) => ({
+    op: 'add',
+    path: `/${key}`,
+    value,
+  }));
 
-  return (response.data.config_value as AppConfiguration) ?? {};
+  await axiosClient.patch(
+    `/system/settings/${SettingType.AppConfiguration}`,
+    ops,
+    {
+      headers: {
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
+      },
+    }
+  );
 };
 
 export const testEmailConnection = async (data: { email: string }) => {

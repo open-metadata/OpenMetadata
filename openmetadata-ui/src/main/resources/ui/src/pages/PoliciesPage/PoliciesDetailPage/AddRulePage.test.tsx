@@ -57,8 +57,12 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../RuleForm/RuleForm', () =>
-  jest.fn().mockReturnValue(<div data-testid="rule-form-fields">RuleForm</div>)
+jest.mock(
+  '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm',
+  () =>
+    jest
+      .fn()
+      .mockReturnValue(<div data-testid="rule-form-fields">RuleForm</div>)
 );
 
 describe('Test Add rule page Component', () => {

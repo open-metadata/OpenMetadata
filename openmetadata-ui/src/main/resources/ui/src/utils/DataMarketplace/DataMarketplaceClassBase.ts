@@ -118,8 +118,8 @@ class DataMarketplaceClassBase {
     }
   }
 
-  public getDummyData() {
-    return {} as Record<string, unknown>;
+  public getDummyData(): Record<string, never> {
+    return {};
   }
 
   public getDummyDataProducts(): DataProduct[] {

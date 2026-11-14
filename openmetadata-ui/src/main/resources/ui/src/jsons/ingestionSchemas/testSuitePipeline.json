@@ -1096,10 +1096,10 @@
                               ]
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17"
                             }
                           ]
                         },
@@ -1842,9 +1842,15 @@
                         "hostPort": {
                           "expose": true,
                           "title": "Host and Port",
-                          "description": "Host and Port of the MicroStrategy instance.",
+                          "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                           "type": "string",
                           "format": "uri"
+                        },
+                        "libraryPath": {
+                          "title": "Library Path",
+                          "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                          "type": "string",
+                          "default": "MicroStrategyLibrary"
                         },
                         "projectName": {
                           "title": "Project Name",
@@ -1853,9 +1859,16 @@
                         },
                         "loginMode": {
                           "title": "Login Mode",
-                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                           "type": "string",
                           "default": "1"
+                        },
+                        "verifySSL": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/verifySSL",
+                          "default": "no-ssl"
+                        },
+                        "sslConfig": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -1884,9 +1897,7 @@
                       },
                       "additionalProperties": false,
                       "required": [
-                        "hostPort",
-                        "username",
-                        "password"
+                        "hostPort"
                       ]
                     },
                     {
@@ -2023,6 +2034,12 @@
                           "description": "Sigma API version.",
                           "type": "string",
                           "default": "v2"
+                        },
+                        "listAllAssets": {
+                          "title": "List All Assets",
+                          "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -2379,6 +2396,26 @@
                           "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                           "type": "boolean",
                           "default": true
+                        },
+                        "dashboardFilterPattern": {
+                          "description": "Regex to exclude or include dashboards that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Dashboard Filter Pattern"
+                        },
+                        "chartFilterPattern": {
+                          "description": "Regex exclude or include charts that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Chart Filter Pattern"
+                        },
+                        "dataModelFilterPattern": {
+                          "description": "Regex exclude or include data models that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Data Model Filter Pattern"
+                        },
+                        "projectFilterPattern": {
+                          "description": "Regex to exclude or include projects that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Project Filter Pattern"
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -2779,6 +2816,12 @@
                           "type": "boolean",
                           "default": true
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                          "type": "boolean",
+                          "default": true
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "description": "The source service supports the database concept in its hierarchy",
@@ -2927,7 +2970,7 @@
                         },
                         "workgroup": {
                           "title": "Athena Workgroup",
-                          "description": "Athena workgroup.",
+                          "description": "Athena workgroup that runs the ingestion queries and whose query history usage and lineage read. When empty, queries run in the default workgroup and query history is read from every enabled workgroup.",
                           "type": "string"
                         },
                         "catalogId": {
@@ -2996,8 +3039,7 @@
                       "additionalProperties": false,
                       "required": [
                         "s3StagingDir",
-                        "awsConfig",
-                        "workgroup"
+                        "awsConfig"
                       ]
                     },
                     {
@@ -3111,7 +3153,16 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                              "^guest$",
+                              "^information_schema$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -3121,7 +3172,15 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -3252,7 +3311,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$",
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -3778,6 +3844,9 @@
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        },
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
@@ -3893,7 +3962,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                              "^NULLID$",
+                              "^SQLJ$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -3938,205 +4015,6 @@
                       ]
                     },
                     {
-                      "title": "DeltaLakeConnection",
-                      "description": "DeltaLake Database Connection Config",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
-                      "definitions": {
-                        "deltaLakeType": {
-                          "description": "Service type.",
-                          "type": "string",
-                          "enum": [
-                            "DeltaLake"
-                          ],
-                          "default": "DeltaLake"
-                        }
-                      },
-                      "properties": {
-                        "type": {
-                          "title": "Service Type",
-                          "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/9/definitions/deltaLakeType",
-                          "default": "DeltaLake"
-                        },
-                        "configSource": {
-                          "title": "DeltaLake Configuration Source",
-                          "description": "Available sources to fetch the metadata.",
-                          "oneOf": [
-                            {
-                              "title": "MetastoreConfig",
-                              "description": "Deltalake Metastore configuration.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig",
-                              "definitions": {
-                                "metastoreHostPortConnection": {
-                                  "title": "Hive Metastore Service",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreHostPort": {
-                                      "title": "Hive Metastore Service",
-                                      "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                "metastoreDbConnection": {
-                                  "title": "Hive Metastore Database",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreDb": {
-                                      "title": "Hive Metastore Database",
-                                      "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-                                      "type": "string"
-                                    },
-                                    "username": {
-                                      "title": "Connection UserName",
-                                      "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-                                      "type": "string"
-                                    },
-                                    "password": {
-                                      "title": "Connection Password",
-                                      "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-                                      "type": "string",
-                                      "format": "password"
-                                    },
-                                    "driverName": {
-                                      "title": "Connection Driver Name",
-                                      "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-                                      "type": "string"
-                                    },
-                                    "jdbcDriverClassPath": {
-                                      "title": "JDBC Driver Class Path",
-                                      "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                "metastoreFilePathConnection": {
-                                  "title": "Hive Metastore File Path",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreFilePath": {
-                                      "title": "Hive Metastore File Path",
-                                      "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              },
-                              "properties": {
-                                "connection": {
-                                  "title": "Connection",
-                                  "description": "Metastore connection configuration, depending on your metastore type.",
-                                  "oneOf": [
-                                    {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/9/properties/configSource/oneOf/0/definitions/metastoreHostPortConnection"
-                                    },
-                                    {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/9/properties/configSource/oneOf/0/definitions/metastoreDbConnection"
-                                    },
-                                    {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/9/properties/configSource/oneOf/0/definitions/metastoreFilePathConnection"
-                                    }
-                                  ]
-                                },
-                                "appName": {
-                                  "title": "Application Name",
-                                  "description": "pySpark App Name.",
-                                  "type": "string",
-                                  "default": "OpenMetadata"
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "connection"
-                              ]
-                            },
-                            {
-                              "title": "StorageConfig",
-                              "description": "DeltaLake Storage Connection Config",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.services.connections.database.deltalake.StorageConfig",
-                              "definitions": {
-                                "localConfig": {
-                                  "title": "Local Config",
-                                  "description": "Local config source where no extra information needs to be sent.",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              },
-                              "properties": {
-                                "connection": {
-                                  "title": "DeltaLake Storage Configuration Source",
-                                  "description": "Available sources to fetch files.",
-                                  "oneOf": [
-                                    {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/32/properties/configSource/oneOf/3"
-                                    }
-                                  ]
-                                },
-                                "bucketName": {
-                                  "title": "Bucket Name",
-                                  "description": "Bucket Name of the data source.",
-                                  "type": "string",
-                                  "default": ""
-                                },
-                                "prefix": {
-                                  "title": "Prefix",
-                                  "description": "Prefix of the data source.",
-                                  "type": "string",
-                                  "default": ""
-                                }
-                              },
-                              "additionalProperties": false,
-                              "required": [
-                                "connection"
-                              ]
-                            }
-                          ]
-                        },
-                        "databaseName": {
-                          "title": "Database Name",
-                          "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
-                          "type": "string"
-                        },
-                        "connectionArguments": {
-                          "title": "Connection Arguments",
-                          "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionArguments"
-                        },
-                        "schemaFilterPattern": {
-                          "title": "Default Schema Filter Pattern",
-                          "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
-                        },
-                        "tableFilterPattern": {
-                          "title": "Default Table Filter Pattern",
-                          "description": "Regex to only include/exclude tables that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
-                        },
-                        "databaseFilterPattern": {
-                          "title": "Default Database Filter Pattern",
-                          "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
-                        },
-                        "supportsMetadataExtraction": {
-                          "title": "Supports Metadata Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
-                        },
-                        "supportsDBTExtraction": {
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDBTExtraction"
-                        }
-                      },
-                      "additionalProperties": false,
-                      "required": [
-                        "configSource"
-                      ]
-                    },
-                    {
                       "title": "DruidConnection",
                       "description": "Druid Connection Config",
                       "type": "object",
@@ -4165,13 +4043,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/10/definitions/druidType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/9/definitions/druidType",
                           "default": "Druid"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/10/definitions/druidScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/9/definitions/druidScheme",
                           "default": "druid"
                         },
                         "username": {
@@ -4206,7 +4084,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^INFORMATION_SCHEMA$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4261,7 +4146,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/11/definitions/dynamoDBType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/10/definitions/dynamoDBType",
                           "default": "DynamoDB"
                         },
                         "awsConfig": {
@@ -4329,7 +4214,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/12/definitions/glueType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/11/definitions/glueType",
                           "default": "Glue"
                         },
                         "awsConfig": {
@@ -4406,13 +4291,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/13/definitions/hiveType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/12/definitions/hiveType",
                           "default": "Hive"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/13/definitions/hiveScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/12/definitions/hiveScheme",
                           "default": "hive"
                         },
                         "username": {
@@ -4484,10 +4369,10 @@
                           "description": "Hive Metastore Connection Details",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17"
                             },
                             {
                               "title": "None",
@@ -4507,7 +4392,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^sys$",
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4567,13 +4459,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/14/definitions/impalaType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/13/definitions/impalaType",
                           "default": "Impala"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/14/definitions/impalaScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/13/definitions/impalaScheme",
                           "default": "impala"
                         },
                         "username": {
@@ -4641,7 +4533,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^_impala_builtins$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4700,13 +4598,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15/definitions/mariaDBType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/14/definitions/mariaDBType",
                           "default": "MariaDB"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15/definitions/mariaDBScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/14/definitions/mariaDBScheme",
                           "default": "mysql+pymysql"
                         },
                         "username": {
@@ -4746,7 +4644,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -4817,13 +4722,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/16/definitions/mssqlType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15/definitions/mssqlType",
                           "default": "Mssql"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/16/definitions/mssqlScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15/definitions/mssqlScheme",
                           "default": "mssql+pytds"
                         },
                         "username": {
@@ -5005,7 +4910,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/definitions/microsoftAccessType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/16/definitions/microsoftAccessType",
                           "default": "MicrosoftAccess"
                         },
                         "connection": {
@@ -5013,7 +4918,7 @@
                           "description": "Choose between local file system path (object) or S3 bucket location (object) for Access database files.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/definitions/localFilePath"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/16/definitions/localFilePath"
                             },
                             {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/0"
@@ -5066,13 +4971,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/definitions/mySQLType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/definitions/mySQLType",
                           "default": "Mysql"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/definitions/mySQLScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/definitions/mySQLScheme",
                           "default": "mysql+pymysql"
                         },
                         "username": {
@@ -5267,13 +5172,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/SQLiteType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/definitions/SQLiteType",
                           "default": "SQLite"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/SQLiteScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/definitions/SQLiteScheme",
                           "default": "sqlite+pysqlite"
                         },
                         "username": {
@@ -5417,13 +5322,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/oracleType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/oracleType",
                           "default": "Oracle"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/oracleScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/oracleScheme",
                           "default": "oracle+oracledb"
                         },
                         "username": {
@@ -5448,13 +5353,13 @@
                           "description": "Connect with oracle by either passing service name or database schema name.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/OracleDatabaseSchema"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/OracleDatabaseSchema"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/OracleServiceName"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/OracleServiceName"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/OracleTNSConnection"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19/definitions/OracleTNSConnection"
                             }
                           ]
                         },
@@ -5480,6 +5385,12 @@
                           "type": "boolean",
                           "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                           "default": true
+                        },
+                        "includeTemporaryTables": {
+                          "title": "Include Temporary Tables",
+                          "type": "boolean",
+                          "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                          "default": false
                         },
                         "connectionOptions": {
                           "title": "Connection Options",
@@ -5578,13 +5489,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21/definitions/postgresType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/postgresType",
                           "default": "Postgres"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21/definitions/postgresScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20/definitions/postgresScheme",
                           "default": "postgresql+psycopg2"
                         },
                         "username": {
@@ -5601,10 +5512,10 @@
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/1"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/1"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/2"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/2"
                             }
                           ]
                         },
@@ -5700,6 +5611,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -5747,13 +5662,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/22/definitions/timescaleType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21/definitions/timescaleType",
                           "default": "Timescale"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/22/definitions/timescaleScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21/definitions/timescaleScheme",
                           "default": "postgresql+psycopg2"
                         },
                         "username": {
@@ -5770,10 +5685,10 @@
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/1"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/1"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/2"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/2"
                             }
                           ]
                         },
@@ -5865,6 +5780,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -5912,13 +5831,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/23/definitions/prestoType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/22/definitions/prestoType",
                           "default": "Presto"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/23/definitions/prestoScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/22/definitions/prestoScheme",
                           "default": "presto"
                         },
                         "username": {
@@ -5968,7 +5887,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -5978,7 +5903,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -6033,13 +5964,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/24/definitions/redshiftType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/23/definitions/redshiftType",
                           "default": "Redshift"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/24/definitions/redshiftScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/23/definitions/redshiftScheme",
                           "default": "redshift+psycopg2"
                         },
                         "username": {
@@ -6056,7 +5987,7 @@
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/1"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/1"
                             }
                           ]
                         },
@@ -6202,7 +6133,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/25/definitions/salesforceType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/24/definitions/salesforceType",
                           "default": "Salesforce"
                         },
                         "username": {
@@ -6327,7 +6258,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/26/definitions/sapSuccessFactorsType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/25/definitions/sapSuccessFactorsType",
                           "default": "SapSuccessFactors"
                         },
                         "baseUrl": {
@@ -6344,7 +6275,7 @@
                         "authType": {
                           "title": "Authentication Type",
                           "description": "Choose how to authenticate with SAP SuccessFactors OData API.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/26/definitions/authType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/25/definitions/authType",
                           "default": "BasicAuth"
                         },
                         "username": {
@@ -6454,13 +6385,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/27/definitions/singleStoreType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/26/definitions/singleStoreType",
                           "default": "SingleStore"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/27/definitions/singleStoreScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/26/definitions/singleStoreScheme",
                           "default": "mysql+pymysql"
                         },
                         "username": {
@@ -6500,7 +6431,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -6564,13 +6502,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/28/definitions/snowflakeType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/27/definitions/snowflakeType",
                           "default": "Snowflake"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/28/definitions/snowflakeScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/27/definitions/snowflakeScheme",
                           "default": "snowflake"
                         },
                         "username": {
@@ -6614,6 +6552,14 @@
                           "description": "Full name of the schema where the account usage data is stored.",
                           "type": "string",
                           "default": "SNOWFLAKE.ACCOUNT_USAGE"
+                        },
+                        "systemMetricsBatchSize": {
+                          "title": "System Metrics Batch Size",
+                          "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                          "type": "integer",
+                          "default": 50,
+                          "minimum": 1,
+                          "maximum": 500
                         },
                         "privateKey": {
                           "title": "Private Key",
@@ -6812,13 +6758,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/29/definitions/trinoType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/28/definitions/trinoType",
                           "default": "Trino"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/29/definitions/trinoScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/28/definitions/trinoScheme",
                           "default": "trino"
                         },
                         "username": {
@@ -6849,7 +6795,7 @@
                               "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/2"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/2"
                             },
                             {
                               "title": "No Config Authentication Types",
@@ -6902,7 +6848,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -6912,7 +6864,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -6985,13 +6943,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/30/definitions/verticaType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/29/definitions/verticaType",
                           "default": "Vertica"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/30/definitions/verticaScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/29/definitions/verticaScheme",
                           "default": "vertica+vertica_python"
                         },
                         "username": {
@@ -7099,13 +7057,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/31/definitions/pinotDBType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/30/definitions/pinotDBType",
                           "default": "PinotDB"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/31/definitions/pinotDBScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/30/definitions/pinotDBScheme",
                           "default": "pinot"
                         },
                         "username": {
@@ -7207,7 +7165,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/32/definitions/datalakeType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/31/definitions/datalakeType",
                           "default": "Datalake"
                         },
                         "configSource": {
@@ -7215,7 +7173,7 @@
                           "description": "Available sources to fetch files.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/32/definitions/localConfig"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/31/definitions/localConfig"
                             },
                             {
                               "title": "AzureConfig",
@@ -7337,7 +7295,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/33/definitions/domoDatabaseType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/32/definitions/domoDatabaseType",
                           "default": "DomoDatabase"
                         },
                         "clientId": {
@@ -7423,7 +7381,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Custom database service type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/34/definitions/customDatabaseType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/33/definitions/customDatabaseType",
                           "default": "CustomDatabase"
                         },
                         "sourcePythonClass": {
@@ -7487,13 +7445,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/35/definitions/sapHanaType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/34/definitions/sapHanaType",
                           "default": "SapHana"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/35/definitions/sapHanaScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/34/definitions/sapHanaScheme",
                           "default": "hana"
                         },
                         "connection": {
@@ -7568,7 +7526,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS$",
+                              "^_SYS_(?!BIC$).*"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7636,13 +7601,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/36/definitions/mongoDBType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/35/definitions/mongoDBType",
                           "default": "MongoDB"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "Mongo connection scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/36/definitions/mongoDBScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/35/definitions/mongoDBScheme",
                           "default": "mongodb"
                         },
                         "username": {
@@ -7678,7 +7643,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^admin$",
+                              "^local$",
+                              "^config$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7729,7 +7702,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/37/definitions/cassandraType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/36/definitions/cassandraType",
                           "default": "Cassandra"
                         },
                         "username": {
@@ -7808,7 +7781,19 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$",
+                              "^system_auth$",
+                              "^system_schema$",
+                              "^system_distributed$",
+                              "^system_traces$",
+                              "^system_views$",
+                              "^system_virtual_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7854,13 +7839,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/38/definitions/couchbaseType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/37/definitions/couchbaseType",
                           "default": "Couchbase"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "Couchbase driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/38/definitions/couchbaseScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/37/definitions/couchbaseScheme",
                           "default": "couchbase"
                         },
                         "bucket": {
@@ -7887,7 +7872,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^_system$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -7938,13 +7929,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/39/definitions/greenplumType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/38/definitions/greenplumType",
                           "default": "Greenplum"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/39/definitions/greenplumScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/38/definitions/greenplumScheme",
                           "default": "postgresql+psycopg2"
                         },
                         "username": {
@@ -7960,7 +7951,7 @@
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/5/properties/authType/oneOf/0"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18/properties/authType/oneOf/1"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17/properties/authType/oneOf/1"
                             }
                           ]
                         },
@@ -7997,7 +7988,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^gp_toolkit$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8007,7 +8005,14 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^template1$",
+                              "^template0$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -8019,6 +8024,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         },
                         "supportsDatabase": {
                           "title": "Supports Database",
@@ -8066,13 +8075,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/40/definitions/dorisType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/39/definitions/dorisType",
                           "default": "Doris"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/40/definitions/dorisScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/39/definitions/dorisScheme",
                           "default": "doris"
                         },
                         "username": {
@@ -8117,7 +8126,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$",
+                              "^__internal_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8139,6 +8156,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
@@ -8182,13 +8203,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/41/definitions/starrocksType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/40/definitions/starrocksType",
                           "default": "StarRocks"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/41/definitions/starrocksScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/40/definitions/starrocksScheme",
                           "default": "mysql+pymysql"
                         },
                         "username": {
@@ -8256,6 +8277,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -8304,13 +8329,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/42/definitions/databricksType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/41/definitions/databricksType",
                           "default": "UnityCatalog"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/42/definitions/databricksScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/41/definitions/databricksScheme",
                           "default": "databricks"
                         },
                         "hostPort": {
@@ -8463,7 +8488,7 @@
                       "properties": {
                         "type": {
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/43/definitions/sasType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/42/definitions/sasType",
                           "default": "SAS"
                         },
                         "username": {
@@ -8597,13 +8622,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/44/definitions/teradataType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/43/definitions/teradataType",
                           "default": "Teradata"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/44/definitions/teradataScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/43/definitions/teradataScheme",
                           "default": "teradatasql"
                         },
                         "username": {
@@ -8633,8 +8658,9 @@
                         },
                         "logdata": {
                           "title": "Extra data for the chosen logon authentication method (LOGDATA)",
-                          "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
-                          "type": "string"
+                          "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism. The entire value is protected as a secret, including non-secret names. Secret references must resolve to the entire LOGDATA value.",
+                          "type": "string",
+                          "format": "password"
                         },
                         "hostPort": {
                           "title": "Host and Port",
@@ -8668,7 +8694,40 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^DBC$",
+                              "^SYS_CALENDAR$",
+                              "^SYSLIB$",
+                              "^SYSUDTLIB$",
+                              "^SYSADMIN$",
+                              "^SYSSPATIAL$",
+                              "^SYSTEMFE$",
+                              "^SYSBAR$",
+                              "^SYSJDBC$",
+                              "^SYSXML$",
+                              "^SYSUIF$",
+                              "^TD_SYS.*",
+                              "^TD_SERVER_DB$",
+                              "^TDSTATS$",
+                              "^TDQCD$",
+                              "^TDWM$",
+                              "^TDMAPS$",
+                              "^DBCMNGR$",
+                              "^LOCKLOGSHREDDER$",
+                              "^CRASHDUMPS$",
+                              "^EXTERNAL_AP$",
+                              "^SQLJ$",
+                              "^TDPUSER$",
+                              "^EXTUSER$",
+                              "^PUBLIC$",
+                              "^ALL$",
+                              "^DEFAULT$",
+                              "^CONSOLE$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8732,7 +8791,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/45/definitions/sapErpType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/44/definitions/sapErpType",
                           "default": "SapErp"
                         },
                         "hostPort": {
@@ -8828,13 +8887,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/46/definitions/synapseType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/45/definitions/synapseType",
                           "default": "Synapse"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/46/definitions/synapseScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/45/definitions/synapseScheme",
                           "default": "mssql+pyodbc"
                         },
                         "username": {
@@ -8929,7 +8988,16 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                              "^guest$",
+                              "^information_schema$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8939,7 +9007,15 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
+                          }
                         },
                         "storedProcedureFilterPattern": {
                           "title": "Default Stored Procedure Filter Pattern",
@@ -9005,13 +9081,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/47/definitions/exasolType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/46/definitions/exasolType",
                           "default": "Exasol"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/47/definitions/exasolScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/46/definitions/exasolScheme",
                           "default": "exa+websocket"
                         },
                         "username": {
@@ -9053,7 +9129,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS$",
+                              "^EXA_STATISTICS$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9110,13 +9193,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/48/definitions/cockroachType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/47/definitions/cockroachType",
                           "default": "Cockroach"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/48/definitions/cockroachScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/47/definitions/cockroachScheme",
                           "default": "cockroachdb+psycopg2"
                         },
                         "username": {
@@ -9173,7 +9256,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^crdb_internal$",
+                              "^pg_extension$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9183,7 +9274,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -9192,6 +9289,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         }
                       },
                       "additionalProperties": false,
@@ -9220,7 +9321,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/49/definitions/SSASType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/48/definitions/SSASType",
                           "default": "SSAS"
                         },
                         "httpConnection": {
@@ -9274,7 +9375,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/50/definitions/epicType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/49/definitions/epicType",
                           "default": "Epic"
                         },
                         "fhirServerUrl": {
@@ -9337,7 +9438,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/51/definitions/serviceNowType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/50/definitions/serviceNowType",
                           "default": "ServiceNow"
                         },
                         "hostPort": {
@@ -9417,7 +9518,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/52/definitions/dremioType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/51/definitions/dremioType",
                           "default": "Dremio"
                         },
                         "authType": {
@@ -9558,13 +9659,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/53/definitions/microsoftFabricType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/52/definitions/microsoftFabricType",
                           "default": "MicrosoftFabric"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/53/definitions/microsoftFabricScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/52/definitions/microsoftFabricScheme",
                           "default": "mssql+pyodbc"
                         },
                         "hostPort": {
@@ -9680,7 +9781,8 @@
                               "^db_.*",
                               "^guest$",
                               "^information_schema$",
-                              "^sys$"
+                              "^sys$",
+                              "^_rsc$"
                             ]
                           }
                         },
@@ -9710,6 +9812,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsQueryComment": {
+                          "title": "Supports Query Comment",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
                         "supportsDatabase": {
                           "title": "Supports Database",
@@ -9743,7 +9849,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/54/definitions/burstIQType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/53/definitions/burstIQType",
                           "default": "BurstIQ"
                         },
                         "username": {
@@ -9831,13 +9937,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/55/definitions/informixType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/54/definitions/informixType",
                           "default": "Informix"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/55/definitions/informixScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/54/definitions/informixScheme",
                           "default": "informix"
                         },
                         "username": {
@@ -9983,7 +10089,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/56/definitions/iometeType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/55/definitions/iometeType",
                           "default": "Iomete"
                         },
                         "hostPort": {
@@ -10083,13 +10189,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/57/definitions/questDBType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/56/definitions/questDBType",
                           "default": "QuestDB"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "SQLAlchemy driver scheme options.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/57/definitions/questDBScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/56/definitions/questDBScheme",
                           "default": "postgresql+psycopg2"
                         },
                         "username": {
@@ -10159,7 +10265,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/58/definitions/data360Type",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/57/definitions/data360Type",
                           "default": "Data360"
                         },
                         "consumerKey": {
@@ -10224,7 +10330,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/sapBw4HanaType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/58/definitions/sapBw4HanaType",
                           "default": "SapBw4Hana"
                         },
                         "hostPort": {
@@ -10275,6 +10381,101 @@
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
+                    },
+                    {
+                      "title": "Neo4jConnection",
+                      "description": "Neo4j Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+                      "definitions": {
+                        "neo4jType": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Neo4j"
+                          ],
+                          "default": "Neo4j"
+                        },
+                        "neo4jScheme": {
+                          "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+                          "type": "string",
+                          "enum": [
+                            "neo4j",
+                            "neo4j+s",
+                            "neo4j+ssc",
+                            "bolt",
+                            "bolt+s",
+                            "bolt+ssc"
+                          ],
+                          "default": "neo4j"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jType",
+                          "default": "Neo4j"
+                        },
+                        "scheme": {
+                          "title": "Connection Scheme",
+                          "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jScheme",
+                          "default": "neo4j"
+                        },
+                        "hostPort": {
+                          "title": "Host and Port",
+                          "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+                          "type": "string"
+                        },
+                        "username": {
+                          "title": "Username",
+                          "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+                          "type": "string"
+                        },
+                        "password": {
+                          "title": "Password",
+                          "description": "Password to connect to Neo4j.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "databaseName": {
+                          "title": "Database Name",
+                          "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+                          "type": "string"
+                        },
+                        "includeRelationships": {
+                          "title": "Include Relationships",
+                          "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+                          "type": "boolean",
+                          "default": true
+                        },
+                        "propertyFilterPattern": {
+                          "title": "Property Filter Pattern",
+                          "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                        },
+                        "schemaFilterPattern": {
+                          "title": "Default Schema Filter Pattern",
+                          "description": "Regex to only include/exclude schemas that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                        },
+                        "tableFilterPattern": {
+                          "title": "Default Table Filter Pattern",
+                          "description": "Regex to only include/exclude tables that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
                       "additionalProperties": false,
@@ -10381,14 +10582,94 @@
                           "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "sasl.password": {
+                              "title": "sasl.password",
+                              "description": "SASL password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.client.secret": {
+                              "title": "sasl.oauthbearer.client.secret",
+                              "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.config": {
+                              "title": "sasl.oauthbearer.config",
+                              "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.passphrase": {
+                              "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                              "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.pem": {
+                              "title": "sasl.oauthbearer.assertion.private.key.pem",
+                              "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.password": {
+                              "title": "ssl.key.password",
+                              "description": "Passphrase of the client's private key.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.pem": {
+                              "title": "ssl.key.pem",
+                              "description": "Client's private key as a PEM string.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.keystore.password": {
+                              "title": "ssl.keystore.password",
+                              "description": "Password of the client keystore (PKCS#12).",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.truststore.password": {
+                              "title": "ssl.truststore.password",
+                              "description": "Password of the truststore.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "basic.auth.user.info": {
+                              "title": "basic.auth.user.info",
+                              "description": "Schema Registry credentials in the form of username:password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.token": {
+                              "title": "bearer.auth.token",
+                              "description": "Static bearer token for the Schema Registry.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.client.secret": {
+                              "title": "bearer.auth.client.secret",
+                              "description": "Client secret for the Schema Registry OAuth token request.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryTopicSuffixName": {
                           "title": "Schema Registry Topic Suffix Name",
@@ -10512,14 +10793,94 @@
                           "description": "Confluent Redpanda Consumer Config",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "sasl.password": {
+                              "title": "sasl.password",
+                              "description": "SASL password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.client.secret": {
+                              "title": "sasl.oauthbearer.client.secret",
+                              "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.config": {
+                              "title": "sasl.oauthbearer.config",
+                              "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.passphrase": {
+                              "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                              "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.pem": {
+                              "title": "sasl.oauthbearer.assertion.private.key.pem",
+                              "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.password": {
+                              "title": "ssl.key.password",
+                              "description": "Passphrase of the client's private key.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.pem": {
+                              "title": "ssl.key.pem",
+                              "description": "Client's private key as a PEM string.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.keystore.password": {
+                              "title": "ssl.keystore.password",
+                              "description": "Password of the client keystore (PKCS#12).",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.truststore.password": {
+                              "title": "ssl.truststore.password",
+                              "description": "Password of the truststore.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Redpanda Schema Registry Config.",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "basic.auth.user.info": {
+                              "title": "basic.auth.user.info",
+                              "description": "Schema Registry credentials in the form of username:password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.token": {
+                              "title": "bearer.auth.token",
+                              "description": "Static bearer token for the Schema Registry.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.client.secret": {
+                              "title": "bearer.auth.client.secret",
+                              "description": "Client secret for the Schema Registry OAuth token request.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "topicFilterPattern": {
                           "description": "Regex to only fetch topics that matches the pattern.",
@@ -10937,6 +11298,12 @@
                                       "description": "Google Cloud client certificate uri.",
                                       "type": "string",
                                       "format": "uri"
+                                    },
+                                    "universeDomain": {
+                                      "title": "Universe Domain",
+                                      "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                      "type": "string",
+                                      "default": "googleapis.com"
                                     }
                                   },
                                   "additionalProperties": false
@@ -11268,7 +11635,8 @@
                             "EN",
                             "JP",
                             "ZH",
-                            "RU"
+                            "RU",
+                            "KO"
                           ],
                           "default": "EN"
                         },
@@ -11369,10 +11737,10 @@
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "securityConfig": {
-                          "mask": true,
                           "description": "OpenMetadata Client security configuration.",
                           "title": "openMetadataJWTClientConfig",
                           "type": "object",
+                          "mask": true,
                           "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
                           "properties": {
                             "jwtToken": {
@@ -11728,10 +12096,10 @@
                           "description": "Choose between mysql and postgres connection for alation database",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20"
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17"
                             },
                             {
                               "title": "None",
@@ -12233,13 +12601,13 @@
                               "additionalProperties": false
                             },
                             {
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/17"
+                            },
+                            {
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/20"
+                            },
+                            {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/18"
-                            },
-                            {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/21"
-                            },
-                            {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/19"
                             }
                           ]
                         },
@@ -12293,7 +12661,7 @@
                           "description": "Underlying database connection",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/16"
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15"
                             }
                           ]
                         },
@@ -12337,14 +12705,17 @@
                         "databaseConnection": {
                           "title": "Metadata Database Connection",
                           "description": "Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only mode and run history is not extracted.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/16"
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15"
                         },
                         "packageConnection": {
-                          "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+                          "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
                           "description": "Underlying storage connection",
                           "oneOf": [
                             {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/0"
+                            },
+                            {
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/1"
                             },
                             {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/2/definitions/localProjectsPath"
@@ -12594,6 +12965,11 @@
                           "description": "Fivetran API Limit For Pagination.",
                           "type": "integer",
                           "default": 1000
+                        },
+                        "logSchema": {
+                          "title": "Fivetran Platform Connector Schema",
+                          "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                          "type": "string"
                         },
                         "pipelineFilterPattern": {
                           "description": "Regex exclude pipelines.",
@@ -14467,8 +14843,9 @@
                         },
                         "registryUri": {
                           "title": "Registry URI",
-                          "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments",
-                          "type": "string"
+                          "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected as a secret, including URIs without credentials. Secret references must resolve to the entire URI.",
+                          "type": "string",
+                          "format": "password"
                         },
                         "mlModelFilterPattern": {
                           "description": "Regex to only fetch MlModels with names matching the pattern.",

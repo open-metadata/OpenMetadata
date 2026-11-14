@@ -81,14 +81,25 @@ export const returnToAccessControlLanding = async (
   await waitForAllLoadersToDisappear(page);
 };
 
+// The list renders Skeleton rows (not `loader`) while fetching, so wait for the list GET
+// itself; otherwise getElementWithPagination's 2s row wait can expire on a slow fetch.
 export const navigateToRolesPanel = async (page: Page): Promise<void> => {
+  const rolesResponse = page.waitForResponse(
+    (r) => r.url().includes('/api/v1/roles?') && r.request().method() === 'GET'
+  );
   await page.getByTestId('access-control-card-roles').click();
+  expect((await rolesResponse).status()).toBe(200);
   await page.getByTestId('roles-list-container').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
 export const navigateToPoliciesPanel = async (page: Page): Promise<void> => {
+  const policiesResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/policies?') && r.request().method() === 'GET'
+  );
   await page.getByTestId('access-control-card-policies').click();
+  expect((await policiesResponse).status()).toBe(200);
   await page
     .getByTestId('policies-list-container')
     .waitFor({ state: 'visible' });

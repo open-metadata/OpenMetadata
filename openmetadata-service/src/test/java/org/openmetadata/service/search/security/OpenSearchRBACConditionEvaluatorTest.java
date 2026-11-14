@@ -14,6 +14,9 @@ import com.jayway.jsonpath.JsonPath;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,6 +111,74 @@ class OpenSearchRBACConditionEvaluatorTest {
     mockSubjectContext = mock(SubjectContext.class);
     when(mockSubjectContext.getPolicies(any())).thenReturn(List.of(mockPolicyContext).iterator());
     when(mockSubjectContext.user()).thenReturn(mockUser);
+  }
+
+  /**
+   * One evaluator compiles every caller's conditions. A second caller's request that runs while the
+   * first is mid-compilation must not make the first compile {@code isOwner()} against the second
+   * caller's identity - the result is cached under the first caller's key.
+   */
+  @Test
+  void callerCompiledMidwayThroughAnotherCallerKeepsItsOwnIdentity() throws Exception {
+    User first = ownerUser();
+    User second = ownerUser();
+    CountDownLatch firstMidCompilation = new CountDownLatch(1);
+    CountDownLatch secondCompiled = new CountDownLatch(1);
+    SubjectContext firstSubject =
+        ownerRuleSubject(
+            first,
+            () -> {
+              firstMidCompilation.countDown();
+              assertTrue(secondCompiled.await(10, TimeUnit.SECONDS), "second caller never ran");
+            });
+    SubjectContext secondSubject = ownerRuleSubject(second, () -> {});
+
+    AtomicReference<OMQueryBuilder> firstQuery = new AtomicReference<>();
+    Thread firstCaller =
+        new Thread(() -> firstQuery.set(evaluator.evaluateConditions(firstSubject)));
+    firstCaller.start();
+    assertTrue(firstMidCompilation.await(10, TimeUnit.SECONDS), "first caller never started");
+    evaluator.evaluateConditions(secondSubject);
+    secondCompiled.countDown();
+    firstCaller.join(TimeUnit.SECONDS.toMillis(10));
+
+    String compiled = ((OpenSearchQueryBuilder) firstQuery.get()).build().toJsonString();
+    assertTrue(compiled.contains(first.getId().toString()), compiled);
+    assertFalse(compiled.contains(second.getId().toString()), compiled);
+  }
+
+  private static User ownerUser() {
+    User user = mock(User.class);
+    UUID id = UUID.randomUUID();
+    when(user.getId()).thenReturn(id);
+    when(user.getEntityReference())
+        .thenReturn(new EntityReference().withId(id).withType(Entity.USER));
+    return user;
+  }
+
+  /** A subject whose one rule is {@code isOwner()}; {@code onCondition} runs as it is compiled. */
+  private static SubjectContext ownerRuleSubject(User user, ThrowingRunnable onCondition)
+      throws Exception {
+    CompiledRule rule = mock(CompiledRule.class);
+    when(rule.getOperations()).thenReturn(List.of(MetadataOperation.VIEW_BASIC));
+    when(rule.getEffect()).thenReturn(CompiledRule.Effect.ALLOW);
+    when(rule.getCondition())
+        .thenAnswer(
+            invocation -> {
+              onCondition.run();
+              return "isOwner()";
+            });
+    SubjectContext.PolicyContext policy = mock(SubjectContext.PolicyContext.class);
+    when(policy.getRules()).thenReturn(List.of(rule));
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.user()).thenReturn(user);
+    when(subject.getPolicies(any())).thenAnswer(invocation -> List.of(policy).iterator());
+    return subject;
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws Exception;
   }
 
   @Test
@@ -244,6 +315,50 @@ class OpenSearchRBACConditionEvaluatorTest {
             + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
+  }
+
+  /** A {@code false} literal must match no document, as it does when evaluated in memory. */
+  @Test
+  void falseLiteralMakesAnAllowRuleMatchNothing() {
+    setupMockPolicies("isOwner() && false", "ALLOW");
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(jsonContext, "$.bool.must_not[?(@.match_all)]", "rule should match nothing");
+    assertFieldDoesNotExist(
+        jsonContext, "$..nested.query.term['owners.id']", "owner clause should not survive");
+  }
+
+  @Test
+  void falseLiteralDropsOutOfAnOr() {
+    setupMockPolicies("false || isOwner()", "ALLOW");
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(
+        jsonContext,
+        "$..nested.query.term['owners.id']",
+        "owner clause should be the whole Allow rule");
+    assertFieldDoesNotExist(jsonContext, "$..match_all", "false must not read as match_all");
+  }
+
+  @Test
+  void negatedFalseLiteralMatchesEverything() {
+    setupMockPolicies("!false", "ALLOW");
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(jsonContext, "$..match_all", "rule should match everything");
+    assertFieldDoesNotExist(jsonContext, "$..must_not", "nothing should be excluded");
+  }
+
+  private DocumentContext compiledQuery() {
+    return JsonPath.parse(
+        ((OpenSearchQueryBuilder) evaluator.evaluateConditions(mockSubjectContext))
+            .build()
+            .toJsonString());
   }
 
   @Test

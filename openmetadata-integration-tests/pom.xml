@@ -21,11 +21,12 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
-    <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
-         builds from docker/rdf-store; every other run leaves RDF off and they skip. -->
+    <!-- Tests that need the RDF store. The rdf lane runs them against the published
+         openmetadata/fuseki image pinned in FusekiTestImage (override with -DrdfContainerImage);
+         every other run leaves RDF off and they skip. -->
     <integrationTests.rdfTests>Rdf*IT,LodResourceIT,AgentSparqlResourceIT</integrationTests.rdfTests>
     <integrationTests.enableRdf>false</integrationTests.enableRdf>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
@@ -182,7 +183,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>4.4.0</version>
+      <version>${java-jwt.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Playwright Java for UI integration tests (*UIIT.java) -->
@@ -276,13 +277,13 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -313,8 +314,18 @@
                 <include>org/openmetadata/it/factories/**</include>
                 <include>org/openmetadata/it/server/**</include>
                 <include>org/openmetadata/it/search/**</include>
+                <!-- SdkClients, the server handles and UiSessionExtension feed ApiLatencyRecorder, and
+                     META-INF/services below registers ApiLatencyReportListener — both must ship. -->
+                <include>org/openmetadata/it/bench/**</include>
                 <include>org/openmetadata/playwright/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <!-- The consumers the services file registers, so a server loading the harness
+                     can build every consumer it lists. -->
+                <include>org/openmetadata/it/tests/alerts/TestConsumers*</include>
+                <include>org/openmetadata/it/tests/alerts/LatchedConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ReportingConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/FailingCommitConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ErrorThrowingConsumer*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
                 <include>openmetadata-secure-test.yaml</include>
@@ -327,6 +338,10 @@
                      Docker build context, so it has to travel with the published harness. -->
                 <include>opensearch-plugins/**</include>
               </includes>
+              <excludes>
+                <!-- The bench package's own unit tests are not part of the harness. -->
+                <exclude>org/openmetadata/it/bench/*Test*</exclude>
+              </excludes>
             </configuration>
           </execution>
         </executions>
@@ -436,19 +451,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -486,10 +518,18 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
+                    <exclude>**/OntologyConcurrentHardDeleteIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -497,13 +537,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -568,19 +619,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -618,10 +686,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -629,13 +704,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -701,19 +787,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -752,10 +855,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -763,13 +873,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -835,19 +956,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -885,10 +1023,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -896,13 +1041,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -967,19 +1123,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1017,10 +1190,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1028,13 +1208,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1098,19 +1289,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1149,10 +1357,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1160,13 +1375,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1247,19 +1473,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1299,10 +1542,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1310,13 +1560,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1358,10 +1619,11 @@
       </build>
     </profile>
     <!-- RDF integration tests profile.
-         No rdfContainerImage is set on purpose: TestSuiteBootstrap then builds the
-         supported image from docker/rdf-store (Fuseki 6.2.0 + unionDefaultGraph +
-         write extension). The previous secoresearch/fuseki:5.5.0 pin ran a bare
-         server with no update service, so every SPARQL update failed with 405. -->
+         No rdfContainerImage is set on purpose: TestSuiteBootstrap then runs the pinned
+         published openmetadata/fuseki image configured as OpenMetadata deploys it (three
+         datasets, union default graph, server deadlines, write extension). The previous
+         secoresearch/fuseki:5.5.0 pin ran a bare server with no update service, so every
+         SPARQL update failed with 405. -->
     <profile>
       <id>postgres-rdf-tests</id>
       <build>
@@ -1387,19 +1649,36 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1438,10 +1717,17 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1449,13 +1735,24 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1572,6 +1869,7 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/tests/search/scale/*IT.java</include>
+                    <include>**/tests/security/scale/*IT.java</include>
                   </includes>
                   <includedGroups>scale</includedGroups>
                   <systemPropertyVariables>
@@ -1624,6 +1922,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                     <!-- StaticDatasetSeedIT (@Tag("seed")) and ClusterPurgeIT (@Tag("purge")) match
                          the include glob but must NEVER run in a normal search-it pass — the former
                          seeds the full bulk cohort, the latter hard-deletes data. Excluded by path

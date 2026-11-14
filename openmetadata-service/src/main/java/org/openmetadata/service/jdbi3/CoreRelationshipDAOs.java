@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeLikeBindValue;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.google.common.collect.Lists;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -39,8 +41,10 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -72,6 +76,9 @@ public interface CoreRelationshipDAOs {
 
   @CreateSqlObject
   EntityExtensionDAO entityExtensionDAO();
+
+  @CreateSqlObject
+  CustomPropertyReferenceDAO customPropertyReferenceDAO();
 
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
@@ -134,6 +141,15 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension WHERE id = :id AND extension = :extension FOR UPDATE")
+    String getExtensionForUpdate(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT id FROM entity_extension WHERE extension = :extension AND id > :after ORDER BY id LIMIT :limit")
+    List<String> listExtensionIds(
+        @Bind("extension") String extension, @Bind("after") String after, @Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT extension FROM entity_extension WHERE id = :id AND extension "
@@ -387,6 +403,226 @@ public interface CoreRelationshipDAOs {
      */
     default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
       EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
+    }
+  }
+
+  /**
+   * Rows of {@code custom_property_reference}: the only home of entityReference and
+   * entityReferenceList custom-property values. {@code columnKey} is empty for entity-level values.
+   */
+  interface CustomPropertyReferenceDAO {
+    String COLUMNS =
+        "id, columnKey, propertyName, targetId, holderType, targetType, position, json";
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO custom_property_reference("
+                + COLUMNS
+                + ") VALUES (:id, "
+                + ":columnKey, :propertyName, :targetId, :holderType, :targetType, :position, :json) "
+                + "ON DUPLICATE KEY UPDATE id = id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO custom_property_reference("
+                + COLUMNS
+                + ") VALUES (:id, :columnKey, "
+                + ":propertyName, :targetId, :holderType, :targetType, :position, (:json :: jsonb)) "
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
+    @BatchChunkSize(500)
+    void insertManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void insertMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        insertManyInternal(rows);
+      }
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE custom_property_reference SET position = :position, json = :json, "
+                + "targetType = :targetType "
+                + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
+                + "AND targetId = :targetId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE custom_property_reference SET position = :position, json = (:json :: jsonb), "
+                + "targetType = :targetType "
+                + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
+                + "AND targetId = :targetId",
+        connectionType = POSTGRES)
+    @BatchChunkSize(500)
+    void updateManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void updateMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        updateManyInternal(rows);
+      }
+    }
+
+    @SqlBatch(
+        "DELETE FROM custom_property_reference WHERE id = :id AND columnKey = :columnKey "
+            + "AND propertyName = :propertyName AND targetId = :targetId")
+    @BatchChunkSize(500)
+    void deleteManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void deleteMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        deleteManyInternal(rows);
+      }
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id IN (<ids>) "
+            + "AND columnKey = '' ORDER BY id, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findEntityLevelInternal(@BindList("ids") List<String> ids);
+
+    default List<ReferenceRow> findEntityLevel(List<String> holderIds) {
+      return nullOrEmpty(holderIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(holderIds, this::findEntityLevelInternal);
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id IN (<ids>) "
+            + "AND columnKey <> '' ORDER BY id, columnKey, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findColumnLevelInternal(@BindList("ids") List<String> ids);
+
+    default List<ReferenceRow> findColumnLevel(List<String> holderIds) {
+      return nullOrEmpty(holderIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(holderIds, this::findColumnLevelInternal);
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id = :id "
+            + "AND columnKey IN (<keys>) ORDER BY columnKey, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findColumnsInternal(
+        @BindUUID("id") UUID id, @BindList("keys") List<String> columnKeys);
+
+    default List<ReferenceRow> findColumns(UUID holderId, List<String> columnKeys) {
+      return nullOrEmpty(columnKeys)
+          ? List.of()
+          : EntityDAO.queryInChunks(columnKeys, chunk -> findColumnsInternal(holderId, chunk));
+    }
+
+    @SqlQuery("SELECT " + COLUMNS + " FROM custom_property_reference WHERE targetId IN (<ids>)")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findByTargetsInternal(@BindList("ids") List<String> ids);
+
+    /** Every stored reference to these entities, at entity and column level. */
+    default List<ReferenceRow> findByTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::findByTargetsInternal);
+    }
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey = '' "
+            + "AND propertyName = :propertyName")
+    long countEntityLevel(
+        @BindList("ids") List<String> holderIds, @Bind("propertyName") String propertyName);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey <> ''")
+    long countColumnLevel(@BindList("ids") List<String> holderIds);
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE id IN (<ids>)")
+    void deleteByHoldersInternal(@BindList("ids") List<String> ids);
+
+    default void deleteByHolders(List<String> holderIds) {
+      if (!nullOrEmpty(holderIds)) {
+        EntityDAO.updateInChunks(holderIds, this::deleteByHoldersInternal);
+      }
+    }
+
+    /**
+     * Holders of references to these entities, locking the rows a delete is about to remove. Plain
+     * rows rather than DISTINCT, because Postgres does not allow DISTINCT with FOR UPDATE.
+     */
+    @SqlQuery("SELECT id FROM custom_property_reference WHERE targetId IN (<ids>) FOR UPDATE")
+    List<String> lockHoldersOfTargetsInternal(@BindList("ids") List<String> ids);
+
+    default List<String> lockHoldersOfTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::lockHoldersOfTargetsInternal);
+    }
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE targetId IN (<ids>)")
+    int deleteByTargetsInternal(@BindList("ids") List<String> ids);
+
+    /** Rows removed, so a caller can skip follow-up work when nothing referenced the targets. */
+    default int deleteByTargets(List<String> targetIds) {
+      int removed = 0;
+      for (List<String> chunk : Lists.partition(targetIds, 500)) {
+        removed += deleteByTargetsInternal(chunk);
+      }
+      return removed;
+    }
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE id = :id AND columnKey = :columnKey")
+    void deleteColumn(@BindUUID("id") UUID id, @Bind("columnKey") String columnKey);
+
+    @SqlUpdate(
+        "DELETE FROM custom_property_reference WHERE holderType = :holderType "
+            + "AND propertyName = :propertyName AND columnKey = ''")
+    void deleteEntityLevelProperty(
+        @Bind("holderType") String holderType, @Bind("propertyName") String propertyName);
+
+    @SqlUpdate(
+        "DELETE FROM custom_property_reference WHERE holderType = :holderType "
+            + "AND propertyName = :propertyName AND columnKey <> ''")
+    void deleteColumnLevelProperty(
+        @Bind("holderType") String holderType, @Bind("propertyName") String propertyName);
+  }
+
+  /** One referenced entity of one custom-property value; {@code json} is the reference snapshot. */
+  record ReferenceRow(
+      String id,
+      String columnKey,
+      String propertyName,
+      String targetId,
+      String holderType,
+      String targetType,
+      int position,
+      String json) {
+    /** The table's primary key: one row per holder, column, property and target id. */
+    String primaryKey() {
+      return id + '\u0000' + columnKey + '\u0000' + propertyName + '\u0000' + targetId;
+    }
+
+    /** A reference is the same only if both its target id and type are. */
+    String key() {
+      return propertyName + '\u0000' + targetId + '\u0000' + targetType;
+    }
+  }
+
+  class ReferenceRowMapper implements RowMapper<ReferenceRow> {
+    @Override
+    public ReferenceRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ReferenceRow(
+          rs.getString("id"),
+          rs.getString("columnKey"),
+          rs.getString("propertyName"),
+          rs.getString("targetId"),
+          rs.getString("holderType"),
+          rs.getString("targetType"),
+          rs.getInt("position"),
+          rs.getString("json"));
     }
   }
 
@@ -1643,20 +1879,29 @@ public interface CoreRelationshipDAOs {
 
     // Keyset (seek) pagination over the FULL primary key (fromId, toId, relation, relationType).
     // The whole PK is required for a strict total order: the same (fromId, toId, relation) tuple
-    // can
-    // carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows with
-    // relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
-    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct and O(1) per
-    // page even when rows are deleted mid-scan, letting the relationship cleanup delete orphans
-    // batch-by-batch without skipping rows or paying an ever-growing OFFSET cost. Seed the first
-    // page with fromId='', toId='', relation=-1, relationType=''.
-    @SqlQuery(
-        "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
-            + "WHERE fromId > :fromId "
-            + "   OR (fromId = :fromId AND toId > :toId) "
-            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
-            + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
-            + "ORDER BY fromId, toId, relation, relationType LIMIT :limit")
+    // can carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows
+    // with relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
+    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct when rows are
+    // deleted mid-scan, letting the relationship cleanup delete orphans batch-by-batch. Each page
+    // must be a range read of the primary key, or every page re-reads the table up to the cursor:
+    // Postgres makes that range only from a row comparison, MySQL only from the expanded OR form
+    // (ADR:2026-11-11-a-composite-keyset-page-is-a-row-comparison-on-postgres-and-an-or-chain-on-mysql).
+    // Seed the first page with fromId='', toId='', relation=-1, relationType=''.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+                + "WHERE fromId > :fromId "
+                + "   OR (fromId = :fromId AND toId > :toId) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
+                + "ORDER BY fromId, toId, relation, relationType LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+                + "WHERE (fromId, toId, relation, relationType) > (:fromId, :toId, :relation, :relationType) "
+                + "ORDER BY fromId, toId, relation, relationType LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
     List<EntityRelationshipObject> getAllRelationshipsAfter(
         @Bind("fromId") String fromId,
@@ -2054,18 +2299,23 @@ public interface CoreRelationshipDAOs {
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqn) {
+    /**
+     * Deletes the rows under {@code fqn}, an FQN of {@code entityType}. Custom property definitions
+     * are rows of type {@code type} under an entity type's name, so only deleting that type removes
+     * them; an entity of another type that shares the name leaves them alone.
+     */
+    default void deleteAllByPrefix(String fqn, String entityType) {
       String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String condition = "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)";
+      String typeCondition =
+          Entity.TYPE.equals(entityType)
+              ? " AND fromType = :typeRow AND toType = :typeRow"
+              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      String condition =
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
       Map<String, String> bindMap = new HashMap<>();
       bindMap.put("prefix", prefix);
+      bindMap.put("typeRow", Entity.TYPE);
       deleteAllByPrefixInternal(condition, bindMap);
-    }
-
-    default void deleteAllByPrefixes(List<String> threadIds) {
-      for (String threadId : threadIds) {
-        deleteAllByPrefix(threadId);
-      }
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
@@ -2102,20 +2352,29 @@ public interface CoreRelationshipDAOs {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldToFQNPrefix);
+      String newHash = FullyQualifiedName.buildHash(newToFQNPrefix);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix + Entity.SEPARATOR,
+          newToFQNPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          escapeLikeBindValue(oldToFQNPrefix) + Entity.SEPARATOR + "%",
+          oldHash + Entity.SEPARATOR + "%");
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE field_relationship SET toFQN = REPLACE(toFQN, :oldPrefix, :newPrefix), "
+            + "toFQNHash = REPLACE(toFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE fromtype = 'THREAD' AND relation = '3' "
+            + "AND toFQN LIKE :oldPrefixLike AND toFQNHash LIKE :oldHashLike")
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldPrefixLike") String oldPrefixLike,
+        @Bind("oldHashLike") String oldHashLike);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override

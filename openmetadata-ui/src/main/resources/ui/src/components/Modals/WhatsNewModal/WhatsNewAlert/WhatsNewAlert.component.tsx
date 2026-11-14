@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { VERSION } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -107,7 +106,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix className="whats-new-alert-affix">
+        <Box className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
@@ -173,15 +172,17 @@ const WhatsNewAlert = () => {
                 </div>
               </Box>
               <Box className="layout-column tw:block tw:flex-[0_0_48px]">
-                <Icon
+                <ButtonUtility
                   className="whats-new-alert-close"
-                  component={CloseIcon}
+                  icon={XClose}
+                  size="lg"
+                  tooltip={t('label.close')}
                   onClick={handleCancel}
                 />
               </Box>
             </Box>
           </Card>
-        </Affix>
+        </Box>
       )}
     </>
   );

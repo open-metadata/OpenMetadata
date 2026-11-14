@@ -40,6 +40,7 @@ export interface WorkflowInstance {
 }
 
 export enum WorkflowStatus {
+    Cancelled = "CANCELLED",
     Exception = "EXCEPTION",
     Failure = "FAILURE",
     Finished = "FINISHED",

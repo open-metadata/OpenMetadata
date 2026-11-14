@@ -30,6 +30,11 @@ import {
   getTaskResolutionNewValue,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../../utils/TaskUtils';
+import { isRevisionRequest } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { isTaskOpen } from './inbox.utils';
 import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
@@ -204,7 +209,10 @@ export const getTaskResolveActions = (
     }));
   }
 
-  return getLegacyActions(task, labels, schema);
+  // A Revise and resubmit task is completed by editing the asset, not resolved here.
+  return isOntologyReviewTask(task) || isRevisionRequest(task)
+    ? []
+    : getLegacyActions(task, labels, schema);
 };
 
 /**
@@ -269,12 +277,12 @@ export const buildResolveBody = (
   const comment = extras?.comment ? { comment: extras.comment } : {};
 
   if (action.transition) {
-    return {
+    return getTaskResolveBody(task, {
       transitionId: action.transition.id,
       resolutionType: action.transition.resolutionType,
       ...comment,
       ...(extras?.payload ? { payload: extras.payload } : {}),
-    };
+    });
   }
 
   const legacy = buildLegacyResolution(

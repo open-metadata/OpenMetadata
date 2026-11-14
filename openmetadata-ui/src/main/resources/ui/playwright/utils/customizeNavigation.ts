@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   'Incident Manager',
   'Alerts',
   'Insights',
-  'Marketplace',
+  'Data Marketplace',
   'Govern',
   'Glossary',
   'Classification',
@@ -31,12 +31,9 @@ const NAV_ITEMS = [
 
 export const checkDefaultStateForNavigationTree = async (page: Page) => {
   for (const item of NAV_ITEMS) {
-    // The label can also appear outside the tree, so pin the row by the switch
-    // it owns rather than by its text alone.
     const navRow = page
       .getByTestId('page-layout-v1')
-      .getByText(item)
-      .filter({ has: page.getByRole('switch') });
+      .getByRole('row', { name: item, exact: true });
 
     await expect(navRow).toBeVisible();
     await expect(navRow.getByRole('switch')).toBeChecked();

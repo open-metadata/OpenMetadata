@@ -10,7 +10,7 @@ Salesforce Data 360 (formerly DataCloud) is a unified data platform that unifies
 - The connected app must have the **Manage Data Cloud** and **Access Data Cloud APIs** OAuth scopes.
 - The integration user must have the **Data Cloud Admin** or equivalent permission set.
 
-You can find further information on the Salesforce Data 360 connector in the <a href="https://docs.open-metadata.org/connectors/database/data360" target="_blank">docs</a>.
+You can find further information on the Salesforce Data 360 connector in the <a href="https://docs.getcollate.io/connectors/database/data360" target="_blank">docs</a>.
 
 ## Connection Details
 

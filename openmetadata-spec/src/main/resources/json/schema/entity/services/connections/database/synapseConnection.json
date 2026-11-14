@@ -124,7 +124,11 @@
     "schemaFilterPattern":{
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$", "^guest$", "^information_schema$", "^sys$"]
+      }
     },
     "tableFilterPattern": {
       "title": "Default Table Filter Pattern",
@@ -134,7 +138,11 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^msdb$", "^model$", "^tempdb$"]
+      }
     },
     "storedProcedureFilterPattern": {
       "title": "Default Stored Procedure Filter Pattern",

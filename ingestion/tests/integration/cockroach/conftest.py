@@ -1,11 +1,13 @@
-import os
 import textwrap
 import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
+from testcontainers.cockroachdb import CockroachDBContainer  # noqa: TID251
+from testcontainers.core.config import testcontainers_config
+from testcontainers.core.waiting_utils import wait_for_logs
 
-from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -17,28 +19,50 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
+# Partitioning requires v24.3+ for license-free single-node development clusters.
+COCKROACH_IMAGE = "cockroachdb/cockroach:v24.3.0"
 
-@pytest.fixture(scope="module")
+
+@pytest.fixture(scope="package")
 def cockroach_container():
-    """
-    Start a Cockroach container.
-    """
-    from testcontainers.cockroachdb import CockroachDBContainer
-    from testcontainers.core.config import testcontainers_config
-
     old_max_tries = testcontainers_config.max_tries
     testcontainers_config.max_tries = 240
-
-    container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
-
-    with try_bind(container, 26257, None) if not os.getenv("CI") else container as container:
+    try:
+        with CockroachDBContainer(image=COCKROACH_IMAGE) as container:
+            # Testcontainers returns after user creation, before database privileges are granted.
+            wait_for_logs(container, "end running init files from /docker-entrypoint-initdb.d")
+            testcontainers_config.max_tries = old_max_tries
+            yield container
+    finally:
         testcontainers_config.max_tries = old_max_tries
-        engine = create_engine(container.get_connection_url())
-        with engine.connect() as conn:
-            conn.execute(
-                text(
-                    textwrap.dedent(
-                        """
+
+
+@pytest.fixture(scope="module")
+def cockroach_engine(cockroach_container):
+    url = make_url(cockroach_container.get_connection_url())
+    admin_engine = create_engine(url.set(database="defaultdb"), isolation_level="AUTOCOMMIT")
+    database = admin_engine.dialect.identifier_preparer.quote(cockroach_container.dbname)
+    try:
+        with admin_engine.connect() as conn:
+            conn.execute(text(f"DROP DATABASE IF EXISTS {database} CASCADE"))
+            conn.execute(text(f"CREATE DATABASE {database}"))
+            engine = create_engine(url)
+            try:
+                yield engine
+            finally:
+                engine.dispose()
+                conn.execute(text(f"DROP DATABASE {database} CASCADE"))
+    finally:
+        admin_engine.dispose()
+
+
+@pytest.fixture(scope="module")
+def user_profiles(cockroach_engine):
+    with cockroach_engine.connect() as conn:
+        conn.execute(
+            text(
+                textwrap.dedent(
+                    """
                     CREATE TABLE user_profiles (
                         user_id UUID PRIMARY KEY,
                         first_name TEXT,
@@ -48,16 +72,14 @@ def cockroach_container():
                         is_active BOOLEAN
                     );
                     """
-                    )
                 )
             )
-            conn.commit()
-
-        yield container
+        )
+        conn.commit()
 
 
 @pytest.fixture(scope="module")
-def create_service_request(cockroach_container):
+def create_service_request(cockroach_container, cockroach_engine):
     return CreateDatabaseServiceRequest(
         name=f"docker_test_cockroach_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Cockroach,
@@ -73,9 +95,7 @@ def create_service_request(cockroach_container):
 
 
 @pytest.fixture(scope="module")
-def create_test_data(cockroach_container):
-    engine = create_engine(cockroach_container.get_connection_url())
-
+def create_test_data(cockroach_engine, user_profiles):
     setup_statements = [
         """
         INSERT INTO user_profiles (user_id, first_name, last_name, email, signup_date, is_active)
@@ -141,7 +161,7 @@ def create_test_data(cockroach_container):
         """,
     ]
 
-    with engine.connect() as conn:
+    with cockroach_engine.connect() as conn:
         for stmt in setup_statements:
             conn.execute(text(textwrap.dedent(stmt)))
         conn.commit()

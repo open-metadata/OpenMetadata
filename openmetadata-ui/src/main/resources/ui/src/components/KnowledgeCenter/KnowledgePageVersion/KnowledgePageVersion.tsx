@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -18,10 +17,10 @@ import {
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Version } from '@openmetadata/ui-core-components/icons';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -186,7 +185,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
             <Button
               color={version ? 'secondary-brand' : 'secondary'}
               data-testid="version-button"
-              iconLeading={<Icon component={VersionIcon} />}
+              iconLeading={Version}
               onClick={handleVersionClick}>
               {toString(version)}
             </Button>

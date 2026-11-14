@@ -11,14 +11,29 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
+
+// A user's tasks and approvals are their work queue: the pick never hides them, so these lists
+// only carry a domain their caller asked for (e.g. a domain page's tasks).
+const UNSCOPED_LIST_PATHS = ['/tasks'];
+
+const isUnscopedList = (url?: string) =>
+  UNSCOPED_LIST_PATHS.some(
+    (path) =>
+      url === path || url?.startsWith(`${path}/`) || url?.startsWith(`${path}?`)
+  );
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
@@ -53,79 +68,157 @@ const collectMustClauses = (
   return mustArray;
 };
 
-export const withDomainFilter = (
-  config: InternalAxiosRequestConfig
-): InternalAxiosRequestConfig => {
-  const isGetRequest = config.method === 'get';
-  const activeDomain = useDomainStore.getState().activeDomain;
-  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
+// Reference data searched by pickers (tags, owners, team members) is never narrowed to the
+// selected domain, or a pick would hide the people and tags an asset can be given.
+const UNSCOPED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.TAG,
+  SearchIndex.USER,
+  SearchIndex.TEAM,
+]);
+
+// A search may name several indexes, as a comma-joined string or an array (e.g. owner pickers
+// search "team,user"); it stays unscoped only when every index it names is unscoped.
+const isUnscopedSearch = (index?: string | string[]) => {
+  const indexes = (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return (
+    indexes.length > 0 &&
+    indexes.every((name) => UNSCOPED_SEARCH_INDEXES.has(name))
+  );
+};
+
+// Mostly global content (e.g. Context Center articles) keeps items with no domain under a pick,
+// as its list endpoint does, so a search or sort does not change what the list shows.
+const KEEPS_UNASSIGNED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.KNOWLEDGE_PAGE_INDEX,
+]);
+
+const keepsUnassignedSearch = (index?: string | string[]) =>
+  (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .some((name) => KEEPS_UNASSIGNED_SEARCH_INDEXES.has(name));
+
+/**
+ * The navbar domain a request should be scoped to, or `undefined` when none is
+ * selected or scoping is off (product tour, domain pages, auth calls).
+ */
+const getRequestDomain = (): string | undefined => {
+  const { activeDomain } = useDomainStore.getState();
   const currentPath = getPathNameFromWindowLocation();
+  // A product tour shows every user the same recorded pages, whatever domain
+  // they have selected. Off while the tour is recorded too, so the recorded
+  // requests are the ones the tour sends.
+  const isUnscopedPage =
+    isProductTourRunning() ||
+    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
+      currentPath.startsWith(path)
+    );
 
-  const shouldNotIntercept = [
-    '/domain',
-    '/auth/logout',
-    '/auth/refresh',
-  ].reduce((prev, curr) => {
-    return prev || currentPath.startsWith(curr);
-  }, false);
+  return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
+    ? undefined
+    : activeDomain;
+};
 
-  if (shouldNotIntercept) {
+// The Data Quality dashboard batches its reports into one POST, so each item
+// is scoped here the way a GET would be, unless the page scoped it itself.
+const DQ_REPORT_BATCH_PATH = '/dataQualityReport/batch';
+
+const withDomainOnReportBatch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const body = config.data as DataQualityReportBatchRequest | undefined;
+  if (body?.requests) {
+    config.data = {
+      ...body,
+      requests: body.requests.map((request) => ({
+        ...request,
+        domain: request.domain || activeDomain,
+      })),
+    };
+  }
+
+  return config;
+};
+
+// A domain clause matches the picked domain and its sub-domains, plus items with no domain on
+// indexes that keep them.
+const domainClause = (
+  field: string,
+  activeDomain: string,
+  keepUnassigned: boolean
+): QueryFieldInterface =>
+  ({
+    bool: {
+      should: [
+        { term: { [field]: activeDomain } },
+        { prefix: { [field]: `${activeDomain}.` } },
+        ...(keepUnassigned
+          ? [{ bool: { must_not: { exists: { field } } } }]
+          : []),
+      ],
+    },
+  } as QueryFieldInterface);
+
+const withDomainOnSearch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const index = config.params?.index;
+  if (isUnscopedSearch(index)) {
     return config;
   }
 
-  if (isGetRequest && hasActiveDomain) {
-    if (config.url?.includes('/search/query')) {
-      if (config.params?.index === SearchIndex.TAG) {
-        return config;
-      }
+  const field =
+    index === SearchIndex.DOMAIN
+      ? 'fullyQualifiedName'
+      : 'domains.fullyQualifiedName';
+  const filter = parseExistingFilter(
+    config.params?.query_filter as string | undefined
+  );
+  filter.query = {
+    bool: {
+      ...filter.query?.bool,
+      must: [
+        ...collectMustClauses(filter),
+        domainClause(field, activeDomain, keepsUnassignedSearch(index)),
+      ],
+    },
+  };
+  config.params = { ...config.params, query_filter: JSON.stringify(filter) };
 
-      const domainFilterField =
-        config.params?.index === SearchIndex.DOMAIN
-          ? 'fullyQualifiedName'
-          : 'domains.fullyQualifiedName';
-      const filter = parseExistingFilter(
-        config.params?.query_filter as string | undefined
-      );
+  return config;
+};
 
-      const mustArray = collectMustClauses(filter);
-      const existingBool = filter.query?.bool;
+export const withDomainFilter = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
+    delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
 
-      filter.query = {
-        bool: {
-          ...existingBool,
-          must: [
-            ...mustArray,
-            {
-              bool: {
-                should: [
-                  {
-                    term: {
-                      [domainFilterField]: activeDomain,
-                    },
-                  },
-                  {
-                    prefix: {
-                      [domainFilterField]: `${activeDomain}.`,
-                    },
-                  },
-                ],
-              },
-            } as QueryFieldInterface,
-          ],
-        },
-      };
-
-      config.params = {
-        ...config.params,
-        query_filter: JSON.stringify(filter),
-      };
-    } else {
-      config.params = {
-        ...config.params,
-        domain: activeDomain,
-      };
-    }
+    return config;
   }
+
+  const activeDomain = getRequestDomain();
+
+  if (
+    activeDomain &&
+    config.method === 'post' &&
+    config.url?.includes(DQ_REPORT_BATCH_PATH)
+  ) {
+    return withDomainOnReportBatch(config, activeDomain);
+  }
+
+  if (!activeDomain || config.method !== 'get' || isUnscopedList(config.url)) {
+    return config;
+  }
+
+  if (config.url?.includes('/search/query')) {
+    return withDomainOnSearch(config, activeDomain);
+  }
+  config.params = { ...config.params, domain: activeDomain };
 
   return config;
 };

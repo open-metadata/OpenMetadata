@@ -58,6 +58,16 @@ class ContextCenterClassBase {
     return '';
   }
 
+  // Classic pages paint the canvas themselves. In AI mode the page sits in the
+  // shell's content card, so it stays transparent and the card's surface shows,
+  // as on every other AI-mode page. Subclasses extend the root through
+  // getContainerClassName() without having to repeat this.
+  public getPageContainerClassName(isAiMode = false): string {
+    return `${
+      isAiMode ? '' : 'tw:bg-canvas'
+    } ${this.getContainerClassName()}`.trim();
+  }
+
   public getHomePath(): string {
     return ROUTES.HOME;
   }
@@ -72,6 +82,13 @@ class ContextCenterClassBase {
 
   public getDocumentsListPath(): string {
     return ROUTES.CONTEXT_CENTER_DOCUMENTS;
+  }
+
+  /** A document opens in the documents list, previewed. */
+  public getDocumentPath(documentId: string): string {
+    return `${this.getDocumentsListPath()}?document=${encodeURIComponent(
+      documentId
+    )}`;
   }
 
   public getMemoriesListPath(): string {

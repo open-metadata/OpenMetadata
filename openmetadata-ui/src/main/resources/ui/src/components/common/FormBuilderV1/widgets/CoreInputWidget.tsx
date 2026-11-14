@@ -13,7 +13,7 @@
 
 import { Input } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetLabel } from './coreWidgetUtils';
+import { getWidgetAriaProps, getWidgetLabel } from './coreWidgetUtils';
 
 const parseNumericValue = (
   nextValue: string,
@@ -72,6 +72,7 @@ const CoreInputWidget = ({
   return (
     <div>
       <Input
+        {...getWidgetAriaProps({ label, schema })}
         // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
         autoFocus={autofocus}
         hint={hint}
@@ -80,7 +81,7 @@ const CoreInputWidget = ({
         isDisabled={disabled || readonly}
         isInvalid={!!rawErrors?.length}
         isRequired={required}
-        label={getWidgetLabel({ hideLabel, label })}
+        label={getWidgetLabel({ hideLabel, label, schema })}
         placeholder={placeholder}
         type={inputType}
         value={value ?? ''}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { TFunction } from 'i18next';
-import { MetricType } from '../../generated/entity/data/metric';
+import { Language, MetricType } from '../../generated/entity/data/metric';
 import type { TagLabel } from '../../generated/type/tagLabel';
 
 const METRIC_TIER_PREFIX = 'Tier.';
@@ -41,6 +41,10 @@ export const getMetricEnumLabel = (t: TFunction, value: string) => {
 
   return t(translationKey, { defaultValue });
 };
+
+// Language values are proper nouns (SQL, JavaScript) shown as-is; only `External` is a word.
+export const getMetricLanguageLabel = (t: TFunction, value: Language) =>
+  value === Language.External ? getMetricEnumLabel(t, value) : value;
 
 export const getMetricTypeBadgeColor = (
   metricType?: MetricType

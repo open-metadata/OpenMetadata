@@ -34,6 +34,13 @@ export interface DatabaseServiceProfilerPipeline {
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Use the partition metadata collected during metadata ingestion to only profile the most
+     * recent time or integer range partitions of tables without an explicit partition
+     * configuration. Tables with a partition configuration defined in their profiler settings
+     * are not affected.
+     */
+    enableAutoPartitionDetection?: boolean;
+    /**
      * Optional configuration to turn off fetching metadata for views.
      */
     includeViews?: boolean;

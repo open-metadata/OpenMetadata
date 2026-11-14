@@ -19,6 +19,9 @@
     "workflowConfiguration": {
       "type": "object",
       "properties": {
+        "lifecycle": {
+          "$ref": "./lifecycleConfiguration.json"
+        },
         "storeStageStatus": {
           "title": "Storage Workflow Stage Status",
           "description": "If True, all the stage status will be stored in the database.",

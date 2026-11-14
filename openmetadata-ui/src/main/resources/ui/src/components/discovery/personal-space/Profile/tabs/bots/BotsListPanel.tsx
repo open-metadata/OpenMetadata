@@ -15,17 +15,21 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
+  ConfirmPopover,
   Input,
   PaginationCardWithControls,
   Skeleton,
   Table,
   TableCard,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  CpuChip01,
   NoSearch,
+  Plus,
+  RefreshCcw01,
   Search,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
@@ -38,11 +42,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -51,14 +51,23 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { getBots } from '../../../../../../rest/botsAPI';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
+import { getBots, restoreBot } from '../../../../../../rest/botsAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { escapeESReservedCharacters } from '../../../../../../utils/StringUtils';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
 
@@ -91,21 +100,23 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { getResourceLimit } = useLimitStore();
-  const { state: hashState, updateParams } = useSettingsHash();
+  const { updateParams } = useSettingsHash();
 
   const [bots, setBots] = useState<Bot[]>([]);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedBot, setSelectedBot] = useState<Bot>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [paging, setPaging] = useState<Paging>({ total: 0 });
-  const [currentPage, setCurrentPage] = useState(
-    Number(hashState.params.page) || 1
-  );
-  const [pageSize, setPageSize] = useState(
-    Number(hashState.params.pageSize) || PAGE_SIZE_BASE
-  );
+  const {
+    page: hashPage,
+    resolvedPageSize: initialPageSize,
+    savePageSize,
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const [currentPage, setCurrentPage] = useState(hashPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [reloadKey, setReloadKey] = useState(0);
   const fetchRequestIdRef = useRef(0);
   const latestSearchRequest = useRef(0);
@@ -114,14 +125,11 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const searchTermRef = useRef(searchTerm);
   searchTermRef.current = searchTerm;
 
-  const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(bots);
 
   const columns: BotColumn[] = useMemo(
     () => [
-      { id: 'name', label: t('label.name') },
+      { id: 'name', label: t('label.name'), className: 'tw:w-70' },
       { id: 'description', label: t('label.description') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
     ],
@@ -289,6 +297,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
       if (!term) {
         latestSearchRequest.current += 1;
         setSearchedData(bots);
+        setIsLoading(false);
 
         return;
       }
@@ -318,11 +327,29 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
   const handleDeleteAction = useCallback(() => {
     getResourceLimit('bot', true, true);
-    setSelectedBot(undefined);
     botMapLoadPromiseRef.current = null;
     botsByUserNameRef.current = new Map();
     setReloadKey((k) => k + 1);
   }, [getResourceLimit]);
+
+  const handleRestore = useCallback(
+    async (bot: Bot) => {
+      try {
+        await restoreBot(bot.id);
+        showSuccessToast(
+          t('message.entity-restored-success', { entity: t('label.bot') })
+        );
+        handleDeleteAction();
+
+        return true;
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return false;
+      }
+    },
+    [handleDeleteAction, t]
+  );
 
   const handlePageChange = useCallback(
     (page: number) => {
@@ -344,6 +371,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const handlePageSizeChange = useCallback(
     (newSize: number) => {
       setPageSize(newSize);
+      savePageSize(newSize);
       setCurrentPage(1);
       updateParams({
         page: '1',
@@ -352,7 +380,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         pageSize: String(newSize),
       });
     },
-    [updateParams]
+    [savePageSize, updateParams]
   );
 
   const handleShowDeletedToggle = useCallback(
@@ -369,12 +397,15 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   );
 
   const initialFetchRef = useRef(true);
-  const initialParamsRef = useRef(hashState.params);
+  const initialCursorRef = useRef({
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+  });
 
   useEffect(() => {
     if (initialFetchRef.current) {
       initialFetchRef.current = false;
-      const { cursor, cursorType } = initialParamsRef.current;
+      const { cursor, cursorType } = initialCursorRef.current;
       fetchBots(cursor && cursorType ? { [cursorType]: cursor } : undefined);
     } else {
       fetchBots();
@@ -395,9 +426,12 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
         return (
           <Button
+            className="tw:max-w-full tw:truncate tw:block tw:text-left"
             color="link-color"
             data-testid={`bot-link-${name}`}
             size="sm"
+            tooltip={name}
+            tooltipPlacement="top"
             onPress={() =>
               onNavigate({
                 type: 'detail',
@@ -429,22 +463,62 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           tooltipContent = t('message.admin-only-action');
         }
 
+        // Core ButtonUtility drops its tooltip when disabled. The disabled button must be the
+        // Tooltip's direct child so Tooltip wraps it in a hover-listening span.
+        if (isDisabled) {
+          return (
+            <Tooltip excludeTriggerFromTabOrder title={tooltipContent}>
+              <ButtonUtility
+                isDisabled
+                data-testid={`bot-delete-${bot.name}`}
+                icon={Trash01}
+                size="lg"
+              />
+            </Tooltip>
+          );
+        }
+
         return (
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`bot-delete-${bot.name}`}
-            icon={Trash01}
-            isDisabled={isDisabled}
-            size="xs"
-            tooltip={tooltipContent}
-            onPress={() => setSelectedBot(bot)}
-          />
+          <Box align="center" direction="row" gap={1}>
+            {showDeleted && (
+              <ConfirmPopover
+                confirmText={t('label.restore')}
+                data-testid="restore-bot-popover"
+                description={t('message.restore-action-description', {
+                  entityType: getEntityName(bot),
+                })}
+                title={t('message.are-you-sure')}
+                variant="primary"
+                onConfirm={() => handleRestore(bot)}>
+                <ButtonUtility
+                  data-testid={`bot-restore-${bot.name}`}
+                  icon={RefreshCcw01}
+                  size="lg"
+                  tooltip={t('label.restore')}
+                />
+              </ConfirmPopover>
+            )}
+            <DeleteEntityPopover
+              afterDeleteAction={handleDeleteAction}
+              allowSoftDelete={!showDeleted}
+              data-testid="delete-bot-popover"
+              entityId={bot.id}
+              entityName={getEntityName(bot)}
+              entityType={EntityType.BOT}>
+              <ButtonUtility
+                data-testid={`bot-delete-${bot.name}`}
+                icon={Trash01}
+                size="lg"
+                tooltip={tooltipContent}
+              />
+            </DeleteEntityPopover>
+          </Box>
         );
       }
 
       return null;
     },
-    [isAdminUser, onNavigate, t]
+    [isAdminUser, onNavigate, t, showDeleted, handleDeleteAction, handleRestore]
   );
 
   const renderEmptyState = useCallback(() => {
@@ -460,11 +534,19 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
     if (searchTerm.trim()) {
       return (
-        <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+        <div className="tw:relative tw:min-h-70">
+          <NoSearchResultsPlaceholder
+            actions={[
+              {
+                color: 'primary' as const,
+                key: 'clear-filters',
+                label: t('label.clear-entity', { entity: t('label.all') }),
+                onPress: () => handleSearch(''),
+              },
+            ]}
             data-testid="search-error-placeholder"
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearch className="tw:text-quaternary" />}
+            icon={<NoSearch />}
             title={t('label.no-matching-results')}
           />
         </div>
@@ -472,13 +554,14 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     }
 
     return (
-      <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+      <div className="tw:relative tw:min-h-70">
+        <NoDataPlaceholder
           actions={
             isAdminUser && !showDeleted
               ? [
                   {
                     color: 'primary' as const,
+                    iconLeading: Plus,
                     key: 'add-bot',
                     label: t('label.add-entity', {
                       entity: t('label.bot'),
@@ -488,13 +571,14 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
                 ]
               : undefined
           }
-          title={t('label.no-entity-found', {
-            entity: t('label.bot-plural'),
-          })}
+          description={t('label.no-bots-yet-description')}
+          icon={<CpuChip01 className="tw:text-fg-brand-primary" />}
+          title={t('label.no-bots-yet')}
         />
       </div>
     );
   }, [
+    handleSearch,
     isAdminUser,
     isLoading,
     onNavigate,
@@ -510,13 +594,17 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
       data-testid="bots-list-panel"
       direction="col"
       gap={4}>
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"
           direction="row"
           justify="between">
           <Input
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="searchbar"
             icon={Search}
@@ -576,27 +664,13 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={Math.ceil((paging.total ?? 0) / pageSize)}
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>
-
-      <DeleteEntityModal
-        afterDeleteAction={handleDeleteAction}
-        allowSoftDelete={!showDeleted}
-        entityId={selectedBot?.id ?? ''}
-        entityName={getEntityName(selectedBot)}
-        entityType={EntityType.BOT}
-        visible={Boolean(selectedBot)}
-        onCancel={() => setSelectedBot(undefined)}
-      />
     </Box>
   );
 };

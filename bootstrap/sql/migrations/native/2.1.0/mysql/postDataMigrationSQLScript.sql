@@ -1,6 +1,7 @@
 -- Backfill test_case_incident from existing history: fold each stateId chain to its
 -- first/last timestamps, pick the latest record (MAX(id) tie-break, matching the read
 -- query this table replaces), and upsert one summary row per incident. Idempotent.
+-- Incidents whose test case was hard-deleted lost their parentOf row (relation 9) and are skipped.
 INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, assignee, severity, createdAt, updatedAt, latestRecordId)
 WITH chain AS (
   SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
@@ -19,6 +20,11 @@ SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
 FROM latestRecord l
 INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
 WHERE t.entityFQNHash IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM entity_relationship er
+    WHERE er.toId = t.id AND er.relation = 9
+      AND er.fromEntity = 'testCase' AND er.toEntity = 'testCaseResolutionStatus'
+  )
 ON DUPLICATE KEY UPDATE
   testCaseResolutionStatusType = VALUES(testCaseResolutionStatusType),
   assignee = VALUES(assignee),
@@ -82,9 +88,11 @@ WHERE fromEntity = 'glossaryTerm'
   AND toEntity = 'glossaryTerm'
   AND relation = 15;
 
+-- relationType takes the database character set, which can be utf8mb3 or latin1, where
+-- COLLATE utf8mb4_bin is invalid. Convert it to utf8mb4 before comparing.
 UPDATE entity_relationship relationship
 JOIN relationship_type_entity relationship_type
-  ON relationship_type.name COLLATE utf8mb4_bin = relationship.relationType COLLATE utf8mb4_bin
+  ON relationship_type.name COLLATE utf8mb4_bin = CONVERT(relationship.relationType USING utf8mb4) COLLATE utf8mb4_bin
 SET relationship.relationshipTypeId = relationship_type.id,
     relationship.json = JSON_SET(
       COALESCE(relationship.json, JSON_OBJECT()),
@@ -154,8 +162,8 @@ SET json = JSON_SET(json, '$.parameterDefinition', JSON_ARRAY())
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -239,8 +247,8 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -267,8 +275,8 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
     'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
@@ -295,8 +303,8 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name IN (
     'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
-    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
-    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValueLengthsToBeBetween',
+    'columnValuesMissingCount', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
     'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
   )
@@ -527,6 +535,98 @@ SET json = JSON_REMOVE(
 WHERE jsonSchema = 'contextMemory'
   AND JSON_CONTAINS_PATH(json, 'one', '$.status');
 
+-- Landing-page widgets: re-point the six panels whose widget was replaced, and drop the five
+-- whose widget was retired.
+--
+-- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
+-- returns early on an existing fullyQualifiedName and never updates or deletes. So the new seed
+-- files reach a fresh install and nothing else: on an upgrade the four added panels appear, the
+-- rewritten ones keep the name and description of the widget they replaced, and the retired ones
+-- linger. KnowledgePanel.ActivityFeed renders the Team Activity card now, so without this the
+-- picker advertises it as "Activity Feed" and describes a feed that is no longer there.
+--
+-- Values mirror json/data/document/docs/*.json exactly, so an upgraded install ends up byte-equal
+-- to a fresh one. gridSizes is set on its own path rather than by replacing `data` wholesale, so
+-- the statement means the same thing as its Postgres counterpart. Re-runnable: every statement is
+-- an absolute write or a delete that matches nothing on a second pass.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Team Activity',
+    '$.description', 'Recent activity across the assets and domains the user owns, showing who changed what and when.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'ActivityFeed' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'CuratedAssets' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'Data products across the platform with their owning domain, for quicker access to high-value products.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'DataProducts' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'Domains' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'KPIs',
+    '$.description', 'Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Collate seeded this same fullyQualifiedName for its own Data Quality widget, which the topic
+-- card replaced. An install that came up through that build keeps the old row -- the loader skips
+-- the OSS seed -- and with it the old description and a single "small" grid size.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Data Quality',
+    '$.description', 'Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
+
+-- The Context Center card moved into OSS from Collate, which seeded this fullyQualifiedName as
+-- "Knowledge Center" with a description of a widget that no longer exists. OSS installs get the
+-- row from the seed file; this brings an upgraded Collate row in line with it.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Context Center',
+    '$.description', 'The most recently updated Context Center pages, articles and quick links, with how many changed this week.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
+
+-- Retired: their seed files are gone and no component resolves their key, so the renderer would
+-- answer with a render-nothing component and leave an empty cell. The UI already filters them out
+-- of both the grid and the picker; this stops the rows accumulating.
+--
+-- MyTask and TotalAssets are the exception: their keys now hold the My Tasks and Total Data Assets
+-- topic cards and their seed files are back. Deleting the old rows is still right, because the
+-- loader re-inserts any seeded row it cannot find on the next boot, so they come back with the
+-- topic cards' name and description rather than the retired widgets'.
+DELETE FROM doc_store
+WHERE entityType = 'KnowledgePanel'
+  AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
+
 -- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
 -- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
 UPDATE rdf_inference_rule
@@ -555,3 +655,386 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name = 'tableDiff'
   AND JSON_TYPE(JSON_EXTRACT(json, '$.parameterDefinition')) = 'ARRAY'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'parallelQueries'), '$.parameterDefinition');
+
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(json, '$.sourceConfig.config.sampleDataCount', 1000)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.sourceConfig.config.type')) = 'AutoClassification'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount')) = 'INTEGER'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount') > 1000;
+
+-- Say how to choose tableCustomSQLQuery.strategy and what columnValuesToBeInSet.matchEnum changes,
+-- so users and test generation read it from the definition. Seed data only creates missing definitions.
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'strategy', NULL, '$.parameterDefinition[*].name')), '.name', '.description'),
+    'How the query result is compared to the threshold. ROWS (default): the query returns the rows that break the rule, such as `SELECT * FROM t WHERE amount < 0`, and the number of rows returned is compared. COUNT: the query returns a single integer, such as `SELECT COUNT(*) FROM t WHERE amount < 0`, and that number is compared. Under ROWS a `SELECT COUNT(*)` query always returns one row. Do not use COUNT with a query that can return NULL or a non-integer, such as SUM or AVG.'
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND JSON_SEARCH(json, 'one', 'strategy', NULL, '$.parameterDefinition[*].name') IS NOT NULL;
+
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'matchEnum', NULL, '$.parameterDefinition[*].name')), '.name', '.description'),
+    'If true, every observed value must be allowed. If false or omitted, the test passes when at least one allowed value occurs, even if other values are outside the set.'
+)
+WHERE name = 'columnValuesToBeInSet'
+  AND JSON_SEARCH(json, 'one', 'matchEnum', NULL, '$.parameterDefinition[*].name') IS NOT NULL;
+
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'allowedValues', NULL, '$.parameterDefinition[*].name')), '.name', '.description'),
+    'Values used for matching. Neither mode requires every allowed value to occur in the column.'
+)
+WHERE name = 'columnValuesToBeInSet'
+  AND JSON_SEARCH(json, 'one', 'allowedValues', NULL, '$.parameterDefinition[*].name') IS NOT NULL;
+
+UPDATE test_definition
+SET json = JSON_SET(json, '$.description', 'Checks column values against an allowed set according to the matchEnum mode.')
+WHERE name = 'columnValuesToBeInSet';
+
+-- `tableCustomSQLQuery.operator` was seeded in #20307 and `partitionExpression` in #22697, but
+-- seeding only creates missing definitions (EntityRepository.initializeEntity returns early once
+-- the entity exists) — a definition record created from a pre-#20307 seed keeps neither, and no
+-- earlier migration backfilled them: the deployment then renders the Add Test Case form with no
+-- Operator to compare the query result to the threshold, and no Partition Expression for Compute
+-- Row Count. Both are appended to the migrated definition, after the `thresholdUnit` statement
+-- above, so a migrated install matches a fresh install except for these two trailing entries.
+-- Each parameter is guarded on being absent, which keeps re-runs — and every deployment that
+-- already has it — a no-op.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'operator',
+        'displayName', 'Operator',
+        'description', 'Operator to use to compare the result of the custom SQL query to the threshold.',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', JSON_ARRAY('==', '>', '>=', '<', '<=', '!=')
+    )
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"operator"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'partitionExpression',
+        'displayName', 'Partition Expression',
+        'description', 'Partition expression that will be used to compute the passed/failed row count, if compute row count is enabled.',
+        'dataType', 'STRING',
+        'required', false
+    )
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"partitionExpression"'
+  );
+
+-- Remove personal access token rows whose user no longer exists. A missing user row here always
+-- means the user was hard-deleted, so this is safe on every upgrade; the second run deletes
+-- nothing. Other token types keep their own lifecycle.
+DELETE FROM user_tokens
+WHERE tokenType = 'PERSONAL_ACCESS_TOKEN'
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.id = user_tokens.userId);
+
+-- End MCP OAuth grants of users who no longer exist or are deleted. Grants are keyed by user name,
+-- so a later user given the same name would otherwise take them over; deleting a user now ends
+-- its grants, and this clears the ones left from before. The second run changes nothing.
+DELETE FROM oauth_authorization_codes
+WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.name = oauth_authorization_codes.user_name COLLATE utf8mb4_0900_ai_ci AND u.deleted IS NOT TRUE);
+UPDATE oauth_refresh_tokens SET revoked = TRUE
+WHERE revoked = FALSE
+  AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.name = oauth_refresh_tokens.user_name COLLATE utf8mb4_0900_ai_ci AND u.deleted IS NOT TRUE);
+DELETE FROM oauth_access_tokens
+WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE u.name = oauth_access_tokens.user_name COLLATE utf8mb4_0900_ai_ci AND u.deleted IS NOT TRUE);
+
+-- Apps no longer create the alerts listed in their marketplace definition. An app's own code
+-- still creates alerts it needs and links them to the app (relation 0 is CONTAINS); those run
+-- the app's own consumer class. An alert linked to an app that is named in the app's
+-- definition, or that uses the default alert consumer, came from a definition: it is disabled,
+-- kept for an admin to review and no longer tied to the app. The list then leaves every stored
+-- definition, definition version and definition change event.
+
+-- event_subscription_entity: alerts an app install created from its definition
+UPDATE event_subscription_entity
+SET json = JSON_SET(json, '$.enabled', CAST('false' AS JSON))
+WHERE id IN (SELECT id FROM (
+  SELECT DISTINCT e.id FROM event_subscription_entity e
+    JOIN entity_relationship r ON r.toId = e.id
+      AND r.fromEntity = 'app' AND r.toEntity = 'eventsubscription' AND r.relation = 0
+    LEFT JOIN installed_apps a ON a.id = r.fromId
+    LEFT JOIN apps_marketplace m ON m.name = a.name
+    WHERE JSON_EXTRACT(e.json, '$.className') IS NULL
+      OR JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.className')) = 'alert'
+      OR JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.className')) LIKE '%.AlertPublisher'
+      OR JSON_CONTAINS(COALESCE(JSON_EXTRACT(m.json, '$.eventSubscriptions[*].name'), JSON_ARRAY()), JSON_QUOTE(e.name))
+) planted);
+
+DELETE FROM entity_relationship
+WHERE fromEntity = 'app' AND toEntity = 'eventsubscription' AND relation = 0
+  AND toId IN (SELECT id FROM (
+  SELECT DISTINCT e.id FROM event_subscription_entity e
+    JOIN entity_relationship r ON r.toId = e.id
+      AND r.fromEntity = 'app' AND r.toEntity = 'eventsubscription' AND r.relation = 0
+    LEFT JOIN installed_apps a ON a.id = r.fromId
+    LEFT JOIN apps_marketplace m ON m.name = a.name
+    WHERE JSON_EXTRACT(e.json, '$.className') IS NULL
+      OR JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.className')) = 'alert'
+      OR JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.className')) LIKE '%.AlertPublisher'
+      OR JSON_CONTAINS(COALESCE(JSON_EXTRACT(m.json, '$.eventSubscriptions[*].name'), JSON_ARRAY()), JSON_QUOTE(e.name))
+) planted);
+
+UPDATE apps_marketplace SET json = JSON_REMOVE(json, '$.eventSubscriptions')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.eventSubscriptions');
+
+UPDATE entity_extension SET json = JSON_REMOVE(json, '$.eventSubscriptions')
+WHERE extension LIKE 'appMarketPlaceDefinition.version.%'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.eventSubscriptions');
+
+-- change_event: an event that holds its entity as an object
+UPDATE change_event
+SET json = JSON_REMOVE(json, '$.entity.eventSubscriptions')
+WHERE entityType = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'OBJECT'
+    THEN JSON_CONTAINS_PATH(json, 'one', '$.entity.eventSubscriptions')
+    ELSE 0 END = 1;
+
+-- change_event: an event that holds its entity as a string of JSON
+UPDATE change_event
+SET json = JSON_SET(json, '$.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), '$.eventSubscriptions') AS CHAR))
+WHERE entityType = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'STRING'
+    THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')))
+      THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), 'one', '$.eventSubscriptions')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- successful_sent_change_events: an event that holds its entity as an object
+UPDATE successful_sent_change_events
+SET json = JSON_REMOVE(json, '$.entity.eventSubscriptions')
+WHERE json ->> '$.entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'OBJECT'
+    THEN JSON_CONTAINS_PATH(json, 'one', '$.entity.eventSubscriptions')
+    ELSE 0 END = 1;
+
+-- successful_sent_change_events: an event that holds its entity as a string of JSON
+UPDATE successful_sent_change_events
+SET json = JSON_SET(json, '$.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), '$.eventSubscriptions') AS CHAR))
+WHERE json ->> '$.entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'STRING'
+    THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')))
+      THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), 'one', '$.eventSubscriptions')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- consumers_dlq: an event that holds its entity as an object
+UPDATE consumers_dlq
+SET json = JSON_REMOVE(json, '$.changeEvent.entity.eventSubscriptions')
+WHERE json ->> '$.changeEvent.entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.changeEvent.entity')) = 'OBJECT'
+    THEN JSON_CONTAINS_PATH(json, 'one', '$.changeEvent.entity.eventSubscriptions')
+    ELSE 0 END = 1;
+
+-- consumers_dlq: an event that holds its entity as a string of JSON
+UPDATE consumers_dlq
+SET json = JSON_SET(json, '$.changeEvent.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.changeEvent.entity')) AS JSON), '$.eventSubscriptions') AS CHAR))
+WHERE json ->> '$.changeEvent.entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.changeEvent.entity')) = 'STRING'
+    THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(json, '$.changeEvent.entity')))
+      THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.changeEvent.entity')) AS JSON), 'one', '$.eventSubscriptions')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- audit_log_event: an event that holds its entity as an object
+UPDATE audit_log_event
+SET event_json = CAST(JSON_REMOVE(CAST(event_json AS JSON), '$.entity.eventSubscriptions') AS CHAR)
+WHERE entity_type = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_VALID(event_json)
+    THEN CASE WHEN JSON_TYPE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) = 'OBJECT'
+      THEN JSON_CONTAINS_PATH(CAST(event_json AS JSON), 'one', '$.entity.eventSubscriptions')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- audit_log_event: an event that holds its entity as a string of JSON
+UPDATE audit_log_event
+SET event_json = CAST(JSON_SET(CAST(event_json AS JSON), '$.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) AS JSON), '$.eventSubscriptions') AS CHAR)) AS CHAR)
+WHERE entity_type = 'appMarketPlaceDefinition'
+  AND CASE WHEN JSON_VALID(event_json)
+    THEN CASE WHEN JSON_TYPE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) = 'STRING'
+      THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')))
+        THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) AS JSON), 'one', '$.eventSubscriptions')
+        ELSE 0 END
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- An app's alert list is filled from the app->alert relationship on every read and is no longer
+-- stored. The copy in the app JSON, and any alert written into it by hand, leaves stored apps and
+-- app versions; the relationship rows that record the app's own alerts stay.
+UPDATE installed_apps SET json = JSON_REMOVE(json, '$.eventSubscriptions')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.eventSubscriptions');
+
+UPDATE entity_extension SET json = JSON_REMOVE(json, '$.eventSubscriptions')
+WHERE extension LIKE 'app.version.%'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.eventSubscriptions');
+
+-- A user's authentication mechanism (a password hash or a bot token) leaves every stored
+-- change event and user version; new ones no longer carry it.
+
+-- change_event: an event that holds its entity as an object
+UPDATE change_event
+SET json = JSON_REMOVE(json, '$.entity.authenticationMechanism')
+WHERE entityType IN ('user')
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'OBJECT'
+    THEN JSON_CONTAINS_PATH(json, 'one', '$.entity.authenticationMechanism')
+    ELSE 0 END = 1;
+
+-- change_event: an event that holds its entity as a string of JSON
+UPDATE change_event
+SET json = JSON_SET(json, '$.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), '$.authenticationMechanism') AS CHAR))
+WHERE entityType IN ('user')
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'STRING'
+    THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')))
+      THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), 'one', '$.authenticationMechanism')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- successful_sent_change_events: an event that holds its entity as an object
+UPDATE successful_sent_change_events
+SET json = JSON_REMOVE(json, '$.entity.authenticationMechanism')
+WHERE json ->> '$.entityType' IN ('user')
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'OBJECT'
+    THEN JSON_CONTAINS_PATH(json, 'one', '$.entity.authenticationMechanism')
+    ELSE 0 END = 1;
+
+-- successful_sent_change_events: an event that holds its entity as a string of JSON
+UPDATE successful_sent_change_events
+SET json = JSON_SET(json, '$.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), '$.authenticationMechanism') AS CHAR))
+WHERE json ->> '$.entityType' IN ('user')
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.entity')) = 'STRING'
+    THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')))
+      THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.entity')) AS JSON), 'one', '$.authenticationMechanism')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- consumers_dlq: an event that holds its entity as an object
+UPDATE consumers_dlq
+SET json = JSON_REMOVE(json, '$.changeEvent.entity.authenticationMechanism')
+WHERE json ->> '$.changeEvent.entityType' IN ('user')
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.changeEvent.entity')) = 'OBJECT'
+    THEN JSON_CONTAINS_PATH(json, 'one', '$.changeEvent.entity.authenticationMechanism')
+    ELSE 0 END = 1;
+
+-- consumers_dlq: an event that holds its entity as a string of JSON
+UPDATE consumers_dlq
+SET json = JSON_SET(json, '$.changeEvent.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.changeEvent.entity')) AS JSON), '$.authenticationMechanism') AS CHAR))
+WHERE json ->> '$.changeEvent.entityType' IN ('user')
+  AND CASE WHEN JSON_TYPE(JSON_EXTRACT(json, '$.changeEvent.entity')) = 'STRING'
+    THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(json, '$.changeEvent.entity')))
+      THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.changeEvent.entity')) AS JSON), 'one', '$.authenticationMechanism')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- audit_log_event: an event that holds its entity as an object
+UPDATE audit_log_event
+SET event_json = CAST(JSON_REMOVE(CAST(event_json AS JSON), '$.entity.authenticationMechanism') AS CHAR)
+WHERE entity_type IN ('user')
+  AND CASE WHEN JSON_VALID(event_json)
+    THEN CASE WHEN JSON_TYPE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) = 'OBJECT'
+      THEN JSON_CONTAINS_PATH(CAST(event_json AS JSON), 'one', '$.entity.authenticationMechanism')
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- audit_log_event: an event that holds its entity as a string of JSON
+UPDATE audit_log_event
+SET event_json = CAST(JSON_SET(CAST(event_json AS JSON), '$.entity',
+  CAST(JSON_REMOVE(CAST(JSON_UNQUOTE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) AS JSON), '$.authenticationMechanism') AS CHAR)) AS CHAR)
+WHERE entity_type IN ('user')
+  AND CASE WHEN JSON_VALID(event_json)
+    THEN CASE WHEN JSON_TYPE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) = 'STRING'
+      THEN CASE WHEN JSON_VALID(JSON_UNQUOTE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')))
+        THEN JSON_CONTAINS_PATH(CAST(JSON_UNQUOTE(JSON_EXTRACT(CAST(event_json AS JSON), '$.entity')) AS JSON), 'one', '$.authenticationMechanism')
+        ELSE 0 END
+      ELSE 0 END
+    ELSE 0 END = 1;
+
+-- entity_extension: stored user versions
+UPDATE entity_extension SET json = JSON_REMOVE(json, '$.authenticationMechanism')
+WHERE extension LIKE 'user.version.%'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.authenticationMechanism');
+
+-- Data Insights: keep test case definitions out of the data-asset charts.
+--
+-- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test
+-- cases and group them by table, suite or definition. Its documents carry entityType "testCase",
+-- so the data-asset filter and the entityType breakdown must exclude it, or total_data_assets
+-- and the breakdown beneath it stop reconciling the way they did in #31478. The test case mapping
+-- lowercase-normalizes entityType.keyword, and a terms aggregation exclude matches the stored
+-- bucket key, so the breakdown excludes the lowercase forms as well.
+--
+-- Both statements are guarded on the stored value, so a deployment that already holds the
+-- corrected definitions is left untouched.
+
+-- Scope every data-asset metric to documents that actually carry an entityType.
+UPDATE di_chart_entity
+SET json = JSON_SET(json, '$.chartDetails.metrics[0].filter', '{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}')
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.chartDetails.metrics')) = 'ARRAY'
+  AND JSON_LENGTH(json, '$.chartDetails.metrics') = 1
+  AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.chartDetails.metrics[0].filter')), '') <> '{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}';
+
+-- Drop the same governance types from the breakdown that the filter above drops from the card.
+UPDATE di_chart_entity
+SET json = JSON_SET(json, '$.chartDetails.excludeGroups', CAST('["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]' AS JSON))
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.chartDetails.groupBy')) = 'entityType.keyword'
+  AND COALESCE(JSON_EXTRACT(json, '$.chartDetails.excludeGroups'), CAST('null' AS JSON)) <> CAST('["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]' AS JSON);

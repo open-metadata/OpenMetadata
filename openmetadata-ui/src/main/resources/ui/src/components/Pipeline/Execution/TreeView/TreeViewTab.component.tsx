@@ -11,20 +11,29 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Empty } from 'antd';
-import Tree from 'antd/lib/tree';
+import {
+  Box,
+  Card,
+  Grid,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  ClockRewind,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowSvg } from '../../../../assets/svg/vector.svg';
 import {
   PipelineStatus,
   Task,
 } from '../../../../generated/entity/data/pipeline';
+import { TreeNode } from '../../../../interface/tree.interface';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import './tree-view-tab.less';
 
 interface TreeViewProps {
@@ -54,6 +63,25 @@ const TreeViewTab = ({
 
   const { t } = useTranslation();
 
+  const renderNode = (
+    node: TreeNode,
+    showGuideLines: boolean
+  ): React.ReactNode => (
+    <Tree.Item id={node.key} key={node.key} textValue={String(node.key)}>
+      <Tree.ItemContent
+        className="tw:min-h-9"
+        indentPerLevel={showGuideLines ? 22 : 0}
+        showExpandIcon={false}
+        showGuideLines={showGuideLines}>
+        {node.icon}
+        {node.title}
+      </Tree.ItemContent>
+      {node.children?.map((child) => renderNode(child, showGuideLines))}
+    </Tree.Item>
+  );
+  const expandedKeys = (nodes: TreeNode[]): (string | number)[] =>
+    nodes.flatMap((node) => [node.key, ...expandedKeys(node.children ?? [])]);
+
   return (
     <Card>
       <Card.Content>
@@ -64,7 +92,10 @@ const TreeViewTab = ({
           style={{ ...getLayoutGutter(16) }}
           wrap="wrap">
           <Box className="layout-column tw:block">
-            <ArrowSvg className="cursor-pointer" />
+            <ChevronLeft
+              className="cursor-pointer tw:text-utility-gray-500"
+              size={12}
+            />
           </Box>
           <Box className="layout-column tw:block">
             <Typography className="p-b-0 m-b-0 font-medium">
@@ -74,34 +105,37 @@ const TreeViewTab = ({
             </Typography>
           </Box>
           <Box className="layout-column tw:block">
-            <ArrowSvg className=" cursor-pointer transform-180" />
+            <ChevronLeft
+              className="cursor-pointer transform-180 tw:text-utility-gray-500"
+              size={12}
+            />
           </Box>
         </Box>
 
         {isEmpty(viewData) ? (
-          <Empty
-            className="my-4"
-            description={t('message.no-execution-runs-found')}
-          />
+          <Box className="tw:relative tw:my-4 tw:min-h-40">
+            <NoDataPlaceholder
+              description={t('message.no-execution-runs-found')}
+              icon={<ClockRewind />}
+            />
+          </Box>
         ) : (
           <Grid className="layout-row layout-grid w-full">
             <Grid.Item className="layout-column" span={12}>
               <Tree
-                defaultExpandAll
-                showIcon
-                showLine={{ showLeafIcon: false }}
-                switcherIcon={<></>}
-                treeData={treeLabelList}
-              />
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeLabelList)}
+                selectionMode="none">
+                {treeLabelList.map((node) => renderNode(node, true))}
+              </Tree>
             </Grid.Item>
             <Grid.Item className="layout-column" span={12}>
               <Tree
-                defaultExpandAll
-                showIcon
-                className="tree-without-indent"
-                switcherIcon={<></>}
-                treeData={treeDataList}
-              />
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeDataList)}
+                selectionMode="none">
+                {treeDataList.map((node) => renderNode(node, false))}
+              </Tree>
             </Grid.Item>
           </Grid>
         )}

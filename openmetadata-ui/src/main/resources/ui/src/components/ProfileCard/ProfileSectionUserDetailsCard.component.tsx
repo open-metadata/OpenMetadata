@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
+  BadgeWithDot,
   Button,
   ButtonUtility,
   Popover,
@@ -19,15 +19,11 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import { Edit01, Key01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangePasswordRequest,
@@ -85,7 +81,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="edit-displayname"
-        iconLeading={<EditProfileIcon {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={Edit01}
         onClick={onEditDisplayName}>
         {t('label.edit-entity', {
           entity: t('label.display-name'),
@@ -97,7 +93,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="change-password-button"
-        iconLeading={<ChangePassword {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={Key01}
         onClick={onChangePassword}>
         {t('label.change-entity', {
           entity: t('label.password-lowercase'),
@@ -108,7 +104,7 @@ const ProfileManageOptions = ({
       <Button
         className="tw:w-full tw:justify-start"
         color="tertiary"
-        iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={Trash01}
         onClick={onRestore}>
         {t('label.restore')}
       </Button>
@@ -117,7 +113,7 @@ const ProfileManageOptions = ({
         <Button
           className="tw:w-full tw:justify-start"
           color="tertiary"
-          iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
+          iconLeading={Trash01}
           onClick={onDelete}>
           {t('label.delete-profile')}
         </Button>
@@ -199,12 +195,11 @@ const ProfileSectionUserDetailsCard = ({
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
-        <Typography
-          as="p"
-          className="tw:wrap-break-word m-b-0 profile-details-email"
+        <p
+          className="tw:m-0 tw:wrap-break-word tw:text-center tw:text-sm tw:leading-5 tw:text-brand-secondary"
           data-testid="user-email-value">
           {userData.email}
-        </Typography>
+        </p>
       ),
     [userData.email]
   );
@@ -250,19 +245,19 @@ const ProfileSectionUserDetailsCard = ({
   };
 
   return (
-    <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
+    <div className="tw:relative tw:mb-5 tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-5">
       {(isAdminUser || isLoggedInUser) && (
         <PopoverTrigger
           isOpen={isPopoverVisible}
           onOpenChange={setisPopoverVisible}>
           <ButtonUtility
-            aria-label={t('label.manage-entity', {
+            className="tw:absolute tw:top-2.5 tw:right-2.5"
+            data-testid="user-profile-manage-btn"
+            icon={MenuDots}
+            size="lg"
+            tooltip={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
-            className="user-details-menu-icon tw:p-0"
-            color="tertiary"
-            data-testid="user-profile-manage-btn"
-            icon={<MenuDots height={24} width={24} />}
           />
           <Popover
             className="profile-management-popover"
@@ -284,17 +279,19 @@ const ProfileSectionUserDetailsCard = ({
         </UserPopOverCard>
       </div>
       <div className="d-flex flex-col items-center">
-        <p className="profile-details-title" data-testid="user-display-name">
+        <p
+          className="tw:mt-5 tw:mb-0 tw:text-center tw:text-lg tw:font-semibold tw:leading-7 tw:break-words tw:text-primary"
+          data-testid="user-display-name">
           {getEntityName(userData)}
         </p>
         {userEmailRender}
         {onlineStatus && (
           <div className="m-t-sm">
-            <Badge
-              data-testid="user-online-status"
-              status={onlineStatus.status}
-              text={onlineStatus.text}
-            />
+            <span data-testid="user-online-status">
+              <BadgeWithDot color="success" size="sm">
+                {onlineStatus.text}
+              </BadgeWithDot>
+            </span>
           </div>
         )}
       </div>
@@ -331,35 +328,30 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <Icon
-            className="m-r-xss font-medium text-md ant-icon"
-            component={DeleteIcon}
-          />
+          <Trash01 className="tw:mr-1 tw:shrink-0" size={14} />
 
           {t('label.deleted')}
         </span>
       )}
 
       {showRestoreModal && (
-        <div role="presentation" onClick={(e) => e.stopPropagation()}>
-          <SimpleModal
-            data-testid="restore-user-modal"
-            isDismissable={false}
-            isOkLoading={isRestoring}
-            isOpen={showRestoreModal}
-            okText={t('label.restore')}
-            title={t('label.restore-entity', {
-              entity: EntityType.USER,
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isRestoring}
+          isOpen={showRestoreModal}
+          okText={t('label.restore')}
+          title={t('label.restore-entity', {
+            entity: EntityType.USER,
+          })}
+          onCancel={() => setShowRestoreModal(false)}
+          onOk={handleRestore}>
+          <Typography data-testid="restore-modal-body">
+            {t('message.are-you-want-to-restore', {
+              entity: getEntityName(userData),
             })}
-            onCancel={() => setShowRestoreModal(false)}
-            onOk={handleRestore}>
-            <Typography data-testid="restore-modal-body">
-              {t('message.are-you-want-to-restore', {
-                entity: getEntityName(userData),
-              })}
-            </Typography>
-          </SimpleModal>
-        </div>
+          </Typography>
+        </SimpleModal>
       )}
     </div>
   );

@@ -29,6 +29,7 @@ import {
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { TimeIntervalType } from '../../CustomPropertyTable.interface';
 import {
   CustomPropertyRenderer,
@@ -567,6 +568,7 @@ const TimeIntervalPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const stored = value as Partial<TimeIntervalType> | undefined;
@@ -605,6 +607,8 @@ const TimeIntervalPropertyEdit = ({
       setManual(undefined);
     }
   };
+
+  useReportDirty({ bounds, manual }, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

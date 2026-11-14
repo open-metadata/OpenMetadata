@@ -12,12 +12,14 @@
  */
 import {
   Box,
-  EmptyPlaceholder,
+  BreadcrumbItemType,
+  Breadcrumbs,
   Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -25,7 +27,6 @@ import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import KnowledgeCard from '../../components/KnowledgeCenter/KnowledgeCard/KnowledgeCard';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
@@ -113,7 +114,7 @@ const KnowledgeCenterFilterPage = () => {
     [permissions]
   );
 
-  const breadcrumbs = useMemo(() => {
+  const breadcrumbs = useMemo<BreadcrumbItemType[]>(() => {
     const entityRef = knowledgePages[0]?.relatedEntities?.find(
       (entity) => entity.id === entityId
     );
@@ -126,21 +127,19 @@ const KnowledgeCenterFilterPage = () => {
 
     return [
       {
-        name: t('label.context-center'),
-        url: ROUTES.CONTEXT_CENTER,
+        id: 'context-center',
+        label: t('label.context-center'),
+        href: ROUTES.CONTEXT_CENTER,
       },
       {
-        name,
-        url: getEntityLinkFromType(
+        id: 'entity',
+        label: name,
+        href: getEntityLinkFromType(
           entityRef?.fullyQualifiedName ?? '',
           entityType
         ),
       },
-      {
-        name: t('label.related-article-plural'),
-        url: '',
-        activeTitle: false,
-      },
+      { id: 'related-articles', label: t('label.related-article-plural') },
     ];
   }, [knowledgePages, entityId]);
 
@@ -179,7 +178,7 @@ const KnowledgeCenterFilterPage = () => {
           <Grid
             className="layout-row layout-grid"
             data-testid="knowledge-page-listing"
-            style={{ ...getLayoutGutter(0, 56) }}>
+            style={{ ...getLayoutGutter(0, 16) }}>
             {Array.from({ length: 4 }).map(() => (
               <Grid.Item
                 className="layout-column knowledge-card-col"
@@ -240,7 +239,7 @@ const KnowledgeCenterFilterPage = () => {
   if (!hasViewPermission) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-        <EmptyPlaceholder
+        <PermissionPlaceholder
           description={
             <Transi18next
               i18nKey="message.no-access-placeholder"
@@ -252,7 +251,7 @@ const KnowledgeCenterFilterPage = () => {
               }}
             />
           }
-          icon={<Lock01 className="tw:text-secondary" />}
+          icon={<Lock01 />}
           title={t('label.access-denied')}
         />
       </div>
@@ -266,15 +265,22 @@ const KnowledgeCenterFilterPage = () => {
           className="layout-row layout-grid"
           style={{ ...getLayoutGutter(0, 24) }}>
           {!isEmpty(breadcrumbs) && (
-            <Grid.Item className="layout-column d-flex items-center" span={16}>
-              <TitleBreadcrumb titleLinks={breadcrumbs} />
+            <Grid.Item className="layout-column d-flex items-center" span={24}>
+              <Breadcrumbs
+                autoCollapse
+                data-testid="breadcrumb"
+                divider="slash"
+                items={breadcrumbs}
+                size="sm"
+                type="text"
+              />
             </Grid.Item>
           )}
           <Grid.Item className="layout-column" span={24}>
             <Grid
               className="layout-row layout-grid"
               data-testid="knowledge-page-listing"
-              style={{ ...getLayoutGutter(0, 56) }}>
+              style={{ ...getLayoutGutter(0, 16) }}>
               {map(knowledgePages, (knowledgePage) => (
                 <Grid.Item
                   className="layout-column knowledge-card-col"

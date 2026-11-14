@@ -15,7 +15,7 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   `openmetadata-ui/src/main/resources/ui/specs/`: start at `specs/README.md` (it declares the two
   stacks — go-forward **UntitledUI + Tailwind (`tw:`)** vs legacy **Ant Design + Less**, deprecated),
   then read `specs/untitled/<component>.md` for the component you touch. `yarn tw-guard` blocks new
-  `antd` imports and new `.less` files.
+  `assets/svg/` raw-SVG files/imports and reports new `.less` files. `antd` is not installed.
 - Available components (all under
   `openmetadata-ui-core-components/src/main/resources/ui/src/components/`): Button, Input, Select,
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
@@ -45,10 +45,27 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
   required ARIA props, and unusable tab order. Using the library component is how you satisfy that
   without writing the ARIA yourself.
+- **Icon-only actions are `ButtonUtility`**, never a children-less `Button`, a raw `<button>`, or an
+  icon or `div` with `onClick`. Use `tertiary` by default, `secondary` when bordered, and `primary` for
+  send/confirm. Size follows the role. Exceptions (feed comment/reply, split-button chevron,
+  colour swatches, drag handles) and the reasons for each are in
+  ADR:2026-10-14-icon-only-actions-are-tertiary-button-utility-with-one-edit-icon.
 - **Modals: always `<Dialog dividers="scroll">`.** Dividers show only when the modal scrolls: no
   line under the title, and the footer line appears only while `Dialog.Content` overflows. Do not
   draw your own `border-t`/`border-b` or `<Divider>` around a dialog's header or footer. The
   default (`always`) exists only for legacy modals. Spec: `specs/untitled/modal.md` → Dividers.
+- **Empty states: use the variants in `src/components/common/EmptyPlaceholder/`**, never the core
+  `EmptyPlaceholder` directly — `NoDataPlaceholder`, `CreatePlaceholder`, `PermissionPlaceholder`,
+  `NoSearchResultsPlaceholder`, `NoFilteredResultsPlaceholder`, `SomethingWentWrongPlaceholder`
+  carry the default icon and i18n copy; `FeaturesPlaceholder` has no defaults, so pass `title`,
+  `description` and `features` (ADR:2026-10-21-empty-states-render-through-the-placeholder-wrappers).
+  The host must be `tw:relative` (the placeholder is absolutely positioned). Keep the default icon
+  (no `assets/svg` icons) and never wrap `title`/`description` in a `Tooltip`: its trigger is
+  `w-max`, so the copy stops wrapping.
+- **Clear a controlled prop with `null`, never `undefined`.** `selectedKey={x ?? undefined}` flips a React
+  Aria component to uncontrolled and can loop until "Maximum update depth exceeded". Enforced by
+  `openmetadata-ui-patterns/no-undefined-controlled-prop`
+  (ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined).
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).

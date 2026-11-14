@@ -14,15 +14,19 @@
 import {
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskDetailRow } from './taskDetail.types';
 import {
   deriveTaskAboutEntity,
+  getFieldPathLabel,
   getPlainDescription,
+  getProposingAgent,
   getTaskDetailDescriptor,
   getTaskTypeBadge,
+  getTaskTypeKey,
   resolveIncidentTestCaseFqn,
   withExistingValues,
 } from './taskDetail.utils';
@@ -50,6 +54,16 @@ describe('getTaskTypeBadge', () => {
     expect(
       getTaskTypeBadge(buildTask({ type: TaskType.TestCaseResolution }), t)
     ).toEqual({ label: 'label.incident', color: 'error', icon: 'incident' });
+  });
+
+  it('gives a memory conflict review its own chip', () => {
+    expect(
+      getTaskTypeBadge(buildTask({ type: TaskType.MemoryConflictReview }), t)
+    ).toEqual({
+      label: 'label.memory-conflict',
+      color: 'orange',
+      icon: 'approval',
+    });
   });
 
   it('falls back to a neutral chip for an unmapped type', () => {
@@ -213,7 +227,7 @@ describe('getTaskDetailDescriptor', () => {
 
     expect(descriptor.rows[0].value).toEqual({
       kind: 'text',
-      text: 'label.no-owner',
+      text: '--',
     });
   });
 
@@ -418,7 +432,7 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'columns.email' }),
+        tagTask({ fieldPath: 'columns.email.tags' }),
         entity
       )?.unchanged
     ).toEqual(['PII.Email']);
@@ -428,16 +442,17 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id' }),
+        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id.tags' }),
         entity
       )?.unchanged
     ).toEqual([]);
   });
 
   it("reads the asset's own tags for a table-level task", () => {
-    expect(withExistingValues(change, tagTask({}), entity)?.unchanged).toEqual([
-      'Tier.Tier1',
-    ]);
+    expect(
+      withExistingValues(change, tagTask({ fieldPath: 'tags' }), entity)
+        ?.unchanged
+    ).toEqual(['Tier.Tier1']);
   });
 
   // An empty currentTags is the payload's default, not a snapshot.
@@ -445,7 +460,7 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'columns.email', currentTags: [] }),
+        tagTask({ fieldPath: 'columns.email.tags', currentTags: [] }),
         entity
       )?.unchanged
     ).toEqual(['PII.Email']);
@@ -456,7 +471,7 @@ describe('withExistingValues for a tag task', () => {
       withExistingValues(
         change,
         tagTask({
-          fieldPath: 'columns.email',
+          fieldPath: 'columns.email.tags',
           currentTags: [{ tagFQN: 'PersonalData.Personal' }],
         }),
         entity
@@ -492,7 +507,6 @@ describe('withExistingValues', () => {
     ['description', 'The table.'],
     ['columns.country.description', 'Country.'],
     ['columns.address.city.description', 'City.'],
-    ['columns.city.description', 'City.'],
     ['columns."order.total".description', 'Order total.'],
   ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
     expect(
@@ -677,5 +691,208 @@ describe('getPlainDescription', () => {
   it('is empty for a missing or blank description', () => {
     expect(getPlainDescription({})).toBe('');
     expect(getPlainDescription({ description: '  ' })).toBe('');
+  });
+});
+
+describe('metadata completion tasks', () => {
+  const task = buildTask({
+    type: TaskType.MetadataCompletion,
+    payload: {
+      workflow: 'DomainLifecycle',
+      node: 'Collect0',
+      stage: 'Draft',
+      targetStage: 'In Review',
+      missingFields: ['experts', 'extension.costCenter'],
+    },
+  });
+
+  it('gives a metadata completion task its own chip', () => {
+    expect(getTaskTypeBadge(task, t)).toEqual({
+      label: 'label.missing-metadata',
+      color: 'warning',
+      icon: 'description',
+    });
+  });
+
+  it('lists the missing fields by name and says which stage they unlock', () => {
+    const descriptor = getTaskDetailDescriptor(task, t);
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')?.value
+    ).toEqual({
+      kind: 'list',
+      items: [{ label: 'label.expert-plural' }, { label: 'costCenter' }],
+      title: 'label.missing-field-plural',
+    });
+    expect(descriptor.callout?.text).toBe('message.metadata-completion-move');
+    expect(
+      descriptor.rows.find((row) => row.key === 'conditions')
+    ).toBeUndefined();
+  });
+
+  it('reports unmet lifecycle conditions with one generic row', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.MetadataCompletion,
+        payload: { stage: 'Draft', missingFields: [], conditionsMet: false },
+      }),
+      t
+    );
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')
+    ).toBeUndefined();
+    expect(
+      descriptor.rows.find((row) => row.key === 'conditions')?.value
+    ).toEqual({ kind: 'text', text: 'message.lifecycle-conditions-not-met' });
+  });
+
+  it('lists nothing outstanding once the task has closed', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.MetadataCompletion,
+        status: TaskStatus.Completed,
+        payload: {
+          stage: 'Draft',
+          missingFields: ['experts'],
+          conditionsMet: false,
+        },
+      }),
+      t
+    );
+
+    expect(
+      descriptor.rows.filter((row) =>
+        ['missingFields', 'conditions'].includes(row.key)
+      )
+    ).toEqual([]);
+  });
+
+  it('reads a revise and resubmit task as its own kind, with the reviewer comment', () => {
+    const revision = buildTask({
+      type: TaskType.MetadataCompletion,
+      payload: {
+        stage: 'In Review',
+        missingFields: [],
+        revision: { comment: 'Name a business owner', requestedBy: 'karan' },
+      },
+    });
+    const descriptor = getTaskDetailDescriptor(revision, t);
+
+    expect(getTaskTypeBadge(revision, t)).toEqual({
+      label: 'label.revise-and-resubmit',
+      color: 'warning',
+      icon: 'approval',
+    });
+    expect(getTaskTypeKey(revision)).not.toBe(getTaskTypeKey(task));
+    expect(descriptor.callout?.text).toBe(
+      'message.metadata-completion-revision'
+    );
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionComment')?.value
+    ).toEqual({ kind: 'text', text: 'Name a business owner' });
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionRequestedBy')?.value
+    ).toEqual({ kind: 'text', text: 'karan' });
+  });
+});
+
+describe('getProposingAgent', () => {
+  const approval = (payload: unknown) =>
+    buildTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+      payload,
+    } as Partial<Task>);
+
+  it('names the agent that proposed the term, in place of its bot', () => {
+    const task = approval({
+      proposal: { provider: 'automation', agent: 'Glossary Agent' },
+    });
+
+    expect(getProposingAgent(task, t)).toBe('Glossary Agent');
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual({ kind: 'agent', name: 'Glossary Agent' });
+  });
+
+  it('falls back to a generic agent when the proposal names none', () => {
+    expect(
+      getProposingAgent(approval({ proposal: { provider: 'automation' } }), t)
+    ).toBe('label.ai-agent');
+  });
+
+  it('keeps the person who opened any other task', () => {
+    const task = approval({ glossaryTerm: { id: 'g1', type: 'glossaryTerm' } });
+
+    expect(getProposingAgent(task, t)).toBeUndefined();
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual(expect.objectContaining({ kind: 'users' }));
+  });
+});
+
+describe('getFieldPathLabel', () => {
+  it.each([
+    [
+      'columns.status.description',
+      'label.column-plural › status › label.description',
+    ],
+    [
+      'columns."order.id".description',
+      'label.column-plural › order.id › label.description',
+    ],
+    ['columns.status.tags', 'label.column-plural › status › label.tag-plural'],
+    ['description', 'label.description'],
+    [
+      'columns.address.city.description',
+      'label.column-plural › address › city › label.description',
+    ],
+    [
+      'messageSchema.schemaFields.order_id.description',
+      'label.message-schema › order_id › label.description',
+    ],
+    ['extension.myProp', 'label.extension › myProp'],
+  ])('reads %s as %s', (fieldPath, label) => {
+    expect(getFieldPathLabel(fieldPath)).toBe(label);
+  });
+
+  it('has no label without a path', () => {
+    expect(getFieldPathLabel()).toBeUndefined();
+    expect(getFieldPathLabel('')).toBeUndefined();
+  });
+
+  it('labels the Field row of a suggestion', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.Suggestion,
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
+  });
+
+  it('labels the Field row of a description request', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
   });
 });

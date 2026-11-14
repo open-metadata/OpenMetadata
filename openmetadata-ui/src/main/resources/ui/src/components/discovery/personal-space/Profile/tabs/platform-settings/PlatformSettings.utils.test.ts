@@ -12,6 +12,7 @@
  */
 
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 import {
@@ -146,6 +147,34 @@ describe('PlatformSettings.utils', () => {
         title: 'label.email',
         breadcrumbs: [{ id: 'email', label: 'label.email' }],
       });
+    });
+
+    it('titles a profiler item route from the downstream form, falling back to "Edit"', () => {
+      const profiler = page('profiler-configuration');
+      const titleSpy = jest.spyOn(
+        profilerConfigurationClassBase,
+        'getSettingsItemFormTitle'
+      );
+      const header = () =>
+        getPageHeader(
+          profiler,
+          {
+            type: 'page',
+            page: 'profiler-configuration',
+            isEditing: true,
+            itemId: 'new',
+          },
+          t
+        ).title;
+
+      expect(header()).toBe('label.edit-entity');
+
+      titleSpy.mockReturnValueOnce('Add Item');
+
+      expect(header()).toBe('Add Item');
+      expect(titleSpy).toHaveBeenLastCalledWith(t, 'new');
+
+      titleSpy.mockRestore();
     });
 
     it('adds an edit crumb, using the page override when it has one', () => {

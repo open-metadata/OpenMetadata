@@ -266,9 +266,17 @@ export const Tooltip = ({
         {...tooltipProps}
         className={({ isEntering, isExiting }) =>
           cx(
-            isEntering && 'tw:ease-out tw:animate-in',
+            // While it is first positioned, an overlay that flips (top → bottom)
+            // can sit under the cursor for a frame; taking the pointer then ends
+            // the hover and closes the tooltip. Ignore the pointer only until it
+            // has entered, so a settled tooltip stays hoverable and clickable.
+            isEntering && 'tw:ease-out tw:animate-in tw:pointer-events-none',
             isExiting && 'tw:ease-in tw:animate-out',
-            'tw:break-words' // Ensure long words in the tooltip wrap instead of overflowing.
+            // Wrap at spaces; break inside a word only when it alone overflows (long FQNs).
+            // `w-max` keeps the measured width independent of the overlay's left
+            // offset: shrink-to-fit near the viewport edge let react-aria measure a
+            // narrower box than the one it paints, so the tooltip ran off-screen.
+            'tw:w-max tw:wrap-anywhere'
           )
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}
@@ -296,7 +304,7 @@ export const Tooltip = ({
                 isExiting &&
                   'tw:ease-in tw:animate-out tw:fade-out tw:zoom-out-95 tw:in-placement-left:slide-out-to-right-0.5 tw:in-placement-right:slide-out-to-left-0.5 tw:in-placement-top:slide-out-to-bottom-0.5 tw:in-placement-bottom:slide-out-to-top-0.5'
               )}>
-              <span className="tw:break-all tw:text-xs tw:font-semibold tw:text-white">
+              <span className="tw:text-xs tw:font-semibold tw:text-white">
                 {title}
               </span>
 

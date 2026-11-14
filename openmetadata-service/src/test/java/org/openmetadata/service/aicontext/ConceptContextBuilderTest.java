@@ -27,6 +27,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricFilter;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -42,14 +43,15 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.ConceptBinding;
 import org.openmetadata.schema.type.aicontext.ConceptContext;
+import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.service.Entity;
 
@@ -228,27 +230,18 @@ class ConceptContextBuilderTest {
   }
 
   @Test
-  void preservesOntologyAttributesAndVisibleTypedRelations() {
+  void preservesGlossaryDefinitionsAndVisibleTypedRelations() {
     Catalog catalog = new Catalog();
     catalog.hidden = Set.of("Business.Secret");
     GlossaryTerm term =
         term()
             .withSynonyms(List.of("Revenue"))
-            .withAttributes(
-                List.of(
-                    new OntologyAttribute()
-                        .withName("status")
-                        .withDataType(OntologyAttributeDataType.ENUM)
-                        .withUnit("cents")
-                        .withEnumValues(Set.of("Legal", "Banned"))))
             .withRelatedTerms(List.of(relation("Business.Visible"), relation("Business.Secret")));
 
     ConceptContext context = build(catalog, term);
 
     assertEquals("Amount in cents", context.getDefinition());
     assertEquals(List.of("Revenue"), context.getSynonyms());
-    assertEquals("cents", context.getAttributes().getFirst().getUnit());
-    assertEquals(Set.of("Legal", "Banned"), context.getAttributes().getFirst().getEnumValues());
     assertEquals(1, context.getRelatedTerms().size());
   }
 
@@ -274,6 +267,43 @@ class ConceptContextBuilderTest {
             .filter(binding -> binding.getColumn() != null)
             .map(binding -> binding.getColumn())
             .toList());
+  }
+
+  @Test
+  void metricCarriesWhatDefinesItsNumber() {
+    // A filter changes the number, the grain how it is grouped, the unit how it is read: the
+    // expression alone computes none of them.
+    Metric metric =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("SUM(fee_revenue)"))
+            .withFilters(
+                List.of(
+                    new MetricFilter().withWhere("fee_category = 'ATM Fee'"),
+                    new MetricFilter().withWhere(" ")))
+            .withGranularity(MetricGranularity.MONTH)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.DOLLARS);
+
+    ConceptContext context = build(new Catalog(), metric);
+
+    assertEquals(List.of("fee_category = 'ATM Fee'"), context.getFilters());
+    assertEquals("MONTH", context.getGranularity());
+    assertEquals("DOLLARS", context.getUnit());
+  }
+
+  @Test
+  void metricNamesItsCustomUnitAndOmitsWhatItDoesNotDeclare() {
+    Metric custom =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("AVG(spread)"))
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("basis points");
+    Metric bare = new Metric().withMetricExpression(new MetricExpression().withCode("COUNT(*)"));
+
+    assertEquals("basis points", build(new Catalog(), custom).getUnit());
+    ConceptContext context = build(new Catalog(), bare);
+    assertNull(context.getUnit());
+    assertNull(context.getGranularity());
+    assertTrue(context.getFilters() == null || context.getFilters().isEmpty());
   }
 
   @Test
@@ -521,14 +551,31 @@ class ConceptContextBuilderTest {
             .withQuery("SELECT amount FROM orders")
             .withQueryDate(123L));
 
-    ConceptContext context = build(catalog, term().withSourceMemoryIds(Set.of(memoryId)));
+    ConceptContext context =
+        new ConceptContextBuilder(catalog)
+            .build(
+                term(),
+                List.of(),
+                List.of(
+                    new KnowledgeItem()
+                        .withId(memoryId)
+                        .withType(KnowledgeItem.Type.CONTEXT_MEMORY)));
 
     assertEquals(queryId, context.getEvidence().getFirst().getId());
     assertEquals(123L, context.getEvidence().getFirst().getLastRunAt());
     assertNull(context.getEvidence().getFirst().getLastRunStatus());
     catalog.hidden = Set.of("saved.query");
     assertTrue(
-        build(catalog, term().withSourceMemoryIds(Set.of(memoryId))).getEvidence().isEmpty());
+        new ConceptContextBuilder(catalog)
+            .build(
+                term(),
+                List.of(),
+                List.of(
+                    new KnowledgeItem()
+                        .withId(memoryId)
+                        .withType(KnowledgeItem.Type.CONTEXT_MEMORY)))
+            .getEvidence()
+            .isEmpty());
   }
 
   private static ConceptContext build(Catalog catalog, EntityInterface entity) {

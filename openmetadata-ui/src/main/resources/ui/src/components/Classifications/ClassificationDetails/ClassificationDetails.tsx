@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
-  EmptyPlaceholder,
+  ButtonUtility,
+  FeaturedIcon,
   Owner,
   PageHeader,
   Tooltip,
@@ -21,6 +23,7 @@ import {
 import {
   Classification as ClassificationIcon,
   Download01,
+  Edit01,
   Lock01,
   Plus,
   RefreshCcw01,
@@ -84,6 +87,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -93,33 +97,14 @@ import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interf
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 import { useTagUsageCounts } from './useTagUsageCounts';
-
-// Stretch the antd table so its body fills the panel height even with only a
-// few rows — otherwise the body shrinks to its content (scroll.y sets
-// max-height, not height) and the horizontal scrollbar floats mid-panel with
-// empty space below it.
-const TAG_TABLE_FILL_CLASSNAME = [
-  'tw:h-full',
-  'tw:[&_.ant-spin-nested-loading]:h-full',
-  'tw:[&_.ant-spin-container]:h-full',
-  'tw:[&_.ant-table]:h-full tw:[&_.ant-table]:flex tw:[&_.ant-table]:flex-col',
-  'tw:[&_.ant-table-container]:flex-1 tw:[&_.ant-table-container]:min-h-0',
-  'tw:[&_.ant-table-container]:flex tw:[&_.ant-table-container]:flex-col',
-  'tw:[&_.ant-table-header]:shrink-0',
-  'tw:[&_.ant-table-body]:flex-1 tw:[&_.ant-table-body]:!max-h-none',
-].join(' ');
 
 function computeEditDescriptionPermission(
   isVersionView: boolean,
@@ -179,7 +164,7 @@ function computeClassificationPermissionFlags(
     deletePermission:
       classificationPermissions.Delete && !isSystemClassification,
     editOwnerPermission: computeEditOwnerPermission(isEditable, flags),
-    editDomainPermission: isEditable && flags.canEditAll,
+    editDomainPermission: isEditable && flags.canEditDomains,
   };
 }
 
@@ -611,6 +596,8 @@ const ClassificationDetails = forwardRef(
       classification: Classification,
       breadcrumb?: ReactNode
     ) {
+      const headerName = name ?? classification.name;
+
       return (
         <PageHeader
           actions={
@@ -665,31 +652,41 @@ const ClassificationDetails = forwardRef(
           breadcrumb={breadcrumb}
           data-testid="header"
           title={
-            <EntityHeaderTitle
-              badge={
-                <div className="d-flex gap-1">
+            <EntityPageTitle
+              badges={
+                <>
+                  {isClassificationDisabled && (
+                    <Badge
+                      color="gray"
+                      data-testid="disabled"
+                      size="sm"
+                      type="pill-color">
+                      {t('label.disabled')}
+                    </Badge>
+                  )}
                   {headerBadge}
                   {classification.mutuallyExclusive && (
-                    <div data-testid="mutually-exclusive-container">
+                    <Box data-testid="mutually-exclusive-container">
                       <AppBadge
                         bgColor={theme.primaryColor}
                         className="whitespace-nowrap"
                         label={t('label.mutually-exclusive')}
                       />
-                    </div>
+                    </Box>
                   )}
-                </div>
+                </>
               }
-              className="flex-wrap"
               displayName={displayName}
-              displayNameClassName="text-xl"
               icon={
-                <ClassificationIcon className="tw:text-quaternary" size={36} />
+                <FeaturedIcon
+                  color="gray"
+                  icon={ClassificationIcon}
+                  size="md"
+                  theme="surface"
+                />
               }
-              isDisabled={isClassificationDisabled}
-              name={name ?? classification.name}
-              nameClassName="text-xl"
-              serviceName="classification"
+              name={headerName}
+              testId={`classification-${headerName}`}
             />
           }
           variant={isAiMode ? 'gradient' : 'flat'}
@@ -733,7 +730,7 @@ const ClassificationDetails = forwardRef(
     function renderTagsPanel() {
       return isEmpty(tags) && !isLoading ? (
         <Box className="tw:relative tw:min-h-[360px]">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -755,9 +752,9 @@ const ClassificationDetails = forwardRef(
         </Box>
       ) : (
         <Table
-          className={TAG_TABLE_FILL_CLASSNAME}
+          sticky
           columns={tableColumn}
-          containerClassName="tw:rounded-xl tw:border-subtle"
+          containerClassName="tw:flex tw:flex-col tw:rounded-xl tw:border-subtle"
           customPaginationProps={{
             currentPage,
             isLoading,
@@ -772,10 +769,8 @@ const ClassificationDetails = forwardRef(
           loading={isLoading}
           pagination={false}
           rowKey="id"
-          scroll={{
-            x: 'max-content',
-            y: 'calc(100vh - 380px - var(--ant-navbar-height))',
-          }}
+          scroll={{ x: 'max-content' }}
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
           size="small"
         />
       );
@@ -839,16 +834,18 @@ const ClassificationDetails = forwardRef(
                         });
                       }}>
                       {isEmpty(currentClassification.owners) ? (
-                        <WidgetPlusButton
+                        <ButtonUtility
                           data-testid="add-owner"
-                          title={t('label.add-entity', {
+                          icon={Plus}
+                          tooltip={t('label.add-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />
                       ) : (
-                        <WidgetEditButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />

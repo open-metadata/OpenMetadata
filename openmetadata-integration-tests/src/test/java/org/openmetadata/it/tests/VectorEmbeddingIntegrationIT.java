@@ -16,7 +16,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +40,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
 import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
@@ -252,16 +255,12 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateEntityEmbedding(entity2, TEST_INDEX);
     Thread.sleep(1000);
 
-    Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
+    Map<String, Supplier<String>> currentById =
         Map.of(
             entity1Id.toString(),
-            new OpenSearchVectorService.EntityFingerprintInput(
-                entity1.getUpdatedAt(),
-                () -> VectorDocBuilder.computeFingerprintForEntity(entity1)),
+            () -> VectorDocBuilder.computeFingerprintForEntity(entity1),
             entity2Id.toString(),
-            new OpenSearchVectorService.EntityFingerprintInput(
-                entity2.getUpdatedAt(),
-                () -> VectorDocBuilder.computeFingerprintForEntity(entity2)));
+            () -> VectorDocBuilder.computeFingerprintForEntity(entity2));
 
     Map<String, JsonNode> cachedEmbeddings =
         vectorService.getExistingEmbeddingsBatch(TEST_INDEX, currentById);
@@ -291,6 +290,31 @@ class VectorEmbeddingIntegrationIT {
         getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
     assertNotNull(updatedPipeline, "Pipeline should still exist after update");
     assertWeightsInPipeline(updatedPipeline, 0.3, 0.7);
+  }
+
+  @Test
+  void testCheckHybridSearchPipelineNeedsNoStoredPipeline() throws Exception {
+    deleteSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
+
+    assertTrue(
+        vectorService.checkHybridSearchPipeline(0.6, 0.4).isEmpty(),
+        "Hybrid search runs with the inline pipeline, so the check must pass without a stored one");
+
+    Optional<String> rejected = vectorService.checkHybridSearchPipeline(0.7, 0.7);
+    assertTrue(rejected.isPresent(), "OpenSearch rejects RRF weights that do not sum to 1.0");
+    assertTrue(rejected.get().contains("sum of weights"), rejected.get());
+  }
+
+  private void deleteSearchPipeline(String pipelineName) throws Exception {
+    // A 404 only means the pipeline was never created.
+    openSearchClient
+        .generic()
+        .execute(
+            Requests.builder()
+                .method("DELETE")
+                .endpoint("/_search/pipeline/" + pipelineName)
+                .build())
+        .close();
   }
 
   @SuppressWarnings("unchecked")

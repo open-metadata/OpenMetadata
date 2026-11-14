@@ -90,7 +90,7 @@ public class PipelineServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
@@ -460,7 +460,7 @@ public class PipelineServiceResource
       @Valid CreatePipelineService update) {
     PipelineService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }

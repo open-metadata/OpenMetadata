@@ -14,28 +14,32 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
   Owner,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  TestSuite as TestSuiteIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { useListSearchInput } from '../../components/common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../components/common/EntityDescription/Description';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -47,7 +51,6 @@ import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSui
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
@@ -118,27 +121,19 @@ const TestSuiteHeaderTitle = ({
           {name}
         </Typography>
       </Box>
-      <Tooltip
-        placement="top"
-        title={
+      <ButtonUtility
+        data-testid="entity-header-copy-button"
+        icon={Copy01}
+        size="lg"
+        tooltip={
           hasCopied
             ? t('message.link-copy-to-clipboard')
             : t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopyEntityUrl}
-        />
-      </Tooltip>
+        }
+        onClick={onCopyEntityUrl}
+      />
       <LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />
     </Box>
   );
@@ -183,18 +178,27 @@ const AddTestCaseDialogTrigger = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: testCasePluralLabel,
             })}
             onClose={() => setIsTestCaseModalOpen(false)}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTest}
-                getPopupContainer={getAddTestCasePopupContainer}
-                onCancel={() => setIsTestCaseModalOpen(false)}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTest}
+              getPopupContainer={getAddTestCasePopupContainer}
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -227,6 +231,7 @@ const TestSuiteDetailsPage = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
@@ -365,7 +370,11 @@ const TestSuiteDetailsPage = () => {
         ),
         children: (
           <div className="tw:w-full tw:p-4">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            <TestSuitePipelineTab
+              deleted={testSuite?.deleted}
+              testSuite={testSuite}
+              onPipelinesChange={handlePipelinesChange}
+            />
           </div>
         ),
       },
@@ -401,18 +410,23 @@ const TestSuiteDetailsPage = () => {
 
   if (!flags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testSuite)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -445,16 +459,12 @@ const TestSuiteDetailsPage = () => {
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestSuiteIcon className="tw:size-5" />
-              </Box>
+              <FeaturedIcon
+                color="gray"
+                icon={TestSuiteIcon}
+                size="md"
+                theme="surface"
+              />
               <TestSuiteHeaderTitle
                 displayName={testSuite?.displayName}
                 hasCopied={hasCopied}
@@ -495,7 +505,7 @@ const TestSuiteDetailsPage = () => {
               entityFqn={testSuite?.fullyQualifiedName ?? ''}
               entityId={testSuite?.id ?? ''}
               entityType={EntityType.TEST_SUITE}
-              hasPermission={flags.canEditAll}
+              hasPermission={flags.canEditDomains}
               labelClassName="tw:text-secondary!"
               multiple={canAddMultipleDomains}
               textClassName="render-domain-lebel-style tw:text-secondary!"

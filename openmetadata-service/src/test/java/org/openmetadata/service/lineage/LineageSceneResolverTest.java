@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -622,6 +623,74 @@ class LineageSceneResolverTest {
   }
 
   @Test
+  void rollupWeightCountsTheAssetEdgesItsStoredEdgesStandFor() {
+    EsLineageData storedEdge =
+        edge("orders-sales", ORDERS, Entity.TABLE, SALES_DASHBOARD, Entity.DASHBOARD)
+            .withAssetEdges(3)
+            .withSqlQuery("insert into sales select * from orders");
+    SearchLineageResult lineage =
+        result(
+            List.of(table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")), dashboard(SALES_DASHBOARD)),
+            List.of(storedEdge));
+
+    LineageSceneEdge rollup =
+        RESOLVER
+            .resolveScene(
+                ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.LAYER, lineage, 200)
+            .getEdges()
+            .get(0);
+
+    assertEquals(3, rollup.getWeight());
+    assertNull(rollup.getSqlQuery());
+    assertNull(rollup.getSource());
+  }
+
+  @Test
+  void domainRootDropsDomainlessAssetsAndGivesDomainsNoServiceType() {
+    Map<String, Object> salesOrders = table(ORDERS, SNOWFLAKE_SERVICE, List.of("id"));
+    salesOrders.put("domains", List.of(ref(Entity.DOMAIN, "sales", "sales")));
+    SearchLineageResult lineage =
+        result(
+            List.of(salesOrders, table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("id"))),
+            List.of(edge("orders-customers", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE)));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(null, null, LineageLens.DOMAIN, LineageBand.LAYER, lineage, 200);
+
+    assertEquals(
+        List.of("sales"),
+        scene.getNodes().stream().map(LineageSceneNode::getFullyQualifiedName).toList());
+    assertNull(scene.getNodes().get(0).getServiceType());
+  }
+
+  @Test
+  void pipelineFocusedSceneContainsThePipelineItDrives() {
+    String pipelineFqn = "airflow.load_customers";
+    EntityReference pipeline =
+        new EntityReference()
+            .withId(uuid(pipelineFqn))
+            .withType(Entity.PIPELINE)
+            .withName("load_customers")
+            .withFullyQualifiedName(pipelineFqn);
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("id")),
+                asset(Entity.PIPELINE, pipelineFqn, "airflow", "Airflow")),
+            List.of(
+                edge("orders-customers", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE)
+                    .withPipeline(pipeline)));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            pipelineFqn, Entity.PIPELINE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    assertTrue(nodeIdsByFqn(scene).containsKey(pipelineFqn));
+    assertTrue(nodeIdsByFqn(scene).containsKey(ORDERS));
+  }
+
+  @Test
   void duplicateEdgeAcrossDirectionMapsHasConcreteWeightOne() {
     EsLineageData concreteEdge = edge("same-edge", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE);
     SearchLineageResult lineage =
@@ -639,6 +708,41 @@ class LineageSceneResolverTest {
     assertEquals(1, scene.getEdges().size());
     assertEquals(1, scene.getEdges().get(0).getWeight());
     assertFalse(Boolean.TRUE.equals(scene.getEdges().get(0).getIsRollup()));
+  }
+
+  @Test
+  void assetSceneMarksFieldBearingAssetsExpandableWithoutFieldPayloads() {
+    String procedure = "snowflake.shop.public.load_orders";
+    String events = "kafka.events";
+    // The Asset band fetches no column payloads, so these carry no fields.
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of()),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of()),
+                topic(events, "kafka"),
+                asset(Entity.STORED_PROCEDURE, procedure, SNOWFLAKE_SERVICE, "snowflake")),
+            List.of(
+                edge("orders-customers", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE),
+                edge("orders-events", ORDERS, Entity.TABLE, events, Entity.TOPIC),
+                edge(
+                    "orders-procedure", ORDERS, Entity.TABLE, procedure, Entity.STORED_PROCEDURE)));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    assertTrue(isExpandable(scene, CUSTOMERS));
+    assertTrue(isExpandable(scene, events));
+    assertFalse(isExpandable(scene, procedure));
+  }
+
+  private static boolean isExpandable(LineageScene scene, String fqn) {
+    return scene.getNodes().stream()
+        .filter(node -> fqn.equals(node.getFullyQualifiedName()))
+        .findFirst()
+        .map(node -> Boolean.TRUE.equals(node.getIsExpandable()))
+        .orElseThrow(() -> new AssertionError("No scene node for " + fqn));
   }
 
   @Test
@@ -1143,6 +1247,30 @@ class LineageSceneResolverTest {
         LineageSceneMapper.trimSourceEntity(endpoint, LineageBand.FIELD);
     assertTrue(fieldPayload.containsKey("requestSchema"));
     assertTrue(fieldPayload.containsKey("responseSchema"));
+  }
+
+  @Test
+  void fieldSceneListsPipelineTasksAsFields() {
+    String pipelineFqn = "airflow.load_orders";
+    Map<String, Object> pipeline = asset(Entity.PIPELINE, pipelineFqn, "airflow", "Airflow");
+    pipeline.put("tasks", List.of(column(pipelineFqn, "extract"), column(pipelineFqn, "load")));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            pipelineFqn,
+            Entity.PIPELINE,
+            LineageLens.SERVICE,
+            LineageBand.FIELD,
+            result(List.of(pipeline), List.of()),
+            200);
+
+    assertEquals(
+        Set.of("extract", "load"),
+        nodeByFqn(scene, pipelineFqn).getFields().stream()
+            .map(LineageSceneField::getName)
+            .collect(Collectors.toSet()));
+    assertTrue(
+        LineageSceneMapper.trimSourceEntity(pipeline, LineageBand.FIELD).containsKey("tasks"));
   }
 
   @Test

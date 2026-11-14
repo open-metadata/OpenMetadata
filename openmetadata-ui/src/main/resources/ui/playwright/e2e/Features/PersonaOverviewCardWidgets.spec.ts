@@ -25,6 +25,7 @@ import {
   scrollIntoViewAndSettle,
   toastNotification,
 } from '../../utils/common';
+import { waitForStableBox } from '../../utils/dragDrop';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -94,8 +95,10 @@ const savePageLayout = async (page: Page) => {
   );
 };
 
+// A drop the panel rejects slides its widget back for ~200ms; a box read
+// mid-slide aims the drag at where the widget was, not where it settles.
 const getBox = async (locator: Locator) => {
-  await expect(locator).toBeVisible();
+  await waitForStableBox(locator);
   const box = await locator.boundingBox();
   if (!box) {
     throw new Error('Expected the element to have a bounding box');

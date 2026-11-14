@@ -13,27 +13,49 @@
 
 import {
   AppAutopilot,
+  AppAutopilotColored,
   AppCacheWarmup,
+  AppCacheWarmupColored,
   AppCollateAiChat,
+  AppCollateAiChatColored,
   AppDataContractValidation,
+  AppDataContractValidationColored,
   AppDataInsights,
+  AppDataInsightsColored,
   AppDataInsightsReport,
+  AppDataInsightsReportColored,
   AppDataRetention,
+  AppDataRetentionColored,
   AppMcpServer,
-  AppMemberWeeklyEmails,
+  AppMcpServerColored,
+  AppMemberWeeklyEmailsColored,
+  AppMemoryReconciliationColored,
   AppMetadataExplorer,
+  AppMetadataExplorerColored,
   AppMicrosoftTeams,
+  AppMicrosoftTeamsColored,
   AppOnboarding,
+  AppOnboardingColored,
   AppQueryRunner,
+  AppQueryRunnerColored,
   AppRdfGraphIndexing,
+  AppRdfGraphIndexingColored,
   AppRdfInferenceMaterialization,
+  AppRdfInferenceMaterializationColored,
   AppReverseMetadata,
+  AppReverseMetadataColored,
   AppSearchIndexing,
+  AppSearchIndexingColored,
   AppSlack,
+  AppSlackColored,
   AppSupport,
+  AppSupportColored,
   AppTelemetry,
+  AppTelemetryColored,
   AppWeeklyInsightsDigest,
+  AppWeeklyInsightsDigestColored,
   LayoutGrid01,
+  WeeklyEmails,
 } from '@openmetadata/ui-core-components/icons';
 import type { RJSFSchema } from '@rjsf/utils';
 import type { AxiosError } from 'axios';
@@ -87,7 +109,7 @@ const APP_ICONS: Record<string, AppIcon> = {
   DataInsightsReportApplication: AppDataInsightsReport,
   DataRetentionApplication: AppDataRetention,
   McpApplication: AppMcpServer,
-  MemberWeeklyEmailApplication: AppMemberWeeklyEmails,
+  MemberWeeklyEmailApplication: WeeklyEmails,
   MetadataExporterApplication: AppMetadataExplorer,
   OnboardingApplication: AppOnboarding,
   QueryRunner: AppQueryRunner,
@@ -101,9 +123,36 @@ const APP_ICONS: Record<string, AppIcon> = {
   WeeklyInsightDigestApplication: AppWeeklyInsightsDigest,
 };
 
+// Full-colour tiles for the app landing and marketplace cards. Apps without one
+// keep their monochrome glyph on a neutral tile.
+const APP_COLORED_ICONS: Record<string, AppIcon> = {
+  AIChatApplication: AppCollateAiChatColored,
+  AutoPilotApplication: AppAutopilotColored,
+  CacheWarmupApplication: AppCacheWarmupColored,
+  CollateSupport: AppSupportColored,
+  DataContractValidationApplication: AppDataContractValidationColored,
+  DataInsightsApplication: AppDataInsightsColored,
+  DataInsightsReportApplication: AppDataInsightsReportColored,
+  DataRetentionApplication: AppDataRetentionColored,
+  McpApplication: AppMcpServerColored,
+  MemoryReconciliationApplication: AppMemoryReconciliationColored,
+  MemberWeeklyEmailApplication: AppMemberWeeklyEmailsColored,
+  MetadataExporterApplication: AppMetadataExplorerColored,
+  OnboardingApplication: AppOnboardingColored,
+  QueryRunner: AppQueryRunnerColored,
+  RdfIndexApp: AppRdfGraphIndexingColored,
+  RdfInferenceApp: AppRdfInferenceMaterializationColored,
+  ReverseMetadata: AppReverseMetadataColored,
+  SearchIndexingApplication: AppSearchIndexingColored,
+  SlackApplication: AppSlackColored,
+  TeamsApplication: AppMicrosoftTeamsColored,
+  TelemetryApplication: AppTelemetryColored,
+  WeeklyInsightDigestApplication: AppWeeklyInsightsDigestColored,
+};
+
 // The sentinel the backend expands to every registered index. It is not an index itself, so the
 // endpoint does not return it, but it has to be in the enum for the `["all"]` default to validate.
-// TreeSelectWidget filters it out of the child nodes and renders it as the synthetic "All" parent.
+// CoreEnumMultiSelectField filters it out of the options and renders it as the synthetic "All" option.
 const ALL_ENTITY_TYPES = 'all';
 
 /**
@@ -152,12 +201,10 @@ class ApplicationsClassBase {
       throw new Error(`Application schema not found: ${fqn}`);
     }
     const module = await loader();
-    const schema =
-      (module as { default?: unknown }).default ??
-      (module as Record<string, unknown>);
+    const schema = module.default;
 
     return fqn === SEARCH_INDEXING_APPLICATION
-      ? withSearchEntityTypes(schema as RJSFSchema)
+      ? withSearchEntityTypes(schema)
       : schema;
   }
   public getJSONUISchema() {
@@ -251,6 +298,10 @@ class ApplicationsClassBase {
    */
   public getAppIcon(appName?: string): AppIcon {
     return (appName && APP_ICONS[appName]) || LayoutGrid01;
+  }
+
+  public getAppColoredIcon(appName?: string): AppIcon | undefined {
+    return appName ? APP_COLORED_ICONS[appName] : undefined;
   }
 
   public getModalAppConfigurationComponent(): ComponentType<AppConfigFormProps> {

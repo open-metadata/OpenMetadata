@@ -32,10 +32,6 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('./AddWidgetTabContent', () =>
   jest.fn().mockImplementation(({ getAddWidgetHandler }) => {
     const handleAddWidget = getAddWidgetHandler(mockWidgetsData.data[0], 3);
@@ -176,6 +172,10 @@ describe('AddWidgetModal component', () => {
       render(<AddWidgetModal {...mockProps} />);
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

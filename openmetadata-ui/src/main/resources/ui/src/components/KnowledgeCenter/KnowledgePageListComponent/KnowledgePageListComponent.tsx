@@ -14,17 +14,20 @@ import {
   Box,
   Button as CoreButton,
   Dropdown,
-  EmptyPlaceholder,
   Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import {
-  File06 as Articles,
-  Lock01 as Lock,
+  File06,
+  Lock01,
+  NoSearch,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -42,7 +45,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import {
   CREATE_PAGE_HASH,
   PAGE_SIZE_MEDIUM,
@@ -156,7 +158,7 @@ const KnowledgePageAccessDenied = () => {
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         description={
           <Transi18next
             i18nKey="message.no-access-placeholder"
@@ -168,7 +170,7 @@ const KnowledgePageAccessDenied = () => {
             }}
           />
         }
-        icon={<Lock className="tw:text-secondary" />}
+        icon={<Lock01 />}
         title={t('label.access-denied')}
       />
     </div>
@@ -180,11 +182,10 @@ const KnowledgePageNoSearchResults = () => {
 
   return (
     <div className="tw:relative tw:min-h-[320px] tw:py-12">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearch />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );
@@ -216,7 +217,7 @@ const KnowledgePageEmptyState = ({
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={
           <Transi18next
             i18nKey="message.refer-to-our-doc"
@@ -241,7 +242,7 @@ const KnowledgePageEmptyState = ({
                     className="tw:text-brand-secondary tw:after:outline-brand"
                     color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    iconLeading={<Plus size={14} />}
+                    iconLeading={Plus}
                     size="sm">
                     {t('label.add')}
                   </CoreButton>
@@ -265,7 +266,7 @@ const KnowledgePageEmptyState = ({
             {addQuickLinkModalElement}
           </>
         }
-        icon={<Articles className="tw:text-secondary" />}
+        icon={<File06 />}
         title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.article'),
         })}

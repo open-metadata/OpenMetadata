@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -17,12 +18,16 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,15 +36,27 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.slf4j.LoggerFactory;
+import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.core.MgetRequest;
+import os.org.opensearch.client.opensearch.core.MgetResponse;
+import os.org.opensearch.client.opensearch.core.get.GetResult;
+import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Response;
+import os.org.opensearch.client.util.ObjectBuilder;
 
 class OpenSearchVectorServiceTest {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Test
   void contentChangesReembedWhileFilterAndMappingChangesRestampStoredVectors() {
@@ -887,46 +904,161 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsEmptyWhenAvailable() throws IOException {
-    mockOpenSearchResponse("{\"hybrid-rrf\":{}}");
+  void testCheckHybridSearchPipelineRunsAHybridQueryWithTheInlinePipeline() throws IOException {
+    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
 
-    assertTrue(
-        vectorService.checkHybridSearchPipeline().isEmpty(),
-        "Pipeline should be available when OpenSearch returns 200");
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
+
+    verify(mockGenericClient).execute(captor.capture());
+    Request probe = captor.getValue();
+    assertTrue(result.isEmpty(), "A query OpenSearch accepts means hybrid search can run");
+    assertEquals("POST", probe.getMethod());
+    assertEquals("/" + vectorService.getChunkIndexName() + "/_search", probe.getEndpoint());
+    assertEquals("true", probe.getParameters().get("ignore_unavailable"));
+    JsonNode body = MAPPER.readTree(probe.getBody().get().bodyAsString());
+    assertEquals(2, body.path("query").path("hybrid").path("queries").size());
+    assertEquals(
+        MAPPER.readTree(OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.6, 0.4)),
+        body.path("search_pipeline"));
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsErrorOn404() throws IOException {
-    Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(404);
-    when(mockResponse.getBody()).thenReturn(Optional.empty());
-    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
+  void testCheckHybridSearchPipelineStaysInsideTheClusterAliasPrefix() throws IOException {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getClusterAlias()).thenReturn("bi4all-pt");
+    Entity.setSearchRepository(searchRepository);
+    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+    try {
+      vectorService.checkHybridSearchPipeline(0.6, 0.4);
+    } finally {
+      Entity.setSearchRepository(null);
+    }
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
-    assertTrue(result.isPresent(), "Should return error when pipeline not found");
-    assertTrue(result.get().contains("not found"), "Error should mention pipeline not found");
+    verify(mockGenericClient).execute(captor.capture());
+    assertEquals(
+        "/bi4all-pt_data_asset_embeddings_chunks/_search", captor.getValue().getEndpoint());
   }
 
   @Test
-  void testCheckHybridSearchPipelineReturnsErrorOn5xx() throws IOException {
+  void testCheckHybridSearchPipelineReportsWhyOpenSearchRejectedTheQuery() throws IOException {
+    String rejection =
+        "{\"error\":{\"type\":\"illegal_argument_exception\",\"reason\":\"sum of weights for"
+            + " combination must be equal to 1.0\"},\"status\":400}";
     Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(500);
-    when(mockResponse.getBody()).thenReturn(Optional.empty());
+    when(mockResponse.getStatus()).thenReturn(400);
+    when(mockResponse.getBody())
+        .thenReturn(
+            Optional.of(Body.from(rejection.getBytes(StandardCharsets.UTF_8), "application/json")));
     when(mockGenericClient.execute(any())).thenReturn(mockResponse);
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
-    assertTrue(result.isPresent(), "Should return error on server error");
-    assertTrue(result.get().contains("Unexpected status 500"), "Error should mention status code");
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.7, 0.7);
+
+    assertTrue(result.isPresent(), "A rejected query means hybrid search cannot run");
+    assertTrue(result.get().contains("status 400"), "Error should mention the status code");
+    assertTrue(result.get().contains("sum of weights"), "Error should carry OpenSearch's reason");
   }
 
   @Test
   void testCheckHybridSearchPipelineReturnsErrorOnException() throws IOException {
     when(mockGenericClient.execute(any())).thenThrow(new IOException("Connection refused"));
 
-    Optional<String> result = vectorService.checkHybridSearchPipeline();
+    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
     assertTrue(result.isPresent(), "Should return error when exception occurs");
     assertTrue(
         result.get().contains("Connection refused"), "Error should include exception message");
+  }
+
+  @Test
+  void reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent() throws IOException {
+    long updatedAt = 1_700_000_000_000L;
+    Table unchanged = reuseTable("orders", "Orders placed online", updatedAt);
+    Table textChanged = reuseTable("payments", "Customer payments by card", updatedAt);
+    // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
+    Table textChangedAsLastEmbedded =
+        reuseTable("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    answerMgetsFrom(
+        Map.of(
+            textId(unchanged), storedEntityDoc(unchanged, unchanged),
+            textId(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded)));
+
+    Map<String, JsonNode> reusable =
+        vectorService.getExistingEmbeddingsBatch(
+            "table_search_index",
+            Map.of(
+                textId(unchanged), () -> VectorDocBuilder.computeFingerprintForEntity(unchanged),
+                textId(textChanged),
+                    () -> VectorDocBuilder.computeFingerprintForEntity(textChanged)));
+
+    assertEquals(java.util.Set.of(textId(unchanged)), reusable.keySet());
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(unchanged),
+        reusable.get(textId(unchanged)).path("fingerprint").asText());
+  }
+
+  private static Table reuseTable(String name, String description, long updatedAt) {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("svc.db.schema." + name)
+        .withDescription(description)
+        .withUpdatedAt(updatedAt);
+  }
+
+  private static String textId(Table table) {
+    return table.getId().toString();
+  }
+
+  /** An entity doc as a reindex left it: current updatedAt, embedding of {@code embeddedAs}. */
+  private static ObjectNode storedEntityDoc(Table current, Table embeddedAs) {
+    ObjectNode doc = JsonUtils.getObjectNode();
+    doc.put("name", current.getName());
+    doc.put("updatedAt", current.getUpdatedAt());
+    doc.put("fingerprint", VectorDocBuilder.computeFingerprintForEntity(embeddedAs));
+    doc.putArray("embedding").add(0.5).add(0.25).add(0.125);
+    doc.put("parentId", textId(current));
+    return doc;
+  }
+
+  /** Answers an mget like the engine: only stored ids, only the requested _source fields. */
+  @SuppressWarnings("unchecked")
+  private void answerMgetsFrom(Map<String, ObjectNode> storedById) throws IOException {
+    when(mockClient.mget(any(Function.class), eq(JsonData.class)))
+        .thenAnswer(
+            invocation -> {
+              Function<MgetRequest.Builder, ObjectBuilder<MgetRequest>> build =
+                  invocation.getArgument(0);
+              MgetRequest request = build.apply(new MgetRequest.Builder()).build();
+              List<MultiGetResponseItem<JsonData>> items = new ArrayList<>();
+              for (String id : request.ids()) {
+                ObjectNode stored = storedById.get(id);
+                if (stored != null) {
+                  ObjectNode source = JsonUtils.getObjectNode();
+                  request.sourceIncludes().forEach(field -> copyField(stored, source, field));
+                  items.add(foundItem(request.index(), id, source));
+                }
+              }
+              return new MgetResponse.Builder<JsonData>().docs(items).build();
+            });
+  }
+
+  private static void copyField(ObjectNode from, ObjectNode to, String field) {
+    if (from.has(field)) {
+      to.set(field, from.get(field));
+    }
+  }
+
+  private static MultiGetResponseItem<JsonData> foundItem(
+      String index, String id, ObjectNode source) {
+    GetResult<JsonData> result =
+        new GetResult.Builder<JsonData>()
+            .index(index)
+            .id(id)
+            .found(true)
+            .source(JsonData.of(source))
+            .build();
+    return new MultiGetResponseItem.Builder<JsonData>().result(result).build();
   }
 
   private void mockOpenSearchResponse(String responseJson) throws IOException {

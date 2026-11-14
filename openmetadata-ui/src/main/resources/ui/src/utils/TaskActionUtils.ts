@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  CheckCircle,
+  Edit01,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Duration } from 'luxon';
-import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
-import { ReactComponent as CloseIcon } from '../assets/svg/ic-close-circle.svg';
-import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
 import {
   TaskActionMode,
   type TaskAction,
@@ -26,7 +27,7 @@ export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
   {
     label: t('label.close'),
     key: TaskActionMode.CLOSE,
-    icon: CancelColored,
+    icon: XCircle,
   },
 ];
 
@@ -34,17 +35,17 @@ export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
-    icon: CheckIcon,
+    icon: CheckCircle,
   },
   {
     label: t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
-    icon: EditSuggestionIcon,
+    icon: Edit01,
   },
   {
     label: t('label.close'),
     key: TaskActionMode.CLOSE,
-    icon: CloseIcon,
+    icon: XCircle,
   },
 ];
 
@@ -52,12 +53,12 @@ export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: t('label.approve'),
     key: TaskActionMode.RESOLVE,
-    icon: CheckIcon,
+    icon: CheckCircle,
   },
   {
     label: t('label.reject'),
     key: TaskActionMode.CLOSE,
-    icon: CloseIcon,
+    icon: XCircle,
   },
 ];
 
@@ -65,12 +66,12 @@ export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
     label: t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
-    icon: EditSuggestionIcon,
+    icon: Edit01,
   },
   {
     label: t('label.resolve'),
     key: TaskActionMode.RESOLVE,
-    icon: CloseIcon,
+    icon: XCircle,
   },
 ];
 

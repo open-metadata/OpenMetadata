@@ -13,13 +13,17 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { Operation } from 'fast-json-patch';
 import { isNull, isUndefined } from 'lodash';
-import { PagingResponse } from 'Models';
 import { MemorySortBy } from '../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
 import { AssetType } from '../generated/attachments/asset';
+import type {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../generated/entity/context/contextMemory';
 import type { ContextFile } from '../generated/entity/data/contextFile';
 import { ListParams } from '../interface/API.interface';
 import type {
@@ -108,7 +112,7 @@ export const knowledgePageToArticleItem = (
 
 export const fetchContextCenterDocuments = async (
   params?: ListParams
-): Promise<PagingResponse<Asset[]>> => {
+): Promise<Asset[]> => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,
@@ -175,14 +179,40 @@ export const handleAssetDownload = async (file: ContextFile) => {
   }
 };
 
+/**
+ * How often a memory was cited and when last: the answers it was applied to once a recount has
+ * stamped its outcomes, otherwise the retrieval usage it recorded before outcomes existed.
+ */
+export const getMemoryCitations = (
+  memory: ContextMemory
+): { count?: number; lastAt?: number } => {
+  const { outcomes } = memory;
+
+  return outcomes?.countedAt === undefined
+    ? { count: memory.usageCount, lastAt: memory.lastUsedAt }
+    : { count: outcomes.appliedCount ?? 0, lastAt: outcomes.lastAppliedAt };
+};
+
+/**
+ * The JSON patch that moves a memory to another stage, refused unless the memory is still the one
+ * its reader saw: an edit or review meanwhile makes the decision fail instead of overwriting it.
+ */
+export const getMemoryStatusPatch = (
+  memory: ContextMemory,
+  status: ContextMemoryStatus
+): Operation[] => [
+  { op: 'test', path: '/updatedAt', value: memory.updatedAt },
+  { op: 'replace', path: '/entityStatus', value: status },
+];
+
 export const getSortConfig = (
   sortBy: MemorySortBy
 ): {
-  sortBy: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortBy: 'updatedAt' | 'appliedCount' | 'usageCount' | 'updatedBy';
   sortOrder: 'asc' | 'desc';
 } => {
   if (sortBy === 'usage') {
-    return { sortBy: 'usageCount', sortOrder: 'desc' };
+    return { sortBy: 'appliedCount', sortOrder: 'desc' };
   }
   if (sortBy === 'updatedBy') {
     return { sortBy: 'updatedBy', sortOrder: 'asc' };

@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
 import { formatDate } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
@@ -39,11 +38,7 @@ const getHelpDropdownLabelContentRenderer = (
       className="layout-row layout-grid cursor-pointer"
       onClick={item.handleSupportItemClick}>
       <Grid.Item className="layout-column" span={4}>
-        <Icon
-          className="align-middle"
-          component={item.icon}
-          style={{ fontSize: '18px' }}
-        />
+        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
       </Grid.Item>
       <Grid.Item className="layout-column flex items-center" span={20}>
         {isVersion ? (
@@ -62,10 +57,9 @@ const getHelpDropdownLabelContentRenderer = (
         )}
 
         {item.isExternal && (
-          <Icon
-            className="m-l-xss text-base-color"
-            component={IconExternalLink}
-            style={{ fontSize: '16px' }}
+          <LinkExternal01
+            className="tw:ml-1 tw:text-secondary tw:shrink-0"
+            size={16}
           />
         )}
       </Grid.Item>

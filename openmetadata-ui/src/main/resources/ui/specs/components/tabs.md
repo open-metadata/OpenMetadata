@@ -7,8 +7,7 @@
 | **Name** | Tabs |
 | **Category** | Navigation |
 | **Status** | Stable |
-| **Styles** | [`src/styles/components/tabs.less`](../../src/styles/components/tabs.less) |
-| **Component** | `@openmetadata/ui-core-components` → `Tabs` (new work); Ant Design `Tabs` (legacy) |
+| **Component** | `@openmetadata/ui-core-components` → `Tabs` |
 
 ## Overview
 

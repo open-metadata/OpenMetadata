@@ -69,7 +69,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     // Verify page loads with expected elements
-    await expect(page.getByRole('tree')).toBeVisible();
+    await expect(page.getByRole('treegrid')).toBeVisible();
     await expect(page.getByTestId('save-button')).toBeVisible();
     await expect(page.getByTestId('reset-button')).toBeVisible();
 
@@ -156,7 +156,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const navigateSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
+      .getByRole('row', { name: 'Insights', exact: true })
       .locator('[data-testid^="navigation-switch-"]');
 
     await navigateSwitch.click();
@@ -205,7 +205,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const domainSwitch = page
-      .locator('.ant-tree-title:has-text("Domains")')
+      .getByRole('row', { name: 'Domains', exact: true })
       .first()
       .locator('[data-testid^="navigation-switch-"]');
 
@@ -248,7 +248,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     // Wait for the tree to be fully ready
     await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
@@ -276,9 +276,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: firstItemBox.width / 2,
           y: firstItemBox.height / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: secondItemBox.width / 2,
-          y: secondItemBox.height / 2 + 10,
+          y: secondItemBox.height - 2,
         },
       });
       await expect(treeItems.first()).not.toHaveText(firstItemText as string);
@@ -300,7 +301,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const exploreSwitch = page.getByTestId('navigation-switch-/explore');
     const insightsSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
+      .getByRole('row', { name: 'Insights', exact: true })
       .locator('[data-testid^="navigation-switch-"]')
       .first();
 
@@ -348,7 +349,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
@@ -386,9 +387,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: (dataQualityBox?.width ?? 0) / 2,
           y: (dataQualityBox?.height ?? 0) / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: (incidentManagerBox?.width ?? 0) / 2,
-          y: (incidentManagerBox?.height ?? 0) / 2 + 10,
+          y: (incidentManagerBox?.height ?? 0) - 2,
         },
       });
 
@@ -453,7 +455,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 

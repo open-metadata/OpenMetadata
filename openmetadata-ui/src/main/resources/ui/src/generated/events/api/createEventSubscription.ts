@@ -19,11 +19,14 @@ export interface CreateEventSubscription {
      */
     alertType: AlertType;
     /**
-     * Maximum number of events sent in a batch (Default 10).
+     * Maximum number of events sent in a batch, from 1 to 1000 (Default 10). An alert stored
+     * past 1000 keeps its value but cannot grow.
      */
     batchSize?: number;
     /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     * Id of the registered consumer that runs this Event Subscription. Will use `alert`, the
+     * consumer that sends its notifications, if not provided. A Java class name a consumer was
+     * once stored under is accepted and saved as its id; any other name is rejected.
      */
     className?: string;
     config?:    { [key: string]: any };
@@ -32,7 +35,8 @@ export interface CreateEventSubscription {
      */
     description?: string;
     /**
-     * Subscription Config.
+     * Subscription Config. At most 50 destinations; an alert stored with more keeps them but
+     * cannot add one.
      */
     destinations?: Destination[];
     /**

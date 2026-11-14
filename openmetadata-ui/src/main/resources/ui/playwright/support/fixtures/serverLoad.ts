@@ -31,6 +31,14 @@ import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
 
 /**
+ * The tracking pixel in `index.html` is a document subresource, so the `load`
+ * event — what `page.goto`/`reload` wait for by default — waits on an internet
+ * host. When it stalls, a fully rendered page times out its navigation (seen in
+ * OntologyReview.spec.ts: Studio on screen, `page.goto` timed out on "load").
+ */
+const SCARF_PIXEL = 'https://static.scarf.sh/**';
+
+/**
  * Boot endpoints safe to serve from the per-worker cache.
  *
  * Three things have to hold for a path to be listed here. It must have no
@@ -75,6 +83,10 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
  *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
  *   only purpose is to see a *newer* answer than the one already held.
+ * - `system/settings/lineageSettings`, `system/settings/appConfiguration`,
+ *   `system/config/customUiThemePreference` — specs write them, and a write
+ *   invalidates only the writing worker's cache. Every other worker keeps
+ *   whatever it read for the rest of its life.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -84,11 +96,6 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/rdf',
   '/api/v1/system/search/nlq',
   '/api/v1/limits/config',
-  // No API writer; the specs that change these do it through the UI, so the
-  // browser PUT invalidates the `/api/v1/system/` family.
-  '/api/v1/system/config/customUiThemePreference',
-  '/api/v1/system/settings/lineageSettings',
-  '/api/v1/system/settings/appConfiguration',
 ];
 
 type CachedResponse = {
@@ -109,9 +116,9 @@ type CacheEntry = {
 };
 
 // One entry per (path + query). The key is the URL alone (see cacheKey), so the
-// space is the ~9 cacheable paths plus any query variants — bounded and small.
+// space is the cacheable paths plus any query variants — bounded and small.
 // The cap stays as a guard against an unforeseen query-string explosion; at its
-// ~9-entry steady state it never trips, so eviction (LRU, see serveBootConfig)
+// steady state of one entry per path it never trips, so eviction (LRU, see serveBootConfig)
 // is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
@@ -461,6 +468,10 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
     ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
+  );
+
+  await context.route(SCARF_PIXEL, (route) =>
+    ignoreClosedTarget(route, () => route.fulfill({ status: 204 }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>

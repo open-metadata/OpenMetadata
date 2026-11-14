@@ -22,6 +22,7 @@ import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { getTestCaseByFqn } from '../../../../rest/testAPI';
 import { getEntityByFqnUtil } from '../../../../utils/EntityByFqnUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { isOntologyReviewTask } from '../../../../utils/TaskUtils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskAboutEntity } from './taskDetail.types';
 import {
@@ -48,6 +49,10 @@ interface TaskAboutTarget {
 // An incident often names no `about`; its failing test case is then read off the
 // description, which is still enough to show what failed and against what.
 const getAboutTarget = (task?: Task): TaskAboutTarget | undefined => {
+  if (task && isOntologyReviewTask(task)) {
+    return undefined;
+  }
+
   const fqn = task?.about?.fullyQualifiedName;
   const entityType = task?.about?.type;
   if (fqn && entityType) {

@@ -2,8 +2,10 @@
 Test dbt
 """
 
+import fnmatch
 import json
 import logging
+import re
 import uuid
 from copy import deepcopy
 from datetime import datetime
@@ -12,6 +14,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
     parse_manifest,
@@ -21,9 +24,10 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -32,6 +36,7 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.type import entityReference
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -41,6 +46,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
@@ -69,7 +75,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.utils.tag_utils import get_tag_labels
+from metadata.utils.tag_utils import get_tag_label, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -508,8 +514,7 @@ class DbtUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_dbt_config)
         self.dbt_source_obj = DbtSource.create(
@@ -1555,6 +1560,56 @@ class DbtUnitTest(TestCase):
         columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
         assert len(columns) == 1
         assert columns[0].tags == []
+
+    def _glossary_terms_by_status(self):
+        """FQN -> GlossaryTerm for every status and for no status, plus one FQN the server does not know"""
+        terms = {
+            f"Gloss.{name}": GlossaryTerm(
+                id=uuid.uuid4(),
+                name=name,
+                fullyQualifiedName=f"Gloss.{name}",
+                description="term",
+                glossary=EntityReference(id=uuid.uuid4(), type="glossary"),
+                entityStatus=status,
+            )
+            for name, status in [*((status.name, status) for status in EntityStatus), ("NoStatus", None)]
+        }
+        return terms, [*terms, "Gloss.Missing"]
+
+    def _glossary_labels(self, tags):
+        return [tag.tagFQN.root for tag in tags if tag.source == TagSource.Glossary]
+
+    def test_dbt_table_meta_glossary_applies_only_approved_terms(self):
+        terms, fqns = self._glossary_terms_by_status()
+        get_tag_label.cache_clear()
+        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
+            result = self.dbt_source_obj.process_dbt_meta(
+                manifest_meta={"openmetadata": {"glossary": fqns}},
+                table_fqn="svc.db.schema.table",
+            )
+        get_tag_label.cache_clear()
+
+        assert self._glossary_labels(result) == ["Gloss.Approved"]
+
+    def test_dbt_column_meta_glossary_applies_only_approved_terms(self):
+        terms, fqns = self._glossary_terms_by_status()
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"glossary": fqns}},
+            description="kept",
+            data_type="varchar",
+        )
+        get_tag_label.cache_clear()
+        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
+            columns = self.dbt_source_obj.parse_data_model_columns(
+                manifest_node=SimpleNamespace(columns={"col": manifest_column}), catalog_node=None
+            )
+        get_tag_label.cache_clear()
+
+        assert len(columns) == 1
+        assert columns[0].description.root == "kept"
+        assert self._glossary_labels(columns[0].tags) == ["Gloss.Approved"]
 
     @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
     def test_parse_data_model_columns_skips_split_when_include_tags_false(self, mock_fqn):
@@ -2753,10 +2808,11 @@ class DbtUnitTest(TestCase):
 
         expected_fqn = "dbt_test.dev.snapshots.snap_orders"
 
-        def fake_get_table_entity(table_fqn):
+        def fake_get_table_entity(table_fqn, **_kwargs):
             if table_fqn == expected_fqn:
                 table = MagicMock()
                 table.id.root = uuid.uuid4()
+                table.fullyQualifiedName.root = table_fqn
                 return table
             return None
 
@@ -3475,6 +3531,7 @@ class TestStorageStreamingBehavior(TestCase):
         config = MagicMock()
         config.dbtPrefixConfig.dbtBucketName = "test-bucket"
         config.dbtPrefixConfig.dbtObjectPrefix = None
+        config.dbtSecurityConfig.gcpImpersonateServiceAccount = None
 
         with patch("google.cloud.storage.Client", return_value=mock_client):
             list(gcs_handler(config))
@@ -3956,7 +4013,9 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
 
         source.metadata.add_test_case_results.assert_called_once()
         test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
-        self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
+        assert test_case_result.result == "Got 1 result, configured to warn if != 0"
 
     def test_nanosecond_timestamp_is_parsed(self):
         """
@@ -4094,7 +4153,8 @@ class TestAddDbtTestResultNullMessage:
     def test_warning_test_with_null_message_is_ingested(self):
         test_case_result = self._sent_call(self._ingest(status="warn", message=None))["test_results"]
 
-        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
 
 
 class TestRemoveManifestNonRequiredKeys(TestCase):
@@ -4571,9 +4631,8 @@ class TestAddDbtSourceFreshnessResults:
     def test_freshness_warn_is_ingested_with_staleness_detail(self):
         test_case_result = self._ingest("warn")
 
-        # `warn` is neither a dbt success nor a dbt failure status, so it keeps the
-        # pre-1.13.0 fall-through to Aborted.
-        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
         assert "18.0 hours old" in test_case_result.result
         assert "warn_after=12 hour" in test_case_result.result
 
@@ -5313,3 +5372,688 @@ class TestDbtMetricGovernanceMetadata:
         ]
         assert len(metric_requests) == 1
         assert metric_requests[0].right.extension is None
+
+
+class TestCatalogMapping:
+    """
+    dbt-trino writes the Trino catalog name into the manifest database, while the BigQuery
+    connector ingests the same table under the GCP project id. catalogMapping states which
+    OpenMetadata database a manifest database is (issue #34633).
+    """
+
+    BQ_MODEL = "bq_svc.my-gcp-project.analytics.stg_customers"
+    BQ_SOURCE = "bq_svc.my-gcp-project.raw.customers"
+    MANIFEST_FQN = "trino_svc.bq_catalog.analytics.stg_customers"
+
+    @staticmethod
+    def _source(*ingested_fqns, catalog_mapping=None, search_across_databases=False):
+        """A DbtSource built from an agent config, whose search answers wildcard FQN queries."""
+        config = {
+            "type": "dbt",
+            "serviceName": "trino_svc",
+            "sourceConfig": {
+                "config": {
+                    "type": "DBT",
+                    "dbtConfigSource": {"dbtConfigType": "local", "dbtManifestFilePath": "/dbt/manifest.json"},
+                    "searchAcrossDatabases": search_across_databases,
+                    **({"catalogMapping": catalog_mapping} if catalog_mapping is not None else {}),
+                }
+            },
+        }
+        tables = [
+            Table(id=uuid.uuid4(), name=ingested.split(".")[-1], columns=[], fullyQualifiedName=ingested)
+            for ingested in ingested_fqns
+        ]
+
+        def _search(*_args, fqn_search_string, **_kwargs):
+            search_pattern = re.sub(r"\\(.)", r"[\1]", fqn_search_string)
+            return [
+                table
+                for table in tables
+                if fnmatch.fnmatchcase(table.fullyQualifiedName.root.lower(), search_pattern.lower())
+            ] or None
+
+        metadata = MagicMock()
+        metadata.es_search_from_fqn.side_effect = _search
+        return DbtSource.create(config, metadata)
+
+    @staticmethod
+    def _manifest_node(name, database, schema, resource_type="model", depends_on=(), meta=None):
+        return SimpleNamespace(
+            name=name,
+            alias=name,
+            database=database,
+            schema_=schema,
+            resource_type=resource_type,
+            package_name="trino_bq",
+            meta=meta or {},
+            tags=[],
+            description=None,
+            columns={},
+            original_file_path=f"models/{name}.sql",
+            raw_code=f"select * from {name}",
+            compiled_code=f"select * from {name}",
+            config=SimpleNamespace(materialized="table"),
+            depends_on=SimpleNamespace(nodes=list(depends_on)),
+        )
+
+    def test_agent_config_accepts_catalog_mapping(self):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source.source_config.catalogMapping == {"bq_catalog": "my-gcp-project"}
+        assert self._source().source_config.catalogMapping is None
+
+    def test_mapped_catalog_resolves_in_another_service_without_search_across_databases(self):
+        source = self._source(self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == self.BQ_MODEL
+
+    @pytest.mark.parametrize(
+        "mapped_catalog, manifest_fqn",
+        [
+            ("BQ_Catalog", "trino_svc.bq_catalog.analytics.stg_customers"),
+            ("bq_catalog", "trino_svc.BQ_Catalog.analytics.stg_customers"),
+        ],
+    )
+    def test_catalog_is_matched_ignoring_case(self, mapped_catalog, manifest_fqn):
+        source = self._source(self.BQ_MODEL, catalog_mapping={mapped_catalog: "my-gcp-project"})
+
+        assert source._get_table_entity(manifest_fqn).fullyQualifiedName.root == self.BQ_MODEL
+
+    def test_mapping_picks_its_database_where_the_same_schema_and_table_exist_in_two(self):
+        source = self._source(
+            "bq_svc.proj-a.analytics.stg_customers",
+            "bq_svc.proj-b.analytics.stg_customers",
+            catalog_mapping={"bq_catalog": "proj-b"},
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == "bq_svc.proj-b.analytics.stg_customers"
+
+    def test_mapping_prefers_the_configured_service(self):
+        source = self._source(
+            "bq_other.my-gcp-project.analytics.stg_customers",
+            "trino_svc.my-gcp-project.analytics.stg_customers",
+            catalog_mapping={"bq_catalog": "my-gcp-project"},
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == "trino_svc.my-gcp-project.analytics.stg_customers"
+
+    def test_mapping_that_finds_nothing_falls_back_to_the_manifest_database(self):
+        source = self._source(self.MANIFEST_FQN, catalog_mapping={"bq_catalog": "no-such-project"})
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == self.MANIFEST_FQN
+
+    def test_unmapped_catalog_is_looked_up_as_before(self):
+        source = self._source(
+            self.BQ_MODEL, "trino_svc.hive.default.hive_model", catalog_mapping={"bq_catalog": "my-gcp-project"}
+        )
+
+        assert source._get_table_entity("trino_svc.hive.default.hive_model") is not None
+        assert source._get_table_entity("trino_svc.other_catalog.analytics.stg_customers") is None
+
+    def test_without_a_mapping_the_aliased_table_stays_unresolved(self):
+        source = self._source(self.BQ_MODEL, search_across_databases=True)
+
+        assert source._get_table_entity(self.MANIFEST_FQN) is None
+
+    def test_upstream_is_recorded_under_the_table_that_was_found(self):
+        """Lineage, dbt tests and exposures all reuse the upstream FQN, so it must be the real one."""
+        parent = self._manifest_node("customers", "bq_catalog", "raw", resource_type="source")
+        parent.source_name = "bq_raw"
+        model = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", depends_on=["source.trino_bq.bq_raw.customers"]
+        )
+        source = self._source(self.BQ_SOURCE, self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        upstream_nodes = source.parse_upstream_nodes_with_names({"source.trino_bq.bq_raw.customers": parent}, model)
+
+        assert [node.fqn for node in upstream_nodes] == [self.BQ_SOURCE]
+        assert upstream_nodes[0].table_id is not None
+
+    def test_meta_domain_is_keyed_by_the_table_that_was_found(self):
+        """Domain, data products and custom properties are applied by the resolved table's FQN."""
+        node = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", meta={"openmetadata": {"domain": "Finance"}}
+        )
+        source = self._source(self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+        source.context = MagicMock()
+        dbt_objects = SimpleNamespace(
+            dbt_manifest=SimpleNamespace(
+                sources={},
+                nodes={"model.trino_bq.stg_customers": node},
+                exposures={},
+                metadata=SimpleNamespace(project_name="trino_bq"),
+            ),
+            dbt_catalog=None,
+            dbt_run_results=None,
+            dbt_sources=None,
+        )
+
+        with (
+            patch.object(DbtSource, "get_dbt_domain", return_value=None),
+            patch.object(DbtSource, "_collect_dbt_metrics"),
+        ):
+            links = [either.right for either in source.yield_data_models(dbt_objects)]
+
+        assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
+        assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
+
+    @pytest.mark.parametrize(
+        ("compiled_sql", "lineage_sql"),
+        [
+            (
+                'select id from "bq_catalog"."raw"."customers"',
+                'select id from "my-gcp-project"."raw"."customers"',
+            ),
+            ("select id from BQ_Catalog.raw.customers", 'select id from "my-gcp-project".raw.customers'),
+            (
+                'select * from bq_catalog.raw.a join "bq_catalog" . "raw" . "b" using (id)',
+                'select * from "my-gcp-project".raw.a join "my-gcp-project" . "raw" . "b" using (id)',
+            ),
+            # a schema or column that shares the catalog's name is not a catalog
+            ("select bq_catalog.id from raw.bq_catalog", "select bq_catalog.id from raw.bq_catalog"),
+            ("select id from bq_catalog_dev.raw.customers", "select id from bq_catalog_dev.raw.customers"),
+            ('select id from "other"."bq_catalog"."t"', 'select id from "other"."bq_catalog"."t"'),
+        ],
+    )
+    def test_mapped_catalog_is_swapped_in_compiled_sql(self, compiled_sql, lineage_sql):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source._map_catalogs_in_sql(compiled_sql) == lineage_sql
+
+    @pytest.mark.parametrize(
+        ("catalog_mapping", "column_links"),
+        [
+            (
+                {"bq_catalog": "my-gcp-project"},
+                [
+                    ("bq_svc.my-gcp-project.raw.customers.id", "bq_svc.my-gcp-project.analytics.stg_customers.id"),
+                    ("bq_svc.my-gcp-project.raw.customers.name", "bq_svc.my-gcp-project.analytics.stg_customers.name"),
+                ],
+            ),
+            (None, []),
+        ],
+    )
+    def test_query_lineage_links_the_columns_of_the_mapped_source(self, catalog_mapping, column_links):
+        def table(table_fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=table_fqn.split(".")[-1],
+                fullyQualifiedName=table_fqn,
+                columns=[
+                    Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
+                    for name in ("id", "name")
+                ],
+            )
+
+        tables = [table(self.BQ_SOURCE), table(self.BQ_MODEL)]
+        source = self._source(catalog_mapping=catalog_mapping)
+        source.metadata.es_search_from_fqn.side_effect = lambda *_args, fqn_search_string, **_kwargs: (
+            [
+                ingested
+                for ingested in tables
+                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ]
+            or None
+        )
+        source.metadata.get_by_name.return_value = None
+        source.config = SimpleNamespace(
+            serviceName="trino_svc",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+            ),
+        )
+        data_model_link = SimpleNamespace(
+            table_entity=tables[1],
+            datamodel=SimpleNamespace(
+                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
+            ),
+        )
+
+        requests = [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(data_model_link)
+            if either.right is not None
+        ]
+
+        assert [
+            (model_str(link.fromColumns[0]), model_str(link.toColumn))
+            for request in requests
+            for link in request.lineage_details.columnsLineage
+        ] == column_links
+
+    def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
+        source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})
+
+        assert source._map_catalogs_in_sql("select * from hive.raw.a join warehouse.raw.b using (id)") == (
+            'select * from "warehouse".raw.a join "warehouse_prod".raw.b using (id)'
+        )
+
+    def test_without_a_mapping_compiled_sql_is_unchanged(self):
+        sql = 'select id from "bq_catalog"."raw"."customers"'
+
+        assert self._source()._map_catalogs_in_sql(sql) == sql
+
+
+class TestDbtSourceIdentifiers:
+    """Source lookup uses warehouse names while dbt references keep logical names."""
+
+    MANIFEST = Path(__file__).parent / "resources" / "datasets" / "manifest_source_identifier.json"
+    SOURCE_KEY = "source.jaffle_shop.raw.orders"
+    MODEL_KEY = "model.jaffle_shop.orders"
+    PHYSICAL_FQN = "trino_svc.RAW_DB.RAW.raw_orders"
+    LOGICAL_FQN = "trino_svc.RAW_DB.RAW.orders"
+    MODEL_FQN = "trino_svc.RAW_DB.RAW.stg_orders"
+
+    @classmethod
+    def _payload(cls):
+        with cls.MANIFEST.open(encoding="utf-8") as manifest_file:
+            return json.load(manifest_file)
+
+    @staticmethod
+    def _source(*fqns, **config):
+        source = TestCatalogMapping._source(*fqns, **config)
+        source.metadata.get_by_name.return_value = Domain(
+            id=uuid.uuid4(), name="Finance", fullyQualifiedName="Finance", domainType="Aggregate", description="Finance"
+        )
+        return source
+
+    @classmethod
+    def _objects(cls, source, payload=None, **files):
+        source.context.get().dbt_file = DbtFiles(
+            dbt_manifest=payload if payload is not None else cls._payload(), **files
+        )
+        return next(source.get_dbt_objects())
+
+    @staticmethod
+    def _links(source, objects):
+        results = list(source.yield_data_models(objects))
+        assert all(result.left is None for result in results), [result.left for result in results if result.left]
+        return {model_str(result.right.table_entity.fullyQualifiedName): result.right for result in results}
+
+    @pytest.mark.parametrize("with_catalog", [False, True])
+    def test_source_metadata_attaches_to_the_physical_table(self, with_catalog):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        catalog = {
+            "metadata": {"dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json"},
+            "nodes": {},
+            "sources": {
+                self.SOURCE_KEY: {
+                    "metadata": {"type": "TABLE", "schema": "RAW", "name": "raw_orders"},
+                    "columns": {
+                        "order_id": {"name": "order_id", "type": "BIGINT", "index": 1, "comment": "Catalog order id"}
+                    },
+                    "stats": {},
+                    "unique_id": self.SOURCE_KEY,
+                }
+            },
+        }
+        objects = self._objects(source, dbt_catalog=catalog if with_catalog else None)
+
+        links = self._links(source, objects)
+
+        assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+        datamodel = links[self.PHYSICAL_FQN].datamodel
+        assert datamodel.resourceType == "source"
+        assert model_str(datamodel.description) == "Orders from the warehouse source"
+        assert datamodel.columns[0].name.root == "order_id"
+        assert model_str(datamodel.columns[0].description) == (
+            "Catalog order id" if with_catalog else "Source order identifier"
+        )
+        assert objects.dbt_manifest.sources[self.SOURCE_KEY].identifier == "raw_orders"
+        assert objects.dbt_manifest.sources[self.SOURCE_KEY].name == "orders"
+        assert objects.dbt_manifest.sources[self.SOURCE_KEY].unique_id == self.SOURCE_KEY
+        assert not hasattr(objects.dbt_manifest.sources[self.SOURCE_KEY], "alias")
+
+    def test_source_lineage_connects_the_physical_table_to_the_aliased_model(self):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        objects = self._objects(source)
+
+        links = self._links(source, objects)
+        model = links[self.MODEL_FQN]
+
+        assert model.datamodel.upstream == [self.PHYSICAL_FQN]
+        source_id = links[self.PHYSICAL_FQN].table_entity.id.root
+        assert model.upstream_table_ids == {self.PHYSICAL_FQN: source_id}
+        lineage = list(source.create_dbt_lineage(model))
+        assert len(lineage) == 1
+        assert lineage[0].left is None
+        assert lineage[0].right.lineage_request.edge.fromEntity.id.root == source_id
+        assert lineage[0].right.lineage_request.edge.toEntity.id.root == model.table_entity.id.root
+
+    @pytest.mark.parametrize("physical_exists", [False, True])
+    def test_logical_named_decoy_does_not_receive_metadata_or_lineage(self, physical_exists):
+        source = self._source(self.LOGICAL_FQN, self.MODEL_FQN, *([self.PHYSICAL_FQN] if physical_exists else []))
+
+        links = self._links(source, self._objects(source))
+
+        assert self.LOGICAL_FQN not in links
+        assert (self.PHYSICAL_FQN in links) is physical_exists
+        assert links[self.MODEL_FQN].datamodel.upstream == ([self.PHYSICAL_FQN] if physical_exists else [])
+        assert self.LOGICAL_FQN not in links[self.MODEL_FQN].upstream_table_ids
+
+    @pytest.mark.parametrize("resource_type", ["source", DbtCommonEnum.SOURCE])
+    def test_source_resource_type_accepts_strings_and_enums(self, resource_type):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        objects = self._objects(source)
+        node = objects.dbt_manifest.sources[self.SOURCE_KEY]
+        node.resource_type = resource_type
+
+        links = self._links(source, objects)
+
+        assert links[self.PHYSICAL_FQN].datamodel.resourceType == "source"
+        assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+
+    @pytest.mark.parametrize(
+        "attributes, expected_name",
+        [
+            ({"identifier": "raw_orders", "alias": "wrong_alias"}, "raw_orders"),
+            ({"identifier": "orders"}, "orders"),
+            ({"identifier": None, "alias": "fallback_alias"}, "fallback_alias"),
+            ({"identifier": "", "alias": "fallback_alias"}, "fallback_alias"),
+            ({"alias": "fallback_alias"}, "fallback_alias"),
+            ({"identifier": None}, "orders"),
+            ({}, "orders"),
+        ],
+    )
+    def test_source_name_fallback_preserves_existing_helper_behavior(self, attributes, expected_name):
+        expected_fqn = f"trino_svc.RAW_DB.RAW.{expected_name}"
+        source = self._source(expected_fqn, self.MODEL_FQN)
+        objects = self._objects(source)
+        node = SimpleNamespace(**objects.dbt_manifest.sources[self.SOURCE_KEY].__dict__)
+        del node.identifier
+        node.__dict__.update(attributes)
+        objects.dbt_manifest.sources[self.SOURCE_KEY] = node
+
+        links = self._links(source, objects)
+
+        assert expected_fqn in links
+        assert links[self.MODEL_FQN].datamodel.upstream == [expected_fqn]
+
+    @pytest.mark.parametrize("resource_type", ["model", "seed", "snapshot"])
+    @pytest.mark.parametrize("alias", [None, "model_alias"])
+    def test_non_sources_keep_alias_name_and_snapshot_location(self, resource_type, alias):
+        database = "snap_db" if resource_type == "snapshot" else "RAW_DB"
+        schema = "snap_schema" if resource_type == "snapshot" else "RAW"
+        expected_fqn = f"trino_svc.{database}.{schema}.{alias or 'orders'}"
+        source = self._source(expected_fqn)
+        objects = self._objects(source)
+        node = SimpleNamespace(**objects.dbt_manifest.nodes[self.MODEL_KEY].__dict__)
+        node.resource_type = resource_type
+        node.alias = alias
+        node.identifier = "wrong_identifier"
+        node.depends_on.nodes = []
+        if resource_type == "snapshot":
+            node.config = SimpleNamespace(target_schema=schema, target_database=database, materialized="snapshot")
+        objects.dbt_manifest.sources = {}
+        objects.dbt_manifest.nodes = {self.MODEL_KEY: node}
+
+        links = self._links(source, objects)
+        upstream = source.parse_upstream_nodes_with_names(
+            {self.MODEL_KEY: node}, SimpleNamespace(depends_on=SimpleNamespace(nodes=[self.MODEL_KEY]))
+        )
+
+        assert set(links) == {expected_fqn}
+        assert [parent.fqn for parent in upstream] == [expected_fqn]
+        assert upstream[0].name == "orders"
+
+    @pytest.mark.parametrize(
+        "filter_pattern, expected",
+        [
+            ({"includes": ["raw_orders", "stg_orders"]}, True),
+            ({"includes": ["orders", "stg_orders"]}, False),
+            ({"excludes": ["raw_orders"]}, False),
+            ({"excludes": ["orders"]}, True),
+        ],
+    )
+    def test_source_filters_use_the_physical_name_for_metadata_and_upstreams(self, filter_pattern, expected):
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        source.source_config.tableFilterPattern = FilterPattern(**filter_pattern)
+
+        links = self._links(source, self._objects(source))
+
+        assert (self.PHYSICAL_FQN in links) is expected
+        assert links[self.MODEL_FQN].datamodel.upstream == ([self.PHYSICAL_FQN] if expected else [])
+
+    @pytest.mark.parametrize(
+        "physical_fqn, config",
+        [
+            ("other_svc.RAW_DB.RAW.raw_orders", {"search_across_databases": True}),
+            ("other_svc.mapped_db.RAW.raw_orders", {"catalog_mapping": {"RAW_DB": "mapped_db"}}),
+            (
+                "other_svc.mapped_db.RAW.raw_orders",
+                {"catalog_mapping": {"raw_db": "mapped_db"}, "search_across_databases": True},
+            ),
+            ("trino_svc.RAW_DB.RAW.raw_orders", {"catalog_mapping": {"RAW_DB": "missing_db"}}),
+        ],
+    )
+    def test_physical_identifier_follows_the_entity_resolved_by_existing_lookup(self, physical_fqn, config):
+        source = self._source(physical_fqn, self.MODEL_FQN, self.LOGICAL_FQN, **config)
+
+        links = self._links(source, self._objects(source))
+
+        assert self.LOGICAL_FQN not in links
+        assert links[self.MODEL_FQN].datamodel.upstream == [physical_fqn]
+        assert links[self.MODEL_FQN].upstream_table_ids == {physical_fqn: links[physical_fqn].table_entity.id.root}
+        assert source.extracted_domains == {physical_fqn: "Finance"}
+        assert source.context.get().table_domains[physical_fqn].fullyQualifiedName == "Finance"
+
+    def test_logical_source_namespace_resolves_tests_when_a_model_has_the_same_name(self):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN, "trino_svc.RAW_DB.RAW.other_orders")
+        objects = self._objects(source)
+        manifest = objects.dbt_manifest
+        second_source = manifest.sources[self.SOURCE_KEY].model_copy(deep=True)
+        second_source.source_name = "other"
+        second_source.identifier = "other_orders"
+        second_key = "source.jaffle_shop.other.orders"
+        second_source.unique_id = second_key
+        second_source.fqn = ["jaffle_shop", "other", "orders"]
+        manifest.sources[second_key] = second_source
+        test_node = SimpleNamespace(
+            depends_on=SimpleNamespace(nodes=[self.MODEL_KEY, second_key, self.SOURCE_KEY]),
+            test_metadata=SimpleNamespace(kwargs={"model": "{{ source('raw', 'orders') }}"}),
+        )
+        parents = source.parse_upstream_nodes_with_names({**manifest.sources, **manifest.nodes}, test_node)
+        test = {
+            DbtCommonEnum.MANIFEST_NODE.value: test_node,
+            DbtCommonEnum.UPSTREAM.value: [parent.fqn for parent in parents],
+            DbtCommonEnum.UPSTREAM_BY_NAME.value: build_upstream_name_map(parents),
+        }
+
+        assert test[DbtCommonEnum.UPSTREAM_BY_NAME.value] == {
+            "jaffle_shop.orders": self.MODEL_FQN,
+            "other.orders": "trino_svc.RAW_DB.RAW.other_orders",
+            "raw.orders": self.PHYSICAL_FQN,
+            "orders": None,
+        }
+        assert get_dbt_test_primary_table_fqn(test) == self.PHYSICAL_FQN
+        assert generate_entity_link(test) == [f"<#E::table::{self.PHYSICAL_FQN}>"]
+
+    def test_ephemeral_model_keeps_the_physical_source_upstream(self):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        objects = self._objects(source)
+        manifest = objects.dbt_manifest
+        intermediate = manifest.nodes[self.MODEL_KEY].model_copy(deep=True)
+        intermediate.config.materialized = "ephemeral"
+        intermediate_key = "model.jaffle_shop.intermediate"
+        intermediate.unique_id = intermediate_key
+        intermediate.name = "intermediate"
+        intermediate.alias = "intermediate"
+        intermediate.fqn = ["jaffle_shop", "intermediate"]
+        manifest.nodes[intermediate_key] = intermediate
+        manifest.nodes[self.MODEL_KEY].depends_on.nodes = [intermediate_key]
+
+        links = self._links(source, objects)
+
+        assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+        assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+
+    def test_freshness_and_metadata_share_the_physical_table_and_keep_logical_names(self):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+        objects = self._objects(source, dbt_sources=sources)
+
+        links = self._links(source, objects)
+        freshness = source.context.get().dbt_tests[self.SOURCE_KEY + "_freshness"]
+
+        assert self.PHYSICAL_FQN in links
+        assert freshness[DbtCommonEnum.UPSTREAM.value] == [self.PHYSICAL_FQN]
+        assert freshness[DbtCommonEnum.MANIFEST_NODE.value].name == "orders_freshness"
+        assert generate_entity_link(freshness) == [f"<#E::table::{self.PHYSICAL_FQN}>"]
+
+    def test_repeated_ingestion_preserves_logical_manifest_identity(self):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        objects = self._objects(source)
+
+        for _ in range(2):
+            links = self._links(source, objects)
+            assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+            assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+            node = objects.dbt_manifest.sources[self.SOURCE_KEY]
+            assert (node.name, node.identifier, node.unique_id) == ("orders", "raw_orders", self.SOURCE_KEY)
+
+    @pytest.mark.parametrize("manifest_version", [4, 7, 8, 12])
+    def test_source_identifier_survives_supported_manifest_parsers(self, manifest_version):
+        payload = self._payload()
+        payload["metadata"]["dbt_schema_version"] = f"https://schemas.getdbt.com/dbt/manifest/v{manifest_version}.json"
+        if manifest_version < 8:
+            for node in [*payload["sources"].values(), *payload["nodes"].values()]:
+                node["root_path"] = "/dbt/jaffle_shop"
+            model = payload["nodes"][self.MODEL_KEY]
+            model["compiled"] = True
+            if manifest_version < 7:
+                model["raw_sql"] = model.pop("raw_code")
+                model["compiled_sql"] = model.pop("compiled_code")
+            else:
+                model["language"] = "sql"
+        if manifest_version == 12:
+            payload.update(groups={}, group_map={}, saved_queries={}, semantic_models={}, unit_tests={})
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+
+        links = self._links(source, self._objects(source, payload))
+
+        assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+        assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+
+    @pytest.mark.parametrize("identifier", ["RAW_ORDERS", "raw.orders", "raw orders"])
+    def test_physical_identifier_uses_existing_fqn_quoting(self, identifier):
+        from metadata.utils import fqn
+
+        physical_fqn = fqn._build("trino_svc", "RAW_DB", "RAW", identifier)
+        source = self._source(physical_fqn, self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = identifier
+
+        links = self._links(source, self._objects(source, payload))
+
+        assert physical_fqn in links
+        assert links[self.MODEL_FQN].datamodel.upstream == [physical_fqn]
+
+    def test_cross_service_source_stays_unresolved_when_search_is_disabled(self):
+        source = self._source("other_svc.RAW_DB.RAW.raw_orders", self.MODEL_FQN, self.LOGICAL_FQN)
+
+        links = self._links(source, self._objects(source))
+
+        assert set(links) == {self.MODEL_FQN}
+        assert links[self.MODEL_FQN].datamodel.upstream == []
+
+    def test_missing_dependency_does_not_drop_healthy_source_or_model(self):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        objects = self._objects(source)
+        objects.dbt_manifest.nodes[self.MODEL_KEY].depends_on.nodes.append("source.missing")
+
+        links = self._links(source, objects)
+
+        assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+        assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+
+    def test_exposure_uses_the_physical_source_upstream(self):
+        source = self._source(self.PHYSICAL_FQN)
+        source.metadata.get_by_name.return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="orders_dashboard",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+        )
+        objects = self._objects(source)
+        source.context.get().exposures = {}
+        exposure = SimpleNamespace(
+            name="orders_dashboard",
+            type=SimpleNamespace(value="dashboard"),
+            meta={"open_metadata_fqn": "looker.orders_dashboard"},
+            depends_on=SimpleNamespace(nodes=[self.SOURCE_KEY]),
+        )
+
+        source.add_dbt_exposure("exposure.jaffle_shop.orders_dashboard", exposure, objects.dbt_manifest.sources)
+
+        assert source.context.get().exposures["exposure.jaffle_shop.orders_dashboard"][DbtCommonEnum.UPSTREAM] == [
+            self.PHYSICAL_FQN
+        ]
+
+    @pytest.mark.parametrize(
+        "identifier, decoy",
+        [
+            ("raw_orders_*", "raw_orders_20261017"),
+            ("raw_orders_?", "raw_orders_1"),
+            ("raw.orders*", "raw.orders_20261017"),
+            (r"raw\orders*", r"raw\orders_20261017"),
+            (r"raw\orders", "raworders"),
+        ],
+    )
+    @pytest.mark.parametrize("literal_exists", [False, True])
+    @pytest.mark.parametrize(
+        "service, database, config",
+        [
+            ("trino_svc", "RAW_DB", {}),
+            ("other_svc", "RAW_DB", {"search_across_databases": True}),
+            ("other_svc", "mapped_db", {"catalog_mapping": {"RAW_DB": "mapped_db"}}),
+        ],
+    )
+    def test_source_identifier_is_literal_for_metadata_lineage_and_freshness(
+        self, identifier, decoy, literal_exists, service, database, config
+    ):
+        from metadata.utils import fqn
+
+        physical_fqn = fqn._build(service, database, "RAW", identifier)
+        decoy_fqn = fqn._build(service, database, "RAW", decoy)
+        source = self._source(decoy_fqn, self.MODEL_FQN, *([physical_fqn] if literal_exists else []), **config)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = identifier
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        links = self._links(source, self._objects(source, payload, dbt_sources=sources))
+
+        assert set(links) == {self.MODEL_FQN, *([physical_fqn] if literal_exists else [])}
+        assert links[self.MODEL_FQN].datamodel.upstream == ([physical_fqn] if literal_exists else [])
+        freshness = source.context.get().dbt_tests.get(self.SOURCE_KEY + "_freshness")
+        if literal_exists:
+            assert freshness[DbtCommonEnum.UPSTREAM.value] == [physical_fqn]
+        else:
+            assert freshness is None
+
+    @pytest.mark.parametrize("missing_location", ["database", "schema"])
+    def test_source_with_unspecified_location_still_resolves_literal_identifier(self, missing_location):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY][missing_location] = "None"
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        links = self._links(source, self._objects(source, payload, dbt_sources=sources))
+
+        assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+        assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+        assert source.context.get().dbt_tests[self.SOURCE_KEY + "_freshness"][DbtCommonEnum.UPSTREAM.value] == [
+            self.PHYSICAL_FQN
+        ]

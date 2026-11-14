@@ -15,6 +15,30 @@ import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Card: Object.assign(
+    ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    ),
+    {
+      Content: ({
+        children,
+        className,
+      }: {
+        children?: ReactNode;
+        className?: string;
+      }) => <div className={className}>{children}</div>,
+    }
+  ),
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Skeleton: () => <div data-testid="skeleton" />,
 }));

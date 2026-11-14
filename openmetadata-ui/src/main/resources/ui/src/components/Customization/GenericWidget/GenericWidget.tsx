@@ -34,7 +34,10 @@ import type { WidgetCommonProps } from '../../../pages/CustomizablePage/Customiz
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermPureUtils';
-import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import {
+  getCustomizableWidgetByPage,
+  getDummyDataByPage,
+} from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';
@@ -109,9 +112,22 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     }
   }, [props.widgetKey, props.isEditView, setGlossaryChildTerms]);
 
-  const widgetName = startCase(
-    props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
-  );
+  // Same name the add-widget list shows; widgets missing from it fall back to their key.
+  const widgetName = useMemo(() => {
+    const widgets = getCustomizableWidgetByPage(currentPageType as PageType);
+    const key = resolveWidgetKey(
+      props.widgetKey,
+      widgets.map(({ fullyQualifiedName }) => fullyQualifiedName)
+    );
+
+    return (
+      widgets.find(({ fullyQualifiedName }) => fullyQualifiedName === key)
+        ?.name ??
+      startCase(
+        props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
+      )
+    );
+  }, [currentPageType, props.widgetKey]);
 
   const cardContent = useMemo(() => {
     // Find the matching widget component based on prefix matching
@@ -137,11 +153,14 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   }, [props.widgetKey]);
 
   return (
-    // Light values reproduce the antd inner Card this replaced.
-    <Card className="tw:h-full tw:overflow-visible tw:border-utility-gray-blue-100 tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
+    // muted: one step below the gray-800 customize panels in dark mode, so the
+    // widgets don't blend into the surface they sit on.
+    <Card
+      className="tw:h-full tw:overflow-visible tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
+      variant="muted">
       <Box
         align="center"
-        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-utility-gray-100 tw:px-4 tw:py-2"
+        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-quaternary tw:px-4 tw:py-2"
         gap={2}>
         {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
         <span
@@ -164,10 +183,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           )}
           {props.handleRemoveWidget && (
             <ButtonUtility
-              color="secondary"
               data-testid="remove-widget-button"
               icon={MinusCircle}
-              size="xs"
+              size="lg"
               tooltip={t('label.remove-entity', {
                 entity: t('label.widget'),
               })}
@@ -176,10 +194,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           )}
           {isConfigurable && (
             <ButtonUtility
-              color="secondary"
               data-testid="widget-settings-button"
               icon={Settings01}
-              size="xs"
+              size="lg"
               tooltip={t('label.configure-entity', { entity: widgetName })}
               onClick={() => setIsSettingsOpen(true)}
             />

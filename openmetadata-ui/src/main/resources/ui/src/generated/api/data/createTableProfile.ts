@@ -48,7 +48,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -188,6 +189,16 @@ export interface CustomMetricProfile {
     value?: number;
 }
 
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
 export interface HistogramClass {
     /**
      * Boundaries of Histogram.
@@ -247,7 +258,8 @@ export interface TableProfile {
     /**
      * Custom Metrics profile list bound to a column.
      */
-    customMetrics?: CustomMetricProfile[];
+    customMetrics?:   CustomMetricProfile[];
+    executionSource?: TableExecutionSource;
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */

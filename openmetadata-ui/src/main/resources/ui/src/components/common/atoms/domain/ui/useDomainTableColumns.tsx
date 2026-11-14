@@ -15,6 +15,7 @@ import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
+import { getVisibleStatusColumns } from '../../../../../utils/EntityStatusUtils';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
 import {
   renderDomainClassificationTagsCell,
@@ -26,15 +27,24 @@ import {
 
 interface UseDomainTableColumnsOptions {
   nameLabelKey?: string;
+  entities?: Domain[];
   onEntityClick?: (entity: Domain) => void;
 }
 
 export const useDomainTableColumns = ({
   nameLabelKey = 'label.domain',
+  entities = [],
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
-  const extraColumns = domainClassBase.getListingExtraColumns();
+  const extraColumns = useMemo(
+    () =>
+      getVisibleStatusColumns(
+        domainClassBase.getListingExtraColumns(),
+        entities
+      ),
+    [entities]
+  );
 
   const columns: ColumnDef[] = useMemo(
     () => [

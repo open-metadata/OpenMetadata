@@ -18,18 +18,26 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 class ShaclValidateToolTest {
 
@@ -163,6 +171,23 @@ class ShaclValidateToolTest {
           tool(repository).execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("fullGraph", fullGraph));
       assertEquals("full-graph", result.scope());
     }
+  }
+
+  @Test
+  void staysAdminOnlyBecauseTheFullGraphModeIsExpensive() {
+    final Authorizer authorizer = mock(Authorizer.class);
+    final RdfRepository repository = enabledRepository();
+    doThrow(new AuthorizationException("Admin permission is required"))
+        .when(authorizer)
+        .authorizeAdmin(any(SecurityContext.class));
+
+    assertThrows(
+        AuthorizationException.class,
+        () -> tool(repository).execute(authorizer, SECURITY_CONTEXT, Map.of("fullGraph", true)));
+
+    verify(authorizer).authorizeAdmin(SECURITY_CONTEXT);
+    verify(authorizer, never()).authorize(any(), any(OperationContext.class), any());
+    verifyNoInteractions(repository);
   }
 
   private static ShaclValidateTool tool(RdfRepository repository) {

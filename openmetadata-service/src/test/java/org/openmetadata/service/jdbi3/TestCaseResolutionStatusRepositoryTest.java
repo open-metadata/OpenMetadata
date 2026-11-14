@@ -13,79 +13,296 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.util.RestUtil;
 
 @Execution(ExecutionMode.CONCURRENT)
 class TestCaseResolutionStatusRepositoryTest {
 
   @Test
-  void testAddOriginEntityFQNJoin_withOriginEntityFQN() {
+  void boundedHistoryDoesNotMaterializeTheLookaheadAndValidatesCursors() {
+    final UUID stateId = UUID.randomUUID();
+    final TestCaseResolutionStatus newest = createIncident(TestCaseResolutionStatusTypes.Ack);
+    final CollectionDAO collection = mock(CollectionDAO.class);
+    final var dao = mock(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    when(collection.testCaseResolutionStatusTimeSeriesDao()).thenReturn(dao);
+    when(dao.listTestCaseResolutionStatusesForStateId(stateId.toString(), null, null, 2))
+        .thenReturn(List.of(JsonUtils.pojoToJson(newest), "not JSON"));
+    when(dao.countTestCaseResolutionStatusesForStateId(stateId.toString())).thenReturn(2);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collection);
+      final var repository = new HistoryTestRepository(Set.of());
+      final var page = repository.listTestCaseResolutionStatusesForStateId(stateId, 1, null);
+      assertEquals(
+          List.of(newest.getId()),
+          page.getData().stream().map(TestCaseResolutionStatus::getId).toList());
+      assertEquals(
+          newest.getTimestamp() + "|" + newest.getId(),
+          RestUtil.decodeCursor(page.getPaging().getAfter()));
+      assertEquals(2, page.getPaging().getTotal());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> repository.listTestCaseResolutionStatusesForStateId(stateId, 0, null));
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> repository.listTestCaseResolutionStatusesForStateId(stateId, 1000001, null));
+      for (String cursor : List.of("", "invalid", RestUtil.encodeCursor("123|not-a-uuid"))) {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.listTestCaseResolutionStatusesForStateId(stateId, 1, cursor));
+      }
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              repository.listTestCaseResolutionStatusesForStateId(
+                  stateId, null, page.getPaging().getAfter()));
+    }
+  }
+
+  @Test
+  void latestReadFetchesOneRowWithoutCountingHistory() {
+    final UUID stateId = UUID.randomUUID();
+    final TestCaseResolutionStatus newest =
+        createIncident(TestCaseResolutionStatusTypes.Assigned).withStateId(stateId);
+    final CollectionDAO collection = mock(CollectionDAO.class);
+    final var dao = mock(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    when(collection.testCaseResolutionStatusTimeSeriesDao()).thenReturn(dao);
+    final AtomicInteger rowsRead = new AtomicInteger();
+    when(dao.listTestCaseResolutionStatusesForStateId(
+            eq(stateId.toString()), any(), any(), anyInt()))
+        .thenAnswer(
+            invocation -> {
+              final int limit = invocation.getArgument(3);
+              final List<String> rows =
+                  List.of(JsonUtils.pojoToJson(newest), "not JSON").subList(0, Math.min(limit, 2));
+              rowsRead.addAndGet(rows.size());
+              return rows;
+            });
+    when(dao.countTestCaseResolutionStatusesForStateId(anyString()))
+        .thenThrow(new AssertionError("Latest reads must not count the history"));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collection);
+      final var repository = new HistoryTestRepository(Set.of());
+      assertEquals(newest.getId(), repository.getLatestRecordForStateId(stateId).getId());
+      assertEquals(1, rowsRead.get());
+    }
+  }
+
+  @Test
+  void latestAndPagedHistorySkipAnOrphanAndRetainSeverity() {
+    final UUID stateId = UUID.randomUUID();
+    final TestCaseResolutionStatus orphan =
+        createIncident(TestCaseResolutionStatusTypes.New).withTimestamp(300L);
+    final TestCaseResolutionStatus valid =
+        createIncident(TestCaseResolutionStatusTypes.Assigned)
+            .withTimestamp(200L)
+            .withSeverity(Severity.Severity2);
+    final CollectionDAO collection = mock(CollectionDAO.class);
+    final var dao = mock(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    when(collection.testCaseResolutionStatusTimeSeriesDao()).thenReturn(dao);
+    when(dao.listTestCaseResolutionStatusesForStateId(stateId.toString(), null, null, 1))
+        .thenReturn(List.of(JsonUtils.pojoToJson(orphan)));
+    when(dao.listTestCaseResolutionStatusesForStateId(stateId.toString(), null, null, 2))
+        .thenReturn(List.of(JsonUtils.pojoToJson(orphan), JsonUtils.pojoToJson(valid)));
+    when(dao.listTestCaseResolutionStatusesForStateId(
+            stateId.toString(), 300L, orphan.getId().toString(), 100))
+        .thenReturn(List.of(JsonUtils.pojoToJson(valid)));
+    when(dao.listTestCaseResolutionStatusesForStateId(
+            stateId.toString(), 300L, orphan.getId().toString(), 101))
+        .thenReturn(List.of(JsonUtils.pojoToJson(valid)));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collection);
+      final var repository = new HistoryTestRepository(Set.of(orphan.getId()));
+      final var latest = repository.getLatestRecordForStateId(stateId);
+      assertEquals(valid.getId(), latest.getId());
+      assertEquals(Severity.Severity2, latest.getSeverity());
+      assertEquals(
+          TestCaseResolutionStatusTypes.Assigned, latest.getTestCaseResolutionStatusType());
+      final var page = repository.listTestCaseResolutionStatusesForStateId(stateId, 1, null);
+      assertEquals(
+          List.of(valid.getId()),
+          page.getData().stream().map(TestCaseResolutionStatus::getId).toList());
+      assertNull(page.getPaging().getAfter());
+      assertNull(repository.getLatestRecordForStateId(null));
+    }
+  }
+
+  @Test
+  void orphanRunsUseBoundedBatchesWithoutSkippingValidHistory() {
+    final UUID stateId = UUID.randomUUID();
+    final List<TestCaseResolutionStatus> rows = new ArrayList<>();
+    for (int index = 0; index < 205; index++) {
+      rows.add(
+          createIncident(TestCaseResolutionStatusTypes.New)
+              .withStateId(stateId)
+              .withTimestamp(1000L - index));
+    }
+    final Set<UUID> orphanIds =
+        rows.stream().map(TestCaseResolutionStatus::getId).collect(Collectors.toSet());
+    final TestCaseResolutionStatus latest =
+        createIncident(TestCaseResolutionStatusTypes.Assigned)
+            .withStateId(stateId)
+            .withTimestamp(700L)
+            .withSeverity(Severity.Severity2);
+    final TestCaseResolutionStatus older =
+        createIncident(TestCaseResolutionStatusTypes.New).withStateId(stateId).withTimestamp(699L);
+    rows.add(latest);
+    rows.add(older);
+    final CollectionDAO collection = mock(CollectionDAO.class);
+    final var dao = mock(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    when(collection.testCaseResolutionStatusTimeSeriesDao()).thenReturn(dao);
+    final AtomicInteger reads = new AtomicInteger();
+    when(dao.listTestCaseResolutionStatusesForStateId(
+            eq(stateId.toString()), any(), any(), anyInt()))
+        .thenAnswer(
+            invocation -> {
+              reads.incrementAndGet();
+              final Long afterTimestamp = invocation.getArgument(1);
+              final int limit = invocation.getArgument(3);
+              return rows.stream()
+                  .filter(row -> afterTimestamp == null || row.getTimestamp() < afterTimestamp)
+                  .limit(limit)
+                  .map(JsonUtils::pojoToJson)
+                  .toList();
+            });
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collection);
+      final var repository = new HistoryTestRepository(orphanIds);
+      assertEquals(latest.getId(), repository.getLatestRecordForStateId(stateId).getId());
+      assertTrue(reads.get() <= 4, "205 orphans must not require one history read each");
+      reads.set(0);
+      final var page = repository.listTestCaseResolutionStatusesForStateId(stateId, 1, null);
+      assertEquals(
+          List.of(latest.getId()),
+          page.getData().stream().map(TestCaseResolutionStatus::getId).toList());
+      assertTrue(reads.get() <= 4, "paged history must also batch orphan scans");
+      final var next =
+          repository.listTestCaseResolutionStatusesForStateId(
+              stateId, 1, page.getPaging().getAfter());
+      assertEquals(
+          List.of(older.getId()),
+          next.getData().stream().map(TestCaseResolutionStatus::getId).toList());
+      assertNull(next.getPaging().getAfter());
+      rows.remove(latest);
+      rows.remove(older);
+      reads.set(0);
+      assertNull(repository.getLatestRecordForStateId(stateId));
+      assertTrue(reads.get() <= 4, "an all-orphan history must exhaust in bounded batches");
+      reads.set(0);
+      final var empty = repository.listTestCaseResolutionStatusesForStateId(stateId, 1, null);
+      assertTrue(empty.getData().isEmpty());
+      assertNull(empty.getPaging().getAfter());
+      assertTrue(reads.get() <= 4, "an all-orphan page must exhaust in bounded batches");
+    }
+  }
+
+  private static class HistoryTestRepository extends TestCaseResolutionStatusRepository {
+    private final Set<UUID> orphanIds;
+
+    HistoryTestRepository(Set<UUID> orphanIds) {
+      this.orphanIds = orphanIds;
+    }
+
+    @Override
+    protected void setInheritedFields(TestCaseResolutionStatus record) {
+      if (orphanIds.contains(record.getId())) {
+        throw new EntityNotFoundException("Missing test case");
+      }
+      record.setTestCaseReference(
+          new EntityReference().withType(Entity.TEST_CASE).withId(UUID.randomUUID()));
+    }
+  }
+
+  @Test
+  void testIncidentCondition_withOriginEntityFQN() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("originEntityFQN", "test.table");
 
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE 1=1");
+    var shaped = CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(filter);
 
-    assertTrue(result.contains("INNER JOIN"));
-    assertTrue(result.contains("test_case"));
-    assertTrue(result.contains("WHERE 1=1"));
+    // The join is added when the originEntityFQN predicate needs its testCaseEntityFQN alias,
+    // and the default non-deleted deletion scoping rides it as a qualified predicate.
+    assertTrue(shaped.condition().contains("INNER JOIN"));
+    assertTrue(shaped.condition().contains("test_case"));
+    assertTrue(
+        shaped.condition().contains("tc.deleted = FALSE"), "include defaults to non-deleted");
+    assertTrue(
+        shaped.condition().contains("ON entityFQNHash = testCaseHash WHERE"),
+        "the join must end with a separator before the condition it is concatenated with");
+    assertTrue(
+        shaped.params().containsKey("originEntityFQN"),
+        "the predicate's binds travel with the condition");
   }
 
   @Test
-  void testAddOriginEntityFQNJoin_withInclude() {
+  void testIncidentCondition_withoutOriginPaysAnExistsNotAJoin() {
+    // ListFilter() defaults to include = NON_DELETED, and with no originEntityFQN predicate the
+    // query pays an indexed EXISTS instead of a join nothing else needs.
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("include", "non-deleted");
 
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE 1=1");
+    var shaped = CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(filter);
 
-    assertTrue(result.contains("INNER JOIN"));
-    assertTrue(result.contains("test_case"));
+    assertFalse(shaped.condition().contains("INNER JOIN"));
+    assertTrue(shaped.condition().contains("EXISTS (SELECT 1 FROM test_case"));
+    assertTrue(shaped.condition().contains("tcScope.deleted = FALSE"));
   }
 
   @Test
-  void testAddOriginEntityFQNJoin_withDefaultFilter() {
-    // ListFilter() default constructor sets include = Include.NON_DELETED
-    // The addOriginEntityFQNJoin method adds JOIN when either originEntityFQN OR include is present
-    // Since include is always set by default, the JOIN is always added
-    ListFilter filter = new ListFilter();
-
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE 1=1");
-
-    // With default ListFilter, JOIN is added because include is set to NON_DELETED
-    assertTrue(result.contains("INNER JOIN"));
-    assertTrue(result.contains("WHERE 1=1"));
-  }
-
-  @Test
-  void testAddOriginEntityFQNJoin_preservesCondition() {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("originEntityFQN", "test.table");
-
-    String result =
-        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.addOriginEntityFQNJoin(
-            filter, "WHERE status = 'Open'");
-
-    assertTrue(result.contains("WHERE status = 'Open'"));
+  void testIncidentCondition_honorsIncludeDeletedAndAll() {
+    var deletedScoped =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(
+            new ListFilter(Include.DELETED));
+    assertTrue(
+        deletedScoped.condition().contains("tcScope.deleted = TRUE"),
+        "include=deleted scopes on the test case's deletion state");
+    var unscoped =
+        CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.incidentCondition(
+            new ListFilter(Include.ALL));
+    assertFalse(unscoped.condition().contains("EXISTS (SELECT 1 FROM test_case"));
+    assertFalse(unscoped.condition().contains("INNER JOIN"));
   }
 
   @Test
@@ -223,6 +440,82 @@ class TestCaseResolutionStatusRepositoryTest {
     assertEquals("Severity3", Severity.Severity3.value());
     assertEquals("Severity4", Severity.Severity4.value());
     assertEquals("Severity5", Severity.Severity5.value());
+  }
+
+  /**
+   * The incident listing reads every search hit back into {@link TestCaseResolutionStatus}, which
+   * rejects unknown properties, so each field the index adds for search alone has to be stripped
+   * first. One left behind fails every incident on the page, which is what the parent table
+   * reference did. The doc comes from the real index rather than a hand-written field list, so the
+   * next field the index adds fails here instead of in the IT lanes.
+   */
+  @Test
+  void searchOnlyFieldsOfAnIndexedIncidentAreStrippedBeforeTheStrictRead() {
+    Table table = tableWithParentRelations();
+    TestCase testCase = testCaseOn(table);
+    TestSuite basicSuite =
+        new TestSuite()
+            .withId(testCase.getTestSuite().getId())
+            .withName(testCase.getTestSuite().getName())
+            .withBasicEntityReference(table.getEntityReference().withType(Entity.TABLE));
+    TestCaseResolutionStatus incident =
+        createIncident(TestCaseResolutionStatusTypes.New)
+            .withTestCaseReference(testCase.getEntityReference());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () -> Entity.getEntityOrNull(eq(incident.getTestCaseReference()), anyString(), any()))
+          .thenReturn(testCase);
+      entity
+          .when(() -> Entity.getEntityOrNull(eq(testCase.getTestSuite()), anyString(), any()))
+          .thenReturn(basicSuite);
+      entity
+          .when(() -> Entity.getEntityByName(eq(Entity.TABLE), anyString(), anyString(), any()))
+          .thenReturn(table);
+      entity
+          .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
+          .thenReturn(table);
+      entity.when(() -> Entity.inheritedParentTerms(any())).thenCallRealMethod();
+
+      Map<String, Object> listedSource =
+          new HashMap<>(new TestCaseResolutionStatusIndex(incident).buildSearchIndexDoc());
+      TestCaseResolutionStatusRepository.SEARCH_ONLY_FIELDS.forEach(listedSource::remove);
+
+      assertDoesNotThrow(
+          () -> JsonUtils.readOrConvertValue(listedSource, TestCaseResolutionStatus.class));
+    }
+  }
+
+  private static Table tableWithParentRelations() {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("svc.db.sc.orders")
+        .withDatabase(reference(Entity.DATABASE, "db"))
+        .withDatabaseSchema(reference(Entity.DATABASE_SCHEMA, "sc"))
+        .withService(reference(Entity.DATABASE_SERVICE, "svc"))
+        .withCertification(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")))
+        .withTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN("Glossary.Revenue")
+                    .withSource(TagLabel.TagSource.GLOSSARY)
+                    .withLabelType(TagLabel.LabelType.MANUAL)));
+  }
+
+  private static TestCase testCaseOn(Table table) {
+    return new TestCase()
+        .withId(UUID.randomUUID())
+        .withName("rowCount")
+        .withFullyQualifiedName(table.getFullyQualifiedName() + ".rowCount")
+        .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+        .withTestSuite(reference(Entity.TEST_SUITE, "orders.testSuite"));
+  }
+
+  private static EntityReference reference(String type, String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type).withName(name);
   }
 
   private TestCaseResolutionStatus createIncident(TestCaseResolutionStatusTypes statusType) {

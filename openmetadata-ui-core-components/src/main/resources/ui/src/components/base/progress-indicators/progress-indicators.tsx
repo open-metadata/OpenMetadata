@@ -1,10 +1,17 @@
+import type { HTMLAttributes } from 'react';
 import { cx } from '@/utils/cx';
 
-export interface ProgressBarProps {
+export interface ProgressBarProps
+  extends Pick<
+    HTMLAttributes<HTMLDivElement>,
+    'aria-label' | 'aria-labelledby'
+  > {
   /**
    * The current value of the progress bar.
    */
   value: number;
+  /** Chart-series color; omitted bars use the semantic brand color. */
+  color?: string;
   /**
    * The minimum value of the progress bar.
    * @default 0
@@ -38,15 +45,20 @@ export interface ProgressBarProps {
  */
 export const ProgressBarBase = ({
   value,
+  color,
   min = 0,
   max = 100,
   className,
   progressClassName,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }: ProgressBarProps) => {
   const percentage = ((value - min) * 100) / (max - min);
 
   return (
     <div
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       aria-valuemax={max}
       aria-valuemin={min}
       aria-valuenow={value}
@@ -61,7 +73,10 @@ export const ProgressBarBase = ({
           'tw:size-full tw:rounded-md tw:bg-fg-brand-primary tw:transition tw:duration-75 tw:ease-linear',
           progressClassName
         )}
-        style={{ transform: `translateX(-${100 - percentage}%)` }}
+        style={{
+          backgroundColor: color,
+          transform: `translateX(-${100 - percentage}%)`,
+        }}
       />
     </div>
   );
@@ -89,12 +104,15 @@ export interface ProgressIndicatorWithTextProps extends ProgressBarProps {
  */
 export const ProgressBar = ({
   value,
+  color,
   min = 0,
   max = 100,
   valueFormatter,
   labelPosition,
   className,
   progressClassName,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }: ProgressIndicatorWithTextProps) => {
   const percentage = ((value - min) * 100) / (max - min);
   const formattedValue = valueFormatter
@@ -103,7 +121,10 @@ export const ProgressBar = ({
 
   const baseProgressBar = (
     <ProgressBarBase
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       className={className}
+      color={color}
       max={max}
       min={min}
       progressClassName={progressClassName}

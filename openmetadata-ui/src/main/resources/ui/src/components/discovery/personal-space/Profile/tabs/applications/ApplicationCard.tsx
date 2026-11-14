@@ -31,8 +31,9 @@ interface ApplicationCardProps {
   title: string;
   description?: string;
   /**
-   * Renders a link button that opens the app instead of making the whole card
-   * a button (a button inside a button is not valid markup).
+   * Renders a link button that opens the app. The card still opens it on mouse
+   * click, but is not itself a button (a button inside a button is not valid
+   * markup), so keyboard users reach the app through this link.
    */
   actionLabel?: string;
   /** Shows the "Disabled" badge; the card stays clickable so it can be restored. */
@@ -41,6 +42,29 @@ interface ApplicationCardProps {
   unavailableReason?: string;
   onClick: () => void;
 }
+
+/** The app's full-colour tile, or its glyph on a neutral tile when it has none. */
+const AppIconTile = ({ appName }: { appName: string }) => {
+  const ColoredIcon = applicationsClassBase.getAppColoredIcon(appName);
+  if (ColoredIcon) {
+    return <ColoredIcon className="tw:mt-1 tw:size-10 tw:shrink-0" />;
+  }
+  const Icon = applicationsClassBase.getAppIcon(appName);
+
+  return (
+    <Box
+      align="center"
+      className="tw:mt-1 tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
+      justify="center">
+      <Icon className="tw:size-5 tw:text-fg-secondary" />
+    </Box>
+  );
+};
+
+// Runtime-blocked apps are "Unavailable"; "Disabled" is kept for soft-deleted
+// apps, which the "Show Disabled" toggle lists.
+const getBadgeLabelKey = (isAvailable: boolean) =>
+  isAvailable ? 'label.disabled' : 'label.unavailable';
 
 const ApplicationCard: FC<ApplicationCardProps> = ({
   appName,
@@ -52,34 +76,29 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation();
-  const Icon = applicationsClassBase.getAppIcon(appName);
   const isAvailable = !unavailableReason;
-  const isClickable = isAvailable && !actionLabel;
+  const isCardButton = isAvailable && !actionLabel;
 
   const card = (
     <Card
       aria-disabled={!isAvailable || undefined}
       className={classNames('tw:h-full', { 'tw:opacity-65': !isAvailable })}
       data-testid={`${kebabCase(appName)}-card`}
-      isClickable={isClickable}
-      role={isClickable ? 'button' : undefined}
+      isClickable={isAvailable}
+      role={isCardButton ? 'button' : undefined}
       size="md"
-      tabIndex={isClickable ? 0 : undefined}
-      onClick={isClickable ? onClick : undefined}
+      tabIndex={isCardButton ? 0 : undefined}
+      variant="muted"
+      onClick={isAvailable ? onClick : undefined}
       onKeyDown={(e) => {
-        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+        if (isCardButton && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           onClick();
         }
       }}>
-      <Card.Content>
+      <Card.Content className="tw:px-3">
         <Box align="start" direction="row" gap={4}>
-          <Box
-            align="center"
-            className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
-            justify="center">
-            <Icon className="tw:size-5 tw:text-fg-secondary" />
-          </Box>
+          <AppIconTile appName={appName} />
           <Box className="tw:min-w-0" direction="col" gap={1}>
             <Box align="center" direction="row" gap={2} wrap="wrap">
               <Typography
@@ -94,7 +113,7 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
                   data-testid="disabled-badge"
                   size="sm"
                   type="pill-color">
-                  {t('label.disabled')}
+                  {t(getBadgeLabelKey(isAvailable))}
                 </Badge>
               )}
             </Box>

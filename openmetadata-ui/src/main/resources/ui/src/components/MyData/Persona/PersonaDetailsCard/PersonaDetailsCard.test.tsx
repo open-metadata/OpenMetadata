@@ -12,6 +12,11 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {
+  AI_APP_MODE,
+  DEFAULT_APP_MODE,
+} from '../../../../constants/appMode.constants';
+import { useAppModeStore } from '../../../../hooks/useAppMode';
 import { PersonaDetailsCard } from './PersonaDetailsCard';
 
 const mockNavigate = jest.fn();
@@ -86,6 +91,28 @@ describe('PersonaDetailsCard Component', () => {
       hash: '#customize-ui',
       pathname: '/settings/persona/john-doe',
     });
+  });
+
+  // The route builders stay classic paths in AI mode, so a `pathname:` target
+  // built from one is always a valid URL (ADR:2026-10-21-settings-pages-are-classic-only).
+  it('navigates to a plain pathname in AI mode too', async () => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+    globalThis.history.replaceState(null, '', '/explore?a=1');
+
+    try {
+      await act(async () => {
+        render(<PersonaDetailsCard persona={personaWithDescription} />);
+      });
+      fireEvent.click(await screen.findByText('John Doe'));
+
+      expect(mockNavigate).toHaveBeenCalledWith({
+        hash: '#customize-ui',
+        pathname: '/settings/persona/john-doe',
+      });
+    } finally {
+      useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
+      globalThis.history.replaceState(null, '', '/');
+    }
   });
 
   it('should not navigate when persona.fullyQualifiedName is missing', async () => {

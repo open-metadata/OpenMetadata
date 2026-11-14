@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.OntologyChangeSetTestSupport.applyOntologyChangeSet;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -51,8 +50,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.OntologyChangeSetState;
-import org.openmetadata.schema.type.OntologyConfiguration;
-import org.openmetadata.schema.type.OntologyLayer;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.service.Entity;
@@ -187,6 +184,30 @@ public class OntologyBulkIT {
     assertTrue(owner.ontologyBulk().listJobs(1000).getJobs().size() <= MAXIMUM_JOB_LIST_SIZE);
   }
 
+  @Test
+  void listJobsIsGlossaryScoped(final TestNamespace namespace) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Glossary glossaryA = createGlossary(client, namespace, "BulkOntologyA");
+    final Glossary glossaryB = createGlossary(client, namespace, "BulkOntologyB");
+    final long jobA = createBackgroundJob(client, glossaryA, namespace).getId();
+    final long jobB = createBackgroundJob(client, glossaryB, namespace).getId();
+
+    final UUID glossaryAId = glossaryA.getId();
+    final UUID glossaryBId = glossaryB.getId();
+
+    // Filter by glossary A: only job A is visible
+    assertTrue(containsJob(client.ontologyBulk().listJobs(glossaryAId, 100), jobA));
+    assertFalse(containsJob(client.ontologyBulk().listJobs(glossaryAId, 100), jobB));
+
+    // Filter by glossary B: only job B is visible
+    assertTrue(containsJob(client.ontologyBulk().listJobs(glossaryBId, 100), jobB));
+    assertFalse(containsJob(client.ontologyBulk().listJobs(glossaryBId, 100), jobA));
+
+    // No glossary filter: both jobs visible (caller scoped)
+    assertTrue(containsJob(client.ontologyBulk().listJobs(100), jobA));
+    assertTrue(containsJob(client.ontologyBulk().listJobs(100), jobB));
+  }
+
   private static OntologyBulkJob createBackgroundJob(
       final OpenMetadataClient client, final Glossary glossary, final TestNamespace namespace) {
     final OntologyBulkRequest request = request(glossary, namespace, largeCsv(namespace), true);
@@ -206,24 +227,19 @@ public class OntologyBulkIT {
 
   private static Glossary createGlossary(
       final OpenMetadataClient client, final TestNamespace namespace) {
-    final String name = namespace.prefix("BulkOntology");
-    final OntologyConfiguration configuration =
-        new OntologyConfiguration()
-            .withBaseIri(URI.create("https://example.org/bulk/" + name + '/'))
-            .withLayer(OntologyLayer.L_2)
-            .withImports(List.of())
-            .withPrefixes(List.of())
-            .withIriMintingPattern("concept/{term}/{uuid}")
-            .withReadOnly(false)
-            .withInstalledPacks(List.of());
+    return createGlossary(client, namespace, "BulkOntology");
+  }
+
+  private static Glossary createGlossary(
+      final OpenMetadataClient client, final TestNamespace namespace, final String baseName) {
+    final String name = namespace.prefix(baseName);
     final Glossary glossary =
         client
             .glossaries()
             .create(
                 new CreateGlossary()
                     .withName(name)
-                    .withDescription("Typed ontology bulk integration model")
-                    .withOntologyConfiguration(configuration));
+                    .withDescription("Typed ontology bulk integration model"));
     return namespace.trackRoot(Entity.GLOSSARY, glossary);
   }
 

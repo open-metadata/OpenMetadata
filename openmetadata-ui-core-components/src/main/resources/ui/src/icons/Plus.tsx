@@ -18,21 +18,21 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Plus: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M10 4v12m6-6H4" stroke="currentColor" strokeWidth={1.8} />
   </svg>
 );
 Plus.displayName = 'Plus';

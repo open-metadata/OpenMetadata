@@ -69,18 +69,15 @@ const NumberSettingRow = ({
       {draft === null ? (
         <Box align="center" direction="row" gap={2}>
           <Typography
-            className="tw:font-mono"
             data-testid={`global-setting-value-${name}`}
             size="text-sm"
             weight="semibold">
             {value}
           </Typography>
           <ButtonUtility
-            color="tertiary"
             data-testid={`global-setting-edit-${name}`}
             icon={Edit01}
             isDisabled={isDisabled}
-            size="xs"
             tooltip={t('label.edit')}
             onPress={() => setDraft(String(value))}
           />
@@ -97,20 +94,16 @@ const NumberSettingRow = ({
             onChange={setDraft}
           />
           <ButtonUtility
-            color="tertiary"
             data-testid={`global-setting-save-${name}`}
             icon={Check}
             isDisabled={!isValid || isSaving}
-            size="xs"
             tooltip={t('label.save')}
             onPress={save}
           />
           <ButtonUtility
-            color="tertiary"
             data-testid={`global-setting-cancel-${name}`}
             icon={XClose}
             isDisabled={isSaving}
-            size="xs"
             tooltip={t('label.cancel')}
             onPress={() => setDraft(null)}
           />

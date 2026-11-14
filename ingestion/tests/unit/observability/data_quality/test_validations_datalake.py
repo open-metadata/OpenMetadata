@@ -16,13 +16,28 @@ Each test should validate the Success, Failure and Aborted statuses
 """
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
+from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from freezegun import freeze_time
 from pandas import DataFrame
 
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
+from metadata.data_quality.interface.pandas.pandas_test_suite_interface import PandasTestSuiteInterface
 from metadata.data_quality.validations.base_test_handler import PandasRunner
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+    LocalConfig,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
+from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.importer import import_test_case_class
 
 TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
@@ -38,6 +53,58 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
 }
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
+
+
+@pytest.mark.parametrize(
+    "contents,expected,status,values",
+    [
+        ('id,name\n1,"unterminated\n', 0, TestCaseStatus.Aborted, []),
+        ('id,name\n1,"unterminated\n', 2, TestCaseStatus.Aborted, []),
+        ("id,name\n", 0, TestCaseStatus.Success, ["0"]),
+        ("id,name\n", 1, TestCaseStatus.Failed, ["0"]),
+        ("id,name\n1,one\n2,two\n", 2, TestCaseStatus.Success, ["2"]),
+    ],
+)
+def test_row_count_distinguishes_read_errors_from_empty_tables(
+    tmp_path, monkeypatch, test_case_table_row_count_to_be_equal, contents, expected, status, values
+):
+    path = tmp_path / "rows.csv"
+    path.write_text(contents)
+    table = Table(
+        id=uuid4(),
+        name=str(path),
+        columns=[],
+        fileFormat="csv",
+        databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="local"),
+    )
+    definition = TestDefinition(
+        id=uuid4(),
+        name="tableRowCountToEqual",
+        fullyQualifiedName="tableRowCountToEqual",
+        entityType="TABLE",
+        testPlatforms=["OpenMetadata"],
+        validatorClass="TableRowCountToEqualValidator",
+    )
+    test_case = test_case_table_row_count_to_be_equal
+    test_case.testDefinition = EntityReference(
+        id=definition.id, type="testDefinition", fullyQualifiedName=model_str(definition.fullyQualifiedName)
+    )
+    test_case.parameterValues[0].value = str(expected)
+    metadata = Mock()
+    metadata.get_by_id.return_value = metadata.get_by_name.return_value = definition
+    monkeypatch.setattr("metadata.sampler.pandas.sampler.get_ssl_connection", lambda _: SimpleNamespace(client=None))
+    connection = DatalakeConnection(configSource=LocalConfig())
+    sampler = DatalakeSampler(service_connection_config=connection, ometa_client=metadata, entity=table)
+    interface = PandasTestSuiteInterface(connection, metadata, sampler, table, validator_builder=ValidatorBuilder)
+
+    result = interface.run_test_case(test_case).testCaseResult
+
+    assert result.testCaseStatus == status
+    assert [value.value for value in result.testResultValue] == values
+    if status == TestCaseStatus.Aborted:
+        assert "Error tokenizing data" in result.result
+
+
 DL_DATA = (
     [
         "1",
@@ -554,6 +621,13 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(  # noqa: E73
             "tableColumnToMatchSet",
             "TABLE",
             (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_column_to_match_set_ordered_false",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
             None,
         ),
         (
@@ -1294,3 +1368,47 @@ def test_suite_validation_datalake(
                 assert dim.failedRowsPercentage == expected_dim[5]
 
             assert dim.impactScore == expected_dim[6]
+
+
+@pytest.mark.parametrize(
+    "test_case_type,parameter_values,status,failed_rows",
+    [
+        (
+            "columnValuesToBeInSet",
+            [
+                TestCaseParameterValue(name="allowedValues", value='["True", "False"]'),
+                TestCaseParameterValue(name="matchEnum", value="true"),
+            ],
+            TestCaseStatus.Success,
+            0,
+        ),
+        (
+            "columnValuesToBeNotInSet",
+            [TestCaseParameterValue(name="forbiddenValues", value='["False"]')],
+            TestCaseStatus.Failed,
+            1,
+        ),
+    ],
+)
+def test_string_booleans_on_a_datalake_column_stay_strings(test_case_type, parameter_values, status, failed_rows):
+    """GenericDataFrameColumnParser types a column of "True"/"False" strings as BOOLEAN; its sets must still compare as strings"""
+    test_case = TestCase(
+        name="string_booleans",
+        entityLink="<#E::table::service.db.users::columns::flag>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=parameter_values,
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+    validator = import_test_case_class(
+        "COLUMN", "pandas", test_case_type, f"{test_case_type[0].upper()}{test_case_type[1:]}Validator"
+    )(
+        PandasRunner(dataset=lambda: iter((DataFrame({"flag": ["True", "False", "True", "True"]}),)), raw_dataset=None),
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    res = validator.run_validation()
+
+    assert res.testCaseStatus == status
+    assert res.failedRows == failed_rows

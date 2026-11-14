@@ -19,12 +19,13 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -32,11 +33,10 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
-import { ROUTES } from '../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS, ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -48,6 +48,7 @@ import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -60,9 +61,8 @@ const ApplicationPage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
@@ -125,18 +125,22 @@ const ApplicationPage = () => {
     if (showDisabled) {
       return (
         <Grid.Item className="layout-column mt-24 text-center" span={24}>
-          <ErrorPlaceHolder heading={t('label.application-plural')} />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder data-testid="no-data-placeholder" />
+          </div>
         </Grid.Item>
       );
     }
 
     return (
       <Grid.Item className="layout-column mt-24 text-center" span={24}>
-        <ErrorPlaceHolder
-          heading={t('label.application-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div>{t('message.no-installed-applications-found')}</div>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t('message.no-installed-applications-found')}
+            icon={<Database01 />}
+          />
+        </div>
       </Grid.Item>
     );
   }, [showDisabled]);
@@ -257,11 +261,12 @@ const ApplicationPage = () => {
               </Grid>
             </Grid.Item>
             <Grid.Item className="layout-column" span={24}>
-              {showPagination && (
+              {shouldShowPager(applicationData) && (
                 <NextPrevious
                   currentPage={currentPage}
                   isLoading={isLoading}
                   pageSize={pageSize}
+                  pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
                   paging={paging}
                   pagingHandler={handleApplicationPageChange}
                   onShowSizeChange={handlePageSizeChange}

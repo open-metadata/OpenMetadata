@@ -198,6 +198,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Iomete,
   DatabaseServiceType.Clickzetta,
   DatabaseServiceType.Databend,
+  DatabaseServiceType.Neo4J,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -219,11 +220,13 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'useAccessHistory',
   'accessHistoryChunkSize',
+  'systemMetricsBatchSize',
   'scheme',
   'computeTableMetrics',
   'computeColumnMetrics',
   'includeViews',
   'useStatistics',
+  'enableAutoPartitionDetection',
   'confidence',
   'profileSampleConfig',
   'randomizedSample',
@@ -284,6 +287,7 @@ export const OPTIONAL_SCOPE_PROPERTIES = new Set([
 ]);
 
 export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'shardedTables',
   'includeTables',
   'includeViews',
   'includeTags',
@@ -329,6 +333,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.AutoClassification,
   PipelineType.Dbt,
   PipelineType.PolicyAgent,
+  PipelineType.ReverseMetadata,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [

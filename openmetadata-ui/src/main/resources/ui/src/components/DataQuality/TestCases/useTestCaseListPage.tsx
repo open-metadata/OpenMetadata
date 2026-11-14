@@ -20,6 +20,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
+import { getTestCaseListFilterParams } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -147,9 +148,11 @@ export const useTestCaseListPage = ({
         },
         false,
         navigate,
-        showModal
+        showModal,
+        undefined,
+        getTestCaseListFilterParams(params, selectedFilter, searchValue)
       ),
-    [permissions, navigate, showModal]
+    [permissions, navigate, showModal, params, selectedFilter, searchValue]
   );
 
   return {

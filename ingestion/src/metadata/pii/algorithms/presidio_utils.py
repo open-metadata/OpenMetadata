@@ -13,13 +13,17 @@ Utilities for working with the Presidio Library.
 """
 
 import inspect
+import ipaddress
 import logging
 import re
 import types
 from collections.abc import Callable, Iterable
-from functools import cache, wraps
+from copy import copy
+from datetime import date, datetime
+from functools import lru_cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
+from urllib.parse import SplitResult, urlsplit
 
 import spacy
 from dateutil import parser
@@ -34,13 +38,30 @@ from presidio_analyzer import (
 )
 from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 from presidio_analyzer.predefined_recognizers import (
+    AuAbnRecognizer,
+    AuAcnRecognizer,
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    EsNieRecognizer,
+    EsNifRecognizer,
+    FiPersonalIdentityCodeRecognizer,
+    IbanRecognizer,
     InAadhaarRecognizer,
+    ItFiscalCodeRecognizer,
+    ItVatCodeRecognizer,
     NhsRecognizer,
+    PlPeselRecognizer,
+    SgFinRecognizer,
+    SgUenRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
+)
+from presidio_analyzer.predefined_recognizers import (
+    IpRecognizer as PresidioIpRecognizer,
+)
+from presidio_analyzer.predefined_recognizers import (
+    UrlRecognizer as PresidioUrlRecognizer,
 )
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
@@ -49,11 +70,12 @@ from metadata.generated.schema.type.classificationLanguages import (
 )
 from metadata.pii.algorithms import patterns, presidio_constants
 from metadata.pii.constants import (
-    LANGUAGE_MODEL_MAPPING,
     PRESIDIO_LOGGER,
     SPACY_EN_MODEL,
     SUPPORTED_LANG,
 )
+from metadata.pii.model_loading import ClassificationModelLoadError
+from metadata.pii.model_registry import example_language_for_model, get_model_for_language
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
@@ -62,6 +84,23 @@ logger = pii_logger()
 MIN_SCORE_FOR_ENHANCEMENT = 0.3
 
 _CONTEXT_TOKEN_SEPARATORS = re.compile(r"[^0-9a-z]+")
+_MAX_CANDIDATE_LENGTH = 5000
+_MAX_IP_ADDRESS_LENGTH = 45
+_MAX_PORT = 65535
+_CARD_CANDIDATES = re.compile(r"\d[\d -]*\d|\d")
+_CARD_PARTS = re.compile(r"\S+")
+_TRAILING_YEAR = re.compile(r"(?:19|20)\d{2}")
+_CARD_DATE_PREFIX = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}) +")
+_CARD_QUANTITY_PREFIX = re.compile(r"[0-9]+ +")
+_QUANTITY_LABEL = re.compile(r"(?<![\w.+-])(?:qty|quantity)\s+$", re.IGNORECASE)
+_IP_CANDIDATES = re.compile(r"[\w:.%-]+")
+_IP_LABEL = re.compile(r"[a-zA-Z_]\w*")
+_NON_HEX = re.compile(r"[^0-9a-fA-F]")
+_CIDR_SUFFIX = re.compile(r"/(\d+)(?![\w.])")
+_URI_AUTHORITY_PREFIX = re.compile(
+    r"(?<![\w.+-])[a-zA-Z][a-zA-Z0-9+.-]*://"
+    r"(?:(?:[a-zA-Z0-9._~!$&'()*+,;=:-]|%[0-9a-fA-F]{2})*@)?\[?$"
+)
 
 
 def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bool:
@@ -93,7 +132,7 @@ def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bo
     return False
 
 
-@cache
+@lru_cache(maxsize=32)
 def load_nlp_engine(
     model_name: str | None = None,
     supported_language: str | None = None,
@@ -106,16 +145,24 @@ def load_nlp_engine(
         model_name = model_name or SPACY_EN_MODEL
         supported_language = supported_language or SUPPORTED_LANG
 
-    _load_spacy_model(model_name)
+    _load_spacy_model(model_name, classification_language)
     model = {
         "lang_code": supported_language,
         "model_name": model_name,
     }
-    return SpacyNlpEngine(models=[model])
-
-
-def get_model_for_language(language: ClassificationLanguage) -> str:
-    return LANGUAGE_MODEL_MAPPING[language]
+    nlp_engine = SpacyNlpEngine(models=[model])
+    try:
+        nlp_engine.load()
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(
+            model_name,
+            classification_language.value if classification_language else None,
+            supported_language,
+            "engine_load",
+        ) from exc
+    return nlp_engine
 
 
 def build_analyzer_engine(
@@ -129,7 +176,11 @@ def build_analyzer_engine(
     model_name = get_model_for_language(language)
     supported_language = language.value
 
-    nlp_engine = load_nlp_engine(model_name=model_name, supported_language=supported_language)
+    nlp_engine = load_nlp_engine(
+        model_name=model_name,
+        supported_language=supported_language,
+        classification_language=language,
+    )
     recognizer_registry = RecognizerRegistry(
         recognizers=list(_get_all_pattern_recognizers()),
         supported_languages=[supported_language],
@@ -148,18 +199,59 @@ def set_presidio_logger_level(log_level: int | str = logging.ERROR) -> None:
     logging.getLogger(PRESIDIO_LOGGER).setLevel(log_level)
 
 
-def _load_spacy_model(model_name: str) -> None:
+def _load_spacy_model(
+    model_name: str,
+    classification_language: ClassificationLanguage | None = None,
+) -> None:
     """
     Load the spaCy model for the given language.
     If the model is not found locally, it will be downloaded.
     """
 
+    requested_language = classification_language.value if classification_language else None
+    language = requested_language or example_language_for_model(model_name)
     try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
     except OSError:
-        logger.warning(f"Downloading {model_name} language model for the spaCy")
-        download(model_name)
+        _download_spacy_model(model_name, requested_language, language)
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "local_load") from exc
+    else:
+        return
+
+    try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "reload") from exc
+
+
+def _download_spacy_model(model_name: str, requested_language: str | None, language: str | None) -> None:
+    guidance = f"metadata install-classification-models --languages {language}" if language else None
+    if guidance:
+        logger.warning(
+            "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
+            model_name,
+            guidance,
+        )
+    else:
+        logger.warning(
+            "Downloading %s language model for spaCy. Install this model manually before an offline run; "
+            "run `metadata install-classification-models --help` for supported mapped models.",
+            model_name,
+        )
+    try:
+        download(model_name)
+    except MemoryError:
+        raise
+    except SystemExit as exc:  # NOSONAR -- spaCy's third-party CLI downloader exits on failure; normalize only here.
+        if exc.code:
+            raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
 
 
 def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
@@ -177,7 +269,91 @@ def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
 recognizer_factories = class_register()
 
 
+def _has_card_shape(candidate: str) -> bool:
+    shape = re.sub(r" +", " ", candidate)
+    return any(pattern.fullmatch(shape) for pattern in patterns.CARD_GROUPING_PATTERNS)
+
+
+def _remap_result(result: RecognizerResult, start: int, end: int) -> RecognizerResult:
+    mapped = copy(result)
+    mapped.start, mapped.end = start, end
+    return mapped
+
+
+def _whole_candidate_results(
+    analyze: Callable[..., list[RecognizerResult]],
+    candidate: str,
+    entities: list[str],
+    start: int,
+    end: int,
+    regex_flags: int | None,
+) -> list[RecognizerResult]:
+    # Full-text NLP artifacts have incompatible offsets when analyzing a substring.
+    return [
+        _remap_result(result, start, end)
+        for result in analyze(candidate, entities, nlp_artifacts=None, regex_flags=regex_flags)
+        if result.start == 0 and result.end == len(candidate)
+    ]
+
+
+def _is_embedded_card_token(text: str, start: int, end: int) -> bool:
+    if start and (text[start - 1].isalnum() or text[start - 1] in "_.-"):
+        return True
+    return end < len(text) and (
+        text[end].isalnum() or text[end] in "_-" or (text[end] == "." and text[end + 1 : end + 2].isdigit())
+    )
+
+
+def _is_phone_prefixed(text: str, start: int) -> bool:
+    preceding = start - 1
+    while preceding >= 0 and text[preceding] in " \t":
+        preceding -= 1
+    return preceding >= 0 and text[preceding] == "+"
+
+
+def _iter_card_candidates(text: str) -> Iterable[tuple[int, int]]:
+    for match in _CARD_CANDIDATES.finditer(text):
+        start, end = match.span()
+        if (
+            end - start <= _MAX_CANDIDATE_LENGTH
+            and not _is_embedded_card_token(text, start, end)
+            and not _is_phone_prefixed(text, start)
+        ):
+            yield start, end
+
+
+def _card_prefix_before_year(candidate: str) -> str | None:
+    # Recover a separate year only; shorter suffixes may complete a 19-digit card.
+    prefix, separator, suffix = candidate.rpartition(" ")
+    prefix = prefix.rstrip(" ")
+    if separator and _TRAILING_YEAR.fullmatch(suffix) and _has_card_shape(prefix):
+        return prefix
+    return None
+
+
+def _card_start_after_explicit_prefix(text: str, start: int, end: int) -> int | None:
+    candidate = text[start:end]
+    prefix = _CARD_DATE_PREFIX.match(candidate)
+    if prefix:
+        try:
+            date.fromisoformat(prefix.group(1))
+        except ValueError:
+            return None
+    else:
+        prefix = _CARD_QUANTITY_PREFIX.match(candidate)
+        if not prefix or not _QUANTITY_LABEL.search(text, max(0, start - _MAX_CANDIDATE_LENGTH), start):
+            return None
+    card_start = start + prefix.end()
+    return card_start if _has_card_shape(text[card_start:end]) else None
+
+
 class SanitizedCreditCardRecognizer(CreditCardRecognizer):
+    def _analyze_card_candidate(
+        self, candidate: str, entities: list[str], start: int, end: int, regex_flags: int | None
+    ) -> list[RecognizerResult]:
+        normalized = self.sanitize_value(candidate, self.replacement_pairs)
+        return _whole_candidate_results(super().analyze, normalized, entities, start, end, regex_flags)
+
     def analyze(
         self,
         text: str,
@@ -185,12 +361,32 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         nlp_artifacts: NlpArtifacts | None = None,
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
-        return super().analyze(
-            self.sanitize_value(text, self.replacement_pairs),
-            entities,
-            nlp_artifacts,
-            regex_flags,
-        )
+        results: list[RecognizerResult] = []
+        for start, end in _iter_card_candidates(text):
+            candidate = text[start:end]
+            if _has_card_shape(candidate):
+                whole_results = self._analyze_card_candidate(candidate, entities, start, end, regex_flags)
+                if whole_results:
+                    results.extend(whole_results)
+                    continue
+            card_start = _card_start_after_explicit_prefix(text, start, end)
+            if card_start is not None:
+                results.extend(
+                    self._analyze_card_candidate(text[card_start:end], entities, card_start, end, regex_flags)
+                )
+                continue
+            parts = list(_CARD_PARTS.finditer(candidate))
+            if len(parts) >= 2 and all(_has_card_shape(part.group()) for part in parts):
+                for part in parts:
+                    results.extend(
+                        self._analyze_card_candidate(
+                            part.group(), entities, start + part.start(), start + part.end(), regex_flags
+                        )
+                    )
+            prefix = _card_prefix_before_year(candidate)
+            if prefix is not None:
+                results.extend(self._analyze_card_candidate(prefix, entities, start, start + len(prefix), regex_flags))
+        return results
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
@@ -206,6 +402,187 @@ def credit_card_factory(
         supported_language=supported_language,
         context=context,
     )
+
+
+def _extend_to_url_end(text: str, start: int) -> int | None:
+    end = start
+    depth = 0
+    while end < len(text) and text[end] not in " \t\r\n<>\"'":
+        char = text[end]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        end += 1
+    return None if depth else end
+
+
+def _trim_url_prose_punctuation(text: str, start: int, end: int) -> int:
+    if end == len(text) or text[end] not in ">\"'":
+        while end > start and text[end - 1] in ".,":
+            end -= 1
+    return end
+
+
+def _split_url(candidate: str) -> SplitResult | None:
+    has_scheme = candidate.lower().startswith(("http://", "https://"))
+    try:
+        return urlsplit(candidate if has_scheme else f"//{candidate}")
+    except ValueError:
+        return None
+
+
+def _parse_url_candidate(candidate: str) -> tuple[str, SplitResult] | None:
+    parsed = _split_url(candidate)
+    if parsed is None:
+        return None
+    if not parsed.path and not parsed.query and not parsed.fragment:
+        trimmed = candidate.rstrip(".,!;")
+        if trimmed != candidate:
+            candidate = trimmed
+            parsed = _split_url(candidate)
+            if parsed is None:
+                return None
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if port is not None and not 1 <= port <= _MAX_PORT:
+        return None
+    return candidate, parsed
+
+
+# Keep URL/IP class names: Presidio derives identity metadata from them and accepts no name override.
+class UrlRecognizer(PresidioUrlRecognizer):
+    def analyze(
+        self,
+        text: str,
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
+        results: list[RecognizerResult] = []
+        seen: set[tuple[int, int]] = set()
+        for seed in super().analyze(text, entities, nlp_artifacts, regex_flags):
+            # Presidio's quoted patterns can include the opening quote; other seeds start at the host.
+            start = seed.start + (text[seed.start] in "\"'")
+            if start and (text[start - 1].isalnum() or text[start - 1] in "@._-"):
+                continue
+            end = _extend_to_url_end(text, start)
+            if end is None:
+                continue
+            end = _trim_url_prose_punctuation(text, start, end)
+            candidate = text[start:end]
+            if not candidate or len(candidate) > _MAX_CANDIDATE_LENGTH:
+                continue
+            parsed_candidate = _parse_url_candidate(candidate)
+            if parsed_candidate is None:
+                continue
+            candidate, parsed = parsed_candidate
+            # Keep Presidio's public-host policy, including its BASE_URL_REGEX suffix list.
+            if (
+                parsed.scheme not in ("", "http", "https")
+                or not parsed.hostname
+                or not re.fullmatch(self.BASE_URL_REGEX, parsed.hostname, flags=re.IGNORECASE)
+            ):
+                continue
+            end = start + len(candidate)
+            if (start, end) not in seen:
+                results.append(_remap_result(seed, start, end))
+                seen.add((start, end))
+        return results
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    PresidioUrlRecognizer
+)
+def url_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> UrlRecognizer:
+    return UrlRecognizer(supported_language=supported_language, context=context)
+
+
+def _cidr_suffix_is_valid(prefix: str, max_prefixlen: int, trailing_char: str | None) -> bool:
+    # Bound conversion too: Python rejects integer strings over its digit limit.
+    return len(prefix) <= 3 and int(prefix) <= max_prefixlen and (trailing_char is None or trailing_char not in "/:%-")
+
+
+def _skip_ip_label_prefix(token: str) -> int:
+    """Skip word-key labels, but retain hex-only prefixes that may be malformed IPv6."""
+    key, separator, _ = token.partition(":")
+    if separator and _IP_LABEL.fullmatch(key) and _NON_HEX.search(key):
+        return len(key) + 1
+    return 0
+
+
+def _is_uri_authority(text: str, start: int) -> bool:
+    # Malformed identifier-prefixed schemes must not turn a CIDR into a URI path.
+    return bool(_URI_AUTHORITY_PREFIX.search(text[max(0, start - _MAX_CANDIDATE_LENGTH) : start]))
+
+
+class IpRecognizer(PresidioIpRecognizer):
+    def __init__(self, *, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None):
+        # Anchored patterns retain Presidio's scores, invalidation and result metadata
+        # after ipaddress validates the complete candidate, including mapped IPv6.
+        super().__init__(
+            patterns=[
+                Pattern("IPv4", r"^[0-9.]+$", 0.6),
+                Pattern("IPv6", r"^(?!::$)[0-9a-fA-F:.]+(?:%[a-zA-Z0-9]+)?$", 0.6),
+                Pattern("IPv6", r"^::$", 0.1),
+            ],
+            supported_language=supported_language,
+            context=context,
+        )
+
+    def analyze(
+        self,
+        text: str,
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
+        results: list[RecognizerResult] = []
+        for match in _IP_CANDIDATES.finditer(text):
+            start, end = match.span()
+            token_end = end
+            start += _skip_ip_label_prefix(text[start:end])
+            while end > start and text[end - 1] == ".":
+                end -= 1
+            candidate = text[start:end]
+            if not any(char in candidate for char in ".:") or len(candidate) > _MAX_IP_ADDRESS_LENGTH:
+                continue
+            if candidate.count(":") == 1:
+                address, _, port = candidate.rpartition(":")
+                try:
+                    ipaddress.IPv4Address(address)
+                except ValueError:
+                    pass
+                else:
+                    if not port.isdecimal() or not 1 <= int(port) <= _MAX_PORT:
+                        continue
+                    candidate = address
+                    end = start + len(address)
+            try:
+                parsed_address = ipaddress.ip_address(candidate)
+            except ValueError:
+                continue
+            if token_end < len(text) and text[token_end] == "/":
+                suffix = _CIDR_SUFFIX.match(text[token_end:])
+                if suffix is not None and not _is_uri_authority(text, start):
+                    trailing_char = text[token_end + suffix.end() : token_end + suffix.end() + 1] or None
+                    if token_end != end or not _cidr_suffix_is_valid(
+                        suffix.group(1), parsed_address.max_prefixlen, trailing_char
+                    ):
+                        continue
+            results.extend(_whole_candidate_results(super().analyze, candidate, entities, start, end, regex_flags))
+        return results
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    PresidioIpRecognizer
+)
+def ip_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> IpRecognizer:
+    return IpRecognizer(supported_language=supported_language, context=context)
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
@@ -366,6 +743,204 @@ def date_recognizer(
     )
 
 
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    IbanRecognizer
+)
+def iban_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> IbanRecognizer:
+    return IbanRecognizer(
+        supported_language=supported_language,
+        context=context or IbanRecognizer.CONTEXT,
+        regex_flags=re.DOTALL | re.MULTILINE | re.IGNORECASE,
+    )
+
+
+class CaseInsensitiveEsNifRecognizer(EsNifRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # Reject Unicode case-folding lookalikes before normalizing the checksum input.
+        if not pattern_text.isascii() or not super().validate_result(pattern_text.upper()):
+            return False
+        return True if pattern_text.isupper() else None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    EsNifRecognizer
+)
+def es_nif_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> CaseInsensitiveEsNifRecognizer:
+    return CaseInsensitiveEsNifRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class CaseInsensitiveEsNieRecognizer(EsNieRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # Reject Unicode case-folding lookalikes before normalizing the checksum input.
+        if not pattern_text.isascii() or not super().validate_result(pattern_text.upper()):
+            return False
+        return True if pattern_text.isupper() else None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    EsNieRecognizer
+)
+def es_nie_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> CaseInsensitiveEsNieRecognizer:
+    return CaseInsensitiveEsNieRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class CaseInsensitiveSgUenRecognizer(SgUenRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # Reject Unicode case-folding lookalikes before normalizing the checksum input.
+        if not pattern_text.isascii() or not super().validate_result(pattern_text.upper()):
+            return False
+        return True if pattern_text.isupper() else None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    SgUenRecognizer
+)
+def sg_uen_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> CaseInsensitiveSgUenRecognizer:
+    return CaseInsensitiveSgUenRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class SeparatorTolerantAuAbnRecognizer(AuAbnRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        if not super().validate_result(pattern_text):
+            return False
+        # Newly accepted hyphenated codes need column context, not just a checksum.
+        return None if "-" in pattern_text else True
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    AuAbnRecognizer
+)
+def au_abn_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> SeparatorTolerantAuAbnRecognizer:
+    return SeparatorTolerantAuAbnRecognizer(
+        patterns=[*AuAbnRecognizer.PATTERNS, *patterns.au_abn_hyphenated],
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class SeparatorTolerantAuAcnRecognizer(AuAcnRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # ACN check: weights [8,7,6,5,4,3,2,1] on first 8 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
+        # weighted sum is divisible by 10 (check digit = 0) are always rejected.
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
+        if len(text) != 9:
+            return False
+        digits = [int(c) for c in text]
+        weights = [8, 7, 6, 5, 4, 3, 2, 1]
+        total = sum(d * w for d, w in zip(digits[:8], weights, strict=False))
+        if (10 - total % 10) % 10 != digits[8]:
+            return False
+        # Newly accepted hyphenated codes need column context, not just a checksum.
+        return None if "-" in pattern_text else True
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    AuAcnRecognizer
+)
+def au_acn_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> SeparatorTolerantAuAcnRecognizer:
+    r = SeparatorTolerantAuAcnRecognizer(
+        patterns=[*AuAcnRecognizer.PATTERNS, *patterns.au_acn_hyphenated],
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = AuAcnRecognizer.__name__
+    return r
+
+
+class PrefixedItVatRecognizer(ItVatCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool:
+        if not pattern_text.isascii():
+            return False
+        return super().validate_result(pattern_text.upper().removeprefix("IT"))
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    ItVatCodeRecognizer
+)
+def it_vat_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> PrefixedItVatRecognizer:
+    return PrefixedItVatRecognizer(
+        patterns=[*ItVatCodeRecognizer.PATTERNS, *patterns.it_vat_prefixed],
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+_FIN_CHECKSUMS = {
+    "S": (0, "JZIHGFEDCBA"),
+    "T": (4, "JZIHGFEDCBA"),
+    "F": (0, "XWUTRQPNMLK"),
+    "G": (4, "XWUTRQPNMLK"),
+    "M": (3, "XWUTRQPNJLK"),
+}
+
+
+class ValidatedSgFinRecognizer(SgFinRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        value = pattern_text.upper()
+        # The inherited weak pattern also admits unsupported prefixes and Unicode lookalikes.
+        if not pattern_text.isascii() or not re.fullmatch(r"[STFGM][0-9]{7}[A-Z]", value):
+            return False
+        offset, letters = _FIN_CHECKSUMS[value[0]]
+        weighted = sum(int(digit) * weight for digit, weight in zip(value[1:8], (2, 7, 6, 5, 4, 3, 2), strict=True))
+        if value[-1] != letters[(weighted + offset) % 11]:
+            return False
+        # Checksum validity rejects typos; column context must still raise the pattern score.
+        return None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    SgFinRecognizer
+)
+def sg_fin_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedSgFinRecognizer:
+    return ValidatedSgFinRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
 class ContextAwareUsBankRecognizer(UsBankRecognizer):
     def enhance_using_context(
         self,
@@ -427,6 +1002,138 @@ def eager_us_bank_recognizer(
         supported_language=supported_language,
         context=context,
     )
+
+
+class ValidatedPlPeselRecognizer(PlPeselRecognizer):
+    # Add digit boundaries so an 11-digit PESEL embedded inside a longer digit sequence
+    # (e.g. a 16-digit card number) cannot match.
+    PATTERNS: ClassVar[list[Pattern]] = [
+        Pattern(name=p.name, regex=rf"(?<!\d){p.regex}(?!\d)", score=p.score) for p in PlPeselRecognizer.PATTERNS
+    ]
+
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # PESEL check: weights [1,3,7,9,1,3,7,9,1,3] on first 10 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream omits the complement step, always returning False for valid PESELs
+        # whose weighted sum is non-zero.
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
+        if len(text) != 11:
+            return False
+        digits = [int(c) for c in text]
+        weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
+        total = sum(d * w for d, w in zip(digits[:10], weights, strict=False))
+        return (10 - total % 10) % 10 == digits[10]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    PlPeselRecognizer
+)
+def pl_pesel_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedPlPeselRecognizer:
+    r = ValidatedPlPeselRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = PlPeselRecognizer.__name__
+    return r
+
+
+class ValidatedItFiscalCodeRecognizer(ItFiscalCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # Presidio's upstream returns None (no decision) when the check character doesn't
+        # match, keeping the regex score and causing false positives.  Map None → False so
+        # invalid codes are filtered out.
+        result = super().validate_result(pattern_text)
+        return False if result is None else result
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    ItFiscalCodeRecognizer
+)
+def it_fiscal_code_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedItFiscalCodeRecognizer:
+    r = ValidatedItFiscalCodeRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = ItFiscalCodeRecognizer.__name__
+    return r
+
+
+# Finnish HETU century separator → base year.
+# Traditional: + → 1800, - → 1900.
+# Finland's 2023 HETU reform added new separators: A-F mean 2000s; U/V/W/X/Y mean 1900s.
+_FI_HETU_CENTURY: dict[str, int] = {
+    "+": 1800,
+    "-": 1900,
+    "U": 1900,
+    "V": 1900,
+    "W": 1900,
+    "X": 1900,
+    "Y": 1900,
+    "A": 2000,
+    "B": 2000,
+    "C": 2000,
+    "D": 2000,
+    "E": 2000,
+    "F": 2000,
+}
+# 31-entry check-character table (indices 0-30).
+_FI_HETU_CHECK_CHARS = "0123456789ABCDEFHJKLMNPRSTUVWXY"
+
+
+class ValidatedFiPersonalIdentityCodeRecognizer(FiPersonalIdentityCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # HETU format: DDMMYYCSSSV (11 chars).
+        # C = century separator; SSS = 3-digit individual number; V = check char.
+        # Presidio's upstream uses strptime("%d%m%y") which applies POSIX 2-digit-year
+        # rules and ignores the century separator, accepting e.g. 290200- (29 Feb 1900,
+        # which never existed) as valid because 2000 *is* a leap year.
+        # Uppercasing can turn non-ASCII checksum characters into valid ASCII letters.
+        if not pattern_text.isascii():
+            return False
+        text = pattern_text.upper()
+        if len(text) != 11:
+            return None
+        separator = text[6]
+        century = _FI_HETU_CENTURY.get(separator)
+        if century is None:
+            return False
+        date_part = text[:6]
+        try:
+            yy = int(date_part[4:6])
+            full_year = century + yy
+            datetime.strptime(f"{date_part[:4]}{full_year:04d}", "%d%m%Y")
+        except ValueError:
+            return False
+        number_part = date_part + text[7:10]
+        try:
+            remainder = int(number_part) % 31
+        except ValueError:
+            return False
+        return text[10] == _FI_HETU_CHECK_CHARS[remainder]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    FiPersonalIdentityCodeRecognizer
+)
+def fi_personal_identity_code_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedFiPersonalIdentityCodeRecognizer:
+    r = ValidatedFiPersonalIdentityCodeRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = FiPersonalIdentityCodeRecognizer.__name__
+    return r
 
 
 def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:

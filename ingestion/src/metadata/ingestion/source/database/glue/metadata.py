@@ -72,12 +72,14 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
+from metadata.ingestion.source.database.glue.connection import TABLE_NAME_MAX_LENGTH, GlueFilters
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
     GlueTable,
     StorageDetails,
     TablePage,
+    TableParameters,
 )
 from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
@@ -87,6 +89,7 @@ from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
     from metadata.ingestion.connections.connection import BaseConnection
+    from metadata.ingestion.source.database.glue.connection import GlueConnection as GlueClientConnection
 
 
 logger = ingestion_logger()
@@ -105,6 +108,10 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
+        # The startup test connection must probe what this pipeline ingests, not the connection's defaults.
+        cast("GlueClientConnection", self._connection).scope_to(
+            GlueFilters.of_pipeline(self.service_connection, self.source_config, self.config.serviceName)
+        )
         self.glue = cast("BaseConnection", self._connection).client
 
         self.schema_description_map = {}
@@ -328,6 +335,11 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                         # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
                         # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
                         table_type = TableType.Iceberg
+                    elif table.TableType != "VIRTUAL_VIEW" and self._is_delta_table(parameters):
+                        # Kept after the Iceberg check so a UniForm table carrying both markers
+                        # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                        # write spark.sql.sources.provider=delta; producers disagree on case.
+                        table_type = TableType.DeltaLake
                     elif table.TableType == "EXTERNAL_TABLE":
                         table_type = TableType.External
                     elif table.TableType == "VIRTUAL_VIEW":
@@ -482,6 +494,20 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         for column in table.PartitionKeys or []:
             yield self._get_column_object(column)
 
+    @staticmethod
+    def _is_delta_table(parameters: TableParameters | None) -> bool:
+        """A Glue Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. The provider key is dotted, so it is only reachable
+        through the extra-allowed dump, not attribute access."""
+        if not parameters:
+            return False
+        values = parameters.model_dump()
+        return any(
+            isinstance(values.get(key), str) and values[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
+
     @classmethod
     def get_format(cls, storage: StorageDetails) -> FileFormat | None:
         library = storage.SerdeInfo.SerializationLibrary if storage.SerdeInfo else None
@@ -494,7 +520,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         return next((fmt for fmt in FileFormat if fmt.value in library.lower()), None)
 
     def standardize_table_name(self, _: str, table: str) -> str:
-        return table[:128]
+        return table[:TABLE_NAME_MAX_LENGTH]
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """We don't pick up tags from Glue"""

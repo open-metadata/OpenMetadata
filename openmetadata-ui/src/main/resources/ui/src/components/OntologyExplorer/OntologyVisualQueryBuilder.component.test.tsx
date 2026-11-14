@@ -11,14 +11,33 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { Type } from '../../generated/api/rdf/sparqlResponse';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { Ontology } from '../../generated/entity/data/ontology';
+import {
+  AxiomType,
+  ExpressionKind,
+  OntologyAxiom,
+  Provenance,
+} from '../../generated/entity/data/ontologyAxiom';
+import {
+  OntologyConcept,
+  OntologyConceptType,
+} from '../../generated/entity/data/ontologyConcept';
 import { useAuth } from '../../hooks/authHooks';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
+import APIClient from '../../rest/axiosClient';
 import { getGlossaryTerms } from '../../rest/glossaryAPI';
-import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import {
+  listOntologyAxioms,
+  listOntologyConcepts,
+  listOntologyProperties,
+  listRelationshipTypes,
+} from '../../rest/ontologyAPI';
 import { runGlossarySparqlQuery, runSparqlQuery } from '../../rest/rdfAPI';
+import { renderWithQueryClient as render } from '../../test/unit/test-utils';
 import OntologyVisualQueryBuilder from './OntologyVisualQueryBuilder';
 
 jest.mock('../../rest/glossaryAPI', () => ({
@@ -26,13 +45,21 @@ jest.mock('../../rest/glossaryAPI', () => ({
 }));
 
 jest.mock('../../rest/ontologyAPI', () => ({
+  listOntologyAxioms: jest.fn(),
+  listOntologyConcepts: jest.fn(),
+  listOntologyProperties: jest.fn(),
   listRelationshipTypes: jest.fn(),
 }));
 
 jest.mock('../../rest/rdfAPI', () => ({
+  ...jest.requireActual<typeof import('../../rest/rdfAPI')>(
+    '../../rest/rdfAPI'
+  ),
   runGlossarySparqlQuery: jest.fn(),
   runSparqlQuery: jest.fn(),
 }));
+
+jest.mock('../../rest/axiosClient', () => ({ post: jest.fn() }));
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn(),
@@ -44,6 +71,14 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 const mockListRelationshipTypes = listRelationshipTypes as jest.MockedFunction<
   typeof listRelationshipTypes
+>;
+const mockListOntologyConcepts = listOntologyConcepts as jest.MockedFunction<
+  typeof listOntologyConcepts
+>;
+const mockListOntologyProperties =
+  listOntologyProperties as jest.MockedFunction<typeof listOntologyProperties>;
+const mockListOntologyAxioms = listOntologyAxioms as jest.MockedFunction<
+  typeof listOntologyAxioms
 >;
 const mockGetGlossaryTerms = getGlossaryTerms as jest.MockedFunction<
   typeof getGlossaryTerms
@@ -84,6 +119,38 @@ const RELATION_TYPES = [
     rdfPredicate: 'https://open-metadata.org/ontology/partOf',
   }),
 ];
+
+const nativeOntology: Ontology = {
+  id: 'native-owner',
+  name: 'Retail',
+  fullyQualifiedName: 'Retail',
+  iri: 'urn:retail',
+  namespace: 'urn:retail:',
+};
+const nativeConcepts = ['Customer', 'Party', 'Organization'].map(
+  (name): OntologyConcept => ({
+    id: name,
+    name,
+    fullyQualifiedName: `Retail.${name}`,
+    iri: `urn:retail:${name}`,
+    conceptType: OntologyConceptType.OwlClass,
+    ontology: { id: nativeOntology.id, type: 'ontology' },
+  })
+);
+const subclass: OntologyAxiom = {
+  id: 'subclass',
+  name: 'subclass',
+  fullyQualifiedName: 'Retail.subclass',
+  displayName: 'Customer is a Party',
+  description: '',
+  axiomType: AxiomType.SubclassOf,
+  subjectIri: 'urn:retail:Customer',
+  expressions: [
+    { kind: ExpressionKind.NamedClass, classIri: 'urn:retail:Party' },
+  ],
+  provenance: Provenance.Manual,
+  ontology: { id: nativeOntology.id, type: 'ontology' },
+};
 
 describe('OntologyVisualQueryBuilder component', () => {
   beforeEach(() => {
@@ -154,7 +221,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: /label\.relationship-type/ })
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
     );
     fireEvent.click(await screen.findByRole('option', { name: 'Part Of' }));
 
@@ -189,7 +256,197 @@ describe('OntologyVisualQueryBuilder component', () => {
       )
     );
 
-    expect(await screen.findByTestId('ontology-builder-result')).toBeVisible();
+    expect(
+      await screen.findByTestId('ontology-sparql-result-status')
+    ).toHaveTextContent('1 label.row');
+    expect(screen.getAllByRole('row')[0]).toHaveTextContent('?concept');
+  });
+
+  it('keeps the chosen conditions when the glossary find kind changes', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Part Of' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Know Your Customer' })
+    );
+    fireEvent.click(screen.getByTestId('ontology-builder-find-metrics'));
+
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(generated).toHaveTextContent(
+      '<https://open-metadata.org/ontology/partOf>'
+    );
+    expect(generated).toHaveTextContent(
+      'FinancialRiskCompliance.Compliance.KnowYourCustomer'
+    );
+    expect(generated).toHaveTextContent('?concept a om:Metric');
+  });
+
+  it('queries native selections through the owner endpoint and reports a missing active release', async () => {
+    mockListOntologyConcepts.mockResolvedValue({
+      data: nativeConcepts,
+      paging: { total: 3 },
+    });
+    mockListOntologyProperties.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockListOntologyAxioms.mockResolvedValue({
+      data: [
+        subclass,
+        {
+          ...subclass,
+          id: 'disjoint',
+          name: 'disjoint',
+          fullyQualifiedName: 'Retail.disjoint',
+          axiomType: AxiomType.DisjointWith,
+          expressions: [
+            {
+              kind: ExpressionKind.NamedClass,
+              classIri: 'urn:retail:Organization',
+            },
+          ],
+        },
+      ],
+      paging: { total: 2 },
+    });
+    const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
+    post.mockResolvedValue({
+      headers: { 'content-type': 'application/sparql-results+json' },
+      data: JSON.stringify({
+        head: { vars: ['concept', 'label'] },
+        results: {
+          bindings: [
+            {
+              concept: { type: Type.URI, value: 'urn:retail:Customer' },
+              label: { type: Type.Literal, value: 'Customer result' },
+            },
+          ],
+        },
+      }),
+    });
+    render(<OntologyVisualQueryBuilder ontology={nativeOntology} />);
+    const target = await screen.findByRole('combobox', {
+      name: 'label.concept',
+    });
+    await waitFor(() => expect(target).toHaveValue('Party'));
+
+    expect(
+      screen.getByTestId('ontology-builder-find-properties')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-builder-find-metrics')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-builder-find-any')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: /disjoint/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Organization' })
+    );
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(generated).toHaveTextContent(
+      'VALUES ?target { <urn:retail:Organization> }'
+    );
+    expect(generated).toHaveTextContent('?concept owl:disjointWith ?target');
+    expect(generated).not.toHaveTextContent('GlossaryTerm');
+    expect(generated).not.toHaveTextContent('fullyQualifiedName');
+
+    fireEvent.click(screen.getByTestId('ontology-builder-run'));
+
+    expect(await screen.findByText('Customer result')).toBeVisible();
+    expect(screen.getAllByRole('row')[0]).toHaveTextContent(
+      /#\s*label\.concept\s*label\.iri/
+    );
+    expect(post).toHaveBeenCalledWith(
+      '/ontologies/native-owner/sparql',
+      {
+        query: expect.stringContaining(
+          'VALUES ?target { <urn:retail:Organization> }'
+        ),
+        format: 'json',
+        inference: 'none',
+      },
+      expect.anything()
+    );
+    expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
+    expect(mockRunSparqlQuery).not.toHaveBeenCalled();
+
+    post.mockRejectedValue(
+      new AxiosError('Ontology has no active release', '409')
+    );
+    fireEvent.click(screen.getByTestId('ontology-builder-run'));
+
+    expect(
+      await screen.findByText('Ontology has no active release')
+    ).toBeVisible();
+    expect(screen.queryByText('Customer result')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-sparql-result')
+    ).not.toBeInTheDocument();
+  });
+
+  it('lists native properties by the concept they are on', async () => {
+    mockListOntologyConcepts.mockResolvedValue({
+      data: nativeConcepts,
+      paging: { total: 3 },
+    });
+    mockListOntologyProperties.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockListOntologyAxioms.mockResolvedValue({
+      data: [subclass],
+      paging: { total: 1 },
+    });
+    render(<OntologyVisualQueryBuilder ontology={nativeOntology} />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'label.concept' })
+      ).toHaveValue('Party')
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-find-properties'));
+
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
+    ).toHaveTextContent('label.is-on');
+    expect(screen.getByTestId('ontology-builder-incomplete')).toBeVisible();
+    expect(generated).toHaveTextContent(
+      'VALUES ?propertyType { owl:ObjectProperty owl:DatatypeProperty }'
+    );
+    expect(generated).not.toHaveTextContent('rdfs:domain ?target');
+    expect(screen.getByTestId('ontology-builder-run')).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Customer' }));
+
+    expect(generated).toHaveTextContent(
+      'VALUES ?target { <urn:retail:Customer> }'
+    );
+    expect(generated).toHaveTextContent('?property rdfs:domain ?target .');
+    expect(screen.getByTestId('ontology-builder-run')).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-builder-incomplete')
+    ).not.toBeInTheDocument();
   });
 
   it('hands the generated query to onEditAsSparql', async () => {
@@ -212,6 +469,12 @@ describe('OntologyVisualQueryBuilder component', () => {
         'FinancialRiskCompliance.Compliance.AntiMoneyLaundering'
       )
     );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-remove-condition-0'));
+
+    expect(
+      screen.getByTestId('ontology-builder-edit-as-sparql')
+    ).toBeDisabled();
   });
 
   it('hides the Edit as SPARQL action when no handler is provided', async () => {
@@ -263,12 +526,100 @@ describe('OntologyVisualQueryBuilder component', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /label\.relationship-type/ })
+        screen.getByRole('button', {
+          name: /label\.ontology-relationship-type/,
+        })
       ).toHaveTextContent('Part Of')
     );
 
     expect(screen.getByText('Know Your Customer')).toBeVisible();
     expect(mockListRelationshipTypes).not.toHaveBeenCalled();
     expect(mockGetGlossaryTerms).not.toHaveBeenCalled();
+  });
+
+  it('shows the generated SPARQL beside the results and hides it on request', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      'SELECT ?concept ?conceptFqn WHERE'
+    );
+    expect(
+      screen.getByTestId('ontology-sparql-results-empty')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
+    expect(
+      screen.queryByTestId('ontology-generated-sparql')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-builder-toggle-sparql')
+    ).toHaveTextContent('label.show-sparql');
+
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toBeVisible();
+  });
+
+  it('ignores an incomplete condition, reports it, and resets to the default query', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+    const initialQuery = screen.getByTestId(
+      'ontology-generated-sparql'
+    ).textContent;
+
+    fireEvent.click(screen.getByTestId('ontology-builder-add-condition'));
+
+    expect(screen.getByTestId('ontology-builder-incomplete')).toHaveTextContent(
+      'message.incomplete-condition-ignored'
+    );
+    expect(screen.getByTestId('ontology-generated-sparql').textContent).toBe(
+      initialQuery
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-remove-condition-0'));
+
+    expect(
+      screen.getByTestId('ontology-generated-sparql')
+    ).not.toHaveTextContent('AntiMoneyLaundering');
+    expect(screen.getByTestId('ontology-builder-run')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('ontology-builder-reset'));
+
+    expect(screen.getByTestId('ontology-generated-sparql').textContent).toBe(
+      initialQuery
+    );
+    expect(
+      screen.queryByTestId('ontology-builder-incomplete')
+    ).not.toBeInTheDocument();
+  });
+
+  it('applies the chosen limit to the generated SPARQL', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      'LIMIT 100'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /label\.limit/ }));
+    fireEvent.click(await screen.findByRole('option', { name: '10' }));
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      /LIMIT 10$/
+    );
   });
 });

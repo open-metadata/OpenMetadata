@@ -22,6 +22,9 @@ import {
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { SOCKET_EVENTS } from '../../constants/constants';
+import { User } from '../../generated/entity/teams/user';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   exportAuditLogs,
   getAuditLogExportJob,
@@ -72,6 +75,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <div data-testid={testId}>{children}</div>
     )),
+  DateRangePicker: jest
+    .fn()
+    .mockImplementation(({ onChange, onApply, 'data-testid': testId }) => {
+      const day = {
+        toDate: () => new Date(0),
+        add: () => ({ toDate: () => new Date(86_400_000) }),
+      };
+
+      return (
+        <>
+          <button
+            data-testid={testId}
+            type="button"
+            onClick={() => onChange({ start: day, end: day })}>
+            range
+          </button>
+          <button
+            data-testid={`${testId}-apply`}
+            type="button"
+            onClick={() => onApply?.()}>
+            apply
+          </button>
+        </>
+      );
+    }),
   Input: jest
     .fn()
     .mockImplementation(({ value, onChange, inputDataTestId, placeholder }) => (
@@ -147,29 +175,6 @@ jest.mock('../../rest/auditLogAPI', () => ({
 
 // The real range picker cannot be driven from jsdom, so expose a button that
 // hands the page a valid range and lets the export flow run end to end.
-const mockRangeDay = {
-  startOf: () => ({ valueOf: () => 1 }),
-  endOf: () => ({ valueOf: () => 2 }),
-};
-
-jest.mock('../../components/common/DatePicker/DatePicker', () => ({
-  __esModule: true,
-  default: {
-    RangePicker: ({
-      onChange,
-    }: {
-      onChange: (dates: [unknown, unknown]) => void;
-    }) => (
-      <button
-        data-testid="export-date-range-picker"
-        type="button"
-        onClick={() => onChange([mockRangeDay, mockRangeDay])}>
-        range
-      </button>
-    ),
-  },
-}));
-
 jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div data-testid="page-header">Page Header</div>)
 );
@@ -334,6 +339,32 @@ describe('AuditLogsPage', () => {
       );
 
       await waitFor(() => expect(mockGetAuditLogs).toHaveBeenCalledTimes(1));
+    });
+
+    it('starts from the page size the user last picked', async () => {
+      // Real stores: a signed-in user whose saved list size is 50, not the page's old fixed 25.
+      const previousUser = useApplicationStore.getState().currentUser;
+      useApplicationStore.setState({
+        currentUser: { ...previousUser, name: 'audit-user' } as User,
+      });
+      usePersistentStorage
+        .getState()
+        .setUserPreference('audit-user', { globalPageSize: 50 });
+
+      render(
+        <MemoryRouter>
+          <AuditLogsPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() =>
+        expect(mockGetAuditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 50 })
+        )
+      );
+
+      usePersistentStorage.getState().clearUserPreference('audit-user');
+      useApplicationStore.setState({ currentUser: previousUser });
     });
 
     it('displays loading state initially', async () => {
@@ -821,6 +852,9 @@ describe('AuditLogsPage', () => {
       });
       await act(async () => {
         fireEvent.click(screen.getByTestId('export-date-range-picker'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('export-date-range-picker-apply'));
       });
       await act(async () => {
         fireEvent.click(

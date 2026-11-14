@@ -26,7 +26,6 @@ import { TABLE_DUMMY_DATA } from '../constants/Table.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
-import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import tableClassBase, {
   TableClassBase,
@@ -88,16 +87,12 @@ jest.mock('./i18next/LocalUtil', () => ({
       'label.frequently-joined-table-plural': 'Frequently Joined Tables',
       'label.table-constraints': 'Table Constraints',
       'label.article-plural': 'Articles',
+      'label.table-partition-plural': 'Table Partitions',
+      'label.alias-plural': 'Aliases',
     };
 
     return translations[key] || key;
   }),
-}));
-
-jest.mock('../hooks/useApplicationStore', () => ({
-  useApplicationStore: {
-    getState: jest.fn(() => ({ rdfEnabled: false })),
-  },
 }));
 
 describe('TableClassBase', () => {
@@ -106,9 +101,6 @@ describe('TableClassBase', () => {
   beforeEach(() => {
     tableClass = new TableClassBase();
     jest.clearAllMocks();
-    (useApplicationStore.getState as jest.Mock).mockReturnValue({
-      rdfEnabled: false,
-    });
   });
 
   describe('constructor', () => {
@@ -124,6 +116,7 @@ describe('TableClassBase', () => {
         [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
         [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+        [DetailPageWidgetKeys.TABLE_SHARDING]: 2,
         [DetailPageWidgetKeys.TABLE_ALIASES]: 2,
         [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
       });
@@ -135,7 +128,6 @@ describe('TableClassBase', () => {
       const mockProps: TableDetailPageTabProps = {
         queryCount: 5,
         isQueryCountLoading: false,
-        isTourOpen: false,
         activeTab: EntityTabs.SCHEMA,
         feedCount: {
           conversationCount: 0,
@@ -150,6 +142,7 @@ describe('TableClassBase', () => {
         viewAllPermission: true,
         viewCustomPropertiesPermission: true,
         viewQueriesPermission: true,
+        viewQueryResourcePermission: true,
         editLineagePermission: true,
         viewProfilerPermission: true,
         viewSampleDataPermission: true,
@@ -173,7 +166,7 @@ describe('TableClassBase', () => {
 
   describe('getTableDetailPageTabsIds', () => {
     it('should return correct tab configuration when rdf is disabled', () => {
-      const result = tableClass.getTableDetailPageTabsIds();
+      const result = tableClass.getTableDetailPageTabsIds(false);
 
       expect(result).toHaveLength(10);
       expect(result[0]).toEqual({
@@ -239,11 +232,7 @@ describe('TableClassBase', () => {
     });
 
     it('should include the KNOWLEDGE_GRAPH tab when rdf is enabled', () => {
-      (useApplicationStore.getState as jest.Mock).mockReturnValue({
-        rdfEnabled: true,
-      });
-
-      const result = tableClass.getTableDetailPageTabsIds();
+      const result = tableClass.getTableDetailPageTabsIds(true);
 
       expect(result).toHaveLength(11);
       expect(result[6]).toEqual({
@@ -255,7 +244,7 @@ describe('TableClassBase', () => {
     });
 
     it('should mark only SCHEMA tab as editable', () => {
-      const result = tableClass.getTableDetailPageTabsIds();
+      const result = tableClass.getTableDetailPageTabsIds(false);
       const schemaTab = result.find((tab) => tab.id === EntityTabs.SCHEMA);
       const otherTabs = result.filter((tab) => tab.id !== EntityTabs.SCHEMA);
 
@@ -287,7 +276,7 @@ describe('TableClassBase', () => {
     it('should return default layout for SCHEMA tab', () => {
       const result = tableClass.getDefaultLayout(EntityTabs.SCHEMA);
 
-      expect(result).toHaveLength(11);
+      expect(result).toHaveLength(12);
 
       const leftPanel = result[0];
 
@@ -300,7 +289,7 @@ describe('TableClassBase', () => {
     it('should return default layout for undefined tab', () => {
       const result = tableClass.getDefaultLayout(undefined);
 
-      expect(result).toHaveLength(11);
+      expect(result).toHaveLength(12);
       expect(result[0].i).toBe(DetailPageWidgetKeys.LEFT_PANEL);
     });
 
@@ -428,7 +417,7 @@ describe('TableClassBase', () => {
     it('should return correct widget list', () => {
       const result = tableClass.getCommonWidgetList();
 
-      expect(result).toHaveLength(10);
+      expect(result).toHaveLength(13);
       expect(result[0]).toBe(DESCRIPTION_WIDGET);
       expect(result[1]).toEqual({
         fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
@@ -461,8 +450,27 @@ describe('TableClassBase', () => {
           gridSizes: ['small'] as GridSizes[],
         },
       });
-      expect(result[8]).toBe(CUSTOM_PROPERTIES_WIDGET);
-      expect(result[9]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
+      expect(result[8]).toEqual(
+        expect.objectContaining({
+          fullyQualifiedName: DetailPageWidgetKeys.TABLE_SHARDING,
+        })
+      );
+      expect(result[9]).toEqual({
+        fullyQualifiedName: DetailPageWidgetKeys.PARTITIONED_KEYS,
+        name: 'Table Partitions',
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      });
+      expect(result[10]).toEqual({
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_ALIASES,
+        name: 'Aliases',
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      });
+      expect(result[11]).toBe(CUSTOM_PROPERTIES_WIDGET);
+      expect(result[12]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
     });
 
     it('should not duplicate the Knowledge Article widget', () => {
@@ -492,6 +500,25 @@ describe('TableClassBase', () => {
 
       expect(knowledgeArticleWidget).toBe(KNOWLEDGE_ARTICLE_WIDGET);
       expect(knowledgeArticleWidget?.data.gridSizes).toEqual(['large']);
+    });
+
+    it('every removable default-layout widget is re-addable via getCommonWidgetList', () => {
+      const layout = tableClass.getDefaultLayout(EntityTabs.SCHEMA);
+      const layoutKeys: string[] = [];
+      layout.forEach((w) => {
+        if (w.i === DetailPageWidgetKeys.LEFT_PANEL) {
+          w.children?.forEach((child) => layoutKeys.push(child.i));
+        } else {
+          layoutKeys.push(w.i);
+        }
+      });
+      const commonKeys = tableClass
+        .getCommonWidgetList()
+        .map((w) => w.fullyQualifiedName);
+
+      for (const key of layoutKeys) {
+        expect(commonKeys).toContain(key);
+      }
     });
   });
 

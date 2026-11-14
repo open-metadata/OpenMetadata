@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
+import { GraphData } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
 import {
-  GraphData,
-  GraphNode,
-  KnowledgeGraphFilters,
-} from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import {
-  getGraphDistances,
   isConceptNode,
   isMappingEdge,
 } from './knowledgeGraphPresentation.utils';
@@ -58,69 +52,4 @@ export const getOntologyScope = (
       (node) => ids.has(node.id) || graphEntityId(node.id) === rootId
     ),
   };
-};
-
-const DOMAIN_PREDICATE = 'http://www.w3.org/2000/01/rdf-schema#domain';
-
-/** The glossary exporter emits each declared attribute as a datatype property with rdfs:domain. */
-export const addDeclaredOntologyProperties = (
-  data: GraphData | null,
-  unfiltered: GraphData | null,
-  terms: GlossaryTerm[],
-  rootId: string,
-  depth: number,
-  domainLabel: string,
-  filters?: KnowledgeGraphFilters
-): GraphData | null => {
-  if (!data || !unfiltered || depth === 0 || terms.length === 0) {
-    return data;
-  }
-  const excludesProperties = Boolean(
-    filters?.entityTypes.length && !filters.entityTypes.includes('property')
-  );
-  const excludesDomain = Boolean(
-    filters?.relationshipTypes.length &&
-      !filters.relationshipTypes.includes(DOMAIN_PREDICATE)
-  );
-  if (excludesProperties || excludesDomain) {
-    return data;
-  }
-  const levels = getGraphDistances(unfiltered, rootId);
-  const concepts = new Map(
-    data.nodes
-      .filter(isConceptNode)
-      .map((node) => [graphEntityId(node.id), node])
-  );
-  const nodes = new Map<string, GraphNode>(
-    data.nodes.map((node) => [node.id, node])
-  );
-  const edges = [...data.edges];
-  terms.forEach((term) => {
-    const concept = concepts.get(term.id);
-    if (!concept || (levels.get(concept.id) ?? Infinity) > depth) {
-      return;
-    }
-    (term.attributes ?? []).forEach((attribute) => {
-      const id = attribute.iri ?? 'kg:property:' + term.id + ':' + attribute.id;
-      nodes.set(id, {
-        id,
-        label: attribute.name,
-        type: 'property',
-        description: attribute.description,
-        ontologyProperty: {
-          range: attribute.datatypeIri ?? attribute.dataType,
-          functional: Boolean(attribute.isIdentifier),
-        },
-      });
-      edges.push({
-        from: id,
-        to: concept.id,
-        label: domainLabel,
-        relationType: DOMAIN_PREDICATE,
-        category: 'structure',
-      });
-    });
-  });
-
-  return { ...data, nodes: [...nodes.values()], edges };
 };

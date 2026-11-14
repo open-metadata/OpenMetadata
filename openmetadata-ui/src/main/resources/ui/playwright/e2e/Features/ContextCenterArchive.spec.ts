@@ -228,7 +228,8 @@ test.describe('Context Center - Archive Page', () => {
     // ── 14. Soft delete restored document again ───────────────────────────────
 
     await test.step('soft delete the restored document', async () => {
-      await navigateToDocuments(page);
+      // Stay on step 12's search result: the unfiltered list is paged, and
+      // files from parallel workers can push this one off the first page.
       await softDeleteDocument(page, `document-row-${documentId}`);
     });
 
@@ -452,7 +453,11 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
-      await waitForDocumentInArchive(apiContext, documentId);
+      try {
+        await waitForDocumentInArchive(apiContext, documentId);
+      } finally {
+        await afterAction();
+      }
       await navigateToArchive(page);
       const archiveRow = page.getByTestId(`archive-row-${documentId}`);
       if (!(await archiveRow.isVisible())) {
@@ -474,6 +479,9 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 
 test.describe('Context Center - Archive Page Lazy Loading', () => {
   test.beforeAll(async ({ browser }) => {
+    // Each upload waits up to 90s for context extraction before it can be
+    // archived, and 18 queued at once outrun the default 60s hook timeout.
+    test.setTimeout(3 * 60 * 1000);
     const namePrefix = `archive-lazy-load-${uuid()}`;
     const { apiContext, afterAction } = await createNewPage(browser);
 

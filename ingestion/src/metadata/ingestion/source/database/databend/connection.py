@@ -42,6 +42,7 @@ from metadata.ingestion.source.database.databend.constants import (
     DEFAULT_DATABASE,
     SYSTEM_DATABASES,
 )
+from metadata.ingestion.source.database.databend.queries import DATABEND_LINEAGE_HISTORY_TEST
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.filters import filter_by_schema
 
@@ -111,6 +112,7 @@ class DatabendConnection(BaseConnection[DatabendConnectionConfig, Engine]):
             "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
             "GetTables": partial(inspect_entities, "get_table_names"),
             "GetViews": partial(inspect_entities, "get_view_names"),
+            "GetLineage": partial(test_query, engine, DATABEND_LINEAGE_HISTORY_TEST),
         }
 
         return test_connection_steps(

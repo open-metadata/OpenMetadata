@@ -112,7 +112,7 @@ const TableDataCardV2 = ({
   }, [source]);
 
   const serviceIcon = useMemo(() => {
-    return getServiceIcon(source);
+    return getServiceIcon(source, 'tw:size-5.5');
   }, [source]);
 
   const breadcrumbs = useMemo(
@@ -139,7 +139,7 @@ const TableDataCardV2 = ({
 
   return (
     <Card
-      color={errorMessage ? 'error' : 'default'}
+      className={errorMessage ? 'tw:border-error' : undefined}
       data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
       id={id}
       isClickable={Boolean(handleSummaryPanelDisplay)}
@@ -155,25 +155,31 @@ const TableDataCardV2 = ({
             {showCheckboxes && (
               // Same test id as ExploreSearchCard's checkbox, so Playwright selects assets the same way.
               // react-aria stops click propagation, so the card handler won't fire.
-              <Checkbox
-                aria-label={t('label.select-entity', {
-                  entity: t('label.asset'),
-                })}
-                data-testid="asset-checkbox"
-                isSelected={Boolean(checked)}
-                size="md"
-                onChange={handleSelect}
-              />
+              <Box className="tw:mt-1">
+                <Checkbox
+                  aria-label={t('label.select-entity', {
+                    entity: t('label.asset'),
+                  })}
+                  data-testid="asset-checkbox"
+                  isSelected={Boolean(checked)}
+                  size="md"
+                  onChange={handleSelect}
+                />
+              </Box>
             )}
-            <Box className="tw:min-w-0 tw:flex-1" direction="col">
+            <Box
+              className="tw:min-w-0 tw:flex-1 tw:[&_[data-testid=entity-header-copy-button]>[data-icon]]:size-3"
+              direction="col">
               <EntityHeader
                 showOnlyDisplayName
                 titleIsLink
                 breadcrumb={breadcrumbs}
+                displayNameClassName="text-sm"
                 entityData={source}
                 entityType={source.entityType as EntityType}
                 entityUrl={entityUrl}
                 icon={serviceIcon}
+                nameClassName="text-sm"
                 openEntityInNewPage={openEntityInNewPage}
                 serviceName={source?.service?.name ?? ''}
                 showName={showName}
@@ -191,13 +197,16 @@ const TableDataCardV2 = ({
         </Box>
       </Card.Content>
       {errorMessage && (
-        <Card.Footer>
+        <Card.Footer data-testid="table-data-card-error">
           <Box align="start" gap={3}>
             <AlertCircle
               aria-hidden
               className="tw:size-5 tw:text-fg-error-primary"
             />
-            <Typography as="span" className="tw:break-all" size="text-sm">
+            <Typography
+              as="span"
+              className="tw:break-all tw:text-error-primary"
+              size="text-xs">
               {errorMessage}
             </Typography>
           </Box>

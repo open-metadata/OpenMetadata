@@ -48,14 +48,17 @@ export interface UseSsoTestLoginResult {
   reset: () => void;
 }
 
-export interface SsoTestLoginModalProps {
-  open: boolean;
+export interface SsoTestLoginContentProps {
   isTesting: boolean;
   isAwaitingCredentials: boolean;
   configurationCheck?: ConfigurationCheckState;
   result?: TestLoginResult;
   error?: string;
   onSubmitCredentials: (email: string, password: string) => Promise<void>;
+}
+
+export interface SsoTestLoginModalProps extends SsoTestLoginContentProps {
+  open: boolean;
   onClose: () => void;
 }
 

@@ -100,43 +100,30 @@ export class OntologyRdfFixture {
   }
 
   async selectInStudio(page: Page): Promise<void> {
-    await page.getByTestId('ontology-glossary-menu-trigger').click();
+    await page.getByTestId('ontology-scope-menu-trigger').click();
     await page
       .getByRole('menuitemradio')
       .filter({ hasText: this.glossary.responseData.displayName })
       .click();
-    await expect(
-      page.getByTestId('ontology-glossary-menu-trigger')
-    ).toContainText(this.glossary.responseData.displayName);
+    await expect(page.getByTestId('ontology-scope-menu-trigger')).toContainText(
+      this.glossary.responseData.displayName
+    );
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       `${this.terms.length} terms`
     );
-    await this.waitForTermsInGraph(page);
+    await this.waitForGraphReady(page);
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
   }
 
-  private async waitForTermsInGraph(page: Page): Promise<void> {
-    const termIds = this.terms.map((term) => term.responseData.id);
-    if (termIds.length === 0) {
-      await expect(
-        page.getByTestId('ontology-graph-loading')
-      ).not.toBeVisible();
-    } else {
-      await page.waitForFunction(
-        (expectedTermIds) => {
-          const container = document.querySelector<HTMLElement>(
-            '.ontology-g6-container'
-          );
-          const positions = JSON.parse(
-            container?.dataset.nodePositions ?? '{}'
-          ) as Record<string, unknown>;
-
-          return expectedTermIds.every((termId) => termId in positions);
-        },
-        termIds,
-        { timeout: ACTION_TIMEOUT }
-      );
-    }
+  private async waitForGraphReady(page: Page): Promise<void> {
+    await expect(page.getByTestId('ontology-graph-loading')).not.toBeVisible({
+      timeout: ACTION_TIMEOUT,
+    });
+    await expect(page.locator('.ontology-g6-container')).toHaveAttribute(
+      'data-node-positions',
+      /^\{.*\}$/,
+      { timeout: ACTION_TIMEOUT }
+    );
   }
 
   async expectProjected(

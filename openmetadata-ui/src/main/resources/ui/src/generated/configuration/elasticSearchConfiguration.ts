@@ -152,8 +152,8 @@ export interface NaturalLanguageSearch {
     keywordWeight?: number;
     /**
      * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
-     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
-     * cost of latency. Defaults to 2.
+     * search. num_candidates = max(k * multiplier, 100), clamped to Elasticsearch's engine
+     * maximum of 10,000. Higher values improve recall at the cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
     /**
@@ -237,6 +237,7 @@ export interface HybridSearch {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

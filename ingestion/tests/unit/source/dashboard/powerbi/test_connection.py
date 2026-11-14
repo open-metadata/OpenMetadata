@@ -428,9 +428,10 @@ def test_a_rate_limited_call_is_bounded_in_time(real_api_client):
 
     with (
         patch.object(requests.Session, "request", return_value=_powerbi_error_response(429, "TooManyRequests", "slow")),
-        patch("metadata.ingestion.ometa.client.time.sleep", side_effect=slept.append),
+        patch("metadata.ingestion.ometa.client.time") as client_time,
         pytest.raises(CheckError),
     ):
+        client_time.sleep.side_effect = slept.append
         provider.get_dashboards()
 
     assert sum(slept) <= STEP_TIMEOUT_SECONDS, f"a rate-limited step slept {sum(slept)}s"
@@ -444,7 +445,7 @@ def test_a_rate_limited_call_reports_a_diagnosis_and_a_readable_error(real_api_c
 
     with (
         patch.object(requests.Session, "request", return_value=_powerbi_error_response(429, "TooManyRequests", "slow")),
-        patch("metadata.ingestion.ometa.client.time.sleep"),
+        patch("metadata.ingestion.ometa.client.time"),
         pytest.raises(CheckError) as failure,
     ):
         provider.get_dashboards()

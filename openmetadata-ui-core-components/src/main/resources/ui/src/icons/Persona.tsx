@@ -18,30 +18,26 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Persona: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M14.73 15.712c-.928-1.4-2.562-2.36-4.453-2.475l-.746-.046q-.399.01-.75.026c-1.875.085-3.516 1.078-4.449 2.495m7.593-7.32a2.4 2.4 0 1 1-4.8 0 2.4 2.4 0 0 1 4.8 0"
+      d="M14.436 16.059c0-.774 0-1.161-.095-1.476a2.22 2.22 0 0 0-1.48-1.479c-.314-.095-.7-.095-1.475-.095H8.614c-.774 0-1.16 0-1.475.095a2.22 2.22 0 0 0-1.479 1.48c-.096.314-.096.7-.096 1.475m6.931-7.486a2.495 2.495 0 1 1-4.99 0 2.495 2.495 0 0 1 4.99 0"
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <path
-      d="M17.527 9.992a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 Persona.displayName = 'Persona';

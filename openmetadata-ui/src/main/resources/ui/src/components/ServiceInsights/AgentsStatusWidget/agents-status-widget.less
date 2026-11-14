@@ -60,7 +60,7 @@
     color: @red-10;
   }
 
-  .ant-collapse-arrow.expand-icon-container {
+  .expand-icon-container {
     display: flex;
     align-items: center;
     gap: var(--om-space-12);
@@ -84,7 +84,6 @@
         &.Running {
           background-color: @blue-22;
           border-color: @blue-31;
-          .ant-typography,
           .agent-status-summary-text {
             color: @blue-31;
           }
@@ -93,7 +92,6 @@
         &.Successful {
           background-color: @green-9;
           border-color: @green-10;
-          .ant-typography,
           .agent-status-summary-text {
             color: @green-10;
           }
@@ -102,7 +100,6 @@
         &.Pending {
           background-color: @yellow-10;
           border-color: @yellow-11;
-          .ant-typography,
           .agent-status-summary-text {
             color: @yellow-11;
           }
@@ -111,7 +108,6 @@
         &.Failed {
           background-color: @red-9;
           border-color: @red-10;
-          .ant-typography,
           .agent-status-summary-text {
             color: @red-10;
           }

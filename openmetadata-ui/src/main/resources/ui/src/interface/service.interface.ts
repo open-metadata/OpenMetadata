@@ -18,43 +18,16 @@ import {
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { APIService } from '../generated/entity/services/apiService';
-import {
-  DashboardConnection,
-  DashboardService,
-} from '../generated/entity/services/dashboardService';
+import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
-import {
-  DriveConnection,
-  DriveService,
-} from '../generated/entity/services/driveService';
-import {
-  MessagingConnection,
-  MessagingService,
-} from '../generated/entity/services/messagingService';
-import {
-  MetadataConnection,
-  MetadataService,
-} from '../generated/entity/services/metadataService';
-import {
-  MlModelConnection,
-  MlmodelService,
-} from '../generated/entity/services/mlmodelService';
-import {
-  PipelineConnection,
-  PipelineService,
-} from '../generated/entity/services/pipelineService';
-import {
-  SearchConnection,
-  SearchService,
-} from '../generated/entity/services/searchService';
-import {
-  SecurityConnection,
-  SecurityService,
-} from '../generated/entity/services/securityService';
-import {
-  StorageConnection,
-  StorageService,
-} from '../generated/entity/services/storageService';
+import { DriveService } from '../generated/entity/services/driveService';
+import { MessagingService } from '../generated/entity/services/messagingService';
+import { MetadataService } from '../generated/entity/services/metadataService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import { PipelineService } from '../generated/entity/services/pipelineService';
+import { SearchService } from '../generated/entity/services/searchService';
+import { SecurityService } from '../generated/entity/services/securityService';
+import { StorageService } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
 import type { FieldFocusMeta } from '../hooks/useFieldFocusManagement';
@@ -121,17 +94,15 @@ export interface ServiceResponse {
   paging: Paging;
 }
 
-export type ConfigData =
-  | DatabaseConnection
-  | MessagingConnection
-  | DashboardConnection
-  | PipelineConnection
-  | MlModelConnection
-  | MetadataConnection
-  | StorageConnection
-  | SearchConnection
-  | SecurityConnection
-  | DriveConnection;
+export type ConfigData = Partial<
+  Exclude<
+    Extract<
+      NonNullable<NonNullable<ServicesType['connection']>['config']>,
+      object
+    >,
+    readonly unknown[]
+  >
+>;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;

@@ -12,14 +12,18 @@
  */
 
 import { useMemo } from 'react';
-import { TABLE_CARD_PAGE_SIZE } from '../../../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../../../constants/constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { SearchResponse } from '../../../../../interface/search.interface';
 import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import { useListingData } from '../../compositions/useListingData';
 import { CellRenderer, ColumnConfig, ListingData } from '../../shared/types';
 import { useDomainColumns } from '../ui/useDomainColumns';
 import { useDomainRenderers } from '../ui/useDomainRenderers';
+
+const transformSearchResults = (response: SearchResponse<SearchIndex.DOMAIN>) =>
+  response.hits.hits.map((hit) => hit._source);
 
 interface UseDomainListingConfig {
   baseFilter?: string;
@@ -27,6 +31,7 @@ interface UseDomainListingConfig {
   enableNlq?: boolean;
   nameLabelKey?: string;
   pageSize?: number;
+  pageSizeOptions?: number[];
   basePath?: string;
   includeOwners?: boolean;
   includeGlossaryTerms?: boolean;
@@ -46,7 +51,8 @@ export const useDomainListing = (
     baseFilter = '',
     enableNlq = false,
     nameLabelKey = 'label.domain',
-    pageSize = TABLE_CARD_PAGE_SIZE,
+    pageSize = PAGE_SIZE_BASE,
+    pageSizeOptions,
     basePath = '/domain',
     includeOwners = true,
     includeGlossaryTerms = true,
@@ -99,10 +105,12 @@ export const useDomainListing = (
   );
 
   // Use generic listing composition with domain-specific configuration
-  const listingData = useListingData<Domain>({
+  const listingData = useListingData<Domain, SearchIndex.DOMAIN>({
     searchIndex: SearchIndex.DOMAIN,
+    transform: transformSearchResults,
     baseFilter,
     pageSize,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,

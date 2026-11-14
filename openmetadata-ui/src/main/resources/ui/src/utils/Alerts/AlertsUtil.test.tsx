@@ -10,20 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
-import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
-import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
-import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
+import {
+  Alert,
+  Check,
+  Clock02,
+  GridView,
+  Mail,
+  Webhook,
+} from '@openmetadata/ui-core-components/icons';
+import { render, screen } from '@testing-library/react';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
+  HTTPMethod,
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
@@ -36,18 +39,15 @@ import {
   mockTypedEventEmptyDataSuccessful,
   mockTypedEventEmptyDataUnprocessed,
 } from '../../mocks/AlertUtil.mock';
-import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTermQuery } from '../SearchPureUtils';
-import { getAlertSourceSearch } from './AlertSourceSearch';
+import { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
 import {
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
-  getFieldByArgumentType,
   getFqnSearchIndexes,
+  getOptionsByFqns,
   searchEntity,
 } from './AlertsUtil';
 import {
@@ -62,22 +62,8 @@ import {
   getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
-  listLengthValidator,
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
-
-const searchOf = (
-  sources: string | string[],
-  containerEntities: string[] = []
-) => getAlertSourceSearch([sources].flat(), containerEntities);
-
-jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: jest
-    .fn()
-    .mockImplementation(({ api }: { api: () => void }) => (
-      <button onClick={() => api()}>AsyncSelect</button>
-    )),
-}));
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
@@ -141,7 +127,9 @@ describe('AlertsUtil tests', () => {
   it('getAlertsActionTypeIcon should return correct icon for Email', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.Email);
 
-    expect(icon).toStrictEqual(<MailIcon height={16} width={16} />);
+    expect(icon).toStrictEqual(
+      <Mail className="tw:text-utility-gray-500" size={16} />
+    );
   });
 
   it('getAlertsActionTypeIcon should return correct icon for MSTeam', () => {
@@ -153,19 +141,15 @@ describe('AlertsUtil tests', () => {
   it('getAlertsActionTypeIcon should return correct icon for ActivityFeed', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.ActivityFeed);
 
-    expect(icon).toStrictEqual(<AllActivityIcon height={16} width={16} />);
+    expect(icon).toStrictEqual(<GridView size={16} />);
   });
 
   it('getAlertsActionTypeIcon should return correct icon for generic', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.Webhook);
 
-    expect(icon).toStrictEqual(<WebhookIcon height={16} width={16} />);
-  });
-
-  it('listLengthValidator should return error function', async () => {
-    const error = listLengthValidator('name', 64);
-
-    expect(typeof error).toBe('function');
+    expect(icon).toStrictEqual(
+      <Webhook className="tw:text-utility-gray-500" size={16} />
+    );
   });
 
   it('getAlertActionTypeDisplayName should return correct text for Slack', () => {
@@ -212,538 +196,6 @@ describe('AlertsUtil tests', () => {
   });
 });
 
-describe('getFieldByArgumentType tests', () => {
-  it('should return correct fields for argumentType fqnList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'fqnList',
-      0,
-      searchOf('table', ['databaseService', 'database', 'databaseSchema'])
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: [
-        SearchIndex.TABLE,
-        SearchIndex.DATABASE_SERVICE,
-        SearchIndex.DATABASE,
-        SearchIndex.DATABASE_SCHEMA,
-      ],
-    });
-  });
-
-  it('should use the Data Contract API for a dataContract fqnList', async () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-    (searchQuery as jest.Mock).mockClear();
-    (searchContracts as jest.Mock).mockResolvedValue([
-      {
-        fullyQualifiedName: 'service.database.schema.table.dataContract_test',
-      },
-    ]);
-
-    render(getFieldByArgumentType(0, 'fqnList', 0, searchOf('dataContract')));
-
-    const api = MockedAsyncSelect.mock.calls[0][0].api as (
-      query: string
-    ) => Promise<unknown>;
-
-    await expect(api('test')).resolves.toEqual([
-      {
-        label: 'service.database.schema.table.dataContract_test',
-        value: 'service.database.schema.table.dataContract_test',
-      },
-    ]);
-    expect(searchContracts).toHaveBeenCalledWith('test', 50);
-    expect(searchQuery).not.toHaveBeenCalled();
-  });
-
-  it('should search contracts and tables together when both are selected', async () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-    (searchQuery as jest.Mock).mockClear();
-    (searchQuery as jest.Mock).mockResolvedValue({
-      hits: {
-        hits: [{ _source: { fullyQualifiedName: 'svc.db.schema.orders' } }],
-      },
-    });
-    (searchContracts as jest.Mock).mockResolvedValue([
-      { fullyQualifiedName: 'svc.db.schema.orders.contract' },
-    ]);
-
-    render(
-      getFieldByArgumentType(
-        0,
-        'fqnList',
-        0,
-        searchOf(['table', 'dataContract'])
-      )
-    );
-
-    const api = MockedAsyncSelect.mock.calls[0][0].api as (
-      query: string
-    ) => Promise<unknown>;
-
-    await expect(api('orders')).resolves.toEqual([
-      {
-        label: 'svc.db.schema.orders.contract',
-        value: 'svc.db.schema.orders.contract',
-      },
-      { label: 'svc.db.schema.orders', value: 'svc.db.schema.orders' },
-    ]);
-    expect(searchContracts).toHaveBeenCalledWith('orders', 50);
-    expect(searchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ searchIndex: [SearchIndex.TABLE] })
-    );
-  });
-
-  it('should return correct fields for argumentType domainList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'domainList',
-      0,
-      searchOf('container')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.DOMAIN,
-    });
-  });
-
-  it('should return correct fields for argumentType tableNameList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'tableNameList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.TABLE,
-    });
-  });
-
-  it('should return correct fields for argumentType ownerNameList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'ownerNameList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    });
-  });
-
-  it('should return correct fields for argumentType updateByUserList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'updateByUserList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.USER,
-    });
-  });
-
-  it('should return correct fields for argumentType userList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'userList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: SearchIndex.USER,
-    });
-  });
-
-  it('should return correct fields for argumentType eventTypeList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'eventTypeList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('event-type-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should offer only the event types the resource declares', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'eventTypeList',
-      0,
-      searchOf('glossaryTerm'),
-      [EventType.EntityCreated, EventType.ThreadCreated]
-    );
-
-    render(field);
-    const select = screen.getByTestId('event-type-select');
-    fireEvent.mouseDown(
-      select.querySelector('.ant-select-selector') as HTMLElement
-    );
-
-    fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Thread' },
-    });
-
-    expect(await screen.findByTitle('Thread Created')).toBeInTheDocument();
-
-    fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Entity Deleted' },
-    });
-
-    expect(screen.queryByTitle('Entity Deleted')).not.toBeInTheDocument();
-  });
-
-  it('should fall back to every event type when the resource declares none', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'eventTypeList',
-      0,
-      searchOf('glossaryTerm')
-    );
-
-    render(field);
-    const select = screen.getByTestId('event-type-select');
-    fireEvent.mouseDown(
-      select.querySelector('.ant-select-selector') as HTMLElement
-    );
-
-    fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Ontology' },
-    });
-
-    expect(await screen.findByTitle('Ontology Imported')).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType entityIdList', async () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-
-    const field = getFieldByArgumentType(
-      0,
-      'entityIdList',
-      0,
-      searchOf('table')
-    );
-
-    render(field);
-
-    expect(MockedAsyncSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'data-testid': 'entity-id-select',
-        mode: 'multiple',
-        optionLabelProp: 'uuid',
-      }),
-      expect.anything()
-    );
-
-    const selectDiv = screen.getByText('AsyncSelect');
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: '',
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: [SearchIndex.TABLE],
-    });
-  });
-
-  it('entityIdList: an id is looked up in the index of every selected source', async () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-    (searchQuery as jest.Mock).mockClear();
-
-    render(
-      getFieldByArgumentType(0, 'entityIdList', 0, searchOf(['table', 'topic']))
-    );
-    const apiFn = MockedAsyncSelect.mock.calls[0][0].api as (
-      s: string
-    ) => Promise<unknown>;
-    await apiFn('orders');
-
-    expect(searchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        searchIndex: [SearchIndex.TABLE, SearchIndex.TOPIC],
-      })
-    );
-  });
-
-  it('entityIdList: UUID-format input adds a term filter on the id field', async () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-    (searchQuery as jest.Mock).mockClear();
-
-    const field = getFieldByArgumentType(
-      0,
-      'entityIdList',
-      0,
-      searchOf('table')
-    );
-
-    render(field);
-
-    const apiFn = MockedAsyncSelect.mock.calls[0][0].api as (
-      s: string
-    ) => Promise<unknown>;
-    const uuid = '550e8400-e29b-41d4-a716-446655440000';
-    await apiFn(uuid);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: uuid,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: getTermQuery({ id: uuid }),
-      searchIndex: [SearchIndex.TABLE],
-    });
-  });
-
-  it('fqnList: strict-pick (mode="multiple", no free-text tags)', () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-
-    const field = getFieldByArgumentType(0, 'fqnList', 0, searchOf('table'));
-
-    render(field);
-
-    expect(MockedAsyncSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'data-testid': 'fqn-list-select',
-        mode: 'multiple',
-      }),
-      expect.anything()
-    );
-  });
-
-  it('tableNameList: strict-pick (mode="multiple", no free-text tags)', () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-
-    const field = getFieldByArgumentType(
-      0,
-      'tableNameList',
-      0,
-      searchOf('testCase')
-    );
-
-    render(field);
-
-    expect(MockedAsyncSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'data-testid': 'table-name-select',
-        mode: 'multiple',
-      }),
-      expect.anything()
-    );
-  });
-
-  it('entityNameList: strict-pick (mode="multiple", no free-text tags)', () => {
-    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
-      '../../components/common/AsyncSelect/AsyncSelect'
-    );
-    MockedAsyncSelect.mockClear();
-
-    const field = getFieldByArgumentType(
-      0,
-      'entityNameList',
-      0,
-      searchOf('dataContract')
-    );
-
-    render(field);
-
-    expect(MockedAsyncSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'data-testid': 'entity-name-select',
-        mode: 'multiple',
-      }),
-      expect.anything()
-    );
-  });
-
-  it('should return correct fields for argumentType pipelineStateList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'pipelineStateList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('pipeline-status-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType ingestionPipelineStateList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'ingestionPipelineStateList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('pipeline-status-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType testStatusList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'testStatusList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('test-status-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType testResultList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'testResultList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('test-result-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType testSuiteList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'testSuiteList',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.TEST_SUITE,
-    });
-  });
-
-  it('should not return select component for random argumentType', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'unknown',
-      0,
-      searchOf('selectedTrigger')
-    );
-
-    render(field);
-
-    const selectDiv = screen.queryByText('AsyncSelect');
-
-    expect(selectDiv).toBeNull();
-  });
-});
-
 describe('getAlertEventsFilterLabels', () => {
   it('should return correct filter labels', () => {
     const allLabel = getAlertEventsFilterLabels(AlertRecentEventFilters.ALL);
@@ -784,23 +236,21 @@ describe('getAlertStatusIcon', () => {
     const icon = getAlertStatusIcon(Status.Successful);
 
     expect(icon).toStrictEqual(
-      <CheckIcon className="status-icon successful-icon" />
+      <Check className="status-icon successful-icon" />
     );
   });
 
   it('should return correct icon for Failed status', () => {
     const icon = getAlertStatusIcon(Status.Failed);
 
-    expect(icon).toStrictEqual(
-      <AlertIcon className="status-icon failed-icon" />
-    );
+    expect(icon).toStrictEqual(<Alert className="status-icon failed-icon" />);
   });
 
   it('should return correct icon for Unprocessed status', () => {
     const icon = getAlertStatusIcon(Status.Unprocessed);
 
     expect(icon).toStrictEqual(
-      <ClockIcon className="status-icon unprocessed-icon" />
+      <Clock02 className="status-icon unprocessed-icon" />
     );
   });
 
@@ -1332,6 +782,36 @@ describe('handleAlertSave - downstream notification fields', () => {
       ]);
     });
 
+    it('getOptionsByFqns looks the saved FQNs up by term and labels them by display name', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await getOptionsByFqns(
+        ['test.database.table', 'test.user'],
+        [SearchIndex.TABLE, SearchIndex.USER]
+      );
+
+      const { query, queryFilter, searchIndex } = (searchQuery as jest.Mock)
+        .mock.calls[0][0];
+
+      expect(query).toBe('');
+      expect(searchIndex).toEqual([SearchIndex.TABLE, SearchIndex.USER]);
+      expect(queryFilter).toEqual({
+        query: {
+          bool: {
+            should: [
+              { term: { fullyQualifiedName: 'test.database.table' } },
+              { term: { fullyQualifiedName: 'test.user' } },
+            ],
+            minimum_should_match: 1,
+          },
+        },
+      });
+      expect(result).toEqual([
+        { label: 'Test Table', value: 'test.database.table' },
+        { label: 'Test User', value: 'test.user' },
+      ]);
+    });
+
     it('should return search results with showDisplayNameAsLabel false', async () => {
       (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
 
@@ -1582,7 +1062,7 @@ describe('normalizeDestinationConfig', () => {
       endpoint: 'https://hooks.slack.com/services/xxx',
       headers: [{ key: 'header1', value: 'value1' }],
       queryParams: [{ key: 'param1', value: 'value1' }],
-      httpMethod: 'POST',
+      httpMethod: HTTPMethod.Post,
     };
 
     const result = normalizeDestinationConfig(config);

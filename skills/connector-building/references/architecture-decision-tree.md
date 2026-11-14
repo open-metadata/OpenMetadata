@@ -38,7 +38,7 @@ Is it a database service type?
         ├── Cloud data catalog   → DatabaseServiceSource directly
         │   Examples: glue, unitycatalog
         ├── Data lake / file     → DatabaseServiceSource + custom client
-        │   Examples: datalake, iceberg, deltalake
+        │   Examples: datalake, iceberg
         └── Proprietary API      → DatabaseServiceSource + REST/SDK client
             Examples: salesforce, domodatabase
 ```

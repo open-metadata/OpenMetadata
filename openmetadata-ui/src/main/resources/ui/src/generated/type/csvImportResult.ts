@@ -27,11 +27,16 @@ export interface CSVImportResult {
     /**
      * CSV file that captures the result of import operation.
      */
-    importResultsCsv?:      string;
-    numberOfRowsFailed?:    number;
-    numberOfRowsPassed?:    number;
-    numberOfRowsProcessed?: number;
-    status?:                Status;
+    importResultsCsv?:   string;
+    numberOfRowsFailed?: number;
+    numberOfRowsPassed?: number;
+    /**
+     * Rows accepted as change requests awaiting approval; counted in numberOfRowsPassed but not
+     * yet published.
+     */
+    numberOfRowsPendingApproval?: number;
+    numberOfRowsProcessed?:       number;
+    status?:                      Status;
 }
 
 /**

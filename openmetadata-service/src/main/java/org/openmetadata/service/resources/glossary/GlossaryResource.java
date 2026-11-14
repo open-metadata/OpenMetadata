@@ -43,6 +43,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -445,9 +446,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -698,7 +697,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               + "glossary terms and typed relations through the glossary repository. SKOS concepts / "
               + "OWL classes become GlossaryTerms, skos:broader / rdfs:subClassOf become the parent "
               + "hierarchy, skos:*Match become concept mappings, owl:DatatypeProperty definitions "
-              + "become per-concept attributes, and owl:ObjectProperty edges become governed typed "
+              + "become glossary custom properties with admin permission, and owl:ObjectProperty edges become typed "
               + "relationships. JSON-LD may use inline contexts or bundled OpenMetadata contexts. "
               + "The RDF triplestore is optional; when enabled the created terms are mirrored "
               + "automatically.",
@@ -745,7 +744,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       operationId = "exportGlossaryOntology",
       summary = "Export a glossary as an ontology",
       description =
-          "Export the database-primary glossary model, governed relationship types, OWL axioms, "
+          "Export the glossary vocabulary, configured term relations, "
               + "and its lossless annex. This endpoint remains available when RDF storage is off.")
   public Response exportOntology(
       @Context final SecurityContext securityContext,
@@ -801,7 +800,11 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     } catch (SparqlFederationGuard.FederationDisallowedException exception) {
       throw new ForbiddenException(exception.getMessage(), exception);
     } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
-      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+      throw new ClientErrorException(
+          exception.getMessage(),
+          Response.status(Response.Status.TOO_MANY_REQUESTS)
+              .header(HttpHeaders.RETRY_AFTER, 1)
+              .build());
     } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
       throw new ServiceUnavailableException(
           Response.status(Response.Status.SERVICE_UNAVAILABLE)

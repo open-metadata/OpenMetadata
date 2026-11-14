@@ -174,7 +174,7 @@ function NotificationFiltersEditor({
     filters.length < (supportedFilters?.length ?? 1) && !isViewMode;
 
   return (
-    <Card className="tw:w-full" size="md">
+    <Card className="tw:w-full" size="md" variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>
@@ -241,10 +241,9 @@ function NotificationFiltersEditor({
 
                     {!isViewMode && (
                       <ButtonUtility
-                        color="tertiary"
                         data-testid={`remove-filter-${index}`}
                         icon={XClose}
-                        size="xs"
+                        size="lg"
                         tooltip={t('label.remove')}
                         onPress={() => handleControlledRemove(index)}
                       />

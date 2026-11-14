@@ -28,7 +28,8 @@ export interface EventSubscription {
      */
     changeDescription?: ChangeDescription;
     /**
-     * Java class for the Event Subscription.
+     * Id of the registered consumer that runs this Event Subscription, such as `alert`, the
+     * consumer that sends its notifications.
      */
     className?: string;
     config?:    { [key: string]: any };

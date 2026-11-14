@@ -46,6 +46,11 @@
       "type": "integer",
       "default": 1000
     },
+    "logSchema": {
+      "title": "Fivetran Platform Connector Schema",
+      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+      "type": "string"
+    },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",

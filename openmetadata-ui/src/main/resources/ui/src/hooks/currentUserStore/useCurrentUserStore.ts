@@ -16,7 +16,7 @@ import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { GRID_PAGE_SIZE_BASE, PAGE_SIZE_BASE } from '../../constants/constants';
 import { deleteUserPreference, putUserPreference } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
@@ -30,6 +30,7 @@ export interface UserPreferences {
   isSidebarCollapsed: boolean;
   selectedEntityTableColumns: Record<string, string[]>;
   globalPageSize: number;
+  globalGridPageSize: number;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
@@ -47,6 +48,14 @@ export interface UserPreferences {
    * checkbox writes this field; runtime mode-switching does NOT touch it.
    */
   appMode: string | null;
+  timeFormat?: '12h' | '24h';
+  /**
+   * Whether the entity Lineage tab draws temporary tables between two tables
+   * (the lineage config dialog). Unset means shown.
+   */
+  showLineageTempTables?: boolean;
+  /** Whether the Ontology Studio health card is collapsed to its one-line strip. */
+  isOntologyHealthMinimized?: boolean;
 }
 
 interface Store {
@@ -63,6 +72,7 @@ const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
   selectedEntityTableColumns: {},
   globalPageSize: PAGE_SIZE_BASE,
+  globalGridPageSize: GRID_PAGE_SIZE_BASE,
   recentlyViewed: [],
   recentlySearched: [],
   recentlyViewedQuickLinks: [],

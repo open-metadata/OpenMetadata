@@ -12,16 +12,23 @@
  */
 
 import {
+  Alert,
   Button,
   ButtonUtility,
+  Dot,
   Dropdown,
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, InputRef } from 'antd';
-import { Header } from 'antd/lib/layout/layout';
+import {
+  Bell01,
+  ChevronDown,
+  CollapsePanel,
+  ExpandPanel,
+  HelpCircle,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
@@ -36,12 +43,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
-import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
-import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
-import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
-import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
@@ -51,7 +52,6 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
@@ -60,9 +60,9 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../hooks/useSwitchActiveDomain';
 import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
-import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
@@ -81,7 +81,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -99,7 +99,6 @@ const DomainSelect = withSuspenseFallback(
 const cookieStorage = new CookieStorage();
 
 const NavBar = () => {
-  const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
   // handleDeleteEntityWebsocketResponse is recreated every render (it closes
@@ -118,12 +117,11 @@ const NavBar = () => {
   const {
     activeDomain,
     activeDomainEntityRef,
-    updateActiveDomain,
     userDomains,
     isDomainRestricted,
   } = useDomainStore();
+  const switchActiveDomain = useSwitchActiveDomain();
   const { t } = useTranslation();
-  const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
@@ -135,18 +133,6 @@ const NavBar = () => {
     preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
-
-  // Check if current route is the landing page (either `/` or `/my-data`)
-  const isHomePage = useMemo(
-    () => isLandingPagePath(location.pathname),
-    [location.pathname]
-  );
-
-  const isTourPage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname.includes(ROUTES.TOUR);
-  }, [location.pathname]);
 
   const isDataMarketplacePage = useMemo(() => {
     return location.pathname === ROUTES.DATA_MARKETPLACE;
@@ -316,7 +302,7 @@ const NavBar = () => {
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
-      searchRef.current?.focus();
+      document.getElementById('searchBox')?.focus();
       event.preventDefault();
     }
   }, []);
@@ -327,13 +313,6 @@ const NavBar = () => {
     }
 
     const handleDocumentVisibilityChange = async () => {
-      if (
-        applicationRoutesClass.isProtectedRoute(location.pathname) &&
-        isTourRoute
-      ) {
-        return;
-      }
-
       // Check if we need to fetch based on cache timing
       // This is to block the API call for 1 hour
       const lastFetchTime = cookieStorage.getItem(LAST_VERSION_FETCH_TIME_KEY);
@@ -371,7 +350,7 @@ const NavBar = () => {
     return () => {
       removeEventListener('focus', handleDocumentVisibilityChange);
     };
-  }, [isTourRoute, version]);
+  }, [version]);
 
   useEffect(() => {
     const handleTaskNotification = (newActivity: string) => {
@@ -476,11 +455,10 @@ const NavBar = () => {
 
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[] | undefined) => {
-      updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      navigate(0);
+      await switchActiveDomain(domain as EntityReference | undefined);
     },
-    []
+    [switchActiveDomain]
   );
 
   const domainDisplayName = useMemo(
@@ -516,16 +494,17 @@ const NavBar = () => {
       />
     </CoreTooltip>
   ) : (
+    // A domain-restricted user with several domains also gets "All Domains". It only removes the
+    // filter; what they can see stays with their role.
     <DomainSelect
       bordered
+      showAllDomains
       className="tw:self-center"
       data-testid="domain-dropdown"
-      isClearable={!isDomainRestricted}
       isOpen={isDomainDropdownOpen}
       label={domainDisplayName}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
-      showAllDomains={!isDomainRestricted}
       triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
       triggerVariant="button"
       onOpenChange={setIsDomainDropdownOpen}
@@ -551,7 +530,7 @@ const NavBar = () => {
       isDataMarketplacePage
         ? {
             background: 'transparent',
-            marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+            marginBottom: 'calc(-1 * var(--navbar-height))',
             position: 'relative' as const,
             zIndex: 10,
           }
@@ -569,7 +548,9 @@ const NavBar = () => {
       showVersionMissMatchAlert ? (
         <Alert
           showIcon
-          action={
+          className="refresh-alert slide-in-top"
+          icon={RefreshCw01}
+          rightContent={
             <Button
               color="link-color"
               size="xs"
@@ -579,37 +560,34 @@ const NavBar = () => {
               {t('label.refresh')}
             </Button>
           }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
+          title={t('message.new-version-available')}
+          variant="brand">
+          {t('message.refresh-page-recommended')}
+        </Alert>
       ) : null,
     [showVersionMissMatchAlert, navigate, t]
   );
 
   return (
     <>
-      <Header style={headerStyle}>
+      <header className="app-navbar-header" style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="sidebar-toggle"
-                icon={
-                  isSidebarCollapsed
-                    ? SidebarCollapsedIcon
-                    : SidebarExpandedIcon
-                }
-                size="sm"
-                onClick={() =>
-                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
-                }
-              />
-            </Tooltip>
-            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
+            <ButtonUtility
+              data-testid="sidebar-toggle"
+              icon={isSidebarCollapsed ? ExpandPanel : CollapsePanel}
+              size="lg"
+              tooltip={sidebarTooltipTitle}
+              tooltipPlacement="right"
+              onClick={() =>
+                setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
+              }
+            />
+            {/* The home page used to own a search bar and a domain scope
+              control of its own, so the navbar suppressed its own pair there.
+              HomeLandingPage renders neither, so suppressing them now leaves
+              the home page with no way to search or to scope a domain at all. */}
+            {!isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 {domainScopeSelector}
@@ -622,7 +600,7 @@ const NavBar = () => {
               <Button
                 color="tertiary"
                 data-testid="language-selector-button"
-                iconTrailing={<DropDownIcon width={12} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {currentLanguage}
               </Button>
@@ -638,17 +616,22 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <Button
+              <ButtonUtility
                 aria-label={t('label.notification-plural')}
-                color="tertiary"
-                iconLeading={
-                  <Badge
-                    dot={hasTaskNotification || hasMentionNotification}
-                    offset={[-3, 3]}>
-                    <IconBell data-testid="task-notifications" width={20} />
-                  </Badge>
+                icon={
+                  <span className="tw:relative tw:inline-flex tw:items-center">
+                    <Bell01 data-testid="task-notifications" size={20} />
+                    {(hasTaskNotification || hasMentionNotification) && (
+                      <Dot
+                        aria-label={t('label.notification-plural')}
+                        className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+                        role="img"
+                        size="sm"
+                      />
+                    )}
+                  </span>
                 }
-                size="sm"
+                size="lg"
               />
               <Popover className="tw:w-106" placement="bottom end">
                 <NotificationBox
@@ -664,12 +647,11 @@ const NavBar = () => {
               </Popover>
             </PopoverTrigger>
             <Dropdown.Root>
-              <Button
-                aria-label={t('label.need-help')}
-                color="tertiary"
+              <ButtonUtility
                 data-testid="help-icon"
-                iconLeading={<Help width={20} />}
-                size="sm"
+                icon={HelpCircle}
+                size="lg"
+                tooltip={t('label.need-help')}
               />
               <Dropdown.Popover className="tw:w-44" placement="bottom end">
                 <Dropdown.Menu
@@ -687,7 +669,7 @@ const NavBar = () => {
             <UserProfileIcon />
           </div>
         </div>
-      </Header>
+      </header>
       {versionMismatchAlert}
       {renderAlertCards}
     </>

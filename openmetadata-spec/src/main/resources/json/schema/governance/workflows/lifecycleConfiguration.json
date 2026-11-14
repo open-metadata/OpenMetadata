@@ -1,0 +1,113 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/lifecycleConfiguration.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LifecycleConfiguration",
+  "description": "Optional presentation metadata for guided lifecycle workflows. Executable nodes and edges remain authoritative; editors must verify that the metadata compiles to the saved graph before editing it as stages.",
+  "javaType": "org.openmetadata.schema.governance.workflows.LifecycleConfiguration",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "entityType": {
+      "type": "string",
+      "enum": [
+        "dataProduct",
+        "domain",
+        "glossary",
+        "glossaryTerm",
+        "metric"
+      ]
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lifecycleGate"
+      }
+    }
+  },
+  "required": [
+    "version",
+    "entityType",
+    "gates"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "lifecycleGate": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "../../type/status.json"
+        },
+        "checks": {
+          "description": "Fields the asset must fill in before it can leave the stage.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lifecycleFieldCheck"
+          }
+        },
+        "conditions": {
+          "description": "JSON Logic condition the asset must also meet before it can leave the stage.",
+          "type": "string",
+          "minLength": 1
+        },
+        "task": {
+          "description": "Who is asked to fill in the missing fields or get the conditions met. Without it the stage holds the asset and asks no one (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleTask",
+          "properties": {
+            "assignees": {
+              "type": "string",
+              "enum": [
+                "owners",
+                "reviewers",
+                "candidates"
+              ]
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "$ref": "../../type/entityReference.json"
+              }
+            }
+          },
+          "required": [
+            "assignees"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "stage",
+        "checks"
+      ],
+      "additionalProperties": false,
+      "description": "A stage of the guided lifecycle: the fields and conditions an asset needs before it can leave the stage, and who is asked to complete them."
+    },
+    "lifecycleFieldCheck": {
+      "description": "A field the asset must fill in before it can leave the gate's stage.",
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valueType": {
+          "description": "Number and boolean fields accept zero and false as filled-in values.",
+          "type": "string",
+          "enum": [
+            "number",
+            "boolean"
+          ]
+        }
+      },
+      "required": [
+        "field"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

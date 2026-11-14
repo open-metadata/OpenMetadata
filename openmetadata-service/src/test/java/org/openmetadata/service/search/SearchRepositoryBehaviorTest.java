@@ -12,17 +12,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -42,6 +45,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +64,7 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
@@ -85,12 +91,14 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
@@ -102,10 +110,12 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -309,7 +319,8 @@ class SearchRepositoryBehaviorTest {
         map.put(entityType, mock(org.openmetadata.service.jdbi3.EntityTimeSeriesRepository.class));
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forTimeSeries(
-                entityType));
+                entityType,
+                Entity.TEST_CASE_RESOLUTION_STATUS.equals(entityType) ? "testCase.deleted" : null));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to register mock time-series repositories", e);
@@ -359,12 +370,14 @@ class SearchRepositoryBehaviorTest {
     if (Entity.TABLE.equals(entityType)) {
       descriptors.add(
           new PropagationDescriptor(
-              "tags", PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+                  "tags", PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
+              .inheritedTermsOnlyFor(Entity.TABLE_COLUMN));
       descriptors.add(
           new PropagationDescriptor(
-              Entity.FIELD_DATA_PRODUCTS,
-              PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
-              null));
+                  Entity.FIELD_DATA_PRODUCTS,
+                  PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
+                  null)
+              .skipping(Entity.TABLE_COLUMN));
       descriptors.add(
           new PropagationDescriptor(
               "certification", PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
@@ -977,7 +990,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
@@ -988,29 +1001,36 @@ class SearchRepositoryBehaviorTest {
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
     EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    doReturn(List.of(owner)).when(domainEntity).getOwners();
     ChangeDescription changeDescription =
         changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS).withNewValue(List.of(owner))),
             List.of(),
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_DISPLAY_NAME)
-                    .withOldValue("Old Domain")
-                    .withNewValue("New Domain")),
             List.of());
 
     repository.propagateInheritedFieldsToChildren(
         Entity.DOMAIN, "domain-id", changeDescription, DOMAIN_MAPPING, domainEntity);
 
+    // The reconciled, synchronous variant: the relabel pass that follows rewrites the same data
+    // products, and two concurrent passes over a document drop one of the writes.
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_domain_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_domain_search_index")),
+            eq("parent.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_data_product_search_index")),
+            eq("domains.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
   }
 
   @Test
-  void propagateInheritedFieldsToChildrenSkipsAllChangesForTimeSeriesChildren() throws IOException {
+  void propagateInheritedFieldsToChildrenSkipsNonTagChangesForTimeSeriesChildren()
+      throws IOException {
     IndexMapping timeSeriesOnlyMapping =
         IndexMapping.builder()
             .indexName("test_case_search_index")
@@ -1047,6 +1067,352 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void propagateInheritedFieldsToChildrenRoutesTagsIntoEmbeddedTimeSeriesTestCase()
+      throws IOException {
+    IndexMapping tableWithTimeSeriesChildren =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(
+                List.of(
+                    Entity.TEST_CASE_RESOLUTION_STATUS,
+                    Entity.TEST_CASE_RESULT,
+                    Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel oldTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Old")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel newTag =
+        new TagLabel()
+            .withTagFQN("Glossary.New")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(newTag)))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(JsonUtils.pojoToJson(List.of(oldTag)))));
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE,
+        table.getId().toString(),
+        changeDescription,
+        tableWithTimeSeriesChildren,
+        table);
+
+    verify(searchClient)
+        .updateChildrenInBackground(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+    ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_testCaseResolutionStatus", "cluster_testCaseResult")),
+            parentMatchCaptor.capture(),
+            updatesCaptor.capture());
+
+    assertEquals("table.id", parentMatchCaptor.getValue().getKey());
+    assertEquals(table.getId().toString(), parentMatchCaptor.getValue().getValue());
+    String script = updatesCaptor.getValue().getKey();
+    assertTrue(script.contains("ctx._source.testCase.tags"));
+    assertTrue(script.contains("params.tagAdded"));
+    assertTrue(script.contains("params.tagDeleted"));
+    assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains(TagLabel.LabelType.PROPAGATED.value()),
+        "a lineage-propagated label belongs to the child and must not be removed");
+    assertFalse(
+        script.contains("ctx._source.classificationTags"),
+        "the root-tag re-separation script is invalid for time-series mappings");
+
+    Map<String, Object> params = updatesCaptor.getValue().getValue();
+    assertEquals(Set.of("tagAdded", "tagDeleted"), params.keySet());
+    assertTrue(
+        ((List<TagLabel>) params.get("tagAdded"))
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED));
+    assertTrue(
+        ((List<TagLabel>) params.get("tagDeleted"))
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED));
+  }
+
+  /**
+   * A tags-only change must leave the column documents to the tag cascade alone. Running the
+   * inherited-field update as well put two update-by-query operations on the same documents
+   * milliseconds apart; both are submitted with {@code conflicts=proceed}, so whichever lost the
+   * version race was skipped silently, and the tag write was usually the loser.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void tableTagOnlyChangeLeavesColumnDocsToTheTagCascade() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    Table table = mock(Table.class);
+    UUID tableId = UUID.randomUUID();
+    EntityReference tableRef =
+        new EntityReference().withId(tableId).withType(Entity.TABLE).withName("orders");
+    when(table.getEntityReference()).thenReturn(tableRef);
+    when(table.getId()).thenReturn(tableId);
+    when(table.getName()).thenReturn("orders");
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.orders");
+
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription tagChange =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tag)))),
+            List.of(),
+            List.of());
+
+    try (MockedStatic<SearchUtils> search =
+        mockStatic(SearchUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      search.when(SearchUtils::isAccessControlEnabled).thenReturn(false);
+      invokePrivateMethod(
+          repo,
+          "syncTableColumns",
+          new Class<?>[] {Table.class, ChangeDescription.class},
+          table,
+          tagChange);
+    }
+    repo.propagateInheritedFieldsToChildren(
+        Entity.TABLE, tableId.toString(), tagChange, TABLE_MAPPING, table);
+
+    verify(searchClient, never()).deleteEntityByFields(anyList(), anyList());
+    verify(searchClient, never()).createEntities(anyString(), anyList());
+    verify(searchClient, never())
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            eq(new ImmutablePair<>("table.id", tableId.toString())),
+            argThat(update -> SearchClient.DEFAULT_UPDATE_SCRIPT.equals(update.getKey())));
+
+    ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildrenInBackground(
+            eq(List.of("cluster_tableColumn")),
+            eq(new ImmutablePair<>("table.id", tableId.toString())),
+            tagUpdateCaptor.capture());
+    assertTrue(tagUpdateCaptor.getValue().getKey().contains("ctx._source.tags"));
+    List<TagLabel> inheritedTags =
+        (List<TagLabel>) tagUpdateCaptor.getValue().getValue().get("tagAdded");
+    assertEquals(1, inheritedTags.size());
+    assertEquals(TagLabel.LabelType.DERIVED, inheritedTags.getFirst().getLabelType());
+  }
+
+  /**
+   * Under search access control a column entry's policyTags carry its table's tags, which the tag
+   * cascade does not maintain, so a tags-only change rebuilds the entries.
+   */
+  @Test
+  void tableTagOnlyChangeRebuildsColumnDocsUnderSearchAccessControl() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    UUID tableId = UUID.randomUUID();
+    Table table =
+        new Table()
+            .withId(tableId)
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withFullyQualifiedName("svc.db.schema.orders.amount")
+                        .withDataType(ColumnDataType.INT)))
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+    ChangeDescription tagChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue("[]")),
+            List.of(),
+            List.of());
+
+    try (MockedStatic<SearchUtils> search =
+        mockStatic(SearchUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      search.when(SearchUtils::isAccessControlEnabled).thenReturn(true);
+      invokePrivateMethod(
+          repo,
+          "syncTableColumns",
+          new Class<?>[] {Table.class, ChangeDescription.class},
+          table,
+          tagChange);
+    }
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docs = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), docs.capture());
+    JsonNode columnDoc = JsonUtils.readTree(docs.getValue().getFirst().values().iterator().next());
+    assertEquals("PII.Sensitive", columnDoc.path("policyTags").path(0).asText());
+  }
+
+  /**
+   * A tags change made together with another field rebuilds the column documents rather than
+   * running the inherited-field update next to the tag cascade: those two would write different
+   * fields of the same documents at once, and conflicts=proceed drops whichever loses. The rebuilt
+   * documents carry the table's term already.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void tableTagChangeMixedWithAnotherFieldRebuildsTheColumnDocs() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    UUID tableId = UUID.randomUUID();
+    TagLabel term =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    Table table =
+        new Table()
+            .withId(tableId)
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withTags(List.of(term))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withFullyQualifiedName("svc.db.schema.orders.amount")));
+    ChangeDescription tagAndDescriptionChange =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(term)))),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DESCRIPTION)
+                    .withOldValue("old")
+                    .withNewValue("new")),
+            List.of());
+
+    invokePrivateMethod(
+        repo,
+        "syncTableColumns",
+        new Class<?>[] {Table.class, ChangeDescription.class},
+        table,
+        tagAndDescriptionChange);
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            eq(List.of("cluster_column_search_index")),
+            eq(List.of(new ImmutablePair<>("table.id", tableId.toString()))));
+    verify(searchClient, never())
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            any(Pair.class),
+            argThat(update -> SearchClient.DEFAULT_UPDATE_SCRIPT.equals(update.getKey())));
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), docsCaptor.capture());
+    JsonNode columnDoc =
+        JsonUtils.readTree(docsCaptor.getValue().getFirst().values().iterator().next());
+    assertEquals("Glossary.Revenue", columnDoc.path("tags").path(0).path("tagFQN").asText());
+    assertEquals(
+        TagLabel.LabelType.DERIVED.value(),
+        columnDoc.path("tags").path(0).path("labelType").asText());
+  }
+
+  @Test
+  void retryPropagationDropsTagDeltaThatNoLongerMatchesTheParent() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel removedAfterQueuedAdd =
+        new TagLabel()
+            .withTagFQN("Glossary.Removed")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel readdedAfterQueuedDelete =
+        new TagLabel()
+            .withTagFQN("Glossary.Readded")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    when(table.getTags()).thenReturn(List.of(readdedAfterQueuedDelete));
+    ChangeDescription staleDelta =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(List.of(removedAfterQueuedAdd))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(List.of(readdedAfterQueuedDelete))));
+
+    repository.propagateEntityAfterRetry(table, staleDelta);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+    verify(searchClient, never())
+        .updateChildrenInBackground(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void retryPropagationKeepsOnlyTagDeltaConsistentWithTheParent() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel currentTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Current")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel removedTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Removed")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel staleAdd =
+        new TagLabel()
+            .withTagFQN("Glossary.StaleAdd")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    when(table.getTags()).thenReturn(List.of(currentTag));
+    ChangeDescription queuedDelta =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(List.of(currentTag, staleAdd))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(List.of(removedTag, currentTag))));
+
+    repository.propagateEntityAfterRetry(table, queuedDelta);
+
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildrenInBackground(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
+    Map<String, Object> params = updatesCaptor.getValue().getValue();
+    assertEquals(
+        List.of("Glossary.Current"),
+        ((List<TagLabel>) params.get("tagAdded")).stream().map(TagLabel::getTagFQN).toList());
+    assertEquals(
+        List.of("Glossary.Removed"),
+        ((List<TagLabel>) params.get("tagDeleted")).stream().map(TagLabel::getTagFQN).toList());
+  }
+
+  @Test
   void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
     EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     when(testCase.getOwners())
@@ -1079,13 +1445,121 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
 
     assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
     String entityChildScript = updatesCaptor.getValue().getLeft();
     assertTrue(entityChildScript.contains(Entity.FIELD_OWNERS));
     assertTrue(entityChildScript.contains(Entity.FIELD_DOMAINS));
     assertTrue(entityChildScript.contains(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenKeepsTableClassificationTagsOffColumnEntries()
+      throws IOException {
+    IndexMapping tableWithTestCases =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    when(table.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tag))),
+                new FieldChange().withName(Entity.FIELD_OWNERS)),
+            List.of(),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE, table.getId().toString(), changeDescription, tableWithTestCases, table);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient, times(2))
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+    Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
+    for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
+      paramsByTargets.put(
+          targetsCaptor.getAllValues().get(i), updatesCaptor.getAllValues().get(i).getRight());
+    }
+    Map<String, Object> testCaseParams = paramsByTargets.get(List.of("cluster_testCase"));
+    Map<String, Object> columnParams = paramsByTargets.get(List.of("cluster_tableColumn"));
+    assertTrue(testCaseParams.containsKey("tagAdded"));
+    assertTrue(testCaseParams.containsKey("updatedOwners"));
+    assertFalse(columnParams.containsKey("tagAdded"));
+    assertTrue(columnParams.containsKey("updatedOwners"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void propagateInheritedFieldsToChildrenSendsColumnEntriesOnlyTheTermsTheyInherit()
+      throws IOException {
+    IndexMapping tableWithTestCases =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel classificationTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel term =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(classificationTag, term)))),
+            List.of(),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE, table.getId().toString(), changeDescription, tableWithTestCases, table);
+
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient, times(2))
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+    Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
+    for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
+      addedByTargets.put(
+          targetsCaptor.getAllValues().get(i),
+          (List<TagLabel>) updatesCaptor.getAllValues().get(i).getRight().get("tagAdded"));
+    }
+    assertEquals(
+        List.of("PII.Sensitive", "Glossary.Revenue"),
+        addedByTargets.get(List.of("cluster_testCase")).stream().map(TagLabel::getTagFQN).toList());
+    List<TagLabel> columnTags = addedByTargets.get(List.of("cluster_tableColumn"));
+    assertEquals(
+        List.of("Glossary.Revenue"), columnTags.stream().map(TagLabel::getTagFQN).toList());
+    assertEquals(TagLabel.LabelType.DERIVED, columnTags.getFirst().getLabelType());
   }
 
   @Test
@@ -1117,7 +1591,8 @@ class SearchRepositoryBehaviorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+    verify(searchClient)
+        .updateChildrenInBackground(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
 
     assertEquals(
         List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
@@ -1661,7 +2136,7 @@ class SearchRepositoryBehaviorTest {
     Response aggregate;
     try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
       search = repo.search(new SearchRequest().withIndex(Entity.TABLE_COLUMN), null);
-      aggregate = repo.aggregate(aggregation);
+      aggregate = repo.aggregate(aggregation, null);
       repo.search(new SearchRequest().withIndex(Entity.TABLE), null);
     }
 
@@ -1673,7 +2148,7 @@ class SearchRepositoryBehaviorTest {
     }
     verify(searchClient, never())
         .search(eq(new SearchRequest().withIndex(Entity.TABLE_COLUMN)), any());
-    verify(searchClient, never()).aggregate(aggregation);
+    verify(searchClient, never()).aggregate(aggregation, null);
     verify(searchClient).search(eq(new SearchRequest().withIndex(Entity.TABLE)), any());
   }
 
@@ -1932,6 +2407,40 @@ class SearchRepositoryBehaviorTest {
     assertEquals("Tier.Tier1", addedTags.get(1).getTagFQN());
   }
 
+  /**
+   * A change description can carry the labels as TagLabel objects rather than the JSON string a
+   * PATCH records. This pins that shape down: the script and params must come out the same either
+   * way.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void inheritedFieldChangesAcceptTagLabelObjectsNotJustJsonStrings() throws Exception {
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("g.term")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.DERIVED);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(),
+            List.of(new FieldChange().withName("tags").withOldValue(List.of(tag))));
+
+    Pair<String, Map<String, Object>> updates =
+        invokeGetInheritedFieldChanges(changeDescription, tableEntity);
+
+    assertTrue(
+        updates.getLeft().contains("params.tagDeleted"),
+        () -> "delete script not generated: " + updates.getLeft());
+    List<TagLabel> deletedTags = (List<TagLabel>) updates.getRight().get("tagDeleted");
+    assertNotNull(deletedTags, "tagDeleted params missing");
+    assertEquals(1, deletedTags.size(), "the label list must survive conversion");
+    assertEquals("g.term", deletedTags.getFirst().getTagFQN());
+  }
+
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesDeleteTagsMarksThemAsDerived() throws Exception {
@@ -2081,6 +2590,13 @@ class SearchRepositoryBehaviorTest {
 
     String script = updates.getLeft();
     assertTrue(script.contains("equalsIgnoreCase"), "Delete script should match by tagFQN");
+    assertTrue(
+        script.contains("existingTag.labelType"),
+        "Delete script should only remove the cascade's DERIVED copies");
+    assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains(TagLabel.LabelType.PROPAGATED.value()),
+        "a lineage-propagated label belongs to the child and must not be removed");
     assertTrue(script.contains("ctx._source.tags.remove(i)"), "Script should remove matched tags");
     assertFalse(
         script.contains("Collections.sort"), "Delete-only script should not sort (no additions)");
@@ -2715,10 +3231,11 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateToRelatedEntitiesUpdatesGlossaryTagFqnsAndDisplayNames() {
-    EntityInterface<?> glossaryTerm =
-        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+  @SuppressWarnings("unchecked")
+  void propagateToRelatedEntitiesRelabelsGlossaryTermCopiesWithoutPrefixRewrite() {
+    EntityInterface<?> glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Income");
     when(glossaryTerm.getFullyQualifiedName()).thenReturn("BusinessGlossary.Income");
+    when(glossaryTerm.getDisplayName()).thenReturn("Income Display");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2737,19 +3254,20 @@ class SearchRepositoryBehaviorTest {
     repository.propagateToRelatedEntities(
         Entity.GLOSSARY_TERM, changeDescription, TABLE_MAPPING, glossaryTerm);
 
-    verify(searchClient)
-        .updateByFqnPrefix(
-            SearchClient.GLOBAL_SEARCH_ALIAS,
-            "BusinessGlossary.Revenue",
-            "BusinessGlossary.Income",
-            "tags.tagFQN");
+    // The term's updater rewrites the tag FQNs on assets; the prefix script that used to run here
+    // also substring-replaced the assets' own FQNs.
+    verify(searchClient, never()).updateByFqnPrefix(any(), any(), any(), any());
+    ArgumentCaptor<Pair<String, Map<String, Object>>> update = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
             eq(SearchClient.GLOBAL_SEARCH_ALIAS),
             eq(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "tags.tagFQN", "BusinessGlossary.Income")),
-            any(Pair.class));
+            update.capture());
+    assertEquals(
+        Map.of(Entity.FIELD_DISPLAY_NAME, "Income Display"),
+        update.getValue().getValue().get("updates"));
   }
 
   @Test
@@ -2771,7 +3289,38 @@ class SearchRepositoryBehaviorTest {
     when(pipelineStatus.getExecutionStatus())
         .thenReturn(org.openmetadata.schema.type.StatusType.Successful);
 
-    repository.bulkIndexPipelineExecutions(pipeline, List.of(pipelineStatus));
+    UUID ownerId = UUID.randomUUID();
+    UUID pipelineId = pipeline.getId();
+    Pipeline withAccessFields =
+        new Pipeline()
+            .withId(pipelineId)
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline")
+            .withService(service)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
+                    .Airflow)
+            .withOwners(List.of(new EntityReference().withId(ownerId).withType(Entity.USER)))
+            .withDomains(List.of())
+            .withTags(List.of());
+    when(pipeline.getEntityReference())
+        .thenReturn(new EntityReference().withId(pipelineId).withType(Entity.PIPELINE));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, Mockito.CALLS_REAL_METHODS)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Entity.PIPELINE,
+                      pipelineId,
+                      PipelineExecutionIndex.ACCESS_FIELDS,
+                      Include.ALL))
+          .thenReturn(withAccessFields);
+      entity
+          .when(() -> Entity.getEntityTags(Entity.PIPELINE, withAccessFields))
+          .thenReturn(List.of());
+      repository.bulkIndexPipelineExecutions(pipeline, List.of(pipelineStatus));
+    }
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
@@ -2780,8 +3329,9 @@ class SearchRepositoryBehaviorTest {
     assertEquals(1, docsCaptor.getValue().size());
     String docId = docsCaptor.getValue().getFirst().keySet().iterator().next();
     assertEquals("service.pipeline_run-1_100", docId);
-    assertTrue(
-        docsCaptor.getValue().getFirst().values().iterator().next().contains("\"runtime\":60"));
+    String doc = docsCaptor.getValue().getFirst().values().iterator().next();
+    assertTrue(doc.contains("\"runtime\":60"));
+    assertTrue(doc.contains(ownerId.toString()), "the run carries its pipeline's owners: " + doc);
   }
 
   @Test
@@ -3015,7 +3565,8 @@ class SearchRepositoryBehaviorTest {
 
     ArgumentCaptor<List<String>> aliasCaptor = ArgumentCaptor.forClass(List.class);
     verify(searchClient)
-        .softDeleteOrRestoreChildren(aliasCaptor.capture(), any(String.class), any(List.class));
+        .softDeleteOrRestoreChildren(
+            aliasCaptor.capture(), eq(new SoftDeleteScript(true).painless()), any(List.class));
     List<String> aliases = aliasCaptor.getValue();
     assertFalse(
         aliases.contains("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS),
@@ -3029,8 +3580,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   /**
-   * When every declared child alias is a time-series entity, propagation is a no-op — the
-   * search client must not be invoked at all rather than be invoked with an empty list.
+   * When every declared child alias is a time-series entity, the `deleted` script is not sent at
+   * all rather than sent with an empty list.
    */
   @Test
   void softDeleteOrRestoredChildrenIsNoOpWhenEveryChildIsTimeSeries() throws IOException {
@@ -3047,7 +3598,51 @@ class SearchRepositoryBehaviorTest {
     repository.softDeleteOrRestoredChildren(testCase, timeSeriesOnly, false);
 
     verify(searchClient, never())
-        .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
+        .softDeleteOrRestoreChildren(
+            any(List.class), eq(new SoftDeleteScript(false).painless()), any(List.class));
+  }
+
+  // The incident listing scopes on the embedded test case's flag, which no `deleted` script sets.
+  @Test
+  void softDeleteOrRestoredChildrenFlagsTheIncidentsOfASoftDeletedTestCase() throws IOException {
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, TEST_CASE_MAPPING, true);
+
+    assertIncidentTestCasesFlagged("testCase.id", testCase.getId(), true);
+  }
+
+  // A cascade soft-deletes the test cases under a service without search writes of their own.
+  @Test
+  void softDeleteOrRestoredChildrenFlagsTheIncidentsUnderARestoredService() throws IOException {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    IndexMapping serviceMapping =
+        IndexMapping.builder()
+            .indexName("database_service_search_index")
+            .alias("databaseService")
+            .childAliases(List.of(Entity.DATABASE, Entity.TEST_CASE_RESOLUTION_STATUS))
+            .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
+            .build();
+
+    repository.softDeleteOrRestoredChildren(service, serviceMapping, false);
+
+    assertIncidentTestCasesFlagged("service.id", service.getId(), false);
+  }
+
+  private static final String INCIDENT_ALIAS = "cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS;
+
+  private void assertIncidentTestCasesFlagged(String parentField, UUID parentId, boolean deleted)
+      throws IOException {
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
+    verify(searchClient)
+        .softDeleteOrRestoreChildren(
+            eq(List.of(INCIDENT_ALIAS)),
+            script.capture(),
+            eq(List.of(new ImmutablePair<>(parentField, parentId.toString()))));
+    assertTrue(
+        script.getValue().contains("ctx._source.testCase.deleted = " + deleted), script.getValue());
   }
 
   @Test
@@ -3300,6 +3895,9 @@ class SearchRepositoryBehaviorTest {
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
 
     when(openSearchClient.getNewClient()).thenReturn(rawClient);
+    lenient()
+        .when(openSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(embeddingClient.getDimension()).thenReturn(1536);
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
@@ -3343,6 +3941,9 @@ class SearchRepositoryBehaviorTest {
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
 
     when(elasticSearchClient.getNewClient()).thenReturn(rawClient);
+    lenient()
+        .when(elasticSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(embeddingClient.getDimension()).thenReturn(1536);
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
@@ -3394,6 +3995,34 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void checkHybridSearchPipelineChecksTheWeightsSearchWillSend() throws Exception {
+    SearchRepository openSearchRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.OPENSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.checkHybridSearchPipeline(0.7, 0.7)).thenReturn(Optional.of("rejected"));
+    setPrivateField(openSearchRepository, "vectorIndexService", vectorService);
+    SearchSettings adminWeights =
+        new SearchSettings()
+            .withGlobalSettings(
+                new GlobalSettings().withKeywordWeight(0.7).withSemanticWeight(0.7));
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(adminWeights);
+
+      assertEquals(Optional.of("rejected"), openSearchRepository.checkHybridSearchPipeline());
+    }
+
+    setPrivateField(openSearchRepository, "vectorIndexService", mock(VectorIndexService.class));
+    assertEquals(Optional.empty(), openSearchRepository.checkHybridSearchPipeline());
+  }
+
+  @Test
   void requestAndAggregationWrappersDelegateToSearchClient() throws IOException {
     SearchRequest request = new SearchRequest().withQuery("orders");
     SubjectContext subjectContext = mock(SubjectContext.class);
@@ -3406,7 +4035,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchWithDirectQuery(request, subjectContext)).thenReturn(response);
     when(searchClient.getDocByID("idx", "00000000-0000-0000-0000-000000000123"))
         .thenReturn(response);
-    when(searchClient.searchBySourceUrl("https://src")).thenReturn(response);
+    when(searchClient.searchBySourceUrl("https://src", null)).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest, subjectContext)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
@@ -3419,7 +4048,7 @@ class SearchRepositoryBehaviorTest {
     assertSame(
         response,
         repository.getDocument("idx", UUID.fromString("00000000-0000-0000-0000-000000000123")));
-    assertSame(response, repository.searchBySourceUrl("https://src"));
+    assertSame(response, repository.searchBySourceUrl("https://src", null));
     assertSame(response, repository.aggregate(aggregationRequest));
     // The subject-aware overload is what SearchResource.aggregate calls, so the aggregation
     // buckets are computed only over documents the caller is permitted to see.
@@ -3578,7 +4207,8 @@ class SearchRepositoryBehaviorTest {
       propagationOrder.verify(bulkSink).close();
       propagationOrder
           .verify(searchClient)
-          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+          .updateChildrenInBackground(
+              eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
       verify(searchClient, never())
           .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
       retryQueue.verifyNoInteractions();
@@ -3722,7 +4352,8 @@ class SearchRepositoryBehaviorTest {
       repository.updateEntitiesIndex(List.of(failedService, successfulService));
 
       ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
-      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
+      verify(searchClient)
+          .updateChildrenInBackground(any(List.class), parentMatch.capture(), any(Pair.class));
       assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
       verify(bulkSinks.constructed().getFirst()).close();
       retryQueue.verify(
@@ -3769,7 +4400,8 @@ class SearchRepositoryBehaviorTest {
                 .SearchSchemaEntityRelationshipResult();
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("deleted = false");
-    when(searchClient.searchByField("name", "orders", "table", false, 0, 10)).thenReturn(response);
+    when(searchClient.searchByField("name", "orders", "table", false, 0, 10, null))
+        .thenReturn(response);
     when(searchClient.aggregate("query", Entity.TABLE, searchAggregation, "deleted = false"))
         .thenReturn(aggregationResult);
     when(searchClient.genericAggregation("query", "table", searchAggregation)).thenReturn(report);
@@ -3789,7 +4421,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.getSchemaEntityRelationship("svc.db.schema", "{}", "*", 1, 2, 3, 4, false))
         .thenReturn(schemaResult);
 
-    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10));
+    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10, null));
     assertSame(
         aggregationResult, repository.aggregate("query", Entity.TABLE, searchAggregation, filter));
     assertSame(report, repository.genericAggregation("query", "table", searchAggregation));
@@ -3934,10 +4566,17 @@ class SearchRepositoryBehaviorTest {
             "getInheritedFieldChanges",
             ChangeDescription.class,
             EntityInterface.class,
-            String.class);
+            String.class,
+            Predicate.class);
     method.setAccessible(true);
+    Predicate<PropagationDescriptor> everyDescriptor = descriptor -> true;
     return (Pair<String, Map<String, Object>>)
-        method.invoke(repository, changeDescription, entity, entity.getEntityReference().getType());
+        method.invoke(
+            repository,
+            changeDescription,
+            entity,
+            entity.getEntityReference().getType(),
+            everyDescriptor);
   }
 
   private boolean invokeRequiresPropagation(

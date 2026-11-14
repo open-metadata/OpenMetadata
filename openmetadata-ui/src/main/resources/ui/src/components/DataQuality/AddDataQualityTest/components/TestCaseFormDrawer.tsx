@@ -10,29 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isEmpty, isUndefined, noop } from 'lodash';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
-import {
-  OPEN_METADATA,
-  TEST_CASE_FORM,
-} from '../../../../constants/service-guide.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
-import { ServiceCategory } from '../../../../enums/service.enum';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TableSearchSource } from '../../../../interface/search.interface';
@@ -48,20 +44,21 @@ import {
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
-import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
-import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import { FormHintDoc } from '../../../common/atoms/drawer/formHint/FormHintDoc';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
+import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
 import {
   FormValues,
   TestCaseFormContext,
@@ -76,13 +73,12 @@ import {
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
-const getResolvedDrawerWidth = (
-  width: number | string | undefined,
-  showDocPanel: boolean
-): number | string => width ?? (showDocPanel ? '80vw' : '52vw');
-
-const getDrawerContentWrapperClassName = (showDocPanel: boolean): string =>
-  `drawer-content-wrapper${showDocPanel ? '' : ' no-doc-panel'}`;
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const getDefaultDrawerTitle = (
   isEditMode: boolean,
@@ -107,7 +103,7 @@ const getSelectedTableSearchSource = (
     ? undefined
     : ({
         ...selectedTableData,
-        entityType: EntityTypeEnum.TABLE,
+        entityType: EntityType.TABLE,
       } as TableSearchSource);
 
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
@@ -118,11 +114,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   table,
   testSuite,
   testLevel,
-  variant = getDefaultTestCaseFormVariant(),
   title,
   headerActions,
   width,
-  showDocPanel = variant === 'drawer',
+  showDocPanel = true,
   testCase,
   showOnlyParameter = false,
   onUpdate,
@@ -150,6 +145,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       testLevel: testLevel ?? TestLevel.TABLE,
       useDynamicAssertion: false,
       ...testCaseClassBase.initialFormValues(),
+      createPipeline: true,
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
       enableDebugLog: false,
       raiseOnError: true,
@@ -159,9 +155,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   });
 
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [activeField, setActiveField] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
-  const [showHint, setShowHint] = useState<boolean>(true);
+  // The selected table's summary shows only with the Select Table hint.
+  const [isTableFieldActive, setIsTableFieldActive] = useState(false);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
   // Id of the test case whose edit prefill has finished. Until this matches the
   // open test case, the body renders a loader so the form appears fully
@@ -205,18 +201,14 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     };
   }, [testCase, open, form]);
 
-  const handleActiveFieldChange = useCallback(
-    (fieldId: string) => {
-      setActiveField(fieldId);
-      onActiveFieldChange?.(fieldId);
-    },
-    [onActiveFieldChange]
-  );
-
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
       const pipelineTestSuite = created.testSuite ?? testSuite;
-      if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
+      if (
+        !values.createPipeline ||
+        !formContext?.canCreatePipeline ||
+        !pipelineTestSuite
+      ) {
         return;
       }
 
@@ -361,15 +353,14 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     [isEditMode, handleEditSubmit, handleCreateSubmit, t]
   );
 
-  const serviceDocPanel = (
-    <ServiceDocPanel
-      activeField={activeField}
-      selectedEntity={getSelectedTableSearchSource(
-        formContext?.selectedTableData
-      )}
-      serviceName={TEST_CASE_FORM}
-      serviceType={OPEN_METADATA as ServiceCategory}
-    />
+  const handleActiveFieldChange = useCallback(
+    (fieldId: string) => {
+      setIsTableFieldActive(
+        fieldId === ROOT_TABLE_PATH || fieldId === ROOT_SELECTED_ENTITY_PATH
+      );
+      onActiveFieldChange?.(fieldId);
+    },
+    [onActiveFieldChange]
   );
 
   const testCaseFormBody = (
@@ -385,27 +376,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       onContextChange={setFormContext}
       onErrorDismiss={handleErrorDismiss}
     />
-  );
-
-  const isModalVariant = variant === 'modal';
-
-  const docPanel = showDocPanel ? (
-    <div className="drawer-doc-panel service-doc-panel markdown-parser">
-      {serviceDocPanel}
-    </div>
-  ) : null;
-
-  // Without the doc panel the form spans the full drawer, so drop the drawer
-  // width to roughly the form's original 65% column and let it fill (see the
-  // .no-doc-panel grid override in TestCaseFormV1.less).
-  const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel);
-
-  const scrollToError = useMemo(
-    () =>
-      createScrollToErrorHandler({
-        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
-      }),
-    []
   );
 
   // In edit mode hold the form behind a loader until the prefill (definition
@@ -428,20 +398,26 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
-  const formBody = (
-    <HookForm
-      form={form}
-      onSubmit={form.handleSubmit(
-        (data) =>
-          submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
-        () => scrollToError()
-      )}>
-      <div className={getDrawerContentWrapperClassName(showDocPanel)}>
-        <div className="drawer-form-content">{gatedFormBody}</div>
-        {docPanel}
+  // Stable identity: the summary panel's permission lookup depends on it.
+  const selectedTableDetails = useMemo(() => {
+    const details = getSelectedTableSearchSource(
+      formContext?.selectedTableData
+    );
+
+    return details ? { details } : undefined;
+  }, [formContext?.selectedTableData]);
+
+  const renderFieldDoc = (markdown: string) =>
+    isTableFieldActive && selectedTableDetails ? (
+      <div className="tw:mt-3" data-testid="selected-table-summary">
+        <EntitySummaryPanel
+          entityDetails={selectedTableDetails}
+          handleClosePanel={noop}
+        />
       </div>
-    </HookForm>
-  );
+    ) : (
+      <FormHintDoc markdown={monospaceParameterNames(markdown)} />
+    );
 
   // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
   // funnels through the base drawer's onClose, so the parent is notified
@@ -458,102 +434,25 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const defaultTitle = getDefaultDrawerTitle(isEditMode, testCase, t);
   const resolvedTitle = title ?? defaultTitle;
 
-  const { formDrawer, openDrawer, closeDrawer, isOpen } =
-    useFormDrawerWithHook<FormValues>({
-      className: 'test-case-form-drawer',
-      title: resolvedTitle,
-      hookForm: form,
-      form: formBody,
-      headerActions,
-      width: resolvedWidth,
-      submitLabel: isEditMode ? t('label.update') : t('label.create'),
-      submitTestId: 'create-btn',
-      submitLoading: formContext?.isCheckingPermissions ?? false,
-      onClose: handleDrawerDismiss,
-      onSubmit: (data) =>
-        submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
-    });
+  const { formDrawer, closeDrawer } = useFormDrawerWithHook<FormValues>({
+    className: 'test-case-form-drawer',
+    title: resolvedTitle,
+    hookForm: form,
+    form: gatedFormBody,
+    formHint: { enabled: showDocPanel, renderDoc: renderFieldDoc },
+    headerActions,
+    // Without the doc panel there is no hint column to size for.
+    width: width ?? (showDocPanel ? undefined : '52vw'),
+    open,
+    submitLabel: isEditMode ? t('label.update') : t('label.create'),
+    submitTestId: 'create-btn',
+    submitLoading: formContext?.isCheckingPermissions ?? false,
+    onClose: handleDrawerDismiss,
+    onSubmit: (data) =>
+      submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
+  });
 
   closeDrawerRef.current = closeDrawer;
-
-  useEffect(() => {
-    if (isModalVariant) {
-      return;
-    }
-    if (open) {
-      openDrawer();
-    } else if (isOpen) {
-      closeDrawer();
-    }
-  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
-
-  if (isModalVariant) {
-    return (
-      <AiFormModal
-        headerActions={headerActions}
-        hintOpen={showHint}
-        isSubmitting={form.formState.isSubmitting}
-        open={open}
-        submitLabel={isEditMode ? t('label.update') : undefined}
-        subtitle={t('message.page-sub-header-for-data-quality')}
-        title={resolvedTitle}
-        onClose={handleDrawerDismiss}
-        onHintToggle={setShowHint}
-        onSubmit={form.handleSubmit(
-          (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
-          () => scrollToError()
-        )}>
-        <HookForm
-          emptyFieldDoc={
-            // width="100%" is required: EmptyPlaceholder's 300px default is
-            // wider than the hint column's 260px minimum and would overflow
-            // once the column shrinks on a narrow viewport.
-            <EmptyPlaceholder
-              description={t('message.form-hint-empty-state')}
-              icon={Lightbulb05}
-              title={t('label.no-entity-selected', {
-                entity: t('label.field'),
-              })}
-              width="100%"
-            />
-          }
-          fieldDocDisplay="panel"
-          fieldDocHeader={
-            <Box align="center" className="tw:gap-2" direction="row">
-              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-              <Typography
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.form-hint')}
-              </Typography>
-            </Box>
-          }
-          form={form}
-          // min-w-193 (772px) overrides HookForm's 380px default: this form's
-          // test-level cards need ~574px before they clip, so a lower floor
-          // lets the hint steal room the form cannot spare.
-          formClassName="tw:min-w-193 tw:px-7 tw:pt-6 tw:pb-7"
-          renderFieldDoc={(markdown) => (
-            // Render the full field doc without the "see more" toggle — the
-            // column scrolls, so the whole hint is reachable without it.
-            <div className="form-hint-doc">
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant={false}
-                markdown={monospaceParameterNames(markdown)}
-              />
-            </div>
-          )}
-          showFieldDocs={showHint}
-          onSubmit={form.handleSubmit(
-            (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
-            () => scrollToError()
-          )}>
-          {gatedFormBody}
-        </HookForm>
-      </AiFormModal>
-    );
-  }
 
   return formDrawer;
 };

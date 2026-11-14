@@ -56,10 +56,11 @@ export interface CockroachConnection {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
+    sslConfig?:                      Config;
+    sslMode?:                        SSLMode;
+    supportsAutoPartitionDetection?: boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

@@ -45,13 +45,6 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-  }
-);
-
 // Permissions now come from useEntityPermissions (Task 8 Batch 10) rather than an
 // imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
 // directly, mirroring DataModelPage.test.tsx's approach.
@@ -111,7 +104,7 @@ describe('Test PipelineDetailsPage component', () => {
     renderWithQueryClient(<PipelineDetailsPage />);
 
     expect(
-      await screen.findByText(/ErrorPlaceHolder.component/i)
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 });
