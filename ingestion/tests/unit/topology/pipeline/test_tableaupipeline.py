@@ -49,6 +49,7 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowOutputStep,
     TableauLineageDatabase,
     TableauLineageTable,
+    TableauLinkedFlow,
     TableauPipelineDetails,
     TableauPipelineKind,
     TableauPublishedDatasource,
@@ -738,3 +739,33 @@ class TestDroppedItemsAreReported:
         assert len(tasks) == 3
         assert "Skipping input None of flow" in caplog.text
         assert "an output step of flow" in caplog.text
+
+    def test_a_lineage_input_or_output_with_no_id_is_reported(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            upstream_tables=[TableauLineageTable(id="Tabl-1", name="customers"), TableauLineageTable(name="orders")],
+            downstream_datasources=[TableauPublishedDatasource(name="Sales")],
+        )
+        source.metadata = create_autospec(OpenMetadata, instance=True)
+        source.metadata.get_by_name.return_value = None
+
+        with caplog.at_level(logging.WARNING):
+            assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
+
+        assert "Skipping input orders of flow Sales Data Prep Flow in lineage" in caplog.text
+        assert "Skipping output Sales of flow Sales Data Prep Flow in lineage" in caplog.text
+        assert "customers" not in caplog.text
+
+    def test_a_downstream_flow_with_no_luid_is_reported(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            next_downstream_flows=[TableauLinkedFlow(name="Ops")],
+        )
+        pipeline_entity = MagicMock()
+        pipeline_entity.id = Uuid(root=uuid4())
+        source.metadata = create_autospec(OpenMetadata, instance=True)
+        source.metadata.get_by_name.return_value = pipeline_entity
+
+        with caplog.at_level(logging.WARNING):
+            assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
+
+        assert "Skipping lineage from flow Sales Data Prep Flow to downstream flow Ops" in caplog.text
+        assert source._pending_flow_edges == []

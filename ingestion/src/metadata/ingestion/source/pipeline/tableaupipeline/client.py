@@ -293,6 +293,11 @@ class TableauPipelineClient:
             for task in Pager(self.tableau_server.tasks):
                 if task.target is not None and task.target.id:
                     targets.setdefault(str(task.target.id), task.target.type)
+                else:
+                    logger.warning(
+                        "Skipping Tableau extract refresh task %s: it does not name a data source or workbook.",
+                        task.id,
+                    )
         except Exception as exc:
             self.extract_refresh_listing_complete = False
             logger.warning("Unable to list Tableau extract refresh tasks: %s", exc)

@@ -941,6 +941,20 @@ class TestExtractRefreshes:
             assert [run.id for run in client.get_extract_refresh_runs("ds-1")] == ["j1"]
         assert "1 of 2 Tableau refresh jobs" in caplog.text
 
+    def test_a_refresh_task_that_names_no_target_is_reported(self, tableau, caplog):
+        self._two_targets(tableau)
+        tableau.tasks.append(
+            '<task><extractRefresh id="task-no-target" priority="50" consecutiveFailedCount="0" '
+            'type="RefreshExtractTask"><schedule frequency="Daily" nextRunAt="2025-03-04T06:00:00Z">'
+            '<frequencyDetails start="06:00:00"/></schedule></extractRefresh></task>'
+        )
+
+        with caplog.at_level(logging.WARNING):
+            pipelines = list(_client().get_pipelines())
+
+        assert [p.name for p in pipelines if p.kind.value == "extractRefresh"] == ["ds-1", "wb-1"]
+        assert "Skipping Tableau extract refresh task task-no-target" in caplog.text
+
     def test_a_forbidden_job_lookup_ends_the_scan(self, tableau, caplog):
         self._two_targets(tableau)
         tableau.jobs = [_background_job_xml(f"j{i}", f"2025-03-0{i}T06:00:00Z") for i in (1, 2)]
