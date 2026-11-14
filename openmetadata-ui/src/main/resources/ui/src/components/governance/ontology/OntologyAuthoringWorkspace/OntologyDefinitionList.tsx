@@ -27,7 +27,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
-import { Fragment, ReactNode, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -67,6 +67,23 @@ const editorCanEdit = (
   canEditAll: boolean
 ) => !isReadOnly && (isNew ? canCreate : canEditAll);
 
+/**
+ * What Add does: opens the form here in Edit, or asks for Edit from View mode.
+ * Undefined when the user cannot create, or View mode offers no way to Edit.
+ */
+const createAction = (
+  canCreate: boolean,
+  isReadOnly: boolean,
+  requestEdit: (() => void) | undefined,
+  openHere: () => void
+) => {
+  if (!canCreate) {
+    return undefined;
+  }
+
+  return isReadOnly ? requestEdit : openHere;
+};
+
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
   canCreate: boolean;
@@ -74,6 +91,11 @@ interface OntologyDefinitionListProps<T> {
   isReadOnly?: boolean;
   /** Every definition of this kind before filters, so an empty list can say why it is empty. */
   totalCount?: number;
+  /** View mode's Add: switches to Edit instead of opening the form here. */
+  onRequestCreate?: () => void;
+  /** Set when Edit was entered from View mode's Add, to open the create form once. */
+  shouldOpenCreate?: boolean;
+  onCreateOpened?: () => void;
   definitionType: 'concept' | 'property' | 'axiom';
   /** The rows after the tab's search and filters; undefined while the model loads. */
   items?: readonly T[];
@@ -156,6 +178,9 @@ const OntologyDefinitionList = <
   canCreate: canCreateProp,
   isReadOnly = false,
   totalCount,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
   definitionType,
   items,
   isError,
@@ -184,6 +209,19 @@ const OntologyDefinitionList = <
   const pluralLabel = t(`label.${label}-plural`);
   const [page, setPage] = usePageResetOn(filterKey);
   const [selected, setSelected] = useState<T | 'new'>();
+  const startCreate = createAction(
+    canCreateProp,
+    isReadOnly,
+    onRequestCreate,
+    () => guard(() => setSelected('new'))
+  );
+  // Edit entered from View mode's Add opens the create form once permissions allow it.
+  useEffect(() => {
+    if (shouldOpenCreate && canCreate) {
+      setSelected('new');
+      onCreateOpened?.();
+    }
+  }, [shouldOpenCreate, canCreate, onCreateOpened]);
   const [isDeleting, setIsDeleting] = useState(false);
   const definition = selected === 'new' ? undefined : selected;
   const permission = useEntityPermissions(
@@ -514,13 +552,13 @@ const OntologyDefinitionList = <
             entity: entityText,
           })}
           footer={
-            canCreate ? (
+            startCreate ? (
               <Button
                 color="primary"
                 data-testid={`ontology-empty-add-${definitionType}`}
                 iconLeading={Plus}
                 size="sm"
-                onPress={() => guard(() => setSelected('new'))}>
+                onPress={startCreate}>
                 {t('label.add-entity', { entity: entityText })}
               </Button>
             ) : undefined
@@ -587,13 +625,13 @@ const OntologyDefinitionList = <
           </Typography>
         ) : null}
         {actions}
-        {canCreate && (
+        {startCreate && (
           <Button
             color="primary"
             data-testid={`ontology-add-${definitionType}`}
             iconLeading={Plus}
             size="sm"
-            onPress={() => guard(() => setSelected('new'))}>
+            onPress={startCreate}>
             {t('label.add-entity', { entity: entityText })}
           </Button>
         )}

@@ -47,6 +47,8 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: (conceptId?: string) => void;
+  /** View mode's Add on an ontology tab: switches to Edit's Ontology surface. */
+  onRequestDefinitionsEdit?: () => void;
   onOpenPublication?: () => void;
   editConceptRequest?: string;
   onEditConceptRequestHandled?: () => void;
@@ -77,6 +79,8 @@ const showsReadOnlyTabs = (
   releaseId?: string
 ) => mode === 'view' && viewSurface === 'ontology' && !releaseId;
 
+type DefinitionTab = 'concept' | 'property' | 'axiom';
+
 const OntologyStudioWorkspace = ({
   ontology,
   releaseId,
@@ -92,6 +96,7 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onRequestDefinitionsEdit,
   onOpenPublication,
   editConceptRequest,
   onEditConceptRequestHandled,
@@ -109,6 +114,19 @@ const OntologyStudioWorkspace = ({
   // Set only by the Overview's Review conflicts, so a plain visit opens Constraints unfiltered.
   const [axiomStatus, setAxiomStatus] = useState<AxiomStatus>();
   const [revision, setRevision] = useState(0);
+  // The tab whose Add was pressed in View mode; Edit opens that tab's create form.
+  const [createFor, setCreateFor] = useState<DefinitionTab>();
+  const createProps = (tab: DefinitionTab, isReadOnly: boolean) => ({
+    shouldOpenCreate: !isReadOnly && createFor === tab,
+    onCreateOpened: () => setCreateFor(undefined),
+    onRequestCreate:
+      isReadOnly && onRequestDefinitionsEdit
+        ? () => {
+            setCreateFor(tab);
+            onRequestDefinitionsEdit();
+          }
+        : undefined,
+  });
   const { model } = useOntologyStudioModel(
     mode === 'definitions' || showsReadOnlyTabs(mode, viewSurface, releaseId)
       ? ontology
@@ -194,6 +212,7 @@ const OntologyStudioWorkspace = ({
       </Tabs.Panel>
       <Tabs.Panel id="concept">
         <OntologyAuthoringWorkspace
+          {...createProps('concept', isReadOnly)}
           isReadOnly={isReadOnly}
           ontology={ontology}
           onOpenConcept={openConcept}
@@ -202,6 +221,7 @@ const OntologyStudioWorkspace = ({
       </Tabs.Panel>
       <Tabs.Panel id="property">
         <OntologyAuthoringWorkspace
+          {...createProps('property', isReadOnly)}
           definitionType="property"
           isReadOnly={isReadOnly}
           ontology={ontology}
@@ -210,6 +230,7 @@ const OntologyStudioWorkspace = ({
       </Tabs.Panel>
       <Tabs.Panel id="axiom">
         <OntologyAxiomWorkspace
+          {...createProps('axiom', isReadOnly)}
           initialStatus={axiomStatus}
           isReadOnly={isReadOnly}
           ontology={ontology}

@@ -269,10 +269,18 @@ const OntologyAxiomWorkspace = ({
   onWorkingChange,
   onOpenConcept,
   isReadOnly,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
 }: {
   ontology: Ontology;
   /** View mode: constraints can be read and validated, not edited. */
   isReadOnly?: boolean;
+  /** View mode's Add, which switches to Edit. */
+  onRequestCreate?: () => void;
+  /** Opens the create form once, after View mode's Add switched to Edit. */
+  shouldOpenCreate?: boolean;
+  onCreateOpened?: () => void;
   /** Opens the tab already filtered, e.g. to conflicts from the Overview. */
   initialStatus?: AxiomStatus;
   onWorkingChange?: () => void;
@@ -616,6 +624,7 @@ const OntologyAxiomWorkspace = ({
       rowClassName={(axiom) =>
         conflicts.has(axiom.id) ? 'tw:bg-error-primary' : undefined
       }
+      shouldOpenCreate={shouldOpenCreate}
       summary={
         items
           ? t('label.n-of-m', {
@@ -634,6 +643,8 @@ const OntologyAxiomWorkspace = ({
         });
         onWorkingChange?.();
       }}
+      onCreateOpened={onCreateOpened}
+      onRequestCreate={onRequestCreate}
       onRetry={() => void refetch()}>
       {(axiom, canEdit, onSaved, close) => (
         <OntologyAxiomEditor

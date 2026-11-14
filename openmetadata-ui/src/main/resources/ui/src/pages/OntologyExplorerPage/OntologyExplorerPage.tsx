@@ -2401,6 +2401,7 @@ const OntologyExplorerContent: React.FC = () => {
           setIsPublicationOpen(true);
         }}
         onRequestCreateConcept={() => guard(handleAddConcept)}
+        onRequestDefinitionsEdit={() => handleModeChange('edit', 'ontology')}
         onRequestEdit={(conceptId) => {
           setEditConceptRequest(conceptId);
           handleModeChange('edit', 'graph');

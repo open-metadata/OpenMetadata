@@ -201,6 +201,45 @@ describe('OntologyAxiomWorkspace', () => {
     );
   });
 
+  it('offers Add in View mode and hands it to Edit instead of opening the form', async () => {
+    const onRequestCreate = jest.fn();
+    renderWithQueryClient(
+      <OntologyAxiomWorkspace
+        isReadOnly
+        ontology={ontology}
+        onRequestCreate={onRequestCreate}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('ontology-add-axiom'));
+
+    expect(onRequestCreate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('axiom-editor')).not.toBeInTheDocument();
+  });
+
+  it('hides Add in View mode when there is no way to switch to Edit', async () => {
+    renderWithQueryClient(
+      <OntologyAxiomWorkspace isReadOnly ontology={ontology} />
+    );
+    await screen.findAllByTestId('ontology-constraint-status');
+
+    expect(screen.queryByTestId('ontology-add-axiom')).not.toBeInTheDocument();
+  });
+
+  it('opens the create form once when Edit was entered from View mode Add', async () => {
+    const onCreateOpened = jest.fn();
+    renderWithQueryClient(
+      <OntologyAxiomWorkspace
+        shouldOpenCreate
+        ontology={ontology}
+        onCreateOpened={onCreateOpened}
+      />
+    );
+
+    expect(await screen.findByTestId('axiom-editor')).toBeInTheDocument();
+    expect(onCreateOpened).toHaveBeenCalledTimes(1);
+  });
+
   describe('with a clash', () => {
     beforeEach(() => {
       (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({

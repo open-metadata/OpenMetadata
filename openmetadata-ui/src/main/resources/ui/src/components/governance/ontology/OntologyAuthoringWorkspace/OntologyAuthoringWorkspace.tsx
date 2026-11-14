@@ -63,6 +63,11 @@ interface OntologyAuthoringWorkspaceProps {
   onOpenConcept?: (conceptId: string) => void;
   /** View mode: the list is browsable but not editable. */
   isReadOnly?: boolean;
+  /** View mode's Add, which switches to Edit. */
+  onRequestCreate?: () => void;
+  /** Opens the create form once, after View mode's Add switched to Edit. */
+  shouldOpenCreate?: boolean;
+  onCreateOpened?: () => void;
 }
 
 const ALL = 'all';
@@ -133,6 +138,9 @@ const ConceptTab = ({
   onWorkingChange,
   onOpenConcept,
   isReadOnly,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
 }: Omit<OntologyAuthoringWorkspaceProps, 'definitionType'>) => {
   const { t } = useTranslation();
   const canCreate = useCanCreate(ontology, ResourceEntity.ONTOLOGY_CONCEPT);
@@ -307,6 +315,7 @@ const ConceptTab = ({
           onCreated={onCreated}
         />
       )}
+      shouldOpenCreate={shouldOpenCreate}
       summary={
         items ? `${items.length} ${plural.toLocaleLowerCase()}` : undefined
       }
@@ -316,9 +325,11 @@ const ConceptTab = ({
         void refetch();
         onWorkingChange?.();
       }}
+      onCreateOpened={onCreateOpened}
       onOpen={
         onOpenConcept ? (concept) => onOpenConcept(concept.id) : undefined
       }
+      onRequestCreate={onRequestCreate}
       onRetry={() => void refetch()}>
       {(concept, canEdit, onSaved) =>
         concept ? (
@@ -339,6 +350,9 @@ const PropertyTab = ({
   ontology,
   onWorkingChange,
   isReadOnly,
+  onRequestCreate,
+  shouldOpenCreate,
+  onCreateOpened,
 }: Omit<
   OntologyAuthoringWorkspaceProps,
   'definitionType' | 'onOpenConcept'
@@ -491,6 +505,7 @@ const PropertyTab = ({
       items={items}
       key={ontology.id + ':property'}
       ontology={ontology}
+      shouldOpenCreate={shouldOpenCreate}
       summary={
         items ? `${items.length} ${plural.toLocaleLowerCase()}` : undefined
       }
@@ -500,6 +515,8 @@ const PropertyTab = ({
         void refetch();
         onWorkingChange?.();
       }}
+      onCreateOpened={onCreateOpened}
+      onRequestCreate={onRequestCreate}
       onRetry={() => void refetch()}>
       {(property, canEdit, onSaved, close) => (
         <OntologyPropertyEditor
