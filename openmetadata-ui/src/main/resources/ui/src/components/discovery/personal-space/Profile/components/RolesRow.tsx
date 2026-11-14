@@ -91,7 +91,7 @@ const RolesRow: React.FC<RolesRowProps> = ({
     }));
     const adminOption =
       isAdminUser && showAdminRole
-        ? [{ id: TERM_ADMIN, label: t('label.admin') }]
+        ? [{ id: TERM_ADMIN, label: t('label.admin-superuser') }]
         : [];
 
     return uniqBy([...adminOption, ...existing, ...fetched], 'id');
@@ -134,8 +134,8 @@ const RolesRow: React.FC<RolesRowProps> = ({
       chips.push({
         id: TERM_ADMIN,
         type: 'role',
-        name: t('label.admin'),
-        displayName: t('label.admin'),
+        name: t('label.admin-superuser'),
+        displayName: t('label.admin-superuser'),
       });
     }
 

@@ -152,7 +152,11 @@ export const UserProfileIcon = () => {
       roles: currentUser?.isAdmin
         ? [
             ...(currentUser?.roles ?? []),
-            { name: TERM_ADMIN, type: 'role' } as EntityReference,
+            {
+              name: TERM_ADMIN,
+              displayName: t('label.admin-superuser'),
+              type: 'role',
+            } as EntityReference,
           ]
         : currentUser?.roles,
       teams: currentUser?.teams,
@@ -173,7 +177,7 @@ export const UserProfileIcon = () => {
         return Array.from(uniquePersonasMap.values());
       })(),
     };
-  }, [currentUser]);
+  }, [currentUser, t]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (

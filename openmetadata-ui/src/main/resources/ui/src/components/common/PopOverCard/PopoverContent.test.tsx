@@ -128,7 +128,7 @@ describe('PopoverContent Component', () => {
 
     expect(await screen.findByText('Team 1')).toBeInTheDocument();
     expect(screen.getByText('Role 1')).toBeInTheDocument();
-    expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.getByText('label.admin-superuser')).toBeInTheDocument();
   });
 
   it('should not fetch user details for team type', async () => {

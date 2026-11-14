@@ -178,8 +178,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => <div className={className}>{children}</div>,
     }
   ),
-  Autocomplete: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
-    <div data-testid={testId} />
+  Autocomplete: ({
+    'data-testid': testId,
+    selectedItems,
+  }: {
+    'data-testid'?: string;
+    selectedItems?: { id: string; label: string }[];
+  }) => (
+    <div data-testid={testId}>
+      {selectedItems?.map((item) => (
+        <span data-testid={`selected-role-${item.id}`} key={item.id}>
+          {item.label}
+        </span>
+      ))}
+    </div>
   ),
   Badge: ({
     children,
@@ -337,6 +349,25 @@ describe('BotDetailPanel', () => {
 
     await waitFor(() =>
       expect(updateUserDetail).toHaveBeenCalledWith('u1', expect.anything())
+    );
+  });
+
+  it('labels the admin flag of an admin bot apart from a role named Admin', async () => {
+    (getUserByName as jest.Mock).mockResolvedValue({
+      ...USER,
+      isAdmin: true,
+      roles: [{ id: 'custom-admin-role-id', name: 'Admin', type: 'role' }],
+    });
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('edit-roles')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('edit-roles'));
+
+    expect(screen.getByTestId('selected-role-admin')).toHaveTextContent(
+      'label.admin-superuser'
     );
   });
 
