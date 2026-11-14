@@ -34,6 +34,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
+import { addOntologyReviewer } from '../../utils/ontologyReviewers';
 import {
   findOntologyInScopeMenu,
   openExportAdvanced,
@@ -41,7 +42,6 @@ import {
   openReleaseHistory,
   readNodePositions,
 } from '../../utils/ontologyStudio';
-import { addOntologyReviewer } from '../../utils/ontologyReviewers';
 import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });

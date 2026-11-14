@@ -25,6 +25,7 @@ import {
   getWorkerAdminAPIContext,
   uuid,
 } from '../../utils/common';
+import { addOntologyReviewer } from '../../utils/ontologyReviewers';
 import {
   attachStudioShot,
   clickGraphNode,
@@ -39,7 +40,6 @@ import {
   removeFlowOntologies,
   STUDIO_PATH,
 } from '../../utils/ontologyStudio';
-import { addOntologyReviewer } from '../../utils/ontologyReviewers';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
