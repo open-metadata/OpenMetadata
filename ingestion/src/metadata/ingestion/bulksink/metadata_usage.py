@@ -58,7 +58,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.life_cycle_utils import get_query_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import convert_timestamp
+from metadata.utils.time_utils import convert_timestamp, utc_from_timestamp
 
 logger = ingestion_logger()
 
@@ -140,7 +140,7 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=datetime.fromtimestamp(convert_timestamp(value_dict["usage_date"])).strftime("%Y-%m-%d"),
+                    date=utc_from_timestamp(convert_timestamp(value_dict["usage_date"])).strftime("%Y-%m-%d"),
                     count=value_dict["usage_count"],
                 )
                 self.metadata.publish_table_usage(value_dict["table_entity"], table_usage_request)
@@ -329,7 +329,7 @@ class MetadataUsageBulkSink(BulkSink):
         Method to get Table Joins
         """
         # TODO: Clean up how we are passing dates from query parsing to here to use timestamps instead of strings
-        start_date = datetime.fromtimestamp(int(table_usage.date) / 1000)
+        start_date = utc_from_timestamp(int(table_usage.date) / 1000)
         table_joins: TableJoins = TableJoins(columnJoins=[], directTableJoins=[], startDate=start_date.date())
         column_joins_dict = {}
         for column_join in table_usage.joins:
