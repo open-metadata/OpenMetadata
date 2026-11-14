@@ -233,6 +233,15 @@ describe('KnowledgeGraph.relations', () => {
 
       expect(missing).toEqual([]);
     });
+
+    it('reads every predicate label in sentence case, as the edges did before translation', () => {
+      const labels: Record<string, string> = enUS.label;
+      const titleCased = Object.values(RELATION_LABEL_KEYS)
+        .map((key) => labels[key.replace(/^label\./, '')])
+        .filter((text) => text !== toSentenceCase(text));
+
+      expect(titleCased).toEqual([]);
+    });
   });
 
   describe('humanizeRelationLabel', () => {

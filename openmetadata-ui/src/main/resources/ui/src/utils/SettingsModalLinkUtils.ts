@@ -397,10 +397,8 @@ export const getSettingsLink = (path: string): string => {
     return `${globalThis.location.search}#${hash}`;
   }
   params.delete(FULLSCREEN_QUERY_PARAM_KEY);
-  const search = params.toString();
 
-  // A bare `#hash` href would keep the current query, fullscreen included.
-  return search
-    ? `?${search}#${hash}`
-    : `${globalThis.location.pathname}#${hash}`;
+  // Always lead with `?`: a bare `#hash` href keeps the current query
+  // (fullscreen included), and a pathname would gain the router basename twice.
+  return `?${params.toString()}#${hash}`;
 };

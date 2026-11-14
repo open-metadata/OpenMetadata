@@ -288,7 +288,7 @@ describe('getSettingsLink', () => {
 
     globalThis.history.replaceState(null, '', '/x?fullscreen=true');
 
-    expect(getSettingsLink('/settings/bots')).toBe('/x#bots');
+    expect(getSettingsLink('/settings/bots')).toBe('?#bots');
   });
 
   // The builders feed `pathname:` targets (PersonaDetailsCard, TeamDetailsV1,
