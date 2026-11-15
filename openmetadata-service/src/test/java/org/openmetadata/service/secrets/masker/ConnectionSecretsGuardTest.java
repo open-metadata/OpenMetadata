@@ -14,10 +14,13 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +33,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ServiceConnections;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.mcp.McpConnection;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 
 /**
@@ -454,6 +459,64 @@ class ConnectionSecretsGuardTest {
       assertThrows(BadRequestException.class, update);
     } else {
       assertDoesNotThrow(update);
+    }
+  }
+
+  @Test
+  void aMalformedOriginalDoesNotBypassRetargetProtection() {
+    Map<String, Object> malformed = new HashMap<>(mysql("db.internal:3306", "stored-secret"));
+    malformed.put("obsolete", Map.of("retained", true));
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                mysql("elsewhere.example:3306", PASSWORD_MASK),
+                malformed,
+                "Mysql",
+                ServiceType.DATABASE));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"unchanged", "remove-last", "remove-first", "reorder", "append"})
+  void positionalGuardAndRestorationAgreeForEverySurvivingEntry(String edit) {
+    assertFalse(
+        Arrays.stream(ServiceConnections.class.getMethods())
+            .anyMatch(method -> "getName".equals(method.getName())));
+    IngestionPipeline stored =
+        testSuite(
+            List.of(
+                serviceConnection("first", "first:3306", "first-secret"),
+                serviceConnection("second", "second:3306", "second-secret")));
+    Map<String, Object> first = serviceConnection("first", "first:3306", PASSWORD_MASK);
+    Map<String, Object> second = serviceConnection("second", "second:3306", PASSWORD_MASK);
+    List<Map<String, Object>> connections =
+        switch (edit) {
+          case "remove-last" -> List.of(first);
+          case "remove-first" -> List.of(second);
+          case "reorder" -> List.of(second, first);
+          case "append" -> List.of(
+              first, second, serviceConnection("third", "third:3306", PASSWORD_MASK));
+          default -> List.of(first, second);
+        };
+    IngestionPipeline incoming = testSuite(connections);
+    Executable guarded =
+        () -> ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(incoming, stored);
+    if ("unchanged".equals(edit) || "remove-last".equals(edit)) {
+      assertDoesNotThrow(guarded);
+      EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(incoming, stored);
+      for (int index = 0; index < connections.size(); index++) {
+        assertEquals(
+            index == 0 ? "first-secret" : "second-secret",
+            JsonUtils.valueToTree(incoming)
+                .at(
+                    "/sourceConfig/config/serviceConnections/"
+                        + index
+                        + "/serviceConnection/config/authType/password")
+                .asText());
+      }
+    } else {
+      assertThrows(BadRequestException.class, guarded);
     }
   }
 

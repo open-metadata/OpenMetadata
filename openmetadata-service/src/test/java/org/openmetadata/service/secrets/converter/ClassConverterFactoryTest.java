@@ -8,216 +8,112 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
-import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
-import org.openmetadata.schema.entity.automations.Workflow;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
-import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
-import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.GCPCredentials;
-import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
-import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
-import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.schema.services.connections.database.BigQueryConnection;
-import org.openmetadata.schema.services.connections.database.ClickzettaConnection;
-import org.openmetadata.schema.services.connections.database.DatalakeConnection;
-import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
-import org.openmetadata.schema.services.connections.database.PostgresConnection;
-import org.openmetadata.schema.services.connections.database.SalesforceConnection;
-import org.openmetadata.schema.services.connections.database.TrinoConnection;
-import org.openmetadata.schema.services.connections.database.common.basicAuth;
-import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
-import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
-import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
-import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
-import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
-import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
-import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
-import org.openmetadata.schema.services.connections.storage.GCSConnection;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.util.IngestionPipelineBuilder;
-import org.openmetadata.service.util.ReflectionUtil;
 
-public class ClassConverterFactoryTest {
-
-  @ParameterizedTest
-  @ValueSource(
-      classes = {
-        AirflowConnection.class,
-        BigQueryConnection.class,
-        ClickzettaConnection.class,
-        DatalakeConnection.class,
-        MysqlConnection.class,
-        PostgresConnection.class,
-        DbtGCSConfig.class,
-        DbtPipeline.class,
-        GCSConfig.class,
-        GCSConnection.class,
-        ElasticSearchConnection.class,
-        LookerConnection.class,
-        SSOAuthMechanism.class,
-        SupersetConnection.class,
-        GCPCredentials.class,
-        TableauConnection.class,
-        TestServiceConnectionRequest.class,
-        TrinoConnection.class,
-        Workflow.class,
-        SalesforceConnection.class,
-        MatillionConnection.class,
-        OpenLineageConnection.class,
-        PubSubConnection.class,
-        PrefectConnection.class,
-        MicrosoftFabricConnection.class,
-      })
-  void testClassConverterIsSet(Class<?> clazz) {
-    assertFalse(
-        ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
+class ClassConverterFactoryTest {
+  @Test
+  void convertersAreReusedWithoutMutatingTheKnownTypes() {
+    int size = ClassConverterFactory.getConverterMap().size();
+    assertSame(
+        ClassConverterFactory.getConverter(NatsConnection.class),
+        ClassConverterFactory.getConverter(NatsConnection.class));
+    assertSame(
+        ClassConverterFactory.getConverter(String.class),
+        ClassConverterFactory.getConverter(String.class));
+    assertEquals(size, ClassConverterFactory.getConverterMap().size());
+    assertThrows(
+        UnsupportedOperationException.class, () -> ClassConverterFactory.getConverterMap().clear());
   }
 
   @Test
-  void testClassConvertedMapIsNotModified() {
-    int originalSize = ClassConverterFactory.getConverterMap().size();
-    ClassConverterFactory.getConverter(AirflowConnection.class);
-    ClassConverterFactory.getConverter(BigQueryConnection.class);
-    assertEquals(originalSize, ClassConverterFactory.getConverterMap().size());
-  }
-
-  @Test
-  void testNonOneOfPropertyIsReturnedUnchanged() {
+  void nonUnionPropertiesAndNullAreSupported() {
     assertEquals(
         "user", ClassConverterFactory.convertProperty(MysqlConnection.class, "username", "user"));
+    assertNull(ClassConverterFactory.getConverter(NatsConnection.class).convert(null));
   }
 
   @Test
-  void testSecretOneOfFieldNoBranchDeclaresIsDropped() {
-    Map<String, Object> storedAuth =
-        Map.of("username", "user", "password", "secret", "unrecognized", true);
+  void writesRejectUndeclaredFieldsAndReadsKeepTheEntireObject() {
+    Map<String, Object> stored = Map.of("password", "secret", "token", "second", "obsolete", true);
+    assertThrows(
+        SchemaConversionException.class,
+        () -> ClassConverterFactory.convertProperty(NatsConnection.class, "authType", stored));
+    SchemaBackedMap read =
+        assertInstanceOf(
+            SchemaBackedMap.class,
+            ClassConverterFactory.convertPropertyForRead(NatsConnection.class, "authType", stored));
+    assertEquals(stored, read);
+    read.visitSecrets(slot -> slot.setValue("masked"));
+    assertEquals(Map.of("password", "masked", "token", "masked", "obsolete", true), read);
+    assertEquals("secret", stored.get("password"));
+  }
 
+  @Test
+  void aValidUnionIsTyped() {
+    Object value =
+        ClassConverterFactory.convertProperty(
+            NatsConnection.class, "authType", Map.of("username", "user", "password", "secret"));
+    assertEquals("secret", assertInstanceOf(NatsBasicAuth.class, value).getPassword());
+  }
+
+  @Test
+  void openApplicationMapsStayDynamic() {
+    Map<String, Object> privateConfig = Map.of("token", "dynamic-value");
     Object converted =
-        ClassConverterFactory.convertProperty(NatsConnection.class, "authType", storedAuth);
-
-    NatsBasicAuth auth = assertInstanceOf(NatsBasicAuth.class, converted);
-    assertEquals("secret", auth.getPassword());
-    assertFalse(JsonUtils.pojoToJson(auth).contains("unrecognized"));
+        ClassConverterFactory.convertProperty(
+            SourceConfig.class,
+            "config",
+            Map.of(
+                "type",
+                "Application",
+                "appConfig",
+                Map.of("type", "AgentTypeTestApp"),
+                "appPrivateConfig",
+                privateConfig));
+    ApplicationPipeline pipeline = assertInstanceOf(ApplicationPipeline.class, converted);
+    assertEquals(privateConfig, pipeline.getAppPrivateConfig());
+    assertEquals(Map.of("type", "AgentTypeTestApp"), pipeline.getAppConfig());
   }
 
   @Test
-  void testSecretOneOfWithNoDeclaredFieldFailsClosed() {
-    Map<String, Object> unknownAuth = Map.of("unrecognized", true);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> ClassConverterFactory.convertProperty(NatsConnection.class, "authType", unknownAuth));
-  }
-
-  @Test
-  void testFailedCandidateConversionIsReported() {
-    MysqlConnectionClassConverter converter = new MysqlConnectionClassConverter();
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> converter.tryToConvertOrFail(Map.of("unrecognized", true), List.of(basicAuth.class)));
-  }
-
-  @Test
-  void testMissingPropertyIsReported() {
-    MysqlConnectionClassConverter converter = new MysqlConnectionClassConverter();
-
-    assertThrows(
-        RuntimeException.class,
-        () ->
-            converter.convertProperty(new MysqlConnection(), "missing", List.of(basicAuth.class)));
-  }
-
-  @Test
-  void testNullChildrenAreIgnored() {
-    assertNull(ClassConverter.convertChildren(null));
-    assertNull(SchemaClassConverter.convert(null));
-  }
-
-  @Test
-  void testReadOnlyPropertyIsNotWritten() throws Exception {
-    Workflow workflow = new Workflow();
-
-    assertThrows(
-        RuntimeException.class,
-        () ->
-            ClassConverter.setConvertedValue(
-                workflow, Workflow.class.getMethod("getEntityReference"), null));
-  }
-
-  @Test
-  void testMissingPipelineTypeIsLeftForValidation() {
-    Map<String, Object> config = Map.of("database", "db");
-    IngestionPipeline pipeline =
-        new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(config));
-
-    IngestionPipelineBuilder.addDefinedConfig(pipeline);
-
-    assertSame(config, pipeline.getSourceConfig().getConfig());
-  }
-
-  @Test
-  void testOpenApplicationConfigRemainsDynamic() {
-    Map<String, Object> appConfig = Map.of("type", "AgentTypeTestApp");
-    Map<String, Object> config = Map.of("type", "Application", "appConfig", appConfig);
-
-    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
-
-    assertEquals(appConfig, ((ApplicationPipeline) converted).getAppConfig());
-  }
-
-  @Test
-  void testNullCollectionElementsUsePositionalKeys() {
-    assertEquals(
-        List.of("#0"), ReflectionUtil.getCollectionElementKeys(Collections.singletonList(null)));
-  }
-
-  @Test
-  void testNonSecretPipelineConfigRemainsUntyped() {
-    Map<String, Object> config = Map.of("type", "DatabaseMetadata");
-
+  void unknownTypelessPipelineRemainsForHigherLevelValidation() {
+    Map<String, Object> config = Map.of("includeTables", true);
     assertSame(config, ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
   }
 
   @Test
-  void testDynamicPrivateConfigIsNotMisclassified() {
-    Map<String, Object> privateConfig = Map.of("token", "secret");
-    Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
-
-    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
-
-    assertEquals(privateConfig, ((ApplicationPipeline) converted).getAppPrivateConfig());
+  void typelessPipelineDoesNotBypassUnknownFieldValidation() {
+    assertThrows(
+        SchemaConversionException.class,
+        () ->
+            ClassConverterFactory.convertProperty(
+                SourceConfig.class, "config", Map.of("bogus", "x")));
+    assertInstanceOf(
+        SchemaBackedMap.class,
+        ClassConverterFactory.convertPropertyForRead(
+            SourceConfig.class, "config", Map.of("bogus", "x")));
   }
 
   @Test
-  void testClosedSecretBranchKeepsItsSecretWhenAFieldIsUndeclared() {
-    Map<String, Object> privateConfig =
-        Map.of(
-            "waiiInstance", "https://waii.example.com",
-            "collateURL", "https://collate.example.com",
-            "token", "secret",
-            "limits", Map.of("actions", Map.of()),
-            "unrecognized", true);
-    Map<String, Object> config = Map.of("type", "Application", "appPrivateConfig", privateConfig);
-
-    Object converted = ClassConverterFactory.convertProperty(SourceConfig.class, "config", config);
-
-    Object typedPrivateConfig = ((ApplicationPipeline) converted).getAppPrivateConfig();
-    assertFalse(typedPrivateConfig instanceof Map<?, ?>, String.valueOf(typedPrivateConfig));
-    String serialized = JsonUtils.pojoToJson(typedPrivateConfig);
-    assertTrue(serialized.contains("secret"), serialized);
-    assertFalse(serialized.contains("unrecognized"), serialized);
+  void schemaFactsDeriveImmediateCredentialRoots() {
+    var roots = SchemaFacts.passwordChildren(SourceConfig.class, "config");
+    assertTrue(
+        roots.containsAll(
+            Set.of(
+                "dbtConfigSource",
+                "storageMetadataConfigSource",
+                "serviceConnections",
+                "appConfig",
+                "appPrivateConfig")),
+        roots.toString());
+    assertFalse(roots.contains("scheduleInterval"));
+    assertThrows(UnsupportedOperationException.class, () -> roots.add("other"));
   }
 }

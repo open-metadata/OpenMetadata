@@ -2,6 +2,7 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
@@ -24,11 +24,7 @@ class SecretsUtilSslConfigTest {
 
   @Test
   void rejectsSslConfigFieldOutsideTheSchema() {
-    Object mysql =
-        convert(
-            "Mysql",
-            Map.of(
-                "hostPort", "db:3306", "username", "u", "sslConfig", Map.of("sslMode", "require")));
+    MysqlConnection mysql = new MysqlConnection().withSslConfig(Map.of("sslMode", "require"));
 
     InvalidServiceConnectionException e =
         assertThrows(
@@ -57,17 +53,18 @@ class SecretsUtilSslConfigTest {
   }
 
   @Test
-  void checksSslConfigOfConnectionsWithoutAConverter() {
+  void checksSslConfigBeforeAndAfterConnectionConversion() {
     Object valid =
         convert(
             "MongoDB", Map.of("hostPort", "db:27017", "sslConfig", Map.of("caCertificate", "pem")));
-    Object invalid =
-        convert("MongoDB", Map.of("hostPort", "db:27017", "sslConfig", Map.of("sslMode", "x")));
+    Map<String, Object> invalid =
+        Map.of("hostPort", "db:27017", "sslConfig", Map.of("sslMode", "x"));
 
     assertDoesNotThrow(() -> SecretsUtil.validateSslConfig(valid, "MongoDB"));
     assertThrows(
         InvalidServiceConnectionException.class,
-        () -> SecretsUtil.validateSslConfig(invalid, "MongoDB"));
+        () -> SecretsUtil.validateSslConfig(invalid, "MongoDB", ServiceType.DATABASE));
+    assertThrows(InvalidServiceConnectionException.class, () -> convert("MongoDB", invalid));
   }
 
   @Test
@@ -79,7 +76,7 @@ class SecretsUtilSslConfigTest {
   }
 
   @Test
-  void rejectsMixedSslFieldsBeforeConversionDropsTheUnknownField() {
+  void rejectsMixedSslFieldsBeforeConversion() {
     Map<String, Object> config =
         Map.of("sslConfig", Map.of("sslKey", "key-pem", "sslMode", "require"));
     assertThrows(
@@ -101,24 +98,19 @@ class SecretsUtilSslConfigTest {
 
   @Test
   void legacySslFieldsStayReadableAndDeclaredSecretsStayMasked() {
-    MysqlConnection unknownOnly =
-        (MysqlConnection)
-            SecretsUtil.convert(
-                Map.of("sslConfig", Map.of("sslMode", "require")),
-                "Mysql",
-                null,
-                ServiceType.DATABASE);
-    assertEquals(Map.of("sslMode", "require"), unknownOnly.getSslConfig());
+    Object unknownOnly =
+        SecretsUtil.convertForRead(
+            Map.of("sslConfig", Map.of("sslMode", "require")), "Mysql", ServiceType.DATABASE);
+    assertEquals("require", JsonUtils.valueToTree(unknownOnly).at("/sslConfig/sslMode").asText());
     Object masked =
         EntityMaskerFactory.createEntityMasker()
             .maskServiceConnectionConfig(
                 Map.of("sslConfig", Map.of("sslKey", "key-pem", "sslMode", "require")),
                 "Mysql",
                 ServiceType.DATABASE);
-    MysqlConnection mysql = JsonUtils.convertValue(masked, MysqlConnection.class);
-    assertEquals(
-        PASSWORD_MASK,
-        JsonUtils.convertValue(mysql.getSslConfig(), ValidateSSLClientConfig.class).getSslKey());
+    assertEquals(PASSWORD_MASK, JsonUtils.valueToTree(masked).at("/sslConfig/sslKey").asText());
+    assertEquals("require", JsonUtils.valueToTree(masked).at("/sslConfig/sslMode").asText());
+    assertFalse(JsonUtils.pojoToJson(masked).contains("key-pem"));
   }
 
   @ParameterizedTest

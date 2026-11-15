@@ -1,13 +1,17 @@
 package org.openmetadata.service.resources.automations;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,6 +25,7 @@ import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.limits.Limits;
@@ -28,6 +33,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,6 +79,39 @@ class WorkflowResourceDecryptTest {
     assertNull(
         result.getOpenMetadataServerConnection(),
         "SECURITY: decryptOrNullify must NOT return openMetadataServerConnection to prevent JWT token exposure");
+  }
+
+  @Test
+  void deniedSecretReadStillReturnsMalformedStoredWorkflowWithoutCredentials() throws Exception {
+    EntityMaskerFactory.setEntityMasker(null);
+    EntityMaskerFactory.createEntityMasker();
+    Workflow workflow =
+        buildWorkflowWithConnection()
+            .withRequest(
+                Map.of(
+                    "serviceType",
+                    "Messaging",
+                    "connectionType",
+                    "Nats",
+                    "serviceName",
+                    "nats",
+                    "obsolete",
+                    true,
+                    "connection",
+                    Map.of(
+                        "config",
+                        Map.of(
+                            "type", "Nats", "authType", Map.of("password", "stored-password")))));
+    doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
+
+    Workflow result = invokeDecryptOrNullify(workflow);
+
+    assertEquals(workflow.getName(), result.getName());
+    assertEquals(true, JsonUtils.valueToTree(result).at("/request/obsolete").asBoolean());
+    assertNull(result.getOpenMetadataServerConnection());
+    assertFalse(JsonUtils.valueToTree(result).path("request").has("connection"));
+    assertFalse(JsonUtils.pojoToJson(result).contains("stored-password"));
+    assertFalse(JsonUtils.pojoToJson(result).contains("test-jwt-token"));
   }
 
   private Workflow invokeDecryptOrNullify(Workflow workflow) throws Exception {

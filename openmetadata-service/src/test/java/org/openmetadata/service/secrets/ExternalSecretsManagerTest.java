@@ -1,9 +1,11 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 import java.util.Map;
@@ -61,7 +63,12 @@ public abstract class ExternalSecretsManagerTest {
   @Test
   void testEncryptDecryptSSSOConfig() {
     String privateKey = "secret:/openmetadata/bot/bot/config/authconfig/privatekey";
-    OktaSSOClientConfig config = new OktaSSOClientConfig().withPrivateKey(privateKey);
+    OktaSSOClientConfig config =
+        new OktaSSOClientConfig()
+            .withClientId("fixture-client-id")
+            .withOrgURL("https://example.okta.test")
+            .withEmail("bot@example.test")
+            .withPrivateKey(privateKey);
     AuthenticationMechanism expectedAuthMechanism =
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.SSO)
@@ -92,7 +99,11 @@ public abstract class ExternalSecretsManagerTest {
             .withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(secretKey));
     DatabaseConnection dbConnection =
         new DatabaseConnection()
-            .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("fixture-user")
+                    .withAuthType(new basicAuth().withPassword(password)));
     TestServiceConnectionRequest testRequest =
         new TestServiceConnectionRequest()
             .withConnection(dbConnection)
@@ -134,19 +145,13 @@ public abstract class ExternalSecretsManagerTest {
                 secretsManager.encryptServiceConnectionConfig(
                     mysqlConnection, Mysql.value(), "test", ServiceType.DATABASE));
 
-    assertEquals(
-        "Failed to encrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
-        thrown.getMessage());
-    thrown =
-        Assertions.assertThrows(
-            InvalidServiceConnectionException.class,
-            () ->
-                secretsManager.decryptServiceConnectionConfig(
-                    mysqlConnection, Mysql.value(), ServiceType.DATABASE));
+    assertTrue(thrown.getMessage().contains("Field 'username1' is an undeclared field"));
+    assertFalse(thrown.getMessage().contains("openmetadata-test"));
 
-    assertEquals(
-        "Failed to decrypt 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
-        thrown.getMessage());
+    Object stored =
+        secretsManager.decryptServiceConnectionConfig(
+            mysqlConnection, Mysql.value(), ServiceType.DATABASE);
+    assertEquals(mysqlConnection, JsonUtils.getMap(stored));
   }
 
   @Test

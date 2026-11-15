@@ -24,51 +24,52 @@ GENERATED = "metadata.generated.schema"
         (
             "entity.services.connections.dashboard.sapS4HanaConnection",
             "SapS4HanaBasicAuthType",
-            "SapS4HanaBasicAuth",
+            "entity.services.connections.dashboard.sapS4Hana.basicAuth.SapS4HanaBasicAuth",
         ),
         (
             "entity.services.connections.dashboard.sapS4HanaConnection",
             "SapS4HanaOAuthType",
-            "SapS4HanaOAuthCredentials",
+            "entity.services.connections.dashboard.sapS4Hana.oAuth.SapS4HanaOAuthCredentials",
         ),
         (
             "entity.services.connections.messaging.natsConnection",
             "BasicAuth",
-            "NatsBasicAuth",
+            "entity.services.connections.messaging.nats.basicAuth.NatsBasicAuth",
         ),
         (
             "entity.services.connections.messaging.natsConnection",
             "NkeyAuth",
-            "NatsNkeyAuth",
+            "entity.services.connections.messaging.nats.nkeyAuth.NatsNkeyAuth",
         ),
         (
             "entity.services.connections.messaging.natsConnection",
             "TokenAuth",
-            "NatsTokenAuth",
+            "entity.services.connections.messaging.nats.tokenAuth.NatsTokenAuth",
         ),
         (
             "entity.services.connections.dashboard.qlikSenseConnection",
             "QlikCertificatePath",
-            "QlikCertificatePath",
+            "entity.services.connections.dashboard.qlikSense.certificatePath.QlikCertificatePath",
         ),
         (
             "entity.services.connections.dashboard.qlikSenseConnection",
             "QlikCertificateValues",
-            "QlikCertificateValues",
+            "entity.services.connections.dashboard.qlikSense.certificateValues.QlikCertificateValues",
         ),
         (
             "entity.services.connections.dashboard.powerBIConnection",
             "LocalConfig",
-            "PowerBILocalConfig",
+            "entity.services.connections.dashboard.powerbi.localConfig.PowerBILocalConfig",
         ),
         (
             "metadataIngestion.storageServiceMetadataPipeline",
             "NoMetadataConfigurationSource",
-            "StorageMetadataNoConfig",
+            "metadataIngestion.storage.storageMetadataNoConfig.StorageMetadataNoConfig",
         ),
     ],
 )
 def test_legacy_name_still_imports(module, name, target):
     legacy = getattr(importlib.import_module(f"{GENERATED}.{module}"), name)
-
-    assert legacy.__name__ == target
+    target_module, target_name = target.rsplit(".", 1)
+    canonical = getattr(importlib.import_module(f"{GENERATED}.{target_module}"), target_name)
+    assert legacy is canonical

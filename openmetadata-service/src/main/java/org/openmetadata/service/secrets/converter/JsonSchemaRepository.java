@@ -13,53 +13,106 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.ADDITIONAL_PROPERTIES;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.COMPOSITIONS;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.FORMAT;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.ITEMS;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.PASSWORD;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.PROPERTIES;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.REF;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.ROOT;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.TYPE_INDEX;
+
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.Resource;
 import io.github.classgraph.ScanResult;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 
 final class JsonSchemaRepository {
-  private static final String ROOT = "json/schema/";
-  private static final String JAVA_TYPE = "javaType";
-  private static final JsonSchemaRepository INSTANCE = new JsonSchemaRepository();
-
+  private static JsonSchemaRepository instance;
   private final Map<String, JsonNode> schemas;
   private final Map<String, Ref> types;
+  private final Map<String, Class<?>> classes;
+  private final Map<String, Facts> facts;
+  private final Map<Class<?>, Map<String, Method>> getters;
 
-  record Ref(JsonNode node, String path) {}
-
-  private JsonSchemaRepository() {
-    Map<String, JsonNode> loadedSchemas = new TreeMap<>();
-    try (ScanResult scan = new ClassGraph().acceptPaths(ROOT).scan()) {
-      for (Resource resource : scan.getResourcesWithExtension("json")) {
-        loadedSchemas.put(resource.getPath(), read(resource));
-      }
+  record Ref(JsonNode node, String path, String pointer) {
+    String location() {
+      return path + "#" + pointer;
     }
-    schemas = Collections.unmodifiableMap(loadedSchemas);
-    types = indexTypes(loadedSchemas);
   }
 
-  static JsonSchemaRepository getInstance() {
-    return INSTANCE;
+  record Facts(
+      Map<String, Ref> properties,
+      List<Ref> branches,
+      List<Ref> allOf,
+      Set<String> required,
+      Set<String> defaulted,
+      Map<String, JsonNode> discriminators,
+      boolean openObject,
+      Set<String> passwordChildren,
+      boolean password,
+      boolean containsPassword) {}
+
+  JsonSchemaRepository(Map<String, JsonNode> schemas, Map<String, String> typeIndex) {
+    Map<String, JsonNode> copies = new TreeMap<>();
+    schemas.forEach((path, node) -> copies.put(path, node.deepCopy()));
+    this.schemas = Collections.unmodifiableMap(copies);
+    Map<String, Ref> byType = new LinkedHashMap<>();
+    Map<String, Class<?>> byLocation = new LinkedHashMap<>();
+    typeIndex.forEach((location, type) -> indexType(location, type, byType, byLocation));
+    types = Map.copyOf(byType);
+    classes = Map.copyOf(byLocation);
+    facts = compileFacts();
+    getters = indexGetters();
+  }
+
+  static synchronized JsonSchemaRepository getInstance() {
+    if (instance == null) {
+      instance = load();
+    }
+    return instance;
+  }
+
+  static JsonSchemaRepository load() {
+    Map<String, JsonNode> schemas = new TreeMap<>();
+    try (ScanResult scan = new ClassGraph().acceptPaths(ROOT).scan()) {
+      for (Resource resource : scan.getResourcesWithExtension("json")) {
+        schemas.put(resource.getPath(), read(resource));
+      }
+    }
+    if (schemas.isEmpty()) {
+      throw new IllegalStateException("Missing schema resources " + ROOT);
+    }
+    return new JsonSchemaRepository(schemas, readIndex());
   }
 
   Ref schemaFor(Class<?> clazz) {
     return types.get(clazz.getName());
+  }
+
+  Set<Class<?>> javaClasses() {
+    return Set.copyOf(classes.values());
   }
 
   Set<String> schemaPaths() {
@@ -67,254 +120,319 @@ final class JsonSchemaRepository {
   }
 
   Ref rootSchema(String path) {
-    JsonNode schema = schemas.get(path);
-    return schema == null ? null : new Ref(schema, path);
+    JsonNode node = schemas.get(path);
+    return node == null ? null : new Ref(node, path, "");
   }
 
   Ref property(Ref schema, String propertyName) {
-    JsonNode property = schema.node().path("properties").get(propertyName);
-    return property == null ? null : new Ref(property, schema.path());
+    return facts(schema).properties().get(propertyName);
   }
 
-  Ref resolveToOneOf(Ref property) {
-    JsonNode node = property.node();
-    String base = property.path();
-    for (int depth = 0; depth < 16 && node != null; depth++) {
-      if (node.has("properties")) {
-        return null;
+  Facts facts(Ref schema) {
+    return facts.get(dereference(schema).location());
+  }
+
+  Ref child(Ref parent, String keyword) {
+    JsonNode node = parent.node().get(keyword);
+    return node == null
+        ? null
+        : new Ref(node, parent.path(), parent.pointer() + "/" + escape(keyword));
+  }
+
+  Ref dereference(Ref schema) {
+    Set<String> visited = new HashSet<>();
+    Ref current = schema;
+    while (current.node().has(REF)) {
+      if (!visited.add(current.location())) {
+        throw new IllegalStateException("Cyclic schema reference " + current.location());
       }
-      if (node.has("oneOf") || node.has("anyOf")) {
-        return new Ref(node, base);
-      }
-      String ref = node.path("$ref").asText("");
-      if (ref.isEmpty()) {
-        return null;
-      }
-      Ref resolved = resolve(ref, base);
-      if (resolved == null) {
-        return null;
-      }
-      node = resolved.node();
-      base = resolved.path();
+      current = resolve(current.node().get(REF).asText(), current.path());
     }
-    return null;
+    return current;
   }
 
-  List<Ref> branches(Ref oneOf) {
-    JsonNode branches =
-        oneOf.node().has("oneOf") ? oneOf.node().get("oneOf") : oneOf.node().get("anyOf");
-    List<Ref> resolvedBranches = new ArrayList<>();
-    for (JsonNode branch : branches) {
-      String ref = branch.path("$ref").asText("");
-      Ref resolved = ref.isEmpty() ? new Ref(branch, oneOf.path()) : resolve(ref, oneOf.path());
-      if (resolved != null) {
-        resolvedBranches.add(resolved);
-      }
-    }
-    return resolvedBranches;
+  Ref resolveToOneOf(Ref schema) {
+    Ref resolved = dereference(schema);
+    return facts(resolved).branches().isEmpty() ? null : resolved;
   }
 
-  boolean matchesDiscriminator(Ref schema, Object value) {
-    if (!(value instanceof Map<?, ?> map)) {
-      return true;
-    }
-    for (Map.Entry<String, JsonNode> property : schema.node().path("properties").properties()) {
-      JsonNode definition = property.getValue();
-      String ref = definition.path("$ref").asText("");
-      if (!ref.isEmpty()) {
-        Ref resolved = resolve(ref, schema.path());
-        definition = resolved == null ? definition : resolved.node();
-      }
-      JsonNode expected = discriminatorValue(definition);
-      if (expected != null && map.containsKey(property.getKey())) {
-        Object actual = map.get(property.getKey());
-        if (actual == null || !expected.asText().equals(actual.toString())) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  boolean isCandidate(Ref oneOf, Ref schema, Object value) {
-    Class<?> candidate = javaClass(schema);
-    return candidate != null
-        && (value instanceof Map<?, ?> || candidate.isInstance(value))
-        && matchesDiscriminator(schema, value)
-        && (!hasOpenObjectBranch(oneOf) || matchesRequiredProperties(schema, value));
-  }
-
-  boolean hasMatchingClosedBranch(Ref oneOf, Object value) {
-    return branches(oneOf).stream()
-        .anyMatch(branch -> containsPasswordFormat(branch) && isCandidate(oneOf, branch, value));
-  }
-
-  /** The secret-bearing candidate branch that declares the most of {@code value}'s fields. */
-  Optional<Ref> closestSecretBranch(Ref oneOf, Object value) {
-    if (!(value instanceof Map<?, ?> map)) {
-      return Optional.empty();
-    }
-    return branches(oneOf).stream()
-        .filter(branch -> containsPasswordFormat(branch) && isCandidate(oneOf, branch, value))
-        .filter(branch -> declaredFieldCount(branch, map) > 0)
-        .max(Comparator.comparingLong(branch -> declaredFieldCount(branch, map)));
-  }
-
-  private static long declaredFieldCount(Ref schema, Map<?, ?> value) {
-    JsonNode properties = schema.node().path("properties");
-    return value.keySet().stream().filter(key -> properties.has(key.toString())).count();
-  }
-
-  boolean hasRequiredProperties(Ref schema, Object value) {
-    if (!(value instanceof Map<?, ?> map)) {
-      return false;
-    }
-    for (JsonNode required : schema.node().path("required")) {
-      if (map.get(required.asText()) == null) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private boolean matchesRequiredProperties(Ref schema, Object value) {
-    if (!(value instanceof Map<?, ?> map)) {
-      return true;
-    }
-    for (JsonNode required : schema.node().path("required")) {
-      if (!map.containsKey(required.asText())) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private JsonNode discriminatorValue(JsonNode definition) {
-    if (definition.has("const")) {
-      return definition.get("const");
-    }
-    JsonNode values = definition.path("enum");
-    return values.size() == 1 ? values.get(0) : null;
+  List<Ref> branches(Ref schema) {
+    return facts(schema).branches();
   }
 
   Class<?> javaClass(Ref schema) {
-    String javaType = schema.node().path(JAVA_TYPE).asText("");
-    if (javaType.isEmpty() && schema.node() == schemas.get(schema.path())) {
-      javaType = inferredRootJavaType(schema);
-    }
-    if (javaType.isEmpty()) {
-      return null;
+    Class<?> direct = classes.get(schema.location());
+    return direct == null ? classes.get(dereference(schema).location()) : direct;
+  }
+
+  Method getter(Ref schema, String property) {
+    Class<?> type = javaClass(schema);
+    return type == null ? null : getters.getOrDefault(type, Map.of()).get(property);
+  }
+
+  String accessorSuffix(Ref schema, String property) {
+    Method getter = getter(schema, property);
+    return getter == null ? property : getter.getName().substring(3);
+  }
+
+  boolean hasAdditionalPropertiesHolder(Ref schema) {
+    Class<?> type = javaClass(schema);
+    if (type == null) {
+      return false;
     }
     try {
-      return Class.forName(javaType);
-    } catch (ClassNotFoundException | NoClassDefFoundError e) {
-      return null;
+      return Map.class.isAssignableFrom(type.getMethod("getAdditionalProperties").getReturnType());
+    } catch (NoSuchMethodException e) {
+      return false;
     }
   }
 
-  boolean hasOpenObjectBranch(Ref oneOf) {
-    return branches(oneOf).stream()
-        .anyMatch(
-            branch ->
-                "object".equals(branch.node().path("type").asText(""))
-                    && branch.node().path("additionalProperties").asBoolean(false)
-                    && !branch.node().has("properties"));
+  boolean hasName(Ref schema) {
+    Method getter = getter(schema, "name");
+    return getter != null
+        && getter.getName().equals("getName")
+        && getter.getReturnType() == String.class;
   }
 
   boolean containsPasswordFormat(Ref schema) {
-    Deque<Ref> queue = new ArrayDeque<>();
-    Set<String> visited = new HashSet<>();
-    queue.add(schema);
-    while (!queue.isEmpty()) {
-      Ref current = queue.poll();
-      JsonNode value = current.node();
-      if (value == null || !value.isObject()) {
-        continue;
+    return facts(schema).containsPassword();
+  }
+
+  private void indexType(
+      String location, String name, Map<String, Ref> byType, Map<String, Class<?>> byLocation) {
+    Ref schema = resolveLocation(location);
+    try {
+      Class<?> type = Class.forName(name, false, JsonSchemaRepository.class.getClassLoader());
+      byLocation.put(location, type);
+      Ref previous = byType.get(name);
+      if (previous == null || schema.pointer().isEmpty()) {
+        byType.put(name, schema);
       }
-      if ("password".equals(value.path("format").asText(""))) {
-        return true;
-      }
-      String ref = value.path("$ref").asText("");
-      if (!ref.isEmpty()) {
-        if (visited.add(current.path() + "|" + ref)) {
-          Ref resolved = resolve(ref, current.path());
-          if (resolved != null) {
-            queue.add(resolved);
-          }
+    } catch (ClassNotFoundException | LinkageError e) {
+      throw new IllegalStateException("Cannot load generated schema type at " + location, e);
+    }
+  }
+
+  private Map<Class<?>, Map<String, Method>> indexGetters() {
+    Map<Class<?>, Map<String, Method>> indexed = new HashMap<>();
+    for (Class<?> type : javaClasses()) {
+      Map<String, Method> methods = new LinkedHashMap<>();
+      for (BeanPropertyDefinition property :
+          JsonUtils.getObjectMapper()
+              .getSerializationConfig()
+              .introspect(JsonUtils.getObjectMapper().constructType(type))
+              .findProperties()) {
+        if (property.getGetter() != null && property.getGetter().getName().startsWith("get")) {
+          methods.put(property.getName(), property.getGetter().getAnnotated());
         }
-        continue;
       }
-      for (String keyword : List.of("oneOf", "anyOf", "allOf")) {
-        value.path(keyword).forEach(branch -> queue.add(new Ref(branch, current.path())));
-      }
-      value.path("properties").forEach(child -> queue.add(new Ref(child, current.path())));
-      if (value.path("items").isObject()) {
-        queue.add(new Ref(value.get("items"), current.path()));
-      }
+      indexed.put(type, Map.copyOf(methods));
     }
-    return false;
+    return Map.copyOf(indexed);
   }
 
-  private Ref resolve(String ref, String base) {
-    int hash = ref.indexOf('#');
-    String filePart = hash >= 0 ? ref.substring(0, hash) : ref;
-    String fragment = hash >= 0 ? ref.substring(hash + 1) : "";
-    String targetPath = filePart.isEmpty() ? base : normalize(base, filePart);
-    JsonNode node = schemas.get(targetPath);
-    if (node == null) {
-      return null;
-    }
-    for (String segment : fragment.split("/")) {
-      if (!segment.isEmpty()) {
-        node = node.path(segment);
-      }
-    }
-    return node.isMissingNode() ? null : new Ref(node, targetPath);
-  }
-
-  private Map<String, Ref> indexTypes(Map<String, JsonNode> loadedSchemas) {
-    Map<String, Ref> indexedTypes = new HashMap<>();
-    loadedSchemas.forEach(
-        (path, schema) -> {
-          indexType(schema, path, indexedTypes);
-          indexNestedTypes(schema, path, indexedTypes);
+  private Map<String, Facts> compileFacts() {
+    Map<String, Ref> nodes = new LinkedHashMap<>();
+    schemas.keySet().forEach(path -> collectNodes(rootSchema(path), nodes));
+    Map<String, Set<String>> parents = new HashMap<>();
+    Deque<String> passwords = new ArrayDeque<>();
+    nodes.forEach(
+        (location, schema) -> {
+          if (PASSWORD.equals(schema.node().path(FORMAT).asText())) {
+            passwords.add(location);
+          }
+          for (Ref child : reachableChildren(schema)) {
+            parents.computeIfAbsent(child.location(), ignored -> new HashSet<>()).add(location);
+          }
         });
-    return Collections.unmodifiableMap(indexedTypes);
-  }
-
-  private void indexType(JsonNode schema, String path, Map<String, Ref> types) {
-    Ref ref = new Ref(schema, path);
-    String javaType = schema.path(JAVA_TYPE).asText("");
-    if (javaType.isEmpty()) {
-      javaType = inferredRootJavaType(ref);
-    }
-    types.put(javaType, ref);
-  }
-
-  private void indexNestedTypes(JsonNode node, String path, Map<String, Ref> types) {
-    if (node.isObject()) {
-      String javaType = node.path(JAVA_TYPE).asText("");
-      if (!javaType.isEmpty()) {
-        types.put(javaType, new Ref(node, path));
-      }
-      node.forEach(child -> indexNestedTypes(child, path, types));
-    } else if (node.isArray()) {
-      node.forEach(child -> indexNestedTypes(child, path, types));
-    }
-  }
-
-  /** The spec build names a root class after its file name, as jsonschema2pojo does by default. */
-  private String inferredRootJavaType(Ref schema) {
-    String path = schema.path();
-    String directory = path.substring(ROOT.length(), path.lastIndexOf('/'));
-    String fileName = path.substring(path.lastIndexOf('/') + 1, path.length() - ".json".length());
-    StringBuilder className = new StringBuilder();
-    for (String word : fileName.split("[^A-Za-z0-9]+")) {
-      if (!word.isEmpty()) {
-        className.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+    Set<String> secretNodes = new HashSet<>();
+    while (!passwords.isEmpty()) {
+      String location = passwords.removeFirst();
+      if (secretNodes.add(location)) {
+        passwords.addAll(parents.getOrDefault(location, Set.of()));
       }
     }
-    return "org.openmetadata.schema." + directory.replace('/', '.') + "." + className;
+    Map<String, Facts> compiled = new LinkedHashMap<>();
+    nodes.forEach((location, schema) -> compiled.put(location, compile(schema, secretNodes)));
+    return Map.copyOf(compiled);
+  }
+
+  private Facts compile(Ref schema, Set<String> secretNodes) {
+    Map<String, Ref> properties = new LinkedHashMap<>();
+    Ref propertySchemas = child(schema, PROPERTIES);
+    if (propertySchemas != null) {
+      propertySchemas
+          .node()
+          .fieldNames()
+          .forEachRemaining(name -> properties.put(name, child(propertySchemas, name)));
+    }
+    Set<String> required = new LinkedHashSet<>();
+    schema.node().path(SchemaKeywords.REQUIRED).forEach(value -> required.add(value.asText()));
+    List<Ref> branches = new ArrayList<>(composition(schema, SchemaKeywords.ONE_OF));
+    branches.addAll(composition(schema, SchemaKeywords.ANY_OF));
+    boolean open =
+        SchemaKeywords.OBJECT.equals(schema.node().path(SchemaKeywords.TYPE).asText())
+            && properties.isEmpty()
+            && schema.node().path(ADDITIONAL_PROPERTIES).asBoolean(false);
+    return new Facts(
+        Map.copyOf(properties),
+        List.copyOf(branches),
+        composition(schema, SchemaKeywords.ALL_OF),
+        Set.copyOf(required),
+        defaultedProperties(properties),
+        discriminators(properties),
+        open,
+        passwordChildren(schema, secretNodes),
+        PASSWORD.equals(schema.node().path(FORMAT).asText()),
+        secretNodes.contains(schema.location()));
+  }
+
+  private Set<String> defaultedProperties(Map<String, Ref> properties) {
+    Set<String> defaults = new LinkedHashSet<>();
+    properties.forEach(
+        (name, property) -> {
+          JsonNode value =
+              property.node().has(SchemaKeywords.DEFAULT)
+                  ? property.node().get(SchemaKeywords.DEFAULT)
+                  : dereference(property).node().get(SchemaKeywords.DEFAULT);
+          if (value != null && !value.isNull()) {
+            defaults.add(name);
+          }
+        });
+    return Set.copyOf(defaults);
+  }
+
+  private Map<String, JsonNode> discriminators(Map<String, Ref> properties) {
+    Map<String, JsonNode> result = new LinkedHashMap<>();
+    properties.forEach(
+        (name, property) -> {
+          JsonNode definition = dereference(property).node();
+          JsonNode constant = definition.get(SchemaKeywords.CONST);
+          if (constant == null && definition.path(SchemaKeywords.ENUM).size() == 1) {
+            constant = definition.path(SchemaKeywords.ENUM).get(0);
+          }
+          if (constant != null) {
+            result.put(name, constant);
+          }
+        });
+    return Map.copyOf(result);
+  }
+
+  private Set<String> passwordChildren(Ref schema, Set<String> secretNodes) {
+    Set<String> names = new LinkedHashSet<>();
+    Set<String> visited = new HashSet<>();
+    Deque<Ref> pending = new ArrayDeque<>();
+    pending.add(schema);
+    while (!pending.isEmpty()) {
+      Ref current = dereference(pending.removeFirst());
+      if (visited.add(current.location())) {
+        Ref properties = child(current, PROPERTIES);
+        if (properties != null) {
+          properties
+              .node()
+              .fieldNames()
+              .forEachRemaining(
+                  name -> {
+                    if (secretNodes.contains(child(properties, name).location())) {
+                      names.add(name);
+                    }
+                  });
+        }
+        COMPOSITIONS.forEach(keyword -> pending.addAll(composition(current, keyword)));
+      }
+    }
+    return Set.copyOf(names);
+  }
+
+  private List<Ref> composition(Ref schema, String keyword) {
+    Ref values = child(schema, keyword);
+    List<Ref> result = new ArrayList<>();
+    if (values != null) {
+      for (int index = 0; index < values.node().size(); index++) {
+        result.add(
+            new Ref(values.node().get(index), values.path(), values.pointer() + "/" + index));
+      }
+    }
+    return List.copyOf(result);
+  }
+
+  private void collectNodes(Ref schema, Map<String, Ref> nodes) {
+    if (nodes.putIfAbsent(schema.location(), schema) != null) {
+      return;
+    }
+    for (Ref child : structuralChildren(schema)) {
+      collectNodes(child, nodes);
+    }
+    for (String definitions : List.of("definitions", "$defs")) {
+      Ref values = child(schema, definitions);
+      if (values != null) {
+        values
+            .node()
+            .fieldNames()
+            .forEachRemaining(name -> collectNodes(child(values, name), nodes));
+      }
+    }
+  }
+
+  private List<Ref> reachableChildren(Ref schema) {
+    List<Ref> result = new ArrayList<>(structuralChildren(schema));
+    if (schema.node().has(REF)) {
+      result.add(resolve(schema.node().get(REF).asText(), schema.path()));
+    }
+    return result;
+  }
+
+  private List<Ref> structuralChildren(Ref schema) {
+    List<Ref> result = new ArrayList<>();
+    Ref properties = child(schema, PROPERTIES);
+    if (properties != null) {
+      properties.node().fieldNames().forEachRemaining(name -> result.add(child(properties, name)));
+    }
+    COMPOSITIONS.forEach(keyword -> result.addAll(composition(schema, keyword)));
+    for (String keyword : List.of(ITEMS, ADDITIONAL_PROPERTIES)) {
+      Ref value = child(schema, keyword);
+      if (value != null && value.node().isObject()) {
+        result.add(value);
+      }
+    }
+    return result;
+  }
+
+  private Ref resolve(String reference, String base) {
+    URI resolved = URI.create(base).resolve(reference);
+    String fragment = resolved.getFragment() == null ? "" : resolved.getFragment();
+    return resolveLocation(resolved.getPath() + "#" + fragment);
+  }
+
+  private Ref resolveLocation(String location) {
+    int hash = location.indexOf('#');
+    String path = hash < 0 ? location : location.substring(0, hash);
+    String pointer = hash < 0 ? "" : location.substring(hash + 1);
+    JsonNode root = schemas.get(path);
+    JsonNode node = root == null ? null : root.at(pointer);
+    if (node == null || node.isMissingNode()) {
+      throw new IllegalStateException("Missing schema resource " + location);
+    }
+    return new Ref(node, path, pointer);
+  }
+
+  private static Map<String, String> readIndex() {
+    try (InputStream input =
+        JsonSchemaRepository.class.getClassLoader().getResourceAsStream(TYPE_INDEX)) {
+      if (input == null) {
+        throw new IOException("Resource not found");
+      }
+      Properties properties = new Properties();
+      properties.load(input);
+      Map<String, String> result = new TreeMap<>();
+      properties.forEach((location, type) -> result.put(location.toString(), type.toString()));
+      if (result.isEmpty()) {
+        throw new IOException("Resource is empty");
+      }
+      return result;
+    } catch (IOException e) {
+      throw new IllegalStateException("Cannot read schema type index " + TYPE_INDEX, e);
+    }
   }
 
   private static JsonNode read(Resource resource) {
@@ -325,18 +443,7 @@ final class JsonSchemaRepository {
     }
   }
 
-  private static String normalize(String base, String relative) {
-    Deque<String> segments = new ArrayDeque<>();
-    for (String segment : base.substring(0, base.lastIndexOf('/')).split("/")) {
-      segments.addLast(segment);
-    }
-    for (String segment : relative.split("/")) {
-      if (segment.equals("..")) {
-        segments.pollLast();
-      } else if (!segment.equals(".") && !segment.isEmpty()) {
-        segments.addLast(segment);
-      }
-    }
-    return String.join("/", segments);
+  private static String escape(String key) {
+    return key.replace("~", "~0").replace("/", "~1");
   }
 }

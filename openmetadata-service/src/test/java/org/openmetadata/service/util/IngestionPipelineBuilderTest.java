@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +33,6 @@ import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 
 class IngestionPipelineBuilderTest {
@@ -53,17 +55,28 @@ class IngestionPipelineBuilderTest {
     IngestionPipeline pipeline = storagePipeline(manifestSource(true));
 
     assertThrows(
-        BadRequestException.class, () -> IngestionPipelineBuilder.addDefinedConfig(pipeline));
+        IllegalArgumentException.class, () -> IngestionPipelineBuilder.addDefinedConfig(pipeline));
   }
 
-  /** Stored before the check, such a source is left out of what is read rather than returned. */
+  /** Malformed stored sources remain repairable while their credentials are protected. */
   @Test
-  void aStoredManifestMatchingNoSourceSchemaIsReadWithoutItsCredentials() {
+  void aStoredManifestMatchingNoSourceSchemaKeepsItsMaskedSource() {
     IngestionPipeline pipeline = storagePipeline(manifestSource(true));
 
     EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(pipeline);
 
     assertFalse(JsonUtils.pojoToJson(pipeline).contains(SECRET));
+    assertEquals(
+        PASSWORD_MASK,
+        JsonUtils.valueToTree(pipeline)
+            .at(
+                "/sourceConfig/config/storageMetadataConfigSource/securityConfig/awsSecretAccessKey")
+            .asText());
+    assertEquals(
+        "x",
+        JsonUtils.valueToTree(pipeline)
+            .at("/sourceConfig/config/storageMetadataConfigSource/notInAnySourceSchema")
+            .asText());
   }
 
   @Test
@@ -78,9 +91,8 @@ class IngestionPipelineBuilderTest {
     assertInstanceOf(StorageMetadataS3Config.class, config.getStorageMetadataConfigSource());
   }
 
-  /** Stored dbt configs predate the `type` field; the pipeline type alone still types them. */
   @Test
-  void aDbtConfigWithoutATypeIsTypedByItsPipelineType() {
+  void aDbtConfigWithoutATypeIsTypedByItsSource() {
     Map<String, Object> dbtSource =
         Map.of(
             "dbtSecurityConfig",
@@ -90,7 +102,6 @@ class IngestionPipelineBuilderTest {
     IngestionPipeline pipeline =
         new IngestionPipeline()
             .withName("dbt")
-            .withPipelineType(PipelineType.DBT)
             .withSourceConfig(new SourceConfig().withConfig(Map.of("dbtConfigSource", dbtSource)));
 
     IngestionPipelineBuilder.addDefinedConfig(pipeline);
@@ -98,6 +109,17 @@ class IngestionPipelineBuilderTest {
     DbtPipeline config =
         assertInstanceOf(DbtPipeline.class, pipeline.getSourceConfig().getConfig());
     assertInstanceOf(DbtS3Config.class, config.getDbtConfigSource());
+  }
+
+  @Test
+  void anUnidentifiableEmptyConfigRemainsUntyped() {
+    IngestionPipeline pipeline =
+        new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(Map.of()));
+
+    IngestionPipelineBuilder.addDefinedConfig(pipeline);
+
+    assertTrue(pipeline.getSourceConfig().getConfig() instanceof Map<?, ?>);
+    assertTrue(((Map<?, ?>) pipeline.getSourceConfig().getConfig()).isEmpty());
   }
 
   private static IngestionPipeline storagePipeline(Map<String, Object> manifestSource) {

@@ -437,24 +437,19 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
-  void testExceptionConnection() {
+  void malformedStoredConnectionStaysReadableButCannotBeWrittenBackUnchanged() {
     Map<String, Object> mysqlConnectionObject =
-        Map.of(
-            "authType", Map.of("password", "openmetadata-test"), "username1", "openmetadata-test");
+        Map.of("authType", Map.of("password", "openmetadata-test"), "username1", "legacy-user");
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(mysqlConnectionObject, "Mysql", ServiceType.DATABASE);
+    assertEquals(
+        getMaskedPassword(), JsonUtils.valueToTree(masked).at("/authType/password").asText());
+    assertEquals("legacy-user", JsonUtils.valueToTree(masked).path("username1").asText());
+    assertFalse(JsonUtils.pojoToJson(masked).contains("openmetadata-test"));
 
     EntityMaskException thrown =
-        Assertions.assertThrows(
-            EntityMaskException.class,
-            () ->
-                EntityMaskerFactory.createEntityMasker()
-                    .maskServiceConnectionConfig(
-                        mysqlConnectionObject, "Mysql", ServiceType.DATABASE));
-
-    assertEquals(
-        "Failed to mask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
-        thrown.getMessage());
-
-    thrown =
         Assertions.assertThrows(
             EntityMaskException.class,
             () ->
@@ -465,9 +460,9 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                         "Mysql",
                         ServiceType.DATABASE));
 
-    assertEquals(
-        "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
-        thrown.getMessage());
+    assertTrue(thrown.getMessage().contains("username1"));
+    assertTrue(thrown.getMessage().contains("undeclared"));
+    assertFalse(thrown.getMessage().contains("openmetadata-test"));
   }
 
   @Test
@@ -647,6 +642,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                     new DbtPipeline()
                         .withDbtConfigSource(
                             new DbtHttpConfig()
+                                .withDbtManifestHttpPath("https://gitlab.example/manifest.json")
                                 .withDbtHttpHeaders(
                                     new DbtHttpHeaders()
                                         .withAdditionalProperty("PRIVATE-TOKEN", GITLAB_TOKEN)))));
@@ -661,7 +657,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
-  void testNestedFieldTheSchemaNoLongerDeclaresIsIgnoredAndTheSecretMasked() {
+  void testNestedFieldTheSchemaNoLongerDeclaresIsPreservedAndTheSecretMasked() {
     Object connection =
         JsonUtils.readValue(
             """
@@ -676,7 +672,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     String serialized = JsonUtils.pojoToJson(masked);
     assertFalse(serialized.contains("secret-value"), serialized);
-    assertFalse(serialized.contains("legacyField"), serialized);
+    assertEquals("x", JsonUtils.valueToTree(masked).at("/authType/legacyField").asText());
     assertTrue(serialized.contains(PasswordEntityMasker.PASSWORD_MASK), serialized);
   }
 

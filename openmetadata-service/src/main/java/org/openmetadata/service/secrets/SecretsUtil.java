@@ -79,9 +79,25 @@ public final class SecretsUtil {
       String connectionType,
       String connectionName,
       ServiceType serviceType) {
+    return convert(connectionConfig, connectionType, connectionName, serviceType, false);
+  }
+
+  public static Object convertForRead(
+      Object connectionConfig, String connectionType, ServiceType serviceType) {
+    return convert(connectionConfig, connectionType, null, serviceType, true);
+  }
+
+  private static Object convert(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      boolean forRead) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      return ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      return forRead
+          ? ClassConverterFactory.getConverter(clazz).convertForRead(connectionConfig)
+          : ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
     } catch (Exception e) {
       // If we have the name we are trying to encrypt a connection
       String message = e.getMessage();

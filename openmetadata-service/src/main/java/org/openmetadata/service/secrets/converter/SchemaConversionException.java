@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,12 +13,13 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
+/** A conversion failure whose message contains field paths and constraints, never field values. */
+public final class SchemaConversionException extends IllegalArgumentException {
+  SchemaConversionException(String message) {
+    super(message);
+  }
 
-/** Converter class to get a `TestSparkEngineConnectionRequest` object. */
-public class TestSparkEngineConnectionRequestClassConverter extends ClassConverter {
-
-  public TestSparkEngineConnectionRequestClassConverter() {
-    super(TestSparkEngineConnectionRequest.class);
+  SchemaConversionException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

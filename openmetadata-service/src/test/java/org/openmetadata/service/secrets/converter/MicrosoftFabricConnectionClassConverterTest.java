@@ -14,9 +14,11 @@
 package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -67,24 +69,29 @@ class MicrosoftFabricConnectionClassConverterTest {
             "certificate", "fixture-certificate",
             "privateKey", "fixture-private-key");
 
-    // Left untyped, these secrets would be stored in the clear and returned unmasked.
     IllegalArgumentException thrown =
         assertThrows(IllegalArgumentException.class, () -> convert(mixed));
 
-    assertEquals(
-        "Microsoft Fabric authType must match exactly one authentication option: a client secret,"
-            + " or a certificate with its private key.",
-        thrown.getMessage());
+    assertTrue(
+        thrown.getMessage().contains("Field 'authType.clientSecret' is an undeclared field"));
+    assertFalse(thrown.getMessage().contains("fixture-client-secret"));
+    assertFalse(thrown.getMessage().contains("fixture-private-key"));
   }
 
   @Test
-  void testTypesAnIncompleteCertificateSoItsSecretsAreStillProtected() {
-    MicrosoftFabricConnection result = convert(Map.of("certificate", "fixture-certificate"));
+  void testIncompleteCertificateIsRejectedOnWriteAndProtectedOnRead() {
+    Map<String, String> auth = Map.of("certificate", "fixture-certificate");
+    SchemaConversionException failure =
+        assertThrows(SchemaConversionException.class, () -> convert(auth));
+    assertTrue(failure.getMessage().contains("Field 'authType.privateKey' is required"));
+    assertFalse(failure.getMessage().contains("fixture-certificate"));
 
-    CertificateAuthentication converted =
-        assertInstanceOf(CertificateAuthentication.class, result.getAuthType());
-    assertEquals("fixture-certificate", converted.getCertificate());
-    assertNull(converted.getPrivateKey());
+    MicrosoftFabricConnection stored =
+        (MicrosoftFabricConnection) converter.convertForRead(Map.of("authType", auth));
+    SchemaBackedMap read = assertInstanceOf(SchemaBackedMap.class, stored.getAuthType());
+    assertEquals(auth, read);
+    read.visitSecrets(slot -> slot.setValue(PASSWORD_MASK));
+    assertEquals(Map.of("certificate", PASSWORD_MASK), read);
   }
 
   private MicrosoftFabricConnection convert(Object authType) {

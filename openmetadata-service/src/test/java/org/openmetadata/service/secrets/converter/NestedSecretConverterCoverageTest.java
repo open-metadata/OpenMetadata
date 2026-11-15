@@ -1,6 +1,9 @@
 package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.COMPOSITIONS;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.PASSWORD;
+import static org.openmetadata.service.secrets.converter.SchemaKeywords.ROOT;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.lang.reflect.Method;
@@ -23,9 +26,8 @@ import org.openmetadata.service.util.ReflectionUtil;
 class NestedSecretConverterCoverageTest {
 
   private static final String SECRET = "openmetadata-nested-secret";
-  private static final String SCHEMA_ROOT = "json/schema/";
   private static final List<String> SCAN_ROOTS =
-      List.of("json/schema/entity/services/connections", "json/schema/metadataIngestion");
+      List.of(ROOT + "entity/services/connections", ROOT + "metadataIngestion");
 
   private record SecretOneOf(Ref owner, String property, Ref oneOf) {}
 
@@ -169,7 +171,7 @@ class NestedSecretConverterCoverageTest {
         continue;
       }
       JsonNode node = property.node();
-      if ("password".equals(node.path("format").asText(""))) {
+      if (PASSWORD.equals(node.path("format").asText(""))) {
         payload.put(name, SECRET);
       } else if (node.path("enum").size() == 1) {
         payload.put(name, node.get("enum").get(0).asText());
@@ -190,6 +192,10 @@ class NestedSecretConverterCoverageTest {
   }
 
   private Object requiredValue(Ref property, JsonSchemas schemas) {
+    Ref union = resolveToOneOfNode(property, schemas);
+    if (union != null) {
+      return requiredValue(branches(union, schemas).getFirst(), schemas);
+    }
     JsonNode node = property.node();
     if (!node.path("enum").isEmpty()) {
       return node.get("enum").get(0).asText();
@@ -240,7 +246,9 @@ class NestedSecretConverterCoverageTest {
 
   private Ref resolveToOneOfNode(Ref property, JsonSchemas schemas) {
     Ref current = property;
-    for (int depth = 0; depth < 16 && current != null; depth++) {
+    Set<String> visited = new HashSet<>();
+    while (current != null
+        && visited.add(current.path() + "@" + System.identityHashCode(current.node()))) {
       if (current.node().has("properties")) {
         return null;
       }
@@ -260,13 +268,9 @@ class NestedSecretConverterCoverageTest {
     if (!javaType.isEmpty() || schemas.all().get(owner.path()) != owner.node()) {
       return javaType;
     }
-    String title = owner.node().path("title").asText("");
-    if (title.isEmpty()) {
-      return "";
-    }
-    String directory = owner.path().substring(SCHEMA_ROOT.length(), owner.path().lastIndexOf('/'));
-    String className = Character.toUpperCase(title.charAt(0)) + title.substring(1);
-    return "org.openmetadata.schema." + directory.replace('/', '.') + "." + className;
+    JsonSchemaRepository repository = JsonSchemaRepository.getInstance();
+    Class<?> type = repository.javaClass(repository.rootSchema(owner.path()));
+    return type == null ? "" : type.getName();
   }
 
   private String describe(SecretOneOf property) {
@@ -284,7 +288,7 @@ class NestedSecretConverterCoverageTest {
       if (value == null || !value.isObject()) {
         continue;
       }
-      if ("password".equals(value.path("format").asText(""))) {
+      if (PASSWORD.equals(value.path("format").asText(""))) {
         return true;
       }
       String ref = value.path("$ref").asText("");
@@ -297,7 +301,7 @@ class NestedSecretConverterCoverageTest {
         }
         continue;
       }
-      for (String keyword : List.of("oneOf", "anyOf", "allOf")) {
+      for (String keyword : COMPOSITIONS) {
         value.path(keyword).forEach(branch -> queue.add(new Ref(branch, current.path())));
       }
       value.path("properties").forEach(child -> queue.add(new Ref(child, current.path())));

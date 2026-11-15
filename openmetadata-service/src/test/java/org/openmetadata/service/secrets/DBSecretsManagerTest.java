@@ -223,7 +223,7 @@ public class DBSecretsManagerTest {
             PipelineType.TEST_SUITE,
             """
             {"type":"TestSuite","serviceConnections":[{"serviceName":"mysql","serviceConnection":{"config":
-             {"type":"Mysql","username":"user","authType":{"password":"secret-value"}}}}]}
+             {"type":"Mysql","username":"user","hostPort":"localhost:3306","authType":{"password":"secret-value"}}}}]}
             """),
         Arguments.of(
             "dbt HTTP TLS key",

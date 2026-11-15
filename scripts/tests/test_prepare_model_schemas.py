@@ -58,7 +58,7 @@ def test_prepared_tree_preserves_references_and_keeps_sources_unchanged(schema_i
 
     entity = output / "entity/contract.json"
     reference = json.loads(entity.read_text())["$ref"]
-    assert (entity.parent / reference).read_bytes() == before[source / "type/name.json"]
+    assert json.loads((entity.parent / reference).read_text())["type"] == "string"
     model = json.loads((output / "type/datacontract/odcs/v310/odcsContract.json").read_text())
     assert model["properties"]["apiVersion"]["enum"] == ["v3.1.0"]
     assert "query" in model["definitions"]["DataQuality"]["properties"]
@@ -106,7 +106,7 @@ def test_check_reports_missing_and_changed_inputs_without_writing(schema_inputs)
     assert not prepare(schema_inputs, check=True)
     assert (output / "type/name.json").read_bytes() == original
     assert prepare(schema_inputs)
-    assert json.loads((output / "type/name.json").read_text()) == {"type": "integer"}
+    assert json.loads((output / "type/name.json").read_text())["type"] == "integer"
 
 
 def test_preparation_rejects_output_overlapping_source_inputs(schema_inputs):
@@ -145,7 +145,10 @@ def test_cli_prepares_all_profiles_from_another_working_directory(tmp_path):
 
 def test_cli_requires_an_explicit_output_directory(tmp_path):
     result = subprocess.run(
-        [sys.executable, str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py")],
+        [
+            sys.executable,
+            str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"),
+        ],
         cwd=tmp_path,
         check=False,
         capture_output=True,
@@ -154,3 +157,27 @@ def test_cli_requires_an_explicit_output_directory(tmp_path):
 
     assert result.returncode == 2
     assert "--output-dir" in result.stderr
+
+
+def test_schema_locations_use_escaped_json_pointers(schema_inputs):
+    source, _, output = schema_inputs
+    (source / "type/name.json").write_text(
+        json.dumps(
+            {
+                "properties": {
+                    "a/b~c": {
+                        "type": "object",
+                        "properties": {"child": {"type": "string"}},
+                    }
+                },
+                "examples": [{"properties": {"untouched": {}}}],
+            }
+        )
+    )
+    assert prepare(schema_inputs)
+    model = json.loads((output / "type/name.json").read_text())
+    assert model["x-om-schema-location"] == "json/schema/type/name.json#"
+    assert model["properties"]["a/b~c"]["properties"]["child"]["x-om-schema-location"] == (
+        "json/schema/type/name.json#/properties/a~1b~0c/properties/child"
+    )
+    assert model["examples"] == [{"properties": {"untouched": {}}}]

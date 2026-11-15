@@ -13,16 +13,16 @@
 
 package org.openmetadata.service.secrets.converter;
 
-final class RecursiveClassConverter extends ClassConverter {
-  private final ClassConverter delegate;
+import java.util.Set;
 
-  RecursiveClassConverter(Class<?> clazz, ClassConverter delegate) {
-    super(clazz);
-    this.delegate = delegate;
-  }
+/** Schema-derived roots used by credential retarget protection. */
+public final class SchemaFacts {
+  private SchemaFacts() {}
 
-  @Override
-  public Object convert(Object object) {
-    return SchemaClassConverter.convert(delegate.convert(object));
+  public static Set<String> passwordChildren(Class<?> owner, String property) {
+    JsonSchemaRepository schemas = JsonSchemaRepository.getInstance();
+    JsonSchemaRepository.Ref root = schemas.schemaFor(owner);
+    JsonSchemaRepository.Ref schema = root == null ? null : schemas.property(root, property);
+    return schema == null ? Set.of() : schemas.facts(schema).passwordChildren();
   }
 }

@@ -13,7 +13,6 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
@@ -36,15 +35,16 @@ class QlikCertificateSecretProtectionTest {
   }
 
   @Test
-  void encryptsCertificateWithUndeclaredNestedField() {
-    Object encrypted =
-        manager.encryptServiceConnectionConfig(
-            connection(SECRET), "QlikSense", "qlik", ServiceType.DASHBOARD);
+  void rejectsCertificateWithUndeclaredNestedFieldOnWrite() {
+    InvalidServiceConnectionException failure =
+        assertThrows(
+            InvalidServiceConnectionException.class,
+            () ->
+                manager.encryptServiceConnectionConfig(
+                    connection(SECRET), "QlikSense", "qlik", ServiceType.DASHBOARD));
 
-    String encryptedKey = JsonUtils.valueToTree(encrypted).at(SECRET_PATH).asText();
-    assertTrue(Fernet.isTokenized(encryptedKey));
-    assertEquals(SECRET, Fernet.getInstance().decrypt(encryptedKey));
-    assertFalse(JsonUtils.pojoToJson(encrypted).contains(SECRET));
+    assertTrue(failure.getMessage().contains("unexpected"));
+    assertFalse(failure.getMessage().contains(SECRET));
   }
 
   @Test
@@ -56,6 +56,7 @@ class QlikCertificateSecretProtectionTest {
     assertEquals(
         PasswordEntityMasker.PASSWORD_MASK, JsonUtils.valueToTree(masked).at(SECRET_PATH).asText());
     assertFalse(JsonUtils.pojoToJson(masked).contains(SECRET));
+    assertTrue(JsonUtils.valueToTree(masked).at("/certificates/sslConfig/unexpected").asBoolean());
   }
 
   @Test
@@ -71,13 +72,16 @@ class QlikCertificateSecretProtectionTest {
   }
 
   @Test
-  void rejectsMalformedCertificateDuringMasking() {
-    assertThrows(
-        EntityMaskException.class,
-        () ->
-            EntityMaskerFactory.createEntityMasker()
-                .maskServiceConnectionConfig(
-                    connection(Map.of("credential", SECRET)), "QlikSense", ServiceType.DASHBOARD));
+  void masksMalformedStoredCertificateAsOneSecret() {
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                connection(Map.of("credential", SECRET)), "QlikSense", ServiceType.DASHBOARD);
+
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, JsonUtils.valueToTree(masked).at(SECRET_PATH).asText());
+    assertFalse(JsonUtils.pojoToJson(masked).contains(SECRET));
+    assertTrue(JsonUtils.valueToTree(masked).at("/certificates/sslConfig/unexpected").asBoolean());
   }
 
   @Test

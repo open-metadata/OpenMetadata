@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -28,9 +30,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
@@ -514,5 +520,75 @@ public class MessagingServiceResourceIT
     String response = JsonUtils.pojoToJson(getEntity(service.getId().toString()));
     assertFalse(response.contains(secret));
     assertTrue(response.contains(PasswordEntityMasker.PASSWORD_MASK));
+  }
+
+  @Test
+  void natsCredentialWithUnknownFieldIsRejected(TestNamespace ns) {
+    NatsConnection connection =
+        new NatsConnection()
+            .withNatsServers("nats://localhost:4222")
+            .withAuthType(Map.of("username", "user", "password", "secret", "obsolete", true));
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                createEntity(
+                    createMinimalRequest(ns)
+                        .withServiceType(MessagingServiceType.Nats)
+                        .withConnection(new MessagingConnection().withConfig(connection))));
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().contains("obsolete"), error.getMessage());
+  }
+
+  @Test
+  void incompleteStoredNatsCredentialDoesNotBreakList(TestNamespace ns) {
+    String secret = "legacy-nats-secret-" + UUID.randomUUID();
+    MessagingService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withServiceType(MessagingServiceType.Nats)
+                .withConnection(
+                    new MessagingConnection()
+                        .withConfig(
+                            new NatsConnection()
+                                .withNatsServers("nats://localhost:4222")
+                                .withAuthType(
+                                    new NatsBasicAuth()
+                                        .withUsername("user")
+                                        .withPassword(secret)))));
+    ObjectNode stored = (ObjectNode) JsonUtils.valueToTree(service);
+    ((ObjectNode) stored.at("/connection/config"))
+        .set("authType", JsonUtils.valueToTree(Map.of("password", secret, "obsolete", true)));
+    storeLegacyMessagingService(service, stored.toString());
+
+    MessagingService listed =
+        listEntities(new ListParams().withLimit(1000).setFields("connection")).getData().stream()
+            .filter(candidate -> candidate.getId().equals(service.getId()))
+            .findFirst()
+            .orElseThrow();
+    var response = JsonUtils.valueToTree(listed);
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        response.at("/connection/config/authType/password").asText());
+    assertTrue(response.at("/connection/config/authType/obsolete").asBoolean());
+    assertFalse(response.toString().contains(secret));
+  }
+
+  private void storeLegacyMessagingService(MessagingService service, String json) {
+    String value =
+        TestSuiteBootstrap.getConnectionType() == ConnectionType.POSTGRES
+            ? "CAST(:json AS jsonb)"
+            : ":json";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "UPDATE messaging_service_entity SET json = " + value + " WHERE id = :id")
+                    .bind("id", service.getId().toString())
+                    .bind("json", json)
+                    .execute());
+    EntityRepository.invalidateCacheForEntity(
+        Entity.MESSAGING_SERVICE, service.getId(), service.getFullyQualifiedName());
   }
 }

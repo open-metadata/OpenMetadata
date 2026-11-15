@@ -23,7 +23,6 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -32,10 +31,13 @@ import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsUtil;
+import org.openmetadata.service.secrets.converter.SchemaBackedMap;
+import org.openmetadata.service.secrets.converter.SchemaFacts;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
@@ -65,25 +67,15 @@ public final class ConnectionSecretsGuard {
     if (incomingConfig == null || storedConfig == null) {
       return;
     }
-    JsonNode incoming;
-    JsonNode stored;
-    JsonNode maskedIncoming;
-    JsonNode maskedStored;
-    Set<String> passwordMapPaths;
-    try {
-      Object incomingPojo =
-          SecretsUtil.convert(copyOf(incomingConfig), connectionType, null, serviceType);
-      Object storedPojo =
-          SecretsUtil.convert(copyOf(storedConfig), connectionType, null, serviceType);
-      incoming = JsonUtils.valueToTree(incomingPojo);
-      stored = JsonUtils.valueToTree(storedPojo);
-      maskedIncoming = masked(incomingConfig, connectionType, serviceType);
-      maskedStored = masked(storedConfig, connectionType, serviceType);
-      passwordMapPaths = passwordMapEntryPaths(incomingPojo);
-    } catch (RuntimeException e) {
-      // A connection that cannot be read fails where it is unmasked and saved, restoring nothing.
-      return;
-    }
+    Object incomingPojo =
+        SecretsUtil.convert(copyOf(incomingConfig), connectionType, null, serviceType);
+    Object storedPojo =
+        SecretsUtil.convertForRead(copyOf(storedConfig), connectionType, serviceType);
+    JsonNode incoming = JsonUtils.valueToTree(incomingPojo);
+    JsonNode stored = JsonUtils.valueToTree(storedPojo);
+    JsonNode maskedIncoming = masked(incomingConfig, connectionType, serviceType);
+    JsonNode maskedStored = masked(storedConfig, connectionType, serviceType);
+    Set<String> passwordMapPaths = passwordMapEntryPaths(incomingPojo);
     if (retargetsWithStoredSecret(
         incoming, stored, maskedIncoming, maskedStored, passwordMapPaths)) {
       throw new BadRequestException(SECRETS_REQUIRED);
@@ -107,42 +99,32 @@ public final class ConnectionSecretsGuard {
     return pipeline != null && pipeline.getSourceConfig() != null;
   }
 
-  /** Both pipelines' source configs, as stored and as masked; empty when one cannot be read. */
   private record PipelineSources(
       JsonNode incoming,
       JsonNode stored,
       JsonNode maskedIncoming,
       JsonNode maskedStored,
       Set<String> passwordMapPaths) {
-    private static final PipelineSources UNREADABLE =
-        new PipelineSources(null, null, null, null, Set.of());
-
     static PipelineSources read(IngestionPipeline incoming, IngestionPipeline stored) {
-      try {
-        Object typedIncoming = typedSourceConfig(incoming);
-        return new PipelineSources(
-            JsonUtils.valueToTree(typedIncoming),
-            JsonUtils.valueToTree(typedSourceConfig(stored)),
-            maskedSourceConfig(incoming),
-            maskedSourceConfig(stored),
-            passwordMapEntryPaths(typedIncoming));
-      } catch (RuntimeException e) {
-        // A config that cannot be read fails where it is unmasked and saved, restoring nothing.
-        return UNREADABLE;
-      }
+      Object typedIncoming = typedSourceConfig(incoming, false);
+      return new PipelineSources(
+          JsonUtils.valueToTree(typedIncoming),
+          JsonUtils.valueToTree(typedSourceConfig(stored, true)),
+          maskedSourceConfig(incoming),
+          maskedSourceConfig(stored),
+          passwordMapEntryPaths(typedIncoming));
     }
 
     boolean retargetsAStoredSecret() {
-      return this != UNREADABLE
-          && PIPELINE_SECRET_SOURCES.stream()
-              .anyMatch(
-                  source ->
-                      retargetsWithStoredSecret(
-                          incoming.path(source),
-                          stored.path(source),
-                          maskedIncoming.path(source),
-                          maskedStored.path(source),
-                          entriesUnder(passwordMapPaths, source)));
+      return SchemaFacts.passwordChildren(SourceConfig.class, "config").stream()
+          .anyMatch(
+              source ->
+                  retargetsWithStoredSecret(
+                      incoming.path(source),
+                      stored.path(source),
+                      maskedIncoming.path(source),
+                      maskedStored.path(source),
+                      entriesUnder(passwordMapPaths, source)));
     }
 
     private static Set<String> entriesUnder(Set<String> paths, String source) {
@@ -159,14 +141,6 @@ public final class ConnectionSecretsGuard {
     SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
     return subject.isAdmin() || subject.isBot();
   }
-
-  private static final List<String> PIPELINE_SECRET_SOURCES =
-      List.of(
-          "dbtConfigSource",
-          "storageMetadataConfigSource",
-          "serviceConnections",
-          "appConfig",
-          "appPrivateConfig");
 
   private static boolean retargetsWithStoredSecret(
       JsonNode incoming,
@@ -192,9 +166,13 @@ public final class ConnectionSecretsGuard {
         && keepsStoredSecret(maskedIncoming, incoming, stored);
   }
 
-  private static Object typedSourceConfig(IngestionPipeline pipeline) {
+  private static Object typedSourceConfig(IngestionPipeline pipeline, boolean forRead) {
     IngestionPipeline copy = serverConnectionFreeCopy(pipeline);
-    IngestionPipelineBuilder.addDefinedConfigForRead(copy);
+    if (forRead) {
+      IngestionPipelineBuilder.addDefinedConfigForRead(copy);
+    } else {
+      IngestionPipelineBuilder.addDefinedConfig(copy);
+    }
     return copy.getSourceConfig().getConfig();
   }
 
@@ -305,6 +283,15 @@ public final class ConnectionSecretsGuard {
   }
 
   private static void collectPasswordMapEntryPaths(Object node, String prefix, Set<String> paths) {
+    if (node instanceof SchemaBackedMap raw) {
+      raw.visitSecrets(
+          slot -> {
+            if (slot.mapEntry()) {
+              paths.add(prefix + String.join(".", slot.jsonPath()));
+            }
+          });
+      return;
+    }
     if (!Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(node))) {
       return;
     }

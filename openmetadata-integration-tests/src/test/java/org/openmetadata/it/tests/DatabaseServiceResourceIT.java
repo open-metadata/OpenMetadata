@@ -389,7 +389,7 @@ public class DatabaseServiceResourceIT
             .withSslConfig(Map.of("sslKey", "key-pem"));
     CreateDatabaseService request =
         new CreateDatabaseService()
-            .withName(ns.prefix("mysql_ssl_update"))
+            .withName(ns.prefix("mysql_ssl_update_" + patch))
             .withServiceType(DatabaseServiceType.Mysql)
             .withConnection(new DatabaseConnection().withConfig(conn));
     DatabaseService service = createEntity(request);

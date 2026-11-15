@@ -120,7 +120,16 @@ subprocess.run(
     check=True,
 )
 subprocess.run(
-    [sys.executable, "-m", "ruff", "format", "--isolated", "--no-respect-gitignore", "--quiet", str(output_root)],
+    [
+        sys.executable,
+        "-m",
+        "ruff",
+        "format",
+        "--isolated",
+        "--no-respect-gitignore",
+        "--quiet",
+        str(output_root),
+    ],
     check=True,
 )
 
@@ -249,7 +258,7 @@ if applied != 1:
 with Path(UNION_MODE_FILE).open("w", encoding=UTF_8) as f:
     f.write(content)
 
-# Preserve imports that were available when these branches were inline definitions.
+# Frozen until the next breaking model-package release; see ADR:2026-11-01-secret-nested-config-conversion-is-schema-driven.
 COMPATIBILITY_ALIASES = {
     "entity/services/connections/messaging/natsConnection.py": (
         "BasicAuth = basicAuth.NatsBasicAuth",

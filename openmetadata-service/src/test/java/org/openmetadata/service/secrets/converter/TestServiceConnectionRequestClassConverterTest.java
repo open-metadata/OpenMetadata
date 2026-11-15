@@ -18,9 +18,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
+import org.openmetadata.service.util.ReflectionUtil;
 import org.slf4j.LoggerFactory;
 
 class TestServiceConnectionRequestClassConverterTest {
@@ -120,7 +121,7 @@ class TestServiceConnectionRequestClassConverterTest {
     InvalidServiceConnectionException failure =
         assertThrows(InvalidServiceConnectionException.class, () -> converter.convert(request));
 
-    assertInstanceOf(ClassNotFoundException.class, failure.getCause());
+    assertInstanceOf(ClassNotFoundException.class, ExceptionUtils.getRootCause(failure));
     assertFalse(failure.getMessage().contains(SECRET));
   }
 
@@ -155,19 +156,16 @@ class TestServiceConnectionRequestClassConverterTest {
     "LLM, OpenAI, org.openmetadata.schema.type.LLMConnection",
     "Mcp, Mcp, org.openmetadata.schema.type.McpConnection"
   })
-  void selectsWrapperByServiceType(String serviceType, String connectionType, String wrapperName) {
-    TestServiceConnectionRequest converted =
-        (TestServiceConnectionRequest)
-            converter.convert(
-                Map.of(
-                    "serviceType", serviceType,
-                    "connectionType", connectionType,
-                    "connection", Map.of("config", Map.of("type", connectionType))));
-
-    assertEquals(wrapperName, converted.getConnection().getClass().getName());
-    ServiceConnectionEntityInterface wrapper =
-        assertInstanceOf(ServiceConnectionEntityInterface.class, converted.getConnection());
-    assertEquals(connectionType + "Connection", wrapper.getConfig().getClass().getSimpleName());
+  void selectsWrapperByServiceType(String serviceType, String connectionType, String wrapperName)
+      throws Exception {
+    Class<?> config =
+        ReflectionUtil.createConnectionConfigClass(
+            connectionType, ServiceType.fromValue(serviceType));
+    JsonSchemaRepository schemas = JsonSchemaRepository.getInstance();
+    Class<?> wrapper =
+        new SchemaClassConverter(schemas)
+            .connectionWrapper(schemas.schemaFor(TestServiceConnectionRequest.class), config);
+    assertEquals(wrapperName, wrapper.getName());
   }
 
   @Test
@@ -182,9 +180,10 @@ class TestServiceConnectionRequestClassConverterTest {
                         Map.of(
                             "config",
                             Map.of(
-                                "type", "Nats",
-                                "natsServers", "nats://localhost:4222",
-                                "authType", Map.of("username", "user", "password", SECRET)))));
+                                "natsServers",
+                                "nats://localhost:4222",
+                                "authType",
+                                Map.of("username", "user", "password", SECRET)))));
 
     MessagingConnection wrapper =
         assertInstanceOf(MessagingConnection.class, converted.getConnection());
@@ -205,8 +204,10 @@ class TestServiceConnectionRequestClassConverterTest {
                         Map.of(
                             "config",
                             Map.of(
-                                "type",
-                                "PowerBI",
+                                "clientId",
+                                "client",
+                                "tenantId",
+                                "tenant",
                                 "clientSecret",
                                 SECRET,
                                 "pbitFilesSource",

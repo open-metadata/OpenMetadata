@@ -26,17 +26,26 @@ public final class AuthenticationMechanismBuilder {
     // Final Class
   }
 
-  /** Build `AuthenticationMechanism` object with concrete class for the config which by definition it is a `Object`. */
   public static void addDefinedConfig(AuthenticationMechanism authMechanism) {
+    addDefinedConfig(authMechanism, false);
+  }
+
+  public static void addDefinedConfigForRead(AuthenticationMechanism authMechanism) {
+    addDefinedConfig(authMechanism, true);
+  }
+
+  private static void addDefinedConfig(AuthenticationMechanism authMechanism, boolean forRead) {
     if (authMechanism != null) {
-      if (JWT.equals(authMechanism.getAuthType())) {
+      Class<?> configClass =
+          JWT.equals(authMechanism.getAuthType())
+              ? JWTAuthMechanism.class
+              : SSO.equals(authMechanism.getAuthType()) ? SSOAuthMechanism.class : null;
+      if (configClass != null) {
+        var converter = ClassConverterFactory.getConverter(configClass);
         authMechanism.setConfig(
-            ClassConverterFactory.getConverter(JWTAuthMechanism.class)
-                .convert(authMechanism.getConfig()));
-      } else if (SSO.equals(authMechanism.getAuthType())) {
-        authMechanism.setConfig(
-            ClassConverterFactory.getConverter(SSOAuthMechanism.class)
-                .convert(authMechanism.getConfig()));
+            forRead
+                ? converter.convertForRead(authMechanism.getConfig())
+                : converter.convert(authMechanism.getConfig()));
       }
     }
   }

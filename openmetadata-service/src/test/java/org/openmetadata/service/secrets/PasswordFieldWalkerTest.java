@@ -16,9 +16,14 @@ package org.openmetadata.service.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.annotations.PasswordField;
+import org.openmetadata.schema.entity.services.ServiceType;
 
 class PasswordFieldWalkerTest {
 
@@ -60,6 +65,45 @@ class PasswordFieldWalkerTest {
     PasswordFieldWalker.walk(credentials, List.of(), (fieldPath, value) -> value);
 
     assertEquals("unchanged", credentials.getPassword());
+  }
+
+  @Test
+  void typedAndRawPasswordMapsVisitTheSameEntries() {
+    Map<String, Object> config =
+        Map.of(
+            "type",
+            "Kafka",
+            "bootstrapServers",
+            "localhost:9092",
+            "consumerConfig",
+            Map.of(
+                "sasl.password", "secret", "CustomToken", "dynamic-secret", "fetch.min.bytes", 1));
+    Map<String, Object> legacy = new HashMap<>(config);
+    legacy.put("obsolete", true);
+    List<List<String>> typedPaths = new ArrayList<>();
+    List<List<String>> rawPaths = new ArrayList<>();
+
+    PasswordFieldWalker.walk(
+        SecretsUtil.convert(config, "Kafka", "kafka", ServiceType.MESSAGING),
+        List.of(),
+        (path, secret) -> {
+          typedPaths.add(path);
+          return secret;
+        });
+    PasswordFieldWalker.walk(
+        SecretsUtil.convertForRead(legacy, "Kafka", ServiceType.MESSAGING),
+        List.of(),
+        (path, secret) -> {
+          rawPaths.add(path);
+          return secret;
+        });
+
+    assertEquals(
+        List.of(
+            List.of("consumerconfig", "additionalproperties", "CustomToken"),
+            List.of("consumerconfig", "saslpassword")),
+        typedPaths.stream().sorted(Comparator.comparing(Object::toString)).toList());
+    assertEquals(new HashSet<>(typedPaths), new HashSet<>(rawPaths));
   }
 
   public static final class Credentials {

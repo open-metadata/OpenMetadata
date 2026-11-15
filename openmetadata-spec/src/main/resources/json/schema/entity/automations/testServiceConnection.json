@@ -41,6 +41,12 @@
         },
         {
           "$ref": "../services/driveService.json#/definitions/driveConnection"
+        },
+        {
+          "$ref": "../services/llmService.json#/definitions/llmConnection"
+        },
+        {
+          "$ref": "../services/mcpService.json#/definitions/mcpConnection"
         }
       ]
     },

@@ -321,7 +321,10 @@ abstract class TestEntityMasker {
   }
 
   private MysqlConnection buildMysqlConnection() {
-    return new MysqlConnection().withAuthType(new basicAuth().withPassword(PASSWORD));
+    return new MysqlConnection()
+        .withHostPort("localhost:3306")
+        .withUsername("fixture-user")
+        .withAuthType(new basicAuth().withPassword(PASSWORD));
   }
 
   private GCSConfig buildGcsConfig() {

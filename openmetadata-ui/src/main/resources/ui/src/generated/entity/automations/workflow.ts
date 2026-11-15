@@ -485,6 +485,10 @@ export enum AuthProvider {
  * Regex to only include/exclude directories that match the pattern.
  *
  * Regex to only include/exclude files that match the pattern.
+ *
+ * Regex to only fetch models with names matching the pattern
+ *
+ * Regex to only fetch servers with names matching the pattern
  */
 export interface FilterPattern {
     /**
@@ -803,6 +807,10 @@ export interface TestServiceConnectionRequest {
  * Security Connection.
  *
  * Drive Connection.
+ *
+ * LLM Service Connection.
+ *
+ * MCP Service Connection.
  */
 export interface RequestConnection {
     config?: any[] | boolean | number | null | AirflowConnectionObject | string;
@@ -1097,6 +1105,25 @@ export interface RequestConnection {
  * SFTP Connection Config for secure file transfer protocol servers.
  *
  * Custom Drive Connection to build a source that is not supported.
+ *
+ * OpenAI LLM Service Connection Config
+ *
+ * Anthropic (Claude) LLM Service Connection Config
+ *
+ * Azure OpenAI Service Connection Config
+ *
+ * AWS Bedrock LLM Service Connection Config
+ *
+ * Google Cloud Vertex AI LLM Service Connection Config
+ *
+ * Ollama (Local LLM) Service Connection Config
+ *
+ * HuggingFace LLM Service Connection Config
+ *
+ * Custom LLM Service Connection Config for self-hosted or custom LLM providers
+ *
+ * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
+ * servers, their tools, resources, and prompts.
  */
 export interface AirflowConnectionObject {
     /**
@@ -1223,8 +1250,10 @@ export interface AirflowConnectionObject {
      * Azure Credentials
      *
      * GCP Credentials for Google Drive API
+     *
+     * GCP service account credentials JSON
      */
-    credentials?: PurpleGCPCredentials;
+    credentials?: CredentialsCredentials | string;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -1885,6 +1914,8 @@ export interface AirflowConnectionObject {
      * Authentication type to connect to Apache Ranger.
      *
      * Authentication method: username/password or SSH private key
+     *
+     * Type of authentication
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
@@ -1931,6 +1962,8 @@ export interface AirflowConnectionObject {
      * returned.
      *
      * Connection timeout in seconds.
+     *
+     * Timeout in seconds for connecting to MCP servers
      */
     connectionTimeout?: number | number;
     /**
@@ -2163,6 +2196,8 @@ export interface AirflowConnectionObject {
      * Airbyte API version.
      *
      * OpenMetadata server API version to use.
+     *
+     * Azure OpenAI API version
      */
     apiVersion?: string;
     /**
@@ -2408,6 +2443,16 @@ export interface AirflowConnectionObject {
      * Fivetran API Key.
      *
      * API Key for Snowplow Console API
+     *
+     * OpenAI API Key
+     *
+     * Anthropic API Key
+     *
+     * Azure OpenAI API Key
+     *
+     * HuggingFace API Token
+     *
+     * Optional API Key for authentication
      */
     apiKey?: string;
     /**
@@ -2811,6 +2856,8 @@ export interface AirflowConnectionObject {
     /**
      * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
      * credentials.
+     *
+     * GCP Project ID
      */
     projectId?: string;
     /**
@@ -2891,6 +2938,8 @@ export interface AirflowConnectionObject {
     stripAssetKeyPrefixLength?: number;
     /**
      * Connection Time Limit Between OM and Dagster Graphql API in second
+     *
+     * Request timeout in seconds
      */
     timeout?: number;
     /**
@@ -2979,8 +3028,10 @@ export interface AirflowConnectionObject {
     consoleUrl?: string;
     /**
      * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     *
+     * Default deployment name to use
      */
-    deployment?: SnowplowDeployment;
+    deployment?: string;
     /**
      * Anypoint Platform Environment ID. If not provided, the connector will discover all
      * accessible environments.
@@ -3033,6 +3084,8 @@ export interface AirflowConnectionObject {
     trackingUri?: string;
     /**
      * location/region of google cloud project
+     *
+     * GCP region/location (e.g., us-central1)
      */
     location?: string;
     /**
@@ -3300,6 +3353,99 @@ export interface AirflowConnectionObject {
      * extracted. Non-structured files like images, PDFs, videos, etc. will be skipped.
      */
     structuredDataFilesOnly?: boolean;
+    /**
+     * Optional custom base URL for OpenAI API (for compatible services)
+     *
+     * Optional custom base URL for Anthropic API
+     *
+     * Ollama server URL (e.g., http://localhost:11434)
+     *
+     * Optional custom base URL (for HuggingFace Inference Endpoints)
+     *
+     * Base URL for the custom LLM API endpoint
+     */
+    baseURL?: string;
+    /**
+     * Maximum number of retries for failed requests
+     */
+    maxRetries?: number;
+    /**
+     * Regex to only fetch models with names matching the pattern
+     */
+    modelFilterPattern?: FilterPattern;
+    /**
+     * Optional OpenAI Organization ID
+     */
+    organization?: string;
+    /**
+     * Azure OpenAI endpoint URL (e.g., https://your-resource-name.openai.azure.com/)
+     */
+    endpoint?: string;
+    /**
+     * Optional ARN of IAM role to assume
+     */
+    assumeRoleArn?: string;
+    /**
+     * AWS Access Key ID for authentication
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Secret Access Key for authentication
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * Optional AWS Session Token for temporary credentials
+     */
+    awsSessionToken?: string;
+    /**
+     * AWS region where Bedrock is deployed (e.g., us-east-1)
+     */
+    region?: string;
+    /**
+     * Additional custom headers for API requests
+     */
+    headers?: { [key: string]: string };
+    /**
+     * Whether to verify SSL certificates
+     */
+    verifySsl?: boolean;
+    /**
+     * Paths to MCP configuration files to scan for server definitions. Supports Claude Desktop
+     * config, VS Code settings, etc.
+     */
+    configFilePaths?: string[];
+    /**
+     * How to discover MCP servers
+     */
+    discoveryMethod?: DiscoveryMethod;
+    /**
+     * Whether to fetch and catalog prompts from MCP servers
+     */
+    fetchPrompts?: boolean;
+    /**
+     * Whether to fetch and catalog resources from MCP servers
+     */
+    fetchResources?: boolean;
+    /**
+     * Whether to fetch and catalog tools from MCP servers
+     */
+    fetchTools?: boolean;
+    /**
+     * Timeout in seconds for MCP server initialization handshake
+     */
+    initializationTimeout?: number;
+    /**
+     * URL of MCP registry to query for server discovery (when discoveryMethod is Registry)
+     */
+    registryUrl?: string;
+    /**
+     * Regex to only fetch servers with names matching the pattern
+     */
+    serverFilterPattern?: FilterPattern;
+    /**
+     * List of MCP servers to connect to directly (when discoveryMethod is DirectConnection)
+     */
+    servers?: MCPServerConfig[];
     [property: string]: any;
 }
 
@@ -3986,9 +4132,15 @@ export enum CloudRegion {
  * Authentication type to connect to SAP SuccessFactors.
  *
  * Database Authentication types not requiring config.
+ *
+ * Type of authentication
  */
 export enum NoConfigAuthenticationTypes {
+    APIKey = "APIKey",
     BasicAuth = "BasicAuth",
+    Bearer = "Bearer",
+    Custom = "Custom",
+    None = "None",
     OAuth2 = "OAuth2",
     OAuth2Credentials = "OAuth2Credentials",
 }
@@ -4886,7 +5038,7 @@ export interface ConsumerConfig {
  *
  * Available sources to fetch metadata.
  */
-export interface PurpleGCPCredentials {
+export interface CredentialsCredentials {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -5037,13 +5189,14 @@ export enum MssqlType {
 }
 
 /**
- * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ * How to discover MCP servers
  *
- * Snowplow deployment type
+ * Method to discover MCP servers
  */
-export enum SnowplowDeployment {
-    Bdp = "BDP",
-    Community = "Community",
+export enum DiscoveryMethod {
+    ConfigFile = "ConfigFile",
+    DirectConnection = "DirectConnection",
+    Registry = "Registry",
 }
 
 /**
@@ -5583,6 +5736,50 @@ export enum SearchIndexMappingLanguage {
     Zh = "ZH",
 }
 
+/**
+ * Configuration for a single MCP server to connect to directly
+ */
+export interface MCPServerConfig {
+    /**
+     * API key for authenticated MCP servers
+     */
+    apiKey?: string;
+    /**
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
+     */
+    args?: string[];
+    /**
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
+     */
+    command?: string;
+    /**
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
+     */
+    env?: { [key: string]: string };
+    /**
+     * Name to assign to this MCP server
+     */
+    name:       string;
+    transport?: TransportType;
+    /**
+     * URL for SSE or StreamableHTTP transport
+     */
+    url?: string;
+    [property: string]: any;
+}
+
+/**
+ * MCP transport protocol type
+ */
+export enum TransportType {
+    SSE = "SSE",
+    Stdio = "Stdio",
+    StreamableHTTP = "StreamableHTTP",
+}
+
 export enum SpaceType {
     Data = "Data",
     Managed = "Managed",
@@ -5803,6 +6000,8 @@ export enum TokenType {
  * SFTP service type
  *
  * Custom Drive service type
+ *
+ * Service type
  */
 export enum AirflowConnectionType {
     Adls = "ADLS",
@@ -5811,9 +6010,12 @@ export enum AirflowConnectionType {
     Alation = "Alation",
     AlationSink = "AlationSink",
     Amundsen = "Amundsen",
+    Anthropic = "Anthropic",
     Athena = "Athena",
     Atlas = "Atlas",
+    AzureOpenAI = "AzureOpenAI",
     AzureSQL = "AzureSQL",
+    Bedrock = "Bedrock",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
     BurstIQ = "BurstIQ",
@@ -5826,6 +6028,7 @@ export enum AirflowConnectionType {
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
     CustomDrive = "CustomDrive",
+    CustomLLM = "CustomLLM",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -5861,6 +6064,7 @@ export enum AirflowConnectionType {
     Greenplum = "Greenplum",
     Hex = "Hex",
     Hive = "Hive",
+    HuggingFace = "HuggingFace",
     Impala = "Impala",
     Informix = "Informix",
     Iomete = "Iomete",
@@ -5870,6 +6074,7 @@ export enum AirflowConnectionType {
     KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
+    MCP = "Mcp",
     MariaDB = "MariaDB",
     Matillion = "Matillion",
     Metabase = "Metabase",
@@ -5887,7 +6092,9 @@ export enum AirflowConnectionType {
     Nats = "Nats",
     Neo4J = "Neo4j",
     Nifi = "Nifi",
+    Ollama = "Ollama",
     Omni = "Omni",
+    OpenAI = "OpenAI",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
     OpenSearch = "OpenSearch",

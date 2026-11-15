@@ -1,9 +1,9 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets); v7 2026-11-14 (schema-derived sources, positional pairing, lossless reads)
 - **Deciders:** backend security
-- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineBuilderTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`
+- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineResourceIT.retargetingOneServiceConnectionPreservesTheOtherConnectionsSecret`; `IngestionPipelineBuilderTest`; `SecretConversionBoundaryTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
 
 ## Context
@@ -53,6 +53,8 @@ and the secrets manager reach their credentials at all.
 
 ## Amendment (v4, 2026-10-30)
 
+The read and migration behavior below is superseded by v7.
+
 Typing is what lets the masker and the secrets manager reach a storage manifest's credentials, so a
 manifest source that matches none of the source schemas fails closed instead of staying a map:
 - **Written:** the create or update is refused with 400.
@@ -93,3 +95,28 @@ password fields, not map entries, so a typed value at one is a re-entered secret
 accepted: rotating `sasl.oauthbearer.client.secret` no longer asks for the connection's other
 secrets. Entries the schema does not declare keep the v5 rule. Pinned by
 `ConnectionSecretsGuardTest.rotatingADeclaredSecretInsideTheConfigMapKeepsTheOthersMasked`.
+
+## Amendment (v7, 2026-11-14)
+
+The pipeline guard derives credential sources from the schema of `sourceConfig.config`. Each
+immediate property whose schema reaches `format: password` is a source. This includes
+`dbtConfigSource`, `storageMetadataConfigSource`, `serviceConnections`, `appConfig`, and
+`appPrivateConfig`. New credential sources require no Java field-name list. Other pipeline settings
+remain outside the comparison.
+
+A pipeline source that is a list, such as `serviceConnections`, is compared entry by entry against
+the stored entry at the same position. Only a retargeted entry's secrets must be re-entered.
+Reordering, removing, or adding entries changes those pairings and counts as retargeting for an
+entry that keeps a stored secret. Removing the final entry does not retarget unchanged preceding
+entries. An added entry cannot inherit another entry's masked secret.
+
+This pairing must match the position keys `ReflectionUtil.getCollectionElementKeys` uses for
+unnamed collection elements. `ServiceConnections` has no `getName()` method. If its identity changes,
+the masker and guard must change together. Arrays nested inside one connection, such as MCP
+`servers`, remain part of that connection's retarget comparison.
+
+Malformed stored sources remain present on reads. Their schema-declared secrets are masked across
+all union branches without discarding undeclared fields or requiring a branch to validate. New
+writes remain strict. Secrets-manager migration leaves an invalid row unchanged when strict
+conversion fails before encryption. It no longer drops a manifest source to make the row writable.
+See ADR:2026-11-01-secret-nested-config-conversion-is-schema-driven for read and migration behavior.

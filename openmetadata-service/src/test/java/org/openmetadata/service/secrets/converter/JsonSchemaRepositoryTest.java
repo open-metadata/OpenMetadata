@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -36,12 +38,24 @@ class JsonSchemaRepositoryTest {
     assertTrue(unresolved.isEmpty(), "No generated class found for " + unresolved);
   }
 
-  /** Its branch holds no secret, so the config is kept as given. */
+  /** Nonsecret branches also use the actual generated class identity. */
   @Test
   void anMlModelMetadataConfigIsAccepted() {
     Map<String, Object> config = Map.of("type", "MlModelMetadata");
 
-    assertSame(config, ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
+    assertNotNull(ClassConverterFactory.convertProperty(SourceConfig.class, "config", config));
+  }
+
+  @Test
+  void failedConstructionDoesNotPoisonLaterInitialization() {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                new JsonSchemaRepository(
+                    Map.of(), Map.of("json/schema/missing.json#", "missing.Type")));
+    assertTrue(failure.getMessage().contains("json/schema/missing.json"));
+    assertEquals(SCHEMAS, JsonSchemaRepository.getInstance());
   }
 
   private static boolean generatesARootClass(String path) {

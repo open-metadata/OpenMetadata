@@ -18,8 +18,8 @@ import org.jsonschema2pojo.CompositeAnnotator;
 public class OpenMetadataAnnotator extends CompositeAnnotator {
 
   public OpenMetadataAnnotator() {
-    // we can add multiple annotators
     super(
+        new SchemaLocationAnnotator(),
         new ExposedAnnotator(),
         new MaskedAnnotator(),
         new PasswordAnnotator(),
