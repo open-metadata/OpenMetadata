@@ -1,7 +1,7 @@
 # Data mode's asset rows and legend labels are styled at the call site until core ships a list-row button and text colours
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-14 (rows whose container paints the hover drop the button's own hover fill)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-14 (rows whose container paints the hover drop the button's own hover fill) · v3 2026-11-15 (moved to Collate with the Studio UI)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** reviewer
 - **Related:** ADR:2026-10-11-migrated-antd-components-adopt-core-styling, ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site, ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox, open-metadata/OpenMetadata#36714, open-metadata/OpenMetadata#36724, open-metadata/OpenMetadata#37798
@@ -47,3 +47,5 @@ dark `primary_hover` step is translucent. The rows are the native Data canvas as
 and the concept inspector's relation rows (`OntologyConceptInspector.tsx`). Their `Button` may set
 `tw:hover:bg-transparent` from the call site, and nothing else on these buttons changes. When core
 ships the list-row variant, these buttons move to it with the rest.
+
+v3 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate); this rule now governs Collate's copy of that code.
