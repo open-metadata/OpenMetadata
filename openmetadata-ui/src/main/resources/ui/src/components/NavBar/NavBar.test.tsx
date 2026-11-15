@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
@@ -18,6 +19,7 @@ import {
 } from '../../constants/constants';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
+import { getDomainDisplayName } from '../../utils/EntityNameUtils';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import DomainSelect from '../common/DomainSelect/DomainSelect';
 import NavBarComponent from './NavBar';
@@ -290,6 +292,29 @@ describe('Test NavBar Component', () => {
     ).not.toHaveProperty('isClearable', false);
 
     domainStore.mockImplementation(defaultStore);
+  });
+
+  it('shows the full active domain name in a tooltip on the domain picker', async () => {
+    const longName = 'A very long domain name that the navbar truncates';
+    (getDomainDisplayName as jest.Mock).mockReturnValue(longName);
+
+    render(<NavBarComponent />);
+    const picker = await screen.findByTestId('domain-dropdown');
+
+    // The trigger truncates its own label; a root-level truncate did nothing.
+    expect(
+      (DomainSelect as unknown as jest.Mock).mock.calls.at(-1)[0]
+        .triggerClassName
+    ).not.toContain('tw:truncate');
+
+    // react-aria opens tooltips only after a real pointer move.
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    fireEvent.mouseMove(document);
+    await user.hover(picker);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(longName);
+
+    (getDomainDisplayName as jest.Mock).mockReturnValue('All Domains');
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {

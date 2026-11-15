@@ -488,28 +488,32 @@ const NavBar = () => {
         label={domainDisplayName}
         restrictedDomains={restrictedDomains}
         selectedDomain={activeDomainEntityRef}
-        triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
+        triggerClassName="tw:h-10 tw:max-w-[15vw]"
         triggerVariant="button"
         onUpdate={handleDomainChange}
       />
     </CoreTooltip>
   ) : (
     // A domain-restricted user with several domains also gets "All Domains". It only removes the
-    // filter; what they can see stays with their role.
-    <DomainSelect
-      bordered
-      showAllDomains
-      className="tw:self-center"
-      data-testid="domain-dropdown"
-      isOpen={isDomainDropdownOpen}
-      label={domainDisplayName}
-      restrictedDomains={restrictedDomains}
-      selectedDomain={activeDomainEntityRef}
-      triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
-      triggerVariant="button"
-      onOpenChange={setIsDomainDropdownOpen}
-      onUpdate={handleDomainChange}
-    />
+    // filter; what they can see stays with their role. The tooltip carries a truncated full name.
+    <CoreTooltip
+      excludeTriggerFromTabOrder
+      title={domainDisplayName}
+      triggerClassName="tw:flex tw:self-center">
+      <DomainSelect
+        bordered
+        showAllDomains
+        data-testid="domain-dropdown"
+        isOpen={isDomainDropdownOpen}
+        label={domainDisplayName}
+        restrictedDomains={restrictedDomains}
+        selectedDomain={activeDomainEntityRef}
+        triggerClassName="tw:h-10 tw:max-w-[15vw]"
+        triggerVariant="button"
+        onOpenChange={setIsDomainDropdownOpen}
+        onUpdate={handleDomainChange}
+      />
+    </CoreTooltip>
   );
 
   const handleLanguageChange = useCallback(

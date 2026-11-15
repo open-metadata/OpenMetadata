@@ -361,6 +361,25 @@ describe('TreeSelect', () => {
     );
   });
 
+  it('truncates a long single-select button label with an ellipsis', async () => {
+    const fetchData = fetchNodes();
+
+    render(
+      <TreeSelect
+        data-testid="trigger"
+        fetchData={fetchData}
+        label="A very long domain name"
+        triggerVariant="button"
+      />
+    );
+
+    await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+    expect(
+      screen.getByText('A very long domain name').closest('[data-text]')
+    ).toHaveClass('tw:truncate');
+  });
+
   it('fetches on mount for the button variant, whose badge needs the roots', async () => {
     const fetchData = fetchNodes();
 
