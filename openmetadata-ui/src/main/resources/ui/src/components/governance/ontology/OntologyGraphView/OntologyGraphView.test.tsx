@@ -1128,107 +1128,115 @@ describe('OntologyGraphView', () => {
     );
   });
 
-  it('marks the clashing concept on the graph, lists the clash and, in Edit, resolves it from the concept drawer', async () => {
-    const customerNeverParty: OntologyAxiom = {
-      ...customerIsParty,
-      axiomType: AxiomType.DisjointWith,
-      displayName: 'Customer can never be a Party',
-      id: 'axiom-customer-never-party',
-      name: 'CustomerNeverParty',
-      updatedAt: Date.UTC(2026, 9, 20),
-      updatedBy: 'karthick',
-    };
-    const clashModel = {
-      ...model,
-      axioms: [customerIsParty, customerNeverParty],
-    };
-    const clashRelations = getModelRelations(clashModel);
-    mockUseOntologyStudioModel.mockReturnValue({
-      ...modelResult,
-      graph: buildOntologyStudioGraph(clashModel, clashRelations),
-      model: clashModel,
-      relations: clashRelations,
-    });
-    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
-      valid: false,
-      violations: [
-        {
-          code: Code.DisjointClash,
-          conceptIds: ['concept-customer', 'concept-party'],
-          message: 'Customer is disjoint with its ancestor Party',
-          path: '/expressions',
-          severity: Severity.Error,
-        },
-      ],
-    });
-    render(
-      <OntologyGraphView
-        isEditing
-        ontology={ontology}
-        surface="graph"
-        onRequestGraphSurface={jest.fn()}
-      />
-    );
+  it.each([
+    ['Edit', true],
+    ['View', false],
+  ])(
+    'marks the clashing concept on the graph, lists the clash and, in %s, resolves it from the concept drawer',
+    async (_mode, isEditing) => {
+      const customerNeverParty: OntologyAxiom = {
+        ...customerIsParty,
+        axiomType: AxiomType.DisjointWith,
+        displayName: 'Customer can never be a Party',
+        id: 'axiom-customer-never-party',
+        name: 'CustomerNeverParty',
+        updatedAt: Date.UTC(2026, 9, 20),
+        updatedBy: 'karthick',
+      };
+      const clashModel = {
+        ...model,
+        axioms: [customerIsParty, customerNeverParty],
+      };
+      const clashRelations = getModelRelations(clashModel);
+      mockUseOntologyStudioModel.mockReturnValue({
+        ...modelResult,
+        graph: buildOntologyStudioGraph(clashModel, clashRelations),
+        model: clashModel,
+        relations: clashRelations,
+      });
+      (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+        valid: false,
+        violations: [
+          {
+            code: Code.DisjointClash,
+            conceptIds: ['concept-customer', 'concept-party'],
+            message: 'Customer is disjoint with its ancestor Party',
+            path: '/expressions',
+            severity: Severity.Error,
+          },
+        ],
+      });
+      render(
+        <OntologyGraphView
+          isEditing={isEditing}
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      );
 
-    const row = await screen.findByTestId('ontology-conflict-row');
+      const row = await screen.findByTestId('ontology-conflict-row');
 
-    expect(row).toHaveTextContent(
-      'Customer is disjoint with its ancestor Party'
-    );
-    expect(within(row).getByText('Customer').tagName).toBe('STRONG');
-    expect(within(row).getByText('Party').tagName).toBe('STRONG');
-    expect(
-      within(row).getByTestId('ontology-conflict-provenance')
-    ).toHaveTextContent('message.ontology-saved-by-on');
-    expect(screen.getByTestId('ontology-conflicts-count')).toHaveTextContent(
-      '1'
-    );
+      expect(row).toHaveTextContent(
+        'Customer is disjoint with its ancestor Party'
+      );
+      expect(within(row).getByText('Customer').tagName).toBe('STRONG');
+      expect(within(row).getByText('Party').tagName).toBe('STRONG');
+      expect(
+        within(row).getByTestId('ontology-conflict-provenance')
+      ).toHaveTextContent('message.ontology-saved-by-on');
+      expect(screen.getByTestId('ontology-conflicts-count')).toHaveTextContent(
+        '1'
+      );
 
-    await waitFor(() => {
-      const props = mockGraphProps.mock.calls.at(-1)?.[0];
+      await waitFor(() => {
+        const props = mockGraphProps.mock.calls.at(-1)?.[0];
+
+        expect(
+          props.nodes
+            .filter((node: { hasConflict?: boolean }) => node.hasConflict)
+            .map((node: { id: string }) => node.id)
+        ).toEqual(['concept-customer']);
+        expect([...props.conflictEdgeKeys]).toHaveLength(1);
+      });
+
+      fireEvent.click(within(row).getByTestId('ontology-conflict-resolve'));
+
+      const inspector = screen.getByTestId('ontology-concept-inspector');
 
       expect(
-        props.nodes
-          .filter((node: { hasConflict?: boolean }) => node.hasConflict)
-          .map((node: { id: string }) => node.id)
-      ).toEqual(['concept-customer']);
-      expect([...props.conflictEdgeKeys]).toHaveLength(1);
-    });
+        within(inspector).getByRole('heading', { name: 'Customer' })
+      ).toBeVisible();
+      expect(
+        within(inspector).getByTestId('ontology-concept-conflicts-toggle')
+      ).toHaveAttribute('aria-expanded', 'true');
+      expect(
+        within(inspector).getAllByTestId('ontology-concept-conflict-part')
+      ).toHaveLength(2);
+      expect(
+        within(inspector).getAllByTestId(
+          'ontology-concept-relation-conflict-dot'
+        )
+      ).toHaveLength(2);
 
-    fireEvent.click(within(row).getByTestId('ontology-conflict-resolve'));
+      const [, rulePart] = within(inspector).getAllByTestId(
+        'ontology-concept-conflict-part'
+      );
 
-    const inspector = screen.getByTestId('ontology-concept-inspector');
+      expect(rulePart).toHaveTextContent('message.ontology-conflict-never-be');
 
-    expect(
-      within(inspector).getByRole('heading', { name: 'Customer' })
-    ).toBeVisible();
-    expect(
-      within(inspector).getByTestId('ontology-concept-conflicts-toggle')
-    ).toHaveAttribute('aria-expanded', 'true');
-    expect(
-      within(inspector).getAllByTestId('ontology-concept-conflict-part')
-    ).toHaveLength(2);
-    expect(
-      within(inspector).getAllByTestId('ontology-concept-relation-conflict-dot')
-    ).toHaveLength(2);
+      fireEvent.click(
+        within(rulePart).getByTestId('ontology-concept-conflict-remove')
+      );
 
-    const [, rulePart] = within(inspector).getAllByTestId(
-      'ontology-concept-conflict-part'
-    );
-
-    expect(rulePart).toHaveTextContent('message.ontology-conflict-never-be');
-
-    fireEvent.click(
-      within(rulePart).getByTestId('ontology-concept-conflict-remove')
-    );
-
-    await waitFor(() =>
-      expect(softDeleteOntologyDefinition).toHaveBeenCalledWith(
-        'axiom',
-        customerNeverParty.id
-      )
-    );
-  });
+      await waitFor(() =>
+        expect(softDeleteOntologyDefinition).toHaveBeenCalledWith(
+          'axiom',
+          customerNeverParty.id
+        )
+      );
+    }
+  );
 
   it('opens a clashing concept with its conflict box collapsed and shows the clash on the graph', async () => {
     (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
@@ -1413,6 +1421,83 @@ describe('OntologyGraphView', () => {
     );
 
     expect(createOntologyProperty).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'detaches a shared property from the concept with one patch',
+      [party.iri, customer.iri],
+    ],
+    ['deletes a property only this concept declares', [customer.iri]],
+  ])('%s', async (_name, domain) => {
+    const note: OntologyProperty = {
+      domain,
+      fullyQualifiedName: 'RetailCommerce.note',
+      id: 'property-note',
+      iri: 'urn:retail:note',
+      kind: Kind.Data,
+      name: 'note',
+      ontology: { id: ontology.id, type: 'ontology' },
+      version: 0.3,
+    };
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...modelResult.model,
+        properties: [...modelResult.model.properties, note],
+      },
+    });
+    (patchOntologyProperty as jest.Mock).mockResolvedValue(note);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    const remove = screen
+      .getAllByTestId('ontology-concept-property-remove')
+      .find((button) =>
+        button.parentElement?.parentElement?.textContent?.startsWith('note')
+      );
+    await act(async () => {
+      fireEvent.click(remove as HTMLElement);
+    });
+
+    if (domain.length > 1) {
+      expect(patchOntologyProperty).toHaveBeenCalledWith('property-note', [
+        { op: 'test', path: '/version', value: 0.3 },
+        { op: 'remove', path: '/domain/1' },
+      ]);
+      expect(softDeleteOntologyDefinition).not.toHaveBeenCalled();
+    } else {
+      expect(softDeleteOntologyDefinition).toHaveBeenCalledWith(
+        'property',
+        'property-note'
+      );
+      expect(patchOntologyProperty).not.toHaveBeenCalled();
+    }
+  });
+
+  it('offers no property removal outside Edit', async () => {
+    render(
+      <OntologyGraphView
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+
+    expect(
+      screen.queryByTestId('ontology-concept-property-remove')
+    ).not.toBeInTheDocument();
   });
 
   it('uses the same inspector from the hierarchy tree', () => {

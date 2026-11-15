@@ -2134,16 +2134,21 @@ const OntologyExplorerContent: React.FC = () => {
   // Full screen only helps a graph; the tree, the Ontology tab and an empty or failed canvas skip
   // it, though a canvas already in full screen keeps its way out.
   function showsFullScreenToggle() {
+    if (mode === 'query') {
+      return false;
+    }
     const surface = mode === 'view' ? viewSurface : editSurface;
 
     return isFullScreen || (surface === 'graph' && !isAggregateCanvasEmpty());
   }
 
   // The floating toolbar along the canvas bottom: version, search and full screen.
+  // Query keeps only the version switch there, so it sits where View and Edit put it.
   function renderCanvasToolbar() {
     const isEmpty =
       !selectedOntology && isAggregateCanvasEmpty() && !isFullScreen;
-    if ((mode !== 'view' && mode !== 'edit') || isEmpty) {
+    const hasQueryChip = mode === 'query' && Boolean(selectedOntology);
+    if (!(['view', 'edit'].includes(mode) || hasQueryChip) || isEmpty) {
       return null;
     }
     const fullScreenLabel = t(
@@ -2216,11 +2221,8 @@ const OntologyExplorerContent: React.FC = () => {
             ) : null}
           </Box>
         }
-        onSurfaceChange={(surface) =>
-          guard(() => handleSubModeChange(surface))
-        }>
-        {mode === 'query' ? renderVersionChip() : null}
-      </OntologyStudioSubBar>
+        onSurfaceChange={(surface) => guard(() => handleSubModeChange(surface))}
+      />
     );
   }
 

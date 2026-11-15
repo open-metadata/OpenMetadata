@@ -49,6 +49,7 @@ import {
   getOntologyReleaseReview,
   getOntologyReleaseReviews,
 } from '../../../../rest/ontologyAPI';
+import { getTask } from '../../../../rest/tasksAPI';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -401,6 +402,21 @@ const OntologyTasksDrawer = ({
     }
   };
   const queueTasks = (queue.data?.data ?? []).map(reviewAsTask);
+  // "Open task" can open a review outside this queue (decided, or neither assigned
+  // to nor created by the viewer); it still needs a row, or the list contradicts the pane.
+  const isOpenedTaskListed = queueTasks.some((task) => task.id === taskId);
+  const openedTask = useQuery({
+    queryKey: ['ontology-opened-task', taskId],
+    enabled: [isOpen, taskId, queue.isSuccess, !isOpenedTaskListed].every(
+      Boolean
+    ),
+    retry: false,
+    gcTime: 0,
+    queryFn: async () =>
+      (await getTask(taskId ?? '', { fields: 'assignees,createdBy,about' }))
+        .data,
+  });
+  const unlistedTask = isOpenedTaskListed ? undefined : openedTask.data;
   // As in the Inbox, an open list with nothing selected shows its first task.
   const firstTaskId = queueTasks[0]?.id;
   useEffect(() => {
@@ -408,26 +424,89 @@ const OntologyTasksDrawer = ({
       onTaskChange(firstTaskId);
     }
   }, [isOpen, taskId, firstTaskId, queue.isFetching, onTaskChange]);
+  const renderGroupHeader = (label: string, count: number) => (
+    <Box
+      align="center"
+      className="tw:px-1"
+      data-testid="ontology-tasks-group"
+      gap={2}>
+      <span
+        aria-hidden
+        className="tw:size-1.5 tw:rounded-full tw:bg-brand-solid"
+      />
+      <Typography
+        className="tw:uppercase tw:tracking-wide"
+        color="secondary"
+        size="text-xs"
+        weight="semibold">
+        {label}
+      </Typography>
+      <Typography color="secondary" size="text-xs">
+        {count}
+      </Typography>
+    </Box>
+  );
+  // An opened task that is still open joins the Pending approval group (one more in its
+  // count); a decided one gets its own Closed group, so no two groups share a name.
+  const isUnlistedOpen = unlistedTask?.status === TaskStatus.Open;
+  const renderUnlistedRow = () =>
+    unlistedTask ? (
+      <div data-testid="ontology-tasks-opened-row">
+        <InboxTaskListItem
+          isActive
+          task={unlistedTask}
+          onClick={(selected) => onTaskChange(selected.id)}
+        />
+      </div>
+    ) : null;
+  const renderClosedTask = () =>
+    unlistedTask && !isUnlistedOpen ? (
+      <Box data-testid="ontology-tasks-opened" direction="col" gap={3}>
+        {renderGroupHeader(t('label.closed'), 1)}
+        {renderUnlistedRow()}
+      </Box>
+    ) : null;
+  const renderEmptyQueue = () => {
+    if (unlistedTask) {
+      return isUnlistedOpen ? (
+        <>
+          {renderGroupHeader(t('label.pending-approval'), 1)}
+          {renderUnlistedRow()}
+        </>
+      ) : (
+        renderClosedTask()
+      );
+    }
+
+    return (
+      <div
+        className="tw:relative tw:min-h-60"
+        data-testid="ontology-tasks-empty">
+        <NoDataPlaceholder
+          description={t(
+            view === 'assigned'
+              ? 'message.ontology-tasks-assigned-empty'
+              : 'message.ontology-tasks-created-empty'
+          )}
+          title={t('message.ontology-no-tasks-yet')}
+        />
+      </div>
+    );
+  };
+  const pendingCount = (visibleCount: number) => {
+    const listed = search.trim()
+      ? visibleCount
+      : queue.data?.paging?.total ?? visibleCount;
+
+    return listed + (isUnlistedOpen ? 1 : 0);
+  };
   const renderQueueList = () => {
     const entries = queue.data?.data ?? [];
     if (queue.isPending || queue.isError) {
       return null;
     }
     if (!entries.length) {
-      return (
-        <div
-          className="tw:relative tw:min-h-60"
-          data-testid="ontology-tasks-empty">
-          <NoDataPlaceholder
-            description={t(
-              view === 'assigned'
-                ? 'message.ontology-tasks-assigned-empty'
-                : 'message.ontology-tasks-created-empty'
-            )}
-            title={t('message.ontology-no-tasks-yet')}
-          />
-        </div>
-      );
+      return renderEmptyQueue();
     }
     const visible = filterReviews(entries, search);
     if (!visible.length) {
@@ -440,28 +519,12 @@ const OntologyTasksDrawer = ({
 
     return (
       <>
-        <Box
-          align="center"
-          className="tw:px-1"
-          data-testid="ontology-tasks-group"
-          gap={2}>
-          <span
-            aria-hidden
-            className="tw:size-1.5 tw:rounded-full tw:bg-brand-solid"
-          />
-          <Typography
-            className="tw:uppercase tw:tracking-wide"
-            color="secondary"
-            size="text-xs"
-            weight="semibold">
-            {t('label.pending-approval')}
-          </Typography>
-          <Typography color="secondary" size="text-xs">
-            {search.trim()
-              ? visible.length
-              : queue.data?.paging?.total ?? visible.length}
-          </Typography>
-        </Box>
+        {renderClosedTask()}
+        {renderGroupHeader(
+          t('label.pending-approval'),
+          pendingCount(visible.length)
+        )}
+        {isUnlistedOpen ? renderUnlistedRow() : null}
         {visible.map((entry) => (
           <InboxTaskListItem
             isActive={entry.task.id === taskId}

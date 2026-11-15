@@ -220,57 +220,6 @@ export const AxiomPreview = ({ sentence }: { sentence: string }) => {
   );
 };
 
-/** A constraint as View mode shows it: how it reads, its type and description, nothing editable. */
-export const AxiomReadOnly = ({
-  axiom,
-  sentence,
-}: {
-  axiom: OntologyAxiom;
-  sentence: string;
-}) => {
-  const { t } = useTranslation();
-  const facts = [
-    {
-      key: 'type',
-      label: t('label.type'),
-      value: axiomTypeLabel(axiom.axiomType, t),
-    },
-    {
-      key: 'name',
-      label: t('label.name'),
-      value: axiom.displayName || axiom.name,
-    },
-    {
-      key: 'description',
-      label: t('label.description'),
-      value: axiom.description,
-    },
-  ].filter((fact) => fact.value);
-
-  return (
-    <section
-      className="tw:flex tw:flex-col tw:gap-4.5"
-      data-testid="ontology-axiom-read-only">
-      <AxiomPreview sentence={sentence} />
-      <dl className="tw:m-0 tw:flex tw:flex-col tw:gap-3">
-        {facts.map((fact) => (
-          <div className="tw:flex tw:flex-col tw:gap-1" key={fact.key}>
-            <Typography as="dt" color="secondary" size="text-xs">
-              {fact.label}
-            </Typography>
-            <Typography
-              as="dd"
-              className="tw:m-0 tw:whitespace-pre-wrap tw:break-words"
-              size="text-sm">
-              {fact.value}
-            </Typography>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-};
-
 export const axiomFormValues = (
   axiom?: OntologyAxiom
 ): OntologyAxiomFormState => {
@@ -300,11 +249,13 @@ export const axiomFormValues = (
 
 export const AssertionFields = ({
   form,
+  isDisabled,
   values,
   references,
   problems,
 }: {
   form: UseFormReturn<OntologyAxiomFormState>;
+  isDisabled?: boolean;
   values: OntologyAxiomFormState;
   references?: OntologyReferenceOptions;
   problems: RoutedAxiomProblems['byField'];
@@ -325,6 +276,7 @@ export const AssertionFields = ({
         <OntologyIriInput
           isRequired
           error={problems.property}
+          isDisabled={isDisabled}
           label={t('label.property')}
           options={references?.properties.filter(
             (property) => property.kind === propertyKind
@@ -340,6 +292,7 @@ export const AssertionFields = ({
         <Input
           isRequired
           hint={problems.other}
+          isDisabled={isDisabled}
           isInvalid={Boolean(problems.other)}
           label={`${t('label.target')} ${t('label.concept-iri')}`}
           value={values.targetIri}
@@ -351,6 +304,7 @@ export const AssertionFields = ({
       {values.axiomType === AxiomType.DataPropertyAssertion ? (
         <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2">
           <Input
+            isDisabled={isDisabled}
             isRequired={false}
             label={t('label.value')}
             value={values.literalValue}
@@ -361,6 +315,7 @@ export const AssertionFields = ({
             }
           />
           <OntologyIriInput
+            isDisabled={isDisabled}
             label={t('label.data-type')}
             options={ONTOLOGY_DATATYPE_OPTIONS}
             value={values.literalDatatypeIri}
@@ -377,11 +332,13 @@ export const AssertionFields = ({
 };
 
 export const QuickRuleFields = ({
+  isDisabled,
   rule,
   references,
   problems,
   onChange,
 }: {
+  isDisabled?: boolean;
   rule: QuickRule;
   references?: OntologyReferenceOptions;
   problems: RoutedAxiomProblems['byField'];
@@ -402,6 +359,7 @@ export const QuickRuleFields = ({
           hideLabel
           isRequired
           error={problems.subject}
+          isDisabled={isDisabled}
           label={t('label.subject')}
           options={references?.concepts}
           testId="ontology-rule-subject"
@@ -414,6 +372,7 @@ export const QuickRuleFields = ({
         label={t('label.rule')}>
         <Select
           aria-label={t('label.rule')}
+          isDisabled={isDisabled}
           items={Object.values(QuickRuleKind).map((kind) => ({
             id: kind,
             label: t(QUICK_RULE_LABELS[kind]),
@@ -440,6 +399,7 @@ export const QuickRuleFields = ({
             label={t('label.quantity')}>
             <Select
               aria-label={t('label.quantity')}
+              isDisabled={isDisabled}
               items={QUICK_QUANTIFIERS.map((quantifier) => ({
                 id: quantifier,
                 label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
@@ -461,6 +421,7 @@ export const QuickRuleFields = ({
               isRequired
               aria-label={t('label.cardinality')}
               hint={problems.count}
+              isDisabled={isDisabled}
               isInvalid={Boolean(problems.count)}
               type="number"
               value={String(rule.count)}
@@ -477,6 +438,7 @@ export const QuickRuleFields = ({
               hideLabel
               isRequired
               error={problems.property}
+              isDisabled={isDisabled}
               label={t('label.property')}
               options={references?.properties}
               testId="ontology-rule-property"
@@ -494,6 +456,7 @@ export const QuickRuleFields = ({
             hideLabel
             isRequired
             error={problems.other}
+            isDisabled={isDisabled}
             label={t('label.concept')}
             options={references?.concepts}
             testId="ontology-rule-other"
@@ -507,9 +470,11 @@ export const QuickRuleFields = ({
 };
 
 export const AxiomModeSwitch = ({
+  isDisabled,
   mode,
   onChange,
 }: {
+  isDisabled?: boolean;
   mode: AxiomEditorMode;
   onChange: (mode: AxiomEditorMode) => void;
 }) => {
@@ -522,6 +487,7 @@ export const AxiomModeSwitch = ({
       <Tabs
         className="tw:w-fit"
         data-testid="ontology-axiom-mode"
+        isDisabled={isDisabled}
         selectedKey={mode}
         onSelectionChange={(key) => onChange(key as AxiomEditorMode)}>
         <Tabs.List aria-label={t('label.rule')} size="sm" type="button-minimal">
@@ -550,7 +516,7 @@ export const AxiomModeSwitch = ({
   );
 };
 
-export const AxiomDetailFields = () => {
+export const AxiomDetailFields = ({ isDisabled }: { isDisabled?: boolean }) => {
   const { t } = useTranslation();
 
   return (
@@ -563,7 +529,7 @@ export const AxiomDetailFields = () => {
           name: 'displayName',
           type: FieldTypes.TEXT,
           placeholder: t('message.ontology-rule-display-name-placeholder'),
-          props: { 'aria-label': t('label.display-name') },
+          props: { 'aria-label': t('label.display-name'), isDisabled },
         })}
       </DescribedField>
       <DescribedField
@@ -573,7 +539,11 @@ export const AxiomDetailFields = () => {
           label: '',
           name: 'description',
           type: FieldTypes.TEXTAREA,
-          props: { 'aria-label': t('label.description'), size: 'sm' },
+          props: {
+            'aria-label': t('label.description'),
+            isDisabled,
+            size: 'sm',
+          },
         })}
       </DescribedField>
     </div>
@@ -665,8 +635,10 @@ export const AxiomOutcome = ({
 const TypeAndHelp = ({
   axiomType,
   form,
+  isDisabled,
 }: {
   axiomType: AxiomType;
+  isDisabled?: boolean;
   form: UseFormReturn<OntologyAxiomFormState>;
 }) => {
   const { t } = useTranslation();
@@ -681,6 +653,7 @@ const TypeAndHelp = ({
   return (
     <>
       <Select
+        isDisabled={isDisabled}
         items={Object.values(AxiomType).map((type) => ({
           id: type,
           label: axiomTypeLabel(type, t),
@@ -708,10 +681,12 @@ const TypeAndHelp = ({
 
 const ExpressionList = ({
   form,
+  isDisabled,
   references,
   values,
 }: {
   form: UseFormReturn<OntologyAxiomFormState>;
+  isDisabled?: boolean;
   references?: OntologyReferenceOptions;
   values: OntologyAxiomFormState;
 }) => {
@@ -724,6 +699,7 @@ const ExpressionList = ({
       {values.expressions.map((expression, index) => (
         <OntologyExpressionEditor
           expression={expression}
+          isDisabled={isDisabled}
           key={getExpressionRenderKey(expression)}
           references={references}
           onChange={(next) =>
@@ -733,22 +709,31 @@ const ExpressionList = ({
               )
             )
           }
-          onRemove={() =>
-            set(values.expressions.filter((_, position) => position !== index))
+          onRemove={
+            isDisabled
+              ? undefined
+              : () =>
+                  set(
+                    values.expressions.filter(
+                      (_, position) => position !== index
+                    )
+                  )
           }
         />
       ))}
-      <Button
-        color="secondary"
-        size="sm"
-        onClick={() =>
-          set([
-            ...values.expressions,
-            defaultExpression(ExpressionKind.NamedClass),
-          ])
-        }>
-        {t('label.add')} {t('label.constraint')}
-      </Button>
+      {isDisabled ? null : (
+        <Button
+          color="secondary"
+          size="sm"
+          onClick={() =>
+            set([
+              ...values.expressions,
+              defaultExpression(ExpressionKind.NamedClass),
+            ])
+          }>
+          {t('label.add')} {t('label.constraint')}
+        </Button>
+      )}
     </div>
   );
 };
@@ -756,6 +741,7 @@ const ExpressionList = ({
 export const AdvancedRuleFields = ({
   axiom,
   form,
+  isDisabled,
   nameTouched,
   problems,
   references,
@@ -763,6 +749,7 @@ export const AdvancedRuleFields = ({
 }: {
   axiom?: OntologyAxiom;
   form: UseFormReturn<OntologyAxiomFormState>;
+  isDisabled?: boolean;
   nameTouched: { current: boolean };
   problems: RoutedAxiomProblems['byField'];
   references?: OntologyReferenceOptions;
@@ -777,10 +764,14 @@ export const AdvancedRuleFields = ({
 
   return (
     <>
-      <TypeAndHelp axiomType={values.axiomType} form={form} />
+      <TypeAndHelp
+        axiomType={values.axiomType}
+        form={form}
+        isDisabled={isDisabled}
+      />
       <Input
         isRequired
-        isDisabled={Boolean(axiom)}
+        isDisabled={isDisabled || Boolean(axiom)}
         label={t('label.rule-name')}
         value={values.name}
         onChange={(name) => {
@@ -791,6 +782,7 @@ export const AdvancedRuleFields = ({
       <OntologyIriInput
         isRequired
         error={problems.subject}
+        isDisabled={isDisabled}
         label={t('label.subject')}
         options={subjectOptions}
         testId="ontology-axiom-subject"
@@ -801,12 +793,18 @@ export const AdvancedRuleFields = ({
       />
       <AssertionFields
         form={form}
+        isDisabled={isDisabled}
         problems={problems}
         references={references}
         values={values}
       />
       {isClassExpressionAxiom(values.axiomType) ? (
-        <ExpressionList form={form} references={references} values={values} />
+        <ExpressionList
+          form={form}
+          isDisabled={isDisabled}
+          references={references}
+          values={values}
+        />
       ) : null}
     </>
   );

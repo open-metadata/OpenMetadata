@@ -235,6 +235,50 @@ it('says there are no tasks yet when the queue is empty', async () => {
   );
 });
 
+it('lists a decided task opened from outside the queue instead of saying there are none', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url === '/tasks/task-a'
+      ? Promise.resolve({ data: { ...task, status: 'Approved' } })
+      : read?.(url, config)
+  );
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  const opened = await screen.findByTestId('ontology-tasks-opened');
+
+  expect(opened).toHaveTextContent('label.closed');
+  expect(opened).toHaveTextContent('Review Commerce');
+  expect(screen.queryByTestId('ontology-tasks-empty')).not.toBeInTheDocument();
+  expect(screen.getByTestId('task-detail-panel')).toHaveTextContent('task-a');
+});
+
+it('counts an open task opened from outside the queue into the one Pending approval group', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) => {
+    if (url === '/tasks/task-z') {
+      return Promise.resolve({
+        data: { ...task, id: 'task-z', name: 'Review Outside' },
+      });
+    }
+    if (url === '/ontologies/reviews' && config.params.view === 'assigned') {
+      return Promise.resolve({
+        data: { data: [review], paging: { total: 1 } },
+      });
+    }
+
+    return read?.(url, config);
+  });
+  renderWithQueryClient(<Harness initialTask="task-z" />);
+
+  const row = await screen.findByTestId('ontology-tasks-opened-row');
+  const groups = screen.getAllByTestId('ontology-tasks-group');
+
+  expect(row).toHaveTextContent('Review Outside');
+  expect(groups).toHaveLength(1);
+  expect(groups[0]).toHaveTextContent('label.pending-approval');
+  expect(groups[0]).toHaveTextContent('2');
+});
+
 it('reopens on Assigned to me with an empty search after closing on Created by me', async () => {
   renderWithQueryClient(<Harness />);
   fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));

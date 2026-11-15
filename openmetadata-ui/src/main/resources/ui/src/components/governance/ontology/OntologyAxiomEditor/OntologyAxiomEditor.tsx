@@ -37,7 +37,6 @@ import {
   AxiomOutcome,
   AxiomPreview,
   AxiomPublishNote,
-  AxiomReadOnly,
   collectAxiomProblems,
   previewSentence,
   QuickRuleFields,
@@ -73,6 +72,9 @@ const validationStatusKey = (valid?: boolean) => {
   return valid ? 'label.validation-passed' : 'label.validation-failed';
 };
 
+const canValidate = (canEdit: boolean, values: OntologyAxiomFormState) =>
+  canEdit && isOntologyAxiomReady(values);
+
 /** A saved rule needs a change, and every rule a passing validation, before Save. */
 const isRuleSavable = (checks: {
   canEdit: boolean;
@@ -81,7 +83,8 @@ const isRuleSavable = (checks: {
   isQuickReady: boolean;
 }) => Object.values(checks).every(Boolean);
 
-const AxiomEditorForm = ({
+/** View mode (no canEdit) shows the same form with every field disabled, as the concept and property drawers do. */
+const OntologyAxiomEditor = ({
   ontology,
   references,
   axiom,
@@ -195,7 +198,11 @@ const AxiomEditorForm = ({
       <section
         className="tw:flex tw:flex-col tw:gap-4.5"
         data-testid="ontology-axiom-panel">
-        <AxiomModeSwitch mode={rule.mode} onChange={rule.changeMode} />
+        <AxiomModeSwitch
+          isDisabled={!canEdit}
+          mode={rule.mode}
+          onChange={rule.changeMode}
+        />
         {rule.lossyReason ? (
           <Alert data-testid="ontology-axiom-quick-lossy" variant="warning">
             {t(rule.lossyReason)}
@@ -203,6 +210,7 @@ const AxiomEditorForm = ({
         ) : null}
         {isQuick ? (
           <QuickRuleFields
+            isDisabled={!canEdit}
             problems={problems.routed.byField}
             references={references}
             rule={rule.quick}
@@ -212,6 +220,7 @@ const AxiomEditorForm = ({
           <AdvancedRuleFields
             axiom={axiom}
             form={form}
+            isDisabled={!canEdit}
             nameTouched={nameTouched}
             problems={problems.routed.byField}
             references={references}
@@ -220,7 +229,7 @@ const AxiomEditorForm = ({
         )}
         <AxiomPreview sentence={sentence} />
         <AxiomOutcome problems={problems} validation={validation.current} />
-        <AxiomDetailFields />
+        <AxiomDetailFields isDisabled={!canEdit} />
         <AxiomPublishNote />
         {created ? (
           <Alert
@@ -240,7 +249,7 @@ const AxiomEditorForm = ({
           <Button
             color="secondary"
             data-testid="ontology-axiom-validate"
-            isDisabled={!isOntologyAxiomReady(values)}
+            isDisabled={!canValidate(canEdit, values)}
             isLoading={validation.isValidating}
             size="sm"
             onClick={() => void validation.validate()}>
@@ -249,21 +258,6 @@ const AxiomEditorForm = ({
         </OntologyFormFooter>
       </section>
     </HookForm>
-  );
-};
-
-/** View mode reads a constraint; only a user who can edit it gets the form. */
-const OntologyAxiomEditor = (props: OntologyAxiomEditorProps) => {
-  const { t } = useTranslation();
-  const { axiom, canEdit, references } = props;
-
-  return !canEdit && axiom ? (
-    <AxiomReadOnly
-      axiom={axiom}
-      sentence={previewSentence(axiomFormValues(axiom), t, references)}
-    />
-  ) : (
-    <AxiomEditorForm {...props} />
   );
 };
 

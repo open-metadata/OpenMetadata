@@ -523,16 +523,19 @@ describe('OntologyAxiomEditor quick and advanced forms', () => {
     );
   });
 
-  it('shows a saved rule read-only, without a form, when the user cannot edit', () => {
+  it('shows a saved rule in its form with every field disabled when the user cannot edit', () => {
     renderEditor({ axiom: savedAxiom(), canEdit: false });
 
-    expect(screen.getByTestId('ontology-axiom-read-only')).toHaveTextContent(
+    expect(preview()).toHaveTextContent(
       'Patient must have exactly 1 dateOfBirth'
     );
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /^Subject/ })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: /^Property/ })).toBeDisabled();
     expect(
-      screen.queryByTestId('ontology-axiom-submit')
-    ).not.toBeInTheDocument();
+      screen.getByRole('textbox', { name: 'Display Name' })
+    ).toBeDisabled();
+    expect(screen.getByTestId('ontology-axiom-validate')).toBeDisabled();
+    expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
   });
 
   it('opens a rule with a nested condition in the advanced form and explains why', () => {

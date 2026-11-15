@@ -44,7 +44,10 @@ import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../../generated/entity/data/ontologyConcept';
-import { Kind } from '../../../../generated/entity/data/ontologyProperty';
+import {
+  Kind,
+  OntologyProperty,
+} from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useClipboard } from '../../../../hooks/useClipBoard';
@@ -68,6 +71,7 @@ import {
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
   InspectorList,
+  InspectorRemoveButton,
   InspectorRow,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
@@ -114,9 +118,13 @@ interface OntologyConceptInspectorProps {
   readonly relations: OntologyModelRelation[];
   readonly canAddProperty?: boolean;
   readonly canAddRelation?: boolean;
+  /** Removing a conflicting statement needs no edit session, so View mode offers it too. */
+  readonly canResolveConflicts?: boolean;
   readonly canCreateRelationType?: boolean;
   readonly relationTypeGroups?: RelationTypeOptionGroup[];
   readonly onAddProperty?: (input: ConceptPropertyInput) => Promise<boolean>;
+  /** Takes the property off this concept; inherited ones belong to the ancestor. */
+  readonly onRemoveProperty?: (property: OntologyProperty) => Promise<boolean>;
   /** Opens the relationship's own panel; rows open the other concept without it. */
   readonly onOpenRelation?: (relation: OntologyModelRelation) => void;
   /** The relation type id a phrase such as "part of" names, if any. */
@@ -715,9 +723,11 @@ const OntologyConceptInspector = ({
   relations,
   canAddProperty = false,
   canAddRelation = false,
+  canResolveConflicts = canAddRelation,
   canCreateRelationType = false,
   relationTypeGroups = [],
   onAddProperty,
+  onRemoveProperty,
   onOpenRelation,
   findRelationType,
   canAddRule,
@@ -765,6 +775,7 @@ const OntologyConceptInspector = ({
   }, [canEditRelations]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [relationLimit, setRelationLimit] = useState(RELATION_PAGE_SIZE);
+  const [removingPropertyId, setRemovingPropertyId] = useState<string>();
   useEffect(() => {
     setRelationLimit(RELATION_PAGE_SIZE);
   }, [concept.id]);
@@ -857,25 +868,62 @@ const OntologyConceptInspector = ({
       </Typography>
     ) : null;
 
+  const removeProperty = async (property: OntologyProperty) => {
+    setRemovingPropertyId(property.id);
+    await onRemoveProperty?.(property);
+    setRemovingPropertyId(undefined);
+  };
+
+  const renderPropertyRemove = (
+    property: OntologyProperty,
+    isInherited: boolean
+  ) =>
+    onRemoveProperty &&
+    !isInherited &&
+    (property.domain ?? []).includes(concept.iri) ? (
+      <InspectorRemoveButton
+        isDisabled={removingPropertyId === property.id}
+        label={t('label.remove-entity', {
+          entity: t('label.property').toLocaleLowerCase(),
+        })}
+        testId="ontology-concept-property-remove"
+        onRemove={() => void removeProperty(property)}
+      />
+    ) : null;
+
   const renderPropertyRow = ({
     datatype,
     inheritedFrom,
     property,
   }: (typeof properties)[number]) => (
     <InspectorRow key={property.id}>
+      {/* One column, so the binding editor under the name spans the whole row. */}
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
         <Box align="center" gap={2}>
           <Typography
-            className="tw:text-primary"
+            className="tw:min-w-0 tw:flex-1 tw:text-primary"
             size="text-sm"
             weight="medium">
             {getPropertyLabel(property)}
+            {property.isIdentifier ? (
+              <Badge
+                className="tw:ml-2"
+                color="warning"
+                size="sm"
+                type="pill-color">
+                {t('label.identifier')}
+              </Badge>
+            ) : null}
           </Typography>
-          {property.isIdentifier ? (
-            <Badge color="warning" size="sm" type="pill-color">
-              {t('label.identifier')}
-            </Badge>
-          ) : null}
+          <Badge
+            className="tw:shrink-0"
+            color="success"
+            data-testid="ontology-concept-property-datatype"
+            size="sm"
+            type="pill-color">
+            {upperFirst(humanizeName(datatype))}
+          </Badge>
+          {renderPropertyRemove(property, Boolean(inheritedFrom))}
         </Box>
         {inheritedFrom ? (
           <Typography color="secondary" size="text-xs">
@@ -894,15 +942,6 @@ const OntologyConceptInspector = ({
           propertyLabel={getPropertyLabel(property)}
         />
       </Box>
-      {/* Bindings stack under the name, so the type stays on the name's line. */}
-      <Badge
-        className="tw:shrink-0 tw:self-start"
-        color="success"
-        data-testid="ontology-concept-property-datatype"
-        size="sm"
-        type="pill-color">
-        {upperFirst(humanizeName(datatype))}
-      </Badge>
     </InspectorRow>
   );
 
@@ -1459,7 +1498,7 @@ const OntologyConceptInspector = ({
         <OntologyConceptConflicts
           conflicts={conflicts}
           defaultOpen={isConflictReviewOpen}
-          onRemove={canAddRelation ? onDeleteRelation : undefined}
+          onRemove={canResolveConflicts ? onDeleteRelation : undefined}
           onShowOnGraph={onShowConflictOnGraph}
         />
       ) : null}

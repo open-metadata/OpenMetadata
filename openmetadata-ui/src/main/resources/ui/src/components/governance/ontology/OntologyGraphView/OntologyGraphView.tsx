@@ -48,6 +48,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { OntologyProperty } from '../../../../generated/entity/data/ontologyProperty';
 import {
   PaletteKey,
   RelationshipType,
@@ -100,6 +101,7 @@ import {
 import { findRelationClash } from '../../../../utils/governance/ontology/OntologyRelationClash.utils';
 import {
   buildDataPropertyRequest,
+  buildDetachPropertyPatch,
   buildOntologyStudioGraph,
   buildReusePropertyPatch,
   getBindableConceptProperties,
@@ -209,6 +211,22 @@ const writeDataProperty = async (
   const patch = buildReusePropertyPatch(reused, concept);
 
   return patch.length ? patchOntologyProperty(reused.id, patch) : reused;
+};
+
+// The concept was the property's only domain, so taking it off would leave an orphan.
+const removeConceptProperty = async (
+  concept: OntologyConcept,
+  property: OntologyProperty
+) => {
+  if ((property.domain ?? []).every((iri) => iri === concept.iri)) {
+    await softDeleteOntologyDefinition('property', property.id);
+
+    return;
+  }
+  await patchOntologyProperty(
+    property.id,
+    buildDetachPropertyPatch(property, concept)
+  );
 };
 
 const missingRelationType = (id: string): never => {
@@ -797,6 +815,11 @@ const OntologyGraphView = ({
     ResourceEntity.ONTOLOGY_PROPERTY
   );
   const canCreateAxiom = canCreateDefinition(ResourceEntity.ONTOLOGY_AXIOM);
+  const canResolveConflicts = [
+    !releaseId,
+    !ontology.deleted,
+    flagsOf(ResourceEntity.ONTOLOGY_AXIOM).canCreate,
+  ].every(Boolean);
   const canCreateRelationType = [
     ResourceEntity.RELATIONSHIP_TYPE,
     ResourceEntity.ONTOLOGY_PROPERTY,
@@ -1169,6 +1192,27 @@ const OntologyGraphView = ({
       }
       try {
         await writeDataProperty(model, concept, input);
+        noteWorkingChange();
+        await refetch();
+
+        return true;
+      } catch (error) {
+        showWriteError(error);
+
+        return false;
+      }
+    },
+    [canCreateProperty, model, noteWorkingChange, refetch, showWriteError]
+  );
+
+  const removeProperty = useCallback(
+    async (conceptId: string, property: OntologyProperty): Promise<boolean> => {
+      const concept = model?.concepts.find((item) => item.id === conceptId);
+      if (!concept || !canCreateProperty) {
+        return false;
+      }
+      try {
+        await removeConceptProperty(concept, property);
         noteWorkingChange();
         await refetch();
 
@@ -1591,6 +1635,7 @@ const OntologyGraphView = ({
         canCreateRelationType={canCreateRelationType}
         canEditBindings={isEditing && canEditConcept}
         canEditRelations={isEditing && canCreateAxiom}
+        canResolveConflicts={canResolveConflicts}
         checkAddRelation={(targetId, typeId) =>
           issueFor(selected.id, targetId, typeId)
         }
@@ -1640,6 +1685,11 @@ const OntologyGraphView = ({
         onEditRelation={changeRelationType}
         onLinkAssetsRequestClosed={clearLinkAssetsRequest}
         onOpenRelation={(relation) => openRelationFrom(selected.id, relation)}
+        onRemoveProperty={
+          canCreateProperty
+            ? (property) => removeProperty(selected.id, property)
+            : undefined
+        }
         onRuleCreated={() => {
           noteWorkingChange();
           void refetch();

@@ -96,10 +96,13 @@ const ASSET_BADGE_COLORS: Partial<Record<string, BadgeColors>> = {
 const OntologyAssetLinks = ({
   asset,
   action,
+  isBinding = false,
 }: {
   asset: EntityReference;
   /** Leads the links line, ahead of Sample Data, e.g. Bind columns. */
   action?: ReactNode;
+  /** While its columns are being bound the row offers only that task. */
+  isBinding?: boolean;
 }) => {
   const { t } = useTranslation();
   const path = getOntologyAssetPath(asset);
@@ -109,10 +112,14 @@ const OntologyAssetLinks = ({
     { enabled: asset.type === EntityType.TABLE, deleted: asset.deleted }
   );
 
+  const showsSampleData = [
+    !isBinding,
+    asset.type === EntityType.TABLE,
+    asset.fullyQualifiedName,
+    canViewSampleData,
+  ].every(Boolean);
   const sampleDataLink =
-    asset.type === EntityType.TABLE &&
-    asset.fullyQualifiedName &&
-    canViewSampleData ? (
+    showsSampleData && asset.fullyQualifiedName ? (
       <Link
         className="tw:shrink-0 tw:text-sm"
         to={getEntityDetailsPath(
@@ -171,6 +178,8 @@ const OntologyConceptAssets = ({
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [bindAssets, setBindAssets] = useState<EntityReference[]>();
+  // A row's Bind columns opens the mapping under that row; linking new tables still opens it above.
+  const [bindRowId, setBindRowId] = useState<string>();
   const [page, setPage] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const linking = useOntologyAssetLinking(conceptId, bindings);
@@ -334,6 +343,41 @@ const OntologyConceptAssets = ({
     ? assets.slice(0, 3)
     : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
 
+  // Hidden while the row's binding panel is open; the panel's × closes it.
+  const canBindColumns = (binding: AssetBinding) =>
+    [
+      canEdit,
+      bindRowId !== binding.assetId,
+      properties.length > 0,
+      binding.assetType === AssetType.Table,
+    ].every(Boolean);
+
+  const renderBindAction = (binding: AssetBinding) =>
+    canBindColumns(binding) ? (
+      <Button
+        className="tw:shrink-0 tw:font-normal"
+        color="link-color"
+        data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
+        isDisabled={!bindings.editableSnapshot}
+        size="sm"
+        onPress={() => setBindRowId(binding.assetId)}>
+        {t('label.ontology-bind-columns')}
+      </Button>
+    ) : undefined;
+
+  // Fills the row edge to edge under its header, so the panel reads as part of that asset.
+  const renderInlineBinding = (binding: AssetBinding) =>
+    canEdit && bindRowId === binding.assetId ? (
+      <OntologyColumnMappingStep
+        isInline
+        assets={[binding.asset]}
+        conceptId={conceptId}
+        conceptName={conceptName}
+        properties={properties}
+        onClose={() => setBindRowId(undefined)}
+      />
+    ) : null;
+
   const renderAssetList = () =>
     assets.length > 0 ? (
       <Card className="tw:divide-y tw:divide-secondary">
@@ -342,74 +386,63 @@ const OntologyConceptAssets = ({
           const isSelected = binding.assetId === selectedAssetId;
 
           return (
-            <Box
-              align="start"
-              aria-current={isSelected || undefined}
-              className={classNames(
-                'tw:min-h-16 tw:px-4 tw:py-3',
-                isSelected &&
-                  'tw:border-l-2 tw:border-brand tw:bg-brand-primary tw:pl-3.5'
-              )}
-              data-testid={`ontology-native-asset-row-${binding.assetId}`}
-              gap={3}
-              key={`${binding.assetType}:${binding.assetId}`}>
-              <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
-                <Icon
-                  aria-hidden
-                  className="tw:size-4 tw:text-fg-brand-primary"
+            <div key={`${binding.assetType}:${binding.assetId}`}>
+              <Box
+                align="start"
+                aria-current={isSelected || undefined}
+                className={classNames(
+                  'tw:min-h-16 tw:px-4 tw:py-3',
+                  isSelected &&
+                    'tw:border-l-2 tw:border-brand tw:bg-brand-primary tw:pl-3.5'
+                )}
+                data-testid={`ontology-native-asset-row-${binding.assetId}`}
+                gap={3}>
+                <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
+                  <Icon
+                    aria-hidden
+                    className="tw:size-4 tw:text-fg-brand-primary"
+                  />
+                </span>
+                <OntologyAssetLinks
+                  action={renderBindAction(binding)}
+                  asset={binding.asset}
+                  isBinding={bindRowId === binding.assetId}
                 />
-              </span>
-              <OntologyAssetLinks
-                action={
-                  canEdit &&
-                  properties.length > 0 &&
-                  binding.assetType === AssetType.Table ? (
-                    <Button
-                      className="tw:shrink-0 tw:font-normal"
-                      color="link-color"
-                      data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
-                      isDisabled={!bindings.editableSnapshot}
-                      size="sm"
-                      onPress={() => setBindAssets([binding.asset])}>
-                      {t('label.ontology-bind-columns')}
-                    </Button>
-                  ) : undefined
-                }
-                asset={binding.asset}
-              />
-              <Badge
-                className="tw:shrink-0"
-                color={ASSET_BADGE_COLORS[binding.assetType] ?? 'gray'}
-                size="sm"
-                type="pill-color">
-                {binding.columns.length > 0
-                  ? `${upperFirst(humanizeName(binding.assetType))} · ${t(
-                      'label.ontology-column-count',
-                      { count: binding.columns.length }
-                    )}`
-                  : upperFirst(humanizeName(binding.assetType))}
-              </Badge>
-              {canEdit ? (
-                <ButtonUtility
-                  data-testid={`ontology-native-asset-remove-${binding.assetId}`}
-                  icon={Trash01}
-                  isDisabled={!bindings.editableSnapshot}
-                  size="xs"
-                  tooltip={t('label.remove-entity', {
-                    entity: getEntityName(binding.asset),
-                  })}
-                  onClick={() => {
-                    if (bindings.editableSnapshot) {
-                      setUnlinkTarget({
-                        binding,
-                        conceptId,
-                        name: getEntityName(binding.asset),
-                      });
-                    }
-                  }}
-                />
-              ) : null}
-            </Box>
+                <Badge
+                  className="tw:shrink-0"
+                  color={ASSET_BADGE_COLORS[binding.assetType] ?? 'gray'}
+                  size="sm"
+                  type="pill-color">
+                  {binding.columns.length > 0
+                    ? `${upperFirst(humanizeName(binding.assetType))} · ${t(
+                        'label.ontology-column-count',
+                        { count: binding.columns.length }
+                      )}`
+                    : upperFirst(humanizeName(binding.assetType))}
+                </Badge>
+                {canEdit ? (
+                  <ButtonUtility
+                    data-testid={`ontology-native-asset-remove-${binding.assetId}`}
+                    icon={Trash01}
+                    isDisabled={!bindings.editableSnapshot}
+                    size="xs"
+                    tooltip={t('label.remove-entity', {
+                      entity: getEntityName(binding.asset),
+                    })}
+                    onClick={() => {
+                      if (bindings.editableSnapshot) {
+                        setUnlinkTarget({
+                          binding,
+                          conceptId,
+                          name: getEntityName(binding.asset),
+                        });
+                      }
+                    }}
+                  />
+                ) : null}
+              </Box>
+              {renderInlineBinding(binding)}
+            </div>
           );
         })}
       </Card>
