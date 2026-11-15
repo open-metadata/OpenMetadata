@@ -129,6 +129,30 @@ describe('useGlossaryTermPropertyPatch', () => {
     expect(showErrorToast).toHaveBeenCalledWith(conflict);
   });
 
+  it('drops the stale definitions when the fresh copy omits the emptied list', async () => {
+    (patchGlossaryTerm as jest.Mock).mockRejectedValueOnce(badRequest);
+    (getGlossaryTermsById as jest.Mock).mockResolvedValue({ id: 't1' });
+    const { result } = renderHook(() => useGlossaryTermPropertyPatch(stale), {
+      wrapper,
+    });
+    const build = jest.fn((term: GlossaryTermWithProperties) =>
+      term.propertyDefinitions?.some((definition) => definition.name === 'a')
+        ? guarded('a')
+        : []
+    );
+
+    let saved: boolean | undefined;
+    await act(async () => {
+      saved = await result.current.applyPatch(build);
+    });
+
+    expect(saved).toBe(true);
+    expect(patchGlossaryTerm).toHaveBeenCalledTimes(1);
+    expect(build).toHaveBeenLastCalledWith(
+      expect.objectContaining({ propertyDefinitions: undefined })
+    );
+  });
+
   it('stops after three rebuilds', async () => {
     (patchGlossaryTerm as jest.Mock).mockRejectedValue(badRequest);
     let version = 0;

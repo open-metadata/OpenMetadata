@@ -81,7 +81,12 @@ export const useGlossaryTermPropertyPatch = (
             ) {
               throw error;
             }
-            current = { ...current, ...fresh };
+            // The server omits an empty list, so a missing field must not keep the stale one.
+            current = {
+              ...current,
+              propertyDefinitions: fresh.propertyDefinitions,
+              propertyValues: fresh.propertyValues,
+            };
           }
         }
       } catch (error) {

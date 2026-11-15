@@ -54,6 +54,9 @@ Three designs were dropped before this one.
   the declaring term need it on the declaring term only.
 - A PUT follows the rule of `extension`. An omitted field keeps the stored value, a sent value
   replaces it, and a bot's PUT never removes stored definitions or values.
+- The UI edits a definition by its index and guards it with a JSON Patch `test` on the name. On a
+  400 it rebuilds the patch from a fresh copy, at most 3 times, and stops early when the fresh
+  definitions match the ones it patched, because then the 400 is a validation failure.
 - In v1, search, RDF and CSV leave the fields out, and a GET returns them only when `fields` names
   them.
 

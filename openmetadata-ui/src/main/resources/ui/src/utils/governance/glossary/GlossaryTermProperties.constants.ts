@@ -54,7 +54,7 @@ export const PROPERTY_MIN_ENUM_VALUES = 2;
 export const PROPERTY_MAX_MULTI_VALUES = 100;
 // Mirrors the server's cap on definitions per term.
 export const PROPERTY_MAX_DEFINITIONS = 50;
-// The server rebuilds a stale definition-index patch at most this many times.
+// The client rebuilds a stale definition-index patch from a fresh copy at most this many times.
 export const PROPERTY_PATCH_MAX_RETRIES = 3;
 
 export const PROPERTY_VALUE_PLACEHOLDERS: Partial<

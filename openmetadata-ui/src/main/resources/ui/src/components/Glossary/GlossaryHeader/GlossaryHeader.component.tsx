@@ -610,8 +610,14 @@ const GlossaryHeader = ({
   // (glossaryTermStatus / EntityStatus.Approved, used for createButtons) is a
   // separate, unrelated concept and is left untouched per the batch's guidance not to
   // fold status logic into permission flags.
-  const { canEditAll, canEditDisplayName, canEditGlossaryTermProperties } =
-    useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
+  const { canEditAll, canEditDisplayName } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+  const { canEditGlossaryTermProperties } = useMemo(
+    () => getDerivedPermissionFlags(permissions, selectedData.deleted),
+    [permissions, selectedData.deleted]
+  );
 
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', selectedData.votes),
