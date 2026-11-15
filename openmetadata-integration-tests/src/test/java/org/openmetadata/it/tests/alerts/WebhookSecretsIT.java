@@ -255,20 +255,47 @@ class WebhookSecretsIT {
     }
   }
 
+  /** A list reads what each alert's ticks reported, and gives it to that alert alone. */
   @Test
   void aListOfAlertsReadsEachDestinationsStatus(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
+      EventSubscription neverSent =
           createAlert(
               ns, "listed", List.of(AlertFixtures.external(WEBHOOK, receiver.url("/hook"))));
+      EventSubscription failing =
+          createAlert(
+              ns,
+              "listed_failing",
+              List.of(AlertFixtures.external(WEBHOOK, receiver.url("/hook-failing"))));
+      QuietAlert.settle(failing);
+      failing
+          .getDestinations()
+          .getFirst()
+          .withConfig(
+              storedConfig(
+                  receiver,
+                  "/hook-failing",
+                  Map.of("headers", Map.of("X-Legacy", encryptedWithAnotherKey("old")))));
+      AlertFixtures.writeBehindTheServer(failing);
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(AlertFixtures.stored(failing.getId()));
 
-      SubscriptionDestination listed = listedWithStatus(alert.getId()).getFirst();
+      Map<?, ?> neverSentStatus = listedStatusOf(neverSent.getId());
+      Map<?, ?> failingStatus = listedStatusOf(failing.getId());
 
-      assertNotNull(listed.getStatusDetails(), "the list reads no status");
-      assertEquals(
-          SubscriptionStatus.Status.ACTIVE.value(),
-          JsonUtils.convertValue(listed.getStatusDetails(), Map.class).get("status"));
+      assertEquals(SubscriptionStatus.Status.ACTIVE.value(), neverSentStatus.get("status"));
+      assertNull(neverSentStatus.get("lastFailedReason"));
+      assertEquals(SubscriptionStatus.Status.FAILED.value(), failingStatus.get("status"));
+      assertTrue(
+          String.valueOf(failingStatus.get("lastFailedReason")).contains("must be entered again"),
+          failingStatus.toString());
     }
+  }
+
+  private static Map<?, ?> listedStatusOf(UUID alertId) throws Exception {
+    SubscriptionDestination listed = listedWithStatus(alertId).getFirst();
+    assertNotNull(listed.getStatusDetails(), "the list reads no status");
+    return JsonUtils.convertValue(listed.getStatusDetails(), Map.class);
   }
 
   private static void assertDelivered(

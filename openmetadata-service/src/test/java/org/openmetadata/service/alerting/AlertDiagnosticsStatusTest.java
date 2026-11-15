@@ -52,12 +52,24 @@ class AlertDiagnosticsStatusTest {
   }
 
   @Test
-  void theHealthOfEveryListedAlertIsReadInOneGo() {
+  void everyListedAlertGetsItsOwnHealthFromOneRead() {
     EventSubscription first = alertWith(destination());
     EventSubscription second = alertWith(destination());
+    SubscriptionStatus failed =
+        new SubscriptionStatus()
+            .withStatus(SubscriptionStatus.Status.FAILED)
+            .withLastFailedReason("Webhook failed with status: 500");
+    health.put(
+        second.getId(),
+        Map.of(
+            second.getDestinations().getFirst().getId().toString(),
+            new DestinationHealth().withStatus(failed)));
 
     AlertDiagnostics.setDestinationStatuses(List.of(first, second));
 
+    assertEquals(
+        SubscriptionStatus.Status.ACTIVE, statusOf(first.getDestinations().getFirst()).getStatus());
+    assertEquals(failed, statusOf(second.getDestinations().getFirst()));
     records.verify(() -> AlertRecord.healthOf(List.of(first.getId(), second.getId())), times(1));
     records.verify(() -> AlertRecord.healthOf(any()), times(1));
   }
