@@ -1,10 +1,11 @@
 # Glossaries do not own ontology models
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-17 (initial)
+- **Revisions:** v1 2026-10-17 (initial) · v2 2026-11-12 (glossary terms may declare their own properties and values)
 - **Deciders:** Harsha
 - **Guard:** `GlossaryModelBoundaryTest`, `GlossaryOntologyCleanupMigrationTest`, glossary relation integration tests, reviewer
-- **Related:** #35672, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage
+- **Related:** #35672, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage,
+  ADR:2026-11-12-glossary-terms-declare-their-own-properties-and-values
 
 ## Context
 
@@ -52,3 +53,13 @@ relations and external mappings, with evidence on the change set rather than new
 This revises the glossary class/property projection described in
 ADR:2026-10-11-glossary-ontology-projection-is-owl2-dl-with-one-class-iri-rule and
 ADR:2026-10-11-glossary-dates-are-xsd-datetime-and-skos-parents-are-not-superclasses.
+
+## Amendment
+
+v2, 2026-11-12. A glossary term may declare its own typed properties and store values for them
+(ADR:2026-11-12-glossary-terms-declare-their-own-properties-and-values). They are governance
+metadata on the term, not ontology definitions. They use new fields, `propertyDefinitions`,
+`propertyValues` and `effectiveProperties`, so `attributes` and `effectiveAttributes` stay retired
+and `GlossaryModelBoundaryTest` does not change. They have no IRIs, carry no OWL semantics, and the
+glossary RDF projection leaves them out. Native ontologies remain the only place to author OWL
+properties and axioms.
