@@ -306,40 +306,6 @@ describe('useAssetSelectionState', () => {
     expect(result.current.selectedItems?.has('1')).toBe(false);
   });
 
-  it('should clear the selection when the drawer closes, so a reopen starts empty', async () => {
-    (searchQuery as jest.Mock).mockResolvedValue(
-      buildSearchResponse([buildHit('1')], 1)
-    );
-
-    const { result, rerender } = renderHook(
-      ({ open }: { open: boolean }) =>
-        useAssetSelectionState({
-          entityFqn: 'data.product',
-          open,
-          type: AssetsOfEntity.DATA_PRODUCT,
-          variant: 'drawer',
-          onSave: mockOnSave,
-          onCancel: mockOnCancel,
-        }),
-      { initialProps: { open: true } }
-    );
-
-    await waitFor(() => {
-      expect(result.current.items).toHaveLength(1);
-    });
-
-    act(() => {
-      result.current.handleCardClick({ id: '1', entityType: 'table' } as never);
-    });
-
-    expect(result.current.selectedItems?.size).toBe(1);
-
-    rerender({ open: false });
-    rerender({ open: true });
-
-    expect(result.current.selectedItems?.size ?? 0).toBe(0);
-  });
-
   it('should select all loaded items when onSelectAll(true) is called', async () => {
     (searchQuery as jest.Mock).mockResolvedValue(
       buildSearchResponse([buildHit('1'), buildHit('2')], 2)

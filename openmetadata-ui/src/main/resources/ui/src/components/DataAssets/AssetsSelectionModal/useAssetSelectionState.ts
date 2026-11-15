@@ -275,16 +275,6 @@ export const useAssetSelectionState = ({
     }
   }, [open, fetchCurrentEntity]);
 
-  // The drawer stays mounted when closed, so a reopen must not carry the last selection.
-  useEffect(() => {
-    if (!open) {
-      setSelectedItems(undefined);
-      setFailedStatus(undefined);
-      setDryRunWarnings(undefined);
-      setPendingDomainEntities(undefined);
-    }
-  }, [open]);
-
   const handleCardClick = (
     details: SearchedDataProps['data'][number]['_source']
   ) => {
