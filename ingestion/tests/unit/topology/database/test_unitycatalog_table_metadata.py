@@ -66,6 +66,15 @@ def test_not_null_columns_carry_the_not_null_constraint():
     ]
 
 
+def _stored(tables: dict, fqn: str, fields: list | None = None):
+    """What OpenMetadata returns for ``fqn``. As on the server, a table's
+    tableConstraints come back only when the caller asks for them."""
+    entity = tables.get(fqn)
+    if isinstance(entity, Table) and "tableConstraints" not in (fields or []):
+        return entity.model_copy(update={"tableConstraints": None})
+    return entity
+
+
 def _foreign_key_source(tables: dict) -> Mock:
     """``tables`` stands for what OpenMetadata holds: a test adds to it to write a table."""
     source = Mock()
@@ -74,8 +83,9 @@ def _foreign_key_source(tables: dict) -> Mock:
     source.context.get().database_service = "svc"
     source.context.get().database = "demo"
     source.context.get().database_schema = "sales"
+    source.normalize_table_constraints = UnitycatalogSource.normalize_table_constraints
     source.metadata.es_search_from_fqn.return_value = []
-    source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: tables.get(fqn)
+    source.metadata.get_by_name.side_effect = lambda entity, fqn, fields=None: _stored(tables, fqn, fields)
     return source
 
 
@@ -139,16 +149,33 @@ def test_one_failed_lookup_does_not_stop_the_other_tables_foreign_keys():
     child = _child_table()
     tables.update({PARENT_FQN: Mock(), CHILD_FQN: child})
 
-    def get_by_name(entity, fqn, **_):
+    def get_by_name(entity, fqn, fields=None):
         if fqn == "svc.demo.ref.flaky":
             raise RuntimeError("server unavailable")
-        return tables.get(fqn)
+        return _stored(tables, fqn, fields)
 
     source.metadata.get_by_name.side_effect = get_by_name
     _, failure = list(UnitycatalogSource.yield_table_constraints(source))
 
     assert "svc.demo.sales.orders" in failure.left.error
     assert "server unavailable" in failure.left.error
+    [(_, patched)] = _patches(source)
+    assert patched.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
+
+
+def test_a_held_foreign_key_takes_the_column_names_as_ingested():
+    # Inline keys go through normalize_table_constraints in yield_table; a held key
+    # must too, or a casing difference makes the server reject the PATCH.
+    mixed_case_key = ForeignConstrains(
+        child_columns=["Parent_Id"], parent_columns=["parent_id"], parent_table="demo.ref.fk_parent"
+    )
+    tables = {}
+    source = _foreign_key_source(tables)
+    UnitycatalogSource._get_foreign_constraints(source, [mixed_case_key], "fk_child")
+    tables.update({PARENT_FQN: Mock(), CHILD_FQN: _child_table()})
+
+    list(UnitycatalogSource.yield_table_constraints(source))
+
     [(_, patched)] = _patches(source)
     assert patched.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
 

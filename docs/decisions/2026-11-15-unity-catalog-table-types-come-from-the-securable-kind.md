@@ -33,5 +33,7 @@ type. The profiler skips metric views by default, as it skips views; a profiler 
 `includeViews: true` still reaches them and fails on them. With `includeViews: false` a metric view
 and its Metrics are not ingested, and the lineage run, which reads `includeMetricViews` but not
 `includeViews`, warns that the metric view is not in OpenMetadata, as it does for a view the
-metadata run filtered out. Consumers looking for partitioned Unity Catalog tables read
-`tablePartition`, not `tableType: Partitioned`.
+metadata run filtered out. A service saved with `includeViews: false` or `includeTables: false`,
+which this source used to ignore, skips those tables from its next run; with `markDeletedTables` on,
+the default, the ones already ingested are soft-deleted, as on every other connector. Consumers
+looking for partitioned Unity Catalog tables read `tablePartition`, not `tableType: Partitioned`.

@@ -795,10 +795,13 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             table_constraints = self.normalize_table_constraints(table_constraints, columns)
 
             schema_definition = self.get_schema_definition(table_name=table_name, table_type=table_type, table=table)
+            # A column get_columns skipped is left out: the server rejects a table whose
+            # partition names a column it does not have.
+            column_names = {column.name.root for column in columns}
             partition_keys = {
                 column.partition_index: column.name
                 for column in table.columns or []
-                if column.partition_index is not None
+                if column.partition_index is not None and column.name in column_names
             }
 
             table_request = CreateTableRequest(
@@ -971,7 +974,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 if table is None:
                     continue
                 new_table = table.model_copy(deep=True)
-                new_table.tableConstraints = (table.tableConstraints or []) + foreign_keys
+                new_table.tableConstraints = (table.tableConstraints or []) + self.normalize_table_constraints(
+                    foreign_keys, table.columns
+                )
                 # Patched here, not through the sink: the sink's patch renumbers columns
                 # from 1, which would shift Unity Catalog's 0-based column positions.
                 self.metadata.patch(entity=Table, source=table, destination=new_table, skip_on_failure=False)

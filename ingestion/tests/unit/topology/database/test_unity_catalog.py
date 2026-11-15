@@ -684,6 +684,30 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
             ]
         )
 
+    def test_yield_table_leaves_out_a_partition_column_it_could_not_ingest(self):
+        # get_columns skips a column it cannot parse; the server rejects a table whose
+        # partition names a column the table does not have.
+        self.unitycatalog_source.context.get().table_data = TableInfo(
+            name="events",
+            columns=[
+                ColumnInfo(
+                    name="dt",
+                    type_text="date",
+                    type_json='{"name":"dt","type":"date","nullable":true,"metadata":{}}',
+                    position=0,
+                    partition_index=0,
+                ),
+                ColumnInfo(name="broken", type_text="string", type_json="not json", position=1, partition_index=1),
+            ],
+            table_constraints=[],
+        )
+        [result] = list(self.unitycatalog_source.yield_table(("events", TableType.DeltaLake)))
+
+        assert [column.name.root for column in result.right.columns] == ["dt"]
+        assert result.right.tablePartition == TablePartition(
+            columns=[PartitionColumnDetails(columnName="dt", intervalType=PartitionIntervalTypes.COLUMN_VALUE)]
+        )
+
     def test_get_schema_definition(self):
         # Check view definition
         mock_mv_table = TableInfo(
