@@ -643,9 +643,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     if (original.getSourceConfig() == null || updated.getSourceConfig() == null) {
       return true;
     }
-    String originalJson = JsonUtils.pojoToJson(original.getSourceConfig());
-    String updatedJson = JsonUtils.pojoToJson(updated.getSourceConfig());
-    return !originalJson.equals(updatedJson);
+    return !JsonUtils.valueToTree(original.getSourceConfig())
+        .equals(JsonUtils.valueToTree(updated.getSourceConfig()));
   }
 
   protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,12 +44,14 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.IngestionPipelineBuilder;
 
 class IngestionPipelineRepositoryTest {
 
@@ -641,6 +644,40 @@ class IngestionPipelineRepositoryTest {
     boolean hasChanged = repository.hasSourceConfigChanged(original, updated);
 
     assertFalse(hasChanged, "Same sourceConfig should not indicate a change");
+  }
+
+  @Test
+  void typingAStoredConfigDoesNotRequireRedeployment() {
+    Map<String, Object> stored =
+        new TreeMap<>(
+            JsonUtils.getMap(new DatabaseServiceMetadataPipeline().withIncludeViews(true)));
+    IngestionPipeline original =
+        new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(stored));
+    IngestionPipeline updated =
+        new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(stored));
+    IngestionPipelineBuilder.addDefinedConfigForRead(original);
+
+    assertFalse(repository.hasSourceConfigChanged(original, updated));
+    stored.put("includeViews", false);
+    assertTrue(repository.hasSourceConfigChanged(original, updated));
+  }
+
+  @Test
+  void reorderingSourceConnectionsStillRequiresRedeployment() {
+    Map<String, Object> first = Map.of("serviceName", "first");
+    Map<String, Object> second = Map.of("serviceName", "second");
+    IngestionPipeline original =
+        new IngestionPipeline()
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(Map.of("serviceConnections", List.of(first, second))));
+    IngestionPipeline updated =
+        new IngestionPipeline()
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(Map.of("serviceConnections", List.of(second, first))));
+
+    assertTrue(repository.hasSourceConfigChanged(original, updated));
   }
 
   @Test
