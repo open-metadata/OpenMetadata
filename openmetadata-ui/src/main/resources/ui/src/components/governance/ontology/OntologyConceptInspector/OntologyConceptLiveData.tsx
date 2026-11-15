@@ -108,6 +108,7 @@ interface SearchAroundHop extends SearchAroundStep {
 
 /** The server accepts at most this many hops per query. */
 const MAX_HOPS = 5;
+const STEP_PAGE_SIZE = 10;
 
 const conceptName = (concept: OntologyConcept) =>
   concept.displayName ?? concept.name;
@@ -122,6 +123,7 @@ const OntologyConceptLiveData = ({
   const { t } = useTranslation();
   const [hops, setHops] = useState<SearchAroundHop[]>([]);
   const [isPicking, setIsPicking] = useState(false);
+  const [stepLimit, setStepLimit] = useState(STEP_PAGE_SIZE);
   const request = useMemo(
     () =>
       hops.map(({ direction, propertyId, target }) => ({
@@ -241,19 +243,28 @@ const OntologyConceptLiveData = ({
             />
           </Box>
           {steps.length > 0 ? (
-            <Box direction="col" gap={1}>
-              {steps.map((step) => (
+            <Box align="start" direction="col" gap={2}>
+              {steps.slice(0, stepLimit).map((step) => (
                 <Button
-                  noTextPadding
-                  className="tw:justify-start"
-                  color="tertiary"
+                  color="link-gray"
                   data-testid={`ontology-live-data-hop-option-${step.key}`}
                   key={step.key}
-                  size="xs"
+                  size="sm"
                   onPress={() => addHop(step)}>
                   {step.label} · {conceptName(step.target)}
                 </Button>
               ))}
+              {steps.length > stepLimit ? (
+                <Button
+                  color="link-color"
+                  data-testid="ontology-live-data-search-around-more"
+                  size="sm"
+                  onPress={() =>
+                    setStepLimit((limit) => limit + STEP_PAGE_SIZE)
+                  }>
+                  {t('label.show-more')}
+                </Button>
+              ) : null}
             </Box>
           ) : (
             <Box align="start" gap={2}>
@@ -301,7 +312,10 @@ const OntologyConceptLiveData = ({
             iconLeading={SearchRefraction}
             isDisabled={isPicking}
             size="sm"
-            onPress={() => setIsPicking(true)}>
+            onPress={() => {
+              setStepLimit(STEP_PAGE_SIZE);
+              setIsPicking(true);
+            }}>
             {t('label.search-around')}
           </Button>
         ) : null}

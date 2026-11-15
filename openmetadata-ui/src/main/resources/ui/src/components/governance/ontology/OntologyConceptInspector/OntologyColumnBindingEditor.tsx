@@ -14,12 +14,18 @@ import {
   Alert,
   Box,
   Button,
+  MultiSelect,
   Select,
+  type SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Collection, ListBoxLoadMoreItem } from 'react-aria-components';
+import {
+  Collection,
+  ListBoxLoadMoreItem,
+  useListData,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { Include } from '../../../../generated/type/include';
@@ -36,7 +42,11 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { ONTOLOGY_COLUMN_PAGE_SIZE } from './OntologyConceptInspector.constants';
 import { ConceptFormCard } from './OntologyConceptSection';
 
-type ColumnOption = ReturnType<typeof getOntologyColumnOptions>[number];
+// Same id and label getOntologyColumnOptions builds, so a bound column matches its option.
+const columnItem = (path: string[]): SelectItemType => ({
+  id: JSON.stringify(path),
+  label: path.join(' › '),
+});
 
 interface OntologyColumnBindingEditorProps {
   conceptId: string;
@@ -60,6 +70,10 @@ const OntologyColumnBindingEditor = ({
       (asset) => asset.assetType === AssetType.Table
     ) ?? [];
   const [tableId, setTableId] = useState(tables[0]?.assetId ?? '');
+  const boundOn = (assetId: string) =>
+    (tables.find((asset) => asset.assetId === assetId)?.columns ?? [])
+      .filter((column) => column.propertyId === propertyId)
+      .map((column) => columnItem(column.columnPath));
   const lifecycle = useRef<AbortController>();
   useEffect(() => {
     const controller = new AbortController();
@@ -68,10 +82,12 @@ const OntologyColumnBindingEditor = ({
     return () => controller.abort();
   }, [conceptId, propertyId]);
   const [search, setSearch] = useState('');
-  const [chosen, setChosen] = useState<ColumnOption>();
-  const [activeLabel, setActiveLabel] = useState<string>();
-  // Selecting fills the input with the column's label; that text is not a search.
-  const query = useDebouncedValue(search === activeLabel ? '' : search, 250);
+  const selected = useListData<SelectItemType>({
+    initialItems: boundOn(tableId),
+  });
+  // The suggestion fills an empty picker once; after any edit the person's choice stands.
+  const isTouched = useRef(false);
+  const query = useDebouncedValue(search, 250);
   const table = tables.find((asset) => asset.assetId === tableId);
   const columns = useInfiniteQuery({
     queryKey: ['ontology-binding-columns', tableId, query],
@@ -114,15 +130,14 @@ const OntologyColumnBindingEditor = ({
         : undefined,
     [isIdentifier, options, propertyLabel]
   );
-  // The suggestion is fixed from the unfiltered list; recomputing it from a
-  // search would drop the selection and reset the text being typed.
   useEffect(() => {
-    if (!chosen && !query && suggested) {
-      setChosen(suggested);
+    if (!isTouched.current && selected.items.length === 0 && suggested) {
+      isTouched.current = true;
+      selected.append(columnItem(suggested.path));
     }
-  }, [chosen, query, suggested]);
-  const selected = chosen ?? suggested;
-  useEffect(() => setActiveLabel(selected?.label), [selected?.label]);
+  }, [selected, suggested]);
+  const selectedIds = new Set(selected.items.map(({ id }) => id));
+  const hasChange = selected.items.length > 0 || boundOn(tableId).length > 0;
   const save = async () => {
     const signal = lifecycle.current?.signal;
     if (!signal || signal.aborted) {
@@ -132,7 +147,7 @@ const OntologyColumnBindingEditor = ({
     const editableTable = snapshot?.assets.find(
       (asset) => asset.assetId === tableId
     );
-    if (!editableTable || !selected || !snapshot) {
+    if (!editableTable || !snapshot) {
       return;
     }
     const result = await bindings.replaceAsset({
@@ -140,18 +155,18 @@ const OntologyColumnBindingEditor = ({
       asset: {
         assetId: editableTable.assetId,
         assetType: AssetType.Table,
+        // The picker holds every column this property binds on the table.
         columns: [
           ...editableTable.columns
-            .filter(
-              (column) =>
-                column.propertyId !== propertyId ||
-                JSON.stringify(column.columnPath) !== selected.id
-            )
+            .filter((column) => column.propertyId !== propertyId)
             .map(({ propertyId, columnPath }) => ({
               propertyId,
               columnPath,
             })),
-          { propertyId, columnPath: selected.path },
+          ...selected.items.map(({ id }) => ({
+            propertyId,
+            columnPath: JSON.parse(id) as string[],
+          })),
         ],
       },
     });
@@ -180,31 +195,28 @@ const OntologyColumnBindingEditor = ({
         {t('message.temporary-error-try-reloading')}
       </Alert>
     ) : (
-      <Select.ComboBox
-        allowsEmptyCollection
+      <MultiSelect
         data-testid="ontology-binding-column-select"
-        emptyState={t('label.no-data-found')}
-        fontSize="sm"
         isDisabled={columns.isPending}
         items={options}
         key={tableId}
-        label={t('label.column')}
+        label={t('label.column-plural')}
         placeholder={t('label.search-entity', {
           entity: t('label.column-plural'),
         })}
-        shortcut={false}
+        selectedItems={selected}
+        showTagAvatars={false}
         size="sm"
-        value={selected?.id ?? null}
-        onChange={(id) => {
-          const option = options.find((item) => item.id === id);
-          if (option) {
-            setChosen(option);
-          }
+        onInputChange={setSearch}
+        onItemCleared={() => {
+          isTouched.current = true;
         }}
-        onInputChange={setSearch}>
-        <Collection items={options}>
+        onItemInserted={() => {
+          isTouched.current = true;
+        }}>
+        <Collection items={options.filter(({ id }) => !selectedIds.has(id))}>
           {(item) => (
-            <Select.Item
+            <MultiSelect.Item
               id={item.id}
               label={item.label}
               supportingText={[
@@ -227,7 +239,7 @@ const OntologyColumnBindingEditor = ({
             }
           }}
         />
-      </Select.ComboBox>
+      </MultiSelect>
     );
 
   const renderTableFields = () => (
@@ -240,9 +252,12 @@ const OntologyColumnBindingEditor = ({
       size="sm"
       value={tableId}
       onChange={(id) => {
-        setTableId(String(id));
+        const next = String(id);
+        setTableId(next);
         setSearch('');
-        setChosen(undefined);
+        selected.remove(...selected.items.map((item) => item.id));
+        selected.append(...boundOn(next));
+        isTouched.current = false;
       }}>
       {(item) => <Select.Item id={item.id} key={item.id} label={item.label} />}
     </Select>
@@ -268,7 +283,7 @@ const OntologyColumnBindingEditor = ({
           <Button
             color="primary"
             data-testid="ontology-binding-save"
-            isDisabled={!selected || !table || !bindings.editableSnapshot}
+            isDisabled={!hasChange || !table || !bindings.editableSnapshot}
             isLoading={bindings.isWriting}
             size="sm"
             onPress={save}>

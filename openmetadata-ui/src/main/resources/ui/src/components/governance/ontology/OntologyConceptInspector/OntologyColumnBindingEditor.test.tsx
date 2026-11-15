@@ -81,11 +81,20 @@ const columnPage = {
 };
 const columnInput = (editor: HTMLElement) =>
   within(editor).getByRole('combobox', { name: /label.column/ });
+const openColumns = (input: HTMLElement) => {
+  act(() => input.focus());
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+};
+// The multi-select shows each chosen column as a chip beside the search input.
+const chip = (editor: HTMLElement, name: string) =>
+  within(editor).findByText(name, { selector: 'p' });
 const selectColumn = async (editor: HTMLElement, name = /id.code/) => {
   const input = columnInput(editor);
   await waitFor(() => expect(input).toBeEnabled());
-  fireEvent.click(within(editor).getByRole('button', { name: /Show options/ }));
+  openColumns(input);
   fireEvent.click(await screen.findByRole('option', { name }));
+  // The multi-select stays open for the next pick; close it as a person would.
+  fireEvent.keyDown(input, { key: 'Escape' });
 };
 
 beforeEach(() => {
@@ -336,10 +345,11 @@ it('retries column search, searches as the person types and preserves existing a
 
   expect(columnInput(editor)).toBeEnabled();
 
-  fireEvent.click(within(editor).getByRole('button', { name: /Show options/ }));
+  openColumns(columnInput(editor));
   fireEvent.click(await screen.findByRole('option', { name: /id.code/ }));
+  fireEvent.keyDown(columnInput(editor), { key: 'Escape' });
 
-  expect(columnInput(editor)).toHaveValue('id.code');
+  expect(await chip(editor, 'id.code')).toBeInTheDocument();
 
   fireEvent.click(screen.getByTestId('ontology-binding-save'));
   await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
@@ -465,16 +475,17 @@ it('holds the column that matches the property and saves it without a further ch
   );
   const editor = screen.getByTestId('ontology-column-binding-editor');
   const input = columnInput(editor);
-  await waitFor(() => expect(input).toHaveValue('dosage'));
 
-  fireEvent.click(within(editor).getByRole('button', { name: /Show options/ }));
+  expect(await chip(editor, 'dosage')).toBeInTheDocument();
+
+  openColumns(input);
 
   expect(
-    await screen.findByRole('option', { name: /dosage/ })
-  ).toHaveTextContent('label.ontology-suggested-column');
-  expect(
-    screen.getByRole('option', { name: /patient_id/ })
+    await screen.findByRole('option', { name: /patient_id/ })
   ).not.toHaveTextContent('label.ontology-suggested-column');
+  expect(
+    screen.queryByRole('option', { name: /dosage/ })
+  ).not.toBeInTheDocument();
 
   fireEvent.keyDown(document.activeElement ?? editor, { key: 'Escape' });
   fireEvent.click(screen.getByTestId('ontology-binding-save'));
@@ -490,7 +501,7 @@ it('holds the column that matches the property and saves it without a further ch
   });
 });
 
-it('keeps the typed search and binds another column while a suggestion exists', async () => {
+it('keeps the typed search and binds a second column next to the suggestion', async () => {
   const patient = {
     name: 'patient_id',
     dataType: DataType.String,
@@ -526,7 +537,7 @@ it('keeps the typed search and binds another column while a suggestion exists', 
   );
   const editor = screen.getByTestId('ontology-column-binding-editor');
   const input = columnInput(editor);
-  await waitFor(() => expect(input).toHaveValue('dosage'));
+  await chip(editor, 'dosage');
 
   act(() => input.focus());
   fireEvent.change(input, { target: { value: 'pat' } });
@@ -555,7 +566,10 @@ it('keeps the typed search and binds another column while a suggestion exists', 
     asset: {
       assetId: 'table',
       assetType: 'table',
-      columns: [{ propertyId: 'dosage-property', columnPath: ['patient_id'] }],
+      columns: [
+        { propertyId: 'dosage-property', columnPath: ['dosage'] },
+        { propertyId: 'dosage-property', columnPath: ['patient_id'] },
+      ],
     },
   });
 });

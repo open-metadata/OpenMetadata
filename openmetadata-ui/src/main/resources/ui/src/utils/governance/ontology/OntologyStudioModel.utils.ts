@@ -599,6 +599,20 @@ export const buildReusePropertyPatch = (
         ),
       ];
 
+/** Takes a concept off a property's domain; the inverse of buildReusePropertyPatch. */
+export const buildDetachPropertyPatch = (
+  property: OntologyProperty,
+  concept: OntologyConcept
+): Operation[] => [
+  ...(property.version === undefined
+    ? []
+    : [{ op: 'test' as const, path: '/version', value: property.version }]),
+  ...compare(
+    { domain: property.domain ?? [] },
+    { domain: (property.domain ?? []).filter((iri) => iri !== concept.iri) }
+  ),
+];
+
 export const buildDataPropertyRequest = (
   model: OntologyStudioModel,
   concept: OntologyConcept,

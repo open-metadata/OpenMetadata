@@ -35,6 +35,7 @@ interface OntologyExpressionEditorProps {
   depth?: number;
   references?: OntologyReferenceOptions;
   expression: OntologyExpression;
+  isDisabled?: boolean;
   onChange: (expression: OntologyExpression) => void;
   onRemove?: () => void;
 }
@@ -158,18 +159,21 @@ type RenderChildExpression = (props: {
 
 interface OntologyValueRestrictionFieldsProps {
   expression: OntologyExpression;
+  isDisabled?: boolean;
   t: (key: string) => string;
   updateExpression: (next: OntologyExpression) => void;
 }
 
 const OntologyValueRestrictionFields = ({
   expression,
+  isDisabled,
   t,
   updateExpression,
 }: OntologyValueRestrictionFieldsProps) => {
   return (
     <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
       <Input
+        isDisabled={isDisabled}
         label={`${t('label.target')} ${t('label.concept-iri')}`}
         value={expression.individualIri ?? ''}
         onChange={(individualIri) =>
@@ -181,6 +185,7 @@ const OntologyValueRestrictionFields = ({
         }
       />
       <Input
+        isDisabled={isDisabled}
         label={t('label.value')}
         value={expression.literal?.value ?? ''}
         onChange={(value) =>
@@ -195,6 +200,7 @@ const OntologyValueRestrictionFields = ({
       />
       {expression.literal ? (
         <OntologyIriInput
+          isDisabled={isDisabled}
           label={t('label.data-type')}
           options={ONTOLOGY_DATATYPE_OPTIONS}
           value={expression.literal.datatypeIri ?? ''}
@@ -219,6 +225,7 @@ interface OntologyRestrictionFieldsProps {
   expression: OntologyExpression;
   hasCardinality: boolean;
   hasNestedFiller: boolean;
+  isDisabled?: boolean;
   renderChildExpression: RenderChildExpression;
   restrictionKind: RestrictionKind;
   restrictionOptions: { id: RestrictionKind; label: string }[];
@@ -233,6 +240,7 @@ const OntologyRestrictionFields = ({
   expression,
   hasCardinality,
   hasNestedFiller,
+  isDisabled,
   renderChildExpression,
   restrictionKind,
   restrictionOptions,
@@ -245,6 +253,7 @@ const OntologyRestrictionFields = ({
       <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:md:grid-cols-2">
         <OntologyIriInput
           isRequired
+          isDisabled={isDisabled}
           label={`${t('label.property')} ${t('label.concept-iri')}`}
           options={references?.properties}
           value={expression.propertyIri ?? ''}
@@ -253,6 +262,7 @@ const OntologyRestrictionFields = ({
           }
         />
         <Select
+          isDisabled={isDisabled}
           items={restrictionOptions}
           label={t('label.constraint-type')}
           value={restrictionKind}
@@ -265,6 +275,7 @@ const OntologyRestrictionFields = ({
       {hasCardinality ? (
         <Input
           isRequired
+          isDisabled={isDisabled}
           label={t('label.cardinality')}
           type="number"
           value={String(expression.cardinality ?? 1)}
@@ -279,6 +290,7 @@ const OntologyRestrictionFields = ({
       {restrictionKind === RestrictionKind.Value ? (
         <OntologyValueRestrictionFields
           expression={expression}
+          isDisabled={isDisabled}
           t={t}
           updateExpression={updateExpression}
         />
@@ -298,6 +310,7 @@ interface OntologyBooleanOperandsProps {
   addOperand: () => void;
   changeOperand: (index: number, value: OntologyExpression) => void;
   depth: number;
+  isDisabled?: boolean;
   operands: OntologyExpression[];
   removeOperand: (index: number) => void;
   renderChildExpression: RenderChildExpression;
@@ -308,6 +321,7 @@ const OntologyBooleanOperands = ({
   addOperand,
   changeOperand,
   depth,
+  isDisabled,
   operands,
   removeOperand,
   renderChildExpression,
@@ -324,10 +338,10 @@ const OntologyBooleanOperands = ({
           expression: operand,
           key: getExpressionRenderKey(operand),
           onChange: (value) => changeOperand(index, value),
-          onRemove: () => removeOperand(index),
+          onRemove: isDisabled ? undefined : () => removeOperand(index),
         })
       )}
-      {depth < MAX_EXPRESSION_DEPTH ? (
+      {!isDisabled && depth < MAX_EXPRESSION_DEPTH ? (
         <Button color="secondary" size="sm" onClick={addOperand}>
           {t('label.add')} {t('label.constraint')}
         </Button>
@@ -367,6 +381,7 @@ const OntologyExpressionEditor = ({
   depth = 0,
   references,
   expression,
+  isDisabled,
   onChange: onExpressionChange,
   onRemove,
 }: OntologyExpressionEditorProps) => {
@@ -448,6 +463,7 @@ const OntologyExpressionEditor = ({
     <OntologyExpressionEditor
       depth={childDepth}
       expression={childExpression}
+      isDisabled={isDisabled}
       key={key}
       references={references}
       onChange={onChildChange}
@@ -460,6 +476,7 @@ const OntologyExpressionEditor = ({
       <div className="tw:flex tw:items-end tw:gap-2">
         <div className="tw:min-w-0 tw:flex-1">
           <Select
+            isDisabled={isDisabled}
             items={kindOptions}
             label={t('label.type')}
             value={expression.kind}
@@ -479,6 +496,7 @@ const OntologyExpressionEditor = ({
       {expression.kind === ExpressionKind.NamedClass ? (
         <OntologyIriInput
           isRequired
+          isDisabled={isDisabled}
           label={t('label.concept-iri')}
           options={references?.concepts}
           value={expression.classIri ?? ''}
@@ -489,6 +507,7 @@ const OntologyExpressionEditor = ({
       {expression.kind === ExpressionKind.OneOf ? (
         <Input
           isRequired
+          isDisabled={isDisabled}
           label={`${t('label.target')} ${t('label.concept-iri')}`}
           value={(expression.individualIris ?? []).join(', ')}
           onChange={(value) =>
@@ -506,6 +525,7 @@ const OntologyExpressionEditor = ({
           expression={expression}
           hasCardinality={hasCardinality}
           hasNestedFiller={hasNestedFiller}
+          isDisabled={isDisabled}
           references={references}
           renderChildExpression={renderChildExpression}
           restrictionKind={restrictionKind}
@@ -521,6 +541,7 @@ const OntologyExpressionEditor = ({
           addOperand={addOperand}
           changeOperand={changeOperand}
           depth={depth}
+          isDisabled={isDisabled}
           operands={operands}
           removeOperand={removeOperand}
           renderChildExpression={renderChildExpression}

@@ -49,6 +49,7 @@ import {
   getOntologyReleaseReview,
   getOntologyReleaseReviews,
 } from '../../../../rest/ontologyAPI';
+import { getTask } from '../../../../rest/tasksAPI';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -401,6 +402,21 @@ const OntologyTasksDrawer = ({
     }
   };
   const queueTasks = (queue.data?.data ?? []).map(reviewAsTask);
+  // "Open task" can open a review outside this queue (decided, or neither assigned
+  // to nor created by the viewer); it still needs a row, or the list contradicts the pane.
+  const isOpenedTaskListed = queueTasks.some((task) => task.id === taskId);
+  const openedTask = useQuery({
+    queryKey: ['ontology-opened-task', taskId],
+    enabled: [isOpen, taskId, queue.isSuccess, !isOpenedTaskListed].every(
+      Boolean
+    ),
+    retry: false,
+    gcTime: 0,
+    queryFn: async () =>
+      (await getTask(taskId ?? '', { fields: 'assignees,createdBy,about' }))
+        .data,
+  });
+  const unlistedTask = isOpenedTaskListed ? undefined : openedTask.data;
   // As in the Inbox, an open list with nothing selected shows its first task.
   const firstTaskId = queueTasks[0]?.id;
   useEffect(() => {
@@ -408,12 +424,56 @@ const OntologyTasksDrawer = ({
       onTaskChange(firstTaskId);
     }
   }, [isOpen, taskId, firstTaskId, queue.isFetching, onTaskChange]);
+  const renderGroupHeader = (label: string, count: number) => (
+    <Box
+      align="center"
+      className="tw:px-1"
+      data-testid="ontology-tasks-group"
+      gap={2}>
+      <span
+        aria-hidden
+        className="tw:size-1.5 tw:rounded-full tw:bg-brand-solid"
+      />
+      <Typography
+        className="tw:uppercase tw:tracking-wide"
+        color="secondary"
+        size="text-xs"
+        weight="semibold">
+        {label}
+      </Typography>
+      <Typography color="secondary" size="text-xs">
+        {count}
+      </Typography>
+    </Box>
+  );
+  const renderUnlistedTask = () =>
+    unlistedTask ? (
+      <Box data-testid="ontology-tasks-opened" direction="col" gap={3}>
+        {renderGroupHeader(
+          t(
+            unlistedTask.status === TaskStatus.Open
+              ? 'label.pending-approval'
+              : 'label.closed'
+          ),
+          1
+        )}
+        <InboxTaskListItem
+          isActive
+          task={unlistedTask}
+          onClick={(selected) => onTaskChange(selected.id)}
+        />
+      </Box>
+    ) : null;
   const renderQueueList = () => {
     const entries = queue.data?.data ?? [];
     if (queue.isPending || queue.isError) {
       return null;
     }
     if (!entries.length) {
+      if (unlistedTask) {
+        return renderUnlistedTask();
+      }
+
       return (
         <div
           className="tw:relative tw:min-h-60"
@@ -440,28 +500,13 @@ const OntologyTasksDrawer = ({
 
     return (
       <>
-        <Box
-          align="center"
-          className="tw:px-1"
-          data-testid="ontology-tasks-group"
-          gap={2}>
-          <span
-            aria-hidden
-            className="tw:size-1.5 tw:rounded-full tw:bg-brand-solid"
-          />
-          <Typography
-            className="tw:uppercase tw:tracking-wide"
-            color="secondary"
-            size="text-xs"
-            weight="semibold">
-            {t('label.pending-approval')}
-          </Typography>
-          <Typography color="secondary" size="text-xs">
-            {search.trim()
-              ? visible.length
-              : queue.data?.paging?.total ?? visible.length}
-          </Typography>
-        </Box>
+        {renderUnlistedTask()}
+        {renderGroupHeader(
+          t('label.pending-approval'),
+          search.trim()
+            ? visible.length
+            : queue.data?.paging?.total ?? visible.length
+        )}
         {visible.map((entry) => (
           <InboxTaskListItem
             isActive={entry.task.id === taskId}

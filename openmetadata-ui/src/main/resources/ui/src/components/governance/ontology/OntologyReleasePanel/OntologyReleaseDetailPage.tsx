@@ -257,7 +257,6 @@ const OntologyReleaseDetailPage = ({
       </Typography>
       <OntologyReviewRelease
         baseReleaseId={compareTo?.id ?? release.baseReleaseId}
-        inspectable={false}
         key={compareTo?.id ?? release.baseReleaseId ?? release.id}
         releaseId={release.id}
       />

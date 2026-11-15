@@ -135,10 +135,12 @@ it('blocks every mounted column action after a confirmed removal until a complet
     expect(screen.getByTestId('ontology-bind-property-first')).toBeEnabled()
   );
   fireEvent.click(screen.getByTestId('ontology-bind-property-first'));
-  const columns = await screen.findByRole('button', { name: /label.column/ });
+  const columns = await screen.findByRole('combobox', { name: /label.column/ });
   await waitFor(() => expect(columns).toBeEnabled());
-  fireEvent.click(columns);
+  act(() => columns.focus());
+  fireEvent.keyDown(columns, { key: 'ArrowDown' });
   fireEvent.click(await screen.findByRole('option', { name: 'id' }));
+  fireEvent.keyDown(columns, { key: 'Escape' });
   await waitFor(() =>
     expect(screen.getByTestId('ontology-binding-save')).toBeEnabled()
   );

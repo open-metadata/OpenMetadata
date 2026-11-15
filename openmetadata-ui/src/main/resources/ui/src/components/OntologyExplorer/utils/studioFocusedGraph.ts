@@ -54,6 +54,10 @@ export function buildStudioGraphScope(
   });
 
   const included = new Set<string>();
+  // Each concept's link back to whoever reached it, so the view reads as a tree.
+  const reachedBy = new Set<string>();
+  const pairKey = (left: string, right: string) =>
+    left < right ? `${left}|${right}` : `${right}|${left}`;
   let frontier = seedIds.filter((id) => nodeById.has(id));
   frontier.forEach((id) => {
     if (included.size < STUDIO_FOCUS_NODE_CAP) {
@@ -84,6 +88,7 @@ export function buildStudioGraphScope(
             included.size < STUDIO_FOCUS_NODE_CAP
           ) {
             included.add(neighbour);
+            reachedBy.add(pairKey(id, neighbour));
             next.push(neighbour);
           }
         });
@@ -92,8 +97,15 @@ export function buildStudioGraphScope(
   }
 
   const nodes = graph.nodes.filter((node) => included.has(node.id));
+  // Only the seeds' own links and the link each concept was reached through: a link
+  // between two outer concepts (say both pointing at `string`) crosses the neighbourhood
+  // without saying anything about the seed. Selecting a concept re-centres on it.
+  const seeds = new Set(seedIds);
+  const isDrawn = (from: string, to: string) =>
+    seeds.has(from) || seeds.has(to) || reachedBy.has(pairKey(from, to));
   const edges = graph.edges.filter(
-    ({ from, to }) => included.has(from) && included.has(to)
+    ({ from, to }) =>
+      included.has(from) && included.has(to) && isDrawn(from, to)
   );
 
   return {

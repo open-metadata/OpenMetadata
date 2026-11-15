@@ -22,7 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
-import { Task } from '../../../../generated/entity/tasks/task';
+import { Task, TaskStatus } from '../../../../generated/entity/tasks/task';
 import { getOntologyReleaseVersion } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -41,9 +41,11 @@ interface OntologyReviewPanelProps {
 
 const PanelHeader = ({
   asChanges,
+  isApproved,
   release,
 }: {
   asChanges?: boolean;
+  isApproved: boolean;
   release: OntologyRelease;
 }) => {
   const { t } = useTranslation();
@@ -72,9 +74,12 @@ const PanelHeader = ({
       </Typography>
       {/* The release's own name (release-1) is internal; a version is what a reviewer knows. */}
       <Typography>
+        {/* The snapshot is the submitted one, so only the task knows it was since approved. */}
         {release.semanticVersion
           ? 'v' + release.semanticVersion
-          : `${getEntityName(release)} · ${t('label.draft')}`}
+          : [getEntityName(release), isApproved ? null : t('label.draft')]
+              .filter(Boolean)
+              .join(' · ')}
       </Typography>
     </>
   );
@@ -145,7 +150,11 @@ const OntologyReviewPanel = ({
 
   return (
     <Box data-testid="ontology-review-panel" direction="col" gap={3}>
-      <PanelHeader asChanges={asChanges} release={data} />
+      <PanelHeader
+        asChanges={asChanges}
+        isApproved={task.status === TaskStatus.Approved}
+        release={data}
+      />
       <OntologyReviewRelease
         baseReleaseId={data.baseReleaseId}
         counts={asChanges ? releaseKindCounts(data) : undefined}

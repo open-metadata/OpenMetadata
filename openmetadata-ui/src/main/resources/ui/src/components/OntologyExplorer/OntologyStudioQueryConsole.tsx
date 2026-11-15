@@ -413,7 +413,6 @@ const QueryConsoleActions = (props: QueryConsoleActionsProps) => {
 
   return (
     <Box align="center" className="tw:ml-auto" gap={2} wrap="wrap">
-      <QueryMoreActions {...props} />
       {activeQuery.savedQuery ? (
         <>
           <ButtonUtility
@@ -463,6 +462,7 @@ const QueryConsoleActions = (props: QueryConsoleActionsProps) => {
         onClick={onRun}>
         {running ? t('label.running') : t('label.run-query')}
       </Button>
+      <QueryMoreActions {...props} />
     </Box>
   );
 };
@@ -502,41 +502,47 @@ const QueryConsoleHeader = ({
   return (
     <>
       <Box
-        align="center"
         className="tw:min-h-16 tw:shrink-0 tw:border-b tw:border-secondary tw:px-5 tw:py-3"
-        gap={3}
-        wrap="wrap">
-        <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Box align="center" gap={2} wrap="wrap">
+        direction="col"
+        gap={1}>
+        <Box align="center" gap={3} wrap="wrap">
+          <Box className="tw:min-w-0 tw:flex-1">
             <QueryTitle activeQuery={activeQuery} rename={rename} />
+          </Box>
+          <QueryConsoleActions
+            activeQuery={activeQuery}
+            isDirty={isDirty}
+            {...actions}
+          />
+        </Box>
+        <Box align="center" gap={2} wrap="wrap">
+          <Badge
+            color="blue"
+            data-testid="ontology-query-form"
+            size="sm"
+            type="pill-color">
+            {getQueryForm(query)}
+          </Badge>
+          {activeQuery.isShared ? (
             <Badge
-              color="blue"
-              data-testid="ontology-query-form"
+              className="tw:gap-1"
+              color="gray"
+              data-testid="ontology-query-read-only"
               size="sm"
               type="pill-color">
-              {getQueryForm(query)}
+              <Lock01 aria-hidden="true" className="tw:size-3" />
+              {t('label.read-only')}
             </Badge>
-            {activeQuery.isShared ? (
-              <Badge
-                className="tw:gap-1"
-                color="gray"
-                data-testid="ontology-query-read-only"
-                size="sm"
-                type="pill-color">
-                <Lock01 aria-hidden="true" className="tw:size-3" />
-                {t('label.read-only')}
-              </Badge>
-            ) : null}
-            {isDirty ? (
-              <Badge
-                color="warning"
-                data-testid="ontology-query-unsaved"
-                size="sm"
-                type="pill-color">
-                {t('label.unsaved-changes')}
-              </Badge>
-            ) : null}
-          </Box>
+          ) : null}
+          {isDirty ? (
+            <Badge
+              color="warning"
+              data-testid="ontology-query-unsaved"
+              size="sm"
+              type="pill-color">
+              {t('label.unsaved-changes')}
+            </Badge>
+          ) : null}
           {subtitle ? (
             <Typography
               color="secondary"
@@ -546,11 +552,6 @@ const QueryConsoleHeader = ({
             </Typography>
           ) : null}
         </Box>
-        <QueryConsoleActions
-          activeQuery={activeQuery}
-          isDirty={isDirty}
-          {...actions}
-        />
       </Box>
 
       {activeQuery.isShared && isDirty ? (

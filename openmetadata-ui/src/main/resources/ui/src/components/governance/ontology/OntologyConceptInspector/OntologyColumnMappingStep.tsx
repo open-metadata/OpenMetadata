@@ -15,11 +15,13 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Checkbox,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useQueries } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +55,8 @@ interface OntologyColumnMappingStepProps {
   assets: readonly EntityReference[];
   /** Called when the step is skipped, cancelled or saved. */
   onClose: () => void;
+  /** Opened from an asset row: it sits in that row, so it draws no card of its own. */
+  isInline?: boolean;
 }
 
 interface RowState {
@@ -100,6 +104,7 @@ const OntologyColumnMappingStep = ({
   properties,
   assets,
   onClose,
+  isInline = false,
 }: OntologyColumnMappingStepProps) => {
   const { t } = useTranslation();
   const bindings = useOntologyConceptBindings(conceptId);
@@ -386,6 +391,21 @@ const OntologyColumnMappingStep = ({
                     {option.datatype}
                   </Typography>
                 </span>
+                {option.extraBindings > 0 ? (
+                  <Typography as="span" color="secondary" size="text-xs">
+                    {t('message.ontology-column-extra-bindings', {
+                      count: option.extraBindings,
+                    })}
+                  </Typography>
+                ) : null}
+                {/* A fixed slot ahead of the select, so every row's select lines up and ends at the right edge. */}
+                <span className="tw:flex tw:w-24 tw:shrink-0 tw:justify-end">
+                  {isSuggested ? (
+                    <Badge color="brand" size="sm" type="pill-color">
+                      {t('label.ontology-suggested-column')}
+                    </Badge>
+                  ) : null}
+                </span>
                 <Select
                   aria-label={`${t('label.property')}: ${name}`}
                   className="tw:w-44 tw:shrink-0"
@@ -407,21 +427,6 @@ const OntologyColumnMappingStep = ({
                     />
                   )}
                 </Select>
-                {option.extraBindings > 0 ? (
-                  <Typography as="span" color="secondary" size="text-xs">
-                    {t('message.ontology-column-extra-bindings', {
-                      count: option.extraBindings,
-                    })}
-                  </Typography>
-                ) : null}
-                {/* A fixed slot, so every row's property select lines up with or without the badge. */}
-                <span className="tw:flex tw:w-24 tw:shrink-0">
-                  {isSuggested ? (
-                    <Badge color="brand" size="sm" type="pill-color">
-                      {t('label.ontology-suggested-column')}
-                    </Badge>
-                  ) : null}
-                </span>
               </li>
             );
           })}
@@ -437,35 +442,48 @@ const OntologyColumnMappingStep = ({
     );
   };
 
-  return (
-    <Card
-      className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
-      data-testid="ontology-column-mapping-step">
-      <Box direction="col" gap={1}>
-        {/* not-prose: Typography wraps a heading in .prose, whose h3 is 20px with margins. */}
-        <Typography
-          as="h3"
-          className="not-prose tw:m-0 tw:text-primary"
-          size="text-sm"
-          weight="medium">
-          {t('message.ontology-bind-columns-title', {
-            concept: conceptName,
-          })}
-        </Typography>
-        <Typography color="secondary" size="text-xs">
-          {t('message.ontology-bind-columns-description')}
-        </Typography>
+  const content = (
+    <>
+      <Box align="start" gap={2}>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+          {/* not-prose: Typography wraps a heading in .prose, whose h3 is 20px with margins. */}
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {t('message.ontology-bind-columns-title', {
+              concept: conceptName,
+            })}
+          </Typography>
+          <Typography color="secondary" size="text-xs">
+            {t('message.ontology-bind-columns-description')}
+          </Typography>
+        </Box>
+        {isInline ? (
+          <ButtonUtility
+            color="tertiary"
+            data-testid="ontology-column-mapping-close"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.close')}
+            onClick={onClose}
+          />
+        ) : null}
       </Box>
       {unsavedMessage ? <Alert variant="error">{unsavedMessage}</Alert> : null}
       {tables.map(renderTable)}
       <Box align="center" gap={2}>
-        <Button
-          color="link-color"
-          data-testid="ontology-column-mapping-skip"
-          size="sm"
-          onPress={onClose}>
-          {t('label.ontology-skip-column-binding')}
-        </Button>
+        {/* Only after linking does "skip" mean something; inline, Cancel and × already close. */}
+        {isInline ? null : (
+          <Button
+            color="link-color"
+            data-testid="ontology-column-mapping-skip"
+            size="sm"
+            onPress={onClose}>
+            {t('label.ontology-skip-column-binding')}
+          </Button>
+        )}
         <span className="tw:flex-1" />
         <Button color="secondary" size="sm" onPress={onClose}>
           {t('label.cancel')}
@@ -480,6 +498,21 @@ const OntologyColumnMappingStep = ({
           {t('label.save')}
         </Button>
       </Box>
+    </>
+  );
+
+  // Inline it sits inside an asset row: a gray-blue fill, not a card, sets it apart from the row.
+  return isInline ? (
+    <div
+      className="tw:flex tw:flex-col tw:gap-4 tw:bg-utility-gray-blue-50 tw:p-4"
+      data-testid="ontology-column-mapping-step">
+      {content}
+    </div>
+  ) : (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
+      data-testid="ontology-column-mapping-step">
+      {content}
     </Card>
   );
 };

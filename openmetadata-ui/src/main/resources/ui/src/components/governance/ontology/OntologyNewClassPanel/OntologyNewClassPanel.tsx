@@ -1266,7 +1266,7 @@ const OntologyNewClassPanel = ({
               </Label>
               <Box
                 align="center"
-                className="tw:min-h-10 tw:flex-wrap tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-2 tw:py-1 tw:shadow-xs tw:focus-within:border-brand"
+                className="tw:min-h-10 tw:flex-wrap tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-xs tw:focus-within:border-brand"
                 data-testid="new-class-synonym-field"
                 gap={2}>
                 {synonyms.length > 0 ? (

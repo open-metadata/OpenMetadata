@@ -741,6 +741,50 @@ it('puts Bind columns on its own links line under the asset path', async () => {
   expect(bind).not.toHaveClass('tw:font-medium');
 });
 
+it('opens Bind columns under its own row in place of its links and closes it with ×', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? { data: stored() }
+      : { data: { data: [], paging: { total: 0 } } }
+  );
+  renderWithQueryClient(
+    <MemoryRouter>
+      <OntologyConceptAssets
+        canEdit
+        conceptId="customer"
+        conceptName="Customer"
+        presentation={{ kind: 'edit' }}
+        properties={[{ id: 'name', label: 'name' }]}
+      />
+    </MemoryRouter>
+  );
+  const bind = await screen.findByTestId(
+    'ontology-native-asset-bind-columns-old-table'
+  );
+  await waitFor(() => expect(bind).toBeEnabled());
+  fireEvent.click(bind);
+
+  const row = screen.getByTestId('ontology-native-asset-row-old-table');
+  const step = await screen.findByTestId('ontology-column-mapping-step');
+
+  expect(row.nextElementSibling).toContainElement(step);
+  expect(
+    screen.queryByTestId('ontology-column-mapping-skip')
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByTestId('ontology-native-asset-bind-columns-old-table')
+  ).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('ontology-column-mapping-close'));
+
+  expect(
+    screen.queryByTestId('ontology-column-mapping-step')
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByTestId('ontology-native-asset-bind-columns-old-table')
+  ).toBeInTheDocument();
+});
+
 it('confirms an unlink in a centred page dialog rather than a popover on the row', async () => {
   http.get.mockImplementation(async (url) =>
     url.includes('/bindings')
