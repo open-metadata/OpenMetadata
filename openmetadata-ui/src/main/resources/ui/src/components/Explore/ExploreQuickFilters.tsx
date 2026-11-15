@@ -113,7 +113,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   index,
   aggregations,
   independent = false,
-  skipDomainFilter = false,
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
@@ -278,8 +277,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       optionPageSize,
       isNLPActive,
       searchText,
-      sourceFields,
-      skipDomainFilter
+      sourceFields
     );
     const options = buildBucketOptions(
       res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [],
@@ -430,8 +428,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         undefined,
         isNLPActive,
         searchText,
-        sourceFields,
-        skipDomainFilter
+        sourceFields
       );
 
       const buckets =
@@ -479,12 +476,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       '',
       statusFacetQuery,
       independent,
-      showDeleted,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      skipDomainFilter
+      showDeleted
     )
       .then((res) => {
         const buckets: Bucket[] =
@@ -501,14 +493,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     return () => {
       isCurrent = false;
     };
-  }, [
-    hasStatusField,
-    index,
-    statusFacetQuery,
-    independent,
-    showDeleted,
-    skipDomainFilter,
-  ]);
+  }, [hasStatusField, index, statusFacetQuery, independent, showDeleted]);
 
   const visibleFields = useMemo(
     () =>

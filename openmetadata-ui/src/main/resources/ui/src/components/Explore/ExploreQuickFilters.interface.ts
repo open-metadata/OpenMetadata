@@ -26,8 +26,6 @@ export interface ExploreQuickFiltersProps {
   showDeleted?: boolean;
   onChangeShowDeleted?: (showDeleted: boolean) => void;
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
-  // Options ignore the navbar domain pick, for a view that shows every domain (e.g. lineage).
-  skipDomainFilter?: boolean;
   fieldsWithNullValues?: EntityFields[];
   defaultQueryFilter?: Record<string, unknown>;
   showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters

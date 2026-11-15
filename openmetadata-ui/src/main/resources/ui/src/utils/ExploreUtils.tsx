@@ -78,22 +78,18 @@ export const getAggregationOptions = async (
   size = 10,
   isNLPEnabled = false,
   queryText?: string,
-  sourceFields?: string,
-  skipDomainFilter = false
+  sourceFields?: string
 ) => {
   return isIndependent
-    ? postAggregateFieldOptions(
-        {
-          index: Array.isArray(index) ? index.join(',') : index,
-          fieldName: key,
-          fieldValue: value,
-          query: filter,
-          ...(queryText ? { queryText } : {}),
-          size,
-          ...(sourceFields ? { topHits: { size: 1 } } : {}),
-        },
-        skipDomainFilter
-      )
+    ? postAggregateFieldOptions({
+        index: Array.isArray(index) ? index.join(',') : index,
+        fieldName: key,
+        fieldValue: value,
+        query: filter,
+        ...(queryText ? { queryText } : {}),
+        size,
+        ...(sourceFields ? { topHits: { size: 1 } } : {}),
+      })
     : getAggregateFieldOptions(
         index,
         key,
@@ -102,8 +98,7 @@ export const getAggregationOptions = async (
         sourceFields,
         deleted,
         isNLPEnabled,
-        queryText,
-        skipDomainFilter
+        queryText
       );
 };
 

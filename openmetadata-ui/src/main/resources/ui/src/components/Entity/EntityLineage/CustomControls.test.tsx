@@ -619,17 +619,6 @@ describe('CustomControls', () => {
     expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
   });
 
-  it('offers filter values from every domain, as the lineage graph shows them', () => {
-    render(<CustomControlsComponent {...defaultProps} />, { wrapper: Wrapper });
-
-    fireEvent.click(screen.getByLabelText('label.filter-plural'));
-
-    expect(ExploreQuickFilters).toHaveBeenCalledWith(
-      expect.objectContaining({ skipDomainFilter: true }),
-      expect.anything()
-    );
-  });
-
   it('should pass nodeIds to ExploreQuickFilters when ids passed through props', () => {
     (useLineageStore as unknown as jest.Mock).mockImplementation(
       mockStoreImplementation({
