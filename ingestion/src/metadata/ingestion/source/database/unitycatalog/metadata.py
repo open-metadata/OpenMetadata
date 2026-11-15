@@ -969,7 +969,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         Fail a run that skipped a stale-entity cleanup, whatever the success threshold: what
         the failed listing did not reach was neither refreshed nor reconciled. Raised once the
         topology is done because the runner only records a producer's exception, then
-        reconciles anyway (ADR:2026-10-22-tableau-runs-stop-without-deleting-while-the-metadata-api-backfills).
+        reconciles anyway (ADR:2026-11-15-unity-catalog-runs-fail-when-a-failed-listing-skipped-their-cleanup).
         """
         yield from super()._iter()
         if self._skipped_stale_cleanups:

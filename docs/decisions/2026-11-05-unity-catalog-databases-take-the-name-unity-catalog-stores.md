@@ -24,9 +24,12 @@ Schemas and tables never had the problem, because they are named from the API.
 - Lookups build FQNs from Unity Catalog's names and match them exactly; they do not search.
 
 ## Consequences
-Lineage, metric-view lineage and incremental deletion match the ingested entities for any casing
-the user types. A service ingested before this change with a mixed-case `catalog` gets a second,
-lowercase Database on its next run; the old one keeps its curated metadata and goes stale until it
-is deleted. Moving that metadata over needs a Database rename the server does not support today
-(`renameAllowed` is off for Database), so it is left to a separate migration. A Unity Catalog name
-that is not lowercase would break this rule; the Databricks docs and live checks say there is none.
+Lineage, metric-view lineage and incremental deletion match the ingested entities for any casing the
+user types. A service ingested before this change with a mixed-case `catalog` gets a second,
+lowercase Database on its next run. With `markDeletedDatabases` off (the default), the old one keeps
+its curated metadata and goes stale until it is deleted. With it on, that run soft-deletes the old
+Database and everything under it, because the cleanup no longer sees its name; restoring it brings
+the curated metadata back, but the next such run deletes it again. Moving that metadata over needs a
+Database rename the server does not support today (`renameAllowed` is off for Database), so it is
+left to a separate migration. A Unity Catalog name that is not lowercase would break this rule; the
+Databricks docs and live checks say there is none.
