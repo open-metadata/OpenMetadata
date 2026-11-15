@@ -25,6 +25,7 @@ import static org.openmetadata.schema.entity.services.ServiceType.ML_MODEL;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -177,6 +178,7 @@ public class DBSecretsManagerTest {
   void testEncryptNestedPipelineSecrets(String name, PipelineType pipelineType, String json) {
     IngestionPipeline pipeline =
         new IngestionPipeline()
+            .withId(UUID.randomUUID())
             .withName("test")
             .withPipelineType(pipelineType)
             .withSourceConfig(new SourceConfig().withConfig(JsonUtils.readValue(json, Map.class)));
@@ -237,6 +239,7 @@ public class DBSecretsManagerTest {
   void testEncryptTypedApplicationConfigWithNestedMaps(ApplicationPipeline config) {
     IngestionPipeline pipeline =
         new IngestionPipeline()
+            .withId(UUID.randomUUID())
             .withName("test")
             .withPipelineType(PipelineType.APPLICATION)
             .withSourceConfig(new SourceConfig().withConfig(config));

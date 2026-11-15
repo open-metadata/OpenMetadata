@@ -109,6 +109,7 @@ public class PasswordEntityMasker extends EntityMasker {
       String connectionType,
       ServiceType serviceType) {
     if (originalConnectionConfig != null && connectionConfig != null) {
+      SecretsUtil.validateSslConfig(connectionConfig, connectionType, serviceType);
       try {
         Object toUnmaskConfig =
             SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);

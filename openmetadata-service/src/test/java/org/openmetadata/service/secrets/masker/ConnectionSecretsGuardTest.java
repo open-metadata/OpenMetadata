@@ -31,9 +31,9 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.schema.services.connections.mcp.McpConnection;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.service.fernet.Fernet;
 
 /**
  * A caller who sees a connection's secrets masked keeps them while the connection points where it
@@ -423,6 +423,38 @@ class ConnectionSecretsGuardTest {
                     .withName("second")
                     .withUrl("https://second.example")
                     .withApiKey(secondSecret)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void editingAPasswordMapInOneServiceConnectionRequiresOnlyItsSecrets(boolean keepsSecret) {
+    IngestionPipeline stored =
+        testSuite(
+            List.of(
+                Map.of(
+                    "serviceName",
+                    "kafka",
+                    "serviceConnection",
+                    Map.of("config", storedKafka(IDP_URL))),
+                serviceConnection("second", "second:3306", STORED_TOKEN)));
+    IngestionPipeline incoming =
+        testSuite(
+            List.of(
+                Map.of(
+                    "serviceName",
+                    "kafka",
+                    "serviceConnection",
+                    Map.of(
+                        "config",
+                        kafka(ATTACKER_URL, keepsSecret ? PASSWORD_MASK : "entered-again"))),
+                serviceConnection("second", "second:3306", PASSWORD_MASK)));
+    Executable update =
+        () -> ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(incoming, stored);
+    if (keepsSecret) {
+      assertThrows(BadRequestException.class, update);
+    } else {
+      assertDoesNotThrow(update);
+    }
   }
 
   private static IngestionPipeline storedTestSuite() {

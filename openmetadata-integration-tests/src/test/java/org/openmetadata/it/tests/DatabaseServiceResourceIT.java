@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityRulesUtil;
@@ -337,13 +339,17 @@ public class DatabaseServiceResourceIT
     assertEquals(DatabaseServiceType.Mysql, service.getServiceType());
   }
 
-  @Test
-  void post_mysqlServiceWithUnknownSslConfigField_400(TestNamespace ns) {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void post_mysqlServiceWithUnknownSslConfigField_400(boolean includesSecret, TestNamespace ns) {
     MysqlConnection conn =
         new MysqlConnection()
             .withHostPort("localhost:3306")
             .withUsername("test_user")
-            .withSslConfig(Map.of("sslMode", "require"));
+            .withSslConfig(
+                includesSecret
+                    ? Map.of("sslKey", "key-pem", "sslMode", "require")
+                    : Map.of("sslMode", "require"));
     CreateDatabaseService request =
         new CreateDatabaseService()
             .withName(ns.prefix("mysql_bad_ssl"))
@@ -371,6 +377,53 @@ public class DatabaseServiceResourceIT
                 .withServiceType(DatabaseServiceType.Mysql)
                 .withConnection(new DatabaseConnection().withConfig(conn)));
     assertNotNull(service.getConnection());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void put_patch_mysqlServiceWithMixedSslConfigFields_400(boolean patch, TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("sslKey", "key-pem"));
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("mysql_ssl_update"))
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+    DatabaseService service = createEntity(request);
+    conn.setSslConfig(Map.of("sslKey", PASSWORD_MASK, "sslMode", "require"));
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> {
+              if (patch) {
+                SdkClients.adminClient()
+                    .databaseServices()
+                    .patch(
+                        service.getId(),
+                        JsonUtils.valueToTree(
+                            List.of(
+                                Map.of(
+                                    "op",
+                                    "replace",
+                                    "path",
+                                    "/connection/config/sslConfig",
+                                    "value",
+                                    conn.getSslConfig()))));
+              } else {
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/services/databaseServices",
+                        request,
+                        DatabaseService.class);
+              }
+            });
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().contains("unrecognized field 'sslMode'"), error.getMessage());
   }
 
   @Test

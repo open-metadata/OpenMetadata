@@ -14,9 +14,11 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.ReflectionException;
 
@@ -124,7 +126,7 @@ final class SchemaClassConverter {
     if (SCHEMAS.hasOpenObjectBranch(oneOf) && !SCHEMAS.hasMatchingClosedBranch(oneOf, value)) {
       return value;
     }
-    if (!SCHEMAS.containsPasswordFormat(oneOf)) {
+    if (!SCHEMAS.containsPasswordFormat(oneOf) || isLegacySslConfig(oneOf, value)) {
       return value;
     }
     return convertIgnoringUndeclaredFields(oneOf, value)
@@ -146,6 +148,15 @@ final class SchemaClassConverter {
                             + property
                             + " on "
                             + owner));
+  }
+
+  private static boolean isLegacySslConfig(JsonSchemaRepository.Ref oneOf, Object value) {
+    List<JsonSchemaRepository.Ref> branches = SCHEMAS.branches(oneOf);
+    return branches.size() == 1
+        && SCHEMAS.javaClass(branches.getFirst()) == ValidateSSLClientConfig.class
+        && value instanceof Map<?, ?> map
+        && map.keySet().stream()
+            .noneMatch(key -> branches.getFirst().node().path("properties").has(key.toString()));
   }
 
   /**
