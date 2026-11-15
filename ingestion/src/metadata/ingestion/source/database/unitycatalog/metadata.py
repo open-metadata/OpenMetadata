@@ -19,6 +19,7 @@ from functools import cached_property, partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
+from databricks.sdk.errors import NotFound
 from databricks.sdk.service.catalog import ColumnInfo, SchemaInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
@@ -416,10 +417,19 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
     def _list_schemas(self, catalog_name: str) -> Iterable[SchemaInfo]:
         """The configured ``databaseSchema`` alone when one is set, else every schema of the catalog."""
         configured_schema = self.service_connection.databaseSchema
-        if configured_schema:
-            yield self.client.schemas.get(f"{catalog_name}.{configured_schema}")
-        else:
+        if not configured_schema:
             yield from self.client.schemas.list(catalog_name=catalog_name)
+            return
+        try:
+            schema = self.client.schemas.get(f"{catalog_name}.{configured_schema}")
+        except NotFound:
+            if self.service_connection.catalog:
+                raise
+            # Walking every catalog: one that has no such schema is out of scope, not a
+            # failed listing that must stop its stale cleanup and fail the run.
+            logger.debug("Catalog [%s] has no schema [%s]", catalog_name, configured_schema)
+            return
+        yield schema
 
     def get_database_schema_names(self) -> Iterable[str]:
         """

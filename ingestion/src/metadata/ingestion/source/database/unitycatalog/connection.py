@@ -202,10 +202,17 @@ def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalo
                 break
 
 
-def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: str | None = None) -> None:
+def get_schemas(
+    connection: WorkspaceClient,
+    table_obj: DatabricksTable,
+    schema_name: str | None = None,
+    search_catalogs: bool = False,
+) -> None:
     """
     Resolve the schema used by the remaining test connection steps. If a databaseSchema is
-    configured on the connection, validate access to that exact schema.
+    configured on the connection, validate access to that exact schema. With
+    ``search_catalogs`` (no catalog configured, so ingestion walks every catalog) a catalog
+    without that schema is skipped, and the steps use the first catalog that has it.
     """
     if not table_obj.catalog_name:
         raise SourceConnectionException(
@@ -213,7 +220,21 @@ def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_
             "has `USE CATALOG` privilege on at least one catalog."
         )
     if schema_name:
-        table_obj.schema_name = connection.schemas.get(f"{table_obj.catalog_name}.{schema_name}").name
+        try:
+            table_obj.schema_name = connection.schemas.get(f"{table_obj.catalog_name}.{schema_name}").name
+        except NotFound:
+            if not search_catalogs:
+                raise
+            for catalog in connection.catalogs.list():
+                if not catalog.name or catalog.name in (INTERNAL_CATALOG, table_obj.catalog_name):
+                    continue
+                try:
+                    schema = connection.schemas.get(f"{catalog.name}.{schema_name}")
+                except NotFound:
+                    continue
+                table_obj.catalog_name, table_obj.schema_name = catalog.name, schema.name
+                return
+            raise
     else:
         for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
             if schema.name:
@@ -405,7 +426,12 @@ class UnityCatalogChecks:
     def check_schemas(self) -> Evidence:
         configured = self.service_connection.databaseSchema
         return self._probe(
-            lambda: get_schemas(self._workspace.client, self.table_obj, configured),
+            lambda: get_schemas(
+                self._workspace.client,
+                self.table_obj,
+                configured,
+                search_catalogs=not self.service_connection.catalog,
+            ),
             f"schemas.get({configured!r})" if configured else "schemas.list()",
             lambda: f"schema '{self.table_obj.schema_name}' resolved",
         )

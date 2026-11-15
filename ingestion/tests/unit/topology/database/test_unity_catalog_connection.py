@@ -16,6 +16,7 @@ Tests for unitycatalog.connection.
 from unittest.mock import MagicMock
 
 import pytest
+from databricks.sdk.errors import NotFound
 from databricks.sdk.service.catalog import TableType
 from sqlalchemy.engine import Engine
 
@@ -143,6 +144,49 @@ class TestGetSchemas:
 
         with pytest.raises(SourceConnectionException, match="Could not resolve a catalog"):
             get_schemas(client, table_obj)
+
+    def test_finds_the_configured_schema_in_a_later_catalog_when_no_catalog_is_configured(self):
+        client = _workspace_client(
+            catalogs=[_named_mock("system"), _named_mock("__databricks_internal"), _named_mock("demo")]
+        )
+
+        def get_schema(full_name):
+            if full_name != "demo.sales":
+                raise NotFound(f"Schema '{full_name}' does not exist.")
+            return _named_mock("sales")
+
+        client.schemas.get.side_effect = get_schema
+        table_obj = DatabricksTable(catalog_name="system")
+
+        get_schemas(client, table_obj, schema_name="sales", search_catalogs=True)
+
+        assert (table_obj.catalog_name, table_obj.schema_name) == ("demo", "sales")
+        assert [call.args[0] for call in client.schemas.get.call_args_list] == ["system.sales", "demo.sales"]
+
+    def test_missing_schema_fails_in_the_configured_catalog(self):
+        client = _workspace_client(catalogs=[_named_mock("demo")])
+        client.schemas.get.side_effect = NotFound("Schema 'system.sales' does not exist.")
+        table_obj = DatabricksTable(catalog_name="system")
+
+        with pytest.raises(NotFound, match=r"system\.sales"):
+            get_schemas(client, table_obj, schema_name="sales")
+
+        client.catalogs.list.assert_not_called()
+
+    def test_schema_missing_from_every_catalog_fails(self):
+        client = _workspace_client(catalogs=[_named_mock("system"), _named_mock("demo")])
+
+        def get_schema(full_name):
+            raise NotFound(f"Schema '{full_name}' does not exist.")
+
+        client.schemas.get.side_effect = get_schema
+        table_obj = DatabricksTable(catalog_name="system")
+
+        # The error reported is the one for the catalog the earlier steps resolved.
+        with pytest.raises(NotFound, match=r"Schema 'system\.sales' does not exist"):
+            get_schemas(client, table_obj, schema_name="sales", search_catalogs=True)
+
+        assert table_obj.schema_name is None
 
 
 class TestGetTables:
