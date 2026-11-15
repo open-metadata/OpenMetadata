@@ -631,11 +631,13 @@ class TestDistributedTableLineage:
 
         assert self._run(metadata, system_tables) == []
 
-    def test_distributed_table_naming_itself_is_skipped(self, metadata, tables, system_tables):
+    def test_distributed_table_naming_itself_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
         self._add_table(tables, "default", "events")
         self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events')")
 
-        assert self._run(metadata, system_tables) == []
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.events] of Distributed table [default.events] not found" in caplog.text
 
     @pytest.mark.parametrize(
         "source_config",

@@ -356,7 +356,9 @@ def get_distributed_table_lineage(
             continue
 
         local_entity = _get_single_table(metadata, service_name, local_table.schema_name, local_table.table_name)
-        if local_entity is None:
+        # A server that holds no shard of the cluster may name the Distributed table itself: its
+        # local tables then live only on the other servers, which this service does not ingest
+        if local_entity is None or local_entity.id == distributed_entity.id:
             logger.warning(
                 "Local table [%s.%s] of Distributed table [%s.%s] not found, skipping its lineage",
                 local_table.schema_name,
@@ -364,9 +366,6 @@ def get_distributed_table_lineage(
                 schema_name,
                 table_name,
             )
-            continue
-        # A server that holds no shard of the cluster may name the Distributed table itself
-        if local_entity.id == distributed_entity.id:
             continue
 
         # Not marked to override: a materialized view writing `TO` the Distributed table leaves
