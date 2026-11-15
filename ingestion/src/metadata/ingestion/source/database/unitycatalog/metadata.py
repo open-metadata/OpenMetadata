@@ -943,6 +943,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         """
         From topology, once every table is written: add the foreign keys whose
         referred table was not in OpenMetadata yet when their own table was written.
+        ADR:2026-11-15-unity-catalog-foreign-keys-to-later-tables-are-patched-after-the-run
         """
         if not self.deferred_foreign_keys:
             return
