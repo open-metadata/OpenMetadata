@@ -51,4 +51,12 @@ describe('EntitySummaryDetails Component', () => {
       expect(EntitySummary).toBeInTheDocument();
     });
   });
+
+  it('shows -- for an empty owner', async () => {
+    const { findByTestId: findInContainer } = render(
+      <EntitySummaryDetails data={{ key: 'Owner', value: undefined }} />
+    );
+
+    expect(await findInContainer('owner-link')).toHaveTextContent(/^--$/);
+  });
 });

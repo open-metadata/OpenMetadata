@@ -10,14 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConceptMappingType } from '../../../../generated/api/data/createOntologyChangeSet';
+import { OntologyStudioModel } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
   MODEL_NODE_MAX_WIDTH,
   NODE_HEIGHT,
 } from '../../../OntologyExplorer/utils/graphConfig';
 import {
+  classIdentityIssues,
+  classIri,
   classLocalName,
   distinctChipValues,
   isValidLocalName,
+  isValidMapping,
   placeNewClass,
 } from './OntologyNewClassPanel.utils';
 
@@ -63,4 +68,62 @@ it('waits for layout rather than guessing missing positions', () => {
       y: expect.any(Number),
     }),
   });
+});
+
+const model = {
+  ontology: { namespace: 'urn:x:' },
+  concepts: [
+    { name: 'Payment', displayName: 'Payment', iri: 'urn:x:Payment' },
+    { name: 'Txn', displayName: 'Wire transfer', iri: 'urn:x:Txn' },
+  ],
+  properties: [{ name: 'amount', iri: 'urn:x:amount' }],
+} as unknown as OntologyStudioModel;
+const input = { displayName: '', localName: 'Fresh', iri: '', source: '' };
+
+it('reports each identity problem once, in the order the form shows them', () => {
+  expect(classIdentityIssues(model, input)).toEqual([]);
+  expect(classIdentityIssues(model, { ...input, localName: ' ' })).toEqual([
+    'name-required',
+  ]);
+  expect(
+    classIdentityIssues(model, { ...input, localName: 'Spaced Name!' })
+  ).toEqual(['name-invalid']);
+  expect(
+    classIdentityIssues(model, { ...input, localName: 'Payment' })
+  ).toEqual(['name-taken']);
+  expect(classIdentityIssues(model, { ...input, localName: 'amount' })).toEqual(
+    ['name-taken']
+  );
+  expect(
+    classIdentityIssues(model, { ...input, displayName: 'wire TRANSFER' })
+  ).toEqual(['label-taken']);
+  expect(
+    classIdentityIssues(model, {
+      ...input,
+      iri: 'relative',
+      source: 'also relative',
+    })
+  ).toEqual(['iri-invalid', 'source-invalid']);
+  expect(classIdentityIssues(model, { ...input, iri: 'urn:x:Txn' })).toEqual([
+    'iri-taken',
+  ]);
+});
+
+it('uses a typed IRI over the namespace and name', () => {
+  expect(classIri('urn:x:', ' Fresh ', '')).toBe('urn:x:Fresh');
+  expect(classIri('urn:x:', 'Fresh', ' urn:y:Other ')).toBe('urn:y:Other');
+});
+
+it('accepts an absolute mapping IRI once per type', () => {
+  const row = {
+    mappingType: ConceptMappingType.ExactMatch,
+    conceptIri: 'https://schema.org/Payment',
+  };
+
+  expect(isValidMapping([], row)).toBe(true);
+  expect(isValidMapping([row], row)).toBe(false);
+  expect(isValidMapping([], { ...row, conceptIri: 'Payment' })).toBe(false);
+  expect(
+    isValidMapping([row], { ...row, mappingType: ConceptMappingType.SameAs })
+  ).toBe(true);
 });

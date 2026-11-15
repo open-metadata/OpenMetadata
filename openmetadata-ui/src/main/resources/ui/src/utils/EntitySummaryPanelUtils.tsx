@@ -14,11 +14,11 @@
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from './common/layout.utils';
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { get, isEmpty } from 'lodash';
 import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
@@ -184,7 +184,7 @@ export const getTitle = (
           ellipsis={{ tooltip: true }}>
           {title}
         </Typography>
-        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
+        <LinkExternal01 className="tw:shrink-0" size={14} />
       </div>
     </Link>
   ) : (

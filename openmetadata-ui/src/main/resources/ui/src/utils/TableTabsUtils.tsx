@@ -12,6 +12,7 @@
  */
 
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { TableShardingWidget } from '../pages/TableDetailsPageV1/Sharding/TableSharding';
 
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
@@ -255,6 +256,7 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
+  viewQueryResourcePermission,
   editLineagePermission,
   fetchTableDetails,
   isViewTableType,
@@ -333,6 +335,9 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
+      // Hidden rather than omitted: a persona layout listing this tab would otherwise
+      // render it with the Schema tab's content.
+      isHidden: !viewQueryResourcePermission,
       children: getTableQueriesTabChildren({
         viewQueriesPermission,
         deleted,
@@ -523,6 +528,9 @@ export const getTableDetailPageBaseTabs = ({
 export const getTableWidgetFromKey = (
   widgetConfig: WidgetConfig
 ): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SHARDING)) {
+    return <TableShardingWidget />;
+  }
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
     return <SchemaTable />;
   } else if (

@@ -208,6 +208,21 @@ describe('withDomainFilter', () => {
         domain: 'engineering',
       });
     });
+
+    it('should leave task lists unfiltered and keep a domain their caller set', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/explore');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const assigned = withDomainFilter(
+        createMockConfig('get', '/tasks/assigned', { limit: 10 })
+      );
+      const domainPage = withDomainFilter(
+        createMockConfig('get', '/tasks/count', { domain: 'sales' })
+      );
+
+      expect(assigned.params).toEqual({ limit: 10 });
+      expect(domainPage.params).toEqual({ domain: 'sales' });
+    });
   });
 
   describe('search query requests', () => {
@@ -248,6 +263,26 @@ describe('withDomainFilter', () => {
               },
             ],
           },
+        },
+      });
+    });
+
+    it('should keep articles with no domain in an article search', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/context-center/articles'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const result = withDomainFilter(
+        createMockConfig('get', '/search/query', {
+          index: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+        })
+      );
+      const filter = JSON.parse(result.params?.query_filter as string);
+
+      expect(filter.query.bool.must[0].bool.should).toContainEqual({
+        bool: {
+          must_not: { exists: { field: 'domains.fullyQualifiedName' } },
         },
       });
     });

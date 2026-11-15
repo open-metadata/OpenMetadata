@@ -23,8 +23,10 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { IconProps } from '@openmetadata/ui-core-components/icons';
 import { uniqBy } from 'lodash';
 import {
+  FC,
   ReactNode,
   useCallback,
   useEffect,
@@ -49,7 +51,7 @@ type JsonSchemaProperty = {
 
 interface HeaderRow {
   label: string;
-  iconSrc?: string;
+  Icon?: FC<IconProps>;
   value: ReactNode;
 }
 
@@ -59,7 +61,7 @@ interface TaskPayloadSchemaFieldsProps {
   uiSchema?: JsonSchemaObject;
   mode?: 'edit' | 'read';
   onChange?: (payload: TaskPayload) => void;
-  icons?: Record<string, string>;
+  icons?: Record<string, FC<IconProps>>;
   formatters?: Record<string, (value: unknown) => string>;
   headerRows?: HeaderRow[];
 }
@@ -306,17 +308,13 @@ const TaskPayloadSchemaFields = ({
     key: string,
     label: string,
     children: React.ReactNode,
-    iconSrc?: string
+    Icon?: FC<IconProps>
   ) => (
     <Grid className="tw:items-start" colGap="2" key={key}>
       <Grid.Item span={8}>
         <Box align="center" className="tw:gap-1.5">
-          {iconSrc && (
-            <img
-              alt=""
-              className="tw:h-4 tw:w-4 tw:shrink-0 tw:object-contain"
-              src={iconSrc}
-            />
+          {Icon && (
+            <Icon className="tw:shrink-0 tw:text-utility-gray-500" size={16} />
           )}
           <Typography color="secondary" size="text-sm">
             {label}
@@ -359,7 +357,7 @@ const TaskPayloadSchemaFields = ({
     label: string,
     value: unknown,
     description?: string,
-    iconSrc?: string
+    Icon?: FC<IconProps>
   ) =>
     renderReadOnlyRow(
       label,
@@ -375,14 +373,14 @@ const TaskPayloadSchemaFields = ({
           </Typography>
         ) : null}
       </>,
-      iconSrc
+      Icon
     );
 
   const renderReadOnlyTags = (
     label: string,
     value: TagLabel[],
     description?: string,
-    iconSrc?: string
+    Icon?: FC<IconProps>
   ) =>
     renderReadOnlyRow(
       label,
@@ -414,7 +412,7 @@ const TaskPayloadSchemaFields = ({
           </Typography>
         ) : null}
       </Box>,
-      iconSrc
+      Icon
     );
 
   type FieldRenderer = (
@@ -758,8 +756,8 @@ const TaskPayloadSchemaFields = ({
   return (
     <Box direction="col" gap={4}>
       {mode === 'read' &&
-        headerRows?.map(({ iconSrc, label, value }) =>
-          renderReadOnlyRow(label, label, value, iconSrc)
+        headerRows?.map(({ Icon, label, value }) =>
+          renderReadOnlyRow(label, label, value, Icon)
         )}
       {orderedFields.map((fieldName) => {
         const fieldSchema = properties[fieldName];

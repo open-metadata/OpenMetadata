@@ -29,6 +29,7 @@ import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -39,6 +40,30 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
+
+  @Test
+  void policyTagsAreEveryTagOfTheTableItsColumnsAndItsDataModelOnce() {
+    Column nested =
+        new Column().withName("inner").withTags(List.of(new TagLabel().withTagFQN("PII.Email")));
+    Column parent =
+        new Column()
+            .withName("outer")
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+            .withChildren(List.of(nested));
+    Table table =
+        new Table()
+            .withTags(
+                List.of(
+                    new TagLabel().withTagFQN("Tier.Tier1"),
+                    new TagLabel().withTagFQN("PII.Sensitive")))
+            .withColumns(List.of(parent))
+            .withDataModel(
+                new DataModel().withTags(List.of(new TagLabel().withTagFQN("Glossary.Revenue"))));
+
+    assertEquals(
+        List.of("Tier.Tier1", "PII.Sensitive", "PII.Email", "Glossary.Revenue"),
+        SearchIndexUtils.policyTagFqns(table));
+  }
 
   @ParameterizedTest
   @MethodSource("indexTargets")

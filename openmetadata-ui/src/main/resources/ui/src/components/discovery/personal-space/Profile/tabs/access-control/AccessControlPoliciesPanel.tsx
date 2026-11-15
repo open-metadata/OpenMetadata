@@ -34,11 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -55,6 +51,7 @@ import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -81,12 +78,12 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,10 +93,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   );
   const fetchRequestIdRef = useRef(0);
 
-  const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(policies);
 
   const { permissions } = usePermissionProvider();
 
@@ -264,6 +258,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -299,6 +294,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         color="link-color"
         key={key}
         size="sm"
+        tooltip={getEntityName(role)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'roles-detail',
@@ -382,11 +379,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
             entityName={getEntityName(policy)}
             entityType={EntityType.POLICY}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-action-${getEntityName(policy)}`}
               icon={Trash01}
               isDisabled={!deletePolicyPermission}
-              size="xs"
+              size="lg"
               tooltip={
                 deletePolicyPermission
                   ? t('label.delete-entity', { entity: t('label.policy') })
@@ -477,11 +473,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

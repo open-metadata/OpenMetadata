@@ -81,6 +81,9 @@ const MetricTreeMetadata = ({
   testId,
 }: Pick<MetricTreeRowProps, 'metric' | 'testId'>) => {
   const { t } = useTranslation();
+  const statusLabel = metric.deleted
+    ? t('label.deleted')
+    : metric.entityStatus && getMetricEnumLabel(t, metric.entityStatus);
 
   return (
     <Box align="center" className="tw:mt-1 tw:flex-wrap" gap={2}>
@@ -112,7 +115,7 @@ const MetricTreeMetadata = ({
           </Typography>
         </>
       )}
-      {metric.entityStatus && (
+      {statusLabel && (
         <>
           {(metric.metricType || metric.granularity) && (
             <span
@@ -126,7 +129,7 @@ const MetricTreeMetadata = ({
             className="tw:text-tertiary"
             data-testid={`${testId}-status`}
             size="text-xs">
-            {getMetricEnumLabel(t, metric.entityStatus)}
+            {statusLabel}
           </Typography>
         </>
       )}

@@ -67,7 +67,7 @@ RUN dpkg --configure -a \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev zlib1g zlib1g-dev \
   # DockerOperator uses docker-py; the Airflow base's Go CLI is unused.
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \
@@ -141,10 +141,10 @@ RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 # 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
 # 0.83.0, then remove it in the same layer so its files cannot remain in the final
 # image's lower layers.
-RUN pip install "datamodel-code-generator==0.83.0" \
+RUN pip install "datamodel-code-generator==0.83.0" "ruff==0.15.22" \
   && mkdir -p /home/airflow/ingestion/src/metadata/generated \
   && python /home/airflow/scripts/datamodel_generation.py \
-  && pip uninstall -y datamodel-code-generator
+  && pip uninstall -y datamodel-code-generator black ruff
 RUN wget -q https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar -O /tmp/antlr.jar \
   && echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  /tmp/antlr.jar" | sha256sum -c - \
   && mkdir -p /home/airflow/ingestion/src/metadata/generated/antlr \

@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyReleaseKindCounts.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseKindCounts",
+  "description": "Counts of changed release members by member kind.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyReleaseKindCounts",
+  "properties": {
+    "ontology": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "concept": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "property": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "association": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "axiom": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "shape": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["ontology", "concept", "property", "association", "axiom", "shape"],
+  "additionalProperties": false
+}

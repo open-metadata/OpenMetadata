@@ -12,20 +12,17 @@
  */
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
 import { groupBy } from 'lodash';
-import React, { KeyboardEvent, useCallback, useMemo, useState } from 'react';
+import React, { KeyboardEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
-import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../../../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ENTITY_GROUP_MAP,
@@ -39,7 +36,6 @@ const CustomPropertiesLandingPage: React.FC<
 > = ({ onSelectEntityType }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
   const hasTypeViewPermission = userPermissions.hasViewPermissions(
     ResourceEntity.TYPE,
@@ -76,21 +72,6 @@ const CustomPropertiesLandingPage: React.FC<
     }));
   }, [items]);
 
-  const handleCardClick = useCallback(
-    async (entityTypeName: string, itemKey: string) => {
-      setLoadingKey(itemKey);
-      try {
-        const type = await getTypeByFQN(entityTypeName);
-        onSelectEntityType(type);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setLoadingKey(null);
-      }
-    },
-    [onSelectEntityType]
-  );
-
   if (items.length === 0) {
     return (
       <Box align="center" className="tw:h-full tw:w-full" justify="center">
@@ -124,33 +105,26 @@ const CustomPropertiesLandingPage: React.FC<
                 '.'
               )[1] as keyof typeof ENTITY_PATH;
               const entityTypeName = ENTITY_PATH[optionKey] ?? optionKey;
-              const isCurrentLoading = loadingKey === item.key;
 
               const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  if (!isCurrentLoading) {
-                    handleCardClick(entityTypeName, item.key);
-                  }
+                  onSelectEntityType(entityTypeName);
                 }
               };
 
               return (
                 <Card
                   isClickable
-                  aria-busy={isCurrentLoading}
                   data-testid={`entity-type-card-${entityTypeName}`}
                   key={item.key}
                   role="button"
                   size="md"
                   tabIndex={0}
                   variant="muted"
-                  onClick={() =>
-                    !isCurrentLoading &&
-                    handleCardClick(entityTypeName, item.key)
-                  }
+                  onClick={() => onSelectEntityType(entityTypeName)}
                   onKeyDown={handleKeyDown}>
-                  <Card.Content>
+                  <Card.Content className="tw:px-3">
                     <Box align="start" direction="row" gap={3}>
                       {getEntityIconWithBg(
                         entityTypeName,

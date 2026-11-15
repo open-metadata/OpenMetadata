@@ -255,8 +255,6 @@ class EnrichmentPipelineTest {
             null,
             new HashMap<>(),
             Map.of(),
-            0L,
-            0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
     StepFailure failure = pipeline.run(target).get(0);
@@ -318,8 +316,6 @@ class EnrichmentPipelineTest {
         entity,
         new HashMap<>(),
         Map.of(),
-        0L,
-        86_400_000L,
         new EnrichmentContext("table", List.of(), 0L, 86_400_000L),
         VersionShape.LATEST_HYDRATED);
   }

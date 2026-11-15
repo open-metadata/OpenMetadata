@@ -295,7 +295,9 @@ describe('TestCases component', () => {
     it('should render filter components', async () => {
       render(<TestCases />);
 
-      expect(await screen.findByTestId('advanced-filter')).toBeInTheDocument();
+      expect(await screen.findByTestId('advanced-filter')).toHaveClass(
+        'tw:after:outline-primary'
+      );
       expect(
         await screen.findByTestId('status-select-filter')
       ).toBeInTheDocument();

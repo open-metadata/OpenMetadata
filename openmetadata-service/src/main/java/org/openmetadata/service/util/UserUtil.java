@@ -63,6 +63,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -433,36 +434,42 @@ public final class UserUtil {
   }
 
   /**
-   * Create and persist a ChangeEvent for SSO/LDAP user operations.
-   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   * Create and persist a ChangeEvent for a user written outside the REST layer, such as an SSO/LDAP
+   * sign-in or a bot token regeneration, which would otherwise reach no audit log or subscription.
+   * The actor is the name the audit log records: the user itself for a sign-in, the operator for a
+   * write made on its behalf. Profile webhook secrets are masked as the user repository's own
+   * events mask them. Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
    */
-  private static void createUserChangeEvent(User user, EventType eventType) {
+  public static void createUserChangeEvent(User user, EventType eventType, String actor) {
     try {
+      User eventUser = ProfileWebhookSecrets.masked(user);
       ChangeEvent changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
               .withEventType(eventType)
-              .withEntityId(user.getId())
+              .withEntityId(eventUser.getId())
               .withEntityType(Entity.USER)
-              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
-              .withUserName(user.getName())
-              .withTimestamp(user.getUpdatedAt())
-              .withCurrentVersion(user.getVersion())
+              .withEntityFullyQualifiedName(eventUser.getFullyQualifiedName())
+              .withUserName(actor)
+              .withTimestamp(eventUser.getUpdatedAt())
+              .withCurrentVersion(eventUser.getVersion())
               .withPreviousVersion(
-                  user.getChangeDescription() != null
-                      ? user.getChangeDescription().getPreviousVersion()
-                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
-              .withEntity(user);
+                  eventUser.getChangeDescription() != null
+                      ? eventUser.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : eventUser.getVersion()))
+              .withEntity(eventUser);
 
       // Include changeDescription if present (for updates)
-      if (user.getChangeDescription() != null) {
-        changeEvent.withChangeDescription(user.getChangeDescription());
+      if (eventUser.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(eventUser.getChangeDescription());
       }
 
       // Populate domains if available
-      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+      if (eventUser.getDomains() != null && !eventUser.getDomains().isEmpty()) {
         changeEvent.withDomains(
-            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+            eventUser.getDomains().stream()
+                .map(EntityReference::getId)
+                .collect(Collectors.toList()));
       }
 
       // Change events never carry a user's authentication mechanism.
@@ -490,7 +497,7 @@ public final class UserUtil {
 
       // Create ChangeEvent for EventSubscription evaluation
       EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      createUserChangeEvent(addedUser.getEntity(), eventType);
+      createUserChangeEvent(addedUser.getEntity(), eventType, addedUser.getEntity().getName());
 
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());

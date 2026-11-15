@@ -16,6 +16,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import {
   getKnowledgePageByFqn,
@@ -24,6 +25,7 @@ import {
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
+import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import KnowledgePageDetailComponent from './KnowledgePageDetailComponent';
 
 // KnowledgePageDetailComponent.tsx had ZERO existing test coverage before this conversion
@@ -336,6 +338,16 @@ describe('KnowledgePageDetailComponent custom properties', () => {
     });
   });
 
+  it('requests whether the article was never extracted, for its status badge', async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(getKnowledgePageByFqn).toHaveBeenCalledWith('test.page.fqn', {
+        fields: expect.stringContaining('neverExtracted'),
+      });
+    });
+  });
+
   it('renders the custom property table for the article with its permissions', async () => {
     renderComponent();
 
@@ -425,6 +437,169 @@ describe('KnowledgePageDetailComponent custom properties', () => {
   });
 });
 
+describe('KnowledgePageDetailComponent body saves', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      ...ENTITY_PERMISSIONS,
+      ViewBasic: true,
+      EditAll: true,
+    });
+  });
+
+  afterEach(() => {
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+    (useArticleDraftStore().getDraft as jest.Mock).mockReturnValue(undefined);
+  });
+
+  // The save is done when its PATCH lands; the refresh after it must not hold Saving.
+  it('ends the save before the extraction refresh returns', async () => {
+    (patchKnowledgePage as jest.Mock).mockResolvedValue({
+      ...MOCK_KNOWLEDGE_PAGE,
+      description: '<p>edited</p>',
+      version: 0.2,
+    });
+    let finishRefresh: ((page: unknown) => void) | undefined;
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(
+      (_fqn: string, params?: { fields?: string }) =>
+        params?.fields === 'neverExtracted'
+          ? new Promise((resolve) => {
+              finishRefresh = resolve;
+            })
+          : Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+
+    const { onChange } = (BlockEditor as unknown as jest.Mock).mock.calls[
+      (BlockEditor as unknown as jest.Mock).mock.calls.length - 1
+    ][0];
+    act(() => onChange('<p>edited</p>'));
+    await act(async () => {
+      onPageChange.mock.calls.at(-1)?.[0].handlers.onSave();
+    });
+
+    await waitFor(() =>
+      expect(getKnowledgePageByFqn).toHaveBeenLastCalledWith('test.page.fqn', {
+        fields: 'neverExtracted',
+      })
+    );
+
+    expect(
+      onPageChange.mock.calls.at(-1)?.[0].handlers.contentChangeState
+    ).toBe(ContentChangeState.SAVED);
+
+    await act(async () => {
+      finishRefresh?.({ ...MOCK_KNOWLEDGE_PAGE, neverExtracted: true });
+    });
+
+    expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+      expect.objectContaining({ neverExtracted: true })
+    );
+  });
+
+  // A draft stashed before the tab closed is saved on load, and that write changes the state too.
+  it('refreshes the extraction state after a stashed draft syncs on load', async () => {
+    (useArticleDraftStore().getDraft as jest.Mock).mockReturnValue({
+      description: '<p>stashed</p>',
+      fqn: 'test.page.fqn',
+      version: 0.1,
+    });
+    (patchKnowledgePage as jest.Mock).mockResolvedValue({
+      ...MOCK_KNOWLEDGE_PAGE,
+      description: '<p>stashed</p>',
+      version: 0.2,
+    });
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(
+      (_fqn: string, params?: { fields?: string }) =>
+        Promise.resolve(
+          params?.fields === 'neverExtracted'
+            ? {
+                ...MOCK_KNOWLEDGE_PAGE,
+                description: '<p>stashed</p>',
+                neverExtracted: true,
+                processingStatus: 'Processed',
+              }
+            : MOCK_KNOWLEDGE_PAGE
+        )
+    );
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+
+    await waitFor(() =>
+      expect(patchKnowledgePage).toHaveBeenCalledWith('kp-id-1', [
+        { op: 'replace', path: '/description', value: '<p>stashed</p>' },
+      ])
+    );
+    await waitFor(() =>
+      expect(getKnowledgePageByFqn).toHaveBeenLastCalledWith('test.page.fqn', {
+        fields: 'neverExtracted',
+      })
+    );
+    await waitFor(() =>
+      expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+        expect.objectContaining({
+          description: '<p>stashed</p>',
+          neverExtracted: true,
+          processingStatus: 'Processed',
+        })
+      )
+    );
+  });
+
+  // A PATCH response omits neverExtracted, and a body edit is the write that changes it.
+  it('refreshes the extraction state once the body is saved', async () => {
+    (patchKnowledgePage as jest.Mock).mockResolvedValue({
+      ...MOCK_KNOWLEDGE_PAGE,
+      description: '<p>edited</p>',
+      version: 0.2,
+    });
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(
+      (_fqn: string, params?: { fields?: string }) =>
+        Promise.resolve(
+          params?.fields === 'neverExtracted'
+            ? {
+                ...MOCK_KNOWLEDGE_PAGE,
+                description: '<p>edited</p>',
+                neverExtracted: true,
+                processingStatus: 'Processed',
+              }
+            : MOCK_KNOWLEDGE_PAGE
+        )
+    );
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+
+    const { onChange } = (BlockEditor as unknown as jest.Mock).mock.calls[
+      (BlockEditor as unknown as jest.Mock).mock.calls.length - 1
+    ][0];
+    act(() => onChange('<p>edited</p>'));
+    // The Save shortcut flushes the debounced body save instead of waiting it out.
+    await act(async () => {
+      onPageChange.mock.calls.at(-1)?.[0].handlers.onSave();
+    });
+
+    await waitFor(() =>
+      expect(getKnowledgePageByFqn).toHaveBeenLastCalledWith('test.page.fqn', {
+        fields: 'neverExtracted',
+      })
+    );
+    await waitFor(() =>
+      expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+        expect.objectContaining({
+          description: '<p>edited</p>',
+          neverExtracted: true,
+          processingStatus: 'Processed',
+        })
+      )
+    );
+  });
+});
+
 describe('KnowledgePageDetailComponent drafts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -457,5 +632,107 @@ describe('KnowledgePageDetailComponent drafts', () => {
       fqn: 'test.page.fqn',
       version: 0.1,
     });
+  });
+});
+
+describe('KnowledgePageDetailComponent extraction requests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      ...ENTITY_PERMISSIONS,
+      ViewBasic: true,
+      EditAll: true,
+    });
+  });
+
+  afterEach(() => {
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+  });
+
+  // The right panel is handed to the layout; render it to reach the callback it is given.
+  const openRightPanel = async (onPageChange: jest.Mock) => {
+    await waitFor(() =>
+      expect(onPageChange.mock.calls.at(-1)?.[0].rightPanel).toBeTruthy()
+    );
+    render(onPageChange.mock.calls.at(-1)?.[0].rightPanel, {
+      wrapper: MemoryRouter,
+    });
+
+    return (KnowledgePageDetailRightPanel as jest.Mock).mock.calls.at(-1)?.[0]
+      .onExtractionStateChange;
+  };
+
+  it('shows the state an extraction request leaves the article in', async () => {
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+    const onExtractionStateChange = await openRightPanel(onPageChange);
+
+    act(() =>
+      onExtractionStateChange({
+        ...MOCK_KNOWLEDGE_PAGE,
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
+
+    expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+      expect.objectContaining({
+        description: 'test description',
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
+  });
+
+  // A refresh a body save started earlier read the article before the request queued it.
+  it('keeps that state over an older refresh that returns after it', async () => {
+    (patchKnowledgePage as jest.Mock).mockResolvedValue({
+      ...MOCK_KNOWLEDGE_PAGE,
+      description: '<p>edited</p>',
+      version: 0.2,
+    });
+    let finishRefresh: ((page: unknown) => void) | undefined;
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(
+      (_fqn: string, params?: { fields?: string }) =>
+        params?.fields === 'neverExtracted'
+          ? new Promise((resolve) => {
+              finishRefresh = resolve;
+            })
+          : Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+    const onExtractionStateChange = await openRightPanel(onPageChange);
+
+    const { onChange } = (BlockEditor as unknown as jest.Mock).mock.calls[
+      (BlockEditor as unknown as jest.Mock).mock.calls.length - 1
+    ][0];
+    act(() => onChange('<p>edited</p>'));
+    await act(async () => {
+      onPageChange.mock.calls.at(-1)?.[0].handlers.onSave();
+    });
+    await waitFor(() => expect(finishRefresh).toBeDefined());
+
+    act(() =>
+      onExtractionStateChange({
+        ...MOCK_KNOWLEDGE_PAGE,
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
+    await act(async () => {
+      finishRefresh?.({ ...MOCK_KNOWLEDGE_PAGE, neverExtracted: true });
+    });
+
+    expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+      expect.objectContaining({
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
   });
 });

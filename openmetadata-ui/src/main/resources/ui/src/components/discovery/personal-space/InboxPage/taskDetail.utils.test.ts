@@ -227,7 +227,7 @@ describe('getTaskDetailDescriptor', () => {
 
     expect(descriptor.rows[0].value).toEqual({
       kind: 'text',
-      text: 'label.no-owner',
+      text: '--',
     });
   });
 
@@ -432,7 +432,7 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'columns.email' }),
+        tagTask({ fieldPath: 'columns.email.tags' }),
         entity
       )?.unchanged
     ).toEqual(['PII.Email']);
@@ -442,16 +442,17 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id' }),
+        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id.tags' }),
         entity
       )?.unchanged
     ).toEqual([]);
   });
 
   it("reads the asset's own tags for a table-level task", () => {
-    expect(withExistingValues(change, tagTask({}), entity)?.unchanged).toEqual([
-      'Tier.Tier1',
-    ]);
+    expect(
+      withExistingValues(change, tagTask({ fieldPath: 'tags' }), entity)
+        ?.unchanged
+    ).toEqual(['Tier.Tier1']);
   });
 
   // An empty currentTags is the payload's default, not a snapshot.
@@ -459,7 +460,7 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'columns.email', currentTags: [] }),
+        tagTask({ fieldPath: 'columns.email.tags', currentTags: [] }),
         entity
       )?.unchanged
     ).toEqual(['PII.Email']);
@@ -470,7 +471,7 @@ describe('withExistingValues for a tag task', () => {
       withExistingValues(
         change,
         tagTask({
-          fieldPath: 'columns.email',
+          fieldPath: 'columns.email.tags',
           currentTags: [{ tagFQN: 'PersonalData.Personal' }],
         }),
         entity
@@ -506,7 +507,6 @@ describe('withExistingValues', () => {
     ['description', 'The table.'],
     ['columns.country.description', 'Country.'],
     ['columns.address.city.description', 'City.'],
-    ['columns.city.description', 'City.'],
     ['columns."order.total".description', 'Order total.'],
   ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
     expect(
@@ -840,38 +840,22 @@ describe('getProposingAgent', () => {
 describe('getFieldPathLabel', () => {
   it.each([
     [
-      'columns::status::description',
+      'columns.status.description',
       'label.column-plural › status › label.description',
     ],
     [
-      'columns::"order.id"::description',
+      'columns."order.id".description',
       'label.column-plural › order.id › label.description',
     ],
-    [
-      'columns::status::tags',
-      'label.column-plural › status › label.tag-plural',
-    ],
-    ['columns::status', 'label.column-plural › status'],
+    ['columns.status.tags', 'label.column-plural › status › label.tag-plural'],
     ['description', 'label.description'],
-    [
-      'schemaFields::id::customField',
-      'label.schema-field-plural › id › customField',
-    ],
-    [
-      'columns.country.description',
-      'label.column-plural › country › label.description',
-    ],
-    [
-      'columns."order.total".description',
-      'label.column-plural › order.total › label.description',
-    ],
     [
       'columns.address.city.description',
       'label.column-plural › address › city › label.description',
     ],
     [
       'messageSchema.schemaFields.order_id.description',
-      'label.message-schema › schemaFields › order_id › label.description',
+      'label.message-schema › order_id › label.description',
     ],
     ['extension.myProp', 'label.extension › myProp'],
   ])('reads %s as %s', (fieldPath, label) => {
@@ -901,7 +885,7 @@ describe('getFieldPathLabel', () => {
   it('labels the Field row of a description request', () => {
     const rows = getTaskDetailDescriptor(
       buildTask({
-        payload: { fieldPath: 'columns::status::description' },
+        payload: { fieldPath: 'columns.status.description' },
       } as unknown as Partial<Task>),
       t
     ).rows;

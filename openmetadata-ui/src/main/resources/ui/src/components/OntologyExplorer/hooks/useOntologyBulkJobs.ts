@@ -38,12 +38,17 @@ export const useOntologyBulkJobs = (
   const [hasLoadError, setHasLoadError] = useState(false);
 
   const refreshJobs = useCallback(async () => {
+    if (!glossaryId) {
+      setJobs([]);
+
+      return;
+    }
     setIsLoading(true);
     setHasLoadError(false);
 
     try {
-      const response = await listOntologyBulkJobs();
-      setJobs(response.jobs.filter((job) => job.glossary.id === glossaryId));
+      const response = await listOntologyBulkJobs(glossaryId);
+      setJobs(response.jobs);
     } catch {
       setHasLoadError(true);
     } finally {

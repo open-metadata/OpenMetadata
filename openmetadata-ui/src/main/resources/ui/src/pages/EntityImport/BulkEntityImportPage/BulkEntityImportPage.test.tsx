@@ -231,6 +231,9 @@ jest.mock(
   })
 );
 
+const DEFAULT_UPLOADED_CSV = 'name,description\nrow1,desc1\nrow2,desc2';
+let mockUploadedCsv = DEFAULT_UPLOADED_CSV;
+
 jest.mock('../../../components/UploadFile/UploadFile', () => ({
   __esModule: true,
   default: jest.fn(({ onCSVUploaded, disabled }) => (
@@ -241,7 +244,7 @@ jest.mock('../../../components/UploadFile/UploadFile', () => ({
         onClick={() => {
           const mockEvent = {
             target: {
-              result: 'name,description\nrow1,desc1\nrow2,desc2',
+              result: mockUploadedCsv,
             },
           } as ProgressEvent<FileReader>;
           onCSVUploaded(mockEvent, { name: 'metrics.csv', size: 48 });
@@ -339,6 +342,7 @@ describe('BulkEntityImportPage', () => {
     mockIsBulkEditRoute = EntityBulkEditUtils.isBulkEditRoute as jest.Mock;
 
     jest.clearAllMocks();
+    mockUploadedCsv = DEFAULT_UPLOADED_CSV;
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
     mockValidateCsvString.mockResolvedValue({
       jobId: 'test-job-id',
@@ -562,6 +566,58 @@ describe('BulkEntityImportPage', () => {
       );
     });
 
+    it('shows exported formula cells in the grid without the escape quote', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockLocation.pathname = '/metric/*/import';
+
+      renderComponent('/metric/*/import');
+
+      await uploadCsv();
+      await startPreview();
+
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        socketCallback?.(
+          JSON.stringify({
+            jobId: 'test-job-id',
+            status: 'STARTED',
+            error: null,
+          })
+        );
+        socketCallback?.(JSON.stringify(mockWebSocketResponse));
+      });
+
+      await act(async () => {
+        mockReadString.mock.calls[0]?.[1]?.complete({
+          data: [
+            ['name', 'description'],
+            ['row1', `'=HYPERLINK("x")`],
+            ['row2', "'- bullet"],
+            ['row3', "''=kept quote"],
+          ],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-edit-entity')).toBeInTheDocument();
+      });
+
+      expect(mockGetEntityColumnsAndDataSourceFromCSV.mock.calls[0][0]).toEqual(
+        [
+          ['name', 'description'],
+          ['row1', '=HYPERLINK("x")'],
+          ['row2', '- bullet'],
+          ['row3', "'=kept quote"],
+        ]
+      );
+    });
+
     it('should hydrate wildcard metric bulk edit from listing API route scope', async () => {
       const { useFqn } = require('../../../hooks/useFqn');
       const { useRequiredParams } = require('../../../utils/useRequiredParams');
@@ -773,6 +829,23 @@ describe('BulkEntityImportPage', () => {
       await waitFor(() => {
         expect(mockValidateCsvString).toHaveBeenCalled();
       });
+    });
+
+    it('should validate an upload that mixes line endings with one row per line', async () => {
+      mockUploadedCsv =
+        'name,description\r\nrow1,desc1\r\nrow2,desc2\nrow3,desc3\n';
+      renderComponent();
+
+      await uploadCsv();
+      await startPreview();
+
+      await waitFor(() => {
+        expect(mockValidateCsvString).toHaveBeenCalled();
+      });
+
+      expect(mockValidateCsvString.mock.calls[0][0]).toBe(
+        'name,description\nrow1,desc1\nrow2,desc2\nrow3,desc3\n'
+      );
     });
 
     it('should disable upload when async job is in progress', async () => {

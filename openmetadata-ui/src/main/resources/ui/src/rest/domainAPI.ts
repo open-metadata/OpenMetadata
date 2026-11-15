@@ -22,6 +22,7 @@ import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { BulkAssets } from '../generated/api/bulkAssets';
 import { CreateDomain } from '../generated/api/domains/createDomain';
+import { DomainStyles } from '../generated/api/domains/domainStyles';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -65,6 +66,12 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
     `/domains/${id}`,
     patch
   );
+
+  return response.data;
+};
+
+export const getDomainStyles = async () => {
+  const response = await APIClient.get<DomainStyles>(`${BASE_URL}/styles`);
 
   return response.data;
 };

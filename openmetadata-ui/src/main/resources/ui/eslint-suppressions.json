@@ -783,11 +783,6 @@
       "count": 1
     }
   },
-  "src/components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 5
-    }
-  },
   "src/components/Alerts/ClassicAlertRuleSection.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 2
@@ -809,11 +804,6 @@
     }
   },
   "src/components/DataContract/ContractQualityCard/ContractQualityCard.component.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 1
-    }
-  },
-  "src/components/DataQuality/AddDataQualityTest/components/AddTestSuitePipeline.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
     }
@@ -900,7 +890,7 @@
   },
   "src/components/common/QueryViewer/QueryViewer.component.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/common/Table/TableV2.tsx": {

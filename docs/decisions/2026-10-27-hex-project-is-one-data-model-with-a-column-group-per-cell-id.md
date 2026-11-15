@@ -1,7 +1,7 @@
 # A Hex project is one data model with a column group per SQL cell, named by the cell's id
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-29 (cells reading a broken cell keep their groups)
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-29 (cells reading a broken cell keep their groups) · v3 2026-11-04 (tables link to the data model, never to the dashboard)
 - **Deciders:** Hex connector maintainers (review of the Hex data models PR, #36357)
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_hex_cell_lineage.py`
   (`test_one_data_model_per_project_with_a_struct_per_sql_cell`,
@@ -11,7 +11,15 @@
   `test_a_cell_too_large_to_inline_leaves_its_chained_cells_untraced`,
   `test_cells_past_the_projects_budget_leave_their_chained_cells_untraced`,
   `test_rate_limited_requests_are_retried`, `test_without_data_connections_an_existing_data_model_is_kept`,
-  `test_a_cell_that_stops_parsing_keeps_its_group`, `test_cells_reading_a_broken_cell_keep_their_groups`)
+  `test_a_cell_that_stops_parsing_keeps_its_group`, `test_cells_reading_a_broken_cell_keep_their_groups`,
+  `test_query_history_adds_the_tables_cells_did_not_resolve`,
+  `test_unreadable_cells_with_query_history_get_a_data_model_without_columns`,
+  `test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns`,
+  `test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model`,
+  `test_a_data_model_without_columns_outlives_the_query_history_window`,
+  `test_a_data_model_without_columns_that_cant_be_looked_up_is_kept`,
+  `test_a_data_model_without_columns_from_a_deleted_cell_is_not_kept`,
+  `test_resolver.py::test_hex_query_history_never_drops_a_schema_the_query_names`)
 - **Related:** #36357
 
 ## Context
@@ -70,3 +78,23 @@ as a table and came back with UNKNOWN columns and no lineage. Now a cell that re
 (under the same chaining rules: same connection, or any for dataframe SQL) fails too, and so on down
 the chain, so each keeps its group from the existing data model. A new project's cells chained on a
 broken cell get no group until it parses, as for the broken cell itself.
+
+## Amendment: tables link to the data model, never to the dashboard (v3, 2026-11-04)
+
+The tables only the warehouse query history named (none of the cells resolved them) were linked
+straight to the dashboard, beside the table -> data model -> dashboard path, and so was every table
+when the project had no data model. Now every table edge goes to the data model; one from the
+query history carries no column lineage, as it can't tell which cell read the table.
+
+- A project with tables to link but no columns (cells that read tables yet output none, cells that
+  can't be read, or tables only the query history names) gets a data model without columns.
+- A data model without columns or SQL (built from the query history alone) is kept when this run
+  finds no tables for it: the query history only looks back seven days, and a project not run in
+  that window would otherwise lose its lineage. One with SQL came from cells and goes with them.
+- With data models off, or the project's data model filtered out, tables link to the dashboard as
+  before.
+- A query history reference that names a schema resolves only in that schema; a bare name falls
+  back to any schema of the database, and links nothing when several tables match. The parser
+  lower-cases names, which BigQuery resolution handles
+  (ADR:2026-11-03-bigquery-daily-shards-use-stable-logical-tables, v2).
+- A data model without columns whose lookup fails is kept, as one that can't be read isn't gone.

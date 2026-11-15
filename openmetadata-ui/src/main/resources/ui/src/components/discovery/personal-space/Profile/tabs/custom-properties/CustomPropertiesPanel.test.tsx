@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesPanel from './CustomPropertiesPanel';
 
 const mockGetTypeByFQN = getTypeByFQN as jest.Mock;
+const mockGetEntityPermission = jest.fn();
+const fullPermission = { Create: true, EditAll: true, Delete: true };
 const mockOnHeaderChange = jest.fn();
+
+// replaceState, unlike assigning location.hash, queues no popstate that would
+// reset the settings hash store mid-test.
+const setLocationHash = (hash: string) =>
+  window.history.replaceState(null, '', hash);
 
 const renderPanel = () =>
   render(
@@ -27,17 +35,18 @@ const renderPanel = () =>
     </MemoryRouter>
   );
 
+const mockProperty = {
+  name: 'myProp',
+  displayName: 'My Property',
+  propertyType: { id: 'string-type', name: 'string' },
+};
+
 const mockEntityType = {
   id: 'type-1',
   name: 'table',
   displayName: 'Table',
   fullyQualifiedName: 'table',
-};
-
-const mockProperty = {
-  name: 'myProp',
-  displayName: 'My Property',
-  propertyType: { id: 'string-type', name: 'string' },
+  customProperties: [mockProperty],
 };
 
 jest.mock('./CustomPropertiesLandingPage', () => ({
@@ -46,12 +55,12 @@ jest.mock('./CustomPropertiesLandingPage', () => ({
     ({
       onSelectEntityType,
     }: {
-      onSelectEntityType: (entityType: unknown) => void;
+      onSelectEntityType: (entityTypeFqn: string) => void;
     }) => (
       <div data-testid="landing-page">
         <button
           data-testid="select-entity-btn"
-          onClick={() => onSelectEntityType(mockEntityType)}>
+          onClick={() => onSelectEntityType('table')}>
           Select Table
         </button>
       </div>
@@ -156,7 +165,11 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({
-    usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
+    usePermissionProvider: jest.fn().mockReturnValue({
+      permissions: {},
+      getEntityPermission: (...args: unknown[]) =>
+        mockGetEntityPermission(...args),
+    }),
   })
 );
 
@@ -196,7 +209,10 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 describe('CustomPropertiesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The settings hash store is module-level; reset it to the bare tab.
+    setLocationHash('#custom-properties');
     mockGetTypeByFQN.mockResolvedValue(mockEntityType);
+    mockGetEntityPermission.mockResolvedValue(fullPermission);
   });
 
   it('renders the landing page by default', () => {
@@ -231,6 +247,105 @@ describe('CustomPropertiesPanel', () => {
     expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(
       callCountAfterMount
     );
+  });
+
+  it('fetches the entity type once when it is selected', async () => {
+    renderPanel();
+    // Drop a fetch for a sub-path a previous test left in the hash store.
+    mockGetTypeByFQN.mockClear();
+
+    fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-cancel-btn'));
+    await screen.findByTestId('detail-page');
+
+    expect(mockGetTypeByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the edit form from an edit-property link', async () => {
+    setLocationHash('#custom-properties/table/edit-property/myProp');
+    renderPanel();
+
+    expect(await screen.findByTestId('edit-page')).toBeInTheDocument();
+    expect(mockGetTypeByFQN).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the add form from an add-property link', async () => {
+    setLocationHash('#custom-properties/table/add-property');
+    renderPanel();
+
+    expect(await screen.findByTestId('add-page')).toBeInTheDocument();
+  });
+
+  it('falls back to the list when the linked property does not exist', async () => {
+    setLocationHash('#custom-properties/table/edit-property/missing');
+    renderPanel();
+
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-page')).not.toBeInTheDocument();
+  });
+
+  it('opens the list instead of the add form without Create permission', async () => {
+    mockGetEntityPermission.mockResolvedValue({
+      ...fullPermission,
+      Create: false,
+    });
+    setLocationHash('#custom-properties/table/add-property');
+    renderPanel();
+
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-page')).not.toBeInTheDocument();
+  });
+
+  it('opens the list instead of the edit form without EditAll permission', async () => {
+    mockGetEntityPermission.mockResolvedValue({
+      ...fullPermission,
+      EditAll: false,
+    });
+    setLocationHash('#custom-properties/table/edit-property/myProp');
+    renderPanel();
+
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-page')).not.toBeInTheDocument();
+  });
+
+  it('refetches the entity type after a property is added', async () => {
+    renderPanel();
+    // Drop a fetch for a sub-path a previous test left in the hash store.
+    mockGetTypeByFQN.mockClear();
+    fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-success-btn'));
+    await screen.findByTestId('detail-page');
+
+    expect(mockGetTypeByFQN).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores a failed post-save refetch after the user has moved on', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+
+    let rejectRefetch: ((err: Error) => void) | undefined;
+    mockGetTypeByFQN.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectRefetch = reject;
+        })
+    );
+    fireEvent.click(await screen.findByTestId('add-success-btn'));
+
+    act(() => {
+      mockOnHeaderChange.mock.calls.at(-1)?.[0].onBreadcrumbAction('landing');
+    });
+    await screen.findByTestId('landing-page');
+
+    await act(async () => {
+      rejectRefetch?.(new Error('network'));
+    });
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(screen.getByTestId('landing-page')).toBeInTheDocument();
   });
 
   it('transitions to add page when onAddProperty is triggered from detail', async () => {

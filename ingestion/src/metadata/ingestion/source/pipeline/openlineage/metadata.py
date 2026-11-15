@@ -25,10 +25,13 @@ from urllib.parse import quote, urlparse
 
 from cachetools import LRUCache, TTLCache
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     Kafka as KafkaBrokerConfig,
@@ -60,6 +63,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
@@ -556,13 +560,13 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @staticmethod
-    def _match_column_name(table, field_name: str) -> str:
+    def _match_column_name(table, field_name: str) -> str | None:
         """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
         lower = field_name.lower()
         for column in getattr(table, "columns", None) or []:
             if column.name.root.lower() == lower:
                 return column.name.root
-        return lower
+        return None if table and table.tableType == TableType.Sharded else lower
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -659,18 +663,26 @@ class OpenlineageSource(PipelineServiceSource):
         resolved = services is not None
         found = []
         for db_service in services or self.get_db_service_names():
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=table_details.database,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-            # When the search misses but the database and schema are known,
-            # fqn.build still returns a constructed FQN, so only a service that
-            # actually holds the table counts as a match.
-            if result and self._get_by_name_cached(Table, result):
+            key = ("TableReference", db_service, table_details.database, table_details.schema, table_details.name)
+            if hasattr(self, "_missing_entity_cache") and key in self._missing_entity_cache:
+                continue
+            if hasattr(self, "_entity_cache") and key in self._entity_cache:
+                matches = (self._entity_cache[key],)
+            else:
+                matches = get_table_binding_resolution(self.metadata, db_service).resolve(
+                    TableReference(table_details.database, table_details.schema, table_details.name),
+                    service_name=db_service,
+                    lookup=TableLookup.FQN,
+                )
+                if not matches and hasattr(self, "_missing_entity_cache"):
+                    self._missing_entity_cache[key] = True
+            if len(matches) > 1:
+                raise AmbiguousServiceException("Dataset reference resolves to multiple tables")
+            result = model_str(matches[0].fullyQualifiedName) if matches else None
+            if result and matches:
+                if hasattr(self, "_entity_cache"):
+                    self._entity_cache[f"Table:{result}:"] = matches[0]
+                    self._entity_cache[key] = matches[0]
                 if not resolved:
                     return result
                 found.append(result)
@@ -880,12 +892,16 @@ class OpenlineageSource(PipelineServiceSource):
                     if not input_table_fqn:
                         continue
                     input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
+                    output_column = self._match_column_name(output_table_entity, field_name)
+                    input_column = self._match_column_name(input_table_entity, input_field.get("field", ""))
+                    if not output_column or not input_column:
+                        continue
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
                             input_table_fqn,
-                            f"{output_table_fqn}.{self._match_column_name(output_table_entity, field_name)}",
-                            f"{input_table_fqn}.{self._match_column_name(input_table_entity, input_field.get('field', ''))}",
+                            f"{output_table_fqn}.{output_column}",
+                            f"{input_table_fqn}.{input_column}",
                         )
                     )
 

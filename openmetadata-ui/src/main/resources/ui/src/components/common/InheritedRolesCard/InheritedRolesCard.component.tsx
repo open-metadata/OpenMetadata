@@ -13,10 +13,10 @@
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
 
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { InheritedRolesCardProps } from './InheritedRolesCard.interface';
 
@@ -40,7 +40,10 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
                 <div
                   className="mb-2 d-flex items-center gap-2"
                   key={inheritedRole.id}>
-                  <IconUser className="tw:size-4 tw:shrink-0" />
+                  <User01
+                    className="tw:shrink-0 tw:text-utility-gray-500"
+                    size={16}
+                  />
                   <Typography className="w-48" ellipsis={{ tooltip: true }}>
                     {getEntityName(inheritedRole)}
                   </Typography>

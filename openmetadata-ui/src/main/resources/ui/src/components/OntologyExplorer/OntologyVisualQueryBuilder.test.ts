@@ -31,12 +31,50 @@ describe('buildVisualSparqlQuery', () => {
       glossary: { id: 'glossary-id', type: 'glossary' },
     };
 
-    const query = buildVisualSparqlQuery(relationType, target);
+    const query = buildVisualSparqlQuery([{ relationType, target }]);
 
-    expect(query).toContain('<https://example.com/ontology/governedBy>');
-    expect(query).toContain(
-      'om:fullyQualifiedName "Compliance.AntiMoneyLaundering"'
+    // One condition must stay byte-identical to the query the builder has always written.
+    expect(query).toBe(`PREFIX om: <https://open-metadata.org/ontology/>
+
+SELECT ?concept ?conceptFqn WHERE {
+  ?concept <https://example.com/ontology/governedBy> ?target ;
+           om:fullyQualifiedName ?conceptFqn .
+  ?concept a om:GlossaryTerm .
+  ?target om:fullyQualifiedName "Compliance.AntiMoneyLaundering" .
+}
+LIMIT 100`);
+  });
+
+  it('ANDs every condition against its own target and applies the limit', () => {
+    const governedBy = createRelationshipTypeMock({
+      name: 'governedBy',
+      rdfPredicate: 'https://example.com/ontology/governedBy',
+    });
+    const partOf = createRelationshipTypeMock({
+      name: 'partOf',
+      rdfPredicate: 'https://example.com/ontology/partOf',
+    });
+
+    const query = buildVisualSparqlQuery(
+      [
+        {
+          relationType: governedBy,
+          target: { id: 'a', name: 'A', fullyQualifiedName: 'G.A' },
+        },
+        {
+          relationType: partOf,
+          target: { id: 'b', name: 'B', fullyQualifiedName: 'G."B"' },
+        },
+      ],
+      'any',
+      10
     );
-    expect(query).toContain('SELECT ?concept ?conceptFqn');
+
+    expect(query).toContain(
+      '?concept <https://example.com/ontology/partOf> ?target2 .'
+    );
+    expect(query).toContain('?target2 om:fullyQualifiedName "G.\\"B\\"" .');
+    expect(query).not.toContain('om:GlossaryTerm');
+    expect(query).toMatch(/\nLIMIT 10$/);
   });
 });

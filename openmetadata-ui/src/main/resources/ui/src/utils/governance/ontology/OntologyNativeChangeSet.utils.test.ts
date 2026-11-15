@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OntologyConceptType } from '../../../generated/api/data/createOntologyChangeSet';
 import { Layer, Ontology } from '../../../generated/entity/data/ontology';
 import {
   buildNewClassChangeSet,
@@ -26,6 +27,8 @@ const ontology: Ontology = {
 const draft: NewClassDraft = {
   label: 'Funds Transfer',
   localName: 'FundsTransfer',
+  conceptType: OntologyConceptType.OwlClass,
+  mappings: [],
   synonyms: ['Transfer'],
   description: 'A payment',
   definitionSource: 'https://example.org/source',

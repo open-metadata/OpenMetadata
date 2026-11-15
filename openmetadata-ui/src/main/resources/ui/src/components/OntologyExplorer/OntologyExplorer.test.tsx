@@ -769,7 +769,7 @@ describe('OntologyExplorer Studio data controls', () => {
     render(<OntologyExplorer scope="global" />);
 
     expect(
-      screen.getByRole('button', { name: 'label.load-more' })
+      screen.getByRole('button', { name: 'label.load-more-lowercase' })
     ).toBeEnabled();
     expect(
       screen.queryByTestId('ontology-data-render-cap')

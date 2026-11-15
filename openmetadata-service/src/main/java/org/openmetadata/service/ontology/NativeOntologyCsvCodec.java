@@ -93,6 +93,7 @@ public final class NativeOntologyCsvCodec {
     CHARACTERISTICS("characteristics"),
     PROPERTY_CHAIN("propertyChain"),
     DISJOINT_WITH("disjointWith"),
+    SUPER_PROPERTIES("superProperties"),
     AXIOM_TYPE("axiomType"),
     PROPERTY("property"),
     TARGET("target"),
@@ -144,6 +145,7 @@ public final class NativeOntologyCsvCodec {
             Column.CHARACTERISTICS,
             Column.PROPERTY_CHAIN,
             Column.DISJOINT_WITH,
+            Column.SUPER_PROPERTIES,
             Column.DEPRECATED,
             Column.REPLACED_BY)),
     AXIOM(

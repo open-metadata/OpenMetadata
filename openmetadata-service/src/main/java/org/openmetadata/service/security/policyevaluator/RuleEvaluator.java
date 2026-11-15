@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -162,7 +163,8 @@ public class RuleEvaluator {
       description =
           "Returns true if the logged in user has domain access to the entity being accessed. "
               + "For entities with domains (explicit or inherited), the user must have at least one matching domain. "
-              + "For entities without domains, users without domains can access them.",
+              + "For entities without domains, users without domains can access them. "
+              + "Creating an entity needs a domain of its container and every domain the request names.",
       examples = {"hasDomain()", "!hasDomain()"})
   public boolean hasDomain() {
     if (expressionValidation) {
@@ -170,6 +172,10 @@ public class RuleEvaluator {
     }
     if (subjectContext == null || resourceContext == null || subjectContext.user() == null) {
       return false;
+    }
+
+    if (resourceContext instanceof CreateResourceContext<?> createResourceContext) {
+      return hasDomainForCreate(createResourceContext);
     }
 
     if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
@@ -228,6 +234,23 @@ public class RuleEvaluator {
 
     LOG.info("hasDomain() - No matching domains found, returning false");
     return false;
+  }
+
+  /**
+   * Creating needs a domain of the container the entity goes into and every domain the request
+   * names, so a domain the caller supplies cannot stand in for the container's
+   * (ADR:2026-11-03-a-create-is-authorized-against-its-stored-container).
+   */
+  private boolean hasDomainForCreate(CreateResourceContext<?> createResourceContext) {
+    if (!subjectContext.hasDomains(createResourceContext.getContainerDomains())) {
+      return false;
+    }
+    for (EntityReference requested : createResourceContext.getRequestedDomains()) {
+      if (!subjectContext.hasDomains(List.of(requested))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Function(
@@ -633,7 +656,7 @@ public class RuleEvaluator {
     }
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     return impersonatedBy != null
-        && Arrays.stream(botNames).anyMatch(impersonatedBy::equalsIgnoreCase);
+        && Arrays.stream(botNames).anyMatch(botName -> sameIdentifier(impersonatedBy, botName));
   }
 
   /**

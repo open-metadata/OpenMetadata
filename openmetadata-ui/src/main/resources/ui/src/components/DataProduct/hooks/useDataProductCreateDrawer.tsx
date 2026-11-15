@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
   addDataProducts,
   patchDataProduct,
@@ -32,6 +33,7 @@ import AddDomainForm, {
 } from '../../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../../Domain/DomainPage.interface';
+import { toEntityReferenceOption } from '../../Glossary/AddGlossary/AddGlossary.utils';
 
 /**
  * Encapsulates the "create data product" drawer — form, submit (with
@@ -41,6 +43,7 @@ import { DomainFormType } from '../../Domain/DomainPage.interface';
  */
 export const useDataProductCreateDrawer = (onCreated?: () => void) => {
   const { t } = useTranslation();
+  const { activeDomainEntityRef } = useDomainStore();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
   });
@@ -88,29 +91,43 @@ export const useDataProductCreateDrawer = (onCreated?: () => void) => {
     [form, t]
   );
 
-  const { formDrawer, openDrawer, closeDrawer } =
-    useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.data-product') }),
-      width: 670,
-      closeOnEscape: false,
-      className: 'tw:z-[20]',
-      hookForm: form,
-      form: (
-        <AddDomainForm
-          isFormInDialog
-          form={form}
-          loading={isLoading}
-          type={DomainFormType.DATA_PRODUCT}
-          onCancel={() => {}}
-          onSubmit={(data: DomainFormValues): Promise<void> =>
-            submitAndClose(data, handleSubmit, closeDrawer, onCreated)
-          }
-        />
-      ),
-      onSubmit: (data: DomainFormValues): Promise<void> =>
-        submitAndClose(data, handleSubmit, closeDrawer, onCreated),
-      loading: isLoading,
+  const {
+    formDrawer,
+    openDrawer: openFormDrawer,
+    closeDrawer,
+  } = useFormDrawerWithHook<DomainFormValues>({
+    title: t('label.add-entity', { entity: t('label.data-product') }),
+    width: 670,
+    closeOnEscape: false,
+    className: 'tw:z-[20]',
+    hookForm: form,
+    form: (
+      <AddDomainForm
+        isFormInDialog
+        form={form}
+        loading={isLoading}
+        type={DomainFormType.DATA_PRODUCT}
+        onCancel={() => {}}
+        onSubmit={(data: DomainFormValues): Promise<void> =>
+          submitAndClose(data, handleSubmit, closeDrawer, onCreated)
+        }
+      />
+    ),
+    onSubmit: (data: DomainFormValues): Promise<void> =>
+      submitAndClose(data, handleSubmit, closeDrawer, onCreated),
+    loading: isLoading,
+  });
+
+  // Defaults are rebuilt on every open so the active domain is always current.
+  const openDrawer = useCallback(() => {
+    form.reset({
+      ...DOMAIN_FORM_DEFAULTS,
+      domains: activeDomainEntityRef
+        ? toEntityReferenceOption(activeDomainEntityRef)
+        : undefined,
     });
+    openFormDrawer();
+  }, [activeDomainEntityRef, form, openFormDrawer]);
 
   return { formDrawer, openDrawer, closeDrawer };
 };

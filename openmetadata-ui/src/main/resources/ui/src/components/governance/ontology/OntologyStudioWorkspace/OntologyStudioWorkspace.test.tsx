@@ -44,14 +44,48 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
 jest.mock(
   '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace',
   () =>
-    ({ definitionType = 'concept' }: { definitionType?: string }) =>
-      <div data-testid={`authoring-${definitionType}`} />
+    ({
+      definitionType = 'concept',
+      onRequestCreate,
+      shouldOpenCreate,
+    }: {
+      definitionType?: string;
+      onRequestCreate?: () => void;
+      shouldOpenCreate?: boolean;
+    }) =>
+      (
+        <div data-testid={`authoring-${definitionType}`}>
+          <button
+            data-testid={`add-${definitionType}`}
+            onClick={onRequestCreate}>
+            add
+          </button>
+          {shouldOpenCreate ? <span data-testid="opens-create" /> : null}
+        </div>
+      )
 );
-jest.mock('../OntologyAxiomWorkspace/OntologyAxiomWorkspace', () => () => (
-  <div data-testid="axiom-workspace" />
-));
+const mockGuard = jest.fn((action: () => void) => action());
+jest.mock(
+  '../../../../hooks/governance/ontology/useOntologyDraftGuard',
+  () => ({ useOntologyDraftGuard: () => mockGuard })
+);
+jest.mock(
+  '../OntologyAxiomWorkspace/OntologyAxiomWorkspace',
+  () =>
+    ({ onOpenConcept }: { onOpenConcept?: (id: string) => void }) =>
+      (
+        <button
+          data-testid="axiom-workspace"
+          onClick={() => onOpenConcept?.('concept-1')}>
+          show on graph
+        </button>
+      )
+);
 jest.mock('../OntologyCreateForm/OntologyCreateForm', () => () => (
   <div data-testid="settings-form" />
+));
+jest.mock('../OntologyOverview/OntologyOverview', () => () => (
+  <div data-testid="overview" />
 ));
 jest.mock('../OntologyGraphView/OntologyGraphView', () => () => (
   <div data-testid="graph-view" />
@@ -99,23 +133,67 @@ describe('OntologyStudioWorkspace', () => {
     mockAxioms.mockResolvedValue({ data: [], paging: { total: 8 } });
   });
 
-  it('keeps classic definitions tabs without a header or count requests', async () => {
+  it('shows the ontology header and counts each tab from one model load', async () => {
+    mockConcepts.mockResolvedValue({
+      data: [
+        { id: 'c1', name: 'Drug', iri: 'urn:pharmacy#Drug' },
+        { id: 'c2', name: 'Dose', iri: 'urn:pharmacy#Dose' },
+      ],
+      paging: { total: 2 },
+    });
     renderDefinitions();
     await flushReactQuery();
 
     expect(
-      screen.getByRole('tab', { name: 'label.concept-plural' })
+      screen.getByRole('heading', { name: 'Hospital Pharmacy' })
     ).toBeInTheDocument();
-    expect(screen.queryByText('Hospital Pharmacy')).not.toBeInTheDocument();
-    expect(mockConcepts).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('tab', { name: 'label.concept-plural' })
+    ).toHaveTextContent('2');
+    expect(mockConcepts).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    [true, 'opens'],
+    [false, 'does not open'],
+  ])(
+    "View's Add when the switch to Edit is accepted=%s %s the create form in Edit",
+    async (accepted) => {
+      const onRequestDefinitionsEdit = jest.fn(() => accepted);
+      const props = {
+        ontology,
+        viewSurface: 'ontology' as const,
+        onRequestDefinitionsEdit,
+        onRequestGraphSurface: jest.fn(),
+        onSaved: jest.fn(),
+      };
+      const { rerender } = renderWithQueryClient(
+        <OntologyStudioWorkspace mode="view" {...props} />
+      );
+      await flushReactQuery();
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.concept-plural/ })
+        );
+      });
+      fireEvent.click(screen.getByTestId('add-concept'));
+
+      expect(onRequestDefinitionsEdit).toHaveBeenCalledTimes(1);
+
+      rerender(<OntologyStudioWorkspace mode="definitions" {...props} />);
+
+      expect(screen.queryAllByTestId('opens-create')).toHaveLength(
+        accepted ? 1 : 0
+      );
+    }
+  );
 
   describe('AI mode', () => {
     beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
 
     afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
-    it('shows the ontology header with the same tabs and no extra list requests', async () => {
+    it('shows the ontology header with the same tabs and one request per definition type', async () => {
       renderDefinitions();
       await flushReactQuery();
 
@@ -135,14 +213,23 @@ describe('OntologyStudioWorkspace', () => {
         expect(screen.getByRole('tab', { name })).toBeInTheDocument()
       );
 
-      expect(mockConcepts).not.toHaveBeenCalled();
-      expect(mockProperties).not.toHaveBeenCalled();
-      expect(mockAxioms).not.toHaveBeenCalled();
+      expect(mockConcepts).toHaveBeenCalledTimes(1);
+      expect(mockProperties).toHaveBeenCalledTimes(1);
+      expect(mockAxioms).toHaveBeenCalledTimes(1);
     });
 
-    it('switches between every definition panel', async () => {
+    it('opens on Overview and switches between every definition panel', async () => {
       renderDefinitions();
       await flushReactQuery();
+
+      expect(screen.getByTestId('overview')).toBeInTheDocument();
+      expect(screen.queryByTestId('authoring-concept')).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.concept-plural/ })
+        );
+      });
 
       expect(screen.getByTestId('authoring-concept')).toBeInTheDocument();
 
@@ -170,5 +257,36 @@ describe('OntologyStudioWorkspace', () => {
 
       expect(screen.getByTestId('settings-form')).toBeInTheDocument();
     });
+  });
+
+  it('asks the draft guard before Show on graph leaves for the graph', async () => {
+    const onRequestEdit = jest.fn();
+    let pending: (() => void) | undefined;
+    renderWithQueryClient(
+      <OntologyStudioWorkspace
+        mode="definitions"
+        ontology={ontology}
+        viewSurface="graph"
+        onRequestEdit={onRequestEdit}
+        onRequestGraphSurface={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+    await flushReactQuery();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('tab', { name: 'label.constraint-plural' })
+      );
+    });
+    mockGuard.mockImplementationOnce((action: () => void) => {
+      pending = action;
+    });
+    fireEvent.click(screen.getByTestId('axiom-workspace'));
+
+    expect(onRequestEdit).not.toHaveBeenCalled();
+
+    act(() => pending?.());
+
+    expect(onRequestEdit).toHaveBeenCalledWith('concept-1');
   });
 });

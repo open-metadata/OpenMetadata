@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { DataType } from '../../../../generated/entity/data/table';
 import {
@@ -129,13 +130,17 @@ it('blocks every mounted column action after a confirmed removal until a complet
       return { data: state };
     });
   renderWithQueryClient(<Harness />);
-  const open = await screen.findByTestId('ontology-bind-property-first');
-  await waitFor(() => expect(open).toBeEnabled());
-  fireEvent.click(open);
-  const columns = await screen.findByRole('button', { name: /label.column/ });
+  // The button remounts once the table loads, so read it again rather than hold the first one.
+  await waitFor(() =>
+    expect(screen.getByTestId('ontology-bind-property-first')).toBeEnabled()
+  );
+  fireEvent.click(screen.getByTestId('ontology-bind-property-first'));
+  const columns = await screen.findByRole('combobox', { name: /label.column/ });
   await waitFor(() => expect(columns).toBeEnabled());
-  fireEvent.click(columns);
+  act(() => columns.focus());
+  fireEvent.keyDown(columns, { key: 'ArrowDown' });
   fireEvent.click(await screen.findByRole('option', { name: 'id' }));
+  fireEvent.keyDown(columns, { key: 'Escape' });
   await waitFor(() =>
     expect(screen.getByTestId('ontology-binding-save')).toBeEnabled()
   );
@@ -190,4 +195,30 @@ it('blocks every mounted column action after a confirmed removal until a complet
       screen.queryByTestId('ontology-binding-remove-first')
     ).not.toBeInTheDocument()
   );
+});
+
+it('reads as disabled without a linked table and says why on hover', async () => {
+  jest.clearAllMocks();
+  http.get.mockResolvedValue({ data: { revision: 0, assets: [] } });
+  renderWithQueryClient(<Harness />);
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  await waitFor(() => expect(http.get).toHaveBeenCalled());
+  // Let the empty bindings read settle, so the state below is the loaded one.
+  await act(async () => {
+    await jest.runOnlyPendingTimersAsync();
+  });
+  const bind = screen.getByTestId('ontology-bind-property-first');
+
+  expect(bind).toBeDisabled();
+
+  // react-aria opens hover tooltips only after it has seen a pointer move.
+  fireEvent.mouseMove(document);
+  await user.hover(bind.parentElement as HTMLElement);
+
+  expect(await screen.findByRole('tooltip')).toHaveTextContent(
+    'message.ontology-link-table-before-binding'
+  );
+  expect(
+    screen.queryByTestId('ontology-column-binding-editor')
+  ).not.toBeInTheDocument();
 });

@@ -119,7 +119,9 @@ describe('reopenResolvedIncident', () => {
       targetStatus: TestCaseResolutionStatusTypes.ACK,
     });
 
-    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('state-1');
+    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('state-1', {
+      limit: 1,
+    });
     expect(result).toEqual({ id: 'latest-id', stateId: 'state-1' });
   });
 });

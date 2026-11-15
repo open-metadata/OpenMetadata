@@ -12,38 +12,12 @@
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { isAxiosError } from 'axios';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { exportOntologyRelease } from '../../../../rest/ontologyAPI';
-import {
-  EXPORT_FORMAT_TO_ACCEPT_HEADER,
-  EXPORT_FORMAT_TO_FILE_EXTENSION,
-  OntologyExportFormat,
-} from '../../../../rest/rdfAPI';
-import { downloadFile } from '../../../../utils/Export/ExportUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useOntologyReleaseDownload } from '../../../../hooks/governance/ontology/useOntologyReleaseDownload';
 
 const OntologyReleaseExport = ({ releaseId }: { releaseId: string }) => {
   const { t } = useTranslation();
-  const [isExporting, setIsExporting] = useState(false);
-  const exportRelease = async (format: OntologyExportFormat) => {
-    setIsExporting(true);
-    try {
-      const content = await exportOntologyRelease(releaseId, format);
-      downloadFile(
-        content,
-        `ontology-release-${releaseId}.${EXPORT_FORMAT_TO_FILE_EXTENSION[format]}`,
-        EXPORT_FORMAT_TO_ACCEPT_HEADER[format]
-      );
-    } catch (error) {
-      showErrorToast(
-        isAxiosError(error) ? error : t('server.unexpected-error')
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const { isExporting, exportRelease } = useOntologyReleaseDownload(releaseId);
 
   return (
     <Dropdown.Root>
@@ -72,6 +46,12 @@ const OntologyReleaseExport = ({ releaseId }: { releaseId: string }) => {
             id="ntriples"
             onAction={() => void exportRelease('ntriples')}>
             {t('label.n-triples-nt')}
+          </Dropdown.Item>
+          <Dropdown.Item id="skos" onAction={() => void exportRelease('skos')}>
+            {t('label.skos-turtle')}
+          </Dropdown.Item>
+          <Dropdown.Item id="csv" onAction={() => void exportRelease('csv')}>
+            {t('label.csv')}
           </Dropdown.Item>
           <Dropdown.Item
             id="jsonld"

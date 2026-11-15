@@ -195,11 +195,19 @@ const IngestionWorkflowForm = forwardRef<
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
-  const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+  const schema = useMemo(() => {
+    const workflowSchema = getSchemaByWorkflowType(
+      pipeLineType,
+      serviceCategory
+    );
 
-    [pipeLineType, serviceCategory]
-  );
+    return serviceData?.serviceType === 'BigQuery'
+      ? workflowSchema
+      : {
+          ...workflowSchema,
+          properties: omit(workflowSchema.properties, ['shardedTables']),
+        };
+  }, [pipeLineType, serviceCategory, serviceData?.serviceType]);
 
   const validator = useMemo(
     () => customizeValidator<IngestionWorkflowData>(),

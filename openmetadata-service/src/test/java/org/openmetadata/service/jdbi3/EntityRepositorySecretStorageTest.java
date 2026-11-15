@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jdbi.v3.sqlobject.transaction.TransactionalCallback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatchers;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -61,6 +63,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.secrets.DBSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -92,10 +95,20 @@ class EntityRepositorySecretStorageTest {
             new SecretsManager.SecretsConfig("secret-storage-test", "", List.of(), null)));
     Fernet.getInstance().setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.entityExtensionDAO()).thenReturn(mock(EntityExtensionDAO.class));
+    when(collectionDAO.inTransaction(
+            ArgumentMatchers.<TransactionalCallback<Object, CollectionDAO, RuntimeException>>any()))
+        .thenAnswer(
+            invocation ->
+                invocation
+                    .<TransactionalCallback<Object, CollectionDAO, RuntimeException>>getArgument(0)
+                    .inTransaction(collectionDAO));
     pipelineDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
     when(collectionDAO.ingestionPipelineDAO()).thenReturn(pipelineDAO);
     when(pipelineDAO.getTableName()).thenReturn("ingestion_pipeline_entity");
     when(pipelineDAO.getNameHashColumn()).thenReturn("nameHash");
+    when(pipelineDAO.findJsonByIdForUpdate(any(UUID.class), any()))
+        .thenAnswer(call -> storedJson.get());
     captureWrites(pipelineDAO);
     Entity.setCollectionDAO(collectionDAO);
     repository = new IngestionPipelineRepository(new OpenMetadataApplicationConfig());
@@ -294,6 +307,23 @@ class EntityRepositorySecretStorageTest {
         "updated-secret",
         vault.getSecretValue(
             JsonUtils.readTree(JsonUtils.pojoToJson(stored)).at(PIPELINE_SECRET).asText()));
+  }
+
+  @Test
+  void sameNamedPipelinesOfDifferentServicesKeepTheirOwnVaultEntries() {
+    InMemorySecretsManager vault =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("namesake-storage-test", "", List.of(), null)) {};
+    SecretsManagerFactory.setSecretsManager(vault);
+
+    vault.encryptIngestionPipeline(pipeline("first-service-secret"));
+    vault.encryptIngestionPipeline(pipeline("second-service-secret"));
+
+    assertTrue(
+        vault
+            .getSecretsMap()
+            .values()
+            .containsAll(List.of("first-service-secret", "second-service-secret")));
   }
 
   @Test

@@ -19,7 +19,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -29,6 +32,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.ContainerServiceTestFactory;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -102,6 +107,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -230,6 +236,53 @@ public class LineageResourceIT {
     cleanupTable(client, table1);
     cleanupTable(client, table2);
     cleanupTable(client, table3);
+  }
+
+  /**
+   * Four tables that each feed the other three: three hops reach every table on several paths, and
+   * each edge still comes back once per direction.
+   */
+  @Test
+  void testGetLineage_DenseGraph_ReturnsEachEdgeOnce() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    List<Table> tables = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      tables.add(createTable(client, namespace, "dense_table_" + i));
+    }
+    List<List<Table>> pairs =
+        tables.stream()
+            .flatMap(from -> tables.stream().filter(to -> to != from).map(to -> List.of(from, to)))
+            .toList();
+    for (List<Table> pair : pairs) {
+      addLineage(client, pair.getFirst(), pair.getLast());
+    }
+
+    EntityLineage lineage =
+        getLineage(client, "table", tables.getFirst().getId().toString(), "3", "3");
+
+    Set<List<UUID>> everyEdge =
+        pairs.stream()
+            .map(pair -> List.of(pair.getFirst().getId(), pair.getLast().getId()))
+            .collect(Collectors.toSet());
+    assertEquals(12, lineage.getUpstreamEdges().size());
+    assertEquals(everyEdge, edgeEnds(lineage.getUpstreamEdges()));
+    assertEquals(12, lineage.getDownstreamEdges().size());
+    assertEquals(everyEdge, edgeEnds(lineage.getDownstreamEdges()));
+
+    for (List<Table> pair : pairs) {
+      deleteLineage(
+          client, pair.getFirst().getEntityReference(), pair.getLast().getEntityReference());
+    }
+    for (Table table : tables) {
+      cleanupTable(client, table);
+    }
+  }
+
+  private static Set<List<UUID>> edgeEnds(List<Edge> edges) {
+    return edges.stream()
+        .map(edge -> List.of(edge.getFromEntity(), edge.getToEntity()))
+        .collect(Collectors.toSet());
   }
 
   @Test
@@ -726,6 +779,69 @@ public class LineageResourceIT {
   }
 
   @Test
+  // A focused scene applies node filters in memory through the shared lineage builder, so only a
+  // filter that fails to parse is the caller's error there; root scenes also reject what the
+  // search engine refuses (see testLineageSceneRejectsMalformedQueryFilter).
+  void testFocusedLineageSceneRejectsMalformedQueryFilter() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "rejected_filter_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "rejected_filter_schema");
+    Table table = createTableInSchema(client, namespace, schema, "rejected_filter", columns("id"));
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("focusFqn", table.getFullyQualifiedName())
+            .queryParam("entityType", Entity.TABLE)
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", LineageBand.ASSET.value())
+            .queryParam("query_filter", "{\"term\":{}}")
+            .build();
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+    cleanupDatabaseService(client, service);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"query\":",
+        "{\"term\":{}}",
+        "[\"not\",\"a\",\"query\"]",
+        // Parses as a query, but the search engine rejects its syntax.
+        "{\"query_string\":{\"query\":\"name:(\"}}"
+      })
+  void testLineageSceneRejectsMalformedQueryFilter(String queryFilter) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", LineageBand.LAYER.value())
+            .queryParam("query_filter", queryFilter)
+            .build();
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+  }
+
+  @Test
   void testLineageSceneFocusedDatabaseProjectsTableEdgesToSchemas() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     TestNamespace namespace = new TestNamespace("LineageResourceIT");
@@ -1206,8 +1322,24 @@ public class LineageResourceIT {
             columns("id"),
             List.of(blockedDomain.getFullyQualifiedName()));
 
+    // A service whose visible tables only send lineage is reached only as an upstream end.
+    DatabaseService upstreamService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database upstreamDatabase =
+        createDatabase(admin, namespace, upstreamService, "upstream_lineage_db");
+    DatabaseSchema upstreamSchema =
+        createSchema(admin, namespace, upstreamDatabase, "upstream_lineage_schema");
+    Table upstreamSource =
+        createTableInSchema(
+            admin,
+            namespace,
+            upstreamSchema,
+            "upstream_source",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+
     addLineage(admin, allowedSource, allowedTarget);
     addLineage(admin, blockedSource, blockedTarget);
+    addLineage(admin, upstreamSource, allowedSource);
 
     getRootLineageSceneWithRetry(
         admin,
@@ -1241,10 +1373,20 @@ public class LineageResourceIT {
             995,
             scene ->
                 hasSceneNode(scene, allowedService.getFullyQualifiedName())
+                    && hasSceneEdge(
+                        scene,
+                        upstreamService.getFullyQualifiedName(),
+                        allowedService.getFullyQualifiedName())
                     && sceneNodeCount(
                             scene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE)
                         == 4);
     assertFalse(hasSceneNode(restrictedScene, blockedService.getFullyQualifiedName()));
+    // Other concurrent tests can add edges between domainless assets, so assert this edge only.
+    assertTrue(
+        hasSceneEdge(
+            restrictedScene,
+            upstreamService.getFullyQualifiedName(),
+            allowedService.getFullyQualifiedName()));
     assertEquals(
         4,
         sceneNodeCount(
@@ -1296,9 +1438,11 @@ public class LineageResourceIT {
 
     admin.users().delete(restrictedUser.getId().toString());
     deleteLineage(admin, allowedSource.getEntityReference(), allowedTarget.getEntityReference());
+    deleteLineage(admin, upstreamSource.getEntityReference(), allowedSource.getEntityReference());
     deleteLineage(admin, blockedSource.getEntityReference(), blockedTarget.getEntityReference());
     cleanupDatabaseService(admin, allowedService);
     cleanupDatabaseService(admin, blockedService);
+    cleanupDatabaseService(admin, upstreamService);
     admin.domains().delete(allowedDomain.getId().toString());
     admin.domains().delete(blockedDomain.getId().toString());
   }

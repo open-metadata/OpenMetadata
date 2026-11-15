@@ -41,7 +41,7 @@ import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProvi
 import { useSecuritySettingsSource } from '../../../../../SettingsSso/useSecuritySettingsSource';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
-import SsoConfigureForm from './SsoConfigureForm';
+import SsoConfigureForm, { SsoSubPage } from './SsoConfigureForm';
 import SsoOverview from './SsoOverview';
 import type { SsoView } from './SsoPanel.types';
 import {
@@ -51,9 +51,52 @@ import {
 } from './SsoPanel.utils';
 import SsoProviderGrid from './SsoProviderGrid';
 
+const CRUMB_PROVIDER = 'provider';
+
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
+
+// Under a sub page the provider crumb leads back to the form.
+const getProviderCrumbs = (
+  provider?: string,
+  subPage?: SsoSubPage
+): BreadcrumbItemType[] => {
+  if (!provider) {
+    return [];
+  }
+  const label = getProviderDisplayName(provider);
+
+  return subPage
+    ? [
+        { id: CRUMB_PROVIDER, label },
+        { id: 'current', label: subPage.label },
+      ]
+    : [{ id: 'current', label }];
+};
+
+const SsoHeaderTabs = ({
+  selectedKey,
+  onChange,
+}: {
+  selectedKey: string;
+  onChange: (key: Key) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tabs selectedKey={selectedKey} onSelectionChange={onChange}>
+      <Tabs.List size="sm" type="underline">
+        <Tabs.Item data-testid="sso-tab-overview" id="overview">
+          {t('label.overview')}
+        </Tabs.Item>
+        <Tabs.Item data-testid="sso-tab-configure" id="configure">
+          {t('label.configure')}
+        </Tabs.Item>
+      </Tabs.List>
+    </Tabs>
+  );
+};
 
 const ProviderLogo = ({ provider }: { provider: string }) => {
   const icon = getProviderIcon(provider);
@@ -82,6 +125,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   const [config, setConfig] = useState<SecurityConfiguration>();
   const [isLoading, setIsLoading] = useState(true);
   const [showHint, setShowHint] = useState(false);
+  const [subPage, setSubPage] = useState<SsoSubPage>();
   const {
     sources,
     refetch: refetchSources,
@@ -132,6 +176,17 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     onNavigate({ type: 'overview' });
   }, [fetchConfig, onNavigate]);
 
+  const handleTabChange = useCallback(
+    (key: Key) => {
+      if (key === 'overview') {
+        // A save on the Configure tab may have changed self signup.
+        void fetchConfig();
+      }
+      onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
+    },
+    [fetchConfig, onNavigate]
+  );
+
   const handleSelfSignupChange = useCallback(
     async (enabled: boolean) => {
       const previous = config;
@@ -174,6 +229,10 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   const canPickProvider = view.type === 'providers' && !isProviderManaged;
   const canChangeProvider =
     hasExistingConfig && view.type !== 'new' && !isProviderManaged;
+  const showsTabs =
+    !isLoading &&
+    !subPage &&
+    (view.type === 'overview' || view.type === 'configure');
 
   useEffect(() => {
     if (!onHeaderChange) {
@@ -184,13 +243,8 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     const breadcrumbs: BreadcrumbItemType[] = [
       { id: 'settings', label: t('label.setting-plural') },
       { id: SSO_HASH_TAB, label: ssoLabel },
+      ...getProviderCrumbs(headerProvider, subPage),
     ];
-    if (headerProvider) {
-      breadcrumbs.push({
-        id: 'current',
-        label: getProviderDisplayName(headerProvider),
-      });
-    }
 
     const hintToggle = (
       <Box align="center" direction="row" gap={2}>
@@ -233,21 +287,38 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       onBreadcrumbAction: (id: Key) => {
         if (id === SSO_HASH_TAB) {
           onNavigate({ type: 'overview' });
+        } else if (id === CRUMB_PROVIDER) {
+          subPage?.onBack();
         }
       },
-      actions: isLoading ? undefined : actions,
+      actions: isLoading || subPage ? undefined : actions,
+      tabs: showsTabs ? (
+        <SsoHeaderTabs selectedKey={view.type} onChange={handleTabChange} />
+      ) : undefined,
     });
   }, [
     canChangeProvider,
     canPickProvider,
+    handleTabChange,
     headerProvider,
     isLoading,
     onHeaderChange,
     onNavigate,
     showHint,
     showsForm,
+    showsTabs,
+    subPage,
     t,
+    view.type,
   ]);
+
+  const formProps = {
+    isReadOnly,
+    managedPaths,
+    showHint,
+    onChangeProvider: () => onNavigate({ type: 'providers' }),
+    onSubPageChange: setSubPage,
+  };
 
   const content = (() => {
     if (isLoading) {
@@ -275,71 +346,38 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       );
     }
 
-    if (view.type === 'providers') {
-      return (
-        <div className="tw:flex-1 tw:px-8 tw:pb-8">
-          <SsoProviderGrid
-            onSelect={(provider) => onNavigate({ type: 'new', provider })}
-          />
-        </div>
-      );
-    }
-
-    if (view.type === 'new') {
-      return (
-        <SsoConfigureForm
-          isReadOnly={isReadOnly}
-          key={view.provider}
-          managedPaths={managedPaths}
-          selectedProvider={view.provider}
-          showHint={showHint}
-          onChangeProvider={() => onNavigate({ type: 'providers' })}
-        />
-      );
-    }
-
-    return (
-      <Tabs
-        className="tw:flex tw:flex-1 tw:flex-col tw:gap-6"
-        selectedKey={view.type}
-        onSelectionChange={(key) => {
-          if (key === 'overview') {
-            // A save on the Configure tab may have changed self signup.
-            void fetchConfig();
-          }
-          onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
-        }}>
-        <Tabs.List
-          className="tw:sticky tw:top-0 tw:z-10 tw:bg-surface tw:px-8"
-          size="sm"
-          type="underline">
-          <Tabs.Item data-testid="sso-tab-overview" id="overview">
-            {t('label.overview')}
-          </Tabs.Item>
-          <Tabs.Item data-testid="sso-tab-configure" id="configure">
-            {t('label.configure')}
-          </Tabs.Item>
-        </Tabs.List>
-        <Tabs.Panel className="tw:px-8" id="overview">
-          <SsoOverview
-            isSelfSignupEnabled={Boolean(
-              config?.authenticationConfiguration.enableSelfSignup
-            )}
-            isSelfSignupManaged={isSelfSignupManaged}
-            onSelfSignupChange={handleSelfSignupChange}
-          />
-        </Tabs.Panel>
-        <Tabs.Panel className="tw:flex tw:flex-1 tw:flex-col" id="configure">
+    switch (view.type) {
+      case 'providers':
+        return (
+          <div className="tw:flex-1 tw:px-8 tw:pb-8">
+            <SsoProviderGrid
+              onSelect={(provider) => onNavigate({ type: 'new', provider })}
+            />
+          </div>
+        );
+      case 'overview':
+        return (
+          <div className="tw:px-8">
+            <SsoOverview
+              isSelfSignupEnabled={Boolean(
+                config?.authenticationConfiguration.enableSelfSignup
+              )}
+              isSelfSignupManaged={isSelfSignupManaged}
+              onSelfSignupChange={handleSelfSignupChange}
+            />
+          </div>
+        );
+      case 'new':
+        return (
           <SsoConfigureForm
-            isReadOnly={isReadOnly}
-            managedPaths={managedPaths}
-            securityConfig={config}
-            showHint={showHint}
-            onChangeProvider={() => onNavigate({ type: 'providers' })}
+            key={view.provider}
+            selectedProvider={view.provider}
+            {...formProps}
           />
-        </Tabs.Panel>
-      </Tabs>
-    );
+        );
+      case 'configure':
+        return <SsoConfigureForm securityConfig={config} {...formProps} />;
+    }
   })();
 
   return (

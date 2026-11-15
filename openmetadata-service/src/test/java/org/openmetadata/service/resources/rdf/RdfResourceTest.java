@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntologyClass;
@@ -67,6 +69,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
@@ -355,9 +358,54 @@ class RdfResourceTest {
     Response response = rdfResource.getEntityRdfDiff(securityContext, "table", entityId, 0.1, 0.2);
 
     assertEquals(expected, response.getEntity());
-    verify(authorizer).authorize(eq(securityContext), any(), any());
-    verify(authorizer, never()).authorizeAdmin(securityContext);
     verify(diffService).diff("table", entityId, 0.1, 0.2);
+  }
+
+  /**
+   * The diff reads stored versions, past the redaction each entity's versions endpoint applies, so
+   * viewing the entity is not enough to read it.
+   */
+  @Test
+  void entityRdfDiffIsForAdministratorsOnly() {
+    RdfEntityDiffService diffService = Mockito.mock(RdfEntityDiffService.class);
+    UUID entityId = UUID.randomUUID();
+    Mockito.doThrow(new AuthorizationException("not an admin"))
+        .when(authorizer)
+        .authorizeAdmin(securityContext);
+    rdfResource = new RdfResource(authorizer, () -> null, diffService);
+
+    assertThrows(
+        AuthorizationException.class,
+        () -> rdfResource.getEntityRdfDiff(securityContext, "table", entityId, 0.1, 0.2));
+    verify(diffService, never()).diff(any(), any(), any(), any());
+  }
+
+  /** A user's graph node carries the email that the user endpoints mask for most callers. */
+  @Test
+  void aUsersRdfIsOnlyForCallersWhoMayReadItsEmail() throws IOException {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    UUID userId = UUID.randomUUID();
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getEntityAsJsonLd(Entity.USER, userId)).thenReturn("{}");
+    rdfResource = new RdfResource(authorizer, () -> repository);
+
+    try (MockedStatic<Entity> entities = Mockito.mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entities.when(() -> Entity.hasEntityRepository(Entity.USER)).thenReturn(true);
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(Mockito.mock(UserRepository.class));
+
+      when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+      assertThrows(
+          AuthorizationException.class,
+          () -> rdfResource.getEntityAsRdf(securityContext, Entity.USER, userId, "jsonld"));
+      verify(repository, never()).getEntityAsJsonLd(any(), any());
+
+      when(authorizer.authorizePII(securityContext, null)).thenReturn(true);
+      Response response =
+          rdfResource.getEntityAsRdf(securityContext, Entity.USER, userId, "jsonld");
+      assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    }
   }
 
   @Test

@@ -39,6 +39,13 @@ const STUDIO_ISOLATED_ROW_GAP = 90;
 const STUDIO_ISOLATED_COLUMN_GAP = 220;
 const STUDIO_MAX_ISOLATED_COLUMNS = 4;
 const STUDIO_DEFAULT_VIEWPORT_WIDTH = 1600;
+const STUDIO_DEFAULT_VIEWPORT_HEIGHT = 900;
+const STUDIO_SUBCOLUMN_GAP = 140;
+// A rank is only folded into side-by-side columns when stacking it leaves the
+// component this many times narrower than the viewport shape; smaller graphs
+// keep the plain left-to-right ranks they always had.
+const STUDIO_FOLD_TOLERANCE = 1.6;
+const STUDIO_ISOLATED_GRID_MIN = 36;
 
 const BUILT_IN_HIERARCHICAL_RELATIONS = new Set([
   'broader',
@@ -74,6 +81,7 @@ export interface StudioNodePosition {
 
 export interface StudioGraphLayoutOptions {
   hierarchicalRelationTypes?: ReadonlySet<string>;
+  viewportHeight?: number;
   viewportWidth?: number;
 }
 
@@ -317,10 +325,92 @@ function positionComponentAsGrid(nodes: NodeData[]): ComponentLayout {
   };
 }
 
+/**
+ * Dagre stacks each rank in one column, so a wide tree (4-ary, 400 concepts)
+ * becomes a column tens of thousands of pixels tall that Fit shrinks to a
+ * sliver. Folding the crowded ranks into side-by-side columns brings the
+ * component back toward the viewport's shape while keeping rank order.
+ */
+function foldRanksToAspect(
+  positions: StudioNodePositions,
+  targetAspect: number
+): ComponentLayout | undefined {
+  const rankKeys = new Map<number, string[]>();
+  Object.entries(positions).forEach(([id, position]) => {
+    const key = Math.round(position.x);
+    rankKeys.set(key, [...(rankKeys.get(key) ?? []), id]);
+  });
+  const ranks = [...rankKeys.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([, ids]) =>
+      ids.sort((left, right) => positions[left].y - positions[right].y)
+    );
+  const tallest = Math.max(...ranks.map((rank) => rank.length));
+  const rowPitch = NODE_HEIGHT + STUDIO_NODE_GAP;
+  const columnPitch = STUDIO_NODE_WIDTH + STUDIO_SUBCOLUMN_GAP;
+  const shapeFor = (rows: number) => {
+    const rankWidths = ranks.map(
+      (rank) =>
+        (Math.ceil(rank.length / rows) - 1) * columnPitch + STUDIO_NODE_WIDTH
+    );
+
+    return {
+      height: Math.min(rows, tallest) * rowPitch - STUDIO_NODE_GAP,
+      width:
+        rankWidths.reduce((sum, width) => sum + width, 0) +
+        (ranks.length - 1) * STUDIO_RANK_GAP,
+    };
+  };
+  const natural = shapeFor(tallest);
+  if (natural.width / natural.height >= targetAspect / STUDIO_FOLD_TOLERANCE) {
+    return undefined;
+  }
+
+  let bestRows = tallest;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let rows = tallest; rows >= 1; rows--) {
+    const shape = shapeFor(rows);
+    const score = Math.abs(Math.log(shape.width / shape.height / targetAspect));
+    if (score < bestScore) {
+      bestScore = score;
+      bestRows = rows;
+    }
+  }
+  const shape = shapeFor(bestRows);
+  const rowsUsed = Math.min(bestRows, tallest);
+  const folded: StudioNodePositions = {};
+  let cursorX = STUDIO_NODE_WIDTH / 2;
+  ranks.forEach((rank) => {
+    const columns = Math.ceil(rank.length / bestRows);
+    rank.forEach((id, index) => {
+      const column = Math.floor(index / bestRows);
+      const inColumn = Math.min(bestRows, rank.length - column * bestRows);
+      folded[id] = {
+        x: cursorX + column * columnPitch,
+        y:
+          NODE_HEIGHT / 2 +
+          ((rowsUsed - inColumn) * rowPitch) / 2 +
+          (index % bestRows) * rowPitch,
+      };
+    });
+    cursorX +=
+      (columns - 1) * columnPitch + STUDIO_NODE_WIDTH + STUDIO_RANK_GAP;
+  });
+
+  return {
+    height: shape.height,
+    minX: 0,
+    minY: 0,
+    positions: folded,
+    width: shape.width,
+  };
+}
+
 async function layoutComponent(
   nodes: NodeData[],
   edges: StudioLayoutEdge[],
-  hierarchicalRelationTypes: Set<string>
+  hierarchicalRelationTypes: Set<string>,
+  targetAspect: number
 ): Promise<ComponentLayout> {
   const componentNodeIds = new Set(nodes.map((node) => String(node.id)));
   const layoutEdges = buildLayoutEdges(
@@ -365,13 +455,15 @@ async function layoutComponent(
       return positionComponentAsGrid(nodes);
     }
 
-    return {
+    const natural = {
       height: maxY - minY,
       minX,
       minY,
       positions,
       width: maxX - minX,
     };
+
+    return foldRanksToAspect(positions, targetAspect) ?? natural;
   } catch {
     return positionComponentAsGrid(nodes);
   } finally {
@@ -383,6 +475,7 @@ function positionIsolatedNodes(
   nodes: NodeData[],
   startY: number,
   viewportWidth: number,
+  targetAspect: number,
   positions: StudioNodePositions
 ) {
   const availableColumns = Math.max(
@@ -392,11 +485,24 @@ function positionIsolatedNodes(
         STUDIO_ISOLATED_COLUMN_GAP
     )
   );
-  const columns = Math.min(
+  const compactColumns = Math.min(
     STUDIO_MAX_ISOLATED_COLUMNS,
     availableColumns,
     Math.max(1, Math.ceil(Math.sqrt(nodes.length)))
   );
+  const rowPitch = NODE_HEIGHT + STUDIO_ISOLATED_ROW_GAP;
+  const columns =
+    nodes.length > STUDIO_ISOLATED_GRID_MIN
+      ? Math.max(
+          compactColumns,
+          Math.round(
+            Math.sqrt(
+              (nodes.length * targetAspect * rowPitch) /
+                STUDIO_ISOLATED_COLUMN_GAP
+            )
+          )
+        )
+      : compactColumns;
 
   sortNodes(nodes).forEach((node, index) => {
     const column = index % columns;
@@ -448,19 +554,43 @@ export async function calculateStudioNodePositions(
     STUDIO_NODE_WIDTH + STUDIO_OFFSET_X * 2,
     options.viewportWidth ?? STUDIO_DEFAULT_VIEWPORT_WIDTH
   );
+  const viewportHeight = Math.max(
+    1,
+    options.viewportHeight ?? STUDIO_DEFAULT_VIEWPORT_HEIGHT
+  );
+  const targetAspect = viewportWidth / viewportHeight;
+
+  const components = getConnectedComponents(connectedNodes, validEdges);
+  const layouts: ComponentLayout[] = [];
+  for (const component of components) {
+    layouts.push(
+      await layoutComponent(
+        component,
+        validEdges,
+        hierarchicalRelationTypes,
+        targetAspect
+      )
+    );
+  }
+  // Rows wrap at the viewport width, but many small components would then pile
+  // into a tall strip; widen the rows until the packed area matches the aspect.
+  const packedArea = layouts.reduce(
+    (sum, layout) =>
+      sum +
+      (layout.width + STUDIO_COMPONENT_GAP_X) *
+        (layout.height + STUDIO_COMPONENT_GAP_Y),
+    0
+  );
+  const maxContentX = Math.max(
+    viewportWidth - STUDIO_OFFSET_X,
+    STUDIO_OFFSET_X + Math.sqrt(packedArea * targetAspect)
+  );
 
   let cursorX = STUDIO_OFFSET_X;
   let cursorY = STUDIO_OFFSET_Y;
   let rowHeight = 0;
   let maxConnectedY = STUDIO_OFFSET_Y;
-  const components = getConnectedComponents(connectedNodes, validEdges);
-  for (const component of components) {
-    const componentLayout = await layoutComponent(
-      component,
-      validEdges,
-      hierarchicalRelationTypes
-    );
-    const maxContentX = viewportWidth - STUDIO_OFFSET_X;
+  for (const componentLayout of layouts) {
     if (
       cursorX > STUDIO_OFFSET_X &&
       cursorX + componentLayout.width > maxContentX
@@ -489,6 +619,7 @@ export async function calculateStudioNodePositions(
       isolatedNodes,
       isolatedStartY,
       viewportWidth,
+      targetAspect,
       positions
     );
   }

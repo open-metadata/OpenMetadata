@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyPublicationModal from './OntologyPublicationModal';
 
 const mockReleasePanel = jest.fn();
@@ -24,7 +21,6 @@ jest.mock('../../../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../../../hooks/useAppMode'),
   useIsAiMode: jest.fn().mockReturnValue(false),
 }));
-jest.mock('../../../../hooks/useEntityPermissions/useEntityPermissions');
 
 jest.mock('../OntologyReleasePanel/OntologyReleasePanel', () => ({
   __esModule: true,
@@ -48,26 +44,12 @@ const ontology: Ontology = {
 };
 
 describe('OntologyPublicationModal', () => {
-  it('passes the Studio task callback through both publication owner modes', () => {
+  it('passes the Studio task callback to the release panel', () => {
     const onOpenTask = jest.fn();
-    const { rerender } = render(
+    render(
       <OntologyPublicationModal
         canEdit
         ontology={ontology}
-        onClose={jest.fn()}
-        onOpenTask={onOpenTask}
-      />
-    );
-
-    expect(mockReleasePanel).toHaveBeenLastCalledWith(
-      expect.objectContaining({ onOpenTask })
-    );
-
-    rerender(
-      <OntologyPublicationModal
-        canEdit
-        initialOntology={ontology}
-        ontologies={[ontology]}
         onClose={jest.fn()}
         onOpenTask={onOpenTask}
       />
@@ -81,18 +63,17 @@ describe('OntologyPublicationModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useIsAiMode as jest.Mock).mockReturnValue(false);
-    const permissions = {
-      ...DEFAULT_ENTITY_PERMISSION,
-      EditAll: true,
-      ViewBasic: true,
-    };
-    (useEntityPermissions as jest.Mock).mockReturnValue({
-      permissions,
-      ...getDerivedPermissionFlags(permissions, false),
-      isLoading: false,
-      error: null,
-      refresh: jest.fn(),
-    });
+  });
+
+  it('dismisses with Escape', () => {
+    const onClose = jest.fn();
+    render(
+      <OntologyPublicationModal canEdit ontology={ontology} onClose={onClose} />
+    );
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('opens the named Releases tab from a history entry point', () => {
@@ -110,64 +91,6 @@ describe('OntologyPublicationModal', () => {
     ).toHaveAttribute('aria-selected', 'true');
     expect(mockReleasePanel).toHaveBeenLastCalledWith(
       expect.objectContaining({ view: 'releases' })
-    );
-  });
-
-  it('discards the previous owner editor when choosing a different ontology and dismisses with Escape', () => {
-    const other = { ...ontology, id: 'other-owner', name: 'Other owner' };
-    const onClose = jest.fn();
-    render(
-      <OntologyPublicationModal
-        canEdit
-        initialOntology={ontology}
-        ontologies={[ontology, other]}
-        onClose={onClose}
-      />
-    );
-    fireEvent.change(screen.getByRole('textbox', { name: 'draft notes' }), {
-      target: { value: 'First owner notes' },
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.change-ontology' })
-    );
-    fireEvent.click(
-      screen.getByTestId('ontology-publication-select-' + other.id)
-    );
-
-    expect(screen.getByRole('textbox', { name: 'draft notes' })).toHaveValue(
-      ''
-    );
-    expect(mockReleasePanel).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ontology: other })
-    );
-
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('requires an explicit native owner before showing release contents', () => {
-    const onSelectOntology = jest.fn();
-    render(
-      <OntologyPublicationModal
-        canEdit={false}
-        ontologies={[ontology]}
-        onClose={jest.fn()}
-        onSelectOntology={onSelectOntology}
-      />
-    );
-
-    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
-    expect(mockReleasePanel).not.toHaveBeenCalled();
-
-    fireEvent.click(
-      screen.getByTestId('ontology-publication-select-' + ontology.id)
-    );
-
-    expect(onSelectOntology).not.toHaveBeenCalled();
-    expect(screen.getByTestId('ontology-release-panel')).toBeVisible();
-    expect(mockReleasePanel).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ontology, canEdit: true })
     );
   });
 
@@ -205,42 +128,54 @@ describe('OntologyPublicationModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('keeps the picker, Change ontology, tabs and close in AI mode', () => {
-    (useIsAiMode as jest.Mock).mockReturnValue(true);
-    const onClose = jest.fn();
+  it('keeps one modal height whichever tab is open', () => {
     render(
       <OntologyPublicationModal
-        canEdit={false}
-        ontologies={[ontology]}
-        onClose={onClose}
+        canEdit
+        ontology={ontology}
+        onClose={jest.fn()}
       />
     );
+    const modal = screen.getByTestId('ontology-publication-modal');
 
-    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
-
-    fireEvent.click(
-      screen.getByTestId('ontology-publication-select-' + ontology.id)
-    );
-
-    expect(
-      screen.getByRole('heading', { name: 'label.review-publish' })
-    ).toBeVisible();
-    expect(screen.getByText('· RetailCommerce')).toBeVisible();
+    expect(modal).toHaveClass('tw:h-[88vh]');
+    expect(modal).not.toHaveClass('tw:max-h-[88vh]');
 
     fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
 
-    expect(mockReleasePanel).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ontology, view: 'releases' })
+    expect(screen.getByTestId('ontology-publication-modal')).toHaveClass(
+      'tw:h-[88vh]'
+    );
+  });
+
+  it('shows the version step and the release count the panel reports in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    render(
+      <OntologyPublicationModal
+        canEdit
+        ontology={ontology}
+        onClose={jest.fn()}
+      />
     );
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.change-ontology' })
+    expect(
+      screen.queryByTestId('ontology-publication-version-step')
+    ).not.toBeInTheDocument();
+
+    const { onSummaryChange } = mockReleasePanel.mock.lastCall[0];
+    act(() =>
+      onSummaryChange({
+        toVersion: 'v0.1.0',
+        releaseCount: 3,
+        hasMoreReleases: true,
+      })
     );
 
-    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
-
-    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
-
-    expect(onClose).toHaveBeenCalled();
+    expect(
+      screen.getByTestId('ontology-publication-version-step')
+    ).toHaveTextContent('label.draft→v0.1.0');
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveTextContent('label.release-plural (3+)');
   });
 });

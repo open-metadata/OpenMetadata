@@ -118,6 +118,20 @@ class ContentPreparationTest {
     assertTrue(rendered.body().contains("was changed by alice"));
   }
 
+  // A stored custom template that uses a construct the sandbox does not offer never renders it.
+  @Test
+  void unsupportedCustomTemplateFallsBack() {
+    UUID stored = UUID.randomUUID();
+    alert.withNotificationTemplate(
+        new EntityReference().withId(stored).withType(Entity.NOTIFICATION_TEMPLATE));
+
+    when(templates.byId(stored)).thenReturn(template("{{> fragment}}"));
+
+    EventContent.Rendered rendered = engine().render(event, alert);
+
+    assertTrue(rendered.body().contains("was changed by alice"));
+  }
+
   // Preview and test send go through the entry point delivery uses.
   @Test
   void previewEqualsDeliveredBody() {
