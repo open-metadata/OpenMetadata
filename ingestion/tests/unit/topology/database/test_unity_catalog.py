@@ -41,7 +41,10 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ConstraintType,
     DataType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TableConstraint,
+    TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -654,6 +657,32 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
+
+    def test_yield_table_records_partition_columns_in_partition_order(self):
+        def column(name, position, partition_index=None):
+            return ColumnInfo(
+                name=name,
+                type_text="string",
+                type_json=f'{{"name":"{name}","type":"string","nullable":true,"metadata":{{}}}}',
+                position=position,
+                partition_index=partition_index,
+            )
+
+        # PARTITIONED BY (dt, region): partition_index is the key's position there.
+        self.unitycatalog_source.context.get().table_data = TableInfo(
+            name="events",
+            columns=[column("event_id", 0), column("region", 1, 1), column("dt", 2, 0)],
+            table_constraints=[],
+        )
+        [result] = list(self.unitycatalog_source.yield_table(("events", TableType.DeltaLake)))
+
+        assert result.right.tableType == TableType.DeltaLake
+        assert result.right.tablePartition == TablePartition(
+            columns=[
+                PartitionColumnDetails(columnName="dt", intervalType=PartitionIntervalTypes.COLUMN_VALUE),
+                PartitionColumnDetails(columnName="region", intervalType=PartitionIntervalTypes.COLUMN_VALUE),
+            ]
+        )
 
     def test_get_schema_definition(self):
         # Check view definition
