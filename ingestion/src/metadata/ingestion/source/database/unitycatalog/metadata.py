@@ -281,7 +281,14 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         if configured_db:
             result = [configured_db]
         else:
-            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
+            # Listed directly, not through the walk's failure-recording listing: a failed count
+            # only costs the progress denominator (the progress runner warns and goes on), and
+            # must not count as a failed listing that skips the stale-entity cleanup.
+            result = [
+                catalog.name
+                for catalog in self.client.catalogs.list()
+                if catalog.name and not self._is_database_filtered(catalog.name)
+            ]
         return result
 
     def _schema_names_by_database(self) -> "dict[str, list[str]] | None":

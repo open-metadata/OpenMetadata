@@ -316,6 +316,27 @@ class TestStaleCleanupAfterFailedListing:
         ):
             list(uc_source._iter())
 
+    def test_failed_progress_count_leaves_the_walk_and_its_cleanup_alone(self, uc_source):
+        # The progress counter lists the catalogs before the walk does. Its failure only costs
+        # the denominator: the walk's own listing succeeds, so the cleanup runs and the run passes.
+        uc_source.service_connection.catalog = None
+        uc_source.source_config.markDeletedDatabases = True
+        uc_source.client.catalogs.list.side_effect = [
+            Exception("500 Internal Server Error"),
+            [CatalogInfo(name="demo")],
+            [CatalogInfo(name="demo")],
+        ]
+
+        with pytest.raises(Exception, match="500 Internal Server Error"):
+            uc_source._filtered_database_names_for_totals()
+        assert list(uc_source.get_database_names()) == ["demo"]
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == [
+            {"service": "local_unitycatalog"}
+        ]
+        with patch.object(DatabaseServiceSource, "_iter", return_value=iter([])):
+            assert list(uc_source._iter()) == []
+        assert uc_source.status.failures == []
+
 
 class TestColumnErrorIsolation:
     """A malformed column is skipped instead of dropping the whole table."""
