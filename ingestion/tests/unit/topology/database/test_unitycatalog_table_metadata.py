@@ -95,40 +95,44 @@ def test_foreign_key_to_an_ingested_table_stays_on_the_table():
     assert list(UnitycatalogSource.yield_table_constraints(source)) == []
 
 
-def test_foreign_key_to_a_table_written_later_in_the_run_is_patched_at_the_end():
+def test_foreign_key_to_a_table_written_later_in_the_run_is_patched_after_the_flush():
     # The parent sits in a schema the walk reaches later, so it is not in OpenMetadata
-    # when fk_child is written; the first run used to drop the key without a word.
+    # when fk_child is written.
     tables = {}
     source = _foreign_key_source(tables)
     assert UnitycatalogSource._get_foreign_constraints(source, [FOREIGN_KEY], "fk_child") == []
 
+    results = UnitycatalogSource.yield_table_constraints(source)
+    assert isinstance(next(results).right, Barrier)
+    # Both tables still sit in the sink's bulk buffer until that flush runs.
     child = _child_table()
     tables.update({PARENT_FQN: Mock(), CHILD_FQN: child})
-    barrier, patch = list(UnitycatalogSource.yield_table_constraints(source))
+    [patch] = list(results)
 
-    # The flush comes first: both tables may still sit in the sink's bulk buffer.
-    assert isinstance(barrier.right, Barrier)
     assert isinstance(patch.right, PatchRequest)
     assert patch.right.original_entity == child
     assert patch.right.new_entity.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
 
 
-def test_one_table_failing_does_not_stop_the_other_tables_foreign_keys():
+def test_one_failed_lookup_does_not_stop_the_other_tables_foreign_keys():
+    flaky_key = ForeignConstrains(child_columns=["flaky_id"], parent_columns=["id"], parent_table="demo.ref.flaky")
     tables = {}
     source = _foreign_key_source(tables)
-    for table_name in ("broken", "never_written", "fk_child"):
-        UnitycatalogSource._get_foreign_constraints(source, [FOREIGN_KEY], table_name)
+    UnitycatalogSource._get_foreign_constraints(source, [flaky_key], "orders")
+    UnitycatalogSource._get_foreign_constraints(source, [FOREIGN_KEY], "never_written")
+    UnitycatalogSource._get_foreign_constraints(source, [FOREIGN_KEY], "fk_child")
     child = _child_table()
     tables.update({PARENT_FQN: Mock(), CHILD_FQN: child})
 
     def get_by_name(entity, fqn, **_):
-        if fqn == "svc.demo.sales.broken":
+        if fqn == "svc.demo.ref.flaky":
             raise RuntimeError("server unavailable")
         return tables.get(fqn)
 
     source.metadata.get_by_name.side_effect = get_by_name
     _, failure, patch = list(UnitycatalogSource.yield_table_constraints(source))
 
+    assert "svc.demo.sales.orders" in failure.left.error
     assert "server unavailable" in failure.left.error
     assert patch.right.new_entity.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
 

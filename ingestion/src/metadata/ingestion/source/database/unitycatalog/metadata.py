@@ -636,19 +636,21 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 elif table.table_type.value.lower() == TableType.External.value.lower():
                     table_type = TableType.External
             # databricks-sdk 0.20.0 parses METRIC_VIEW and FOREIGN to None, so
-            # securable_kind is read for these three. A metric view is a view: it is
-            # created with CREATE VIEW ... WITH METRICS and SHOW VIEWS lists it.
+            # securable_kind is read for these. A metric view is a view: it is created
+            # with CREATE VIEW ... WITH METRICS and SHOW VIEWS lists it. So is a
+            # federated view (TABLE_FOREIGN_*_VIEW).
+            # ADR:2026-11-15-unity-catalog-table-types-come-from-the-securable-kind
             if securable_kind.startswith("TABLE_METRIC_VIEW"):
                 table_type = TableType.View
             elif securable_kind.startswith("TABLE_STREAMING_LIVE_TABLE"):
                 table_type = TableType.Stream
             elif securable_kind.startswith("TABLE_FOREIGN_"):
-                table_type = TableType.Foreign
-            # Storage format refines only a Regular or External table: a view has no
-            # storage format to speak of, and a streaming or foreign table keeps the
-            # type that says what it is. An External table is refined, matching
-            # Databricks and the tracking issue's "previously typed as External or
-            # Regular is recognized as Delta Lake".
+                table_type = TableType.View if securable_kind.endswith("_VIEW") else TableType.Foreign
+            # Storage format refines a table's own type, so a View or a
+            # MaterializedView is left alone -- a view has no storage format to
+            # speak of. An External table is refined, matching Databricks and the
+            # tracking issue's "previously typed as External or Regular is
+            # recognized as Delta Lake".
             # Iceberg is checked first because a managed Iceberg table also reports
             # data_source_format DELTA, so the Delta branch would otherwise swallow
             # it. UniForm generates Iceberg metadata beside a table that stays Delta
@@ -658,7 +660,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             # Delta Sharing table, not Delta Lake -- is not misclassified.
             dsf = getattr(table, "data_source_format", None)
             normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
-            if table_type in (TableType.Regular, TableType.External):
+            if table_type not in (TableType.View, TableType.MaterializedView):
                 if "ICEBERG" in securable_kind and "UNIFORM_ICEBERG" not in securable_kind:
                     table_type = TableType.Iceberg
                 elif normalized_dsf == "DELTA":
@@ -946,18 +948,23 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             return
         # The tables written last may still sit in the sink's bulk buffer.
         yield Either(right=Barrier(reason="unitycatalog_deferred_foreign_keys"))  # pyright: ignore[reportCallIssue]
-        foreign_keys_by_table: dict[str, list[TableConstraint]] = {}
+        keys_by_table: dict[str, list[tuple[str, TableConstraint]]] = {}
         for table_fqn, referred_table_fqn, constraint in self.deferred_foreign_keys:
-            if self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn):
-                foreign_keys_by_table.setdefault(table_fqn, []).append(constraint)
-            else:
-                logger.warning(
-                    "Foreign key of [%s] dropped: its referred table [%s] is not in OpenMetadata",
-                    table_fqn,
-                    referred_table_fqn,
-                )
-        for table_fqn, foreign_keys in foreign_keys_by_table.items():
+            keys_by_table.setdefault(table_fqn, []).append((referred_table_fqn, constraint))
+        for table_fqn, keys in keys_by_table.items():
             try:
+                foreign_keys = []
+                for referred_table_fqn, constraint in keys:
+                    if self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn):
+                        foreign_keys.append(constraint)
+                    else:
+                        logger.warning(
+                            "Foreign key of [%s] dropped: its referred table [%s] is not in OpenMetadata",
+                            table_fqn,
+                            referred_table_fqn,
+                        )
+                if not foreign_keys:
+                    continue
                 # tableConstraints is not a default field: without it the patch would
                 # replace the constraints already stored, such as the primary key.
                 table = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["tableConstraints"])

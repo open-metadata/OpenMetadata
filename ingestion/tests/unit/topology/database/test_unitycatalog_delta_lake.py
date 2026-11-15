@@ -78,9 +78,8 @@ EXPECTED_TYPES = {
 
 
 # Verbatim type fields of real rows from GET /api/2.1/unity-catalog/tables (names
-# changed). All three used to come out Regular: databricks-sdk 0.20.0's TableType has
-# no METRIC_VIEW or FOREIGN, so TableInfo.from_dict leaves table_type None for them,
-# and STREAMING_TABLE had no mapping. securable_kind names each of them.
+# changed). databricks-sdk 0.20.0's TableType has no METRIC_VIEW or FOREIGN, so
+# TableInfo.from_dict leaves table_type None for them; securable_kind names all three.
 SECURABLE_KIND_TYPED_ROWS = [
     {
         "name": "orders_metrics",
@@ -335,22 +334,19 @@ def test_types_the_sdk_cannot_parse_come_from_the_securable_kind(row):
     assert _run(table, row["securable_kind"]) == [(row["name"], EXPECTED_SECURABLE_KIND_TYPES[row["name"]])]
 
 
-@pytest.mark.parametrize(
-    ("securable_kind", "expected"),
-    [
-        ("TABLE_STREAMING_LIVE_TABLE", TableType.Stream),
-        ("TABLE_FOREIGN_HIVE_METASTORE_MANAGED", TableType.Foreign),
-    ],
-)
-def test_streaming_and_foreign_tables_are_not_refined_to_delta_lake(securable_kind, expected):
+@pytest.mark.parametrize("securable_kind", ["TABLE_STREAMING_LIVE_TABLE", "TABLE_FOREIGN_HIVE_METASTORE_MANAGED"])
+def test_a_delta_format_still_wins_over_stream_and_foreign(securable_kind):
+    # Control: a Delta table federated from a Hive metastore was DeltaLake before
+    # Stream and Foreign were mapped, and stays DeltaLake.
     table = TableInfo(name="t", data_source_format=DataSourceFormat.DELTA)
-    assert _run(table, securable_kind) == [("t", expected)]
+    assert _run(table, securable_kind) == [("t", TableType.DeltaLake)]
 
 
 VIEW_KINDS = [
     (TableInfo(name="v", table_type=SdkTableType.VIEW), "TABLE_VIEW"),
     (TableInfo(name="v", table_type=SdkTableType.MATERIALIZED_VIEW), "TABLE_MATERIALIZED_VIEW"),
     (TableInfo.from_dict(SECURABLE_KIND_TYPED_ROWS[0]), "TABLE_METRIC_VIEW"),
+    (TableInfo(name="v"), "TABLE_FOREIGN_HIVE_METASTORE_VIEW"),
 ]
 TABLE_KINDS = [
     (TableInfo(name="t", table_type=SdkTableType.MANAGED, data_source_format=DataSourceFormat.DELTA), "TABLE_DELTA"),
@@ -362,7 +358,8 @@ TABLE_KINDS = [
 @pytest.mark.parametrize(("table", "securable_kind"), VIEW_KINDS, ids=[kind for _, kind in VIEW_KINDS])
 def test_include_views_off_skips_every_kind_of_view(table, securable_kind):
     assert _run(table, securable_kind, include_views=False) == []
-    assert len(_run(table, securable_kind, include_tables=False)) == 1
+    [(_, table_type)] = _run(table, securable_kind, include_tables=False)
+    assert table_type in (TableType.View, TableType.MaterializedView)
 
 
 @pytest.mark.parametrize(("table", "securable_kind"), TABLE_KINDS, ids=[kind for _, kind in TABLE_KINDS])
