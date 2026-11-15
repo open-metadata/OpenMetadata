@@ -24,11 +24,12 @@ import {
   WorkflowsFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
+import { OntologyStudioIcon } from '../../../utils/IconUtils';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
  * Govern module — mirrors the classic "Govern" left-sidebar section (Glossary,
- * Ontology Studio, Classifications, Metrics, Workflows). Owns no routes of
+ * Ontology Explorer, Classifications, Metrics, Workflows). Owns no routes of
  * its own: every target is a canonical OM path served by the shell's page-table
  * fallback (`applicationRoutesClass.getRouteElements()`). This module provides
  * the sidebar entry and the sub-nav panel only.
@@ -40,7 +41,12 @@ export const governModule: AppModule = {
   icon: Bank02,
   activeIcon: GovernanceFilled,
   prefix: ROUTES.GLOSSARY,
-  additionalPrefixes: [ROUTES.TAGS, ROUTES.METRICS, ROUTES.WORKFLOWS],
+  additionalPrefixes: [
+    ROUTES.TAGS,
+    ROUTES.ONTOLOGY_EXPLORER,
+    ROUTES.METRICS,
+    ROUTES.WORKFLOWS,
+  ],
   defaultPath: ROUTES.GLOSSARY,
   routes: [],
   subNav: {
@@ -56,6 +62,12 @@ export const governModule: AppModule = {
             activeIcon: GlossaryFilled,
             labelKey: 'label.glossary',
             path: ROUTES.GLOSSARY,
+          },
+          {
+            key: 'ontology-explorer',
+            icon: OntologyStudioIcon,
+            labelKey: 'label.ontology-explorer',
+            path: ROUTES.ONTOLOGY_EXPLORER,
           },
           {
             key: 'tags',
