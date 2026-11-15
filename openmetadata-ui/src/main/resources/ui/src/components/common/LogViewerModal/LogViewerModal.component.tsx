@@ -99,6 +99,7 @@ const LogViewerSearchBox: FunctionComponent<LogViewerSearchBoxProps> = ({
         aria-label={t('label.search-entity', {
           entity: t('label.log-lowercase-plural'),
         })}
+        autoComplete="off"
         className="lvm-search-input"
         data-testid="log-viewer-search"
         placeholder={t('label.search-entity', {

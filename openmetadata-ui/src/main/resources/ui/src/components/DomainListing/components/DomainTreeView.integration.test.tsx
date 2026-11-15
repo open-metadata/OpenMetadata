@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 import type { Selection } from '@openmetadata/ui-core-components';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { AxiosRequestConfig } from 'axios';
 import { ReactNode } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
@@ -26,6 +20,7 @@ import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrent
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import APIClient from '../../../rest/axiosClient';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { getQueryFilterForDataProducts } from '../../../utils/DomainFilterUtils';
 import { useUrlState } from '../../common/atoms/data/useUrlState';
 import { DomainDetailsProps } from '../../Domain/DomainDetails/DomainDetails.interface';
@@ -175,7 +170,7 @@ const renderTree = (
 ) => {
   window.history.replaceState({}, '', `${pathname}${search}`);
 
-  return render(
+  return renderWithQueryClient(
     <BrowserRouter>
       {withUrlState ? <UrlDrivenTree /> : <DomainTreeView />}
     </BrowserRouter>
@@ -490,7 +485,7 @@ describe('Domain tree pagination with the real URL paging hooks', () => {
       '/domain/Domain2/data_products?currentPage=3&pageSize=25'
     );
     secondDomainTotal = 75;
-    render(
+    renderWithQueryClient(
       <BrowserRouter>
         <Routes>
           <Route

@@ -13,7 +13,6 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -22,9 +21,16 @@ import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { getDomainStyles } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DataProductsSection from './DataProductsSection';
 
 // Mock react-router-dom
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  DataProduct: () => <div data-testid="data-product-icon">DP</div>,
+}));
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: jest.fn().mockReturnValue({
@@ -68,9 +74,6 @@ jest.mock('../../../assets/svg/close-icon.svg', () => ({
 }));
 jest.mock('../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">Tick</div>,
-}));
-jest.mock('../../../assets/svg/ic-data-product.svg', () => ({
-  ReactComponent: () => <div data-testid="data-product-icon">DP</div>,
 }));
 
 // Mock ToastUtils
@@ -158,6 +161,10 @@ jest.mock('../Loader/Loader', () => ({
 }));
 
 // Mock APIs
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainStyles: jest.fn(),
+}));
+
 jest.mock('../../../rest/dataProductAPI', () => ({
   fetchDataProductsElasticSearch: jest.fn().mockResolvedValue({ hits: [] }),
 }));
@@ -211,6 +218,7 @@ describe('DataProductsSection', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDomainStyles as jest.Mock).mockResolvedValue({ data: [] });
     // Set default entity rules
     (useEntityRules as jest.Mock).mockReturnValue({
       entityRules: {
@@ -226,7 +234,9 @@ describe('DataProductsSection', () => {
 
   describe('Rendering', () => {
     it('renders with data products', () => {
-      const { container } = render(<DataProductsSection {...defaultProps} />);
+      const { container } = renderWithQueryClient(
+        <DataProductsSection {...defaultProps} />
+      );
 
       expect(screen.getByText('label.data-product-plural').tagName).toBe(
         'SPAN'
@@ -242,8 +252,32 @@ describe('DataProductsSection', () => {
       expect(within(list).getByTestId('data-product-icon')).toBeInTheDocument();
     });
 
+    // Data product chips drew the default bar whatever the data product's
+    // style; they now read its colour and icon by id.
+    it('draws each data product chip in its own colour', async () => {
+      (getDomainStyles as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'dp-1',
+            type: 'dataProduct',
+            style: { color: '#F79009', iconURL: 'Tag01' },
+          },
+        ],
+      });
+
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-product-item')).toHaveStyle({
+          '--tag-color': '#F79009',
+        })
+      );
+    });
+
     it('renders no-data state when no data products', () => {
-      render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
+      renderWithQueryClient(
+        <DataProductsSection {...defaultProps} dataProducts={[]} />
+      );
 
       expect(
         screen.getByText(
@@ -255,7 +289,7 @@ describe('DataProductsSection', () => {
 
   describe('Edit Mode', () => {
     it('closes the picker when the edit button is pressed again, saving nothing', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       fireEvent.click(screen.getByTestId('edit-data-products'));
       fireEvent.click(screen.getByTestId('edit-data-products'));
@@ -267,7 +301,7 @@ describe('DataProductsSection', () => {
     });
 
     it('enters edit mode and shows select list', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -284,7 +318,7 @@ describe('DataProductsSection', () => {
     });
 
     it('exits edit mode on cancel', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -309,7 +343,7 @@ describe('DataProductsSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           entityType={EntityType.TABLE}
@@ -340,7 +374,7 @@ describe('DataProductsSection', () => {
       const error = new Error('fail') as AxiosError;
       patchTableDetails.mockRejectedValue(error);
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -372,7 +406,7 @@ describe('DataProductsSection', () => {
         },
       ];
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -396,7 +430,7 @@ describe('DataProductsSection', () => {
       });
       patchTableDetails.mockReturnValue(promise);
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -434,7 +468,7 @@ describe('DataProductsSection', () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -458,7 +492,7 @@ describe('DataProductsSection', () => {
       );
       patchDashboardDetails.mockResolvedValue({});
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           entityType={EntityType.DASHBOARD}
@@ -484,7 +518,9 @@ describe('DataProductsSection', () => {
     it('shows error when entityId missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(<DataProductsSection {...defaultProps} entityId={undefined} />);
+      renderWithQueryClient(
+        <DataProductsSection {...defaultProps} entityId={undefined} />
+      );
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -516,7 +552,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -539,7 +575,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -572,7 +608,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -604,7 +640,7 @@ describe('DataProductsSection', () => {
         isLoading: false,
       });
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           activeDomains={[]}
@@ -621,7 +657,7 @@ describe('DataProductsSection', () => {
     });
 
     it('allows editing with no domains when rule is disabled', () => {
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           activeDomains={[]}
@@ -662,7 +698,7 @@ describe('DataProductsSection', () => {
         isLoading: true,
       });
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
       enterEditMode();
 
       expect(getLastMultiSelect()).toBe(false);
@@ -680,7 +716,7 @@ describe('DataProductsSection', () => {
         isLoading: false,
       });
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
       enterEditMode();
 
       expect(getLastMultiSelect()).toBe(true);
@@ -698,7 +734,7 @@ describe('DataProductsSection', () => {
         isLoading: false,
       });
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
       enterEditMode();
 
       expect(getLastMultiSelect()).toBe(false);
@@ -716,7 +752,9 @@ describe('DataProductsSection', () => {
         isLoading: true,
       });
 
-      const { rerender } = render(<DataProductsSection {...defaultProps} />);
+      const { rerender } = renderWithQueryClient(
+        <DataProductsSection {...defaultProps} />
+      );
       enterEditMode();
 
       expect(getLastMultiSelect()).toBe(false);
@@ -751,7 +789,7 @@ describe('DataProductsSection', () => {
     };
 
     it('keeps the data products list visible while the picker is open, and closes it on dismiss', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       fireEvent.click(screen.getByTestId('edit-data-products'));
 
@@ -776,7 +814,9 @@ describe('DataProductsSection', () => {
           'label.no-entity-assigned - {"entity":"label.data-product-plural"}'
         );
 
-      render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
+      renderWithQueryClient(
+        <DataProductsSection {...defaultProps} dataProducts={[]} />
+      );
 
       fireEvent.click(screen.getByTestId('edit-data-products'));
 
@@ -793,7 +833,7 @@ describe('DataProductsSection', () => {
     });
 
     it('keeps the edit button visible and re-opens the editor after a dismiss', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       fireEvent.click(screen.getByTestId('edit-data-products'));
 

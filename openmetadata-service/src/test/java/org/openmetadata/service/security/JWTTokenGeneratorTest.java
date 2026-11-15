@@ -180,6 +180,14 @@ class JWTTokenGeneratorTest {
     assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
   }
 
+  /** The default order reads the email first, yet our token still names its own user. */
+  @Test
+  void defaultClaimOrderPreservesStoredUsername() {
+    DecodedJWT token = mint("admin_ab12", "admin@attacker.example");
+
+    assertMintedIdentity(DEFAULT_CLAIM_ORDER, token, "admin_ab12", "admin@attacker.example");
+  }
+
   private static void assertMintedIdentity(
       List<String> order, DecodedJWT token, String userName, String email) {
     try (CredentialVerifierFixture credentials =

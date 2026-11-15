@@ -253,7 +253,7 @@ public interface OAuthDAOs {
      * so neither can start a new grant.
      *
      * <p>On MySQL the grant tables' utf8mb4_unicode_ci collation already ignores case, so the MySQL
-     * queries on them compare names plainly and use the user-name indexes added in 2.0.9. Wrapped in
+     * queries on them compare names plainly and use the user-name indexes added in 2.0.8. Wrapped in
      * LOWER() they scanned and locked every user's rows, and a token refresh by any other user
      * deadlocked against the delete.
      */

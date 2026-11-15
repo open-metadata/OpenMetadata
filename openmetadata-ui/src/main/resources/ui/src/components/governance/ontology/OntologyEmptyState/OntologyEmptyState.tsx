@@ -39,11 +39,38 @@ const OntologyEmptyState = ({
     key: id,
     action: {
       color: id === 'library' ? 'primary' : 'secondary',
-      isDisabled: !canCreate,
       onPress,
       'data-testid': `ontology-empty-${id}`,
     },
   });
+
+  const title = (
+    <Typography aria-level={2} role="heading">
+      {t('label.no-ontologies-yet')}
+    </Typography>
+  );
+
+  if (!canCreate) {
+    return (
+      <div
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-auto"
+        data-testid="ontology-empty-state">
+        <FeaturesPlaceholder
+          className="tw:static tw:h-auto tw:flex-1 tw:p-8"
+          description={t('message.ontology-first-run-description')}
+          footer={
+            <Typography
+              color="secondary"
+              data-testid="ontology-empty-no-create"
+              size="text-sm">
+              {t('message.ontology-create-requires-author-role')}
+            </Typography>
+          }
+          title={title}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -81,11 +108,7 @@ const OntologyEmptyState = ({
             onCreateFromScratch
           ),
         ]}
-        title={
-          <Typography aria-level={2} role="heading">
-            {t('label.no-ontologies-yet')}
-          </Typography>
-        }
+        title={title}
       />
     </div>
   );

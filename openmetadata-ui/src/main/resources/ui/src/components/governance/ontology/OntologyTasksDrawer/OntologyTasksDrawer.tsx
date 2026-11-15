@@ -10,57 +10,64 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
-  Alert,
   Badge,
   Box,
   Button,
-  SlideoutMenu,
+  ButtonUtility,
+  Dialog,
+  FeaturedIcon,
+  Input,
+  Modal,
+  ModalOverlay,
   Tabs,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ClipboardCheck,
+  Inbox01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
-  EntityStatus,
-  OntologyReleaseReview,
-} from '../../../../generated/api/data/ontologyReleaseReview';
-import {
-  EntityStatus as ReleaseStatus,
-  OntologyRelease,
-} from '../../../../generated/entity/data/ontologyRelease';
-import { Task, TaskType } from '../../../../generated/entity/tasks/task';
+  Task,
+  TaskCategory,
+  TaskStatus,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
+import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-  activateOntologyRelease,
+  getOntology,
   getOntologyRelease,
-  getOntologyReleaseEvents,
   getOntologyReleaseReview,
   getOntologyReleaseReviews,
-  getOntologyState,
 } from '../../../../rest/ontologyAPI';
-import { getEntityPermissionById } from '../../../../rest/permissionAPI';
-import {
-  addTaskComment,
-  getTaskById,
-  resolveTask,
-} from '../../../../rest/tasksAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
-import {
-  buildResolveBody,
-  getTaskResolveActions,
-} from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
+import { getTask } from '../../../../rest/tasksAPI';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../common/Loader/Loader';
+import InboxTaskListItem from '../../../discovery/personal-space/InboxPage/components/InboxTaskListItem';
+import TaskDetailPanel from '../../../discovery/personal-space/InboxPage/components/TaskDetailPanel';
+import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
-import OntologyTaskDetail from './OntologyTaskDetail';
-import OntologyTaskThread from './OntologyTaskThread';
+import { ONTOLOGY_REVIEW_QUEUES_QUERY_KEY } from './OntologyTasksDrawer.constants';
+import {
+  CURSOR_HISTORY_LIMIT,
+  filterReviews,
+  hasMorePages,
+} from './OntologyTasksDrawer.utils';
 
 type Props = {
+  /** The ontology in view; its latest decided review is announced to the requester. */
+  readonly ontologyId?: string;
   readonly taskId?: string;
   readonly onTaskChange: (taskId?: string) => void;
   readonly children: (parts: {
@@ -68,19 +75,10 @@ type Props = {
     banner: ReactNode;
   }) => ReactNode;
 };
-type ReviewWrite =
-  | { kind: 'comment'; message: string }
-  | { kind: 'reject'; reason: string }
-  | { kind: 'approve' | 'approve-and-publish' | 'publish' };
-type Detail = {
-  task: Task;
-  review: OntologyReleaseReview;
-  release: OntologyRelease;
-};
 
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
 const PAGE_SIZE = 25;
-const CURSOR_HISTORY_LIMIT = 40;
+const BANNER_LIMIT = 100;
 
 // The trim keeps page 1 first, so Previous can still walk back to it.
 const pushCursor = (cursors: (string | undefined)[], after?: string) => {
@@ -89,16 +87,105 @@ const pushCursor = (cursors: (string | undefined)[], after?: string) => {
   return [first, ...rest.slice(1 - CURSOR_HISTORY_LIMIT)];
 };
 
-const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
+const DECIDED_STAGES: string[] = [Stage.Approved, Stage.ChangesRequested];
+
+/**
+ * The latest decided review of the ontology in view, when the caller asked for
+ * it, so the author sees the outcome without opening the Inbox.
+ */
+const useDecidedReview = ({
+  account,
+  ontologyId,
+  enabled,
+  queuesKey,
+}: {
+  account: string;
+  ontologyId?: string;
+  enabled: boolean;
+  queuesKey: string[];
+}) => {
+  const query = useQuery({
+    queryKey: [...queuesKey, account, 'decided', ontologyId],
+    gcTime: 0,
+    retry: false,
+    enabled: enabled && Boolean(ontologyId),
+    queryFn: async ({ signal }) => {
+      const ontology = await getOntology(
+        ontologyId ?? '',
+        'publicationStatus',
+        signal
+      );
+      const latest = ontology.publicationStatus?.latest;
+      if (!latest || !DECIDED_STAGES.includes(latest.stage)) {
+        return null;
+      }
+      const review = await getOntologyReleaseReview(latest.releaseId, signal);
+
+      return review.requester?.id === account ? review : null;
+    },
+  });
+
+  return query.data ?? undefined;
+};
+
+/** A tab's open-review count; a missing total stays unknown rather than zero. */
+const useQueueTotal = (queueKey: string[], view: 'assigned' | 'created') =>
+  useQuery({
+    queryKey: [...queueKey, view + '-total'],
+    gcTime: 0,
+    retry: false,
+    queryFn: ({ signal }) =>
+      getOntologyReleaseReviews({ view, limit: 1 }, signal),
+  }).data?.paging?.total;
+
+/** Which reviews the banner shows: one ontology's single review, or a set of them. */
+const getBannerKey = (
+  ontologyId: string | undefined,
+  bannerReview: OntologyReleaseReview | undefined,
+  openReviews: OntologyReleaseReview[]
+) =>
+  ontologyId && openReviews.length <= 1
+    ? bannerReview?.task.id
+    : openReviews.map((review) => review.task.id).join();
+
+const reviewsOf = (page?: { data: OntologyReleaseReview[] }) =>
+  page?.data ?? [];
+
+/**
+ * The review's approval task as the Inbox list row reads it. The queue lists
+ * reviews, not tasks, so the row is built from what the review carries rather
+ * than fetching every task on the page; the detail pane loads the full task.
+ */
+export const reviewAsTask = (review: OntologyReleaseReview): Task =>
+  ({
+    id: review.task.id,
+    name: review.task.name ?? review.taskId ?? review.task.id,
+    displayName: review.task.displayName,
+    taskId: review.taskId,
+    type: TaskType.RequestApproval,
+    category: TaskCategory.Approval,
+    status: TaskStatus.Open,
+    about: { ...review.release, type: 'ontologyRelease' },
+    createdBy: review.requester,
+  } as Task);
+
+const OntologyTasksDrawer = ({
+  ontologyId,
+  taskId,
+  onTaskChange,
+  children,
+}: Props) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const queuesKey = ['ontology-review-queues'];
-  const combinedApproval = 'approve-and-publish';
+  const queuesKey = [ONTOLOGY_REVIEW_QUEUES_QUERY_KEY];
   const currentUser = useApplicationStore((store) => store.currentUser);
   const account = currentUser?.id ?? '';
   const [listOpen, setListOpen] = useState(false);
   const isOpen = Boolean(taskId) || listOpen;
   const [view, setView] = useState<'assigned' | 'created'>('assigned');
+  const [search, setSearch] = useState('');
+  // The review the user hid; a different review shows the banner again.
+  const [dismissedBanner, setDismissedBanner] = useState<string>();
   const [queueHistory, setQueueHistory] = useState<{
     key: string;
     cursors: (string | undefined)[];
@@ -106,57 +193,38 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
   const queueScope = account + ':' + view;
   const queueCursors =
     queueHistory.key === queueScope ? queueHistory.cursors : [undefined];
-  const [eventHistory, setEventHistory] = useState<{
-    key: string;
-    cursors: (string | undefined)[];
-  }>({ key: '', cursors: [undefined] });
-  const selection = account + ':' + (taskId ?? '') + ':' + isOpen;
-  const eventCursors =
-    eventHistory.key === selection ? eventHistory.cursors : [undefined];
-  const [readCycle, setReadCycle] = useState(0);
-  const identity = selection + ':' + readCycle;
-  const generation = useRef({ identity, value: 0 });
-  if (generation.current.identity !== identity) {
-    generation.current = { identity, value: generation.current.value + 1 };
-  }
-  const currentGeneration = generation.current.value;
-  const [readyGeneration, setReadyGeneration] = useState<number>();
-  const admission = useRef(false);
-  const [writing, setWriting] = useState(false);
-  const [writeError, setWriteError] = useState<{
-    selection: string;
-    kind: 'uncertain' | 'activation';
-  }>();
-  const [permissionSelection, setPermissionSelection] = useState<string>();
   const taskButton = useRef<HTMLButtonElement>(null);
+  // A disabled trigger can't take focus; its Tooltip wrapper (tabIndex 0) can.
+  const focusTrigger = () => {
+    const button = taskButton.current;
+    (button?.disabled ? button.parentElement : button)?.focus();
+  };
   useEffect(() => {
     setQueueHistory({ key: '', cursors: [undefined] });
-    setEventHistory({ key: '', cursors: [undefined] });
-  }, [account, taskId]);
-  useEffect(() => {
-    setPermissionSelection(undefined);
-    setWriteError(undefined);
   }, [account]);
   const wasOpen = useRef(isOpen);
   useEffect(() => {
     if (wasOpen.current && !isOpen) {
-      taskButton.current?.focus();
+      focusTrigger();
     }
     wasOpen.current = isOpen;
   }, [isOpen]);
   const pending = useQuery({
-    queryKey: [...queuesKey, account, 'pending'],
+    queryKey: [...queuesKey, account, 'pending', ontologyId],
+    gcTime: 0,
+    retry: false,
+    queryFn: ({ signal }) =>
+      getOntologyReleaseReviews(
+        { view: 'pending', ontologyId, limit: BANNER_LIMIT },
+        signal
+      ),
+  });
+  const pendingTotal = useQuery({
+    queryKey: [...queuesKey, account, 'pending-total'],
     gcTime: 0,
     retry: false,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews({ view: 'pending', limit: 1 }, signal),
-  });
-  const created = useQuery({
-    queryKey: [...queuesKey, account, 'created-banner'],
-    gcTime: 0,
-    retry: false,
-    queryFn: ({ signal }) =>
-      getOntologyReleaseReviews({ view: 'created', limit: 1 }, signal),
   });
   const queue = useQuery({
     queryKey: [
@@ -178,552 +246,435 @@ const OntologyTasksDrawer = ({ taskId, onTaskChange, children }: Props) => {
         signal
       ),
   });
-  const bannerReview = pending.data?.data[0] ?? created.data?.data[0];
+  const assignedTotal = useQueueTotal([...queuesKey, account], 'assigned');
+  const createdTotal = useQueueTotal([...queuesKey, account], 'created');
+  // The banner announces only reviews waiting on the viewer's vote.
+  const openReviews = reviewsOf(pending.data);
+  const openBannerReview = openReviews[0];
+  const decided = useDecidedReview({
+    account,
+    ontologyId,
+    enabled: [pending.isSuccess, !openBannerReview].every(Boolean),
+    queuesKey,
+  });
+  const bannerReview = openBannerReview ?? decided;
   const bannerRelease = useQuery({
     queryKey: ['ontology-review-banner', account, bannerReview?.release.id],
     gcTime: 0,
     retry: false,
-    enabled: Boolean(bannerReview),
+    enabled: Boolean(bannerReview) && Boolean(ontologyId),
     queryFn: ({ signal }) =>
       getOntologyRelease(bannerReview?.release.id ?? '', signal),
   });
-  const detailKey = ['ontology-review-task', account, taskId, isOpen];
-  const detail = useQuery({
-    queryKey: detailKey,
-    gcTime: 0,
-    retry: false,
-    enabled: [isOpen, Boolean(taskId)].every(Boolean),
-    queryFn: async ({ signal }): Promise<Detail> => {
-      const { data: task } = await getTaskById(taskId ?? '', {
-        fields: 'about,comments',
-      });
-      const target = task.ontologyReview;
-      if (!target || !task.about) {
-        throw new Error('Missing ontology review target');
-      }
-      const validTask = [
-        !signal.aborted,
-        task.id === taskId,
-        task.type === TaskType.RequestApproval,
-        task.about.type === 'ontologyRelease',
-        target.entityId === task.about.id,
-      ].every(Boolean);
-      if (!validTask) {
-        throw new Error('Invalid ontology review task');
-      }
-      const [review, release] = await Promise.all([
-        getOntologyReleaseReview(target.entityId, signal),
-        getOntologyRelease(target.entityId, signal),
-      ]);
-      const validIdentity = [
-        !signal.aborted,
-        review.task.id === taskId,
-        review.release.id === release.id,
-        release.id === task.about.id,
-        review.ontology.id === release.ontology.id,
-        target.ontologyId === release.ontology.id,
-      ].every(Boolean);
-      if (!validIdentity) {
-        throw new Error('Mismatched ontology review identity');
-      }
-
-      return { task, review, release };
-    },
-  });
-  const selected = detail.data;
-  const ownerId = selected?.review.ontology.id ?? '';
-  const state = useQuery({
-    queryKey: ['ontology-review-state', account, ownerId],
-    gcTime: 0,
-    retry: false,
-    enabled: [isOpen, Boolean(ownerId)].every(Boolean),
-    queryFn: ({ signal }) => getOntologyState(ownerId, signal),
-  });
-  const permission = useEntityPermissions(
-    ResourceEntity.ONTOLOGY,
-    { id: ownerId },
-    {
-      enabled: [isOpen, Boolean(ownerId)].every(Boolean),
-      deleted: selected?.release.ontology.deleted,
-    }
-  );
-  const refreshPermission = permission.refresh;
-  useEffect(() => {
-    let current = true;
-    if (ownerId && isOpen) {
-      refreshPermission()
-        .then(() => {
-          if (current) {
-            setPermissionSelection(selection);
-          }
-        })
-        .catch(() => {
-          if (current) {
-            setPermissionSelection(undefined);
-          }
-        });
-    }
-
-    return () => {
-      current = false;
-    };
-  }, [ownerId, isOpen, selection, refreshPermission]);
-  const events = useQuery({
-    queryKey: [
-      'ontology-review-events',
-      account,
-      selected?.release.id,
-      eventCursors[eventCursors.length - 1],
-    ],
-    gcTime: 0,
-    retry: false,
-    enabled: [isOpen, Boolean(selected)].every(Boolean),
-    queryFn: ({ signal }) =>
-      getOntologyReleaseEvents(
-        selected?.release.id ?? '',
-        { limit: PAGE_SIZE, after: eventCursors[eventCursors.length - 1] },
-        signal
-      ),
-  });
-  const canPublish = [
-    permissionSelection === selection,
-    permission.canEditAll,
-    !permission.error,
-    !permission.isLoading,
-  ].every(Boolean);
-  const activationReady = [
-    state.isSuccess,
-    !state.isFetching,
-    state.data?.ontologyId === ownerId,
-  ].every(Boolean);
-  const onContentReadyChange = useCallback(
-    (ready: boolean) => {
-      if (generation.current.value === currentGeneration) {
-        setReadyGeneration(ready ? currentGeneration : undefined);
-      }
-    },
-    [currentGeneration]
-  );
-  const contentReady = [
-    readyGeneration === currentGeneration,
-    !detail.isFetching,
-    !detail.isError,
-  ].every(Boolean);
 
   const close = () => {
-    generation.current = { identity: '', value: generation.current.value + 1 };
-    setReadyGeneration(undefined);
     setListOpen(false);
+    // Every open starts on the reviewer's own queue, unfiltered.
+    setView('assigned');
+    setSearch('');
+    setQueueHistory({ key: '', cursors: [undefined] });
     onTaskChange(undefined);
-    taskButton.current?.focus();
+    focusTrigger();
   };
-  const refresh = async () => {
-    setReadyGeneration(undefined);
-    setReadCycle((cycle) => cycle + 1);
-    await Promise.allSettled([
-      detail.refetch(),
-      state.refetch(),
-      events.refetch(),
-      permission.refresh(),
-    ]);
+  // A vote or comment can move the task between queues and change the release's stage.
+  const refreshQueues = () => {
+    void queryClient.invalidateQueries({ queryKey: queuesKey });
+    void queryClient.invalidateQueries({
+      queryKey: ['ontology-review-state'],
+    });
   };
-  const writeAllowed = (write: ReviewWrite, current: Detail) => {
-    switch (write.kind) {
-      case 'comment':
-        return Boolean(write.message.trim());
-      case 'publish':
-        return [
-          canPublish,
-          activationReady,
-          current.review.status === EntityStatus.Approved,
-        ].every(Boolean);
-      case 'reject':
-        return [
-          contentReady,
-          current.review.callerCanVote,
-          Boolean(write.reason.trim()),
-        ].every(Boolean);
-      case 'approve':
-        return contentReady && current.review.callerCanVote;
-      case combinedApproval:
-        return [
-          contentReady,
-          current.review.callerCanVote,
-          current.review.callerCompletesRule,
-          canPublish,
-          activationReady,
-        ].every(Boolean);
-    }
-  };
-  const submit = async (write: ReviewWrite): Promise<boolean> => {
-    if (
-      !selected ||
-      [admission.current, detail.isFetching, detail.isError].some(Boolean)
-    ) {
-      return false;
-    }
-    if (!writeAllowed(write, selected)) {
-      return false;
-    }
-    const captured = selected;
-    const capturedGeneration = currentGeneration;
-    const capturedSelection = selection;
-    const revision = state.data?.activationRevision;
-    admission.current = true;
-    setWriting(true);
-    const phase: { value: 'write' | 'activation' } = { value: 'write' };
-    const saveCurrent = (value: Detail) => {
-      if (generation.current.value === capturedGeneration) {
-        queryClient.setQueryData<Detail>(detailKey, value);
-      }
-    };
-    const activate = async (activationRevision: number) => {
-      phase.value = 'activation';
-      await activateOntologyRelease(captured.review.ontology.id, {
-        releaseId: captured.release.id,
-        expectedActivationRevision: activationRevision,
-      });
-    };
-    const publishApproved = async () => {
-      phase.value = 'activation';
-      const [freshState, freshPermission] = await Promise.all([
-        getOntologyState(captured.review.ontology.id),
-        getEntityPermissionById(
-          ResourceEntity.ONTOLOGY,
-          captured.review.ontology.id
-        ),
-      ]);
-      const permitted = getDerivedPermissionFlags(
-        getOperationPermissions(freshPermission),
-        Boolean(captured.release.ontology.deleted)
-      ).canEditAll;
-      if (freshState.ontologyId !== captured.review.ontology.id || !permitted) {
-        throw new Error('Publication permission unavailable');
-      }
-      await activate(freshState.activationRevision);
-    };
-    const resolveVote = async () => {
-      const kind = write.kind === 'reject' ? 'reject' : 'approve';
-      const action = getTaskResolveActions(captured.task, {
-        approve: t('label.approve'),
-        reject: t('label.reject'),
-      }).find((candidate) => candidate.kind === kind);
-      if (!action) {
-        throw new Error('Review transition unavailable');
-      }
-      const task = await resolveTask(
-        captured.task.id,
-        buildResolveBody(
-          action,
-          captured.task,
-          write.kind === 'reject' ? { comment: write.reason } : undefined
-        )
+  const queueControls = () => (
+    <Box aria-label={t('label.task-plural')} gap={2}>
+      <Button
+        color="secondary"
+        isDisabled={
+          queue.isFetching ||
+          queueCursors[queueCursors.length - 1] === undefined
+        }
+        size="sm"
+        onPress={() =>
+          setQueueHistory({ key: queueScope, cursors: [undefined] })
+        }>
+        {t('label.first')}
+      </Button>
+      <Button
+        color="secondary"
+        isDisabled={queue.isFetching || queueCursors.length === 1}
+        size="sm"
+        onPress={() =>
+          setQueueHistory({
+            key: queueScope,
+            cursors: queueCursors.slice(0, -1),
+          })
+        }>
+        {t('label.previous')}
+      </Button>
+      <Button
+        color="secondary"
+        isDisabled={
+          queue.isFetching ||
+          !queue.data?.data.length ||
+          !queue.data?.paging?.after
+        }
+        size="sm"
+        onPress={() =>
+          setQueueHistory({
+            key: queueScope,
+            cursors: pushCursor(queueCursors, queue.data?.paging?.after),
+          })
+        }>
+        {t('label.next')}
+      </Button>
+    </Box>
+  );
+
+  const renderTasksAction = () => {
+    // Unknown totals (loading/error) keep the trigger enabled.
+    // Stays enabled while open so acting on the last task doesn't remount it mid-modal.
+    const hasNoTasks =
+      !isOpen &&
+      [pendingTotal.data?.paging?.total, assignedTotal, createdTotal].every(
+        (total) => total === 0
       );
-      let status = captured.review.status;
-      if (write.kind === 'reject') {
-        status = EntityStatus.Rejected;
-      } else if (captured.review.callerCompletesRule) {
-        status = EntityStatus.Approved;
-      }
-      saveCurrent({
-        ...captured,
-        task,
-        review: {
-          ...captured.review,
-          callerCanVote: false,
-          callerCompletesRule: false,
-          status,
-        },
-        release: {
-          ...captured.release,
-          entityStatus:
-            status === EntityStatus.Approved
-              ? ReleaseStatus.Approved
-              : captured.release.entityStatus,
-        },
-      });
-      if (write.kind === combinedApproval && revision !== undefined) {
-        await activate(revision);
-      }
-    };
-    let succeeded = false;
-    try {
-      switch (write.kind) {
-        case 'comment':
-          saveCurrent({
-            ...captured,
-            task: await addTaskComment(captured.task.id, write.message),
-          });
-
-          break;
-        case 'publish':
-          await publishApproved();
-
-          break;
-        default:
-          await resolveVote();
-      }
-      succeeded = true;
-      setWriteError((previous) =>
-        previous?.selection === capturedSelection ? undefined : previous
-      );
-    } catch {
-      setWriteError({
-        selection: capturedSelection,
-        kind: phase.value === 'activation' ? 'activation' : 'uncertain',
-      });
-    } finally {
-      const reads: Promise<unknown>[] = [
-        queryClient.invalidateQueries({ queryKey: queuesKey }),
-        queryClient.invalidateQueries({ queryKey: ['ontology-review-state'] }),
-        queryClient.invalidateQueries({
-          queryKey: ['ontology-review-task', account, captured.task.id],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ['ontology-review-events', account, captured.release.id],
-        }),
-      ];
-      if (generation.current.value === capturedGeneration) {
-        setReadyGeneration(undefined);
-        setReadCycle((cycle) => cycle + 1);
-      }
-      await Promise.allSettled(reads);
-      admission.current = false;
-      setWriting(false);
-    }
-
-    return succeeded;
-  };
-  const pageControls = (kind: 'queue' | 'events') => {
-    const response = kind === 'queue' ? queue : events;
-    const cursors = kind === 'queue' ? queueCursors : eventCursors;
-    const key = kind === 'queue' ? queueScope : selection;
-    const setHistory = kind === 'queue' ? setQueueHistory : setEventHistory;
 
     return (
-      <Box
-        aria-label={t(
-          kind === 'queue' ? 'label.task-plural' : 'label.event-plural'
-        )}
-        gap={2}>
+      <Tooltip isDisabled={!hasNoTasks} title={t('label.no-tasks-right-now')}>
         <Button
+          aria-haspopup="dialog"
+          className="tw:shrink-0 tw:whitespace-nowrap"
           color="secondary"
-          isDisabled={
-            response.isFetching || cursors[cursors.length - 1] === undefined
+          data-testid="ontology-tasks-trigger"
+          iconLeading={ClipboardCheck}
+          iconTrailing={
+            <Badge color="brand" size="sm" type="pill-color">
+              {pendingTotal.isError
+                ? t('label.unavailable')
+                : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
+            </Badge>
           }
+          isDisabled={hasNoTasks}
+          ref={taskButton}
           size="sm"
-          onPress={() => setHistory({ key, cursors: [undefined] })}>
-          {t('label.first')}
+          onPress={() => {
+            setListOpen(true);
+            void pendingTotal.refetch();
+            void pending.refetch();
+          }}>
+          {t('label.task-plural')}
         </Button>
-        <Button
-          color="secondary"
-          isDisabled={response.isFetching || cursors.length === 1}
-          size="sm"
-          onPress={() => setHistory({ key, cursors: cursors.slice(0, -1) })}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={
-            response.isFetching ||
-            !response.data?.data.length ||
-            !response.data?.paging?.after
-          }
-          size="sm"
-          onPress={() =>
-            setHistory({
-              key,
-              cursors: pushCursor(cursors, response.data?.paging?.after),
-            })
-          }>
-          {t('label.next')}
-        </Button>
-      </Box>
+      </Tooltip>
     );
   };
-
-  const renderTasksAction = () => (
-    <Button
-      aria-haspopup="dialog"
-      className="tw:shrink-0 tw:whitespace-nowrap"
-      color="secondary"
-      data-testid="ontology-tasks-trigger"
-      iconTrailing={
-        <Badge color="error" size="sm">
-          {pending.isError
-            ? t('label.unavailable')
-            : pending.data?.paging?.total ?? t('label.unavailable')}
-        </Badge>
-      }
-      ref={taskButton}
-      size="sm"
-      onPress={() => {
-        setListOpen(true);
-        void pending.refetch();
-        void created.refetch();
-      }}>
-      {t('label.task-plural')}
-    </Button>
+  const bannerKey = getBannerKey(ontologyId, bannerReview, openReviews);
+  const dismissBanner = () => setDismissedBanner(bannerKey);
+  const renderOpenReviews = () => (
+    <OntologyOpenReviewsBanner
+      reviews={openReviews}
+      onDismiss={dismissBanner}
+      onOpenList={() => setListOpen(true)}
+      onOpenTask={onTaskChange}
+    />
   );
-  const renderBanner = () =>
-    bannerReview && bannerRelease.data ? (
+  const renderBanner = () => {
+    if (!bannerKey || dismissedBanner === bannerKey) {
+      return null;
+    }
+    if (!ontologyId || openReviews.length > 1) {
+      return renderOpenReviews();
+    }
+
+    return bannerReview && bannerRelease.data ? (
       <OntologyReviewBanner
         release={bannerRelease.data}
         review={bannerReview}
         viewerId={currentUser?.id}
-        viewerName={getEntityName(currentUser)}
+        onDismiss={dismissBanner}
         onOpenTask={onTaskChange}
       />
     ) : null;
-  const renderQueue = () => (
-    <Tabs
-      selectedKey={view}
-      onSelectionChange={(key) => {
-        if (key === 'assigned' || key === 'created') {
-          setView(key);
-          setQueueHistory({ key: '', cursors: [undefined] });
-        }
-      }}>
-      <Tabs.List aria-label={t('label.task-plural')}>
-        <Tabs.Item id="assigned" label={t('label.assigned-to-me')} />
-        <Tabs.Item id="created" label={t('label.created-by-me')} />
-      </Tabs.List>
-      <Tabs.Panel id={view}>
-        <Box direction="col" gap={2}>
-          {queue.isError && (
-            <Alert variant="error">
-              {t('message.ontology-review-unavailable')}
-            </Alert>
-          )}
-          {queue.isPending ? (
-            <Typography role="status">{t('label.loading')}</Typography>
-          ) : (
-            queue.data?.data.map((entry) => (
-              <Button
-                color="link-color"
-                key={entry.task.id}
-                onPress={() => onTaskChange(entry.task.id)}>
-                {entry.taskId ?? entry.task.id} ·{' '}
-                {getEntityName(entry.ontology)}
-              </Button>
-            ))
-          )}
-          {pageControls('queue')}
-        </Box>
-      </Tabs.Panel>
-    </Tabs>
+  };
+  const changeView = (key: Key) => {
+    if ((key === 'assigned' || key === 'created') && key !== view) {
+      setView(key);
+      setQueueHistory({ key: '', cursors: [undefined] });
+      // The open task belongs to the tab being left; the new tab opens its own first task.
+      onTaskChange(undefined);
+    }
+  };
+  const queueTasks = (queue.data?.data ?? []).map(reviewAsTask);
+  // "Open task" can open a review outside this queue (decided, or neither assigned
+  // to nor created by the viewer); it still needs a row, or the list contradicts the pane.
+  const isOpenedTaskListed = queueTasks.some((task) => task.id === taskId);
+  const openedTask = useQuery({
+    queryKey: ['ontology-opened-task', taskId],
+    enabled: [isOpen, taskId, queue.isSuccess, !isOpenedTaskListed].every(
+      Boolean
+    ),
+    retry: false,
+    gcTime: 0,
+    queryFn: async () =>
+      (await getTask(taskId ?? '', { fields: 'assignees,createdBy,about' }))
+        .data,
+  });
+  const unlistedTask = isOpenedTaskListed ? undefined : openedTask.data;
+  // As in the Inbox, an open list with nothing selected shows its first task.
+  const firstTaskId = queueTasks[0]?.id;
+  useEffect(() => {
+    if (isOpen && !taskId && firstTaskId && !queue.isFetching) {
+      onTaskChange(firstTaskId);
+    }
+  }, [isOpen, taskId, firstTaskId, queue.isFetching, onTaskChange]);
+  const renderGroupHeader = (label: string, count: number) => (
+    <Box
+      align="center"
+      className="tw:px-1"
+      data-testid="ontology-tasks-group"
+      gap={2}>
+      <span
+        aria-hidden
+        className="tw:size-1.5 tw:rounded-full tw:bg-brand-solid"
+      />
+      <Typography
+        className="tw:uppercase tw:tracking-wide"
+        color="secondary"
+        size="text-xs"
+        weight="semibold">
+        {label}
+      </Typography>
+      <Typography color="secondary" size="text-xs">
+        {count}
+      </Typography>
+    </Box>
   );
-  const renderSelected = () =>
-    detail.isPending ? (
-      <Typography role="status">{t('label.loading')}</Typography>
-    ) : (
-      selected && (
-        <OntologyTaskDetail
-          activationError={
-            writeError?.selection === selection &&
-            writeError.kind === 'activation'
-          }
-          activationReady={activationReady}
-          canPublish={canPublish && !detail.isError}
-          contentGeneration={currentGeneration}
-          contentReady={contentReady}
-          isPublished={state.data?.activeReleaseId === selected.release.id}
-          isRequester={
-            selected.review.requester?.id === currentUser?.id ||
-            selected.task.ontologyReview?.author === currentUser?.name
-          }
-          isWriting={writing || detail.isError || detail.isFetching}
-          key={selection}
-          release={selected.release}
-          review={selected.review}
-          task={selected.task}
-          onApprove={() => {
-            void submit({ kind: 'approve' });
-          }}
-          onApproveAndPublish={() => {
-            void submit({ kind: combinedApproval });
-          }}
-          onComment={(message) => submit({ kind: 'comment', message })}
-          onContentReadyChange={onContentReadyChange}
-          onPublish={() => {
-            void submit({ kind: 'publish' });
-          }}
-          onReject={(reason) => {
-            void submit({ kind: 'reject', reason });
-          }}>
-          <OntologyTaskThread
-            events={events.data?.data ?? []}
-            review={selected.review}
-            task={selected.task}
-          />
-          <Typography color="secondary" size="text-sm">
-            {t('message.ontology-review-event-window')}
-          </Typography>
-          {pageControls('events')}
-        </OntologyTaskDetail>
-      )
+  // An opened task that is still open joins the Pending approval group (one more in its
+  // count); a decided one gets its own Closed group, so no two groups share a name.
+  const isUnlistedOpen = unlistedTask?.status === TaskStatus.Open;
+  const renderUnlistedRow = () =>
+    unlistedTask ? (
+      <div data-testid="ontology-tasks-opened-row">
+        <InboxTaskListItem
+          isActive
+          task={unlistedTask}
+          onClick={(selected) => onTaskChange(selected.id)}
+        />
+      </div>
+    ) : null;
+  const renderClosedTask = () =>
+    unlistedTask && !isUnlistedOpen ? (
+      <Box data-testid="ontology-tasks-opened" direction="col" gap={3}>
+        {renderGroupHeader(t('label.closed'), 1)}
+        {renderUnlistedRow()}
+      </Box>
+    ) : null;
+  const renderEmptyQueue = () => {
+    if (unlistedTask) {
+      return isUnlistedOpen ? (
+        <>
+          {renderGroupHeader(t('label.pending-approval'), 1)}
+          {renderUnlistedRow()}
+        </>
+      ) : (
+        renderClosedTask()
+      );
+    }
+
+    return (
+      <div
+        className="tw:relative tw:min-h-60"
+        data-testid="ontology-tasks-empty">
+        <NoDataPlaceholder
+          description={t(
+            view === 'assigned'
+              ? 'message.ontology-tasks-assigned-empty'
+              : 'message.ontology-tasks-created-empty'
+          )}
+          title={t('message.ontology-no-tasks-yet')}
+        />
+      </div>
     );
-  const renderDetail = () => {
-    if (!taskId) {
+  };
+  const pendingCount = (visibleCount: number) => {
+    const listed = search.trim()
+      ? visibleCount
+      : queue.data?.paging?.total ?? visibleCount;
+
+    return listed + (isUnlistedOpen ? 1 : 0);
+  };
+  const renderQueueList = () => {
+    const entries = queue.data?.data ?? [];
+    if (queue.isPending || queue.isError) {
       return null;
+    }
+    if (!entries.length) {
+      return renderEmptyQueue();
+    }
+    const visible = filterReviews(entries, search);
+    if (!visible.length) {
+      return (
+        <div className="tw:relative tw:min-h-60">
+          <NoSearchResultsPlaceholder />
+        </div>
+      );
     }
 
     return (
       <>
-        {' '}
-        {(detail.isError || state.isError || events.isError) && (
-          <Alert variant="error">
-            <Box direction="col" gap={2}>
-              {t('message.ontology-review-unavailable')}
-              <Button
-                color="secondary"
-                isDisabled={writing}
-                onPress={() => {
-                  void refresh();
-                }}>
-                {t('label.retry')}
-              </Button>
-            </Box>
-          </Alert>
+        {renderClosedTask()}
+        {renderGroupHeader(
+          t('label.pending-approval'),
+          pendingCount(visible.length)
         )}
-        {writeError?.selection === selection &&
-          writeError.kind === 'uncertain' && (
-            <Alert variant="warning">
-              {t('message.ontology-review-write-uncertain')}
-            </Alert>
-          )}
-        {renderSelected()}
+        {isUnlistedOpen ? renderUnlistedRow() : null}
+        {visible.map((entry) => (
+          <InboxTaskListItem
+            isActive={entry.task.id === taskId}
+            key={entry.task.id}
+            task={reviewAsTask(entry)}
+            onClick={(selected) => onTaskChange(selected.id)}
+          />
+        ))}
       </>
     );
   };
+  const renderQueue = () => (
+    <Box direction="col" gap={3}>
+      <Input
+        aria-label={t('label.search-tasks')}
+        autoComplete="off"
+        data-testid="ontology-tasks-search"
+        icon={Search}
+        placeholder={t('label.search-tasks')}
+        size="sm"
+        value={search}
+        onChange={setSearch}
+      />
+      {queue.isError && (
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.task-plural'),
+            })}
+            onReload={() => void queue.refetch()}
+          />
+        </div>
+      )}
+      {queue.isPending ? <Loader size="small" /> : null}
+      {renderQueueList()}
+      {hasMorePages(queue.data?.paging?.after, queueCursors.length)
+        ? queueControls()
+        : null}
+    </Box>
+  );
+  const renderDetail = () =>
+    taskId ? (
+      // The same task screen as the Inbox: it loads the full task and acts on it.
+      <TaskDetailPanel
+        fallbackTask={queueTasks.find((task) => task.id === taskId)}
+        key={taskId}
+        taskId={taskId}
+        onCommentsChanged={refreshQueues}
+        onResolved={refreshQueues}
+        onTaskUpdated={refreshQueues}
+      />
+    ) : (
+      // A queue that failed to load has nothing to pick, so the list's error stands alone.
+      !queue.isError && (
+        <div className="tw:relative tw:h-full">
+          <NoDataPlaceholder
+            description={t('message.ontology-select-task-description')}
+            title={t('message.ontology-select-task')}
+          />
+        </div>
+      )
+    );
   const renderDrawer = () => {
     if (!isOpen) {
       return null;
     }
 
     return (
-      <SlideoutMenu
+      <ModalOverlay
         isDismissable
         isOpen
-        aria-label={t('label.task-plural')}
-        width="min(100vw, 56rem)"
         onOpenChange={(open) => {
           if (!open) {
             close();
           }
         }}>
-        <SlideoutMenu.Header
-          closeButtonTestId="ontology-tasks-close"
-          onClose={close}>
-          <Typography as="h2" size="text-lg" weight="semibold">
-            {t('label.task-plural')}
-          </Typography>
-        </SlideoutMenu.Header>
-        <SlideoutMenu.Content>
-          {renderQueue()}
-          {renderDetail()}
-        </SlideoutMenu.Content>
-      </SlideoutMenu>
+        <Modal>
+          <Dialog
+            aria-label={t('label.task-plural')}
+            dividers="scroll"
+            showCloseButton={false}
+            width={1325}
+            onClose={close}>
+            <Tabs
+              className="tw:flex tw:h-[min(52rem,90vh)] tw:w-full tw:flex-col"
+              data-testid="ontology-tasks-dialog"
+              selectedKey={view}
+              onSelectionChange={changeView}>
+              <Box
+                className="tw:shrink-0 tw:bg-secondary_alt tw:px-6 tw:pt-5"
+                direction="col"
+                gap={3}>
+                <Box align="center" gap={3}>
+                  <FeaturedIcon
+                    color="brand"
+                    icon={Inbox01}
+                    size="lg"
+                    theme="dark"
+                  />
+                  <Box className="tw:min-w-0 tw:flex-1" direction="col">
+                    <Typography
+                      as="h2"
+                      className="not-prose tw:m-0"
+                      size="text-lg"
+                      weight="semibold">
+                      {t('label.task-plural')}
+                    </Typography>
+                    <Typography color="secondary" size="text-sm">
+                      {t('message.ontology-tasks-description')}
+                    </Typography>
+                  </Box>
+                  <ButtonUtility
+                    data-testid="ontology-tasks-close"
+                    icon={XClose}
+                    size="lg"
+                    tooltip={t('label.close')}
+                    onClick={close}
+                  />
+                </Box>
+                <Tabs.List aria-label={t('label.task-plural')} type="underline">
+                  <Tabs.Item
+                    badge={assignedTotal}
+                    id="assigned"
+                    label={t('label.assigned-to-me')}
+                  />
+                  <Tabs.Item
+                    badge={createdTotal}
+                    id="created"
+                    label={t('label.created-by-me')}
+                  />
+                </Tabs.List>
+              </Box>
+              {/* The detail sits inside the panel too: a Tabs control in it (the change filters) would
+                  otherwise be collected into this dialog's own tab strip. */}
+              <Tabs.Panel className="tw:flex tw:min-h-0 tw:flex-1" id={view}>
+                <div
+                  className="tw:w-105 tw:shrink-0 tw:overflow-y-auto tw:border-r tw:border-secondary tw:p-4"
+                  data-testid="ontology-tasks-queue">
+                  {renderQueue()}
+                </div>
+                <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
+                  {renderDetail()}
+                </div>
+              </Tabs.Panel>
+            </Tabs>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     );
   };
 

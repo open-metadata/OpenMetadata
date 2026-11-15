@@ -271,7 +271,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         repository.listAllForCSV(
             repository.getFields(
                 "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
-            glossary.getFullyQualifiedName());
+            glossary.getFullyQualifiedName(),
+            user);
     terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }

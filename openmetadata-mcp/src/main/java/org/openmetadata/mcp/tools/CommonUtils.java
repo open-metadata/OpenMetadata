@@ -24,6 +24,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -51,6 +52,7 @@ public class CommonUtils {
         Entity.getEntityByName(
             entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
     ContextMemoryVisibility.enforceVisibility(entity, securityContext);
+    AnnouncementVisibility.enforceVisibility(entity, securityContext);
     return McpResponseUtils.maskSecrets(entity);
   }
 
@@ -75,7 +77,8 @@ public class CommonUtils {
    */
   public static void enforceEntityVisibility(
       String entityType, String fqn, SecurityContext securityContext) {
-    if (ContextMemoryVisibility.hasVisibilityRules(entityType)) {
+    if (ContextMemoryVisibility.hasVisibilityRules(entityType)
+        || Entity.ANNOUNCEMENT.equals(entityType)) {
       readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     }
   }

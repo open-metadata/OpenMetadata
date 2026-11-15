@@ -114,10 +114,6 @@ jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
-jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="entity-header">EntityHeader</div>)
-);
-
 jest.mock(
   '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component',
   () => {
@@ -232,7 +228,9 @@ describe('GlossaryHeader component', () => {
       />
     );
 
-    expect(screen.getByText('EntityHeader')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'glossaryTest'
+    );
   });
 
   it.each([
@@ -272,12 +270,9 @@ describe('GlossaryHeader component', () => {
     }
   );
 
-  it.each([
-    [true, true],
-    [false, false],
-  ])(
-    'should render the gradient header background only in AI mode (AI mode: %s)',
-    (isAiMode, hasGradient) => {
+  it.each([true, false])(
+    'should render a flat header without the gradient background (AI mode: %s)',
+    (isAiMode) => {
       mockIsAiMode.mockReturnValue(isAiMode);
 
       render(
@@ -288,11 +283,9 @@ describe('GlossaryHeader component', () => {
         />
       );
 
-      expect(
-        screen
-          .getByTestId('glossary-header')
-          .className.includes('linear-gradient')
-      ).toBe(hasGradient);
+      expect(screen.getByTestId('glossary-header').className).not.toContain(
+        'linear-gradient'
+      );
 
       mockIsAiMode.mockReturnValue(false);
     }

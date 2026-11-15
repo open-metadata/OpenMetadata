@@ -71,3 +71,15 @@ export type PublicationReceipt = ReceiptScope & { state: OntologyState } & (
   );
 export type ReceiptRead = PublicationRead<PublicationReceipt | null>;
 export type SettingsOutcome = { kind: 'saved' | 'conflict' | 'unavailable' };
+
+export type PublicationNotice =
+  | {
+      kind: 'requested';
+      version: string;
+      reviewers: string[];
+      taskId: string;
+      taskHref: string;
+    }
+  | { kind: 'published'; version: string }
+  | { kind: 'withdrawn'; version: string }
+  | { kind: 'unchanged'; version: string; releaseNotes: string };

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
@@ -189,13 +190,25 @@ public class WebsocketNotificationHandler {
   }
 
   private void handleAnnouncementNotification(Announcement announcement) {
-    String jsonAnnouncement = JsonUtils.pojoToJson(announcement);
     long currentTimestamp = System.currentTimeMillis();
     if (announcement.getStartTime() <= currentTimestamp
         && currentTimestamp <= announcement.getEndTime()) {
       WebSocketManager.getInstance()
-          .broadCastMessageToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, jsonAnnouncement);
+          .broadCastMessageToAll(
+              WebSocketManager.ANNOUNCEMENT_CHANNEL, announcementBroadcast(announcement));
     }
+  }
+
+  /**
+   * Every session receives the broadcast, so an announcement on an asset carries only its id; the
+   * client reads the rest through the GET that checks view on the asset.
+   */
+  static String announcementBroadcast(Announcement announcement) {
+    Object payload =
+        nullOrEmpty(announcement.getEntityLink())
+            ? announcement
+            : new EntityReference().withId(announcement.getId()).withType(Entity.ANNOUNCEMENT);
+    return JsonUtils.pojoToJson(payload);
   }
 
   private void handleConversationNotification(Conversation conversation) {

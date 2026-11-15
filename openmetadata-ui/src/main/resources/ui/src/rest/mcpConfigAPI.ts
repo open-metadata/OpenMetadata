@@ -28,6 +28,12 @@ export const getMcpConfig = async () => {
   return response.data;
 };
 
+export const getMcpTools = async () => {
+  const response = await axiosClient.get<string[]>('/system/mcp/tools');
+
+  return response.data;
+};
+
 export const updateMcpConfig = async (payload: MCPConfiguration) => {
   const response = await axiosClient.put<MCPConfiguration>(
     '/system/mcp/config',

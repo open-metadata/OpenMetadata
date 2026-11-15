@@ -269,7 +269,9 @@ describe('OntologyAiAssistant', () => {
     ).toHaveTextContent('SELECT ?concept WHERE { ?concept a <urn:Concept> }');
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'label.open-in-query-console' })
+      screen.getByRole('button', {
+        name: 'label.ontology-open-in-query-console',
+      })
     );
 
     expect(onOpenQuery).toHaveBeenCalledWith(

@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -299,7 +300,10 @@ public class DomainReassignmentAuthorizationIT {
         "An id-only move into an unheld domain must be denied cleanly, not 500");
   }
 
-  /** A patch that replaces the whole document names no domains path, yet stores the new domains. */
+  /**
+   * A patch that replaces the whole document names no domains path, so it would skip the domain
+   * check; it is refused outright (ADR:2026-11-03-input-parsing-is-bounded).
+   */
   @Test
   void test_wholeDocumentPatchCannotMoveAnAssetIntoAnUnheldDomain(TestNamespace ns)
       throws Exception {
@@ -307,7 +311,7 @@ public class DomainReassignmentAuthorizationIT {
     Table table = createTable(ns, scoped.heldDomain());
 
     assertThrows(
-        ForbiddenException.class,
+        InvalidRequestException.class,
         () -> patchWholeDocument(scoped.client(), table, scoped.otherDomain()));
     assertEquals(scoped.heldDomain().getId(), domainOf(table));
   }

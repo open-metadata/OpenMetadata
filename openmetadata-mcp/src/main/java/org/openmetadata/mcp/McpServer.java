@@ -5,11 +5,17 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.server.McpSyncListFilter;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpStatelessServerTransport;
+import jakarta.servlet.DispatcherType;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
@@ -30,6 +36,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
+import org.openmetadata.service.apps.bundles.mcp.McpToolRegistry;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -83,8 +90,12 @@ public class McpServer implements McpServerProvider {
     this.limits = limits;
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    List<McpSchema.Tool> tools =
-        exposedTools(getTools(), SecurityConfigurationManager.getCurrentMcpConfig());
+    List<McpSchema.Tool> tools = getTools();
+    McpToolRegistry.setToolNames(tools.stream().map(McpSchema.Tool::name).toList());
+    logToolGating(tools, SecurityConfigurationManager.getCurrentMcpConfig());
+    SecurityConfigurationManager.getInstance()
+        .addConfigurationChangeListener(
+            (authConfig, authzConfig, mcpConfig) -> logToolGating(tools, mcpConfig));
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts);
   }
@@ -96,10 +107,11 @@ public class McpServer implements McpServerProvider {
    * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
    * handler (VSCode used to call it), and no resources, because no resources are registered here.
    * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
-   * replaced with subscriptions/listen.
+   * replaced with subscriptions/listen. listChanged is false: a stateless server cannot send
+   * notifications/tools/list_changed, so a client sees a changed list when it lists again.
    */
   protected McpSchema.ServerCapabilities buildServerCapabilities() {
-    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
+    return McpSchema.ServerCapabilities.builder().tools(false).prompts(false).build();
   }
 
   /**
@@ -143,25 +155,75 @@ public class McpServer implements McpServerProvider {
   }
 
   /**
-   * Read-only mode, for every caller including admins, whom no policy can deny. It filters here,
-   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too.
-   * Tools are registered once at startup, so {@link #executeTool} checks again on every call:
-   * turning the mode on blocks writes before the restart that drops them from tools/list. See
-   * ADR:2026-11-04-mcp-read-only-mode-hides-write-tools.
+   * Read-only mode and disabled tools, for every caller including admins, whom no policy can deny.
+   * Every tool is registered at startup, after a subclass has added its own in {@link #getTools()};
+   * this filter hides the refused ones on each tools/list from the setting as it is now, and {@link
+   * #executeTool} refuses them on each call. See ADR:2026-11-04-mcp-read-only-mode-hides-write-tools
+   * and ADR:2026-11-05-mcp-admins-can-disable-single-tools.
    */
-  static List<McpSchema.Tool> exposedTools(List<McpSchema.Tool> tools, MCPConfiguration config) {
-    List<McpSchema.Tool> exposed = tools;
-    if (isReadOnlyMode(config)) {
-      exposed = tools.stream().filter(McpServer::isAvailableInReadOnlyMode).toList();
+  static McpSyncListFilter<McpSchema.Tool> toolFilter(Supplier<MCPConfiguration> config) {
+    return (context, tool) -> refusalReason(tool, config.get()).isEmpty();
+  }
+
+  static McpStatelessSyncServer buildServer(
+      McpStatelessServerTransport transport,
+      McpSchema.ServerCapabilities capabilities,
+      Supplier<MCPConfiguration> mcpConfig) {
+    return io.modelcontextprotocol.server.McpServer.sync(transport)
+        .serverInfo(serverInfo(mcpConfig.get()))
+        .capabilities(capabilities)
+        // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
+        // tools accept looser shapes on purpose, see
+        // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
+        .validateToolInputs(false)
+        .addToolFilter(toolFilter(mcpConfig))
+        .build();
+  }
+
+  // The name and version clients see in initialize come from the MCP settings, read at startup. A
+  // blank value falls back to the schema default: the SDK refuses a server without them.
+  static McpSchema.Implementation serverInfo(MCPConfiguration config) {
+    MCPConfiguration defaults = new MCPConfiguration();
+    MCPConfiguration current = config == null ? defaults : config;
+    return McpSchema.Implementation.builder(
+            textOr(current.getMcpServerName(), defaults.getMcpServerName()),
+            textOr(current.getMcpServerVersion(), defaults.getMcpServerVersion()))
+        .build();
+  }
+
+  private static String textOr(String value, String fallback) {
+    return value == null || value.isBlank() ? fallback : value;
+  }
+
+  // tools/list follows the setting live, so say what it hides each time the setting loads.
+  private static void logToolGating(List<McpSchema.Tool> tools, MCPConfiguration config) {
+    long hidden = tools.stream().filter(tool -> refusalReason(tool, config).isPresent()).count();
+    if (hidden > 0) {
       LOG.info(
-          "[MCP] Read-only mode; withholding {} write tool(s) from tools/list",
-          tools.size() - exposed.size());
+          "[MCP] Read-only mode and disabled tools hide {} of {} tool(s) from tools/list",
+          hidden,
+          tools.size());
     }
-    return exposed;
+    warnAboutUnknownTools(tools, disabledTools(config));
+  }
+
+  // Not an error: the name may be a tool of another distribution or one renamed on upgrade.
+  private static void warnAboutUnknownTools(List<McpSchema.Tool> registered, Set<String> disabled) {
+    Set<String> names = registered.stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
+    List<String> unknown = disabled.stream().filter(name -> !names.contains(name)).toList();
+    if (!unknown.isEmpty()) {
+      LOG.warn("[MCP] Ignoring disabled tool name(s) that match no registered tool: {}", unknown);
+    }
   }
 
   private static boolean isReadOnlyMode(MCPConfiguration config) {
     return config != null && Boolean.TRUE.equals(config.getReadOnly());
+  }
+
+  private static Set<String> disabledTools(MCPConfiguration config) {
+    return config == null || config.getDisabledTools() == null
+        ? Set.of()
+        : config.getDisabledTools();
   }
 
   // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
@@ -172,9 +234,15 @@ public class McpServer implements McpServerProvider {
     return readOnlyHint && !WRITE_HELPER_TOOLS.contains(tool.name());
   }
 
-  private static boolean isRefusedInReadOnlyMode(McpSchema.Tool tool) {
-    return isReadOnlyMode(SecurityConfigurationManager.getCurrentMcpConfig())
-        && !isAvailableInReadOnlyMode(tool);
+  private static Optional<String> refusalReason(McpSchema.Tool tool, MCPConfiguration config) {
+    Optional<String> reason = Optional.empty();
+    if (isReadOnlyMode(config) && !isAvailableInReadOnlyMode(tool)) {
+      reason =
+          Optional.of("The MCP server is in read-only mode, so " + tool.name() + " is unavailable");
+    } else if (disabledTools(config).contains(tool.name())) {
+      reason = Optional.of(tool.name() + " is disabled on this MCP server");
+    }
+    return reason;
   }
 
   protected List<McpSchema.Prompt> getPrompts() {
@@ -228,10 +296,10 @@ public class McpServer implements McpServerProvider {
               allowedOrigins);
       statelessOauthTransport.setContextPath(contextHandler.getContextPath());
       McpStatelessSyncServer server =
-          io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
-              .serverInfo("openmetadata-mcp-stateless", "1.1.0")
-              .capabilities(serverCapabilities)
-              .build();
+          buildServer(
+              statelessOauthTransport,
+              serverCapabilities,
+              SecurityConfigurationManager::getCurrentMcpConfig);
       addToolsToServer(server, tools);
       addPromptsToServer(server, prompts);
 
@@ -245,6 +313,8 @@ public class McpServer implements McpServerProvider {
       BasicAuthLoginServlet basicAuthLoginServlet = new BasicAuthLoginServlet(authProvider);
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
+
+      registerAvailabilityFilter(environment);
 
       // Register well-known filter via Dropwizard's environment.servlets() API.
       // This must use addFilter (not servlet registration) because the OpenMetadataAssetServlet
@@ -298,9 +368,15 @@ public class McpServer implements McpServerProvider {
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
       // invokes this handler, which asks the user to approve the client before a code is minted.
+      // The SAML ACS is not under /mcp/, so it checks availability itself.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
-          (req, resp, username, email, relayState) ->
-              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+          (req, resp, username, email, relayState) -> {
+            if (McpAvailabilityFilter.isMcpAvailable()) {
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState);
+            } else {
+              McpAvailabilityFilter.refuse(resp);
+            }
+          });
       LOG.info("Registered MCP SAML callback handler for SAML SSO support");
 
       // Register MCP callback servlet unconditionally — SSO availability is checked at
@@ -314,15 +390,35 @@ public class McpServer implements McpServerProvider {
       LOG.info("Registered /mcp/callback servlet (runtime SSO dispatch)");
     } catch (Exception ex) {
       LOG.error(
-          "MCP server initialization failed — MCP OAuth will be non-functional. "
-              + "Check the configuration and restart.",
+          "[MCP] Initialization failed partway: the /mcp endpoint, or the OAuth routes registered "
+              + "after it, are missing, so MCP clients may not connect. Check the configuration "
+              + "and restart.",
           ex);
     }
   }
 
+  /** FORWARD covers the SSO callback, which /callback forwards to /mcp/callback. */
+  private static void registerAvailabilityFilter(Environment environment) {
+    environment
+        .servlets()
+        .addFilter("mcp-availability", new McpAvailabilityFilter())
+        .addMappingForUrlPatterns(
+            EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD), false, "/mcp/*");
+  }
+
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
     for (McpSchema.Tool tool : tools) {
+      registerTool(server, tool);
+    }
+  }
+
+  // SDK 2.x rejects a tool whose inputSchema is not valid JSON Schema 2020-12. Skip that one tool
+  // rather than let the exception take down the whole /mcp endpoint.
+  private void registerTool(McpStatelessSyncServer server, McpSchema.Tool tool) {
+    try {
       server.addTool(getTool(tool));
+    } catch (IllegalArgumentException e) {
+      LOG.error("[MCP] Skipping tool '{}': {}", tool.name(), e.getMessage());
     }
   }
 
@@ -362,11 +458,12 @@ public class McpServer implements McpServerProvider {
     try {
       ImpersonationContext.setImpersonatedBy(getMcpBotName());
       outcome =
-          isRefusedInReadOnlyMode(tool)
-              ? DefaultToolContext.forbidden(
-                  "The MCP server is in read-only mode, so " + tool.name() + " is unavailable")
-              : toolContext.callToolWithMetadata(
-                  authorizer, limits, tool.name(), securityContext, req);
+          refusalReason(tool, SecurityConfigurationManager.getCurrentMcpConfig())
+              .map(DefaultToolContext::forbidden)
+              .orElseGet(
+                  () ->
+                      toolContext.callToolWithMetadata(
+                          authorizer, limits, tool.name(), securityContext, req));
       return outcome.result();
     } finally {
       recordUsage(tool.name(), userName, clientName, outcome);

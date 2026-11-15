@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.datainsight.system;
 
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -114,7 +116,13 @@ public class DataInsightSystemChartResource
       throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
     DataInsightCustomChartResultList resultList =
-        repository.getPreviewData(diChart, start, end, scopedToPick(securityContext, filter));
+        repository.getPreviewData(
+            diChart,
+            start,
+            end,
+            filter,
+            EntityUtil.navbarDomainSearchFilter(securityContext),
+            getSubjectContext(securityContext));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -173,7 +181,14 @@ public class DataInsightSystemChartResource
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
         repository.listChartData(
-            chartNames, start, end, scopedToPick(securityContext, filter), live, serviceName);
+            chartNames,
+            start,
+            end,
+            filter,
+            EntityUtil.navbarDomainSearchFilter(securityContext),
+            live,
+            serviceName,
+            getSubjectContext(securityContext));
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -323,7 +338,7 @@ public class DataInsightSystemChartResource
     }
   }
 
-  // Charts read search documents, so the navbar domain pick is added as a query filter.
+  // A streamed chart is live, so the navbar domain pick is added to the filter it keeps.
   private static String scopedToPick(SecurityContext securityContext, String filter) {
     return DataInsightSystemChartRepository.combineFilters(
         filter, EntityUtil.navbarDomainSearchFilter(securityContext));

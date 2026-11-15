@@ -520,8 +520,7 @@ class PGSpiderLineageUnitTests(TestCase):
     PGSpider lineage test
     """
 
-    def __init__(self, methodName) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self) -> None:
         config = OpenMetadataWorkflowConfig.model_validate(mock_pgspider_config)
         with patch("metadata.ingestion.source.database.postgres.lineage.PostgresLineageSource.test_connection"):
             self.postgres = PostgresLineageSource.create(

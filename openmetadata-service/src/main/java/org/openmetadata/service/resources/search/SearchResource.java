@@ -87,6 +87,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -516,6 +517,19 @@ public class SearchResource {
           @QueryParam("from")
           int from) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    // The job searches later, so a search it would refuse is refused now rather than as a failed
+    // job.
+    PrivateSearchFields.refuseReferences(
+        subjectContext,
+        buildExportSearchRequest(
+            subjectContext,
+            query,
+            index,
+            deleted,
+            queryFilter,
+            postFilter,
+            sortFieldParam,
+            sortOrder));
     CsvAsyncJobArgs.SearchExportArgs searchExport =
         new CsvAsyncJobArgs.SearchExportArgs()
             .setQuery(query)

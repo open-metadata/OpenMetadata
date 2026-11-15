@@ -184,7 +184,8 @@ const BotListV1 = ({
               'name.keyword',
               'displayName.keyword',
               'fullyQualifiedName.keyword',
-              'email.keyword',
+              // Search refuses queries on email fields from anyone but admins.
+              ...(isAdminUser ? ['email.keyword'] : []),
             ].map((field) => ({
               wildcard: {
                 [field]: { value: wildcardPattern, case_insensitive: true },

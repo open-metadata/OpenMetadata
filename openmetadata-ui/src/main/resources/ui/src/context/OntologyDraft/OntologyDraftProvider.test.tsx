@@ -79,7 +79,9 @@ it('keeps edits on cancel and changes selection only after discard', () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Select person' }));
 
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(screen.getByRole('dialog').firstElementChild).toHaveStyle({
+    maxWidth: '400px',
+  });
 
   fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
@@ -372,4 +374,48 @@ it('preserves edits and history when browser Back changes ontology query paramet
     expect(screen.getByTestId('route')).toHaveTextContent('?ontology=first')
   );
   view.unmount();
+});
+
+const TwoStepPress = () => {
+  const [draft, setDraft] = useState('');
+  const [log, setLog] = useState<string[]>([]);
+  const guard = useOntologyDraftGuard();
+  useOntologyDirtyForm(Boolean(draft));
+  const note = (step: string) => setLog((previous) => [...previous, step]);
+
+  return (
+    <>
+      <Input aria-label="Description" value={draft} onChange={setDraft} />
+      <Button
+        onPress={() => {
+          // A drawer closing on the press, whose close guards again, and the tab it pressed.
+          guard(() => guard(() => note('drawer closed')));
+          guard(() => note('tab switched'));
+        }}>
+        Switch tab
+      </Button>
+      <output>{log.join(', ')}</output>
+    </>
+  );
+};
+
+it('answers every action of one press with one prompt, without asking again inside it', () => {
+  render(
+    <MemoryRouter>
+      <OntologyDraftProvider>
+        <TwoStepPress />
+      </OntologyDraftProvider>
+    </MemoryRouter>
+  );
+  fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), {
+    target: { value: 'Unsaved description' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Switch tab' }));
+
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole('button', { name: 'label.discard' }));
+
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByText('drawer closed, tab switched')).toBeInTheDocument();
 });

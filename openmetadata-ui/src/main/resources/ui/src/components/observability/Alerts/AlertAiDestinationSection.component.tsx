@@ -60,7 +60,10 @@ const AlertAiDestinationSection = ({
   value,
 }: AlertAiDestinationSectionProps) => {
   const { t } = useTranslation();
-  const destinations = value.destinations ?? [];
+  const destinations = useMemo(
+    () => value.destinations ?? [],
+    [value.destinations]
+  );
   const hasExternalDestination = hasExternalDestinationConfig(destinations);
   const [destinationsWithStatus, setDestinationsWithStatus] =
     useState<(Destination | undefined)[]>();

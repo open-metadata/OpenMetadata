@@ -74,7 +74,35 @@ jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
   AddTestCaseList: (props: Record<string, unknown>) => {
     mockAddTestCaseList(props);
 
-    return <div>AddTestCaseList</div>;
+    return (
+      <div data-testid="add-test-case-list">
+        <button
+          data-testid="picker-select-all"
+          onClick={() =>
+            (props.onChange as (p: unknown) => void)?.({
+              selectAll: true,
+              includeIds: [],
+              excludeIds: [],
+              testCases: [],
+              filter: {},
+            })
+          }>
+          select-all
+        </button>
+        <button
+          data-testid="picker-partial-select"
+          onClick={() =>
+            (props.onChange as (p: unknown) => void)?.({
+              selectAll: false,
+              includeIds: ['tc-1'],
+              excludeIds: [],
+              testCases: [{ id: 'tc-1', name: 'tc_a' }],
+            })
+          }>
+          partial-select
+        </button>
+      </div>
+    );
   },
 }));
 
@@ -164,6 +192,67 @@ describe('TestSuitePipelineFormDrawer', () => {
     expect(await screen.findByText('label.field-required')).toBeInTheDocument();
     expect(addIngestionPipeline).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('allows saving when the picker emits a select-all payload', async () => {
+    (addIngestionPipeline as jest.Mock).mockResolvedValue({ id: 'pipe-id' });
+    (deployIngestionPipelineById as jest.Mock).mockResolvedValue({});
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const { onClose } = renderDrawer();
+
+    await user.type(await screen.findByTestId('pipeline-name'), 'nightly');
+    // Simulate the picker's "Select all N test cases" action, which emits
+    // { selectAll: true, testCases: [] } — the payload that was falsely
+    // rejected before the fix.
+    await user.click(screen.getByTestId('picker-select-all'));
+    await user.click(screen.getByTestId('deploy-button'));
+
+    await waitFor(() =>
+      expect(addIngestionPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayName: 'nightly',
+          sourceConfig: {
+            config: expect.objectContaining({
+              entityFullyQualifiedName: TABLE.fullyQualifiedName,
+              testCases: undefined,
+            }),
+          },
+        })
+      )
+    );
+
+    expect(deployIngestionPipelineById).toHaveBeenCalledWith('pipe-id');
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'server.create-entity-success'
+    );
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it('saves specific test cases when the picker emits a partial selection', async () => {
+    (addIngestionPipeline as jest.Mock).mockResolvedValue({ id: 'pipe-id' });
+    (deployIngestionPipelineById as jest.Mock).mockResolvedValue({});
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const { onClose } = renderDrawer();
+
+    await user.type(await screen.findByTestId('pipeline-name'), 'nightly');
+    await user.click(screen.getByTestId('picker-partial-select'));
+    await user.click(screen.getByTestId('deploy-button'));
+
+    await waitFor(() =>
+      expect(addIngestionPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayName: 'nightly',
+          sourceConfig: {
+            config: expect.objectContaining({
+              testCases: ['tc_a'],
+            }),
+          },
+        })
+      )
+    );
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
   it('keeps the drawer open when creating the pipeline fails', async () => {

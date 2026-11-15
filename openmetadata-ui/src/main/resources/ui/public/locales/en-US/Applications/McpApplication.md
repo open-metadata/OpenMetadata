@@ -35,6 +35,13 @@ $$
 $$section
 ### Read-only Mode $(id="readOnly")
 
-Expose only the MCP tools that do not change metadata, such as search, lineage and entity details. Tools that create or edit metadata are blocked for every MCP client and every user, admins included. Each user's own permissions still apply to the remaining tools. Turning it on blocks those tools right away; they leave the tool list after the server restarts, and turning it off takes effect after a restart.
+Expose only the MCP tools that do not change metadata, such as search, lineage and entity details. Tools that create or edit metadata are blocked for every MCP client and every user, admins included. Each user's own permissions still apply to the remaining tools. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.
+
+$$
+
+$$section
+### Disabled Tools $(id="disabledTools")
+
+MCP tools to turn off for every MCP client and every user, admins included, whatever their permissions. Use it to hide single tools, read or write; Read-only Mode still applies to the rest. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.
 
 $$

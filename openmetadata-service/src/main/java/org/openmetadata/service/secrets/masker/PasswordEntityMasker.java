@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.masker;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -240,12 +241,34 @@ public class PasswordEntityMasker extends EntityMasker {
     String fieldName = method.getName().replaceFirst("get", "");
     String fieldKey = createKey(key, fieldName);
     if (method.getAnnotation(PasswordField.class) != null) {
-      visitor.visit(holder, fieldName, fieldKey, value);
+      if (value instanceof Map<?, ?> secretMap) {
+        visitSecretMap(secretMap, fieldKey, visitor);
+      } else {
+        visitor.visit(holder, fieldName, fieldKey, value);
+      }
     } else if (isTraversable(value)) {
       walkPasswordFields(value, fieldKey, visitor);
     } else if (value instanceof Collection<?> collection) {
       walkCollection(collection, fieldKey, visitor);
     }
+  }
+
+  /**
+   * Visits each string entry of a password-annotated map - a schema property whose {@code
+   * additionalProperties} carry {@code format: password}, such as Kafka {@code consumerConfig}.
+   * Non-string values are left alone: those maps also carry numbers and booleans that are not
+   * secrets. The entry key joins the field key so masking, unmasking and password-map building
+   * derive identical keys for the same entry, as they must for unmasking to find the stored secret.
+   */
+  private void visitSecretMap(Map<?, ?> secretMap, String fieldKey, PasswordFieldVisitor visitor) {
+    new ArrayList<>(secretMap.entrySet())
+        .forEach(
+            entry -> {
+              if (entry.getValue() instanceof String) {
+                String entryKey = String.valueOf(entry.getKey());
+                visitor.visit(secretMap, entryKey, createKey(fieldKey, entryKey), entry.getValue());
+              }
+            });
   }
 
   private void walkCollection(Collection<?> collection, String key, PasswordFieldVisitor visitor) {
@@ -264,6 +287,12 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private void setField(Object holder, String fieldName, Object currentValue, String newValue) {
+    if (holder instanceof Map<?, ?> map) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> secretMap = (Map<String, Object>) map;
+      secretMap.put(fieldName, newValue);
+      return;
+    }
     Method toSet = ReflectionUtil.getToSetMethod(holder, currentValue, fieldName);
     ReflectionUtil.setValueInMethod(holder, newValue, toSet);
   }

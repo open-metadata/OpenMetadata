@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -21,9 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -33,28 +38,48 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.search.indexes.MetricIndex;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.NoopAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 class MetricRepositoryTest {
@@ -779,6 +804,471 @@ class MetricRepositoryTest {
           transactionDAO,
           () -> assertSame(transactionMetricDAO, fixture.repository().entityDAOForWrite()));
       assertSame(fixture.metricDAO(), fixture.repository().entityDAOForWrite());
+    }
+  }
+
+  @Test
+  void admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit() {
+    final Metric original =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue");
+    final EntityReference group =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withFullyQualifiedName("finance");
+    final Metric moved = JsonUtils.deepCopy(original, Metric.class).withMetricGroup(group);
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorizeActor(
+            eq(actor),
+            any(),
+            argThat(resource -> Entity.METRIC_GROUP.equals(resource.getResource())));
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class, Mockito.CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP))
+          .thenReturn(mock(MetricGroupRepository.class));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      Entity.METRIC, List.of(original.getId()), NON_DELETED))
+          .thenReturn(
+              List.of(
+                  new EntityReference()
+                      .withId(original.getId())
+                      .withType(Entity.METRIC)
+                      .withFullyQualifiedName("revenue")));
+
+      // The move is checked in the write itself: EditAll on the metric that moves passes, and on
+      // the group it lands in is refused.
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              fixture
+                  .repository()
+                  .admit(original, moved, actor, Edit.patch(Set.of("metricGroup"))));
+      verify(authorizer)
+          .authorizeActor(
+              eq(actor), any(), argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+      // A PATCH stores only the fields it names, so one naming neither parent nor group is no move,
+      // even where the group the write resolves differs from the stored one.
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .repository()
+                  .authorizeWrite(original, moved, actor, Edit.patch(Set.of("description"))));
+    }
+  }
+
+  @Test
+  void aPatchMayNotSetAssetsChildrenOrChildrenCount() {
+    final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      for (final String field : List.of("assets", "children", "childrenCount")) {
+        final IllegalArgumentException error =
+            assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    fixture
+                        .repository()
+                        .authorizePatch(
+                            metric,
+                            Json.createPatchBuilder()
+                                .add("/" + field, Json.createArrayBuilder().build())
+                                .build(),
+                            actor));
+        assertTrue(error.getMessage().contains(field));
+      }
+      // Refused before the patch is applied, so whether a guess matches a linked asset is not told.
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              fixture
+                  .repository()
+                  .authorizePatch(
+                      metric,
+                      Json.createPatchBuilder().test("/assets/0/name", "guess").build(),
+                      actor));
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .repository()
+                  .authorizePatch(
+                      metric,
+                      Json.createPatchBuilder().replace("/description", "updated").build(),
+                      actor));
+    }
+  }
+
+  @Test
+  void aPatchToChildrenIsRefusedForTheAdminAccountToo() {
+    final Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue");
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      // REST and MCP record admin as a system actor; the refusal is about the patch, not the
+      // caller.
+      final IllegalArgumentException refused =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  fixture
+                      .repository()
+                      .previewPatch(
+                          metric,
+                          Json.createPatchBuilder()
+                              .add("/children", Json.createArrayBuilder().build())
+                              .build(),
+                          ChangeActor.recorded("admin", null)));
+      assertTrue(refused.getMessage().contains("children"), refused.getMessage());
+    }
+  }
+
+  @Test
+  void metricPatchRejectsReadingARelationIntoAnotherFieldOrATest() {
+    final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      final MetricRepository repository = fixture.repository();
+      for (final String from :
+          List.of(
+              "/parent/description",
+              "/metricGroup/name",
+              "/relatedMetrics/0/description",
+              "/children/0/name",
+              "")) {
+        final JsonPatch copy = Json.createPatchBuilder().copy("/description", from).build();
+        final JsonPatch move = Json.createPatchBuilder().move("/displayName", from).build();
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, copy, actor),
+            from);
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, move, actor),
+            from);
+      }
+      for (final String path :
+          List.of("", "/parent/name", "/metricGroup", "/relatedMetrics/0/name")) {
+        final JsonPatch test =
+            Json.createPatchBuilder().test(path, "guess").add("/description", "x").build();
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, test, actor),
+            path);
+      }
+      // JSON-P matches an op name ignoring case, so an upper-case test is still a test.
+      final JsonPatch upperCaseTest =
+          Json.createPatch(
+              Json.createArrayBuilder()
+                  .add(
+                      Json.createObjectBuilder()
+                          .add("op", "TEST")
+                          .add("path", "/parent/name")
+                          .add("value", "guess"))
+                  .build());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> repository.authorizePatch(metric, upperCaseTest, actor));
+      // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
+      // pass.
+      repository.authorizePatch(
+          metric,
+          Json.createPatchBuilder().move("/relatedMetrics/0", "/relatedMetrics/1").build(),
+          actor);
+      repository.authorizePatch(
+          metric, Json.createPatchBuilder().copy("/displayName", "/description").build(), actor);
+    }
+  }
+
+  @Test
+  void asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit() throws Exception {
+    final EntityReference group =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withFullyQualifiedName("finance");
+    final Metric created =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue")
+            .withMetricGroup(group);
+    final Authorizer authorizer = mock(Authorizer.class);
+    final AtomicReference<String> checkedAs = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              checkedAs.set(ImpersonationContext.getImpersonatedBy());
+              throw new AuthorizationException("denied");
+            })
+        .when(authorizer)
+        .authorizeActor(
+            any(), any(), argThat(resource -> Entity.METRIC_GROUP.equals(resource.getResource())));
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      // Set statically, not mocked: the job runs on a pool thread a static mock does not reach.
+      Entity.setAuthorizer(authorizer);
+      Entity.registerEntity(
+          MetricGroup.class, Entity.METRIC_GROUP, mock(MetricGroupRepository.class));
+      withNoApprovalRules();
+      ImpersonationContext.setImpersonatedBy("ingestion-bot");
+
+      final BulkOperationResult result =
+          fixture
+              .repository()
+              .submitAsyncBulkOperation(
+                  null, List.of(created), "alice", new HashMap<>(), false, new ArrayList<>(), 1)
+              .get(30, TimeUnit.SECONDS);
+
+      // The refused create fails alone, before anything is stored, and isImpersonated() on the
+      // job thread still sees the request's impersonation.
+      assertEquals(0, result.getNumberOfRowsPassed());
+      assertEquals(
+          403,
+          result.getFailedRequest().getFirst().getStatus(),
+          result.getFailedRequest().getFirst().getMessage());
+      assertEquals("ingestion-bot", checkedAs.get());
+      verify(fixture.metricDAO(), never()).insertMany(anyList());
+    } finally {
+      ImpersonationContext.clear();
+      GovernanceApprovalRegistry.invalidate();
+    }
+  }
+
+  // A bulk PUT reads the approval rules even with nothing to update.
+  @SuppressWarnings("unchecked")
+  private static void withNoApprovalRules() {
+    final GovernanceDAOs.ChangeRequestDAO changeRequests =
+        mock(GovernanceDAOs.ChangeRequestDAO.class);
+    when(Entity.getCollectionDAO().changeRequestDAO()).thenReturn(changeRequests);
+    when(changeRequests.workflowDefinitionEpoch()).thenReturn("none");
+    final EntityRepository<WorkflowDefinition> workflows = mock(EntityRepository.class);
+    when(workflows.listAll(any(), any())).thenReturn(List.of());
+    Entity.registerEntity(WorkflowDefinition.class, Entity.WORKFLOW_DEFINITION, workflows);
+    GovernanceApprovalRegistry.invalidate();
+  }
+
+  @Test
+  void platformWideExportAppliesViewPermissionsAndDomainIsolation() throws IOException {
+    Metric own = exportedMetric("campaign_clicks", "Marketing", "Clicks per campaign");
+    Metric foreign =
+        exportedMetric(
+            "ceo_bonus_pool", "Finance", "Bonus pool of the executive board, 4.2M in FY26");
+    Metric denied = exportedMetric("restricted_campaign", "Marketing", "Restricted campaign");
+    SubjectContext erin = domainRestrictedSubject("Marketing");
+    SubjectContext admin = adminSubject();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      MetricRepository repository = Mockito.spy(fixture.repository());
+      Authorizer authorizer = mockAuthorizer(entity);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      Mockito.doReturn(List.of(own, foreign, denied))
+          .when(repository)
+          .get(any(), anyList(), any(Fields.class), eq(Include.ALL));
+      doThrow(new AuthorizationException("ViewAll denied"))
+          .when(authorizer)
+          .authorizeActor(
+              any(), any(), argThat(context -> denied.getId().equals(context.getEntity().getId())));
+      Mockito.doReturn(List.of(own, foreign, denied))
+          .when(repository)
+          .listAll(any(Fields.class), any(ListFilter.class));
+      subjectContext.when(() -> SubjectContext.getSubjectContext("erin")).thenReturn(erin);
+      subjectContext.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(admin);
+
+      String restrictedCsv = repository.exportToCsv("*", "erin", false);
+      assertTrue(restrictedCsv.contains("campaign_clicks"));
+      assertFalse(
+          restrictedCsv.contains("ceo_bonus_pool"),
+          "a domain-confined subject must not see other domains' metrics in the export");
+      assertFalse(restrictedCsv.contains("Bonus pool of the executive board"));
+      assertFalse(restrictedCsv.contains("restricted_campaign"));
+
+      String adminCsv = repository.exportToCsv("*", "admin", false);
+      assertTrue(adminCsv.contains("campaign_clicks"));
+      assertTrue(adminCsv.contains("ceo_bonus_pool"));
+      assertTrue(adminCsv.contains("restricted_campaign"));
+      assertTrue(adminCsv.contains("Bonus pool of the executive board, 4.2M in FY26"));
+    }
+  }
+
+  @Test
+  void platformWideExportKeepsEveryRowForASubjectWithoutTheDomainRole() throws IOException {
+    Metric metric = exportedMetric("campaign_clicks", "Marketing", "Clicks per campaign");
+    SubjectContext plain = unrestrictedSubject();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      MetricRepository repository = Mockito.spy(fixture.repository());
+      mockAuthorizer(entity);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      Mockito.doReturn(List.of(metric))
+          .when(repository)
+          .get(any(), anyList(), any(Fields.class), eq(Include.ALL));
+      Mockito.doReturn(List.of(metric))
+          .when(repository)
+          .listAll(any(Fields.class), any(ListFilter.class));
+      subjectContext.when(() -> SubjectContext.getSubjectContext("plain")).thenReturn(plain);
+
+      String csv = repository.exportToCsv("*", "plain", false);
+
+      assertTrue(csv.contains("campaign_clicks"));
+      assertTrue(csv.contains("Clicks per campaign"));
+    }
+  }
+
+  @Test
+  void adminImportSkipsHierarchyAuthorizationAndLookups() {
+    SubjectContext admin = adminSubject();
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      subjects.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(admin);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenThrow(new AssertionError("An admin row must not load hierarchy authorization data"));
+      assertDoesNotThrow(
+          () ->
+              new MetricRepository.MetricCsv("admin")
+                  .authorizeRow(
+                      new Metric().withId(UUID.randomUUID()),
+                      new Metric().withParent(new EntityReference())));
+    }
+  }
+
+  @Test
+  void importRowDefersToTheConfiguredAuthorizer() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      MetricRepository repository = mock(MetricRepository.class);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      entity.when(Entity::getAuthorizer).thenReturn(new NoopAuthorizer());
+      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank");
+      stubStoredHierarchy(repository, stored);
+      EntityReference parent =
+          new EntityReference()
+              .withId(UUID.randomUUID())
+              .withType(Entity.METRIC)
+              .withFullyQualifiedName("revenue");
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.METRIC, "revenue", "metricGroup", Include.NON_DELETED))
+          .thenReturn(
+              new Metric()
+                  .withId(parent.getId())
+                  .withName("revenue")
+                  .withFullyQualifiedName("revenue"));
+
+      assertDoesNotThrow(
+          () ->
+              nonAdminMetricCsv("anonymous")
+                  .authorizeRow(stored, new Metric().withName("m_hank").withParent(parent)));
+      assertDoesNotThrow(
+          () ->
+              nonAdminMetricCsv("anonymous")
+                  .authorizeRow(null, new Metric().withName("new_metric")));
+    }
+  }
+
+  private MetricRepository.MetricCsv nonAdminMetricCsv(String user) {
+    return new MetricRepository.MetricCsv(user) {
+      @Override
+      protected boolean checksRowWrites() {
+        return true;
+      }
+    };
+  }
+
+  private static Authorizer mockAuthorizer(MockedStatic<Entity> entity) {
+    Authorizer authorizer = mock(Authorizer.class);
+    entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+    return authorizer;
+  }
+
+  private void stubStoredHierarchy(MetricRepository repository, Metric stored) {
+    // getFields on the mock returns null, so match the fields argument with the null-tolerant any()
+    when(repository.get(any(), eq(stored.getId()), any(), any(Include.class), anyBoolean()))
+        .thenReturn(stored);
+  }
+
+  private Metric exportedMetric(String name, String domain, String description) {
+    return new Metric()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withDescription(description)
+        .withDomains(List.of(domainRef(domain)));
+  }
+
+  /**
+   * A subject narrowed to {@code visibleDomains}: the role predicate a real DomainOnlyAccessRole
+   * subject answers true to and the domain hierarchy check answered from the given FQNs. Built as
+   * a mock because the static SubjectContext mock in these tests also intercepts the private
+   * static role lookup a real subject would use.
+   */
+  private SubjectContext domainRestrictedSubject(String... visibleDomains) {
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.isAdmin()).thenReturn(false);
+    when(subject.hasDomainOnlyAccessRole()).thenReturn(true);
+    when(subject.hasDomains(any()))
+        .thenAnswer(invocation -> hasAnyDomain(invocation.getArgument(0), visibleDomains));
+    return subject;
+  }
+
+  private SubjectContext unrestrictedSubject() {
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.isAdmin()).thenReturn(false);
+    when(subject.hasDomainOnlyAccessRole()).thenReturn(false);
+    return subject;
+  }
+
+  private SubjectContext adminSubject() {
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.isAdmin()).thenReturn(true);
+    return subject;
+  }
+
+  private boolean hasAnyDomain(List<EntityReference> domains, String... visibleDomains) {
+    return domains != null
+        && domains.stream()
+            .anyMatch(domain -> List.of(visibleDomains).contains(domain.getFullyQualifiedName()));
+  }
+
+  private static EntityReference domainRef(String fqn) {
+    return new EntityReference().withFullyQualifiedName(fqn).withType(Entity.DOMAIN);
+  }
+
+  @Test
+  void aReindexReadKeepsEveryInputOfTheMetricEmbeddingFingerprint() {
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      Metric written =
+          metric(UUID.randomUUID(), UUID.randomUUID())
+              .withRelatedMetrics(
+                  List.of(
+                      new EntityReference()
+                          .withId(UUID.randomUUID())
+                          .withType(Entity.METRIC)
+                          .withName("cost")
+                          .withFullyQualifiedName("cost")));
+      Metric reindexed = JsonUtils.deepCopy(written, Metric.class);
+
+      fixture
+          .repository()
+          .clearFields(
+              reindexed, new Fields(new MetricIndex(reindexed).getRequiredReindexFields()));
+
+      assertEquals(
+          VectorDocBuilder.computeFingerprintForEntity(written),
+          VectorDocBuilder.computeFingerprintForEntity(reindexed));
     }
   }
 

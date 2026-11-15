@@ -39,6 +39,13 @@ public final class FusekiTestImage {
 
   public static final String IMAGE_PROPERTY = "rdfContainerImage";
   public static final int PORT = 3030;
+
+  /**
+   * Fuseki's liveness endpoint as Fuseki itself reaches it from inside its container. A SERVICE
+   * clause aimed here is one Fuseki can always execute, so a test sees a request Fuseki would make.
+   */
+  public static final String SELF_PING_URL = "http://localhost:" + PORT + "/$/ping";
+
   public static final String ADMIN_USER = "admin";
   public static final String ADMIN_PASSWORD = "test-admin";
 

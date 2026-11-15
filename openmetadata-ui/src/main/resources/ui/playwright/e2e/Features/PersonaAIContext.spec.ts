@@ -47,6 +47,19 @@ const CREATED_RULE_ID = '44444444-4444-4444-8444-444444444444';
 const comboboxField = (scope: Page | Locator, testId: string): Locator =>
   scope.getByTestId(testId);
 
+const exploreQuickFilter = async (link: Locator): Promise<unknown> => {
+  const href = await link.getAttribute('href');
+  const filter = new URL(href ?? '', 'http://localhost').searchParams.get(
+    'quickFilter'
+  );
+
+  return filter ? JSON.parse(filter) : undefined;
+};
+
+const entityTypeQuickFilter = (entityType: EntityType) => ({
+  query: { bool: { must: [{ bool: { should: [{ term: { entityType } }] } }] } },
+});
+
 // Reusable rule fixture for tests that only need a visible rule card to exist
 // (cache-state tests, edit-discard test). Keeps the inline mock objects DRY.
 const PROBE_RULE: ContextRule = {
@@ -1084,7 +1097,7 @@ test.describe.serial('Persona AI Context', () => {
     });
   });
 
-  test('links View in Explore to the entity-type explore tab', async ({
+  test('links View in Explore with an explicit entity-type filter', async ({
     adminPage,
   }) => {
     await mockPersonaContextApi(
@@ -1099,7 +1112,14 @@ test.describe.serial('Persona AI Context', () => {
 
     await expect(
       adminPage.getByRole('link', { name: 'View in Explore' })
-    ).toHaveAttribute('href', /\/explore\/tables/);
+    ).toHaveAttribute('href', /\/explore\/\?/);
+    await expect
+      .poll(() =>
+        exploreQuickFilter(
+          adminPage.getByRole('link', { name: 'View in Explore' })
+        )
+      )
+      .toEqual(entityTypeQuickFilter(EntityType.TABLE));
   });
 
   test('shows the empty version history state', async ({ adminPage }) => {
@@ -1519,9 +1539,6 @@ test.describe.serial('Persona AI Context', () => {
     ).toBeVisible();
   });
 
-  // SearchClassBase maps GLOSSARY_TERM → glossary_term_search_index → path
-  // ExplorePageTabs.GLOSSARY = 'glossaries', so the href must contain
-  // /explore/glossaries when Glossary Term is the selected entity type.
   test('View in Explore link href reflects the selected entity type', async ({
     adminPage,
   }) => {
@@ -1536,20 +1553,18 @@ test.describe.serial('Persona AI Context', () => {
     const exploreLink = adminPage.getByRole('link', {
       name: 'View in Explore',
     });
-    // Default entity type is Table.
-    await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
+    await expect
+      .poll(() => exploreQuickFilter(exploreLink))
+      .toEqual(entityTypeQuickFilter(EntityType.TABLE));
 
-    // Switch to Glossary Term — href must change to the glossaries tab.
-    // react-aria can close the listbox mid-click and detach the option, dropping
-    // the selection so the entity type never changes and the href stays on
-    // /explore/tables — the source of this test's flakiness. selectOptionWithRetry
-    // re-resolves the trigger's expanded state and reopens the popover before
-    // retrying the option click.
+    // The core select can detach its option mid-click; retry through the expanded trigger.
     await selectOptionWithRetry(
       adminPage.getByTestId('context-rule-entity-type'),
       adminPage.getByRole('listbox').getByText('Glossary Term', { exact: true })
     );
-    await expect(exploreLink).toHaveAttribute('href', /\/explore\/glossaries/);
+    await expect
+      .poll(() => exploreQuickFilter(exploreLink))
+      .toEqual(entityTypeQuickFilter(EntityType.GLOSSARY_TERM));
 
     await adminPage.keyboard.press('Escape');
   });

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
+import type { ReleaseDisplayStatus } from './OntologyReleasePanel.utils';
 
 export const RELEASE_STAGE_LABELS: Record<Stage, string> = {
   [Stage.Draft]: 'label.draft',
-  [Stage.InReview]: 'label.in-review',
+  [Stage.InReview]: 'label.ontology-in-review',
   [Stage.ChangesRequested]: 'label.changes-requested',
   [Stage.Approved]: 'label.approved',
   [Stage.Published]: 'label.published',
@@ -28,3 +29,24 @@ export const RELEASE_STAGE_COLORS: Record<Stage, 'success' | 'error' | 'gray'> =
     [Stage.Approved]: 'success',
     [Stage.Published]: 'success',
   };
+
+type ReleaseBadgeColor = 'success' | 'gray' | 'blue' | 'error';
+
+export const RELEASE_DISPLAY_STATUS: Record<
+  ReleaseDisplayStatus,
+  { label: string; color: ReleaseBadgeColor }
+> = {
+  active: { label: 'label.active', color: 'success' },
+  superseded: { label: 'label.superseded', color: 'gray' },
+  approved: { label: 'label.approved', color: 'success' },
+  inReview: { label: 'label.ontology-in-review', color: 'blue' },
+  rejected: { label: 'label.rejected', color: 'error' },
+  withdrawn: { label: 'label.withdrawn', color: 'gray' },
+  draft: { label: 'label.draft', color: 'gray' },
+};
+
+/**
+ * Rows each change card shows before Load more.
+ * ADR:2026-11-14-review-and-publish-change-cards-reveal-thirty-rows-at-a-time
+ */
+export const CHANGE_ROWS_PAGE_SIZE = 30;

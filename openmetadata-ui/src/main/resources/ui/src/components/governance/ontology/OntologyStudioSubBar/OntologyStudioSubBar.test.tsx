@@ -37,28 +37,21 @@ const renderSubBar = (onSurfaceChange = jest.fn()) =>
   );
 
 describe('OntologyStudioSubBar', () => {
-  afterEach(() => {
-    (useIsAiMode as jest.Mock).mockReturnValue(false);
-  });
+  it.each([false, true])(
+    'names the bar by its caption without printing it and keeps surfaces, children and trailing content (AI mode: %s)',
+    (isAiMode) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+      const onSurfaceChange = jest.fn();
+      renderSubBar(onSurfaceChange);
 
-  it('shows the visible caption in classic mode', () => {
-    renderSubBar();
+      expect(screen.queryByText('Explore')).not.toBeInTheDocument();
+      expect(screen.getByRole('navigation', { name: 'Explore' })).toBeVisible();
+      expect(screen.getByTestId('subbar-search')).toBeInTheDocument();
+      expect(screen.getByTestId('subbar-stats')).toBeInTheDocument();
 
-    expect(screen.getByText('Explore')).toBeInTheDocument();
-  });
+      fireEvent.click(screen.getByTestId('submode-tab-tree'));
 
-  it('keeps surfaces, children and trailing content in AI mode', () => {
-    (useIsAiMode as jest.Mock).mockReturnValue(true);
-    const onSurfaceChange = jest.fn();
-    renderSubBar(onSurfaceChange);
-
-    expect(screen.queryByText('Explore')).not.toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Explore' })).toBeVisible();
-    expect(screen.getByTestId('subbar-search')).toBeInTheDocument();
-    expect(screen.getByTestId('subbar-stats')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('submode-tab-tree'));
-
-    expect(onSurfaceChange).toHaveBeenCalledWith('tree');
-  });
+      expect(onSurfaceChange).toHaveBeenCalledWith('tree');
+    }
+  );
 });

@@ -295,10 +295,11 @@ class AlertsClassBase {
     setInlineAlertDetails,
     currentUser,
   }: HandleAlertSaveProps) {
+    const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
     try {
       let alertDetails;
 
-      if (fqn && !isUndefined(initialData)) {
+      if (action === 'update' && initialData) {
         const newAlertData: EventSubscription = this.getAlertUpdateData(
           data,
           initialData
@@ -320,7 +321,6 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
-      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
         t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
@@ -335,7 +335,7 @@ class AlertsClassBase {
         entityLowercasePlural: t('label.alert-lowercase-plural'),
         setInlineAlertDetails,
         name: data.name,
-        defaultErrorType: 'create',
+        defaultErrorType: action,
       });
     }
   }

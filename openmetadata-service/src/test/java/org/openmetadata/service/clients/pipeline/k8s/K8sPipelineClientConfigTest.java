@@ -206,6 +206,19 @@ class K8sPipelineClientConfigTest {
   }
 
   @Test
+  void testPodLabelsParser() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("podLabels", "app.kubernetes.io/instance=argocd-app,team=data");
+
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+
+    assertEquals(2, config.getPodLabels().size());
+    assertEquals("argocd-app", config.getPodLabels().get("app.kubernetes.io/instance"));
+    assertEquals("data", config.getPodLabels().get("team"));
+    assertTrue(new K8sPipelineClientConfig(new HashMap<>()).getPodLabels().isEmpty());
+  }
+
+  @Test
   void testValidationWithInvalidNamespace() {
     Map<String, Object> params = new HashMap<>();
     params.put("namespace", "INVALID-NAMESPACE");

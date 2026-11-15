@@ -14,8 +14,8 @@
 import athena from '../assets/img/service-icon-athena.webp';
 import azuresql from '../assets/img/service-icon-azuresql.webp';
 import bigtable from '../assets/img/service-icon-bigtable.webp';
-import burstiq from '../assets/img/service-icon-burstiq.webp';
-import cassandra from '../assets/img/service-icon-cassandra.webp';
+import burstiq from '../assets/img/service-icon-burstiq.svg';
+import cassandra from '../assets/img/service-icon-cassandra.svg';
 import clickhouse from '../assets/img/service-icon-clickhouse.webp';
 import clickzetta from '../assets/img/service-icon-clickzetta.svg';
 import cockroach from '../assets/img/service-icon-cockroach.webp';
@@ -34,9 +34,9 @@ import hive from '../assets/img/service-icon-hive.webp';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.webp';
 import impala from '../assets/img/service-icon-impala.webp';
 import iomete from '../assets/img/service-icon-iomete.webp';
-import mariadb from '../assets/img/service-icon-mariadb.webp';
+import mariadb from '../assets/img/service-icon-mariadb.svg';
 import mongodb from '../assets/img/service-icon-mongodb.webp';
-import mssql from '../assets/img/service-icon-mssql.webp';
+import mssql from '../assets/img/service-icon-mssql.svg';
 import neo4j from '../assets/img/service-icon-neo4j.svg';
 import oracle from '../assets/img/service-icon-oracle.webp';
 import pinot from '../assets/img/service-icon-pinot.webp';
@@ -54,21 +54,21 @@ import snowflake from '../assets/img/service-icon-snowflakes.webp';
 import mysql from '../assets/img/service-icon-sql.webp';
 import sqlite from '../assets/img/service-icon-sqlite.webp';
 import starrocks from '../assets/img/service-icon-starrocks.webp';
-import timescale from '../assets/img/service-icon-timescale.webp';
+import timescale from '../assets/img/service-icon-timescale.svg';
 import trino from '../assets/img/service-icon-trino.webp';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.webp';
 import teradata from '../assets/svg/teradata.svg';
 
 // Messaging services
-import kafka from '../assets/img/service-icon-kafka.webp';
+import kafka from '../assets/img/service-icon-kafka.svg';
 import kinesis from '../assets/img/service-icon-kinesis.webp';
 import nats from '../assets/img/service-icon-nats.png';
 import redpanda from '../assets/img/service-icon-redpanda.webp';
 import pubsub from '../assets/svg/service-icon-pubsub.svg';
 
 // Dashboard services
-import domo from '../assets/img/service-icon-domo.webp';
+import domo from '../assets/img/service-icon-domo.svg';
 import grafana from '../assets/img/service-icon-grafana.webp';
 import lightdash from '../assets/img/service-icon-lightdash.webp';
 import looker from '../assets/img/service-icon-looker.webp';
@@ -76,15 +76,14 @@ import metabase from '../assets/img/service-icon-metabase.webp';
 import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.webp';
 import omni from '../assets/img/service-icon-omni.webp';
-import powerbi from '../assets/img/service-icon-power-bi.webp';
+import powerbi from '../assets/img/service-icon-power-bi.svg';
 import qliksense from '../assets/img/service-icon-qlik-sense.webp';
 import quicksight from '../assets/img/service-icon-quicksight.webp';
 import redash from '../assets/img/service-icon-redash.webp';
-import sigma from '../assets/img/service-icon-sigma.webp';
-import ssrs from '../assets/img/service-icon-ssrs.webp';
+import sigma from '../assets/img/service-icon-sigma.svg';
+import ssrs from '../assets/img/service-icon-ssrs.svg';
 import superset from '../assets/img/service-icon-superset.webp';
 import tableau from '../assets/img/service-icon-tableau.webp';
-import hex from '../assets/svg/service-icon-hex.svg';
 import rill from '../assets/svg/service-icon-rill.svg';
 
 // Pipeline services
@@ -123,6 +122,8 @@ import googledrive from '../assets/svg/service-icon-google-drive.svg';
 import sftp from '../assets/svg/service-icon-sftp.svg';
 
 // Default icons
+import drivedefault from '../assets/img/service-icon-drive-default.svg';
+import securitydefault from '../assets/img/service-icon-security-default.svg';
 import synapse from '../assets/img/service-icon-synapse.webp';
 import dashboarddefault from '../assets/svg/dashboard.svg';
 import defaultservice from '../assets/svg/default-service-icon.svg';
@@ -131,11 +132,9 @@ import customdrivedefault from '../assets/svg/ic-custom-drive.svg';
 import mlmodeldefault from '../assets/svg/ic-custom-model.svg';
 import searchdefault from '../assets/svg/ic-custom-search.svg';
 import storagedefault from '../assets/svg/ic-custom-storage.svg';
-import drivedefault from '../assets/svg/ic-drive-service.svg';
 import restservice from '../assets/svg/ic-service-rest-api.svg';
 import openMetadataLogo from '../assets/svg/logo-monogram.svg';
 import pipelinedefault from '../assets/svg/pipeline.svg';
-import securitydefault from '../assets/svg/security-safe.svg';
 import topicdefault from '../assets/svg/topic.svg';
 import brandClassBase from './BrandData/BrandClassBase';
 
@@ -218,7 +217,6 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   lightdash: lightdash,
   microstrategy: microstrategy,
   grafana: grafana,
-  hex: hex,
   rill: rill,
   ssrs: ssrs,
   customdashboard: dashboarddefault,
@@ -306,11 +304,6 @@ export const getServiceIcon = (iconKey: string): string => {
   return icon;
 };
 
-// These connector assets are monochrome dark artwork. Inverting only those
-// assets preserves the colors of branded logos and leaves light mode unchanged.
-export const getServiceLogoThemeClass = (serviceType = '') =>
-  ['powerbi', 'kafka', 'kafkaconnect'].includes(
-    serviceType.toLowerCase().replaceAll(/[_-]/g, '')
-  )
-    ? 'tw:dark:brightness-0 tw:dark:invert'
-    : '';
+// No connector logo needs a dark-mode invert any more: Kafka and Power BI, the only monochrome
+// dark artwork, were redrawn to read on both themes. Kept so existing callers stay unchanged.
+export const getServiceLogoThemeClass = (_serviceType?: string): string => '';

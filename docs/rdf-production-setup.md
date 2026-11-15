@@ -10,6 +10,35 @@ full rebuild required to replace legacy lineage and extension triples when upgra
 The [catalog scale harness](rdf-scale-validation.md) measures full rebuilds, serving queries,
 resource peaks, cancellation, and restart persistence against a specified catalog size.
 
+## Size local ontology queries separately
+
+Glossary and native ontology SPARQL queries run in a disposable JVM on the OpenMetadata server,
+including when RDF storage is disabled. Each server admits one such query at a time. Concurrent
+requests wait fairly for up to five seconds within their request deadline. Saturation returns
+HTTP 429 with `Retry-After: 1`; an expired request deadline returns HTTP 503. The existing global
+and per-principal admission limits still apply. Queries exceeding their memory or response budget
+receive HTTP 400. The deadline includes admission wait, worker startup and input transfer.
+Smaller queries pay JVM startup latency on each request.
+
+Reserve additional container memory for the worker, beyond the server's heap and existing native
+memory allowance. The worker heap is 64 MiB plus 24 times the serialized input length, rounded up
+to MiB and capped at 256 MiB. Its other JVM caps are 64 MiB metaspace, 32 MiB code cache and 16 MiB
+direct buffers. These caps total at most 368 MiB, but do not bound the worker's total RSS. Measure
+the worker's peak RSS under your workload and leave headroom for stacks, native allocations and file cache.
+A container limit equal to the server's `-Xmx` cannot accommodate this worker. The query JVM
+protects the server heap, but the container's OOM killer can still terminate the server if the
+container is undersized.
+
+Keep the server's Java executable available and its temporary directory writable. Each request
+uses private temporary files capped at 32 MiB of input, 10 MiB of output and 4 KiB of status.
+The input cap bounds transport, not the size of every graph that can fit in memory. If parsing
+exhausts the worker heap, HTTP 400 identifies the ontology as too large to load. Query evaluation
+or inference can independently exhaust the execution budget, even for a smaller input.
+The server deletes them when the request ends and terminates the worker on timeout or cancellation.
+Source-model materialization still occurs in the server, so catalogs already too large to
+materialize need separate sizing. See
+[the worker execution decision](decisions/2026-11-04-ontology-sparql-runs-in-a-bounded-worker.md).
+
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
@@ -221,7 +250,15 @@ Throughput therefore depends on the number and size of write transactions:
 
 The image includes a Graph Store extension (`OPENMETADATA_EXTENSION_ENABLED=true`). Its defaults
 are 50 seconds per upload, 64 MiB decompressed per request, and 16 simultaneous receivers. Override
-the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`.
+the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`. An
+activated native ontology release reaches Fuseki in RDF-Thrift chunks of at most
+`RDF_GRAPH_REPLACE_CHUNK_BYTES` (default 16 MiB). A graph larger than one chunk is staged in
+`https://open-metadata.org/graph/staging/...` graphs and copied into place by one SPARQL update, so
+keep the upload limit at or above the chunk size and the update deadline above the time that
+update takes (about 5 s for a 62 MB graph). The copy holds every triple of the graph in Fuseki's
+heap: a 512 MiB heap failed on 1.78 million triples, and a graph near the 256 MiB activation limit
+needs at least 1,500 MiB. The server refuses to activate a release whose graph exceeds
+256 MiB; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
 Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
 used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
 read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
@@ -248,6 +285,7 @@ Start with the defaults and tune one setting at a time:
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | `50` | Detailed lineage edges per update. |
 | `RDF_MAX_UPDATE_PAYLOAD_BYTES` | `4194304` | Approximate serialized-size cap per reconciling bulk write; oversized chunks split automatically. |
 | `RDF_MAX_APPEND_PAYLOAD_BYTES` | `16777216` | Serialized-size cap per insert-only append. |
+| `RDF_GRAPH_REPLACE_CHUNK_BYTES` | `16777216` | Estimated RDF-Thrift size per request when an ontology graph is replaced; at most 64 MiB. |
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` | Entity models per insert-only append. |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` | Stream appends as RDF Thrift instead of materializing a combined model. |
 | `RDF_GZIP_REQUESTS` | `false` | Gzip streamed append bodies (never deflate). |
@@ -422,6 +460,21 @@ hundred kilobytes, so a nightly ingestion that changes tens of thousands of enti
 gigabytes. Only compaction returns that space, and it needs free space about the size of the live
 data to copy it into.
 
+Live entity writes therefore send only what changed. The writer reads what Fuseki holds for the
+entity, deletes the triples the new projection no longer has and inserts the ones it adds; an update
+that changes nothing in the projection, such as an ingestion re-sending unchanged metadata, sends no
+write at all and leaves inference results valid. After sending a difference the writer reads the
+projection back; if a write queued ahead of it in Fuseki, such as a request OpenMetadata stopped
+waiting for, committed in between, it replaces the projection whole. Two other cases replace it
+whole too: an entity stored before list cells had stable names, once; and a change larger than the
+projection, such as a rename. Reindexing and journal replay are unchanged. Triples earlier releases
+left behind, such as list cells no entity points to any more, stay until a successful
+`recreateIndex: true` run rebuilds the graph
+(ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples). Watch
+`rdf.fuseki.entity.writes` by `outcome` (`unchanged`, `changed_triples`, `replaced`, `corrected`)
+and `rdf.fuseki.payload.bytes{operation=storeEntity}` to see what live writes cost; `corrected`
+counts writes another write interfered with, which only happens while Fuseki is timing out.
+
 OpenMetadata compacts the serving dataset itself:
 
 - **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
@@ -497,6 +550,7 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | `50` |
 | `RDF_MAX_UPDATE_PAYLOAD_BYTES` | `4194304` |
 | `RDF_MAX_APPEND_PAYLOAD_BYTES` | `16777216` |
+| `RDF_GRAPH_REPLACE_CHUNK_BYTES` | `16777216` |
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` |
 | `RDF_GZIP_REQUESTS` | `false` |
@@ -629,6 +683,16 @@ OM_TOKEN=<admin-or-bot-jwt> ./scripts/rdf-reindex-benchmark.sh
 # mixes them in rather than generating uniformly narrow ones.
 OM_TOKEN=<jwt> SEED_TABLES=100000 SEED_WIDE_EVERY=100 SEED_WIDE_COLUMNS=500 \
   ./scripts/rdf-reindex-benchmark.sh
+
+# Compare what live updates of wide tables cost when each write replaces the projection
+# and when it sends only the difference: dataset growth per write, update requests,
+# payload and write outcomes, for unchanged, one-tag and description updates. Point it
+# at an idle openmetadata/fuseki dataset; it clears the knowledge graph and compacts.
+# It reads the dataset directory's size with `du` in FUSEKI_CONTAINER (or set
+# DISK_USAGE_COMMAND to any command that prints the size in KB).
+FUSEKI_ENDPOINT=http://localhost:3030/openmetadata FUSEKI_PASSWORD=<admin> \
+  FUSEKI_CONTAINER=<fuseki container> \
+  TABLES=200 COLUMNS=300 ROUNDS=5 bash ./scripts/rdf-live-update-benchmark.sh
 ```
 
 Measure before tuning: the defaults in this document are sized for a co-located

@@ -12,12 +12,12 @@
  */
 
 import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
+import { CollapsePanel } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { emitIntent } from '../useIntent';
 import { resolveActiveSubNavKey, SubNavConfig, SubNavItem } from './navConfig';
@@ -93,7 +93,7 @@ const SubPanel: React.FC<SubPanelProps> = ({
         </span>
         <ButtonUtility
           data-testid="ask-sub-panel-collapse-btn"
-          icon={CollapsePanelIcon}
+          icon={CollapsePanel}
           size="lg"
           tooltip={t('label.collapse')}
           type="button"

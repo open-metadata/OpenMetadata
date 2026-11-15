@@ -108,6 +108,7 @@ const Searchbar = ({
       data-testid="search-bar-container">
       {label !== '' && <span>{label}</span>}
       <Input
+        autoComplete="off"
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         icon={Search as any}
         inputClassName={inputClassName}

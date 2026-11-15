@@ -783,11 +783,6 @@
       "count": 1
     }
   },
-  "src/components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 5
-    }
-  },
   "src/components/Alerts/ClassicAlertRuleSection.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 2

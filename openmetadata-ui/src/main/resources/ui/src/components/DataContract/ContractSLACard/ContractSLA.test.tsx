@@ -28,6 +28,13 @@ import ContractSLA from './ContractSLA.component';
 
 // LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
 // requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  TotalOccurrences: ({ className }: { className?: string }) => (
+    <svg className={className} data-testid="check-icon" />
+  ),
+}));
+
 jest.mock('../../../utils/i18next/LocalUtilClassBase');
 
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
@@ -51,11 +58,6 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
 }));
 
 // Every SVG import maps to one mocked module, so this mock stands in for all icons.
-jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
-  ReactComponent: ({ className }: { className?: string }) => (
-    <svg className={className} data-testid="check-icon" />
-  ),
-}));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),

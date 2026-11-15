@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { placeNewClass } from '../../governance/ontology/OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import { LayoutEngine } from '../OntologyExplorer.constants';
 import type { OntologyNode } from '../OntologyExplorer.interface';
@@ -33,12 +33,14 @@ interface FakeGraph {
   updateNodeData: jest.Mock;
   zoomTo: jest.Mock;
   translateTo: jest.Mock;
+  fitView: jest.Mock;
   nodes: Required<FakeNode>[];
   edges: FakeEdge[];
   listeners: Record<string, Array<(event: unknown) => void>>;
 }
 
 const mockGraphs: FakeGraph[] = [];
+let mockViewportShift = 0;
 
 jest.mock('@antv/g6', () => {
   const graphEvents = {
@@ -73,6 +75,7 @@ jest.mock('@antv/g6', () => {
           ),
           zoomTo: jest.fn(() => Promise.resolve()),
           translateTo: jest.fn(() => Promise.resolve()),
+          fitView: jest.fn(() => Promise.resolve()),
           nodes,
           edges,
           listeners: {},
@@ -97,6 +100,11 @@ jest.mock('@antv/g6', () => {
 
                 return [style?.x, style?.y];
               },
+              getViewportByCanvas: (point: number[]) => point,
+              getClientByCanvas: (point: number[]) => [
+                point[0] + mockViewportShift,
+                point[1],
+              ],
               getZoom: () => 1,
               getCanvasCenter: () => [0, 0],
               on: (name: string, listener: (event: unknown) => void) => {
@@ -186,8 +194,13 @@ const withCreatedClass = (
 const containerRef = {
   current: Object.assign(document.createElement('div'), {}),
 };
-Object.defineProperty(containerRef.current, 'offsetWidth', { value: 1200 });
-Object.defineProperty(containerRef.current, 'offsetHeight', { value: 800 });
+const containerSize = { height: 800, width: 1200 };
+Object.defineProperty(containerRef.current, 'offsetWidth', {
+  get: () => containerSize.width,
+});
+Object.defineProperty(containerRef.current, 'offsetHeight', {
+  get: () => containerSize.height,
+});
 
 interface Handlers {
   onNodeClick: jest.Mock;
@@ -236,8 +249,13 @@ const renderSettledCanvas = async () => {
   return rendered;
 };
 
+const resizeCallbacks: Array<() => void> = [];
+
 beforeAll(() => {
   global.ResizeObserver = class {
+    constructor(callback: () => void) {
+      resizeCallbacks.push(callback);
+    }
     observe = jest.fn();
     disconnect = jest.fn();
     unobserve = jest.fn();
@@ -246,6 +264,10 @@ beforeAll(() => {
 
 beforeEach(() => {
   mockGraphs.length = 0;
+  mockViewportShift = 0;
+  resizeCallbacks.length = 0;
+  containerSize.width = 1200;
+  containerSize.height = 800;
 });
 
 describe('studio graph node positions', () => {
@@ -381,5 +403,44 @@ describe('studio graph node positions', () => {
 
     expect(mockGraphs[0].destroy).toHaveBeenCalledTimes(1);
     expect(mockGraphs[1].nodes.map(({ id }) => id)).toContain('c');
+  });
+});
+
+describe('studio graph viewport across a hidden canvas', () => {
+  it('keeps the viewport when the canvas is hidden and shown again', async () => {
+    await renderSettledCanvas();
+    const resize = resizeCallbacks[0];
+
+    containerSize.width = 0;
+    containerSize.height = 0;
+    resize();
+    containerSize.width = 1200;
+    containerSize.height = 800;
+    resize();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockGraphs[0].fitView).not.toHaveBeenCalled();
+  });
+});
+
+describe('studio graph click targets after the canvas narrows', () => {
+  it('republishes the node centers when the concept panel resizes the canvas', async () => {
+    await renderSettledCanvas();
+
+    mockViewportShift = -125;
+    containerSize.width = 900;
+    resizeCallbacks[0]();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      JSON.parse(containerRef.current.dataset.nodePositions ?? '{}')
+    ).toEqual({
+      a: { x: 175, y: 100 },
+      b: { x: 575, y: 300 },
+    });
   });
 });

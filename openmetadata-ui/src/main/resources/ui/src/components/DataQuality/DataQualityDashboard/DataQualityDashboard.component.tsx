@@ -16,9 +16,9 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -124,11 +124,7 @@ const DataQualityDashboard = ({
                             </span>
                           )}
                         </div>
-                        <DropDownIcon
-                          className="flex self-center"
-                          height={12}
-                          width={12}
-                        />
+                        <ChevronDown className="flex self-center" size={12} />
                       </div>
                     </UserTeamSelectableList>
                   </TooltipTrigger>

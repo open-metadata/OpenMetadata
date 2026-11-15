@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -43,6 +47,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
@@ -102,34 +110,31 @@ class AIContextFinderTest {
   }
 
   @Test
-  void toKnowledgeItem_filtersDraftGlossaryTerms() {
-    assertNull(
-        AIContextFinder.toKnowledgeItem(
-            Map.of(
-                "entityType", "glossaryTerm",
-                "fullyQualifiedName", "Business.Draft",
-                "name", "Draft",
-                "entityStatus", "Draft")),
-        "non-Approved glossary terms are untrusted as business-rule context");
+  void collectHit_dropsDraftGlossaryTermsButNotDraftArticles() {
+    AIContextFinder finder = new AIContextFinder();
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
+    Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
+    finder.collectHit(
+        Map.of(
+            "entityType", "glossaryTerm",
+            "fullyQualifiedName", "Business.Draft",
+            "name", "Draft",
+            "entityStatus", "Draft"),
+        items,
+        candidates);
+    finder.collectHit(
+        Map.of(
+            "entityType", "page",
+            "fullyQualifiedName", "Article_1",
+            "name", "Guide",
+            "entityStatus", "Draft"),
+        items,
+        candidates);
     assertEquals(
-        KnowledgeItem.Type.GLOSSARY_TERM,
-        AIContextFinder.toKnowledgeItem(
-                Map.of(
-                    "entityType", "glossaryTerm",
-                    "fullyQualifiedName", "Business.Live",
-                    "name", "Live",
-                    "entityStatus", "Approved"))
-            .getType());
-    assertEquals(
-        KnowledgeItem.Type.PAGE,
-        AIContextFinder.toKnowledgeItem(
-                Map.of(
-                    "entityType", "page",
-                    "fullyQualifiedName", "Article_1",
-                    "name", "Guide",
-                    "entityStatus", "Draft"))
-            .getType(),
-        "the Approved filter applies to glossary terms only");
+        List.of("page:Article_1"),
+        List.copyOf(items.keySet()),
+        "non-Approved glossary terms are untrusted as business-rule context; articles keep their"
+            + " rule");
   }
 
   @Test
@@ -150,7 +155,11 @@ class AIContextFinderTest {
     Map<String, KnowledgeItem> items = new LinkedHashMap<>();
     Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
     finder.collectHit(
-        Map.of("entityType", "metric", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        Map.of(
+            "entityType", "metric",
+            "fullyQualifiedName", "Revenue",
+            "name", "Revenue",
+            "entityStatus", "Approved"),
         items,
         candidates);
     finder.collectHit(
@@ -191,7 +200,8 @@ class AIContextFinderTest {
               "id", hiddenMetricId.toString(),
               "entityType", "metric",
               "fullyQualifiedName", "Finance.Ceiling",
-              "name", "Ceiling"),
+              "name", "Ceiling",
+              "entityStatus", "Approved"),
           items,
           candidates);
       assertTrue(items.isEmpty(), "a hidden hit is not returned");
@@ -215,6 +225,38 @@ class AIContextFinderTest {
         "a visible hit still routes to an asset a hidden hit also points at");
     verify(repository, never())
         .findTo(hiddenMetricId, Entity.METRIC, Relationship.APPLIED_TO, null);
+  }
+
+  @Test
+  void find_usesTheBackendNeutralVectorServiceWhenTheOpenSearchSingletonIsNull() {
+    Map<String, Object> hit =
+        Map.of(
+            "entityType", "glossaryTerm",
+            "fullyQualifiedName", "Business.BounceRate",
+            "name", "BounceRate",
+            "description", "Share of visits that leave after a single page.",
+            // Only an Approved term reaches AI context.
+            "entityStatus", "Approved");
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(1L, List.of(hit)));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<OpenSearchVectorService> openSearch =
+            mockStatic(OpenSearchVectorService.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      // Elasticsearch deployments never create the OpenSearch singleton.
+      openSearch.when(OpenSearchVectorService::getInstance).thenReturn(null);
+
+      AIContextFinder.FoundContext found = new AIContextFinder().find("bounce rate", 5);
+
+      assertEquals(
+          List.of("Business.BounceRate"),
+          found.items().stream().map(KnowledgeItem::getFullyQualifiedName).toList());
+    }
   }
 
   @Test

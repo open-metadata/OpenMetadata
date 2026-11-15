@@ -67,7 +67,7 @@ RUN dpkg --configure -a \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev zlib1g zlib1g-dev \
   # DockerOperator uses docker-py; the Airflow base's Go CLI is unused.
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' docker-ce-cli \

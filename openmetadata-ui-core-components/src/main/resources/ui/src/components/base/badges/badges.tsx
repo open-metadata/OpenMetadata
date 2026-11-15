@@ -1,7 +1,7 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '../../../icons';
+import { XClose } from '../../../icons';
 import type {
   CSSProperties,
   HTMLAttributes,
@@ -597,7 +597,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     color = 'gray',
     type = 'pill-color',
     bordered = true,
-    icon: Icon = CloseX,
+    icon: Icon = XClose,
     buttonLabel,
     buttonTestId,
     children,
