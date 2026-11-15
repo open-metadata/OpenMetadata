@@ -18,7 +18,15 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  Check,
+  Minus,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import classNames from 'classnames';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   OntologyProfileReport,
@@ -37,6 +45,8 @@ import {
   getOntologyWorkingValidation,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
+import { makeReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
 
 export const useReleaseValidation = (release?: OntologyRelease) => {
   const userId = useApplicationStore((store) => store.currentUser?.id);
@@ -185,30 +195,145 @@ const QueryNotice = ({
 
   return (
     <>
-      {showLoading && isFetching && (
-        <Typography role="status">{t('label.loading')}</Typography>
-      )}
+      {showLoading && isFetching && <Loader size="small" />}
       {isError && (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button color="secondary" size="sm" onPress={onRetry}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('message.ontology-validation-unavailable')}
-          <Button color="secondary" size="sm" onPress={onRetry}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       )}
     </>
   );
 };
 
+type CheckTone = 'pass' | 'fail' | 'warn' | 'idle';
+
+const CHECK_ICONS = {
+  pass: Check,
+  fail: XClose,
+  warn: AlertCircle,
+  idle: Minus,
+};
+
+const CHECK_TONES: Record<CheckTone, string> = {
+  pass: 'tw:text-success-primary',
+  fail: 'tw:text-error-primary',
+  warn: 'tw:text-warning-primary',
+  idle: 'tw:text-tertiary',
+};
+
+const STATUS_TONES: Record<string, CheckTone> = {
+  'label.passed': 'pass',
+  'label.failed': 'fail',
+  'label.warning': 'warn',
+};
+
+/** One check: a status icon and title, its result on the right, details below. */
+const CheckRow = ({
+  title,
+  status,
+  tone,
+  testId,
+  children,
+}: {
+  title: string;
+  status: string;
+  tone: CheckTone;
+  testId?: string;
+  children?: ReactNode;
+}) => {
+  const Icon = CHECK_ICONS[tone];
+
+  return (
+    <Box
+      className="tw:border-t tw:border-secondary tw:pt-3"
+      data-testid={testId}
+      direction="col"
+      gap={1}>
+      <Box align="center" gap={2}>
+        <Icon
+          aria-hidden
+          className={classNames('tw:size-4 tw:shrink-0', CHECK_TONES[tone])}
+        />
+        <Typography className="tw:flex-1" size="text-sm" weight="medium">
+          {title}
+        </Typography>
+        <Typography
+          as="span"
+          className={CHECK_TONES[tone]}
+          size="text-xs"
+          weight="semibold">
+          {status}
+        </Typography>
+      </Box>
+      {children ? (
+        <Box className="tw:pl-6" direction="col" gap={2}>
+          {children}
+        </Box>
+      ) : null}
+    </Box>
+  );
+};
+
+/** Findings that block publishing, in the red box the design gives them. */
+const FindingList = ({
+  testId,
+  items,
+}: {
+  testId?: string;
+  items: { key: string; message: string; detail?: string }[];
+}) =>
+  items.length > 0 ? (
+    <ul
+      className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:p-3"
+      data-testid={testId}>
+      {items.map((item) => (
+        <li key={item.key}>
+          <Typography
+            className="tw:whitespace-pre-wrap tw:break-words tw:text-utility-error-700"
+            size="text-sm"
+            weight="medium">
+            {item.message}
+          </Typography>
+          {item.detail ? (
+            <Typography
+              className="tw:break-words tw:font-mono tw:text-utility-error-600"
+              size="text-xs">
+              {item.detail}
+            </Typography>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  ) : null;
+
+const NO_CONCEPTS: ReadonlyArray<{
+  name: string;
+  iri?: string;
+  label: string;
+}> = [];
+
 const OntologyReleaseValidation = ({
+  concepts = NO_CONCEPTS,
   release,
   working,
 }: {
+  /** The ontology's concepts, so messages name them by display name rather than internal name. */
+  concepts?: ReadonlyArray<{ name: string; iri?: string; label: string }>;
   release?: OntologyRelease;
   /** When given, the structure section reports the working draft, not the capture. */
   working?: WorkingDraft;
 }) => {
   const { t } = useTranslation();
+  const readable = useMemo(
+    () => makeReadableViolationMessage(concepts),
+    [concepts]
+  );
   const validation = useReleaseValidation(release);
   const report = settledReport(validation);
   const workingValidation = useWorkingValidation(working);
@@ -219,85 +344,83 @@ const OntologyReleaseValidation = ({
     </Typography>
   );
 
-  const renderWorkingStructure = () => (
-    <>
-      <Typography size="text-sm">
-        {t('label.structural-validation')}: {t(workingStatus(workingReport))}
-      </Typography>
-      {workingReport && workingReport.violations.length > 0 && (
-        <ul
-          className="tw:m-0 tw:flex tw:flex-col tw:gap-2 tw:pl-4"
-          data-testid="ontology-working-violations">
-          {workingReport.violations.map((issue) => (
-            <li key={JSON.stringify(issue)}>
-              <Typography
-                className="tw:whitespace-pre-wrap tw:break-words"
-                size="text-sm">
-                {issue.message}
-              </Typography>
+  const renderWorkingStructure = () => {
+    const status = workingStatus(workingReport);
+
+    return (
+      <CheckRow
+        status={t(status)}
+        testId="ontology-structural-validation"
+        title={t('label.structural-validation')}
+        tone={STATUS_TONES[status] ?? 'idle'}>
+        <FindingList
+          items={(workingReport?.violations ?? []).map((issue) => ({
+            key: JSON.stringify(issue),
+            message: readable(issue.message),
+            detail: issue.path,
+          }))}
+          testId="ontology-working-violations"
+        />
+      </CheckRow>
+    );
+  };
+  const renderStructure = () => {
+    const status = structureStatus(report);
+
+    return (
+      <CheckRow
+        status={t(status)}
+        testId="ontology-structural-validation"
+        title={t('label.structural-validation')}
+        tone={STATUS_TONES[status] ?? 'idle'}>
+        {report && (
+          <>
+            {report.structure.violationCount > 0 && (
               <Typography color="secondary" size="text-xs">
-                {issue.path}
+                {t('message.ontology-structure-violations', {
+                  count: report.structure.violationCount,
+                })}
               </Typography>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
-  );
-  const renderStructure = () => (
-    <>
-      <Typography size="text-sm">
-        {t('label.structural-validation')}: {t(structureStatus(report))}
-      </Typography>
-      {report && (
-        <>
-          <Typography size="text-sm">
-            {t('message.ontology-structure-violations', {
-              count: report.structure.violationCount,
-            })}
-          </Typography>
-          {report.structure.violations.length > 0 && (
-            <ul className="tw:m-0 tw:flex tw:flex-col tw:gap-2 tw:pl-4">
-              {report.structure.violations.map((issue) => (
-                <li key={JSON.stringify(issue)}>
-                  <Typography
-                    className="tw:whitespace-pre-wrap tw:break-words"
-                    size="text-sm">
-                    {issue.violation.message}
-                  </Typography>
-                  <Typography color="secondary" size="text-xs">
-                    {issue.violation.path}
-                  </Typography>
-                </li>
-              ))}
-            </ul>
-          )}
-          {report.structure.violationCount >
-            report.structure.violations.length &&
-            truncated(
-              report.structure.violations.length,
-              report.structure.violationCount
             )}
-        </>
-      )}
-    </>
-  );
+            <FindingList
+              items={report.structure.violations.map((issue) => ({
+                key: JSON.stringify(issue),
+                message: readable(issue.violation.message),
+                detail: issue.violation.path,
+              }))}
+            />
+            {report.structure.violationCount >
+              report.structure.violations.length &&
+              truncated(
+                report.structure.violations.length,
+                report.structure.violationCount
+              )}
+          </>
+        )}
+      </CheckRow>
+    );
+  };
   const renderShacl = () => {
     if (!report) {
       return null;
     }
+    const status = shaclStatus(report);
 
     return (
-      <>
-        <Typography as="h3" size="text-sm" weight="semibold">
-          {t('label.shacl-validation')}: {t(shaclStatus(report))}
-        </Typography>
-        <Typography data-testid="ontology-shacl-counts" size="text-sm">
+      <CheckRow
+        status={t(status)}
+        testId="ontology-shacl-validation"
+        title={t('label.shacl-validation')}
+        tone={STATUS_TONES[status] ?? 'idle'}>
+        <Typography
+          color="secondary"
+          data-testid="ontology-shacl-counts"
+          size="text-xs">
           {report.shacl.violationCount} {t('label.violation-plural')} ·{' '}
           {report.shacl.warningCount} {t('label.warning-plural')}
         </Typography>
         {report.shacl.findings.length > 0 && (
-          <ul className="tw:m-0 tw:flex tw:flex-col tw:gap-2 tw:pl-4">
+          <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
             {report.shacl.findings.map((finding) => (
               <li key={JSON.stringify(finding)}>
                 <Badge
@@ -305,7 +428,8 @@ const OntologyReleaseValidation = ({
                     finding.severity === FindingSeverity.Violation
                       ? 'error'
                       : 'warning'
-                  }>
+                  }
+                  size="sm">
                   {t(
                     finding.severity === FindingSeverity.Violation
                       ? 'label.violation'
@@ -315,7 +439,7 @@ const OntologyReleaseValidation = ({
                 <Typography
                   className="tw:whitespace-pre-wrap tw:break-words"
                   size="text-sm">
-                  {finding.message}
+                  {readable(finding.message)}
                 </Typography>
                 <Typography
                   className="tw:break-words"
@@ -332,7 +456,7 @@ const OntologyReleaseValidation = ({
             report.shacl.findings.length,
             report.shacl.violationCount + report.shacl.warningCount
           )}
-      </>
+      </CheckRow>
     );
   };
   const renderImpacts = () => {
@@ -340,15 +464,24 @@ const OntologyReleaseValidation = ({
       return null;
     }
 
+    const impactCount = report.deprecationImpacts.length;
+
     return (
-      <>
-        <Typography as="h3" size="text-sm" weight="semibold">
-          {t('label.deprecation-impact')}
-        </Typography>
+      <CheckRow
+        status={
+          impactCount
+            ? t('message.ontology-deprecation-impact-count', {
+                count: impactCount,
+              })
+            : t('label.none')
+        }
+        testId="ontology-deprecation-impact"
+        title={t('label.deprecation-impact')}
+        tone={impactCount ? 'warn' : 'pass'}>
         <Typography color="secondary" size="text-xs">
           {t('message.ontology-current-binding-impact')}
         </Typography>
-        {report.deprecationImpacts.length === 0 && (
+        {impactCount === 0 && (
           <Typography size="text-sm">
             {t('message.ontology-no-deprecation-impact')}
           </Typography>
@@ -407,15 +540,22 @@ const OntologyReleaseValidation = ({
             ))}
           </Box>
         ))}
-      </>
+      </CheckRow>
     );
   };
 
   return (
     <Card data-testid="ontology-release-validation" size="sm">
-      <Card.Header title={t('label.validation')} />
       <Card.Content>
         <Box direction="col" gap={3}>
+          {/* An inline heading, as the Version and Reviewers cards have, not a bordered header row. */}
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {t('label.validation')}
+          </Typography>
           <Typography color="secondary" size="text-xs">
             {release
               ? t('message.ontology-captured-validation', {
@@ -439,14 +579,16 @@ const OntologyReleaseValidation = ({
           {renderShacl()}
           {renderImpacts()}
 
-          <Typography data-testid="ontology-logical-consistency" size="text-sm">
-            {t('label.logical-consistency')}:{' '}
-            {t(
+          <CheckRow
+            status={t(
               report?.logicalCheck === LogicalCheck.NotApplicable
                 ? 'label.not-applicable'
                 : 'label.not-checked'
             )}
-          </Typography>
+            testId="ontology-logical-consistency"
+            title={t('label.logical-consistency')}
+            tone="idle"
+          />
         </Box>
       </Card.Content>
     </Card>

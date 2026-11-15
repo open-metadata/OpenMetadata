@@ -12,7 +12,7 @@
  */
 import { createContext, useContext } from 'react';
 
-/** Sub-bar element the native "Find a term" input portals into in AI mode. */
+/** The canvas toolbar element the native "Find a concept" input portals into. */
 export const OntologyGraphSearchSlotContext = createContext<HTMLElement | null>(
   null
 );

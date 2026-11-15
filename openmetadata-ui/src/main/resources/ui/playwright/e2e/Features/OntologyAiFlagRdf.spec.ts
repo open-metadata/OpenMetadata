@@ -165,7 +165,7 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
       expect(aiRequestCount).toBe(1);
       expect(sparqlExecutionCount).toBe(0);
 
-      await page.getByRole('button', { name: 'Open in Query Console' }).click();
+      await page.getByRole('button', { name: 'Open in query console' }).click();
       await expect(
         page.getByTestId('ontology-studio-query-console')
       ).toBeVisible();

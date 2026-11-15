@@ -15,6 +15,7 @@ import { RDFTerm, Type } from '../../generated/api/rdf/sparqlResponse';
 import {
   buildCsv,
   buildTsv,
+  describeTimeAgo,
   toCsvFileName,
 } from './OntologyQueryResults.utils';
 
@@ -75,5 +76,19 @@ describe('toCsvFileName', () => {
     [undefined, 'query-results.csv'],
   ])('names %p as %p', (name, expected) => {
     expect(toCsvFileName(name)).toBe(expected);
+  });
+});
+
+describe('describeTimeAgo', () => {
+  it('says "just now" within the first minute, then a relative time', () => {
+    const now = Date.now();
+
+    expect(describeTimeAgo(now - 59_000, 'just now', now)).toBe('just now');
+    expect(describeTimeAgo(now - 5 * 60_000, 'just now', now)).not.toBe(
+      'just now'
+    );
+    expect(describeTimeAgo(now - 5 * 60_000, 'just now', now)).toMatch(
+      /minutes ago/
+    );
   });
 });

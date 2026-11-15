@@ -15,21 +15,14 @@ import {
   Badge,
   Box,
   Button,
-  Card,
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { groupBy } from 'lodash';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
-import {
-  ChangeType,
-  MemberChange,
-} from '../../../../generated/api/data/ontologyWorkingDiff';
 import {
   Ontology,
   OntologyApprovalRule,
@@ -41,18 +34,24 @@ import {
   useOntologyPublication,
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../common/Loader/Loader';
+import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
 import {
   ChangeFilter,
-  conceptChangeLabel,
-  countChangesByKind,
   countRowsByFilter,
   filterConceptChanges,
   filterMemberChanges,
+  groupChangeCards,
+  visibleWorkingChanges,
 } from './OntologyReleaseChanges.utils';
+import OntologyReleaseDetailPage from './OntologyReleaseDetailPage';
 import OntologyReleaseDetails from './OntologyReleaseDetails';
 import OntologyReleaseHistory from './OntologyReleaseHistory';
 import {
@@ -62,18 +61,20 @@ import {
 import type {
   PublicationAction,
   PublicationActions,
+  ReleaseTaskLink,
 } from './OntologyReleasePanel.types';
 import {
   deriveReleasePanelView,
   getEditorValues,
   getPublicationActions,
-  getWorkingChanges,
+  getWorkingChangeCounts,
   getWorkingDraft,
   isCandidateStale,
   isSameWorkingState,
   nextSemanticVersion,
   resolveBump,
   resolveVersionChoice,
+  visibleHistoryReleases,
   type VersionEditorState,
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
@@ -86,71 +87,33 @@ import OntologyReleaseValidation, {
 } from './OntologyReleaseValidation';
 import OntologyVersionEditor from './OntologyVersionEditor';
 
-const CHANGE_BADGE_COLOR = {
-  [ChangeType.Added]: 'success',
-  [ChangeType.Changed]: 'warning',
-  [ChangeType.Deprecated]: 'gray',
-  [ChangeType.Removed]: 'error',
-} as const;
-
-const AiChangeGroups = ({ changes }: { changes: MemberChange[] }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Box data-testid="ontology-change-groups" direction="col" gap={3}>
-      {Object.entries(groupBy(changes, 'memberKind')).map(([kind, rows]) => (
-        <details
-          open
-          className="tw:group tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
-          key={kind}>
-          <summary className="tw:flex tw:cursor-pointer tw:list-none tw:items-center tw:gap-2 tw:bg-secondary_alt tw:px-4 tw:py-3">
-            <ChevronDown
-              aria-hidden="true"
-              className="tw:size-4 tw:shrink-0 tw:-rotate-90 tw:group-open:rotate-0"
-            />
-            <Typography
-              as="span"
-              className="tw:flex-1"
-              size="text-sm"
-              weight="semibold">
-              {t('label.ontology-member-' + kind.toLowerCase())}
-            </Typography>
-            <Badge color="gray" size="sm" type="pill-color">
-              {rows.length}
-            </Badge>
-          </summary>
-          <ul className="tw:m-0 tw:list-none tw:p-0">
-            {rows.map((change) => (
-              <li
-                className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3"
-                key={change.entity.id + ':' + change.memberKind}>
-                <Typography
-                  as="span"
-                  className="tw:min-w-0 tw:flex-1 tw:truncate"
-                  size="text-sm">
-                  {getEntityName(change.entity)}
-                </Typography>
-                <Badge
-                  color={CHANGE_BADGE_COLOR[change.changeType]}
-                  size="sm"
-                  type="pill-color">
-                  {t('label.' + change.changeType.toLowerCase())}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ))}
-    </Box>
-  );
-};
+export interface PublicationSummary {
+  fromVersion?: string;
+  toVersion?: string;
+  releaseCount?: number;
+  hasMoreReleases?: boolean;
+}
 
 interface OntologyReleasePanelProps {
   ontology: Ontology;
   canEdit: boolean;
   view: 'changes' | 'releases';
   onOpenTask?: (taskId: string) => void;
+  /** Reports the version step and release count the dialog header shows. */
+  onSummaryChange?: (summary: PublicationSummary) => void;
 }
+
+const hasMorePages = (
+  isCoherent: boolean,
+  pagesSeen: number,
+  after: string | undefined
+) => isCoherent && (pagesSeen > 1 || Boolean(after));
+
+const loadedPages = <T,>(pages?: { data: T[] }[]) =>
+  (pages ?? []).flatMap((entry) => entry.data);
+
+const versionTag = (version: string) =>
+  /^\d/.test(version) ? 'v' + version : version;
 
 const isSameUser = (left?: string, right?: string) =>
   Boolean(right) && left === right;
@@ -206,19 +169,72 @@ const reviewersLine = (
   );
 };
 
+/** Tells the dialog header which version step and how many releases to show. */
+const usePublicationSummary = (
+  onSummaryChange: OntologyReleasePanelProps['onSummaryChange'],
+  {
+    baseVersion,
+    hasVersion,
+    bump,
+    history,
+    latestReleaseId,
+  }: {
+    baseVersion?: string;
+    hasVersion: boolean;
+    bump: Parameters<typeof nextSemanticVersion>[1];
+    history: ReturnType<typeof useOntologyPublication>['history'];
+    latestReleaseId?: string;
+  }
+) => {
+  const fromVersion =
+    hasVersion && baseVersion ? versionTag(baseVersion) : undefined;
+  const toVersion = hasVersion
+    ? versionTag(nextSemanticVersion(baseVersion, bump))
+    : undefined;
+  const releaseCount = history.isSuccess
+    ? visibleHistoryReleases(
+        history.data.pages.flatMap((entry) => entry.data),
+        latestReleaseId
+      ).length
+    : undefined;
+  const hasMoreReleases = history.hasNextPage;
+  useEffect(() => {
+    onSummaryChange?.({
+      fromVersion,
+      toVersion,
+      releaseCount,
+      hasMoreReleases,
+    });
+  }, [fromVersion, toVersion, releaseCount, hasMoreReleases, onSummaryChange]);
+};
+
 const OntologyReleasePanel = ({
   ontology,
   canEdit,
   view,
   onOpenTask,
+  onSummaryChange,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  // Shared with the graph through the query cache; only used to name concepts in validation messages.
+  const { model: conceptModel } = useOntologyStudioModel(ontology);
+  const validationConcepts = useMemo(
+    () =>
+      (conceptModel?.concepts ?? []).map((concept) => ({
+        name: concept.name,
+        iri: concept.iri,
+        label: getEntityName(concept),
+      })),
+    [conceptModel?.concepts]
+  );
   const [editor, setEditor] = useState<VersionEditorState>();
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [cursorRevision, setCursorRevision] = useState<string>();
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>('all');
   const [changeSearch, setChangeSearch] = useState('');
+  // History loads only when Releases is open, as before, so the header shows
+  // the release count once that tab has loaded it.
   const publication = useOntologyPublication(
     ontology.id,
     canEdit,
@@ -318,14 +334,25 @@ const OntologyReleasePanel = ({
   const baseVersion = versionBase.data?.semanticVersion;
   const { suggestion, isPickRequired: isVersionPickRequired } =
     resolveVersionChoice(working.data, baseVersion, versionBump);
-  const visibleMembers = filterMemberChanges(
-    changes.data?.data ?? [],
-    changeFilter,
-    changeSearch
+  const isFirstRelease = versionBase.isSuccess && !baseVersion;
+  const visible = visibleWorkingChanges(changes.data, isFirstRelease);
+  const changeCounts = getWorkingChangeCounts(
+    working.data,
+    currentStage?.unpublishedChanges,
+    isFirstRelease
   );
+  // After a publish the draft is empty: say so instead of an empty list with paging.
+  const hasNoChanges = Boolean(working.data) && changeCounts.total === 0;
   const bump = resolveBump(versionBump, suggestion);
   const getNextVersion = () =>
     versionBase.isSuccess ? nextSemanticVersion(baseVersion, bump) : '';
+  usePublicationSummary(onSummaryChange, {
+    baseVersion,
+    hasVersion: versionBase.isSuccess,
+    bump,
+    history,
+    latestReleaseId: projection.data?.publicationStatus?.latest?.releaseId,
+  });
   const changedSinceRejection = () =>
     currentStage?.stage !== Stage.ChangesRequested ||
     currentStage.candidate.sourceWorkingRevision !==
@@ -361,16 +388,31 @@ const OntologyReleasePanel = ({
       return null;
     }
     if (changes.isPending || changes.isFetching || working.isFetching) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     if (changes.isError || !hasCoherentPreview) {
       return (
-        <Alert variant={changes.isError ? 'error' : 'warning'}>
-          {t('message.ontology-review-unavailable')}
-          <Button color="secondary" size="sm" onPress={retryChanges}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.change-plural'),
+            })}
+            onReload={retryChanges}
+          />
+        </div>
+      );
+    }
+    if (hasNoChanges) {
+      return (
+        <div
+          className="tw:relative tw:min-h-80"
+          data-testid="ontology-working-empty">
+          <NoDataPlaceholder
+            title={t('message.ontology-no-unpublished-changes')}
+          />
+        </div>
       );
     }
 
@@ -386,13 +428,20 @@ const OntologyReleasePanel = ({
     }
     if (displayed.isError) {
       return (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release'),
+            })}
+            onReload={() => void refresh()}
+          />
+        </div>
       );
     }
     if (displayed.isPending) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (
@@ -411,8 +460,6 @@ const OntologyReleasePanel = ({
       )
     );
   };
-  const versionTag = (version: string) =>
-    /^\d/.test(version) ? 'v' + version : version;
   const getActionInput = () => {
     if (
       !currentStage ||
@@ -530,31 +577,30 @@ const OntologyReleasePanel = ({
         : null;
 
     return (
-      <Box direction="col" gap={1}>
-        {actions.errors.length > 0 && (
-          <ul
-            className="tw:m-0 tw:flex tw:list-disc tw:flex-col tw:gap-1 tw:pl-4"
-            data-testid="ontology-publication-errors">
-            {actions.errors.map((message) => (
-              <li key={message}>
-                <Typography color="danger" size="text-xs">
-                  {message}
-                </Typography>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Typography
-          color="secondary"
-          data-testid="ontology-publication-text"
-          role="note"
-          size="text-xs">
-          {t(actions.text, { reviewers })}
-          {progress}
-        </Typography>
-      </Box>
+      <Typography
+        className="tw:text-tertiary"
+        data-testid="ontology-publication-text"
+        role="note"
+        size="text-sm">
+        {t(actions.text, { reviewers })}
+        {progress}
+      </Typography>
     );
   };
+  const renderActionErrors = (actions: PublicationActions) =>
+    actions.errors.length > 0 && (
+      <ul
+        className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:items-end tw:gap-1 tw:p-0"
+        data-testid="ontology-publication-errors">
+        {actions.errors.map((message) => (
+          <li key={message}>
+            <Typography color="danger" size="text-sm">
+              {message}
+            </Typography>
+          </li>
+        ))}
+      </ul>
+    );
   const renderNotice = () => {
     if (!notice) {
       return null;
@@ -621,102 +667,123 @@ const OntologyReleasePanel = ({
     }
 
     return (
+      // The title can carry a long ontology name, so it may break anywhere; the action
+      // sits in its own slot so it never runs into the sentence.
       <Alert
         closable
+        className="tw:wrap-anywhere"
         data-testid={'ontology-publication-notice-' + notice.kind}
+        rightContent={action}
+        title={title}
         variant={notice.kind === 'unchanged' ? 'warning' : 'success'}
         onClose={dismissNotice}>
-        <Typography weight="semibold">{title}</Typography>
         {detail}
-        {action}
       </Alert>
     );
   };
-  const renderPublicationButtons = () => {
-    const input = getActionInput();
-    if (!input) {
+  const renderPublicationButtons = (
+    actions: PublicationActions,
+    version: string
+  ) => (
+    <Box align="center" gap={3} wrap="wrap">
+      {renderActionErrors(actions)}
+      {actions.secondary &&
+        renderActionButton(actions.secondary, version, 'secondary')}
+      {actions.primary &&
+        renderActionButton(
+          actions.primary,
+          version,
+          actions.primary.isDisabled ? 'secondary' : 'primary'
+        )}
+    </Box>
+  );
+  const isStatusUnavailable = () =>
+    state.isError || (!currentStage && panelView.kind !== 'loading');
+  // The opened release feeds the publication status too, so its failure is reported once.
+  const hasReleaseDetailError = () =>
+    view !== 'changes' && Boolean(selectedId) && displayed.isError;
+  const renderStageStatus = () => {
+    if (hasReleaseDetailError()) {
       return null;
     }
-    const actions = getPublicationActions(input);
 
-    return (
-      <Box direction="col" gap={2}>
-        <Box gap={2} wrap="wrap">
-          {actions.secondary &&
-            renderActionButton(actions.secondary, input.version, 'secondary')}
-          {actions.primary &&
-            renderActionButton(
-              actions.primary,
-              input.version,
-              actions.primary.isDisabled ? 'secondary' : 'primary'
-            )}
-        </Box>
-        {renderActionText(actions)}
-      </Box>
-    );
-  };
-  const renderStageStatus = () =>
-    panelView.kind === 'loading' ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+    return panelView.kind === 'loading' ? (
+      <Loader size="small" />
     ) : (
-      <Alert variant="error">
-        {t('message.ontology-review-unavailable')}
-        <Button color="secondary" size="sm" onPress={() => void refresh()}>
-          {t('label.retry')}
-        </Button>
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={() => void refresh()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
       </Alert>
     );
-  const renderFooter = () => {
+  };
+  const renderTaskLink = (task: ReleaseTaskLink) =>
+    onOpenTask ? (
+      <Button color="link-color" size="sm" onPress={() => onOpenTask(task.id)}>
+        {t('label.open-task')} · {task.label}
+      </Button>
+    ) : (
+      <Link to={task.href}>{task.label}</Link>
+    );
+  const renderStageLine = (
+    stage: NonNullable<typeof currentStage>,
+    actions: PublicationActions | undefined
+  ) => (
+    <Box align="center" className="tw:gap-x-2 tw:gap-y-1" wrap="wrap">
+      {baseVersion ? (
+        <Badge color="success" size="sm" type="pill-color">
+          {t('label.published-version', { version: versionTag(baseVersion) })}
+        </Badge>
+      ) : null}
+      <Badge color={RELEASE_STAGE_COLORS[stage.stage]} size="sm">
+        <span data-testid="ontology-release-stage">
+          {t(RELEASE_STAGE_LABELS[stage.stage])}
+        </span>
+      </Badge>
+      {candidateLabel() ? (
+        <Typography size="text-sm">{candidateLabel()}</Typography>
+      ) : null}
+      {'task' in stage && stage.task ? renderTaskLink(stage.task) : null}
+      {actions ? renderActionText(actions) : null}
+    </Box>
+  );
+  const renderRejection = (stage: NonNullable<typeof currentStage>) =>
+    stage.stage === Stage.ChangesRequested && (
+      <Alert variant="error">
+        <Typography weight="semibold">{stage.rejection.actor}</Typography>
+        <Typography
+          className="tw:whitespace-pre-wrap tw:break-words"
+          data-testid="ontology-rejection-reason">
+          {stage.rejection.reason}
+        </Typography>
+      </Alert>
+    );
+  const renderFooter = (preview?: ReactNode) => {
     if (!currentStage) {
       return renderStageStatus();
     }
+    const input = getActionInput();
+    const actions = input ? getPublicationActions(input) : undefined;
 
     return (
       <Box direction="col" gap={3}>
-        <Divider />
+        {preview ? null : <Divider />}
         {renderNotice()}
-        {currentStage.stage === Stage.ChangesRequested && (
-          <Alert variant="error">
-            <Typography weight="semibold">
-              {currentStage.rejection.actor}
-            </Typography>
-            <Typography
-              className="tw:whitespace-pre-wrap tw:break-words"
-              data-testid="ontology-rejection-reason">
-              {currentStage.rejection.reason}
-            </Typography>
-          </Alert>
-        )}
-        <Box align="center" gap={3} justify="between" wrap="wrap">
-          <Box align="center" gap={2} wrap="wrap">
-            <Badge color={RELEASE_STAGE_COLORS[currentStage.stage]}>
-              <span data-testid="ontology-release-stage">
-                {t(RELEASE_STAGE_LABELS[currentStage.stage])}
-              </span>
-            </Badge>
-            <Typography size="text-sm">{candidateLabel()}</Typography>
-            {'task' in currentStage && currentStage.task && (
-              <>
-                {onOpenTask ? (
-                  <Button
-                    color="link-color"
-                    size="sm"
-                    onPress={() => {
-                      if (currentStage.task) {
-                        onOpenTask(currentStage.task.id);
-                      }
-                    }}>
-                    {t('label.open-task')} · {currentStage.task.label}
-                  </Button>
-                ) : (
-                  <Link to={currentStage.task.href}>
-                    {currentStage.task.label}
-                  </Link>
-                )}
-              </>
-            )}
+        {renderRejection(currentStage)}
+        <Box align="center" gap={4} justify="between" wrap="wrap">
+          <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
+            {preview}
+            {renderStageLine(currentStage, actions)}
           </Box>
-          {renderPublicationButtons()}
+          {input && actions
+            ? renderPublicationButtons(actions, input.version)
+            : null}
         </Box>
       </Box>
     );
@@ -730,105 +797,117 @@ const OntologyReleasePanel = ({
         versionTag(nextSemanticVersion(baseVersion, bump))
       : t('label.loading');
 
-  const getChangeCountText = (total: number, isGrouped: boolean) =>
-    isGrouped
-      ? t('label.changed-class-plural') + ': ' + total
-      : total + ' ' + t('label.pending-changes');
-
-  const renderAiFooter = () => (
-    <Box
-      className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
-      direction="col"
-      gap={3}>
+  const renderAiFooter = () => {
+    const preview = (
       <Typography color="secondary" size="text-sm">
         <span data-testid="ontology-version-preview">
           {getVersionPreview()}
         </span>
         {working.data
           ? ' · ' +
-            getChangeCountText(
-              working.data.paging.total,
-              Boolean(working.data.groups)
-            )
+            t('message.ontology-change-total', {
+              count: changeCounts.total,
+            })
           : null}
       </Typography>
-      {currentStage && renderFooter()}
-    </Box>
-  );
+    );
 
-  const renderChangesHeading = () => (
-    <Box direction="col" gap={3}>
-      <Typography as="h3" size="text-md" weight="semibold">
-        {t('label.unpublished-changes')}
-      </Typography>
-      {working.data && (
-        <Typography color="secondary" size="text-sm">
-          {getChangeCountText(
-            working.data.paging.total,
-            Boolean(working.data.groups)
-          )}
-        </Typography>
-      )}
-      {working.data && (
-        <OntologyReleaseChangeFilters
-          counts={countChangesByKind(getWorkingChanges(working.data))}
-          filter={changeFilter}
-          rowCounts={countRowsByFilter(
-            working.data.groups ?? [],
-            working.data.data,
-            changeSearch
-          )}
-          search={changeSearch}
-          onFilterChange={setChangeFilter}
-          onSearchChange={setChangeSearch}
-        />
-      )}
-    </Box>
-  );
-
-  const renderChangesPagination = () => (
-    <>
-      <OntologyReleaseTruncationNote working={working.data} />
-      <Box gap={2}>
-        <Button
-          color="secondary"
-          data-testid="ontology-working-previous"
-          isDisabled={cursors.length === 1 || !hasCoherentPreview}
-          size="sm"
-          onPress={() => setCursors((previous) => previous.slice(0, -1))}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          data-testid="ontology-working-next"
-          isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
-          size="sm"
-          onPress={() =>
-            setCursors((previous) => [...previous, changes.data?.paging.after])
-          }>
-          {t('label.next')}
-        </Button>
+    return (
+      <Box
+        className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:mt-auto tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+        direction="col"
+        gap={3}>
+        {currentStage ? renderFooter(preview) : preview}
       </Box>
-    </>
+    );
+  };
+
+  const renderChangesHeading = () =>
+    working.data && (
+      <OntologyReleaseChangeFilters
+        counts={changeCounts}
+        filter={changeFilter}
+        rowCounts={countRowsByFilter(
+          visible.groups,
+          visible.members,
+          changeSearch
+        )}
+        search={changeSearch}
+        onFilterChange={setChangeFilter}
+        onSearchChange={setChangeSearch}
+      />
+    );
+
+  // Paging belongs to a loaded list that has more than one page.
+  const hasChangePages = hasMorePages(
+    hasCoherentPreview,
+    cursors.length,
+    changes.data?.paging.after
   );
+  const renderChangesPagination = () =>
+    hasNoChanges ? null : (
+      <>
+        <OntologyReleaseTruncationNote working={working.data} />
+        {hasChangePages ? (
+          <Box gap={2}>
+            <Button
+              color="secondary"
+              data-testid="ontology-working-previous"
+              isDisabled={cursors.length === 1 || !hasCoherentPreview}
+              size="sm"
+              onPress={() => setCursors((previous) => previous.slice(0, -1))}>
+              {t('label.previous')}
+            </Button>
+            <Button
+              color="secondary"
+              data-testid="ontology-working-next"
+              isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
+              size="sm"
+              onPress={() =>
+                setCursors((previous) => [
+                  ...previous,
+                  changes.data?.paging.after,
+                ])
+              }>
+              {t('label.next')}
+            </Button>
+          </Box>
+        ) : null}
+      </>
+    );
 
   const renderVersionError = () =>
     versionBase.isError && (
-      <Alert variant="error">
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void versionBase.refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
         {t('message.ontology-version-unavailable')}
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void versionBase.refetch()}>
-          {t('label.retry')}
-        </Button>
       </Alert>
     );
 
-  const renderVersionEditor = () =>
+  // An unreadable publication status already says so once; the card would repeat it.
+  const renderReviewers = () =>
+    isStatusUnavailable() ? null : (
+      <OntologyReleaseReviewers
+        key={scopeKey}
+        view={panelView}
+        onChange={updateReviewSettings}
+        onRefresh={refresh}
+      />
+    );
+
+  const renderVersionEditor = (beforeNotes: ReactNode) =>
     versionBase.isSuccess && (
       <OntologyVersionEditor
         baseVersion={baseVersion}
+        beforeNotes={beforeNotes}
         bump={isVersionPickRequired ? undefined : bump}
         isDisabled={!canWrite}
         isPickRequired={isVersionPickRequired}
@@ -843,88 +922,9 @@ const OntologyReleasePanel = ({
       />
     );
 
-  const renderConceptGroups = () =>
-    filterConceptChanges(
-      changes.data?.groups ?? [],
-      changeFilter,
-      changeSearch
-    ).map((group, index) => (
-      <li data-testid="ontology-working-concept-group" key={group.iri ?? index}>
-        <Card size="sm">
-          <Card.Content>
-            <Box gap={2} justify="between">
-              <Typography
-                data-testid="ontology-working-concept-summary"
-                size="text-sm"
-                weight="semibold">
-                {group.concept
-                  ? t('message.ontology-class-change-summary', {
-                      concept: conceptChangeLabel(group),
-                      parents: group.parents.length
-                        ? ' ⊑ ' + group.parents.join(', ')
-                        : '',
-                      count: group.propertyCount,
-                    })
-                  : group.changes
-                      .map((change) => getEntityName(change.entity))
-                      .join(', ')}
-              </Typography>
-              <Badge
-                color={group.changeType === 'DEPRECATED' ? 'warning' : 'gray'}>
-                {t('label.' + group.changeType.toLowerCase())}
-              </Badge>
-            </Box>
-          </Card.Content>
-        </Card>
-      </li>
-    ));
-
-  const renderChanges = () => (
-    <Box direction="col" gap={4}>
-      {renderChangesHeading()}
-      {renderChangeStatus()}
-      {hasCoherentPreview && changes.data && (
-        <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-          {renderConceptGroups()}
-          {visibleMembers.map((change) => (
-            <li key={change.entity.id + ':' + change.memberKind}>
-              <Card size="sm">
-                <Card.Content>
-                  <Box gap={2} justify="between">
-                    <Typography size="text-sm" weight="semibold">
-                      {getEntityName(change.entity)}
-                    </Typography>
-                    <Badge
-                      color={
-                        change.changeType === 'DEPRECATED' ? 'warning' : 'gray'
-                      }>
-                      {t('label.' + change.changeType.toLowerCase())}
-                    </Badge>
-                  </Box>
-                  <Typography color="secondary" size="text-xs">
-                    {t(
-                      'label.ontology-member-' + change.memberKind.toLowerCase()
-                    )}
-                  </Typography>
-                </Card.Content>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
-      {renderChangesPagination()}
-      {renderVersionError()}
-      {versionBase.isSuccess && (
-        <Typography data-testid="ontology-version-preview" size="text-sm">
-          {getVersionPreview()}
-        </Typography>
-      )}
-      {renderVersionEditor()}
-    </Box>
-  );
-
   const renderValidation = () => (
     <OntologyReleaseValidation
+      concepts={validationConcepts}
       release={
         view === 'releases' && selectedId
           ? release
@@ -940,53 +940,109 @@ const OntologyReleasePanel = ({
         <Box className="tw:min-w-0" direction="col" gap={4}>
           {renderChangesHeading()}
           {renderChangeStatus()}
-          {hasCoherentPreview && Boolean(changes.data?.groups?.length) && (
-            <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-              {renderConceptGroups()}
-            </ul>
-          )}
-          {hasCoherentPreview && changes.data && (
-            <AiChangeGroups changes={visibleMembers} />
+          {hasCoherentPreview && changes.data && !hasNoChanges && (
+            <OntologyReleaseChangeCards
+              cards={groupChangeCards(
+                filterConceptChanges(
+                  visible.groups,
+                  changeFilter,
+                  changeSearch
+                ),
+                filterMemberChanges(visible.members, changeFilter, changeSearch)
+              )}
+            />
           )}
           {renderChangesPagination()}
           {renderVersionError()}
         </Box>
         <Box className="tw:min-w-0" direction="col" gap={4}>
-          <OntologyReleaseReviewers
-            key={scopeKey}
-            scopeKey={scopeKey}
-            view={panelView}
-            onChange={updateReviewSettings}
-            onRefresh={refresh}
-          />
           {renderValidation()}
-          {renderVersionEditor()}
+          {renderVersionEditor(renderReviewers())}
+          {versionBase.isSuccess ? null : renderReviewers()}
         </Box>
       </div>
     </Box>
   );
 
-  const renderReleases = () => (
-    <OntologyReleaseHistory
-      activeReleaseId={activeReleaseId}
-      history={history}
-      latestReleaseId={projection.data?.publicationStatus?.latest?.releaseId}
-      ontologyId={ontology.id}
-      selectedReleaseId={selectedId}
-      onSelect={setSelectedId}
-    />
-  );
+  // Only the requester of the open review may withdraw it, as the footer allows.
+  const withdrawableReleaseId = (() => {
+    const input = getActionInput();
+    const actions = input ? getPublicationActions(input) : undefined;
+    const canWithdraw =
+      actions?.secondary?.kind === 'withdraw' && !actions.secondary.isDisabled;
+
+    return canWithdraw ? currentStage?.candidate?.id : undefined;
+  })();
+  const loadedReleases = loadedPages(history.data?.pages);
+  const latestReleaseId = projection.data?.publicationStatus?.latest?.releaseId;
+
+  const renderReleaseDetail = () => {
+    if (displayed.isError) {
+      return (
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.release'),
+            })}
+            onReload={() => void refresh()}
+          />
+        </div>
+      );
+    }
+    if (!release) {
+      return <Loader size="small" />;
+    }
+
+    return (
+      <OntologyReleaseDetailPage
+        activeRelease={versionBase.data}
+        canPublish={canPublish}
+        canWithdraw={release.id === withdrawableReleaseId}
+        latestReleaseId={latestReleaseId}
+        ontologyName={getEntityName(ontology)}
+        release={release}
+        releases={loadedReleases}
+        onActivate={() => activate({ kind: 'selected' })}
+        onBack={() => setSelectedId(undefined)}
+        onOpenTask={onOpenTask}
+        onWithdraw={() => void withdraw()}
+      />
+    );
+  };
+
+  const renderReleases = () =>
+    isAiMode && selectedId ? (
+      renderReleaseDetail()
+    ) : (
+      <OntologyReleaseHistory
+        activeRelease={versionBase.data}
+        activeReleaseId={activeReleaseId}
+        history={history}
+        latestReleaseId={latestReleaseId}
+        ontologyId={ontology.id}
+        selectedReleaseId={selectedId}
+        withdrawableReleaseId={withdrawableReleaseId}
+        onOpenTask={onOpenTask}
+        onSelect={setSelectedId}
+        onWithdraw={() => void withdraw()}
+      />
+    );
 
   const renderStorageStatus = () =>
     receipt.kind === 'unavailable' && (
-      <Alert variant="error">
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void retryRecovery()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
         {t('message.ontology-publication-storage-unavailable')}
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void retryRecovery()}>
-          {t('label.retry')}
-        </Button>
       </Alert>
     );
   const recoveryVersion = () => {
@@ -1018,7 +1074,20 @@ const OntologyReleasePanel = ({
     }
 
     return (
-      <Alert variant="warning">
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            data-testid="ontology-recovery-action"
+            isDisabled={isBusy || (retryReview && !canEdit)}
+            size="sm"
+            onPress={() =>
+              void (conflict ? dismissActivationConflict() : retryRecovery())
+            }>
+            {t(actionLabel)}
+          </Button>
+        }
+        variant="warning">
         <Typography>
           {t(
             conflict
@@ -1027,82 +1096,87 @@ const OntologyReleasePanel = ({
             { version: recoveryVersion() }
           )}
         </Typography>
-        <Button
-          color="secondary"
-          data-testid="ontology-recovery-action"
-          isDisabled={isBusy || (retryReview && !canEdit)}
-          size="sm"
-          onPress={() =>
-            void (conflict ? dismissActivationConflict() : retryRecovery())
-          }>
-          {t(actionLabel)}
-        </Button>
       </Alert>
     );
   };
 
-  const renderClassicView = () =>
-    view === 'changes' ? renderChanges() : renderReleases();
-
   const renderStateError = () =>
     state.isError && (
-      <Alert variant="error">
-        {t('message.ontology-review-unavailable')}
-        <Button
-          color="secondary"
-          size="sm"
-          onPress={() => void state.refetch()}>
-          {t('label.retry')}
-        </Button>
+      <Alert
+        rightContent={
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void state.refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
       </Alert>
     );
 
+  // The AI Releases tab has no stage footer; its rows and detail carry the status.
+  const renderReleasesFooter = () => {
+    if (isAiMode) {
+      return renderNotice();
+    }
+
+    return currentStage ? (
+      <div className="tw:mt-auto">{renderFooter()}</div>
+    ) : null;
+  };
+
+  // "No releases yet" or "No unpublished changes" beside a load error contradicts
+  // itself, so the failure takes the whole view.
+  const isEmptyWithStatusError = (isChanges: boolean) => {
+    const isViewEmpty = isChanges
+      ? hasNoChanges
+      : [!selectedId, history.isSuccess, loadedReleases.length === 0].every(
+          Boolean
+        );
+
+    return isViewEmpty && isStatusUnavailable();
+  };
+  const renderStatusError = () => (
+    <div
+      className="tw:relative tw:min-h-80 tw:flex-1"
+      data-testid="ontology-publication-status-error">
+      <SomethingWentWrongPlaceholder
+        title={t('server.entity-fetch-error', {
+          entity: t('label.publication-status'),
+        })}
+        // refresh() re-reads every publication query and clears a sticky failure, so one click suffices.
+        onReload={() => void refresh()}
+      />
+    </div>
+  );
+
   const renderAiPanel = () => {
     const isChanges = view === 'changes';
+    if (isEmptyWithStatusError(isChanges)) {
+      return renderStatusError();
+    }
 
     return (
       <Box
-        className={isChanges ? undefined : 'tw:pb-5'}
+        className={isChanges ? 'tw:flex-1' : 'tw:flex-1 tw:pb-5'}
         direction="col"
         gap={4}>
-        {renderStateError()}
+        {hasReleaseDetailError() ? null : renderStateError()}
         {isChanges ? renderAiChanges() : renderReleases()}
-        {renderRelease()}
+        {isAiMode ? null : renderRelease()}
         {renderStorageStatus()}
         {renderRecovery()}
         {currentStage || state.isError ? null : renderStageStatus()}
-        {isChanges ? renderAiFooter() : currentStage && renderFooter()}
+        {isChanges ? renderAiFooter() : renderReleasesFooter()}
       </Box>
     );
   };
 
-  if (isAiMode) {
-    return renderAiPanel();
-  }
-
-  return (
-    <Box direction="col" gap={4}>
-      <div className="tw:grid tw:grid-cols-1 tw:gap-5 tw:md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Box direction="col" gap={4}>
-          {renderClassicView()}
-          {renderRelease()}
-        </Box>
-        <Box direction="col" gap={4}>
-          <OntologyReleaseReviewers
-            key={scopeKey}
-            scopeKey={scopeKey}
-            view={panelView}
-            onChange={updateReviewSettings}
-            onRefresh={refresh}
-          />
-          {renderValidation()}
-        </Box>
-      </div>
-      {renderStorageStatus()}
-      {renderRecovery()}
-      {renderFooter()}
-    </Box>
-  );
+  return renderAiPanel();
 };
 
 export default OntologyReleasePanel;

@@ -72,7 +72,12 @@ public final class ODCSPreservedFields {
           captureSchema(source.path(SCHEMA), applied.path(SCHEMA), selectedObject, unapplied));
     }
     ObjectNode payload = envelope(preserved, unapplied);
-    if (source.has("apiVersion")) payload.set("sourceVersion", source.get("apiVersion").deepCopy());
+    if (source.has("apiVersion")) {
+      String version = source.path("apiVersion").asText();
+      payload.set("sourceVersion", source.get("apiVersion").deepCopy());
+      if (ODCSProfiles.supportedVersions().contains(version))
+        payload.put("sourceSchema", ODCSProfiles.adapter(version).schemaLocation());
+    }
     return payload;
   }
 
@@ -396,7 +401,7 @@ public final class ODCSPreservedFields {
     return tables.isArray() && tables.size() == 1 ? tables.get(0).path(NAME).asText(null) : null;
   }
 
-  private static JsonNode preservedDocument(JsonNode payload) {
+  static JsonNode preservedDocument(JsonNode payload) {
     JsonNode document = payload.has(DOCUMENT) ? payload.path(DOCUMENT) : payload;
     if (!document.isTextual()) {
       return document;

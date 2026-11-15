@@ -12,6 +12,7 @@
  */
 import {
   STUDIO_FOCUS_DEPTH,
+  STUDIO_FOCUS_HUB_DEGREE,
   STUDIO_FOCUS_NODE_CAP,
   STUDIO_GRAPH_NODE_LIMIT,
 } from '../OntologyExplorer.constants';
@@ -53,6 +54,10 @@ export function buildStudioGraphScope(
   });
 
   const included = new Set<string>();
+  // Each concept's link back to whoever reached it, so the view reads as a tree.
+  const reachedBy = new Set<string>();
+  const pairKey = (left: string, right: string) =>
+    left < right ? `${left}|${right}` : `${right}|${left}`;
   let frontier = seedIds.filter((id) => nodeById.has(id));
   frontier.forEach((id) => {
     if (included.size < STUDIO_FOCUS_NODE_CAP) {
@@ -61,7 +66,16 @@ export function buildStudioGraphScope(
   });
   for (let depth = 0; depth < STUDIO_FOCUS_DEPTH; depth++) {
     const next: string[] = [];
-    frontier.forEach((id) => {
+    // A hub reached through the seed (a base class like DomainResource) would pull in every
+    // sibling of the seed, so only the seeds themselves expand however linked they are.
+    const expandable =
+      depth === 0
+        ? frontier
+        : frontier.filter(
+            (id) =>
+              new Set(neighbours.get(id) ?? []).size <= STUDIO_FOCUS_HUB_DEGREE
+          );
+    expandable.forEach((id) => {
       [...new Set(neighbours.get(id) ?? [])]
         .sort((left, right) =>
           (nodeById.get(left)?.label ?? '').localeCompare(
@@ -74,6 +88,7 @@ export function buildStudioGraphScope(
             included.size < STUDIO_FOCUS_NODE_CAP
           ) {
             included.add(neighbour);
+            reachedBy.add(pairKey(id, neighbour));
             next.push(neighbour);
           }
         });
@@ -82,8 +97,16 @@ export function buildStudioGraphScope(
   }
 
   const nodes = graph.nodes.filter((node) => included.has(node.id));
+  // ADR:2026-11-15-studio-focused-graph-draws-only-the-links-its-walk-followed
+  // Only the seeds' own links and the link each concept was reached through: a link
+  // between two outer concepts (say both pointing at `string`) crosses the neighbourhood
+  // without saying anything about the seed. Selecting a concept re-centres on it.
+  const seeds = new Set(seedIds);
+  const isDrawn = (from: string, to: string) =>
+    seeds.has(from) || seeds.has(to) || reachedBy.has(pairKey(from, to));
   const edges = graph.edges.filter(
-    ({ from, to }) => included.has(from) && included.has(to)
+    ({ from, to }) =>
+      included.has(from) && included.has(to) && isDrawn(from, to)
   );
 
   return {

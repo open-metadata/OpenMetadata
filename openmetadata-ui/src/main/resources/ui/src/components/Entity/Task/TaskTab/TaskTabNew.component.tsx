@@ -136,6 +136,7 @@ import {
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
+  hasVotedInCurrentStage,
   isTaskPendingFurtherApproval,
   isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
@@ -155,6 +156,10 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import {
+  isApproveTransition,
+  isRejectTransition,
+} from '../../../discovery/personal-space/InboxPage/taskList.utils';
 import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
@@ -163,6 +168,7 @@ import {
   getTaskTypeMessageKey,
   isRevisionRequest,
 } from '../MetadataCompletionTask/MetadataCompletionTask.utils';
+import TaskReviewVotes from '../TaskReviewVotes/TaskReviewVotes';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -425,15 +431,29 @@ export const TaskTabNew = ({
     !isOntologyReviewTask(task) || readyReviewTask === task.id;
   const isWorkflowDrivenTask =
     isOntologyReviewTask(task) || Boolean(task.availableTransitions?.length);
+  // A voter keeps the stage's other transitions (e.g. reassign); the server
+  // ignores a second vote in the same stage.
+  const hasVoted = hasVotedInCurrentStage(task, currentUser);
+  const availableTransitions = useMemo(
+    () =>
+      hasVoted
+        ? task.availableTransitions?.filter(
+            (transition) =>
+              !isApproveTransition(transition) &&
+              !isRejectTransition(transition)
+          )
+        : task.availableTransitions,
+    [hasVoted, task.availableTransitions]
+  );
   const [selectedTransitionId, setSelectedTransitionId] = useState<
     string | undefined
-  >(task.availableTransitions?.[0]?.id);
+  >(availableTransitions?.[0]?.id);
   const selectedTransition = useMemo(
     () =>
-      task.availableTransitions?.find(
+      availableTransitions?.find(
         (transition) => transition.id === selectedTransitionId
-      ) ?? task.availableTransitions?.[0],
-    [selectedTransitionId, task.availableTransitions]
+      ) ?? availableTransitions?.[0],
+    [selectedTransitionId, availableTransitions]
   );
   const activeTaskFormSchema = useMemo(() => {
     if (!taskFormSchema || !isWorkflowDrivenTask) {
@@ -1208,23 +1228,24 @@ export const TaskTabNew = ({
   const workflowTransitionActions = useMemo(() => {
     if (
       !isWorkflowDrivenTask ||
-      !task.availableTransitions?.length ||
+      !availableTransitions?.length ||
       !showsWorkflowActions
     ) {
       return null;
     }
 
     const hasWorkflowAccess = reviewReady && canResolveWorkflow;
-    const menuItems: TaskActionSplitButtonItem[] =
-      task.availableTransitions.map((transition) => ({
+    const menuItems: TaskActionSplitButtonItem[] = availableTransitions.map(
+      (transition) => ({
         key: transition.id,
         label: transition.label,
         textValue: transition.label,
         'data-testid': `workflow-transition-menu-item-${transition.id}`,
-      }));
+      })
+    );
 
     const handleWorkflowTransitionSelect = (transitionId: string) => {
-      const transition = task.availableTransitions?.find(
+      const transition = availableTransitions?.find(
         (candidate) => candidate.id === transitionId
       );
 
@@ -1250,7 +1271,7 @@ export const TaskTabNew = ({
       runWorkflowTransition(transition);
     };
 
-    if (task.availableTransitions.length === 1 && selectedTransition) {
+    if (availableTransitions.length === 1 && selectedTransition) {
       return (
         <Box align="end" data-testid="task-cta-buttons" gap={2} justify="end">
           <Button
@@ -1296,7 +1317,7 @@ export const TaskTabNew = ({
     reviewReady,
     selectedTransition,
     shouldOpenWorkflowTransitionModal,
-    task.availableTransitions,
+    availableTransitions,
     t,
   ]);
 
@@ -1483,8 +1504,8 @@ export const TaskTabNew = ({
   }, [task.category, task.type]);
 
   useEffect(() => {
-    setSelectedTransitionId(task.availableTransitions?.[0]?.id);
-  }, [task.availableTransitions, task.id]);
+    setSelectedTransitionId(availableTransitions?.[0]?.id);
+  }, [availableTransitions, task.id]);
 
   useEffect(() => {
     setEditablePayload(initialFormValue.payload);
@@ -2159,6 +2180,7 @@ export const TaskTabNew = ({
       ) : (
         renderProposedChangesSection()
       )}
+      <TaskReviewVotes currentUserId={currentUser?.id} task={task} />
       <div>
         {renderFeedbackOrTaskPayload()}
         {renderActionRequiredSection()}

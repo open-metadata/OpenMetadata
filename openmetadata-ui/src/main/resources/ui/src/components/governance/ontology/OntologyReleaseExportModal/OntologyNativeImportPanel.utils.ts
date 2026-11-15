@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isAxiosError } from 'axios';
 import { CreateOntology } from '../../../../generated/api/data/createOntology';
 import { CreateOntologyChangeSet } from '../../../../generated/api/data/createOntologyChangeSet';
 import {
@@ -27,6 +28,7 @@ import {
   previewNativeOntologyImport,
   previewNativeOntologyImportWithoutTarget,
 } from '../../../../rest/ontologyAPI';
+import { STUDIO_VERSION_PARAM } from '../../../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
@@ -56,8 +58,6 @@ export const NATIVE_IMPORT_FORMAT_LABEL_KEYS: Record<
   [Format.Turtle]: 'label.turtle',
 };
 
-export type NativeImportStep = 'drop' | 'parse' | 'import';
-
 export type NativeImportTarget = 'existing' | 'new';
 
 export type NativeImportDetection =
@@ -74,19 +74,22 @@ export type NativeImportParse =
       /** Ids of the items the user keeps ticked; only NEW and UPDATE items can be. */
       selection: ReadonlySet<string>;
     }
-  | { kind: 'failed'; message: string };
+  /** `isFileRejected`: the server refused the file itself, so parsing it again fails the same way. */
+  | { kind: 'failed'; message: string; isFileRejected?: boolean };
 
 export interface NativeImportState {
   readonly fileId: number;
   readonly parseId: number;
   readonly fileName?: string;
+  readonly fileSize?: number;
   readonly target: NativeImportTarget;
   readonly detection: NativeImportDetection;
   readonly parse: NativeImportParse;
 }
 
 export type NativeImportAction =
-  | { type: 'fileChosen'; token: number; fileName: string }
+  | { type: 'fileChosen'; token: number; fileName: string; fileSize?: number }
+  | { type: 'fileCleared'; token: number }
   | { type: 'detected'; fileId: number; format?: NativeImportFormat }
   | { type: 'detectionFailed'; fileId: number; message: string }
   | { type: 'fileRejected'; token: number; message: string }
@@ -97,7 +100,12 @@ export type NativeImportAction =
       summary: NativeOntologyImportSummary;
       changeSet?: CreateOntologyChangeSet;
     }
-  | { type: 'parseFailed'; parseId: number; message: string }
+  | {
+      type: 'parseFailed';
+      parseId: number;
+      message: string;
+      isFileRejected?: boolean;
+    }
   | {
       type: 'selectionChanged';
       parseId: number;
@@ -115,7 +123,14 @@ export const INITIAL_NATIVE_IMPORT_STATE: NativeImportState = {
 
 type FileAction = Extract<
   NativeImportAction,
-  { type: 'fileChosen' | 'detected' | 'detectionFailed' | 'fileRejected' }
+  {
+    type:
+      | 'fileChosen'
+      | 'fileCleared'
+      | 'detected'
+      | 'detectionFailed'
+      | 'fileRejected';
+  }
 >;
 
 const reduceFile = (
@@ -128,17 +143,22 @@ const reduceFile = (
       fileId: action.token,
       parseId: action.token,
       fileName: action.fileName,
+      fileSize: action.fileSize,
       detection: { kind: 'pending' },
       parse: { kind: 'idle' },
     };
   }
-  if (action.type === 'fileRejected') {
+  if (action.type === 'fileRejected' || action.type === 'fileCleared') {
     return {
       ...state,
       fileId: action.token,
       parseId: action.token,
       fileName: undefined,
-      detection: { kind: 'failed', message: action.message },
+      fileSize: undefined,
+      detection:
+        action.type === 'fileRejected'
+          ? { kind: 'failed', message: action.message }
+          : { kind: 'idle' },
       parse: { kind: 'idle' },
     };
   }
@@ -293,13 +313,21 @@ const reduceParse = (
         : state;
     default:
       return action.parseId === state.parseId
-        ? { ...state, parse: { kind: 'failed', message: action.message } }
+        ? {
+            ...state,
+            parse: {
+              kind: 'failed',
+              message: action.message,
+              isFileRejected: action.isFileRejected,
+            },
+          }
         : state;
   }
 };
 
 const FILE_ACTIONS: ReadonlySet<string> = new Set([
   'fileChosen',
+  'fileCleared',
   'fileRejected',
   'detected',
   'detectionFailed',
@@ -401,6 +429,59 @@ export const itemImportCount = (
     ? selectedCount(summary, selection)
     : undefined;
 
+export type NativeImportSummaryPart =
+  | 'new-concept'
+  | 'updated-concept'
+  | 'property'
+  | 'relationship'
+  | 'rule'
+  | 'mapping';
+
+const ITEM_SUMMARY_PART: Record<Kind, NativeImportSummaryPart> = {
+  [Kind.Concept]: 'new-concept',
+  [Kind.Property]: 'property',
+  [Kind.Relationship]: 'relationship',
+  [Kind.Rule]: 'rule',
+};
+
+const partOfItem = (item: NativeOntologyImportItem) =>
+  item.kind === Kind.Concept && item.status === Status.Update
+    ? 'updated-concept'
+    : ITEM_SUMMARY_PART[item.kind];
+
+/**
+ * What the import will save, by kind. With an item list it counts the ticked
+ * items; without one it falls back to the dry-run counts.
+ */
+export const importSummaryParts = (
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+): readonly { part: NativeImportSummaryPart; count: number }[] => {
+  const items = importItemsOf(summary);
+  const { counts } = summary;
+  const totals = new Map<NativeImportSummaryPart, number>(
+    items.length > 0
+      ? []
+      : [
+          ['new-concept', counts.newConcepts],
+          ['updated-concept', counts.updatedConcepts],
+          ['property', counts.newProperties + counts.updatedProperties],
+          ['relationship', counts.newRelations],
+          ['mapping', counts.newMappings],
+        ]
+  );
+  items
+    .filter(({ id }) => selection.has(id))
+    .forEach((item) => {
+      const part = partOfItem(item);
+      totals.set(part, (totals.get(part) ?? 0) + 1);
+    });
+
+  return [...totals]
+    .filter(([, count]) => count > 0)
+    .map(([part, count]) => ({ part, count }));
+};
+
 export const hasSelectedChanges = (
   summary: NativeOntologyImportSummary,
   selection: ReadonlySet<string>
@@ -421,14 +502,18 @@ export const nativeImportErrorMessage = (
   return state.parse.kind === 'failed' ? state.parse.message : installError;
 };
 
-export const nativeImportStep = (
+/** Whether a failed dry run can be retried: a file the server refused fails again unchanged. */
+export const nativeImportParseFailure = (
   state: NativeImportState
-): NativeImportStep => {
-  if (!state.fileName) {
-    return 'drop';
+): 'rejected' | 'retryable' | undefined => {
+  if (state.parse.kind !== 'failed') {
+    return undefined;
+  }
+  if (state.parse.isFileRejected) {
+    return 'rejected';
   }
 
-  return state.parse.kind === 'ready' ? 'import' : 'parse';
+  return state.fileName ? 'retryable' : undefined;
 };
 
 const fileStem = (fileName: string) => {
@@ -482,6 +567,8 @@ export const landOnImportedOntology = (
   next.delete('concept');
   next.delete('scope');
   next.delete(DRAFT_SEARCH_PARAM);
+  // An import lands in the draft, which the Published view would not show.
+  next.delete(STUDIO_VERSION_PARAM);
 
   return next;
 };
@@ -490,15 +577,15 @@ type Describe = (error: unknown) => string;
 
 /**
  * Reads the file and asks the server which format it is. Returns the text so
- * the caller keeps it outside render state; the answer goes through `dispatch`
- * tagged with `fileId`.
+ * the caller keeps it outside render state, and the format so it can dry-run
+ * the file straight away; the answer goes through `dispatch` tagged with `fileId`.
  */
 export const detectNativeImportFile = async (
   file: File,
   fileId: number,
   dispatch: (action: NativeImportAction) => void,
   describe: Describe
-) => {
+): Promise<{ text: string; format?: NativeImportFormat }> => {
   let text = '';
   try {
     text = await file.text();
@@ -507,11 +594,13 @@ export const detectNativeImportFile = async (
       fileName: file.name,
     });
     dispatch({ type: 'detected', fileId, format: detection.detectedFormat });
+
+    return { text, format: detection.detectedFormat };
   } catch (error) {
     dispatch({ type: 'detectionFailed', fileId, message: describe(error) });
-  }
 
-  return text;
+    return { text };
+  }
 };
 
 /**
@@ -540,42 +629,43 @@ export const parseNativeImportFile = async (
       changeSet: preview.changeSet,
     });
   } catch (error) {
-    dispatch({ type: 'parseFailed', parseId, message: describe(error) });
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    dispatch({
+      type: 'parseFailed',
+      parseId,
+      message: describe(error),
+      isFileRejected: status !== undefined && status >= 400 && status < 500,
+    });
   }
 };
 
 export const selectionOf = (parse: NativeImportParse): ReadonlySet<string> =>
   parse.kind === 'ready' ? parse.selection : new Set();
 
-/** Which of Parse and Import the user may press right now. */
-export const nativeImportActionFlags = (
+/** Whether the user may press Import right now. */
+export const canApplyImport = (
   state: NativeImportState,
   context: {
     canUseTarget: boolean;
     isBusy: boolean;
     isIdentityReady: boolean;
-    isLockedOrBusy: boolean;
   }
 ) => {
-  const format =
-    state.detection.kind === 'ready' ? state.detection.format : undefined;
-  const summary =
-    state.parse.kind === 'ready' ? state.parse.summary : undefined;
+  const hasChanges =
+    state.parse.kind === 'ready' &&
+    hasSelectedChanges(state.parse.summary, state.parse.selection);
 
-  return {
-    canParse:
-      Boolean(state.fileName && format) &&
-      context.canUseTarget &&
-      !context.isLockedOrBusy,
-    canImport:
-      Boolean(
-        summary && hasSelectedChanges(summary, selectionOf(state.parse))
-      ) &&
-      context.canUseTarget &&
-      context.isIdentityReady &&
-      !context.isBusy,
-  };
+  return (
+    hasChanges &&
+    context.canUseTarget &&
+    context.isIdentityReady &&
+    !context.isBusy
+  );
 };
+
+/** The detected format, once the server has answered for the current file. */
+export const detectedFormatOf = (state: NativeImportState) =>
+  state.detection.kind === 'ready' ? state.detection.format : undefined;
 
 export const hasReviewers = (ontology?: Ontology) =>
   Boolean(ontology?.reviewers?.length);

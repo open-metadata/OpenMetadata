@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Alert,
-  Box,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +24,8 @@ import { MemberKind as WorkingMemberKind } from '../../../../generated/api/data/
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getOntologyReleaseDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleasePicker from '../OntologyReleasePicker/OntologyReleasePicker';
 import {
   ChangeKindCounts,
@@ -114,10 +111,17 @@ const useReleaseCompare = (from?: OntologyRelease, to?: OntologyRelease) => {
   };
 };
 
-const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
+const OntologyReleaseCompare = ({
+  ontologyId,
+  initialTo,
+}: {
+  ontologyId: string;
+  /** Preselects the newer side, as when a release row asks to compare itself. */
+  initialTo?: OntologyRelease;
+}) => {
   const { t } = useTranslation();
   const [from, setFrom] = useState<OntologyRelease>();
-  const [to, setTo] = useState<OntologyRelease>();
+  const [to, setTo] = useState<OntologyRelease | undefined>(initialTo);
   const { diff, changes, counts, total, hasResult, noDifferences } =
     useReleaseCompare(from, to);
 
@@ -149,7 +153,11 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
         direction="col"
         gap={1}
         key={section}>
-        <Typography as="h5" size="text-sm" weight="semibold">
+        <Typography
+          as="h5"
+          className="not-prose tw:m-0"
+          size="text-sm"
+          weight="semibold">
           {t(`label.${section}`)} · {rows.length}
         </Typography>
         <ul className="tw:m-0 tw:list-none tw:p-0">
@@ -191,19 +199,20 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
     }
     if (diff.isError) {
       return (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => void diff.refetch()}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-load-error">
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.change-plural'),
+            })}
+            onReload={() => void diff.refetch()}
+          />
+        </div>
       );
     }
     if (!hasResult) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (
@@ -220,7 +229,7 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
               isLoading={diff.isFetchingNextPage}
               size="sm"
               onPress={() => void diff.fetchNextPage()}>
-              {t('label.load-more')}
+              {t('label.load-more-lowercase')}
             </Button>
           </Box>
         )}
@@ -234,7 +243,11 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
       data-testid="ontology-release-compare"
       direction="col"
       gap={3}>
-      <Typography as="h4" size="text-sm" weight="semibold">
+      <Typography
+        as="h4"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
         {t('label.compare-versions')}
       </Typography>
       <Box gap={2} wrap="wrap">

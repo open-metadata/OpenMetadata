@@ -25,10 +25,9 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Layer } from '../../../../generated/api/data/createOntology';
@@ -45,6 +44,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { EntityReferenceOption } from '../../../Glossary/AddGlossary/AddGlossary.interface';
 import { toEntityReferenceOption } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
+import OntologyAdvancedToggle from '../OntologyCreateForm/OntologyAdvancedToggle';
 import {
   newOntologyRequest,
   ontologyCreateErrorKey,
@@ -91,6 +91,10 @@ const OntologyCreateDialog = ({
       owners: currentUser ? [ownerOption(currentUser, t('label.you'))] : [],
       reviewers: [],
     },
+  });
+  const chosenReviewers = useWatch({
+    control: people.control,
+    name: 'reviewers',
   });
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -223,7 +227,9 @@ const OntologyCreateDialog = ({
         {getField({
           name: 'reviewers',
           label: t('label.reviewer-plural'),
-          helperText: t('message.ontology-reviewers-create-hint'),
+          helperText: chosenReviewers?.length
+            ? t('message.ontology-reviewers-create-hint')
+            : undefined,
           type: FieldTypes.USER_TEAM_SELECT_INPUT,
           props: {
             ...reviewerPicker,
@@ -238,12 +244,9 @@ const OntologyCreateDialog = ({
 
   const renderAdvanced = () => (
     <Box direction="col" gap={4} id="ontology-create-advanced">
-      <Typography color="secondary" size="text-xs">
-        {t('message.ontology-identifiers-locked')}
-      </Typography>
       <Input
         inputDataTestId="ontology-create-id"
-        label={t('label.id')}
+        label={t('label.name-slash-id')}
         size="sm"
         value={id}
         onChange={setIdOverride}
@@ -258,7 +261,7 @@ const OntologyCreateDialog = ({
         onChange={setIriOverride}
       />
       <Input
-        hint={namespaceHint()}
+        hint={namespaceHint() ?? t('message.ontology-identifiers-locked')}
         inputDataTestId="ontology-create-namespace"
         isInvalid={Boolean(namespaceHint())}
         label={t('label.namespace')}
@@ -301,21 +304,23 @@ const OntologyCreateDialog = ({
       }}>
       <Modal>
         <Dialog
+          showCloseButton
           dividers="scroll"
-          title={t('label.create-entity', { entity: t('label.ontology') })}
           width={520}
           onClose={handleClose}>
+          <Dialog.Header className="tw:pr-12" title={t('label.new-ontology')}>
+            <Typography color="secondary" size="text-sm">
+              {t('message.ontology-create-subtitle')}
+            </Typography>
+          </Dialog.Header>
           <Dialog.Content>
             <Box data-testid="ontology-create-dialog" direction="col" gap={4}>
-              <Typography color="secondary" size="text-sm">
-                {t('message.ontology-create-subtitle')}
-              </Typography>
               <Input
                 isRequired
                 hint={nameMessage()}
                 inputDataTestId="ontology-create-name"
                 isInvalid={Boolean(nameError)}
-                label={t('label.display-name')}
+                label={t('label.ontology-display-name')}
                 placeholder={t('message.ontology-create-name-placeholder')}
                 size="sm"
                 value={displayName}
@@ -324,39 +329,38 @@ const OntologyCreateDialog = ({
               <TextArea
                 data-testid="ontology-create-description"
                 label={t('label.description')}
+                placeholder={t(
+                  'message.ontology-create-description-placeholder'
+                )}
                 size="sm"
                 value={description}
                 onChange={setDescription}
               />
               {renderPeople()}
               {status.isError ? (
-                <Alert variant="error">
+                <Alert
+                  rightContent={
+                    <Button
+                      color="secondary"
+                      size="xs"
+                      onPress={() => void status.refetch()}>
+                      {t('label.retry')}
+                    </Button>
+                  }
+                  variant="error">
                   {t('message.ontology-base-uri-load-failed')}
-                  <Button
-                    color="secondary"
-                    size="xs"
-                    onPress={() => void status.refetch()}>
-                    {t('label.retry')}
-                  </Button>
                 </Alert>
               ) : null}
-              <Button
-                aria-controls="ontology-create-advanced"
-                aria-expanded={isAdvancedOpen}
-                color="link-gray"
-                data-testid="ontology-create-advanced-toggle"
-                iconTrailing={ChevronDown}
-                size="sm"
-                onPress={() => setIsAdvancedOpen((open) => !open)}>
-                {t('label.advanced')}
-              </Button>
+              <OntologyAdvancedToggle
+                controls="ontology-create-advanced"
+                isOpen={isAdvancedOpen}
+                testId="ontology-create-advanced-toggle"
+                onToggle={() => setIsAdvancedOpen((open) => !open)}
+              />
               {isAdvancedOpen ? renderAdvanced() : null}
             </Box>
           </Dialog.Content>
           <Dialog.Footer>
-            <Typography className="tw:mr-auto" color="secondary" size="text-xs">
-              {t('message.ontology-create-lands-in-edit')}
-            </Typography>
             <Button
               color="secondary"
               data-testid="ontology-create-cancel"
@@ -369,7 +373,7 @@ const OntologyCreateDialog = ({
               isDisabled={!canCreate}
               isLoading={isSaving}
               onPress={() => void handleCreate()}>
-              {t('label.create')}
+              {t('label.create-ontology')}
             </Button>
           </Dialog.Footer>
         </Dialog>

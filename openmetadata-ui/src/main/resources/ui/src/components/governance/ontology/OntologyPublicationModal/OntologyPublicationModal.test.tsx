@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import OntologyPublicationModal from './OntologyPublicationModal';
@@ -126,5 +126,56 @@ describe('OntologyPublicationModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
 
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('keeps one modal height whichever tab is open', () => {
+    render(
+      <OntologyPublicationModal
+        canEdit
+        ontology={ontology}
+        onClose={jest.fn()}
+      />
+    );
+    const modal = screen.getByTestId('ontology-publication-modal');
+
+    expect(modal).toHaveClass('tw:h-[88vh]');
+    expect(modal).not.toHaveClass('tw:max-h-[88vh]');
+
+    fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
+
+    expect(screen.getByTestId('ontology-publication-modal')).toHaveClass(
+      'tw:h-[88vh]'
+    );
+  });
+
+  it('shows the version step and the release count the panel reports in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    render(
+      <OntologyPublicationModal
+        canEdit
+        ontology={ontology}
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-publication-version-step')
+    ).not.toBeInTheDocument();
+
+    const { onSummaryChange } = mockReleasePanel.mock.lastCall[0];
+    act(() =>
+      onSummaryChange({
+        toVersion: 'v0.1.0',
+        releaseCount: 3,
+        hasMoreReleases: true,
+      })
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-version-step')
+    ).toHaveTextContent('label.draft→v0.1.0');
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveTextContent('label.release-plural (3+)');
   });
 });

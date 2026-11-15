@@ -56,7 +56,7 @@ import {
 } from './EntityDataBreadcrumbUtils';
 import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
-import { bytesToSize } from './StringUtils';
+import { bytesToSize, getSafeHttpUrl } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
 
 // A creation time before the Unix epoch is the year-0001 placeholder older ingestion stored for a
@@ -290,6 +290,7 @@ const getPipelineHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
 const getMlModelHeaderInfo: HeaderInfoBuilder = (dataAsset, entityName) => {
   const mlModelDetail = dataAsset as Mlmodel;
+  const safeServerUrl = getSafeHttpUrl(mlModelDetail.server);
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail),
@@ -316,12 +317,19 @@ const getMlModelHeaderInfo: HeaderInfoBuilder = (dataAsset, entityName) => {
         {mlModelDetail.server && (
           <>
             <HeaderDotSeparator />
-            <ExtraInfoLink
-              newTab
-              href={mlModelDetail.server}
-              label={t('label.server')}
-              value={mlModelDetail.server}
-            />
+            {safeServerUrl ? (
+              <ExtraInfoLink
+                newTab
+                href={safeServerUrl}
+                label={t('label.server')}
+                value={mlModelDetail.server}
+              />
+            ) : (
+              <ExtraInfoLabel
+                label={t('label.server')}
+                value={mlModelDetail.server}
+              />
+            )}
           </>
         )}
         {mlModelDetail.dashboard && (

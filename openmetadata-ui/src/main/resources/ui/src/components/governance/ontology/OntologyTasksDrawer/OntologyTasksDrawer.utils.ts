@@ -13,21 +13,29 @@
 
 import type { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 
-/**
- * The open reviews the Studio banner may announce: those the caller votes on,
- * then those the caller requested, once each.
- */
-export const getOpenReviews = (
-  ...lists: (OntologyReleaseReview[] | undefined)[]
+// ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
+export const CURSOR_HISTORY_LIMIT = 40;
+
+/** Paging controls only help once there is a page to move to or back from. */
+export const hasMorePages = (after: string | undefined, pagesSeen: number) =>
+  Boolean(after) || pagesSeen > 1;
+
+/** The loaded reviews whose title, task id, ontology or requester matches the search. */
+export const filterReviews = (
+  reviews: OntologyReleaseReview[],
+  search: string
 ) => {
-  const seen = new Set<string>();
+  const needle = search.trim().toLowerCase();
+  if (!needle) {
+    return reviews;
+  }
 
-  return lists
-    .flatMap((list) => list ?? [])
-    .filter((review) => {
-      const duplicate = seen.has(review.task.id);
-      seen.add(review.task.id);
-
-      return !duplicate;
-    });
+  return reviews.filter((review) =>
+    [
+      review.task.displayName,
+      review.taskId,
+      review.ontology.displayName ?? review.ontology.name,
+      review.requester?.displayName ?? review.requester?.name,
+    ].some((value) => value?.toLowerCase().includes(needle))
+  );
 };

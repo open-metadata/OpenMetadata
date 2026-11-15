@@ -54,6 +54,7 @@ import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
+import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
@@ -138,12 +139,12 @@ public class Migration extends MigrationProcessImpl {
     // Lineage edges written before pipelines were type-restricted can name any entity — a database
     // service among them — which the edge copied into the downstream search document
     // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
-    // credential rotation. DB-agnostic, so it also runs on MySQL.
+    // credential rotation. It runs on both engines, each with its own page query.
     runOnce(
         migrationDAO,
         getVersion(),
         LineageEdgePipelineCleanupMigration.STEP_NAME,
-        () -> clearNonPipelineEdgePipelines(collectionDAO));
+        () -> clearNonPipelineEdgePipelines(handle, POSTGRES));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -196,6 +197,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DataProductDomainContainmentRepair.STEP_NAME,
         () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    // Renames MicroStrategy charts by dossier. It reads charts through the repository, so it runs
+    // after the conversation and custom property migrations above.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MicroStrategyChartRename.STEP_NAME,
+        () -> MicroStrategyChartRename.renameAll(handle, collectionDAO));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
     runOnce(
         migrationDAO,

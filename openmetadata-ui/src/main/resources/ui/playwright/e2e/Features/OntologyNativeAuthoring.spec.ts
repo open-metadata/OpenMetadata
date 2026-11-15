@@ -21,6 +21,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { TeamClass } from '../../support/team/TeamClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
+  chooseSelectOption,
   clickIgnoringToasts,
   getWorkerAdminAPIContext,
   scrollIntoViewAndSettle,
@@ -99,12 +100,8 @@ test.describe(
         await test.step('Open both scope-bound Add concept entry points', async () => {
           await page.goto('/governance/ontology?ontology=' + owner.id);
           await page.getByTestId('mode-tab-edit').click();
-          await expect(
-            page.getByTestId('ontology-canvas-add-concept')
-          ).toBeVisible();
-          await clickIgnoringToasts(
-            page.getByTestId('ontology-canvas-add-concept')
-          );
+          await expect(page.getByTestId('ontology-add-concept')).toBeVisible();
+          await clickIgnoringToasts(page.getByTestId('ontology-add-concept'));
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toBeVisible();
@@ -283,6 +280,8 @@ test.describe(
                 Math.abs(added.y - existing.y) > 38 * zoom
             ).toBe(true);
           }
+          // The concept drawer covers the header's right, publication trigger included.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page
@@ -320,18 +319,18 @@ test.describe(
           const port = await stablePoint('port', concepts[0].id);
           await page.mouse.click(port.x, port.y);
           await expect(
-            page.getByTestId('ontology-connect-instruction')
-          ).toBeVisible();
+            page.getByTestId('ontology-connection-line')
+          ).toBeAttached();
           // Clicking the armed source's own handle cancels; its body would pick the concept as the target.
           await page.mouse.click(port.x, port.y);
           await expect(
-            page.getByTestId('ontology-connect-instruction')
+            page.getByTestId('ontology-connection-line')
           ).toHaveCount(0);
           const secondPort = await stablePoint('port', concepts[0].id);
           await page.mouse.click(secondPort.x, secondPort.y);
           await expect(
-            page.getByTestId('ontology-connect-instruction')
-          ).toBeVisible();
+            page.getByTestId('ontology-connection-line')
+          ).toBeAttached();
           const target = await stablePoint('node', concepts[1].id);
           await page.mouse.click(target.x, target.y);
           await expect(
@@ -518,12 +517,18 @@ test.describe(
         await page.getByTestId('ontology-add-concept').click();
         await page.getByTestId('new-class-label').fill('Remittance');
         await page.getByTestId('new-class-advanced-toggle').click();
-        await page.getByTestId('new-class-type-SKOS_CONCEPT').click();
+        await chooseSelectOption(
+          page.getByTestId('new-class-type'),
+          page.getByTestId('new-class-type-SKOS_CONCEPT')
+        );
         await expect(page.getByText(skosError)).toHaveCount(0);
         await pick(page, 'Subclass of', 'Payment');
         await expect(page.getByText(skosError)).toBeVisible();
         await expect(page.getByTestId('new-class-create')).toBeDisabled();
-        await page.getByTestId('new-class-type-OWL_CLASS').click();
+        await chooseSelectOption(
+          page.getByTestId('new-class-type'),
+          page.getByTestId('new-class-type-OWL_CLASS')
+        );
         await expect(page.getByText(skosError)).toHaveCount(0);
         await expect(page.getByTestId('new-class-create')).toBeEnabled();
         await clickIgnoringToasts(page.getByTestId('new-class-create'));

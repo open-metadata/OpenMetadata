@@ -73,16 +73,14 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
 
   const onNavigate = useCallback(
     (nextView: PersonaView) => {
-      setHash(HASH_TAB, viewToSubPath(nextView));
+      setHash(HASH_TAB, viewToSubPath(nextView), undefined, { push: true });
     },
     [setHash]
   );
+  // Replaces: Back must not reopen a deleted persona or a submitted form.
   // Stable: PersonaDetail builds its header actions from it, and a new
   // callback each render would re-push the header in a render loop.
-  const onPersonaDeleted = useCallback(
-    () => onNavigate({ type: 'landing' }),
-    [onNavigate]
-  );
+  const returnToLanding = useCallback(() => setHash(HASH_TAB), [setHash]);
 
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
   const [pendingExit, setPendingExit] = useState<() => void>();
@@ -381,10 +379,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
 
   if (view.type === 'add') {
     return (
-      <PersonaAddForm
-        onCancel={() => onNavigate({ type: 'landing' })}
-        onCreated={() => onNavigate({ type: 'landing' })}
-      />
+      <PersonaAddForm onCancel={returnToLanding} onCreated={returnToLanding} />
     );
   }
 
@@ -396,7 +391,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           fqn={view.fqn}
           key={view.fqn}
           subCategory={subCategory}
-          onDeleted={onPersonaDeleted}
+          onDeleted={returnToLanding}
           onRename={setResolvedName}
           onSelectCategory={(category) =>
             onNavigate({

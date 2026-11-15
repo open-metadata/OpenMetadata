@@ -275,7 +275,7 @@ test.describe(
         await expectSelected(owner.page, 'mode-tab-edit');
         await expect(owner.page).toHaveURL(/mode=edit/);
         await expect(owner.page).not.toHaveURL(/version=/);
-        const editor = owner.page.getByTestId('ontology-concept-authoring');
+        const editor = owner.page.getByTestId('ontology-concept-editor');
         await expect(editor).toBeVisible();
         await expect
           .poll(() =>
@@ -349,7 +349,9 @@ test.describe(
         await expect(page.getByText(DRAFT_WORDING)).toBeVisible();
         await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
 
+        // The version switch sits outside the drawer, so pressing it closes Alpha's drawer.
         await page.getByTestId('ontology-version-published').click();
+        await openConceptInTree(page, fixture.alpha);
 
         await expect(page.getByText(RELEASED_WORDING)).toBeVisible();
         await expect(page.getByText(DRAFT_WORDING)).toHaveCount(0);
@@ -358,6 +360,7 @@ test.describe(
         await page.screenshot({ path: 'test-results/g15-switch.png' });
 
         await page.getByTestId('ontology-version-draft').click();
+        await openConceptInTree(page, fixture.alpha);
 
         await expect(page.getByText(DRAFT_WORDING)).toBeVisible();
         await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
@@ -461,7 +464,10 @@ test.describe(
       const api = await getWorkerAdminAPIContext();
       const fixture = await publishWithNewerDraft(api, page, reviewer);
       try {
-        await page.goto(studioUrl(fixture.ontology, '&view=ontology'));
+        // Only a published release lists its details; the draft's tabs leave them to Settings.
+        await page.goto(
+          studioUrl(fixture.ontology, '&view=ontology&version=published')
+        );
         const overview = page.getByTestId('ontology-overview');
 
         await expect(overview).toBeVisible();
@@ -488,7 +494,7 @@ test.describe(
           ).toContainText('0');
           await expect(
             page.getByTestId('ontology-overview-version')
-          ).toContainText('Draft');
+          ).toHaveCount(0);
         } finally {
           await cleanUp(api, [bare]);
         }

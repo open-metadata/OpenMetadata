@@ -234,7 +234,7 @@ export const stageTopologyPage = (
   ),
 });
 
-const assetNodeId = (conceptId: string, assetId: string) =>
+export const assetNodeId = (conceptId: string, assetId: string) =>
   `asset:${conceptId}:${assetId}`;
 
 const toConceptNode = (
@@ -426,3 +426,23 @@ export const toBoundColumnsByAsset = (
       })),
     ])
   );
+
+/** Observed lineage between two assets of one concept, as asset node ids. */
+export const buildAssetLineagePairs = (
+  edges: readonly Edge[],
+  cluster: NativeCluster
+): Array<{ from: string; to: string }> => {
+  const assetIds = new Set(cluster.assets.map((row) => row.id));
+
+  return edges
+    .filter(
+      (edge) =>
+        edge.fromEntity !== edge.toEntity &&
+        assetIds.has(edge.fromEntity) &&
+        assetIds.has(edge.toEntity)
+    )
+    .map((edge) => ({
+      from: assetNodeId(cluster.concept.id, edge.fromEntity),
+      to: assetNodeId(cluster.concept.id, edge.toEntity),
+    }));
+};

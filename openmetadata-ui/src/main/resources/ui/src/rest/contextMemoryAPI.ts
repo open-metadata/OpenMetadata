@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { ApproveExtractedMemories } from '../generated/api/context/approveExtractedMemories';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
 import { ExtractedMemoryApproval } from '../generated/api/context/extractedMemoryApproval';
+import { ExtractionAvailability } from '../generated/api/context/extractionAvailability';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { MemoryDerivation } from '../generated/entity/context/memoryDerivation';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -144,6 +145,16 @@ export const approveExtractedMemories = async (
 
   return response.data;
 };
+
+/** Whether memories can be extracted now, and why not; any signed-in user may read it. */
+export const getExtractionAvailability =
+  async (): Promise<ExtractionAvailability> => {
+    const response = await APIClient.get<ExtractionAvailability>(
+      `${BASE_URL}/extractionAvailability`
+    );
+
+    return response.data;
+  };
 
 /** The server reads at most this many derived entities per request. */
 export const MAX_DERIVATION_ENTITIES = 100;

@@ -26,6 +26,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import { selectOntologyOption } from '../../utils/ontologyStudio';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
 const MANY_ASSETS = 100;
@@ -153,6 +154,14 @@ const createProperty = async (
     `Create ${name}`
   );
 
+// The picker searches the table index, so a table created moments ago must be indexed first.
+const waitForTableIndexed = async (table: TableClass) =>
+  waitForSearchIndexed(
+    await getWorkerAdminAPIContext(),
+    table.entityResponseData.fullyQualifiedName,
+    'table_search_index'
+  );
+
 const createTables = async (
   api: APIRequestContext,
   count: number,
@@ -229,12 +238,34 @@ const openData = async (
   ontology: Ontology,
   concept?: OntologyConcept
 ) => {
-  await page.goto(
-    `/governance/ontology?ontology=${ontology.id}${
-      concept ? `&concept=${concept.id}` : ''
-    }`
-  );
+  // A concept in the URL opens its drawer over the Model/Data switch, so Data is opened first and
+  // the concept is picked there, as a person reaches it.
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await page.getByTestId('ontology-graph-mode-data').click();
+  if (concept) {
+    await pickConcept(page, concept);
+  }
+};
+
+const pickConcept = async (page: Page, concept: OntologyConcept) => {
+  const chip = page.getByTestId('ontology-data-concept-chip');
+  const trigger = page.getByTestId('ontology-data-concept-picker-trigger');
+  // Data remembers the last pick per ontology, so a reload can land on it already picked.
+  await expect(chip.or(trigger)).toBeVisible();
+  if (await chip.isVisible()) {
+    await expect(chip).toContainText(concept.name);
+
+    return;
+  }
+  await trigger.click();
+  await page.getByTestId(`ontology-data-concept-option-${concept.id}`).click();
+  await expect(page.getByTestId('ontology-data-concept-chip')).toContainText(
+    concept.name
+  );
+  // Picking opens the concept's drawer over the right of the canvas; Data keeps the pick once it closes.
+  const inspector = page.getByTestId('ontology-concept-inspector');
+  await inspector.getByTestId('ontology-concept-close').click();
+  await expect(inspector).toHaveCount(0);
 };
 
 const assetRow = (page: Page, table: TableClass) =>
@@ -340,9 +371,13 @@ test.describe(
           [customer, tables[0], tables[1]],
           [order, tables[1], tables[0]],
         ] as const) {
-          if (concept !== customer) {
-            await page.getByTestId('ontology-data-concept-change').click();
-          }
+          await page
+            .getByTestId(
+              concept === customer
+                ? 'ontology-data-concept-picker-trigger'
+                : 'ontology-data-concept-change'
+            )
+            .click();
           await page
             .getByTestId(`ontology-data-concept-option-${concept.id}`)
             .click();
@@ -379,6 +414,8 @@ test.describe(
           empty.getByTestId('ontology-data-link-asset')
         ).toBeVisible();
         await expect(page.getByText(/0 of 0 properties bound/)).toHaveCount(0);
+        // Picking never changes the mode; only Link data asset or Edit does.
+        await expect(page).not.toHaveURL(/mode=edit/);
         await page.screenshot({ path: `${SCREENSHOTS}/g17-empty.png` });
       } finally {
         await cleanUp(api, { ontology, tables: [] });
@@ -397,6 +434,7 @@ test.describe(
         const property = await createProperty(api, ontology, concept, 'custId');
         await openData(page, ontology, concept);
 
+        await waitForTableIndexed(table);
         await page.getByTestId('ontology-data-link-asset').click();
         const picker = page.getByTestId('ontology-data-asset-picker');
         await picker
@@ -421,8 +459,8 @@ test.describe(
         await bindTable(api, concept, table, linked.revision, [
           { property, column },
         ]);
-        await page.reload();
-        await page.getByTestId('ontology-graph-mode-data').click();
+        // A reload reopens the concept's drawer over the Model/Data switch.
+        await openData(page, ontology, concept);
 
         const toggle = page.getByTestId(/^ontology-data-asset-columns-toggle-/);
         await toggle.click();
@@ -640,7 +678,7 @@ test.describe(
         const concept = await createConcept(api, ontology, 'Customer');
         await bindTables(api, concept, tables);
         await openData(page, ontology);
-        await page.getByTestId('ontology-data-concept-picker').click();
+        await page.getByTestId('ontology-data-concept-picker-trigger').click();
 
         const startedAt = Date.now();
         await page
@@ -685,9 +723,10 @@ test.describe(
         await bindTable(api, concept, table, 0);
         taskId = await publish(api, reviewerPage, ontology);
         await page.goto(
-          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}&version=published`
+          `/governance/ontology?ontology=${ontology.id}&version=published`
         );
         await page.getByTestId('ontology-graph-mode-data').click();
+        await pickConcept(page, concept);
 
         await assetRow(page, table).click();
         await expect(
@@ -775,6 +814,7 @@ const mappingRow = (page: Page, column: string) =>
   page.getByTestId(`ontology-column-mapping-row-${column}`);
 
 const linkThroughPicker = async (page: Page, table: TableClass) => {
+  await waitForTableIndexed(table);
   await page.getByTestId('ontology-data-link-asset').click();
   const picker = page.getByTestId('ontology-data-asset-picker');
   await picker
@@ -812,9 +852,9 @@ test.describe(
             'Bind columns to Patient’s properties'
           );
           for (const [column, property] of [
-            ['patient_id', 'patient id'],
-            ['date_of_birth', 'date of birth'],
-            ['patient_name', 'patient name'],
+            ['patient_id', 'patientId'],
+            ['date_of_birth', 'dateOfBirth'],
+            ['patient_name', 'patientName'],
           ]) {
             const row = mappingRow(page, column);
 
@@ -913,7 +953,7 @@ test.describe(
         await selectOntologyOption(
           page,
           mappingRow(page, 'created_at').getByRole('button'),
-          'patient name'
+          'patientName'
         );
         await expect(
           mappingRow(page, 'created_at').getByRole('checkbox')

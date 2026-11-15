@@ -55,7 +55,12 @@ const THREE_ROWS = selectResult([
 
 function renderResults(
   result: SparqlPlaygroundResult,
-  props: { scopeLabel?: string; exportName?: string } = {}
+  props: {
+    scopeLabel?: string;
+    exportName?: string;
+    columnLabels?: Record<string, string>;
+    meta?: string;
+  } = {}
 ) {
   return render(
     <OntologyQueryResults
@@ -205,5 +210,36 @@ describe('OntologyQueryResults', () => {
     expect(
       screen.getByTestId('ontology-sparql-result-status')
     ).toHaveTextContent(/^0 label\.row-plural/);
+  });
+
+  it('numbers the rows, names columns as SPARQL variables and marks unbound cells', () => {
+    renderResults(
+      selectResult([
+        { c: { type: Type.URI, value: 'urn:a' } },
+        {
+          c: { type: Type.URI, value: 'urn:b' },
+          label: { type: Type.Literal, value: 'Beta' },
+        },
+      ])
+    );
+
+    const rows = screen.getAllByRole('row');
+
+    expect(rows[0]).toHaveTextContent(/^#\s*\?c\s*\?label$/);
+    expect(rows[1]).toHaveTextContent(/^1\s*urn:a\s*—$/);
+    expect(rows[2]).toHaveTextContent(/^2\s*urn:b\s*Beta$/);
+  });
+
+  it('uses readable column labels in their own order and shows extra notes beside the count', () => {
+    renderResults(THREE_ROWS, {
+      columnLabels: { label: 'Concept', c: 'IRI' },
+      meta: '1 condition ignored',
+    });
+
+    const rows = screen.getAllByRole('row');
+
+    expect(rows[0]).toHaveTextContent(/^#\s*Concept\s*IRI$/);
+    expect(rows[2]).toHaveTextContent(/^2\s*Beta, the second\s*urn:b$/);
+    expect(screen.getByText('1 condition ignored')).toBeInTheDocument();
   });
 });

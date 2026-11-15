@@ -44,12 +44,27 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
     }
     updateLocked(lockedForms.current.size > 0);
   }, []);
+  // True while a discard the person confirmed runs, so a guarded step inside it does not ask again.
+  const isConfirmed = useRef(false);
   const guard = useCallback((action: () => void) => {
-    if (dirtyForms.current.size || lockedForms.current.size) {
-      setPending(() => action);
-    } else {
+    if (
+      isConfirmed.current ||
+      !(dirtyForms.current.size || lockedForms.current.size)
+    ) {
       action();
+
+      return;
     }
+    // One press can guard two actions (a drawer closing on the press, the tab it pressed);
+    // the one prompt answers both.
+    setPending((previous) =>
+      previous
+        ? () => {
+            previous();
+            action();
+          }
+        : action
+    );
   }, []);
   const routing = useWorkflowNavigationBlock({
     enabled: dirty || locked,
@@ -77,7 +92,12 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
     }
     setPending(undefined);
     if (pending) {
-      routing.runWithoutBlocking(pending);
+      isConfirmed.current = true;
+      try {
+        routing.runWithoutBlocking(pending);
+      } finally {
+        isConfirmed.current = false;
+      }
     } else {
       routing.onDiscard();
     }
@@ -98,6 +118,7 @@ const OntologyDraftProvider = ({ children }: { children: ReactNode }) => {
           <Dialog
             dividers="scroll"
             title={t('message.discard-your-changes')}
+            width={400}
             onClose={cancel}>
             <Dialog.Content>
               {t(

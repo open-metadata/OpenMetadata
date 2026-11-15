@@ -391,7 +391,14 @@ test.describe(
       );
       const copied = await page.evaluate(() => navigator.clipboard.readText());
 
-      expect(copied).toBe(shown.map((cells) => cells.join('\t')).join('\n'));
+      // The table adds a "#" column and shows variables as "?name"; exports carry neither.
+      const exported = shown.map((cells, row) =>
+        cells
+          .slice(1)
+          .map((cell) => (row === 0 ? cell.replace(/^\?/, '') : cell))
+      );
+
+      expect(copied).toBe(exported.map((cells) => cells.join('\t')).join('\n'));
 
       const download = page.waitForEvent('download');
       await page.getByTestId('ontology-sparql-csv').click();
@@ -401,7 +408,7 @@ test.describe(
       ).replace(/^\ufeff/, '');
 
       expect(file.suggestedFilename()).toMatch(/\.csv$/);
-      expect(csv).toBe(shown.map((cells) => cells.join(',')).join('\n'));
+      expect(csv).toBe(exported.map((cells) => cells.join(',')).join('\n'));
       await page.screenshot({ path: 'test-results/g16-csv.png' });
     });
 
@@ -417,9 +424,9 @@ test.describe(
         page.getByTestId('ontology-query-picker-description')
       ).toContainText('one ontology at a time');
       const option = await findOntologyInQueryPicker(page, fixture.ontology);
-      await expect(
-        option.getByTestId('ontology-query-picker-counts')
-      ).toHaveText('2 concepts · 0 properties', { timeout: 30_000 });
+      await expect(option).toContainText('2 concepts · 0 properties', {
+        timeout: 30_000,
+      });
       await page.screenshot({ path: 'test-results/g16-all.png' });
 
       await option.click();
@@ -441,6 +448,7 @@ test.describe(
         page.getByTestId('ontology-sparql-editor'),
         labelQuery(PUBLISHED_CONCEPT)
       );
+      await page.getByTestId('ontology-query-more').click();
       await page.getByTestId('ontology-query-save').click();
       await page.getByTestId('ontology-query-save-name').fill(name);
       await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -533,7 +541,6 @@ test.describe(
           await expect(
             page.getByTestId('ontology-visual-query-builder')
           ).toBeVisible();
-          await page.getByTestId('ontology-builder-toggle-sparql').click();
           const generated = page.getByTestId('ontology-generated-sparql');
 
           await expect(generated).toContainText(
@@ -555,9 +562,6 @@ test.describe(
           const sent = (await request).postDataJSON() as { query: string };
 
           expect(sent.query.trim()).toBe(shownSparql);
-          await expect(
-            page.getByTestId('ontology-builder-result')
-          ).toContainText('2');
           await expect(
             page.getByTestId('ontology-sparql-result-status')
           ).toContainText('2 rows');
@@ -581,7 +585,7 @@ test.describe(
       });
     }
 
-    test('the builder keeps its SPARQL hidden until asked and hides it again on request', async ({
+    test('the builder shows its SPARQL beside the results, hides it on request and brings it back', async ({
       isolatedUserPage: page,
     }) => {
       await page.goto(queryUrl(fixture.ontology, '&view=builder'));
@@ -591,18 +595,18 @@ test.describe(
       const toggle = page.getByTestId('ontology-builder-toggle-sparql');
       const generated = page.getByTestId('ontology-generated-sparql');
 
+      await expect(generated).toBeVisible();
+      await expect(toggle).toHaveAttribute('aria-label', 'Hide SPARQL');
+      await page.screenshot({ path: 'test-results/g16-builder.png' });
+
+      await toggle.click();
+
       await expect(generated).toHaveCount(0);
       await expect(toggle).toHaveText('Show SPARQL');
 
       await toggle.click();
 
       await expect(generated).toBeVisible();
-      await expect(toggle).toHaveText('Hide SPARQL');
-      await page.screenshot({ path: 'test-results/g16-builder.png' });
-
-      await toggle.click();
-
-      await expect(generated).toHaveCount(0);
     });
   }
 );

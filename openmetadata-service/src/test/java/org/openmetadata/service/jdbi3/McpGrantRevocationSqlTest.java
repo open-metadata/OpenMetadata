@@ -31,8 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.migration.utils.v207.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -51,7 +51,7 @@ class McpGrantRevocationSqlTest {
   private static final String DATABASE = "mcp_grants";
   private static final String PASSWORD = "mcp-grants-test";
   private static final String MYSQL = "mysql";
-  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7");
+  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7", "2.1.0");
   private static final String CLIENT = "client-1";
   // Grants written before they used the account's own name may hold the provider's spelling.
   private static final String DELETED_USER = "alice";
@@ -254,7 +254,7 @@ class McpGrantRevocationSqlTest {
       jdbi.useHandle(handle -> statements.forEach(handle::execute));
     }
     if (MYSQL.equals(dialect)) {
-      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
     }

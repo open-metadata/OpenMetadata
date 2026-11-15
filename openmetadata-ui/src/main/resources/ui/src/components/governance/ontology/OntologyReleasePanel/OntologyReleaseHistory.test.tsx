@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import {
   ApprovalBasis,
   EntityStatus,
@@ -234,6 +240,31 @@ describe('Releases tab', () => {
     expect(screen.queryByTestId('ontology-release-kinds-older')).toBeNull();
   });
 
+  it('names a voter who is a listed reviewer by display name', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    mockEvents([event(EventType.Rejected, { voters: ['rhea.reviewer'] })]);
+    renderHistory([
+      release('rj', '1.0.0', EntityStatus.Rejected, {
+        reviewers: [
+          {
+            id: 'rhea',
+            type: 'user',
+            name: 'rhea.reviewer',
+            displayName: 'Rhea Reviewer',
+          },
+        ],
+      }),
+    ]);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-release-decision-rj')
+      ).toHaveTextContent('Rhea Reviewer')
+    );
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
   it('shows the same row facts in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     mockEvents([event(EventType.Approved, { voters: ['qa.reviewer1'] })]);
@@ -245,15 +276,89 @@ describe('Releases tab', () => {
       }),
     ]);
 
-    expect(
-      await screen.findByTestId('ontology-release-decision-ai')
-    ).toHaveTextContent(
-      'message.ontology-release-approved-by {"reviewers":"qa.reviewer1"}'
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-release-decision-ai')
+      ).toHaveTextContent('qa.reviewer1label.approved')
     );
-    expect(screen.getByTestId('ontology-release-count-ai')).toHaveTextContent(
-      '3 label.added-lowercase · 2 label.changed-lowercase · 2 label.removed-lowercase'
+
+    expect(screen.getByTestId('ontology-release-status-ai')).toHaveTextContent(
+      'label.approved'
+    );
+    expect(screen.getByTestId('ontology-release-count-ai').textContent).toBe(
+      '+3 ~2 −2'
     );
     expect(screen.getByText('author.one')).toBeVisible();
+    expect(screen.getByTestId('ontology-release-menu-ai')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-release-filter-published')
+    ).toHaveTextContent('label.published1');
+    expect(
+      screen.getByTestId('ontology-release-filter-draft')
+    ).toHaveTextContent('label.drafts0');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('opens an AI release from its version button, with the row menu as its own control', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onSelect = jest.fn();
+    renderHistory([release('ai', '3.0.0', EntityStatus.Approved)], {
+      onSelect,
+    });
+
+    const open = screen.getByTestId('ontology-release-select-ai');
+
+    expect(open.tagName).toBe('BUTTON');
+    expect(open).toHaveTextContent('v3.0.0');
+    expect(open).not.toContainElement(
+      screen.getByTestId('ontology-release-menu-ai')
+    );
+
+    fireEvent.click(open);
+
+    expect(onSelect).toHaveBeenCalledWith('ai');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('opens Compare versions from the AI toolbar and returns to all releases', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <OntologyReleaseHistory
+          history={history([release('one', '1.0.0', EntityStatus.Approved)])}
+          ontologyId="ontology"
+          onSelect={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(
+      screen.queryByTestId('ontology-release-compare-back')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-release-compare-open'));
+
+    expect(screen.getByTestId('ontology-release-compare-back')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-release-row')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-release-compare-back'));
+
+    expect(screen.getAllByTestId('ontology-release-row')).toHaveLength(1);
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('says no releases yet in AI mode before the first release', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderHistory([]);
+
+    expect(
+      screen.getByTestId('ontology-release-history-empty')
+    ).toHaveTextContent('message.ontology-no-releases-yet');
 
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
@@ -306,7 +411,9 @@ describe('Releases tab', () => {
       fireEvent.change(search, { target: { value: 'nothing matches' } });
 
       expect(screen.queryAllByTestId('ontology-release-row')).toHaveLength(0);
-      expect(screen.getByText('message.no-data-available')).toBeVisible();
+      expect(
+        screen.getByText('label.no-result-for-these-filter-plural')
+      ).toBeVisible();
     });
 
     it('filters rows by status', () => {

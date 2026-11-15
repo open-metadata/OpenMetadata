@@ -19,12 +19,15 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01, Download01 } from '@openmetadata/ui-core-components/icons';
 import {
-  CheckCircle,
-  Copy01,
-  Download01,
-} from '@openmetadata/ui-core-components/icons';
-import { Key, ReactElement, useEffect, useMemo, useState } from 'react';
+  Key,
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
@@ -33,6 +36,8 @@ import { SparqlPlaygroundResult } from '../../rest/rdfAPI';
 import { downloadCsv } from '../../utils/Export/ExportUtils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import Loader from '../common/Loader/Loader';
 import { LayoutType } from './OntologyExplorer.constants';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
@@ -40,6 +45,7 @@ import { buildGraphFromSparqlBindings } from './OntologyQueryResultGraph.utils';
 import {
   buildCsv,
   buildTsv,
+  describeTimeAgo,
   toCsvFileName,
 } from './OntologyQueryResults.utils';
 
@@ -51,7 +57,18 @@ interface OntologyQueryResultsProps {
   scopeLabel?: string;
   /** The CSV file is named after this, usually the query's title. */
   exportName?: string;
+  /**
+   * Readable column headers by variable; a variable without one is shown as "?name".
+   * Labelled columns come first, in this object's key order.
+   */
+  columnLabels?: Record<string, string>;
+  /** When the query ran (client clock), shown as "Ran just now". */
+  ranAt?: number;
+  /** Extra notes beside the row count, such as ignored builder conditions. */
+  meta?: ReactNode;
 }
+
+const EMPTY_CELL = '—';
 
 const META_SEPARATOR = ' · ';
 
@@ -76,8 +93,25 @@ function toResultView(key: Key): ResultView {
 
 type ResultRow = { [key: string]: RDFTerm };
 
+function orderVariables(
+  variables: string[],
+  columnLabels?: Record<string, string>
+): string[] {
+  if (!columnLabels) {
+    return variables;
+  }
+  const labelled = Object.keys(columnLabels);
+  const rank = (variable: string) => {
+    const index = labelled.indexOf(variable);
+
+    return index === -1 ? labelled.length : index;
+  };
+
+  return [...variables].sort((a, b) => rank(a) - rank(b));
+}
+
 interface ResultTable {
-  keyedRows: Array<{ key: string; row: ResultRow }>;
+  keyedRows: Array<{ key: string; position: number; row: ResultRow }>;
   rows: ResultRow[];
   variables: string[];
 }
@@ -88,8 +122,8 @@ interface ResultBodyParams {
   resultView: ResultView;
   hasResultGraph: boolean;
   resultGraph: ResultGraph;
-  conceptResults: Array<{ key: string; value: string }> | null;
   resultTable: ResultTable;
+  columnLabels?: Record<string, string>;
   result: SparqlPlaygroundResult;
   relationshipTypes: RelationshipType[];
   emptyText: string;
@@ -101,8 +135,8 @@ function renderResultBody({
   resultView,
   hasResultGraph,
   resultGraph,
-  conceptResults,
   resultTable,
+  columnLabels,
   result,
   relationshipTypes,
   emptyText,
@@ -160,18 +194,6 @@ function renderResultBody({
     );
   }
 
-  if (conceptResults) {
-    return (
-      <Box data-testid="ontology-sparql-chips" gap={2} wrap="wrap">
-        {conceptResults.map(({ key, value }) => (
-          <Badge color="gray" key={key} size="md" type="pill-color">
-            {value}
-          </Badge>
-        ))}
-      </Box>
-    );
-  }
-
   if (resultTable.variables.length > 0) {
     return (
       <Box
@@ -183,21 +205,29 @@ function renderResultBody({
           data-testid="ontology-sparql-result-table"
           size="sm">
           <Table.Header>
+            <Table.Head className="tw:w-12" id="#" label="#" />
             {resultTable.variables.map((variable, index) => (
               <Table.Head
                 id={variable}
                 isRowHeader={index === 0}
                 key={variable}
-                label={variable}
+                label={columnLabels?.[variable] ?? `?${variable}`}
               />
             ))}
           </Table.Header>
           <Table.Body items={resultTable.keyedRows}>
-            {({ key, row }) => (
+            {({ key, position, row }) => (
               <Table.Row id={key}>
+                <Table.Cell>
+                  <Typography color="quaternary" size="text-xs">
+                    {position}
+                  </Typography>
+                </Table.Cell>
                 {resultTable.variables.map((variable) => (
                   <Table.Cell key={variable}>
-                    {getTermDisplayText(row[variable])}
+                    {row[variable]
+                      ? getTermDisplayText(row[variable])
+                      : EMPTY_CELL}
                   </Table.Cell>
                 ))}
               </Table.Row>
@@ -236,6 +266,9 @@ const OntologyQueryResults = ({
   result,
   scopeLabel,
   exportName,
+  columnLabels,
+  ranAt,
+  meta,
 }: OntologyQueryResultsProps) => {
   const { t } = useTranslation();
   const [resultView, setResultView] = useState<ResultView>('table');
@@ -243,11 +276,15 @@ const OntologyQueryResults = ({
     const rows = result.parsed?.results?.bindings ?? [];
 
     return {
-      keyedRows: rows.map((row) => ({ key: generateUUID(), row })),
+      keyedRows: rows.map((row, index) => ({
+        key: generateUUID(),
+        position: index + 1,
+        row,
+      })),
       rows,
-      variables: result.parsed?.head?.vars ?? [],
+      variables: orderVariables(result.parsed?.head?.vars ?? [], columnLabels),
     };
-  }, [result.parsed]);
+  }, [columnLabels, result.parsed]);
   const resultGraph = useMemo(
     () =>
       buildGraphFromSparqlBindings(
@@ -258,19 +295,6 @@ const OntologyQueryResults = ({
       ),
     [graphData, relationshipTypes, resultTable]
   );
-  const conceptResults = useMemo(() => {
-    const variable = resultTable.variables[0];
-    let values: Array<{ key: string; value: string }> | null = null;
-
-    if (resultTable.variables.length === 1) {
-      values = resultTable.keyedRows.map(({ key, row }) => ({
-        key,
-        value: getTermDisplayText(row[variable]),
-      }));
-    }
-
-    return values;
-  }, [resultTable]);
   const hasResultGraph = resultGraph.edges.length > 0;
   const askAnswer = result.parsed?.boolean;
   const isTable = result.parsed !== undefined && askAnswer === undefined;
@@ -295,16 +319,27 @@ const OntologyQueryResults = ({
   return (
     <Box data-testid="ontology-sparql-result" direction="col" gap={3}>
       <Box align="center" gap={3} justify="between" wrap="wrap">
-        <Box align="center" gap={3} wrap="wrap">
-          <Box align="center" className="tw:text-utility-success-700" gap={2}>
-            <CheckCircle aria-hidden="true" className="tw:size-4" />
+        <Box align="center" gap={2} wrap="wrap">
+          <Typography as="h3" className="not-prose tw:m-0" weight="semibold">
+            {t('label.result-plural')}
+          </Typography>
+          <Badge
+            color="success"
+            data-testid="ontology-sparql-result-status"
+            size="sm"
+            type="pill-color">
+            {getResultSummary(result, resultTable.rows.length, rowLabel)}
+          </Badge>
+          {ranAt === undefined ? null : (
             <Typography
-              data-testid="ontology-sparql-result-status"
-              size="text-sm"
-              weight="medium">
-              {getResultSummary(result, resultTable.rows.length, rowLabel)}
+              color="secondary"
+              data-testid="ontology-sparql-result-ran-at"
+              size="text-xs">
+              {t('label.ran-time', {
+                time: describeTimeAgo(ranAt, t('label.just-now')),
+              })}
             </Typography>
-          </Box>
+          )}
           {scopeLabel ? (
             <Badge
               color="gray"
@@ -314,6 +349,7 @@ const OntologyQueryResults = ({
               {scopeLabel}
             </Badge>
           ) : null}
+          {meta}
         </Box>
         <Box align="center" gap={2}>
           {hasResultGraph ? (
@@ -358,14 +394,54 @@ const OntologyQueryResults = ({
         resultView,
         hasResultGraph,
         resultGraph,
-        conceptResults,
         resultTable,
+        columnLabels,
         result,
         relationshipTypes,
         emptyText: t('message.query-ran-without-results'),
         tableLabel: t('label.result-plural'),
         askAnswer,
       })}
+    </Box>
+  );
+};
+
+/** The "Results" section before anything has run. */
+/** The results area before a run returns: a spinner while one is running, else a prompt to run. */
+export const QueryResultsEmptyState = ({
+  meta,
+  isRunning = false,
+}: {
+  meta?: ReactNode;
+  isRunning?: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box className="tw:min-h-0 tw:flex-1" direction="col" gap={3}>
+      <Box align="center" gap={2} wrap="wrap">
+        <Typography as="h3" className="not-prose tw:m-0" weight="semibold">
+          {t('label.result-plural')}
+        </Typography>
+        {meta}
+      </Box>
+      {/* Tall enough for the centred placeholder, so the results pane never scrolls around it. */}
+      {isRunning ? (
+        <div
+          className="tw:flex tw:min-h-60 tw:flex-1 tw:items-center tw:justify-center"
+          data-testid="ontology-sparql-results-loading">
+          <Loader />
+        </div>
+      ) : (
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-sparql-results-empty">
+          <NoDataPlaceholder
+            description={t('message.run-query-to-see-query-results')}
+            title={t('label.no-results-yet')}
+          />
+        </div>
+      )}
     </Box>
   );
 };

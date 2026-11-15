@@ -49,16 +49,20 @@ const properties = [
   { id: 'p-dob', label: 'dateOfBirth' },
   { id: 'p-name', label: 'Patient Name' },
 ];
-const columnPage = {
-  data: ['patient_id', 'date_of_birth', 'patient_name', 'created_at'].map(
-    (name) => ({
-      name,
-      dataType: DataType.String,
-      fullyQualifiedName: `${TABLE_FQN}.${name}`,
-    })
-  ),
-  paging: { total: 4 },
-};
+const pageOf = (names: string[]) => ({
+  data: names.map((name) => ({
+    name,
+    dataType: DataType.String,
+    fullyQualifiedName: `${TABLE_FQN}.${name}`,
+  })),
+  paging: { total: names.length },
+});
+const columnPage = pageOf([
+  'patient_id',
+  'date_of_birth',
+  'patient_name',
+  'created_at',
+]);
 const bindings = (
   revision: number,
   columns: OntologyConceptBindingsResponse['assets'][number]['columns'] = []
@@ -76,10 +80,11 @@ const bindings = (
 
 const renderStep = (
   snapshot: OntologyConceptBindingsResponse,
-  onClose = jest.fn()
+  onClose = jest.fn(),
+  page = columnPage
 ) => {
   http.get.mockImplementation(async (url) => ({
-    data: url.includes('/columns/search') ? columnPage : snapshot,
+    data: url.includes('/columns/search') ? page : snapshot,
   }));
   const view = renderWithQueryClient(<div />);
   view.queryClient.setQueryData(['ontology-concept-bindings', 'concept'], {
@@ -110,6 +115,18 @@ beforeEach(() => {
   jest.clearAllMocks();
   http.get.mockReset();
   http.put.mockReset();
+});
+
+it('marks every column that matches a property but ticks only the best one', async () => {
+  renderStep(bindings(3), jest.fn(), pageOf(['patient_id', 'patient_key']));
+
+  const id = await row('patient_id');
+  const key = await row('patient_key');
+
+  expect(propertyButton(id)).toHaveTextContent('Patient Key');
+  expect(within(id).getByText('label.ontology-suggested-column')).toBeVisible();
+  expect(within(id).getByRole('checkbox')).not.toBeChecked();
+  expect(within(key).getByRole('checkbox')).toBeChecked();
 });
 
 it('pre-fills each column with the property its name suggests and marks it', async () => {

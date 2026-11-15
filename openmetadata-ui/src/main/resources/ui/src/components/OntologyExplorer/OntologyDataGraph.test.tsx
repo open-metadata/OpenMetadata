@@ -336,7 +336,7 @@ describe('native Data mode cluster paging', () => {
     const onLoadMoreTerms = jest.fn();
     renderGraph({ hasMoreTerms: true, onLoadMoreTerms });
 
-    fireEvent.click(screen.getByText('label.load-more'));
+    fireEvent.click(screen.getByText('label.load-more-lowercase'));
 
     expect(onLoadMoreTerms).toHaveBeenCalledTimes(1);
   });
@@ -350,7 +350,9 @@ describe('native Data mode cluster paging', () => {
     expect(screen.getByTestId('ontology-data-context-full')).toHaveTextContent(
       'message.ontology-data-context-full'
     );
-    expect(screen.queryByText('label.load-more')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('label.load-more-lowercase')
+    ).not.toBeInTheDocument();
   });
 });
 

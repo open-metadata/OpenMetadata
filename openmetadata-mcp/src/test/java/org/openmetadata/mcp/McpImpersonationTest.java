@@ -63,7 +63,7 @@ public class McpImpersonationTest {
               capturedImpersonation.set(ImpersonationContext.getImpersonatedBy());
               return new DefaultToolContext.CallToolOutcome(
                   McpSchema.CallToolResult.builder()
-                      .content(List.of(new McpSchema.TextContent("{}")))
+                      .content(List.of(McpSchema.TextContent.builder("{}").build()))
                       .isError(false)
                       .build(),
                   0L,
@@ -73,7 +73,8 @@ public class McpImpersonationTest {
         .callToolWithMetadata(any(), any(), anyString(), any(), any());
 
     TestMcpServer server = new TestMcpServer(toolContext, jwtFilter, authorizer, limits);
-    McpSchema.Tool tool = McpSchema.Tool.builder().name("test_tool").description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("test_tool", Map.of("type", "object")).description("desc").build();
     McpStatelessServerFeatures.SyncToolSpecification spec = server.buildToolSpec(tool);
 
     McpTransportContext context =
@@ -99,14 +100,15 @@ public class McpImpersonationTest {
         .thenReturn(
             new DefaultToolContext.CallToolOutcome(
                 McpSchema.CallToolResult.builder()
-                    .content(List.of(new McpSchema.TextContent("{}")))
+                    .content(List.of(McpSchema.TextContent.builder("{}").build()))
                     .isError(false)
                     .build(),
                 0L,
                 null));
     TestMcpServer server =
         new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
-    McpSchema.Tool tool = McpSchema.Tool.builder().name("test_tool").description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("test_tool", Map.of("type", "object")).description("desc").build();
 
     McpTransportContext context =
         McpTransportContext.create(
@@ -138,7 +140,7 @@ public class McpImpersonationTest {
         .thenReturn(
             new DefaultToolContext.CallToolOutcome(
                 McpSchema.CallToolResult.builder()
-                    .content(List.of(new McpSchema.TextContent("{}")))
+                    .content(List.of(McpSchema.TextContent.builder("{}").build()))
                     .isError(false)
                     .build(),
                 0L,
@@ -146,7 +148,8 @@ public class McpImpersonationTest {
 
     TestMcpServer server =
         new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
-    McpSchema.Tool tool = McpSchema.Tool.builder().name("test_tool").description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("test_tool", Map.of("type", "object")).description("desc").build();
     McpStatelessServerFeatures.SyncToolSpecification spec = server.buildToolSpec(tool);
 
     McpTransportContext context =
@@ -177,7 +180,8 @@ public class McpImpersonationTest {
 
     TestMcpServer server =
         new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
-    McpSchema.Tool tool = McpSchema.Tool.builder().name("error_tool").description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("error_tool", Map.of("type", "object")).description("desc").build();
     McpStatelessServerFeatures.SyncToolSpecification spec = server.buildToolSpec(tool);
 
     try {
@@ -218,7 +222,7 @@ public class McpImpersonationTest {
               }
               return new DefaultToolContext.CallToolOutcome(
                   McpSchema.CallToolResult.builder()
-                      .content(List.of(new McpSchema.TextContent("{}")))
+                      .content(List.of(McpSchema.TextContent.builder("{}").build()))
                       .isError(false)
                       .build(),
                   0L,
@@ -229,7 +233,8 @@ public class McpImpersonationTest {
 
     TestMcpServer server =
         new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
-    McpSchema.Tool tool = McpSchema.Tool.builder().name("test_tool").description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("test_tool", Map.of("type", "object")).description("desc").build();
     McpStatelessServerFeatures.SyncToolSpecification spec = server.buildToolSpec(tool);
 
     McpTransportContext context =

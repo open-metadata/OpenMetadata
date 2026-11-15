@@ -204,6 +204,30 @@ describe('GovernancePanel', () => {
     expect(lastCall[0]).toMatchObject({ actions: undefined });
   });
 
+  it.each(['intake-forms', 'intake-forms/add/domain', 'intake-forms/form-1'])(
+    'marks the intake form header for "%s" as deprecated',
+    (subPath) => {
+      mockSubPath = subPath;
+      renderPanel();
+      const lastCall =
+        mockOnHeaderChange.mock.calls[mockOnHeaderChange.mock.calls.length - 1];
+
+      expect(lastCall[0].titleSuffix.props).toEqual({
+        description: 'message.intake-form-deprecated',
+        featureName: 'label.intake-form-plural',
+      });
+    }
+  );
+
+  it('does not mark the glossary-list header as deprecated', () => {
+    mockSubPath = 'glossary-relations';
+    renderPanel();
+    const lastCall =
+      mockOnHeaderChange.mock.calls[mockOnHeaderChange.mock.calls.length - 1];
+
+    expect(lastCall[0].titleSuffix).toBeUndefined();
+  });
+
   it('passes an "Add Relation Type" button as actions for the glossary-list view', () => {
     mockSubPath = 'glossary-relations';
     renderPanel();

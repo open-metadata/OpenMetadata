@@ -182,6 +182,48 @@ describe('OntologyConceptLiveData', () => {
     expect(panel).not.toHaveClass('tw:p-2');
   });
 
+  it('lists ten search-around steps and shows the rest on Show more', async () => {
+    const targets = Array.from({ length: 12 }, (_, index) =>
+      concept(`target-${index}`, `Target ${index}`)
+    );
+    const wideModel: OntologyStudioModel = {
+      ...model,
+      concepts: [transfer, ...targets],
+      properties: targets.map((target, index) => ({
+        ...model.properties[0],
+        id: `link-${index}`,
+        name: `link${index}`,
+        fullyQualifiedName: `Payments.link${index}`,
+        iri: `urn:payments:link${index}`,
+        range: [target.iri],
+      })),
+    };
+    renderWithQueryClient(
+      <OntologyConceptLiveData
+        bindingState="bound"
+        concept={transfer}
+        model={wideModel}
+        relations={getModelRelations(wideModel)}
+        onRetryBindings={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ontology-live-data-sql');
+    fireEvent.click(screen.getByTestId('ontology-live-data-search-around'));
+    const options = () =>
+      screen.getAllByTestId(/^ontology-live-data-hop-option-/);
+
+    expect(options()).toHaveLength(10);
+
+    fireEvent.click(
+      screen.getByTestId('ontology-live-data-search-around-more')
+    );
+
+    expect(options()).toHaveLength(12);
+    expect(
+      screen.queryByTestId('ontology-live-data-search-around-more')
+    ).not.toBeInTheDocument();
+  });
+
   it('gets no live-data extension from the OSS class base', () => {
     expect(ontologyExplorerClassBase.getConceptLiveDataExtension()).toBeNull();
   });

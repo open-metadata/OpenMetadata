@@ -706,22 +706,6 @@ export const getOntologyReleaseVersion = async (
   return response.data;
 };
 
-export const getOntologyReleaseMember = async (
-  releaseId: string,
-  kind: MemberKind,
-  memberId: string,
-  signal?: AbortSignal
-) => {
-  const response = await APIClient.get<OntologyReleaseMember>(
-    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(
-      releaseId
-    )}/members/${kind}/${encodeURIComponent(memberId)}`,
-    { signal }
-  );
-
-  return response.data;
-};
-
 export const getOntologyReleaseStructure = async (id: string) => {
   const response = await APIClient.get<OntologyReleaseStructureReport>(
     `${ONTOLOGY_RELEASES_PATH}/${id}/structure`

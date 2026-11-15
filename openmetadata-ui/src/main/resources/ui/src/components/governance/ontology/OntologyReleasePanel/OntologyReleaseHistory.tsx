@@ -11,16 +11,23 @@
  *  limitations under the License.
  */
 import {
-  Alert,
+  Avatar,
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Divider,
+  Dropdown,
   Input,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
-import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowLeft,
+  DotsHorizontal,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,9 +38,19 @@ import {
 } from '../../../../generated/entity/data/ontologyRelease';
 import { EventType } from '../../../../generated/type/ontologyReleaseEvent';
 import { useOntologyPublication } from '../../../../hooks/governance/ontology/useOntologyPublication';
+import { useOntologyReleaseDownload } from '../../../../hooks/governance/ontology/useOntologyReleaseDownload';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
-import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTimeLong,
+} from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../common/Loader/Loader';
+import OntologyReleaseBadges from './OntologyReleaseBadges';
 import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseCompare from './OntologyReleaseCompare';
 import OntologyReleaseExport from './OntologyReleaseExport';
@@ -41,7 +58,10 @@ import {
   filterHistoryReleases,
   HistoryStatusFilter,
   HISTORY_STATUS_FILTERS,
+  initialsOf,
+  releaseBump,
   releaseChangeBreakdown,
+  releaseDisplayStatus,
   releaseKindCounts,
   visibleHistoryReleases,
 } from './OntologyReleasePanel.utils';
@@ -52,13 +72,122 @@ interface OntologyReleaseHistoryProps {
   history: ReturnType<typeof useOntologyPublication>['history'];
   ontologyId?: string;
   activeReleaseId?: string;
+  /** The release in force, so older approved releases read as superseded. */
+  activeRelease?: OntologyRelease;
   latestReleaseId?: string;
   selectedReleaseId?: string;
   onSelect: (id: string) => void;
+  onOpenTask?: (taskId: string) => void;
+  /** Set when the current user may withdraw this in-review release. */
+  withdrawableReleaseId?: string;
+  onWithdraw?: () => void;
 }
 
-const ReleaseDecision = ({ release }: { release: OntologyRelease }) => {
+/** Each release's semantic version by id, to name the baseline a row moved from. */
+export const versionsById = (releases: readonly OntologyRelease[]) =>
+  new Map(releases.map((release) => [release.id, release.semanticVersion]));
+
+interface ReleaseRowMenuProps {
+  release: OntologyRelease;
+  canWithdraw: boolean;
+  onOpen: () => void;
+  onCompare: () => void;
+  onOpenTask?: (taskId: string) => void;
+  onWithdraw?: () => void;
+}
+
+/** The row's actions, chosen by where the release is in its lifecycle. */
+export const ReleaseRowMenu = ({
+  release,
+  canWithdraw,
+  onOpen,
+  onCompare,
+  onOpenTask,
+  onWithdraw,
+}: ReleaseRowMenuProps) => {
   const { t } = useTranslation();
+  const { exportRelease } = useOntologyReleaseDownload(release.id);
+  const isInReview = release.entityStatus === EntityStatus.InReview;
+  const isApproved = release.entityStatus === EntityStatus.Approved;
+  const items: { id: string; label: string; onAction: () => void }[] = [];
+  if (isInReview) {
+    if (release.reviewTask && onOpenTask) {
+      const task = release.reviewTask;
+      items.push({
+        id: 'request',
+        label: t('label.view-request'),
+        onAction: () => onOpenTask(task),
+      });
+    }
+    if (canWithdraw && onWithdraw) {
+      items.push({
+        id: 'withdraw',
+        label: t('label.withdraw'),
+        onAction: onWithdraw,
+      });
+    }
+  } else {
+    items.push({
+      id: 'open',
+      label: t(
+        release.entityStatus === EntityStatus.Rejected
+          ? 'label.view-feedback'
+          : 'label.view-changes'
+      ),
+      onAction: onOpen,
+    });
+  }
+  if (isApproved) {
+    items.push(
+      {
+        id: 'compare',
+        label: t('label.compare-with'),
+        onAction: onCompare,
+      },
+      ...(
+        [
+          ['turtle', 'label.turtle-ttl'],
+          ['rdfxml', 'label.rdf-xml-rdf'],
+          ['jsonld', 'label.json-ld'],
+        ] as const
+      ).map(([format, type]) => ({
+        id: format,
+        label: t('label.export-as-type', { type: t(type) }),
+        onAction: () => void exportRelease(format),
+      }))
+    );
+  }
+
+  return (
+    <Dropdown.Root>
+      <ButtonUtility
+        aria-label={t('label.more-actions')}
+        color="secondary"
+        data-testid={`ontology-release-menu-${release.id}`}
+        icon={DotsHorizontal}
+        size="sm"
+      />
+      <Dropdown.Popover placement="bottom end">
+        <Dropdown.Menu
+          aria-label={t('label.more-actions')}
+          items={items}
+          selectionMode="none"
+          onAction={(key) => items.find((item) => item.id === key)?.onAction()}>
+          {(item) => (
+            <Dropdown.Item
+              data-testid={`ontology-release-action-${item.id}`}
+              id={item.id}
+              label={item.label}
+              textValue={item.label}
+            />
+          )}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+const useReleaseDecision = (release: OntologyRelease) => {
   const isDirect =
     release.approvalBasis === ApprovalBasis.NoReviewersConfigured;
   const decided = [EntityStatus.Approved, EntityStatus.Rejected].includes(
@@ -85,6 +214,13 @@ const ReleaseDecision = ({ release }: { release: OntologyRelease }) => {
     },
   });
 
+  return { isDirect, event: decision.data ?? undefined };
+};
+
+const ReleaseDecision = ({ release }: { release: OntologyRelease }) => {
+  const { t } = useTranslation();
+  const { isDirect, event } = useReleaseDecision(release);
+
   if (isDirect) {
     return (
       <Typography
@@ -94,7 +230,6 @@ const ReleaseDecision = ({ release }: { release: OntologyRelease }) => {
       </Typography>
     );
   }
-  const event = decision.data;
   if (!event) {
     return null;
   }
@@ -113,6 +248,124 @@ const ReleaseDecision = ({ release }: { release: OntologyRelease }) => {
         { reviewers: people }
       )}
     </Typography>
+  );
+};
+
+/** Whether a draft's last review was withdrawn; a withdrawal clears its review task. */
+const withdrawnQuery = (release: OntologyRelease) => ({
+  queryKey: ['ontology-release-withdrawn', release.id],
+  enabled: release.entityStatus === EntityStatus.Draft,
+  retry: false,
+  queryFn: async ({ signal }: { signal: AbortSignal }) => {
+    const events = await getOntologyReleaseEvents(
+      release.id,
+      { limit: 50 },
+      signal
+    );
+    const lastReview = events.data
+      .filter(({ eventType }) =>
+        [EventType.ReviewRequested, EventType.ReviewWithdrawn].includes(
+          eventType
+        )
+      )
+      .pop();
+
+    return lastReview?.eventType === EventType.ReviewWithdrawn;
+  },
+});
+
+export const useIsReleaseWithdrawn = (release: OntologyRelease) =>
+  useQuery(withdrawnQuery(release)).data ?? false;
+
+/** The ids of the shown drafts whose review was withdrawn. */
+const useWithdrawnIds = (releases: readonly OntologyRelease[]) => {
+  const results = useQueries({ queries: releases.map(withdrawnQuery) });
+
+  return new Set(
+    releases
+      .filter((_, index) => results[index]?.data)
+      .map((release) => release.id)
+  );
+};
+
+export const DECISION_COLORS = {
+  pending: 'tw:text-brand-secondary',
+  approved: 'tw:text-success-primary',
+  rejected: 'tw:text-error-primary',
+} as const;
+
+/** Who decides or decided the release, and how it went; the name is unset when nobody does. */
+export const useReleaseApproval = (release: OntologyRelease) => {
+  const { isDirect, event } = useReleaseDecision(release);
+  if (release.entityStatus === EntityStatus.InReview) {
+    const pending = (release.reviewers ?? []).map((reviewer) =>
+      getEntityName(reviewer)
+    );
+
+    return {
+      isDirect,
+      event,
+      name: pending.length ? pending.join(', ') : undefined,
+      decision: 'pending' as const,
+    };
+  }
+  // Events record user names; a voter who is a listed reviewer reads as that reviewer's display
+  // name, as the pending line does.
+  const displayName = (user: string) =>
+    getEntityName(
+      (release.reviewers ?? []).find((reviewer) => reviewer.name === user)
+    ) || user;
+  const name = event?.voters?.length
+    ? event.voters.map(displayName).join(', ')
+    : event?.createdBy && displayName(event.createdBy);
+  const decision =
+    release.entityStatus === EntityStatus.Rejected
+      ? ('rejected' as const)
+      : ('approved' as const);
+
+  return { isDirect, event, name, decision: name ? decision : undefined };
+};
+
+/** The row's approver column. */
+export const ReleaseApprover = ({ release }: { release: OntologyRelease }) => {
+  const { t } = useTranslation();
+  const { isDirect, name, decision } = useReleaseApproval(release);
+
+  if (isDirect) {
+    return (
+      <Typography
+        color="secondary"
+        data-testid={`ontology-release-decision-${release.id}`}
+        size="text-sm">
+        {t('label.published-without-review')}
+      </Typography>
+    );
+  }
+
+  return (
+    <Box
+      align="center"
+      data-testid={`ontology-release-decision-${release.id}`}
+      gap={2}>
+      {name ? <Avatar initials={initialsOf(name)} size="sm" /> : null}
+      <Box className="tw:min-w-0" direction="col">
+        <Typography className="tw:truncate" size="text-sm">
+          {name ?? t('label.no-approver')}
+        </Typography>
+        {decision ? (
+          <Typography
+            as="span"
+            className={DECISION_COLORS[decision]}
+            size="text-sm">
+            {t(`label.${decision}`)}
+          </Typography>
+        ) : (
+          <Typography aria-hidden as="span" color="quaternary" size="text-sm">
+            —
+          </Typography>
+        )}
+      </Box>
+    </Box>
   );
 };
 
@@ -136,6 +389,7 @@ const useHistoryView = (
   }, [search, filter]);
 
   return {
+    releases,
     search,
     setSearch,
     filter,
@@ -150,6 +404,17 @@ const useHistoryView = (
     ),
   };
 };
+
+const STATUS_FILTER_LABELS: Record<HistoryStatusFilter, string> = {
+  all: 'label.all',
+  published: 'label.published',
+  inReview: 'label.ontology-in-review',
+  draft: 'label.drafts',
+  rejected: 'label.rejected',
+};
+
+const statusLabel = (option: HistoryStatusFilter) =>
+  STATUS_FILTER_LABELS[option];
 
 const HistoryControls = ({
   filter,
@@ -188,10 +453,75 @@ const HistoryControls = ({
             key={option}
             size="xs"
             onPress={() => onFilter(option)}>
-            {t(`label.${option === 'inReview' ? 'in-review' : option}`)}
+            {t(statusLabel(option))}
           </Button>
         ))}
       </Box>
+    </Box>
+  );
+};
+
+/** The handoff's toolbar: status segments with counts, a wide search and Compare versions. */
+const AiHistoryToolbar = ({
+  counts,
+  filter,
+  search,
+  onCompare,
+  onFilter,
+  onSearch,
+}: {
+  counts: Record<HistoryStatusFilter, number>;
+  filter: HistoryStatusFilter;
+  search: string;
+  onCompare?: () => void;
+  onFilter: (filter: HistoryStatusFilter) => void;
+  onSearch: (search: string) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" gap={3} wrap="wrap">
+      {/* The same segmented control as the Changes filter and the dialog's tabs. */}
+      <Tabs
+        className="tw:w-fit"
+        selectedKey={filter}
+        onSelectionChange={(key) => onFilter(key as HistoryStatusFilter)}>
+        <Tabs.List
+          aria-label={t('label.status')}
+          size="sm"
+          type="button-border">
+          {HISTORY_STATUS_FILTERS.map((option) => (
+            <Tabs.Item
+              data-testid={`ontology-release-filter-${option}`}
+              id={option}
+              key={option}>
+              {t(statusLabel(option))}
+              <span className="tw:ms-1.5 tw:font-normal tw:text-quaternary">
+                {counts[option]}
+              </span>
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
+      <Input
+        aria-label={t('label.search-versions-or-notes')}
+        className="tw:min-w-60 tw:flex-1"
+        icon={Search}
+        inputDataTestId="ontology-release-search"
+        placeholder={t('label.search-versions-or-notes')}
+        size="sm"
+        value={search}
+        onChange={onSearch}
+      />
+      {onCompare ? (
+        <Button
+          color="secondary"
+          data-testid="ontology-release-compare-open"
+          size="sm"
+          onPress={onCompare}>
+          {t('label.compare-versions')}
+        </Button>
+      ) : null}
     </Box>
   );
 };
@@ -238,17 +568,72 @@ const HistoryPager = ({
   );
 };
 
+type HistoryQuery = OntologyReleaseHistoryProps['history'];
+
+const HistoryLoadStatus = ({ history }: { history: HistoryQuery }) => {
+  const { t } = useTranslation();
+  if (history.isPending) {
+    return <Loader size="small" />;
+  }
+
+  return history.isError ? (
+    <div
+      className="tw:relative tw:min-h-60 tw:flex-1"
+      data-testid="ontology-load-error">
+      <SomethingWentWrongPlaceholder
+        title={t('server.entity-fetch-error', {
+          entity: t('label.release-plural'),
+        })}
+        onReload={() => void history.refetch()}
+      />
+    </div>
+  ) : null;
+};
+
+const HistoryMore = ({ history }: { history: HistoryQuery }) => {
+  const { t } = useTranslation();
+  const pages = history.data?.pages ?? [];
+  const isAtLimit = pages.length === 40 && Boolean(pages[39].paging.after);
+
+  return (
+    <>
+      {history.hasNextPage && (
+        <Button
+          color="secondary"
+          data-testid="ontology-release-load-more"
+          isDisabled={history.isFetchingNextPage}
+          isLoading={history.isFetchingNextPage}
+          size="sm"
+          onPress={() => void history.fetchNextPage()}>
+          {t('label.load-more-lowercase')}
+        </Button>
+      )}
+      {isAtLimit && (
+        <Typography color="secondary" size="text-sm">
+          {t('message.ontology-history-limit')}
+        </Typography>
+      )}
+    </>
+  );
+};
+
 const OntologyReleaseHistory = ({
   history,
   ontologyId,
   activeReleaseId,
+  activeRelease,
   latestReleaseId,
   selectedReleaseId,
   onSelect,
+  onOpenTask,
+  withdrawableReleaseId,
+  onWithdraw,
 }: OntologyReleaseHistoryProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const [comparing, setComparing] = useState<{ to?: OntologyRelease }>();
   const {
+    releases,
     search,
     setSearch,
     filter,
@@ -328,40 +713,117 @@ const OntologyReleaseHistory = ({
       </Typography>
     );
 
+  const versions = versionsById(releases);
+  const withdrawnIds = useWithdrawnIds(rows);
+
+  const renderAiRelease = (release: OntologyRelease, index: number) => {
+    const status = releaseDisplayStatus(
+      release,
+      activeRelease,
+      withdrawnIds.has(release.id)
+    );
+    const isMuted = status === 'withdrawn';
+    const version = release.semanticVersion
+      ? 'v' + release.semanticVersion
+      : t('label.ontology-release-revision', {
+          revision: release.releaseRevision,
+        });
+
+    return (
+      <li
+        className={classNames(
+          'tw:relative tw:transition-colors tw:hover:bg-primary_hover',
+          index > 0 && 'tw:border-t tw:border-secondary',
+          status === 'active' &&
+            'tw:border-l-3 tw:border-l-utility-success-500 tw:bg-utility-success-50'
+        )}
+        data-testid="ontology-release-row"
+        key={release.id}>
+        <Box align="center" className="tw:px-5 tw:py-4" gap={4}>
+          {/* The version opens the release; its ::after stretches the hit area over the
+              whole row, and the menu sits above it as its own control. */}
+          <Button
+            className="tw:static tw:w-28 tw:shrink-0 tw:justify-start tw:after:absolute tw:after:inset-0"
+            color={isMuted ? 'link-gray' : 'link-primary'}
+            data-testid={`ontology-release-select-${release.id}`}
+            size="md"
+            onPress={() => onSelect(release.id)}>
+            {version}
+          </Button>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Box align="center" gap={2} wrap="wrap">
+              <OntologyReleaseBadges
+                bump={releaseBump(
+                  release.semanticVersion,
+                  release.baseReleaseId
+                    ? versions.get(release.baseReleaseId)
+                    : undefined
+                )}
+                isLatest={release.id === latestReleaseId}
+                release={release}
+                status={status}
+              />
+            </Box>
+            {release.releaseNotes ? (
+              <Typography
+                className={classNames(
+                  'tw:truncate',
+                  isMuted ? 'tw:text-quaternary' : 'tw:text-secondary'
+                )}
+                size="text-sm">
+                {release.releaseNotes}
+              </Typography>
+            ) : null}
+          </Box>
+          {/* One line each: the date never wraps onto a third line. */}
+          <Box
+            className="tw:w-56 tw:shrink-0 tw:whitespace-nowrap"
+            direction="col">
+            <Typography ellipsis color="secondary" size="text-sm">
+              {release.sealedBy}
+            </Typography>
+            <Typography color="secondary" size="text-sm">
+              {formatDateTimeLong(release.sealedAt, DATE_TIME_12_HOUR_FORMAT)}
+            </Typography>
+          </Box>
+          <div className="tw:w-56 tw:shrink-0">
+            <ReleaseApprover release={release} />
+          </div>
+          <Box className="tw:relative">
+            <ReleaseRowMenu
+              canWithdraw={release.id === withdrawableReleaseId}
+              release={release}
+              onCompare={() => setComparing({ to: release })}
+              onOpen={() => onSelect(release.id)}
+              onOpenTask={onOpenTask}
+              onWithdraw={onWithdraw}
+            />
+          </Box>
+        </Box>
+      </li>
+    );
+  };
+
   const renderAiReleases = () =>
     rows.length > 0 && (
       <ol className="tw:m-0 tw:list-none tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:p-0">
-        {rows.map((release, index) => (
-          <li
-            className={classNames(
-              'tw:flex tw:items-start tw:gap-4 tw:px-4 tw:py-3',
-              index > 0 && 'tw:border-t tw:border-secondary'
-            )}
-            data-testid="ontology-release-row"
-            key={release.id}>
-            <div className="tw:w-28 tw:shrink-0">
-              {renderVersionButton(release)}
-            </div>
-            <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-              <Box align="center" gap={2} wrap="wrap">
-                {renderBadges(release)}
-              </Box>
-              {renderCounts(release)}
-              <ReleaseDecision release={release} />
-              {renderNotes(release)}
-            </Box>
-            <Box className="tw:shrink-0" direction="col">
-              <Typography color="secondary" size="text-xs">
-                {release.sealedBy}
-              </Typography>
-              <Typography color="secondary" size="text-xs">
-                {formatDateTimeLong(release.sealedAt)}
-              </Typography>
-            </Box>
-            <OntologyReleaseExport releaseId={release.id} />
-          </li>
-        ))}
+        {rows.map(renderAiRelease)}
       </ol>
+    );
+
+  // The shared empty states, as on the glossary terms table: none yet, or none matching the filter.
+  const renderEmptyState = () =>
+    history.isSuccess &&
+    matching.length === 0 && (
+      <div
+        className="tw:relative tw:min-h-80"
+        data-testid="ontology-release-history-empty">
+        {releases.length === 0 ? (
+          <NoDataPlaceholder title={t('message.ontology-no-releases-yet')} />
+        ) : (
+          <NoFilteredResultsPlaceholder />
+        )}
+      </div>
     );
 
   const renderClassicReleases = () => (
@@ -389,51 +851,63 @@ const OntologyReleaseHistory = ({
     </ol>
   );
 
-  return (
-    <Box data-testid="ontology-release-history" direction="col" gap={4}>
-      {ontologyId && <OntologyReleaseCompare ontologyId={ontologyId} />}
-      <HistoryControls
+  const statusCounts = Object.fromEntries(
+    HISTORY_STATUS_FILTERS.map((option) => [
+      option,
+      filterHistoryReleases(releases, option, '').length,
+    ])
+  ) as Record<HistoryStatusFilter, number>;
+
+  const renderControls = () =>
+    isAiMode ? (
+      <AiHistoryToolbar
+        counts={statusCounts}
         filter={filter}
         search={search}
+        onCompare={ontologyId ? () => setComparing({}) : undefined}
         onFilter={setFilter}
         onSearch={setSearch}
       />
-      {history.isPending && (
-        <Typography role="status">{t('label.loading')}</Typography>
-      )}
-      {history.isError && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => void history.refetch()}>
-            {t('label.retry')}
-          </Button>
-        </Alert>
-      )}
-      {history.isSuccess && matching.length === 0 && (
-        <Typography>{t('message.no-data-available')}</Typography>
-      )}
+    ) : (
+      <>
+        {ontologyId && <OntologyReleaseCompare ontologyId={ontologyId} />}
+        <HistoryControls
+          filter={filter}
+          search={search}
+          onFilter={setFilter}
+          onSearch={setSearch}
+        />
+      </>
+    );
+
+  if (isAiMode && comparing && ontologyId) {
+    return (
+      <Box data-testid="ontology-release-history" direction="col" gap={4}>
+        <Button
+          className="tw:self-start"
+          color="link-gray"
+          data-testid="ontology-release-compare-back"
+          iconLeading={ArrowLeft}
+          size="sm"
+          onPress={() => setComparing(undefined)}>
+          {t('label.all-releases')}
+        </Button>
+        <OntologyReleaseCompare
+          initialTo={comparing.to}
+          ontologyId={ontologyId}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box data-testid="ontology-release-history" direction="col" gap={4}>
+      {renderControls()}
+      <HistoryLoadStatus history={history} />
+      {renderEmptyState()}
       {isAiMode ? renderAiReleases() : renderClassicReleases()}
       <HistoryPager page={page} pageCount={pageCount} onPage={setPage} />
-      {history.hasNextPage && (
-        <Button
-          color="secondary"
-          data-testid="ontology-release-load-more"
-          isDisabled={history.isFetchingNextPage}
-          isLoading={history.isFetchingNextPage}
-          size="sm"
-          onPress={() => void history.fetchNextPage()}>
-          {t('label.load-more')}
-        </Button>
-      )}
-      {history.data?.pages.length === 40 &&
-        history.data.pages[39].paging.after && (
-          <Typography color="secondary" size="text-sm">
-            {t('message.ontology-history-limit')}
-          </Typography>
-        )}
+      <HistoryMore history={history} />
     </Box>
   );
 };

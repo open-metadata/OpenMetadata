@@ -12,6 +12,7 @@
  */
 
 import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
+import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 
 type ResultRow = { [variable: string]: RDFTerm };
@@ -60,3 +61,13 @@ export const toCsvFileName = (name?: string): string => {
 
   return `${slug || 'query-results'}.csv`;
 };
+
+const JUST_NOW_MS = 60_000;
+
+/** "just now" for the first minute (Luxon would say "0 seconds ago"), then Luxon's relative time. */
+export const describeTimeAgo = (
+  timestamp: number,
+  justNow: string,
+  now = Date.now()
+): string =>
+  now - timestamp < JUST_NOW_MS ? justNow : getRelativeTime(timestamp);

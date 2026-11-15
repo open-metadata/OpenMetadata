@@ -151,6 +151,6 @@ describe('Compare versions', () => {
     expect(await screen.findByText(/label.kg-showing-of/)).toHaveTextContent(
       '{"shown":1,"total":600}'
     );
-    expect(screen.getByText('label.load-more')).toBeVisible();
+    expect(screen.getByText('label.load-more-lowercase')).toBeVisible();
   });
 });

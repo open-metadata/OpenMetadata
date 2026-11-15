@@ -15,11 +15,13 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Checkbox,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useQueries } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,12 +30,13 @@ import { EntityReference } from '../../../../generated/type/entityReference';
 import { Include } from '../../../../generated/type/include';
 import { State } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   SuggestableProperty,
-  suggestPropertyForColumn,
+  suggestPropertiesForColumns,
 } from '../../../../utils/governance/ontology/OntologyBindingSuggestion.utils';
 import {
   getOntologyBindingWriteMessage,
@@ -52,6 +55,8 @@ interface OntologyColumnMappingStepProps {
   assets: readonly EntityReference[];
   /** Called when the step is skipped, cancelled or saved. */
   onClose: () => void;
+  /** Opened from an asset row: it sits in that row, so it draws no card of its own. */
+  isInline?: boolean;
 }
 
 interface RowState {
@@ -99,10 +104,13 @@ const OntologyColumnMappingStep = ({
   properties,
   assets,
   onClose,
+  isInline = false,
 }: OntologyColumnMappingStepProps) => {
   const { t } = useTranslation();
   const bindings = useOntologyConceptBindings(conceptId);
   const [edits, setEdits] = useState<Record<string, RowState>>({});
+  // Unsaved bindings: closing the drawer asks before dropping them.
+  useOntologyDirtyForm(Object.keys(edits).length > 0);
   const columnQueries = useQueries({
     queries: assets.map((asset) => ({
       queryKey: ['ontology-column-mapping', asset.id],
@@ -125,26 +133,32 @@ const OntologyColumnMappingStep = ({
             )
           : [];
 
+        const resolvedBindings = (bound?.columns ?? []).filter(
+          (column) => column.state === State.Resolved
+        );
+        const boundColumnIds = new Set(
+          resolvedBindings.map((column) => JSON.stringify(column.columnPath))
+        );
+        // A bound column shows its binding, so only unbound columns are suggested a property.
+        const suggestions = suggestPropertiesForColumns(
+          options.filter((option) => !boundColumnIds.has(option.id)),
+          properties
+        );
+
         return {
           asset,
           bound,
           options: options.map((option) => {
-            const resolved = (bound?.columns ?? []).filter(
-              (column) =>
-                column.state === State.Resolved &&
-                JSON.stringify(column.columnPath) === option.id
-            );
-            const existing = resolved[0];
-            const suggestion = suggestPropertyForColumn(
-              option.path[option.path.length - 1],
-              properties
+            const resolved = resolvedBindings.filter(
+              (column) => JSON.stringify(column.columnPath) === option.id
             );
 
             return {
               ...option,
-              existingPropertyId: existing?.propertyId,
+              existingPropertyId: resolved[0]?.propertyId,
               extraBindings: Math.max(resolved.length - 1, 0),
-              suggestedPropertyId: suggestion?.id,
+              suggestedPropertyId: suggestions.get(option.id)?.property.id,
+              isBestSuggestion: Boolean(suggestions.get(option.id)?.isBest),
             };
           }),
           query: columnQueries[index],
@@ -163,10 +177,15 @@ const OntologyColumnMappingStep = ({
     if (edited) {
       return edited;
     }
-    const propertyId =
-      option.existingPropertyId ?? option.suggestedPropertyId ?? '';
+    if (option.existingPropertyId) {
+      return { checked: true, propertyId: option.existingPropertyId };
+    }
 
-    return { checked: Boolean(propertyId), propertyId };
+    // Every match is shown; only a property's best column starts ticked.
+    return {
+      checked: option.isBestSuggestion,
+      propertyId: option.suggestedPropertyId ?? '',
+    };
   };
   const setRow = (assetId: string, columnId: string, next: RowState) =>
     setEdits((current) => ({ ...current, [keyOf(assetId, columnId)]: next }));
@@ -300,11 +319,16 @@ const OntologyColumnMappingStep = ({
         <Box
           align="center"
           className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+          gap={3}
           justify="between">
-          <Typography as="span" size="text-sm" weight="semibold">
+          <Typography ellipsis as="span" size="text-sm" weight="medium">
             {getEntityName(asset)}
           </Typography>
-          <Typography as="span" color="secondary" size="text-xs">
+          <Typography
+            as="span"
+            className="tw:shrink-0 tw:whitespace-nowrap"
+            color="secondary"
+            size="text-xs">
             {t('label.columns-bound-count', {
               count: boundCount,
               total: options.length,
@@ -312,14 +336,17 @@ const OntologyColumnMappingStep = ({
           </Typography>
         </Box>
         {query?.isError ? (
-          <Alert variant="error">
+          <Alert
+            rightContent={
+              <Button
+                color="link-color"
+                size="xs"
+                onPress={() => void query.refetch()}>
+                {t('label.retry')}
+              </Button>
+            }
+            variant="error">
             {t('message.temporary-error-try-reloading')}
-            <Button
-              color="link-color"
-              size="xs"
-              onPress={() => void query.refetch()}>
-              {t('label.retry')}
-            </Button>
           </Alert>
         ) : null}
         {query?.data?.isTruncated ? (
@@ -352,21 +379,36 @@ const OntologyColumnMappingStep = ({
                   }
                 />
                 <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+                  <Typography ellipsis as="span" size="text-sm" weight="medium">
+                    {name}
+                  </Typography>
                   <Typography
                     ellipsis
                     as="span"
-                    className="tw:font-mono"
-                    size="text-sm"
-                    weight="medium">
-                    {name}
-                  </Typography>
-                  <Typography as="span" color="secondary" size="text-xs">
+                    color="secondary"
+                    size="text-xs"
+                    title={option.datatype}>
                     {option.datatype}
                   </Typography>
                 </span>
+                {option.extraBindings > 0 ? (
+                  <Typography as="span" color="secondary" size="text-xs">
+                    {t('message.ontology-column-extra-bindings', {
+                      count: option.extraBindings,
+                    })}
+                  </Typography>
+                ) : null}
+                {/* A fixed slot ahead of the select, so every row's select lines up and ends at the right edge. */}
+                <span className="tw:flex tw:w-24 tw:shrink-0 tw:justify-end">
+                  {isSuggested ? (
+                    <Badge color="brand" size="sm" type="pill-color">
+                      {t('label.ontology-suggested-column')}
+                    </Badge>
+                  ) : null}
+                </span>
                 <Select
                   aria-label={`${t('label.property')}: ${name}`}
-                  className="tw:w-56"
+                  className="tw:w-44 tw:shrink-0"
                   items={propertyItems}
                   size="sm"
                   value={row.propertyId || NOT_MAPPED}
@@ -385,18 +427,6 @@ const OntologyColumnMappingStep = ({
                     />
                   )}
                 </Select>
-                {option.extraBindings > 0 ? (
-                  <Typography as="span" color="secondary" size="text-xs">
-                    {t('message.ontology-column-extra-bindings', {
-                      count: option.extraBindings,
-                    })}
-                  </Typography>
-                ) : null}
-                {isSuggested ? (
-                  <Badge color="brand" size="sm" type="pill-color">
-                    {t('label.ontology-suggested-column')}
-                  </Badge>
-                ) : null}
               </li>
             );
           })}
@@ -412,13 +442,16 @@ const OntologyColumnMappingStep = ({
     );
   };
 
-  return (
-    <Card
-      className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
-      data-testid="ontology-column-mapping-step">
-      <Box align="start" gap={3} justify="between">
-        <Box direction="col" gap={1}>
-          <Typography as="h3" size="text-sm" weight="semibold">
+  const content = (
+    <>
+      <Box align="start" gap={2}>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+          {/* not-prose: Typography wraps a heading in .prose, whose h3 is 20px with margins. */}
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="medium">
             {t('message.ontology-bind-columns-title', {
               concept: conceptName,
             })}
@@ -427,17 +460,31 @@ const OntologyColumnMappingStep = ({
             {t('message.ontology-bind-columns-description')}
           </Typography>
         </Box>
-        <Button
-          color="link-color"
-          data-testid="ontology-column-mapping-skip"
-          size="sm"
-          onPress={onClose}>
-          {t('label.ontology-skip-column-binding')}
-        </Button>
+        {isInline ? (
+          <ButtonUtility
+            color="tertiary"
+            data-testid="ontology-column-mapping-close"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.close')}
+            onClick={onClose}
+          />
+        ) : null}
       </Box>
       {unsavedMessage ? <Alert variant="error">{unsavedMessage}</Alert> : null}
       {tables.map(renderTable)}
-      <Box gap={2} justify="end">
+      <Box align="center" gap={2}>
+        {/* Only after linking does "skip" mean something; inline, Cancel and × already close. */}
+        {isInline ? null : (
+          <Button
+            color="link-color"
+            data-testid="ontology-column-mapping-skip"
+            size="sm"
+            onPress={onClose}>
+            {t('label.ontology-skip-column-binding')}
+          </Button>
+        )}
+        <span className="tw:flex-1" />
         <Button color="secondary" size="sm" onPress={onClose}>
           {t('label.cancel')}
         </Button>
@@ -451,6 +498,21 @@ const OntologyColumnMappingStep = ({
           {t('label.save')}
         </Button>
       </Box>
+    </>
+  );
+
+  // Inline it sits inside an asset row: a gray-blue fill, not a card, sets it apart from the row.
+  return isInline ? (
+    <div
+      className="tw:flex tw:flex-col tw:gap-4 tw:bg-utility-gray-blue-50 tw:p-4"
+      data-testid="ontology-column-mapping-step">
+      {content}
+    </div>
+  ) : (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-4 tw:p-4"
+      data-testid="ontology-column-mapping-step">
+      {content}
     </Card>
   );
 };

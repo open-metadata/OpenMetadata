@@ -59,8 +59,12 @@ const OntologyAiQueryPanel = ({
   return (
     <div className="tw:flex tw:flex-col tw:gap-4">
       <div>
-        <Typography as="h2" size="text-lg" weight="semibold">
-          {t('label.natural-language-query')}
+        <Typography
+          as="h2"
+          className="not-prose tw:m-0"
+          size="text-lg"
+          weight="semibold">
+          {t('label.ontology-natural-language-query')}
         </Typography>
         <Typography as="p" className="tw:mt-1 tw:text-tertiary" size="text-sm">
           {t('message.ontology-ai-query-description')}
@@ -103,7 +107,7 @@ const OntologyAiQueryPanel = ({
               color="secondary"
               iconTrailing={ArrowRight}
               onPress={() => onOpenQuery(result.query)}>
-              {t('label.open-in-query-console')}
+              {t('label.ontology-open-in-query-console')}
             </Button>
           </Card.Footer>
         </Card>

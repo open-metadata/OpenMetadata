@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Extension } from '@codemirror/state';
+import { EditorView, runScopeHandlers } from '@codemirror/view';
 import {
   act,
   fireEvent,
@@ -32,6 +34,7 @@ import {
   runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
+  SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { OntologyGraphData } from './OntologyExplorer.interface';
@@ -39,7 +42,26 @@ import OntologyStudioQueryConsole from './OntologyStudioQueryConsole';
 
 interface SchemaEditorMockProps {
   value: string;
+  extensions?: Extension[];
   onChange?: (value: string) => void;
+}
+
+let editorExtensions: Extension[] = [];
+
+// Runs a key press through the console's real CodeMirror keymap.
+function pressEditorKey(key: string) {
+  const view = new EditorView({
+    extensions: editorExtensions,
+    parent: document.body,
+  });
+  const handled = runScopeHandlers(
+    view,
+    new KeyboardEvent('keydown', { key, ctrlKey: true }),
+    'editor'
+  );
+  view.destroy();
+
+  return handled;
 }
 
 interface OntologyGraphMockProps {
@@ -49,14 +71,18 @@ interface OntologyGraphMockProps {
 
 jest.mock('../Database/SchemaEditor/SchemaEditor', () => ({
   __esModule: true,
-  default: ({ value, onChange }: SchemaEditorMockProps) => (
-    <textarea
-      aria-label="schema editor"
-      data-testid="schema-editor"
-      value={value}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
-  ),
+  default: ({ value, extensions, onChange }: SchemaEditorMockProps) => {
+    editorExtensions = extensions ?? [];
+
+    return (
+      <textarea
+        aria-label="schema editor"
+        data-testid="schema-editor"
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+    );
+  },
 }));
 
 jest.mock('./OntologyGraphG6', () => ({
@@ -154,6 +180,11 @@ const RELATION_TYPES: RelationshipType[] = [
   }),
 ];
 
+async function chooseMoreAction(testId: string) {
+  fireEvent.click(screen.getByTestId('ontology-query-more'));
+  fireEvent.click(await screen.findByTestId(testId));
+}
+
 function renderConsole() {
   return render(
     <OntologyStudioQueryConsole
@@ -235,7 +266,19 @@ describe('OntologyStudioQueryConsole', () => {
       screen.queryByText('Concepts regulated by AML')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-query-read-only')).toHaveTextContent(
-      'label.shared-read-only'
+      'label.read-only'
+    );
+    expect(screen.getByTestId('ontology-query-subtitle')).toHaveTextContent(
+      'message.shared-with-everyone'
+    );
+    expect(screen.getByTestId('ontology-query-status-bar')).toHaveTextContent(
+      'label.read-only'
+    );
+    expect(
+      screen.queryByTestId('ontology-query-delete')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-query-duplicate')).toHaveTextContent(
+      'label.duplicate-to-edit'
     );
   });
 
@@ -260,9 +303,53 @@ describe('OntologyStudioQueryConsole', () => {
     );
 
     expect(
-      await screen.findByTestId('ontology-sparql-chips')
+      await screen.findByTestId('ontology-sparql-result-table')
     ).toHaveTextContent(
       'https://open-metadata.org/entity/glossaryTerm/example'
+    );
+    expect(
+      screen.getByTestId('ontology-sparql-result-ran-at')
+    ).toHaveTextContent('label.ran-time');
+  });
+
+  it('shows a loader, not the no-results prompt, while a run is in flight', async () => {
+    let finish: ((value: SparqlPlaygroundResult) => void) | undefined;
+    mockRunGlossarySparqlQuery.mockReturnValueOnce(
+      new Promise<SparqlPlaygroundResult>((resolve) => {
+        finish = resolve;
+      })
+    );
+    renderConsole();
+
+    expect(
+      screen.getByTestId('ontology-sparql-results-empty')
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+
+    expect(
+      await screen.findByTestId('ontology-sparql-results-loading')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-sparql-results-empty')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      finish?.({
+        format: 'json',
+        body: '',
+        contentType: 'application/sparql-results+json',
+        durationMs: 12,
+        parsed: { head: { vars: ['c'] }, results: { bindings: [] } },
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-sparql-results-loading')
+      ).not.toBeInTheDocument()
     );
   });
 
@@ -451,8 +538,10 @@ describe('OntologyStudioQueryConsole', () => {
       ])
     );
 
-    fireEvent.click(screen.getByTestId('ontology-query-rename'));
     const renameInput = screen.getByTestId('ontology-query-rename-input');
+
+    expect(renameInput).toHaveValue('label.untitled-query');
+
     fireEvent.change(renameInput, { target: { value: 'My ontology query' } });
     fireEvent.keyDown(renameInput, { key: 'Enter' });
 
@@ -462,7 +551,7 @@ describe('OntologyStudioQueryConsole', () => {
       ])
     );
 
-    expect(await screen.findByTestId('ontology-query-title')).toHaveTextContent(
+    expect(screen.getByTestId('ontology-query-rename-input')).toHaveValue(
       'My ontology query'
     );
   });
@@ -473,7 +562,7 @@ describe('OntologyStudioQueryConsole', () => {
     fireEvent.change(screen.getByTestId('schema-editor'), {
       target: { value: 'SELECT ?concept WHERE { ?concept ?p ?o }' },
     });
-    fireEvent.click(screen.getByTestId('ontology-query-save'));
+    await chooseMoreAction('ontology-query-save');
     const input = await screen.findByTestId('ontology-query-save-name');
 
     expect(input).toHaveAttribute('placeholder', 'message.sparql-save-prompt');
@@ -511,8 +600,10 @@ describe('OntologyStudioQueryConsole', () => {
     fireEvent.change(screen.getByTestId('schema-editor'), {
       target: { value: 'SELECT ?custom WHERE { ?custom ?p ?o }' },
     });
-    fireEvent.click(screen.getByTestId('ontology-query-save-template'));
-    fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+    await chooseMoreAction('ontology-query-save-template');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.update' })
+    );
 
     await waitFor(() =>
       expect(mockReplaceQueryTemplates).toHaveBeenCalledWith([
@@ -690,8 +781,10 @@ describe('native owner query library projection', () => {
     fireEvent.change(screen.getByTestId('schema-editor'), {
       target: { value: 'SELECT ?custom WHERE { ?custom ?p ?o }' },
     });
-    fireEvent.click(screen.getByTestId('ontology-query-save-template'));
-    fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+    await chooseMoreAction('ontology-query-save-template');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.update' })
+    );
     await waitFor(() =>
       expect(mockReplaceQueryTemplates).toHaveBeenCalledWith([
         ...seeds,
@@ -1050,5 +1143,102 @@ describe('query scope, errors and saved-query tools', () => {
         query: SAVED.query,
       })
     );
+  });
+
+  it('opens a saved query with its saved time and a save shortcut', async () => {
+    mockGetSavedQueries.mockResolvedValue([{ ...SAVED, savedAt: Date.now() }]);
+    renderNative({ ontologyName: 'clinical', version: 'draft' });
+
+    expect(
+      await screen.findByTestId(`ontology-query-saved-${SAVED.id}`)
+    ).toHaveTextContent('label.saved-time');
+
+    fireEvent.click(screen.getByTestId(`ontology-query-saved-${SAVED.id}`));
+
+    expect(screen.getByTestId('ontology-query-subtitle')).toHaveTextContent(
+      'label.saved-time · message.only-visible-to-you'
+    );
+    expect(screen.getByTestId('ontology-query-update')).toHaveTextContent(
+      'label.saved'
+    );
+    expect(screen.getByTestId('ontology-query-status-bar')).toHaveTextContent(
+      'label.line-count · clinical · label.draft'
+    );
+    expect(screen.getByTestId('ontology-query-status-bar')).toHaveTextContent(
+      'label.mod-s-to-save'
+    );
+
+    fireEvent.change(screen.getByTestId('schema-editor'), {
+      target: { value: 'SELECT ?x WHERE { ?x ?p ?o }' },
+    });
+
+    expect(screen.getByTestId('ontology-query-update')).toHaveTextContent(
+      'label.save'
+    );
+
+    pressEditorKey('s');
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: SAVED.id,
+          query: 'SELECT ?x WHERE { ?x ?p ?o }',
+        }),
+      ])
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-query-delete'));
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([])
+    );
+
+    expect(
+      screen.queryByTestId(`ontology-query-saved-${SAVED.id}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it('runs the query with Mod-Enter from the editor', async () => {
+    renderNative(undefined, 'SELECT ?c WHERE { ?c a ?t }');
+
+    expect(pressEditorKey('Enter')).toBe(true);
+
+    await waitFor(() =>
+      expect(runNative).toHaveBeenCalledWith(
+        'native',
+        expect.objectContaining({ query: 'SELECT ?c WHERE { ?c a ?t }' }),
+        { scope: 'release' }
+      )
+    );
+  });
+
+  it('ignores Mod-Enter while a query is already running', async () => {
+    runNative.mockReturnValue(new Promise(() => undefined));
+    renderNative(undefined, 'SELECT ?c WHERE { ?c a ?t }');
+
+    pressEditorKey('Enter');
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-sparql-run')).toBeDisabled()
+    );
+    pressEditorKey('Enter');
+
+    expect(runNative).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Discard behind the more menu and restores the opened text', async () => {
+    mockGetSavedQueries.mockResolvedValue([SAVED]);
+    renderNative();
+    fireEvent.click(
+      await screen.findByTestId(`ontology-query-saved-${SAVED.id}`)
+    );
+    fireEvent.change(screen.getByTestId('schema-editor'), {
+      target: { value: 'SELECT ?x WHERE { ?x ?p ?o }' },
+    });
+
+    await chooseMoreAction('ontology-query-discard');
+
+    expect(
+      (screen.getByTestId('schema-editor') as HTMLTextAreaElement).value
+    ).toBe(SAVED.query);
   });
 });

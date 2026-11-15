@@ -187,6 +187,7 @@ export const propertyFormFields = (
       label: t('label.name'),
       type: FieldTypes.TEXT,
       required: true,
+      placeholder: t('message.ontology-property-name-placeholder'),
       props: { isDisabled: editing },
       rules: {
         validate: (value: string) =>

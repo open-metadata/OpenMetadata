@@ -12,38 +12,12 @@
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { isAxiosError } from 'axios';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { exportOntologyRelease } from '../../../../rest/ontologyAPI';
-import {
-  NATIVE_EXPORT_EXTENSIONS,
-  NATIVE_EXPORT_MEDIA_TYPES,
-  OntologyReleaseExportFormat,
-} from '../../../../rest/ontologyExport.constants';
-import { downloadFile } from '../../../../utils/Export/ExportUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useOntologyReleaseDownload } from '../../../../hooks/governance/ontology/useOntologyReleaseDownload';
 
 const OntologyReleaseExport = ({ releaseId }: { releaseId: string }) => {
   const { t } = useTranslation();
-  const [isExporting, setIsExporting] = useState(false);
-  const exportRelease = async (format: OntologyReleaseExportFormat) => {
-    setIsExporting(true);
-    try {
-      const content = await exportOntologyRelease(releaseId, format);
-      downloadFile(
-        content,
-        `ontology-release-${releaseId}.${NATIVE_EXPORT_EXTENSIONS[format]}`,
-        NATIVE_EXPORT_MEDIA_TYPES[format]
-      );
-    } catch (error) {
-      showErrorToast(
-        isAxiosError(error) ? error : t('server.unexpected-error')
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const { isExporting, exportRelease } = useOntologyReleaseDownload(releaseId);
 
   return (
     <Dropdown.Root>

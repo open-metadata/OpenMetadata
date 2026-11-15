@@ -102,6 +102,83 @@ describe('buildStudioGraphScope', () => {
     expect(scope.graph.nodes[0].id).toBe('hub');
   });
 
+  it('does not expand a hub it reaches past the seed, so a leaf shows only its own links', () => {
+    const hub = {
+      nodes: [
+        { id: 'base', label: 'Base', type: 'ontologyConcept' },
+        { id: 'leaf-child', label: 'Leaf child', type: 'ontologyConcept' },
+        ...Array.from({ length: 600 }, (_, index) => ({
+          id: `s${index}`,
+          label: `Sibling ${index}`,
+          type: 'ontologyConcept',
+        })),
+      ],
+      edges: [
+        ...Array.from({ length: 600 }, (_, index) => ({
+          from: `s${index}`,
+          to: 'base',
+          label: 'is a',
+          relationType: 'subClassOf',
+        })),
+        {
+          from: 'leaf-child',
+          to: 's7',
+          label: 'is a',
+          relationType: 'subClassOf',
+        },
+      ],
+    };
+
+    const scope = buildStudioGraphScope(hub, { seedIds: ['s7'] });
+
+    expect(scope.graph.nodes.map(({ id }) => id).sort()).toEqual([
+      'base',
+      'leaf-child',
+      's7',
+    ]);
+  });
+
+  it('draws only the links the walk followed, not those between two outer concepts', () => {
+    // seed → a, b (one hop) → x, y (two hops). x and y also link to each other and
+    // to a shared `string` hub: links between outer concepts are the hairball.
+    const ids = ['seed', 'a', 'b', 'x', 'y', 'string'];
+    const pad = Array.from({ length: 600 }, (_, index) => `pad${index}`);
+    const link = (from: string, to: string) => ({
+      from,
+      to,
+      label: 'rel',
+      relationType: 'related',
+    });
+    const scope = buildStudioGraphScope(
+      {
+        nodes: [...ids, ...pad].map((id) => ({
+          id,
+          label: id,
+          type: 'ontologyConcept',
+        })),
+        edges: [
+          link('seed', 'a'),
+          link('seed', 'b'),
+          link('a', 'x'),
+          link('b', 'y'),
+          link('a', 'string'),
+          link('x', 'y'),
+          link('x', 'string'),
+          link('y', 'string'),
+          ...pad.map((id) => link(id, 'string')),
+        ],
+      },
+      { seedIds: ['seed'] }
+    );
+
+    expect(scope.graph.nodes.map(({ id }) => id).sort()).toEqual(
+      ['a', 'b', 'seed', 'string', 'x', 'y'].sort()
+    );
+    expect(
+      scope.graph.edges.map(({ from, to }) => `${from}-${to}`).sort()
+    ).toEqual(['a-string', 'a-x', 'b-y', 'seed-a', 'seed-b']);
+  });
+
   it('ignores seeds that are not in the graph', () => {
     const scope = buildStudioGraphScope(chain(600), { seedIds: ['gone'] });
 
