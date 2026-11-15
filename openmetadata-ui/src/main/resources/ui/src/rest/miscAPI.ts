@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { PAGE_SIZE } from '../constants/constants';
+import { PAGE_SIZE, SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
@@ -203,6 +203,11 @@ export const deleteAsyncEntity = async (
   return response.data;
 };
 
+// Values for a view that ignores the navbar domain pick (e.g. lineage, which shows every domain's
+// nodes) must not be narrowed to it.
+const skipDomainFilterConfig = (skipDomainFilter: boolean) =>
+  skipDomainFilter ? { headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' } } : {};
+
 /**
  * Retrieves the aggregate field options based on the provided parameters.
  *
@@ -221,7 +226,8 @@ export const getAggregateFieldOptions = (
   sourceFields?: string,
   deleted = false,
   isNLPEnabled = false,
-  queryText?: string
+  queryText?: string,
+  skipDomainFilter = false
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -240,6 +246,7 @@ export const getAggregateFieldOptions = (
     isNLPEnabled ? `/hybrid/nlq/search/aggregate` : `/search/aggregate`,
     {
       params,
+      ...skipDomainFilterConfig(skipDomainFilter),
     }
   );
 };
@@ -250,10 +257,10 @@ export const getAggregateFieldOptions = (
  * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
  * containing the aggregate field options.
  */
-export const postAggregateFieldOptions = ({
-  fieldValue,
-  ...rest
-}: AggregationRequest) => {
+export const postAggregateFieldOptions = (
+  { fieldValue, ...rest }: AggregationRequest,
+  skipDomainFilter = false
+) => {
   const withWildCardValue = fieldValue
     ? `.*${escapeESReservedCharacters(fieldValue)}.*`
     : '.*';
@@ -264,7 +271,8 @@ export const postAggregateFieldOptions = ({
 
   return APIClient.post<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
-    body
+    body,
+    skipDomainFilterConfig(skipDomainFilter)
   );
 };
 

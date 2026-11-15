@@ -497,6 +497,7 @@ const CustomControls: FC<{
             )}
             <ExploreQuickFilters
               independent
+              skipDomainFilter
               aggregations={{}}
               defaultQueryFilter={queryFilter}
               fields={filteredQuickFilters}

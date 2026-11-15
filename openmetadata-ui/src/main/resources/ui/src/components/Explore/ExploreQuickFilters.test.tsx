@@ -329,7 +329,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           'pets',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -355,7 +356,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -386,8 +388,35 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
+      });
+    });
+
+    it('passes skipDomainFilter to getAggregationOptions', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          skipDomainFilter
+          aggregations={undefined}
+        />
+      );
+
+      await act(async () => {
+        userEvent.click(
+          screen.getByTestId('onGetInitialOptions-database.name')
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          (getAggregationOptions as jest.Mock).mock.calls.at(-1)?.at(-1)
+        ).toBe(true);
       });
     });
 
@@ -423,7 +452,8 @@ describe('ExploreQuickFilters component', () => {
           50,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -454,7 +484,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -493,7 +524,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          'tier.tagFQN'
+          'tier.tagFQN',
+          false
         );
       });
     });
@@ -530,7 +562,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          'glossaryTags'
+          'glossaryTags',
+          false
         );
       });
     });
@@ -574,7 +607,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          'owners.displayName'
+          'owners.displayName',
+          false
         );
       });
     });
@@ -623,7 +657,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -653,7 +688,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           true,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -1149,7 +1185,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           expect.anything(),
           expect.any(String),
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -1185,7 +1222,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -1310,7 +1348,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -1341,7 +1380,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -1373,7 +1413,8 @@ describe('ExploreQuickFilters component', () => {
           undefined,
           false,
           '',
-          undefined
+          undefined,
+          false
         );
       });
     });
@@ -1551,6 +1592,11 @@ describe('ExploreQuickFilters component', () => {
           '',
           undefined,
           false,
+          false,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
           false
         )
       );
@@ -1616,6 +1662,11 @@ describe('ExploreQuickFilters component', () => {
             '"parent.fullyQualifiedName.keyword":"Finance"'
           ),
           false,
+          false,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
           false
         )
       );

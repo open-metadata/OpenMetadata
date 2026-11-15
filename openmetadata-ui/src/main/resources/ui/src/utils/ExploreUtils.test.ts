@@ -68,14 +68,39 @@ describe('Explore Utils', () => {
       'customer'
     );
 
-    expect(postAggregateSpy).toHaveBeenCalledWith({
-      fieldName: EntityFields.SERVICE,
-      fieldValue: '',
-      index: SearchIndex.DATA_ASSET,
-      query: '{}',
-      queryText: 'customer',
-      size: 10,
-    });
+    expect(postAggregateSpy).toHaveBeenCalledWith(
+      {
+        fieldName: EntityFields.SERVICE,
+        fieldValue: '',
+        index: SearchIndex.DATA_ASSET,
+        query: '{}',
+        queryText: 'customer',
+        size: 10,
+      },
+      false
+    );
+  });
+
+  it('lets a view that ignores the domain pick skip it on its aggregation', async () => {
+    const postAggregateSpy = (
+      postAggregateFieldOptions as jest.Mock
+    ).mockResolvedValue({ data: {} });
+
+    await getAggregationOptions(
+      SearchIndex.ALL,
+      EntityFields.OWNERS,
+      '',
+      '{}',
+      true,
+      false,
+      10,
+      false,
+      undefined,
+      undefined,
+      true
+    );
+
+    expect(postAggregateSpy).toHaveBeenCalledWith(expect.any(Object), true);
   });
 
   it('should return undefined if data is empty', () => {
