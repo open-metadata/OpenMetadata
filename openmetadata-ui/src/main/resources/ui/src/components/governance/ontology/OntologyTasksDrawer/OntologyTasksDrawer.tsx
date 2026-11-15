@@ -446,48 +446,67 @@ const OntologyTasksDrawer = ({
       </Typography>
     </Box>
   );
-  const renderUnlistedTask = () =>
+  // An opened task that is still open joins the Pending approval group (one more in its
+  // count); a decided one gets its own Closed group, so no two groups share a name.
+  const isUnlistedOpen = unlistedTask?.status === TaskStatus.Open;
+  const renderUnlistedRow = () =>
     unlistedTask ? (
-      <Box data-testid="ontology-tasks-opened" direction="col" gap={3}>
-        {renderGroupHeader(
-          t(
-            unlistedTask.status === TaskStatus.Open
-              ? 'label.pending-approval'
-              : 'label.closed'
-          ),
-          1
-        )}
+      <div data-testid="ontology-tasks-opened-row">
         <InboxTaskListItem
           isActive
           task={unlistedTask}
           onClick={(selected) => onTaskChange(selected.id)}
         />
+      </div>
+    ) : null;
+  const renderClosedTask = () =>
+    unlistedTask && !isUnlistedOpen ? (
+      <Box data-testid="ontology-tasks-opened" direction="col" gap={3}>
+        {renderGroupHeader(t('label.closed'), 1)}
+        {renderUnlistedRow()}
       </Box>
     ) : null;
+  const renderEmptyQueue = () => {
+    if (unlistedTask) {
+      return isUnlistedOpen ? (
+        <>
+          {renderGroupHeader(t('label.pending-approval'), 1)}
+          {renderUnlistedRow()}
+        </>
+      ) : (
+        renderClosedTask()
+      );
+    }
+
+    return (
+      <div
+        className="tw:relative tw:min-h-60"
+        data-testid="ontology-tasks-empty">
+        <NoDataPlaceholder
+          description={t(
+            view === 'assigned'
+              ? 'message.ontology-tasks-assigned-empty'
+              : 'message.ontology-tasks-created-empty'
+          )}
+          title={t('message.ontology-no-tasks-yet')}
+        />
+      </div>
+    );
+  };
+  const pendingCount = (visibleCount: number) => {
+    const listed = search.trim()
+      ? visibleCount
+      : queue.data?.paging?.total ?? visibleCount;
+
+    return listed + (isUnlistedOpen ? 1 : 0);
+  };
   const renderQueueList = () => {
     const entries = queue.data?.data ?? [];
     if (queue.isPending || queue.isError) {
       return null;
     }
     if (!entries.length) {
-      if (unlistedTask) {
-        return renderUnlistedTask();
-      }
-
-      return (
-        <div
-          className="tw:relative tw:min-h-60"
-          data-testid="ontology-tasks-empty">
-          <NoDataPlaceholder
-            description={t(
-              view === 'assigned'
-                ? 'message.ontology-tasks-assigned-empty'
-                : 'message.ontology-tasks-created-empty'
-            )}
-            title={t('message.ontology-no-tasks-yet')}
-          />
-        </div>
-      );
+      return renderEmptyQueue();
     }
     const visible = filterReviews(entries, search);
     if (!visible.length) {
@@ -500,13 +519,12 @@ const OntologyTasksDrawer = ({
 
     return (
       <>
-        {renderUnlistedTask()}
+        {renderClosedTask()}
         {renderGroupHeader(
           t('label.pending-approval'),
-          search.trim()
-            ? visible.length
-            : queue.data?.paging?.total ?? visible.length
+          pendingCount(visible.length)
         )}
+        {isUnlistedOpen ? renderUnlistedRow() : null}
         {visible.map((entry) => (
           <InboxTaskListItem
             isActive={entry.task.id === taskId}

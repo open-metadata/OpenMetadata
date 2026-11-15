@@ -97,6 +97,7 @@ export function buildStudioGraphScope(
   }
 
   const nodes = graph.nodes.filter((node) => included.has(node.id));
+  // ADR:2026-11-15-studio-focused-graph-draws-only-the-links-its-walk-followed
   // Only the seeds' own links and the link each concept was reached through: a link
   // between two outer concepts (say both pointing at `string`) crosses the neighbourhood
   // without saying anything about the seed. Selecting a concept re-centres on it.
