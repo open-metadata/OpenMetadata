@@ -28,6 +28,7 @@ import {
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { generateUUID } from '../../utils/StringUtils';
 import OntologyIriInput from '../governance/ontology/OntologyIriInput/OntologyIriInput';
+import { ONTOLOGY_DATATYPE_OPTIONS } from '../governance/ontology/OntologyIriInput/OntologyIriInput.constants';
 import { OntologyReferenceOptions } from '../governance/ontology/OntologyIriInput/OntologyIriInput.types';
 
 interface OntologyExpressionEditorProps {
@@ -116,6 +117,26 @@ const usesCardinality = (kind: RestrictionKind) =>
     kind
   );
 
+const hasFillerEditor = (
+  kind: RestrictionKind,
+  expression: OntologyExpression
+) =>
+  kind !== RestrictionKind.Value &&
+  (!usesCardinality(kind) || Boolean(expression.filler));
+
+const restrictionFiller = (
+  kind: RestrictionKind,
+  expression: OntologyExpression
+) => {
+  if (kind === RestrictionKind.Value) {
+    return undefined;
+  }
+
+  return usesCardinality(kind)
+    ? expression.filler
+    : expression.filler ?? defaultExpression(ExpressionKind.NamedClass);
+};
+
 const nonNegative = (value: string) => Math.max(0, Number(value) || 0);
 
 const splitValues = (value: string) =>
@@ -173,9 +194,9 @@ const OntologyValueRestrictionFields = ({
         }
       />
       {expression.literal ? (
-        <Input
-          className="tw:md:col-span-2"
-          label={`${t('label.data-type')} ${t('label.concept-iri')}`}
+        <OntologyIriInput
+          label={t('label.data-type')}
+          options={ONTOLOGY_DATATYPE_OPTIONS}
           value={expression.literal.datatypeIri ?? ''}
           onChange={(datatypeIri) =>
             updateExpression({
@@ -367,12 +388,8 @@ const OntologyExpressionEditor = ({
   ];
   const restrictionKind = expression.restrictionKind ?? RestrictionKind.Some;
   const operands = expression.operands ?? [];
-  const hasNestedFiller = restrictionKind !== RestrictionKind.Value;
-  const hasCardinality = [
-    RestrictionKind.Exact,
-    RestrictionKind.Max,
-    RestrictionKind.Min,
-  ].includes(restrictionKind);
+  const hasNestedFiller = hasFillerEditor(restrictionKind, expression);
+  const hasCardinality = usesCardinality(restrictionKind);
   const updateExpression = (next: OntologyExpression) =>
     onExpressionChange(carryExpressionRenderKey(expression, next));
 
@@ -390,10 +407,7 @@ const OntologyExpressionEditor = ({
         cardinality: usesCardinality(nextKind)
           ? expression.cardinality ?? 1
           : undefined,
-        filler:
-          nextKind === RestrictionKind.Value
-            ? undefined
-            : expression.filler ?? defaultExpression(ExpressionKind.NamedClass),
+        filler: restrictionFiller(nextKind, expression),
         individualIri:
           nextKind === RestrictionKind.Value
             ? expression.individualIri

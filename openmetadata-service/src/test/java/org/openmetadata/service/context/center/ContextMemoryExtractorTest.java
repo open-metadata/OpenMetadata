@@ -64,16 +64,94 @@ class ContextMemoryExtractorTest {
   }
 
   @Test
-  void dedupesByQuestionAndSkipsInvalid() {
+  void dedupesRepeatedFactsAndSkipsInvalid() {
     EntityReference source = fileRef(UUID.randomUUID(), "report");
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(
             List.of(
                 new KnowledgePill("T", "dup", "A", "S", "Note"),
-                new KnowledgePill("T", "dup", "A2", "S", "Note"),
+                new KnowledgePill("T", " Dup ", "a", "S", "Note"),
                 new KnowledgePill("T", null, "A", "S", "Note")));
 
     assertEquals(1, derive("text", source).size());
+  }
+
+  /** Two values the document gives for one fact are a conflict for review, not a silent pick. */
+  @Test
+  void keepsEveryAnswerTheDocumentGivesToOneQuestion() {
+    EntityReference source = fileRef(UUID.randomUUID(), "policy");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(
+            List.of(
+                new KnowledgePill("Discount", "Employee discount?", "15% (Sales)", "S", "Faq"),
+                new KnowledgePill("Discount", "Employee discount?", "25% (HR)", "S", "Faq")));
+
+    List<ContextMemory> memories = derive("text", source);
+
+    assertEquals(2, memories.size());
+    assertEquals("15% (Sales)", memories.get(0).getAnswer());
+    assertEquals("25% (HR)", memories.get(1).getAnswer());
+  }
+
+  @Test
+  void keepsBothPositiveAndNegativeValuesOfOneFact() {
+    EntityReference source = fileRef(UUID.randomUUID(), "forecast");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(
+            List.of(
+                new KnowledgePill("Growth", "Expected growth?", "−15%", "Downside", "Faq"),
+                new KnowledgePill("Growth", "Expected growth?", "+15%", "Upside", "Faq")));
+
+    assertEquals(
+        List.of("−15%", "+15%"),
+        derive("text", source).stream().map(ContextMemory::getAnswer).toList());
+  }
+
+  /** The same fact reworded in two chunks is one pill; only a different number makes a second. */
+  @Test
+  void aRewordedAnswerIsTheSameFact() {
+    EntityReference source = fileRef(UUID.randomUUID(), "policy");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(
+            List.of(
+                new KnowledgePill("Refunds", "Refund window?", "30 days", "S", "Faq"),
+                new KnowledgePill(
+                    "Refunds",
+                    "Refund window?",
+                    "Refunds are accepted within 30 days",
+                    "S",
+                    "Faq")));
+
+    assertEquals(1, derive("text", source).size());
+  }
+
+  @Test
+  void asksTheModelForEveryConflictingValueInsteadOfChoosingOne() {
+    EntityReference source = fileRef(UUID.randomUUID(), "policy");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class))).thenReturn(List.of());
+
+    derive("text", source);
+
+    verify(llmClient)
+        .completeStructured(
+            org.mockito.ArgumentMatchers.contains("never merge them or choose one"),
+            any(),
+            eq(KnowledgePill.class));
+  }
+
+  @Test
+  void startsMemoriesInTheStatusItsProviderReviewsThemFrom() {
+    EntityReference source = fileRef(UUID.randomUUID(), "report");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
+        .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
+
+    ContextMemory memory =
+        new ContextMemoryExtractor(llmClient, ContextMemoryStatus.UNPROCESSED)
+            .derive("text", source, ContextMemorySourceType.FILE_EXTRACTION)
+            .memories()
+            .getFirst();
+
+    assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus());
   }
 
   @Test
@@ -186,5 +264,24 @@ class ContextMemoryExtractorTest {
         () -> extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION));
     verify(llmClient, org.mockito.Mockito.never())
         .completeStructured(any(), any(), eq(KnowledgePill.class));
+  }
+
+  /** Automatic extraction keeps the rule chat capture follows: no personal data, whatever the source. */
+  @Test
+  void asksTheModelToLeaveOutPersonalData() {
+    EntityReference source = fileRef(UUID.randomUUID(), "escalations");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class))).thenReturn(List.of());
+
+    derive("text", source);
+
+    verify(llmClient)
+        .completeStructured(
+            org.mockito.ArgumentMatchers.contains("Never extract personal data"),
+            any(),
+            eq(KnowledgePill.class));
+    assertTrue(
+        ContextMemoryExtractor.SYSTEM_PROMPT.contains(
+            "nor credentials, tokens, keys or connection strings"),
+        "secrets are kept out as well as contact details");
   }
 }

@@ -13,6 +13,7 @@
 import { v5 as uuid } from 'uuid';
 import {
   AxiomType,
+  ConceptMappingType,
   CreateOntologyChangeSet,
   EntityReference,
   ExpressionKind,
@@ -34,6 +35,9 @@ export type OwnPropertyDraft = { name: string; isIdentifier: boolean } & (
 export interface NewClassDraft {
   label: string;
   localName: string;
+  iri?: string;
+  conceptType: OntologyConceptType;
+  mappings: { mappingType: ConceptMappingType; conceptIri: string }[];
   synonyms: string[];
   description: string;
   definitionSource: string;
@@ -50,7 +54,7 @@ export const buildNewClassChangeSet = (
   attemptName: string,
   workingRevision: number
 ): CreateOntologyChangeSet => {
-  const iri = ontology.namespace + draft.localName.trim();
+  const iri = draft.iri?.trim() || ontology.namespace + draft.localName.trim();
   const owner = {
     id: ontology.id,
     type: 'ontology',
@@ -69,8 +73,9 @@ export const buildNewClassChangeSet = (
         fullyQualifiedName: ontology.fullyQualifiedName + '.' + localName,
         iri,
         ontology: owner,
-        conceptType: OntologyConceptType.OwlClass,
+        conceptType: draft.conceptType,
         displayName: draft.label.trim(),
+        conceptMappings: draft.mappings,
         synonyms: [...new Set(draft.synonyms)],
         description: draft.description.trim() || undefined,
         definitionSource: draft.definitionSource.trim() || undefined,

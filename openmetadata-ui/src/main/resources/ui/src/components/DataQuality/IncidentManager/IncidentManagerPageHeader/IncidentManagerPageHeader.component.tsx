@@ -17,11 +17,11 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Link03 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -131,7 +131,7 @@ const IncidentManagerPageHeader = ({
                 data-testid="incident-task-link"
                 to={taskLinkInfo.path}>
                 {taskLinkInfo.label}
-                <InternalLinkIcon className="text-grey-muted" width="14px" />
+                <Link03 className="text-grey-muted" size={14} />
               </Link>
             </HeaderField>
           </>
@@ -248,7 +248,7 @@ const IncidentManagerPageHeader = ({
                 ProfilerTabPath.DATA_QUALITY
               )}>
               {getNameFromFQN(tableFqn)}
-              <InternalLinkIcon className="text-grey-muted" width="14px" />
+              <Link03 className="text-grey-muted" size={14} />
             </Link>
           </HeaderField>
         </>

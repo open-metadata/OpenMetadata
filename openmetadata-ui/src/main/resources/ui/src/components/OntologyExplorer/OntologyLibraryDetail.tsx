@@ -212,7 +212,7 @@ const OntologyPackStatCards = ({
         },
         {
           count: relationships,
-          label: 'label.relation-plural',
+          label: 'label.hierarchy-link-plural',
           testId: 'ontology-pack-relationship-count',
         },
       ].map((item) => (
@@ -234,6 +234,16 @@ const OntologyPackStatCards = ({
     </Box>
   );
 };
+
+const OntologyPackAttribution = ({ attribution }: { attribution?: string }) =>
+  attribution ? (
+    <Typography
+      color="secondary"
+      data-testid="ontology-pack-attribution"
+      size="text-xs">
+      {attribution}
+    </Typography>
+  ) : null;
 
 const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
   const { pack, selectedModuleIds, onBack, onModuleChange } = props;
@@ -379,6 +389,7 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
                     {t('label.version')} {pack.version}
                   </Typography>
                 </Box>
+                <OntologyPackAttribution attribution={pack.attribution} />
               </Box>
             </Card.Content>
           </Card>
@@ -401,7 +412,7 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
                     {totals.concepts} {t('label.concept-plural')}
                   </Typography>
                   <Typography data-testid="ontology-pack-relationship-count">
-                    {totals.relationships} {t('label.relation-plural')}
+                    {totals.relationships} {t('label.hierarchy-link-plural')}
                   </Typography>
                 </Box>
               )}

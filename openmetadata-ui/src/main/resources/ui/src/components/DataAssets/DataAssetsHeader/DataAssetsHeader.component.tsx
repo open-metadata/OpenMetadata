@@ -22,11 +22,16 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Activity,
+  Alerts,
   Edit01,
   File02,
+  LinkExternal01,
   RefreshCcw01,
   ThumbsDown,
+  ThumbsDownFilled,
   ThumbsUp,
+  ThumbsUpFilled,
+  Trigger,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -37,9 +42,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
-import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { DomainMismatchAlert } from '../../../components/common/DomainMismatchAlert/DomainMismatchAlert.component';
@@ -56,6 +58,7 @@ import {
   SERVICE_TYPES,
 } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
@@ -69,6 +72,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
@@ -323,28 +327,25 @@ export const DataAssetsHeader = ({
     }
 
     return (
-      <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger
-          aria-label={t('label.check-upstream-failure')}
-          onPress={() =>
-            navigate({
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            })
-          }>
-          <RedAlertIcon
-            className="tw:text-fg-error-primary"
-            height={24}
-            width={24}
-          />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Alerts}
+        size="lg"
+        tooltip={t('label.check-upstream-failure')}
+        tooltipPlacement="right"
+        onClick={() =>
+          navigate({
+            pathname: getEntityDetailsPath(
+              entityType,
+              dataAsset?.fullyQualifiedName ?? '',
+              EntityTabs.LINEAGE
+            ),
+            search: QueryString.stringify({
+              layers: [LineageLayer.DataObservability],
+            }),
+          })
+        }
+      />
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
@@ -540,7 +541,13 @@ export const DataAssetsHeader = ({
     can,
   } = flags;
   const editCertificationPermission = can(Operation.EditCertification);
-  const hasTriggerPermission = can(Operation.Trigger);
+  const { can: canAutoPilot } = useEntityPermissions(
+    ResourceEntity.APPLICATION,
+    AUTO_PILOT_APP_NAME,
+    { enabled: SERVICE_TYPES.includes(entityType) }
+  );
+  const hasTriggerPermission =
+    can(Operation.Trigger) && canAutoPilot(Operation.Trigger);
   const editStylePermission = Boolean(onStyleUpdate) && flags.canEditAll;
 
   const hasEditableMetadata = computeHasEditableMetadata(
@@ -684,7 +691,7 @@ export const DataAssetsHeader = ({
           <Button
             color="primary"
             data-testid="trigger-auto-pilot-application-button"
-            iconLeading={TriggerIcon}
+            iconLeading={Trigger}
             isDisabled={disableRunAgentsButton}
             isLoading={isLoading}
             size="sm"
@@ -720,7 +727,7 @@ export const DataAssetsHeader = ({
             color="secondary"
             data-testid="source-url-button"
             href={sourceUrl}
-            iconLeading={IconExternalLink}
+            iconLeading={LinkExternal01}
             rel="noopener noreferrer"
             size="sm"
             target="_blank">
@@ -756,7 +763,9 @@ export const DataAssetsHeader = ({
           count={votes?.upVotes ?? 0}
           countTestId="up-vote-count"
           disabled={deleted}
-          icon={ThumbsUp}
+          icon={
+            voteStatus === QueryVoteType.votedUp ? ThumbsUpFilled : ThumbsUp
+          }
           isActive={voteStatus === QueryVoteType.votedUp}
           loading={upVoteLoading}
           testId="up-vote-btn"
@@ -768,6 +777,14 @@ export const DataAssetsHeader = ({
           countTestId="down-vote-count"
           disabled={deleted}
           icon={ThumbsDown}
+          iconNode={
+            voteStatus === QueryVoteType.votedDown ? (
+              <ThumbsDownFilled
+                className="tw:text-fg-warning-primary"
+                size={20}
+              />
+            ) : undefined
+          }
           isActive={voteStatus === QueryVoteType.votedDown}
           loading={downVoteLoading}
           testId="down-vote-btn"
@@ -785,12 +802,7 @@ export const DataAssetsHeader = ({
       <div className="tw:flex tw:items-center tw:gap-4">
         {canShowFollowStat && onFollowClick && (
           <StatItem
-            iconNode={
-              <FollowStarIcon
-                className="tw:size-[29px]"
-                selected={isFollowing}
-              />
-            }
+            iconNode={<FollowStarIcon selected={isFollowing} />}
             loading={isFollowingLoading}
             srLabel={followLabel}
             testId="entity-follow-button"
@@ -846,8 +858,10 @@ export const DataAssetsHeader = ({
               Activity
             )
           }
+          radius="lg"
+          shape="square"
           size="md"
-          theme="surface"
+          theme="modern"
         />
         {editStylePermission && (
           <ButtonUtility

@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  LinkExternal01,
+  TextEditorUnlink,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';
 
 interface LinkPopupProps {
   href: string;
@@ -44,7 +46,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
         aria-label={t('label.open-in-new-tab')}
         data-testid="link-popup-open"
         href={href}
-        icon={ExternalLinkIcon}
+        icon={LinkExternal01}
         rel="noopener noreferrer"
         size="lg"
         target="_blank"
@@ -52,7 +54,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
       <ButtonUtility
         aria-label={t('label.remove-entity', { entity: linkLabel })}
         data-testid="link-popup-unlink"
-        icon={UnlinkIcon}
+        icon={TextEditorUnlink}
         size="lg"
         onClick={handleUnlink}
       />

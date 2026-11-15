@@ -233,19 +233,18 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   protected EventSubscription createNewEntity(EventSubscription entity) {
     // PUT reaches prepare with update=true even when it creates an alert. At this point the
-    // repository knows it is a create, and encryption runs before the retryable store.
+    // repository knows it is a create. Each destination gets the id it keeps for life, and its
+    // secrets are encrypted for that id, once, before the retryable store.
+    DestinationIds.assignNew(entity.getDestinations());
     entity.withDestinations(DestinationSecrets.ofANewAlert(entity.getDestinations()));
     return super.createNewEntity(entity);
   }
 
   @Override
   public void storeEntity(EventSubscription entity, boolean update) {
-    // A created alert's destinations are all new; an update's new ones are those it sent no id for.
-    if (update) {
-      ensureDestinationIds(entity);
-    } else {
-      DestinationIds.assignNew(entity.getDestinations());
-    }
+    // A created alert's destinations got their ids in createNewEntity, where their secrets were
+    // encrypted for them; an update's new ones are those it sent no id for.
+    ensureDestinationIds(entity);
     store(entity, update);
   }
 

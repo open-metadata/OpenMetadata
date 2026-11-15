@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Link01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
@@ -29,6 +30,9 @@ import OntologyColumnBindingEditor from './OntologyColumnBindingEditor';
 interface OntologyPropertyBindingsProps {
   conceptId: string;
   propertyId: string;
+  /** Names the column the editor suggests for this property. */
+  propertyLabel?: string;
+  isIdentifier?: boolean;
   canEdit: boolean;
   canAdd?: boolean;
   bindings: ReturnType<typeof useOntologyConceptBindings>;
@@ -37,12 +41,17 @@ interface OntologyPropertyBindingsProps {
 const OntologyPropertyBindings = ({
   conceptId,
   propertyId,
+  propertyLabel,
+  isIdentifier,
   canEdit,
   canAdd = true,
   bindings,
 }: OntologyPropertyBindingsProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const hasTable = Boolean(
+    bindings.data?.assets.some(({ assetType }) => assetType === AssetType.Table)
+  );
   const columns =
     bindings.data?.assets.flatMap((asset) =>
       asset.columns
@@ -55,23 +64,36 @@ const OntologyPropertyBindings = ({
       return null;
     }
 
-    return isOpen ? (
-      <OntologyColumnBindingEditor
-        conceptId={conceptId}
-        key={`${conceptId}:${propertyId}`}
-        propertyId={propertyId}
-        onClose={() => setIsOpen(false)}
-      />
-    ) : (
+    const bindButton = (
       <Button
         color="link-color"
         data-testid={`ontology-bind-property-${propertyId}`}
         iconLeading={Plus}
-        isDisabled={!bindings.editableSnapshot}
+        isDisabled={!bindings.editableSnapshot || !hasTable}
         size="xs"
         onPress={() => setIsOpen(true)}>
         {t('label.ontology-bind-to-column')}
       </Button>
+    );
+
+    return isOpen ? (
+      <OntologyColumnBindingEditor
+        conceptId={conceptId}
+        isIdentifier={isIdentifier}
+        key={`${conceptId}:${propertyId}`}
+        propertyId={propertyId}
+        propertyLabel={propertyLabel}
+        onClose={() => setIsOpen(false)}
+      />
+    ) : (
+      // Without a linked table there is nothing to bind yet: the button reads as disabled,
+      // and the tooltip on its focusable wrapper says why.
+      <Tooltip
+        isDisabled={hasTable}
+        placement="bottom start"
+        title={t('message.ontology-link-table-before-binding')}>
+        {bindButton}
+      </Tooltip>
     );
   };
 

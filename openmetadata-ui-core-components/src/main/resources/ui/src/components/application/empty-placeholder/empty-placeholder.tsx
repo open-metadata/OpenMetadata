@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
+import { Typography } from '@/components/foundations/typography';
 import { BlankEmptyPlaceholder } from './blank-empty-placeholder';
 import type {
   EmptyPlaceholderFeature,
@@ -28,6 +29,8 @@ export type {
 
 export type EmptyPlaceholderVariant = 'blank' | 'features';
 
+export type EmptyPlaceholderSize = 'sm' | 'md';
+
 export interface EmptyPlaceholderProps
   extends Omit<EmptyPlaceholderShellProps, 'children'> {
   /** Selects the layout. 'blank' = icon + title + description; 'features' = feature columns */
@@ -38,6 +41,12 @@ export interface EmptyPlaceholderProps
   description?: ReactNode;
   /** Feature columns rendered in the 'features' variant */
   features?: EmptyPlaceholderFeature[];
+  /**
+   * 'sm' renders the title (or description) as one muted line in normal flow,
+   * for compact hosts such as right-panel widgets: no icon, no actions, and
+   * no positioned host needed.
+   */
+  size?: EmptyPlaceholderSize;
 }
 
 export const EmptyPlaceholder = ({
@@ -46,10 +55,21 @@ export const EmptyPlaceholder = ({
   title,
   description,
   features,
+  size = 'md',
   ...shellProps
 }: EmptyPlaceholderProps) => {
   let node: ReactNode;
-  if (variant === 'features') {
+  if (size === 'sm') {
+    node = (
+      <Typography
+        className={shellProps.className}
+        color="secondary"
+        data-testid="empty-placeholder"
+        size="text-xs">
+        {title ?? description}
+      </Typography>
+    );
+  } else if (variant === 'features') {
     node = (
       <FeaturesEmptyPlaceholder
         description={description}

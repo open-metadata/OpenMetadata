@@ -46,7 +46,7 @@ import org.openmetadata.service.Entity;
 @ExtendWith(TestNamespaceExtension.class)
 class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
   @Test
-  void anotherEditorSeesAnOlderReviewAndTheNewestOpenRepresentative(TestNamespace ns) {
+  void anotherEditorSeesTheOpenReviewWhileANewerDraftWaitsForIt(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     SdkClients.adminClient()
         .ontologies()
@@ -55,6 +55,7 @@ class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
             current(ontology).withOwners(List.of(SharedEntities.get().USER2.getEntityReference())));
     final OntologyRelease first = capture(ontology);
     final Task firstTask = submit(ns, Entity.ONTOLOGY_RELEASE, first.getFullyQualifiedName());
+    declareClass(ontology, "Second", iri(ontology, "Second"));
     final OntologyRelease second = capture(ontology);
     final var editor = SdkClients.user2Client();
     final JsonNode olderLock = publicationJson(editor, ontology).path("reviewLock");
@@ -90,14 +91,23 @@ class IndependentOntologyStatusIT extends BaseOntologyApprovalIT {
               .getStatusCode());
     }
 
+    final OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> submit(ns, Entity.ONTOLOGY_RELEASE, second.getFullyQualifiedName()));
+    assertEquals(409, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("already has an open review"), refused.getMessage());
+    assertEquals(first.getId(), publication(ontology).getReviewLock().getInReview().getReleaseId());
+    resolve(firstTask, TaskResolutionType.Rejected);
+    assertEquals(JsonUtils.readTree("{}"), publicationJson(editor, ontology).path("reviewLock"));
+
     final Task secondTask = submit(ns, Entity.ONTOLOGY_RELEASE, second.getFullyQualifiedName());
+    declareClass(ontology, "Third", iri(ontology, "Third"));
     final OntologyRelease third = capture(ontology);
     assertEquals(
         second.getId(), publication(ontology).getReviewLock().getInReview().getReleaseId());
     assertEquals(third.getId(), publication(ontology).getLatest().getReleaseId());
     resolve(secondTask, TaskResolutionType.Approved);
-    assertEquals(first.getId(), publication(ontology).getReviewLock().getInReview().getReleaseId());
-    resolve(firstTask, TaskResolutionType.Rejected);
     assertEquals(JsonUtils.readTree("{}"), publicationJson(editor, ontology).path("reviewLock"));
   }
 

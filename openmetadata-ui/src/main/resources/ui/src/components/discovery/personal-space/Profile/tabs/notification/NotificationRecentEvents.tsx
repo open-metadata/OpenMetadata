@@ -24,12 +24,15 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01, FilterLines } from '@openmetadata/ui-core-components/icons';
+import {
+  Bell01,
+  FilterLines,
+  NoFilterFunnel,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
 import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
@@ -208,7 +211,7 @@ function NotificationRecentEvents({
           )}
           icon={
             isFiltered ? (
-              <FilterOffIcon />
+              <NoFilterFunnel />
             ) : (
               <Bell01 className="tw:text-fg-brand-primary" />
             )

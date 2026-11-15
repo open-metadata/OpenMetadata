@@ -43,23 +43,6 @@ jest.mock('../../../../../utils/date-time/DateTimeUtils');
 jest.mock('../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils');
 
 // Mock SVG components
-jest.mock('../../../../../assets/svg/ic-check-circle-new.svg', () => ({
-  ReactComponent: ({
-    'data-testid': testId,
-  }: {
-    'data-testid'?: string;
-    [key: string]: unknown;
-  }) => <div data-testid={testId} />,
-}));
-
-jest.mock('../../../../../assets/svg/pending-badge.svg', () => ({
-  ReactComponent: ({
-    'data-testid': testId,
-  }: {
-    'data-testid'?: string;
-    [key: string]: unknown;
-  }) => <div data-testid={testId} />,
-}));
 
 const mockGlossaryTerm: GlossaryTerm = {
   id: 'test-glossary-term-id',
@@ -189,7 +172,7 @@ jest.mock('react-i18next', () => ({
       switch (key) {
         case 'label.workflow-history':
           return 'Workflow History';
-        case 'label.no-entity-available':
+        case 'label.no-entity-found':
           return 'No Workflow History available';
         default:
           return key;
@@ -231,6 +214,9 @@ describe('WorkflowHistory Component', () => {
         ).toBeInTheDocument();
       });
 
+      expect(screen.getByTestId('workflow-history-empty')).toHaveTextContent(
+        'Workflow History'
+      );
       expect(getWorkflowDefinitionById).not.toHaveBeenCalled();
       expect(getWorkflowInstanceStateById).not.toHaveBeenCalled();
       expect(

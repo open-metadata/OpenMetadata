@@ -36,6 +36,8 @@ import {
   Download01,
   FilterFunnel01,
   InfoCircle,
+  SortAscending,
+  SortDescending,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -95,8 +97,6 @@ import {
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
-import { ReactComponent as IconAscending } from './../../assets/svg/ic-ascending.svg';
-import { ReactComponent as IconDescending } from './../../assets/svg/ic-descending.svg';
 import './exploreV1.less';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 const EntitySummaryPanel = withSuspenseFallback(
@@ -1285,7 +1285,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           <div className="d-flex items-start justify-end gap-3 tw:relative tw:mt-1 tw:min-h-px tw:max-w-full tw:flex-none tw:self-start">
             <ButtonUtility
               data-testid="sort-order-button"
-              icon={isAscSortOrder ? IconAscending : IconDescending}
+              icon={isAscSortOrder ? SortAscending : SortDescending}
               size="lg"
               tooltip={t('label.sort-order')}
               onClick={() =>

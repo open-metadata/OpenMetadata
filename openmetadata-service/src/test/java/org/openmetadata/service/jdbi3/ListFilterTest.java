@@ -144,6 +144,32 @@ class ListFilterTest {
     }
   }
 
+  @ParameterizedTest
+  @CsvSource({"true", "false"})
+  void queryRunnerRequesterKeepsOnlyThatRequestersQueryRunnerWorkflows(boolean mysql) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      ListFilter unscoped = new ListFilter();
+      assertFalse(unscoped.getCondition("automations_workflow").contains("QUERY_RUNNER"));
+
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam(ListFilter.QUERY_RUNNER_REQUESTER_ID, "requester-id");
+      String storedRequester =
+          mysql
+              ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.request.userId'))"
+              : "json->'request'->>'userId'";
+      assertTrue(
+          filter
+              .getCondition("automations_workflow")
+              .contains(
+                  "(workflowType <> 'QUERY_RUNNER' OR "
+                      + storedRequester
+                      + " = :queryRunnerRequesterId)"));
+    }
+  }
+
   @Test
   void test_escapeApostrophe() {
     assertEquals("abcd", ListFilter.escape("abcd"));
@@ -242,6 +268,22 @@ class ListFilterTest {
     assertTrue(condition.contains("serverId = :serverId"), condition);
 
     assertFalse(new ListFilter().getCondition().contains("agentId"));
+  }
+
+  @Test
+  void getCondition_changeSetOntologyBindsTheIdAndOnlyFiltersChangeSets() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("changeSetOntologyId", "11111111-1111-1111-1111-111111111111");
+
+    String condition = filter.getCondition("ontology_change_set_entity");
+
+    assertTrue(condition.contains("ontology_change_set_entity.id IN (SELECT"), condition);
+    assertTrue(condition.contains("entity_relationship.fromId = :changeSetOntologyIdParam"));
+    assertTrue(condition.contains("entity_relationship.fromEntity = 'ontology'"));
+    assertFalse(condition.contains("11111111"), condition);
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111", filter.getQueryParam("changeSetOntologyIdParam"));
+    assertFalse(filter.getCondition("ontology_concept_entity").contains("changeSetOntologyId"));
   }
 
   @Test

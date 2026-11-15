@@ -204,6 +204,24 @@ class BuildEntityUrlHelperTest {
   }
 
   @Test
+  void metadataExample_rendersEntityLink() throws IOException {
+    String example = new BuildEntityUrlHelper().getMetadata().getUsages().get(0).getExample();
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "service.db.schema.users",
+            "name", "users");
+
+    String url =
+        extractHref(
+            sandbox.render(
+                "<a href=\"" + example + "\">link</a>",
+                Map.of("event", Map.of("entityType", "table"), "entity", entity)));
+
+    assertEquals(BASE_URL + "/table/service.db.schema.users", url);
+  }
+
+  @Test
   void testCaseTaskLink_pointsToIssuesTab() throws IOException {
     String url = extractHref(renderFeedLink(Entity.TEST_CASE, "service.db.schema.tc1", "tasks"));
 

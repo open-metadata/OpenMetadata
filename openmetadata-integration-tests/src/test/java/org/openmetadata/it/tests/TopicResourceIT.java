@@ -1666,4 +1666,29 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setName(ns.prefix("invalid_topic"));
     return request;
   }
+
+  @Test
+  void patch_rejectedRenameKeepsSchemaFieldFqns(TestNamespace ns) {
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(
+                List.of(
+                    new Field().withName("id").withDataType(FieldDataType.STRING),
+                    new Field().withName("name").withDataType(FieldDataType.STRING)));
+    Topic created = createEntity(createMinimalRequest(ns).withMessageSchema(schema));
+    Topic patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    Topic updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> fieldFqns =
+        updated.getMessageSchema().getSchemaFields().stream()
+            .map(Field::getFullyQualifiedName)
+            .toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, fieldFqns.size());
+    assertTrue(fieldFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), fieldFqns::toString);
+  }
 }

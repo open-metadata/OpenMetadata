@@ -22,6 +22,7 @@ import {
   deleteAnnouncement,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
+import { HOME_ANNOUNCEMENTS_QUERY_KEY } from '../../rest/queries/criticalAnnouncementsQuery';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   useDeleteSystemAnnouncement,
@@ -223,6 +224,49 @@ describe('system announcement mutations', () => {
 
     expect(onSaved).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['saving', 'save'],
+    ['deleting', 'delete'],
+  ] as const)(
+    'marks the Home announcement queries stale after %s',
+    async (_, action) => {
+      const client = new QueryClient();
+      const homeKey = [...HOME_ANNOUNCEMENTS_QUERY_KEY, 'active'];
+      client.setQueryData(homeKey, []);
+      if (action === 'save') {
+        (createAnnouncement as jest.Mock).mockResolvedValueOnce({ id: 'a1' });
+      } else {
+        (deleteAnnouncement as jest.Mock).mockResolvedValueOnce({});
+      }
+      const done = jest.fn();
+      const { result } = renderHook(
+        () => ({
+          save: useSaveSystemAnnouncement(done),
+          remove: useDeleteSystemAnnouncement(done),
+        }),
+        {
+          wrapper: ({ children }: { children: ReactNode }) => (
+            <QueryClientProvider client={client}>
+              {children}
+            </QueryClientProvider>
+          ),
+        }
+      );
+
+      act(() =>
+        action === 'save'
+          ? result.current.save.mutate({
+              request: { description: 'Body', startTime: 1, endTime: 2 },
+            })
+          : result.current.remove.mutate('a1')
+      );
+
+      await waitFor(() => expect(done).toHaveBeenCalled());
+
+      expect(client.getQueryState(homeKey)?.isInvalidated).toBe(true);
+    }
+  );
 
   it('hard-deletes, and reports a failed delete without closing', async () => {
     const onDeleted = jest.fn();

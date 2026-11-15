@@ -19,9 +19,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  DataProduct as DataProductIcon,
   Globe01,
   NoSearch,
-  Package,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -379,7 +379,7 @@ const DataProductListPage = ({
                 : undefined
             }
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<DataProductIcon className="tw:text-fg-brand-primary" />}
             title={t('label.no-data-products-yet')}
           />
         </div>

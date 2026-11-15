@@ -54,6 +54,8 @@ export interface UserPreferences {
    * (the lineage config dialog). Unset means shown.
    */
   showLineageTempTables?: boolean;
+  /** Whether the Ontology Studio health card is collapsed to its one-line strip. */
+  isOntologyHealthMinimized?: boolean;
 }
 
 interface Store {

@@ -69,6 +69,8 @@ const PERSONAL_TAG = {
   state: 'Confirmed',
 };
 
+const LIST_PAGE_SIZE = 15;
+
 test.describe(
   'AI mode service details',
   { tag: [DOMAIN_TAGS.INTEGRATION] },
@@ -77,7 +79,8 @@ test.describe(
       let service: DatabaseServiceClass;
       let owner: UserClass;
       let serviceFqn = '';
-      // Three live databases, so a two-row page has a second page, and one soft-deleted one.
+      // One more live database than a page holds, so the list has a second page, and one
+      // soft-deleted one. Zero-padded names keep the name-ordered list in creation order.
       let databases: string[] = [];
       let deletedDatabase = '';
       const announcementTitle = `pw-ai-announcement-${uuid()}`;
@@ -91,10 +94,13 @@ test.describe(
         serviceFqn = service.entityResponseData.fullyQualifiedName;
 
         const prefix = `pw-ai-db-${uuid()}`;
-        databases = [`${prefix}-1`, `${prefix}-2`, `${prefix}-3`];
-        deletedDatabase = `${prefix}-4`;
+        databases = Array.from(
+          { length: LIST_PAGE_SIZE + 1 },
+          (_, index) => `${prefix}-${String(index + 1).padStart(2, '0')}`
+        );
+        deletedDatabase = `${prefix}-deleted`;
 
-        const [, searched, , toDelete] = await Promise.all(
+        const created = await Promise.all(
           [...databases, deletedDatabase].map(async (name, index) =>
             okJson<EntityRef>(
               await apiContext.post('/api/v1/databases', {
@@ -111,6 +117,8 @@ test.describe(
             )
           )
         );
+        const searched = created[1];
+        const toDelete = created[created.length - 1];
 
         await okJson(
           await apiContext.delete(
@@ -260,16 +268,19 @@ test.describe(
       test('pages through the databases and keeps the page across a reload', async ({
         page,
       }) => {
-        await test.step('first page holds the first two databases', async () => {
+        const lastOnFirstPage = databases[LIST_PAGE_SIZE - 1];
+        const firstOnSecondPage = databases[LIST_PAGE_SIZE];
+
+        await test.step('first page holds the first page of databases', async () => {
           await visitAiModeServiceDetailsPage(page, {
             category: 'databaseServices',
             fqn: serviceFqn,
-            query: '?pageSize=2',
+            query: `?pageSize=${LIST_PAGE_SIZE}`,
           });
 
           await expect(getRowByName(page, databases[0])).toBeVisible();
-          await expect(getRowByName(page, databases[1])).toBeVisible();
-          await expect(getRowByName(page, databases[2])).toBeHidden();
+          await expect(getRowByName(page, lastOnFirstPage)).toBeVisible();
+          await expect(getRowByName(page, firstOnSecondPage)).toBeHidden();
         });
 
         await test.step('Next shows the next databases, not the same ones', async () => {
@@ -282,7 +293,7 @@ test.describe(
           await page.getByTestId('next').click();
           await nextPage;
 
-          await expect(getRowByName(page, databases[2])).toBeVisible();
+          await expect(getRowByName(page, firstOnSecondPage)).toBeVisible();
           await expect(getRowByName(page, databases[0])).toBeHidden();
         });
 
@@ -297,7 +308,7 @@ test.describe(
           await samePage;
           await waitForAllLoadersToDisappear(page);
 
-          await expect(getRowByName(page, databases[2])).toBeVisible();
+          await expect(getRowByName(page, firstOnSecondPage)).toBeVisible();
           await expect(getRowByName(page, databases[0])).toBeHidden();
         });
       });

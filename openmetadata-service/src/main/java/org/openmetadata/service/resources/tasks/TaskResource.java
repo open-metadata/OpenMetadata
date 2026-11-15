@@ -1316,9 +1316,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // populated and JsonUtils.applyPatch does not blow up on a null list. The diff-based
     // checks in validateTaskPatch read a subset of these anyway.
     Task original = repository.get(uriInfo, id, repository.getPatchFields());
-    Task patched = JsonUtils.applyPatch(original, patch, Task.class);
-    validateTaskPatch(original, patched, isAdmin(securityContext));
-    JsonPatch effectivePatch = keepWorkflowBinding(original, patched, patch);
     // Authorize against TaskResourceContext for the same reason DELETE does: the generic
     // ResourceContext leaves createdBy null and resolves isOwner() to the Task's own owners
     // rather than the target entity's, so both isTaskFiler() and the entity-owner rule would
@@ -1326,10 +1323,24 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     List<AuthRequest> authRequests =
         List.of(
             new AuthRequest(
+                new OperationContext(Entity.TASK, patch), new TaskResourceContext(original)));
+    // Authorize before simulating the patch: its errors quote the stored task.
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
+    Task patched = JsonUtils.applyPatch(original, patch, Task.class);
+    validateTaskPatch(original, patched, isAdmin(securityContext));
+    JsonPatch effectivePatch = keepWorkflowBinding(original, patched, patch);
+    List<AuthRequest> effectiveAuthRequests =
+        List.of(
+            new AuthRequest(
                 new OperationContext(Entity.TASK, effectivePatch),
                 new TaskResourceContext(original)));
     return patchInternal(
-        uriInfo, securityContext, authRequests, AuthorizationLogic.ALL, id, effectivePatch);
+        uriInfo,
+        securityContext,
+        effectiveAuthRequests,
+        AuthorizationLogic.ALL,
+        id,
+        effectivePatch);
   }
 
   private boolean isAdmin(SecurityContext securityContext) {

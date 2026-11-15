@@ -12,7 +12,7 @@
  */
 
 import {
-  AlertTriangle,
+  Alert,
   Archive,
   CheckCircle,
   File02,
@@ -30,7 +30,7 @@ export const TASK_TYPE_ICON: Record<TaskTypeIconKey, typeof CheckCircle> = {
   approval: CheckCircle,
   deprecation: Archive,
   description: File02,
-  incident: AlertTriangle,
+  incident: Alert,
   ownership: Users01,
   tag: Tag01,
   tier: Star01,

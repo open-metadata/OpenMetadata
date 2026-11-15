@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { AssetType } from '../../../generated/api/data/updateOntologyConceptBinding';
 import { Column } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { AssetBinding } from '../../../generated/type/ontologyConceptBindingsResponse';
 import { BindingWriteOutcome } from '../../../interface/governance/ontology/ontologyConceptBindings.types';
 import Fqn from '../../Fqn';
 import { getEntityDetailsPath } from '../../RouterUtils';
@@ -75,4 +77,27 @@ export const getOntologyColumnOptions = (
   visit(columns, []);
 
   return options;
+};
+
+const UNLINK_COLUMN_NAMES_SHOWN = 5;
+
+/** What an unlink also drops: the columns bound to the concept's properties on that asset. */
+export const getUnlinkDescription = (
+  binding: AssetBinding,
+  t: TFunction
+): string => {
+  if (binding.columns.length === 0) {
+    return t('message.ontology-unlink-asset-no-columns');
+  }
+  const names = binding.columns.map((column) => column.columnPath.join('.'));
+  const shown = names.slice(0, UNLINK_COLUMN_NAMES_SHOWN).join(', ');
+  const hidden = names.length - UNLINK_COLUMN_NAMES_SHOWN;
+
+  return t('message.ontology-unlink-asset-columns', {
+    count: binding.columns.length,
+    columns:
+      hidden > 0
+        ? t('message.text-and-count-more', { count: hidden, text: shown })
+        : shown,
+  });
 };

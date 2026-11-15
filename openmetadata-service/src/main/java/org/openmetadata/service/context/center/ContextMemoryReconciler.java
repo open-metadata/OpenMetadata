@@ -1,6 +1,7 @@
 package org.openmetadata.service.context.center;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,32 +20,45 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 /**
  * Reconciles a freshly-derived set of knowledge pills against the pills already linked to a Context
  * Center source, instead of deleting and recreating them wholesale on every run. Matching happens
- * in two passes — exact normalized question first, then word-overlap similarity — so a re-derived
+ * in two passes — exact normalized question and answer first, for every pill, then word-overlap
+ * similarity that never pairs two pills whose numbers conflict — so a re-derived
  * fact keeps its pill identity (and the usageCount/lastUsedAt retrieval telemetry that rides it)
- * even when the model rephrases the question between runs. An automated pill that is no longer
- * derived from its last source is hard-deleted; a shared pill is detached from only the changed
- * source. A pill a human has edited (sourceType flipped to Manual) is left untouched, and so is one
- * moved out of Approved: re-extraction never rewrites it or approves it again. Equivalent
- * file-derived facts may be linked to more than one source; retiring one source preserves the
- * memory while another still references it.
+ * even when the model rephrases the question between runs. An extracted pill still Approved or
+ * Unprocessed that is no longer derived from its last source is hard-deleted; a shared pill is
+ * detached from only the changed source. So is one held in Draft for a review, which closes with
+ * it, though re-extraction never rewrites it. A pill a person decided, by editing it (sourceType
+ * flipped to Manual) or by a review that moved it to any other stage, is left untouched:
+ * re-extraction never rewrites it, approves it again or releases it. A derived value no pill claims
+ * that resembles a Draft or decided pill may be that pill reworded, so it starts Unprocessed: one
+ * clearing the identity bar with no conflicting number, and beside a correction also any with a
+ * conflicting number whose question alone clears the bar, however low the whole pair scores, so a
+ * correction holds every such value it does not claim. Two answers the source gives to one question
+ * stay two pills for review. Equivalent file-derived facts may be linked to more than one source;
+ * retiring one source preserves the memory while another still references it. A linked memory keeps
+ * the stage a person left it in, so every document stating the fact shares its review.
  */
 @Slf4j
 public class ContextMemoryReconciler {
+  /** How a memory a file states was written: extracted from it, or corrected by a person since. */
+  static final List<ContextMemorySourceType> DOCUMENT_FACT_SOURCES =
+      List.of(ContextMemorySourceType.FILE_EXTRACTION, ContextMemorySourceType.MANUAL);
+
   private final ContextMemoryRepository memoryRepository;
   private final DuplicateFinder duplicateFinder;
 
   @FunctionalInterface
   public interface DuplicateFinder {
-    ContextMemory findEquivalent(ContextMemory derived);
+    DuplicateMatch findMatch(ContextMemory derived);
   }
 
   public ContextMemoryReconciler(ContextMemoryRepository memoryRepository) {
-    this(memoryRepository, ignored -> null);
+    this(memoryRepository, ignored -> new DuplicateMatch.None());
   }
 
   public ContextMemoryReconciler(
@@ -70,9 +84,10 @@ public class ContextMemoryReconciler {
     return new ReconcileResult(0, 0, existing.size(), 0);
   }
 
+  /** An identical copy takes each memory in whatever stage it is, and so takes its decision. */
   private boolean isReusableFileMemory(ContextMemory pill) {
-    return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && pill.getEntityStatus() == ContextMemoryStatus.APPROVED
+    return DOCUMENT_FACT_SOURCES.contains(pill.getSourceType())
+        && !Boolean.TRUE.equals(pill.getDeleted())
         && pill.getMemoryScope() == ContextMemoryScope.ENTITY_SCOPED
         && pill.getShareConfig() != null
         && pill.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
@@ -80,14 +95,15 @@ public class ContextMemoryReconciler {
 
   public ReconcileResult reconcile(
       EntityReference sourceRef, String sourceType, List<ContextMemory> derived) {
-    Map<String, ContextMemory> derivedByQuestion = indexByQuestion(derived);
+    Map<String, ContextMemory> derivedByQuestion = indexByFact(derived);
     List<ContextMemory> existing =
         memoryRepository.listExtractedMemories(sourceRef.getId(), sourceType);
     ReconciliationPlan plan = new ReconciliationPlan();
 
     List<ContextMemory> unmatched = planExactMatches(sourceRef, derivedByQuestion, existing, plan);
     planSimilarMatches(sourceRef, derivedByQuestion, unmatched, plan);
-    planNewMemories(sourceRef, derivedByQuestion.values(), plan);
+    planHolds(existing, derivedByQuestion, plan);
+    planNewMemories(sourceRef, derivedByQuestion, plan);
     // ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
     plan.writes.forEach(Runnable::run);
 
@@ -109,7 +125,7 @@ public class ContextMemoryReconciler {
       ReconciliationPlan plan) {
     List<ContextMemory> unmatched = new ArrayList<>();
     for (ContextMemory pill : existing) {
-      ContextMemory match = derivedByQuestion.remove(questionKey(pill));
+      ContextMemory match = derivedByQuestion.remove(factKey(pill));
       if (match == null) {
         unmatched.add(pill);
       } else {
@@ -124,10 +140,14 @@ public class ContextMemoryReconciler {
       Map<String, ContextMemory> derivedByQuestion,
       List<ContextMemory> unmatched,
       ReconciliationPlan plan) {
-    for (ContextMemory pill : unmatched) {
+    // Extracted pills claim their rewordings first, so a pill a person corrected takes only what
+    // they leave and never swallows another value the document gives for the same fact.
+    List<ContextMemory> ordered = new ArrayList<>(unmatched);
+    ordered.sort(Comparator.comparing(ContextMemoryReconciler::isHumanOwned));
+    for (ContextMemory pill : ordered) {
       ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
       if (match == null) {
-        if (isAutomated(pill)) {
+        if (isReleasedWhenUnclaimed(pill)) {
           planRelease(sourceRef, pill, plan);
         }
       } else {
@@ -136,18 +156,57 @@ public class ContextMemoryReconciler {
     }
   }
 
-  private void planNewMemories(
-      EntityReference sourceRef, Iterable<ContextMemory> derived, ReconciliationPlan plan) {
-    for (ContextMemory pill : derived) {
-      ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
-      if (equivalent == null || plan.changingIds.contains(equivalent.getId())) {
-        plan.writes.add(() -> memoryRepository.create(null, pill));
-        plan.created++;
-      } else {
-        plan.writes.add(() -> memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef));
-        plan.kept++;
-      }
+  /**
+   * Runs after both passes, so an exactly matched pill holds too and nothing claimed is held. A
+   * value resembling a Draft or decided pill may be that pill reworded, so it must not ground
+   * unreviewed.
+   */
+  private static void planHolds(
+      List<ContextMemory> existing,
+      Map<String, ContextMemory> derivedByQuestion,
+      ReconciliationPlan plan) {
+    for (ContextMemory pill : existing) {
+      derivedByQuestion.entrySet().stream()
+          .filter(entry -> MemoryReviewHolds.holds(pill, entry.getValue()))
+          .map(Map.Entry::getKey)
+          .forEach(plan.heldForReview::add);
     }
+  }
+
+  private void planNewMemories(
+      EntityReference sourceRef,
+      Map<String, ContextMemory> derivedByQuestion,
+      ReconciliationPlan plan) {
+    for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
+      planNewMemory(sourceRef, entry.getValue(), plan.heldForReview.contains(entry.getKey()), plan);
+    }
+  }
+
+  /**
+   * A fact another document states links to its memory, in whatever stage it is; another value for
+   * a fact a person decided there starts Unprocessed under every provider.
+   */
+  private void planNewMemory(
+      EntityReference sourceRef, ContextMemory pill, boolean heldAlready, ReconciliationPlan plan) {
+    DuplicateMatch match = duplicateFinder.findMatch(pill);
+    if (match instanceof DuplicateMatch.Equivalent equivalent
+        && !plan.changingIds.contains(equivalent.memory().getId())) {
+      UUID memoryId = equivalent.memory().getId();
+      plan.writes.add(() -> memoryRepository.linkExtractedMemory(memoryId, sourceRef));
+      plan.kept++;
+    } else {
+      planCreate(pill, heldAlready || match instanceof DuplicateMatch.ConflictsWithDecision, plan);
+    }
+  }
+
+  /** A value held for review starts Unprocessed, whatever stage extraction derived it in. */
+  private void planCreate(ContextMemory pill, boolean heldForReview, ReconciliationPlan plan) {
+    if (heldForReview) {
+      pill.setEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    }
+    plan.writes.add(
+        () -> memoryRepository.create(null, pill.withUpdatedAt(System.currentTimeMillis())));
+    plan.created++;
   }
 
   private void planMatchedMemory(
@@ -179,46 +238,74 @@ public class ContextMemoryReconciler {
       ContextMemory derived,
       Map<String, ContextMemory> unmatched,
       ReconciliationPlan plan) {
-    if (sameContent(existing, derived)
+    if (sameClaim(existing, derived)
         || !memoryRepository.hasOtherSources(existing.getId(), sourceRef)) {
       return false;
     }
     planRelease(sourceRef, existing, plan);
-    unmatched.put(questionKey(derived), derived);
+    unmatched.put(factKey(derived), derived);
     return true;
   }
 
-  private Map<String, ContextMemory> indexByQuestion(List<ContextMemory> derived) {
-    Map<String, ContextMemory> byQuestion = new LinkedHashMap<>();
+  /** Keyed by question and answer, so two answers the document gives to one question both stay. */
+  private Map<String, ContextMemory> indexByFact(List<ContextMemory> derived) {
+    Map<String, ContextMemory> byFact = new LinkedHashMap<>();
     for (ContextMemory pill : derived) {
-      byQuestion.putIfAbsent(questionKey(pill), pill);
+      byFact.putIfAbsent(factKey(pill), pill);
     }
-    return byQuestion;
+    return byFact;
   }
 
+  private record Candidate(String key, double score, boolean conflicting, boolean sameQuestion) {}
+
   /**
-   * Claims and returns the remaining candidate most similar to {@code pill}, or null when none
-   * clears the identity bar. Always the best match above the bar rather than the first, so a loose
-   * bar cannot let a weaker candidate take a pill a closer one should own. Claimed even for a Manual
-   * pill, so a rephrased re-derivation cannot recreate a fact a human took ownership of.
+   * Claims and returns the remaining candidate most similar to {@code pill}, or null when it may
+   * claim none. Always the best match above the bar rather than the first, so a loose bar cannot
+   * let a weaker candidate take a pill a closer one should own. A changed number is a different
+   * claim, never the same pill reworded, and a pill the engine does not maintain claims only its
+   * own question's rewording. A pill a person corrected also claims the document's value for its
+   * own question when that is the only one left, so the value is never recreated beside the
+   * correction and no other fact is taken for it.
    */
-  private ContextMemory removeMostSimilar(
+  private static ContextMemory removeMostSimilar(
       Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
-    String bestKey = null;
-    double bestScore = 0;
+    List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
+    Candidate best =
+        clearing.stream()
+            .filter(
+                candidate ->
+                    !candidate.conflicting() && (isEngineManaged(pill) || candidate.sameQuestion()))
+            .max(Comparator.comparingDouble(Candidate::score))
+            .orElse(null);
+    if (best == null && isHumanOwned(pill)) {
+      List<Candidate> ownQuestion = clearing.stream().filter(Candidate::sameQuestion).toList();
+      best = ownQuestion.size() == 1 ? ownQuestion.getFirst() : null;
+    }
+    return best == null ? null : derivedByQuestion.remove(best.key());
+  }
+
+  private static List<Candidate> candidatesClearingTheBar(
+      Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
+    List<Candidate> clearing = new ArrayList<>();
     for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
+      ContextMemory candidate = entry.getValue();
       double score =
           MemoryTextSimilarity.weighted(
-              pill.getQuestion(),
-              pill.getAnswer(),
-              entry.getValue().getQuestion(),
-              entry.getValue().getAnswer());
-      if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD && score > bestScore) {
-        bestScore = score;
-        bestKey = entry.getKey();
+              pill.getQuestion(), pill.getAnswer(), candidate.getQuestion(), candidate.getAnswer());
+      if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD) {
+        clearing.add(candidateFor(entry.getKey(), score, pill, candidate));
       }
     }
-    return bestKey == null ? null : derivedByQuestion.remove(bestKey);
+    return clearing;
+  }
+
+  private static Candidate candidateFor(
+      String key, double score, ContextMemory pill, ContextMemory candidate) {
+    return new Candidate(
+        key,
+        score,
+        MemoryTextSimilarity.hasConflictingNumbers(pill.getAnswer(), candidate.getAnswer()),
+        MemoryTextSimilarity.sameQuestion(pill.getQuestion(), candidate.getQuestion()));
   }
 
   /**
@@ -228,9 +315,15 @@ public class ContextMemoryReconciler {
    */
   private boolean planUpdate(
       ContextMemory existing, ContextMemory derived, ReconciliationPlan plan) {
-    boolean changed = !sameContent(existing, derived) || needsMetadataRepair(existing);
+    boolean contentChanged = !sameContent(existing, derived);
+    boolean changed = contentChanged || needsMetadataRepair(existing);
     if (changed) {
       ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class);
+      if (!sameClaim(existing, derived) && derived.getEntityStatus() != null) {
+        // A reviewing provider derives Unprocessed, so a changed claim is reviewed again; a
+        // reworded title or summary is the same claim and keeps the stage it was reviewed in.
+        updated.setEntityStatus(derived.getEntityStatus());
+      }
       updated.setTitle(derived.getTitle());
       updated.setQuestion(derived.getQuestion());
       updated.setAnswer(derived.getAnswer());
@@ -246,12 +339,24 @@ public class ContextMemoryReconciler {
         updated.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
       }
       updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
-      updated.setUpdatedAt(System.currentTimeMillis());
-      plan.writes.add(
-          () -> memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME));
+      plan.writes.add(() -> updateIfCurrent(existing, updated));
       plan.changingIds.add(existing.getId());
     }
     return changed;
+  }
+
+  /**
+   * Stamped when the write runs, not when it was planned, so a reconciliation run reading past this
+   * write's time never misses it; and conditional, so a review decided while the source was being
+   * re-extracted is not overwritten by the snapshot this plan was made from.
+   */
+  private void updateIfCurrent(ContextMemory existing, ContextMemory updated) {
+    updated.setUpdatedAt(System.currentTimeMillis());
+    try {
+      memoryRepository.updateIfCurrent(null, existing, updated, Entity.ADMIN_USER_NAME);
+    } catch (PreconditionFailedException e) {
+      LOG.info("Memory {} changed while its source was re-extracted; left as is", existing.getId());
+    }
   }
 
   private boolean needsMetadataRepair(ContextMemory memory) {
@@ -276,27 +381,55 @@ public class ContextMemoryReconciler {
         && Objects.equals(a.getMemoryType(), b.getMemoryType());
   }
 
-  private boolean isAutomated(ContextMemory pill) {
+  private static boolean sameClaim(ContextMemory a, ContextMemory b) {
+    return factKey(a).equals(factKey(b));
+  }
+
+  private static boolean isHumanOwned(ContextMemory pill) {
+    return pill.getSourceType() == ContextMemorySourceType.MANUAL;
+  }
+
+  private static boolean isAutomated(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
         || pill.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
   }
 
-  /**
-   * The engine only maintains Approved pills. Extraction creates every pill Approved, so any other
-   * stage was a reviewer's decision that re-extracting the same fact must not undo.
-   */
-  private boolean isEngineManaged(ContextMemory pill) {
-    return isAutomated(pill) && pill.getEntityStatus() == ContextMemoryStatus.APPROVED;
+  private static boolean isEngineManaged(ContextMemory pill) {
+    return MemoryReviewHolds.isEngineManaged(pill);
   }
 
-  private String questionKey(ContextMemory pill) {
-    String question = pill.getQuestion();
-    return question == null ? "" : question.trim().toLowerCase(Locale.ROOT);
+  /** A pill the engine maintains leaves with its fact, and so does one held in Draft. */
+  private static boolean isReleasedWhenUnclaimed(ContextMemory pill) {
+    return isEngineManaged(pill) || isHeldInDraft(pill);
+  }
+
+  /** Draft holds an extracted pill for a review that has not decided; releasing it closes it. */
+  private static boolean isHeldInDraft(ContextMemory pill) {
+    return isAutomated(pill) && pill.getEntityStatus() == ContextMemoryStatus.DRAFT;
+  }
+
+  private static String questionKey(ContextMemory pill) {
+    return normalized(pill.getQuestion());
+  }
+
+  /** Where a document says a value is written is no part of the claim, so it is left out. */
+  private static String factKey(ContextMemory pill) {
+    return questionKey(pill)
+        + '\n'
+        + normalized(MemoryTextSimilarity.withoutCitations(pill.getAnswer()));
+  }
+
+  private static String normalized(String text) {
+    return text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
   }
 
   private static final class ReconciliationPlan {
     private final List<Runnable> writes = new ArrayList<>();
     private final Set<UUID> changingIds = new HashSet<>();
+
+    /** Fact keys of unclaimed derived values resembling a Draft or decided pill. */
+    private final Set<String> heldForReview = new HashSet<>();
+
     private int created;
     private int updated;
     private int kept;

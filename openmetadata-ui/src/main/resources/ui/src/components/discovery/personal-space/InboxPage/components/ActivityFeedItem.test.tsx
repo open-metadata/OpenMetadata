@@ -253,7 +253,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ...Object.fromEntries(
     [
       'ActivityAssetCreated',
-      'ActivityAssetDeleted',
+      'Trash01',
       'ActivityAssetRestored',
       'ActivityAssetSoftDeleted',
       'ActivityAssetUpdated',
@@ -281,6 +281,9 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Tag01: () => <span />,
   ThumbsUp: (props: SVGProps<SVGSVGElement>) => (
     <svg data-testid="thumbs-up-icon" {...props} />
+  ),
+  ThumbsUpFilled: (props: SVGProps<SVGSVGElement>) => (
+    <svg data-testid="thumbs-up-filled-icon" {...props} />
   ),
   UserCheck01: () => <span />,
 }));
@@ -772,7 +775,7 @@ describe('ActivityFeedItem', () => {
 
   // The Button sizes and tints its icon by `data-icon`, so the filled thumb
   // must keep it, or a liked card's icon grows from 16px to 20px.
-  it('fills the thumb once liked and keeps the icon the Button styles', () => {
+  it('shows the filled thumb once liked and keeps the icon the Button styles', () => {
     const liked = {
       ...baseActivity,
       reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
@@ -780,10 +783,10 @@ describe('ActivityFeedItem', () => {
 
     render(<ActivityFeedItem activity={liked} />);
 
-    const icon = screen.getByTestId('thumbs-up-icon');
+    const icon = screen.getByTestId('thumbs-up-filled-icon');
 
     expect(icon).toHaveAttribute('data-icon', 'leading');
-    expect(icon).toHaveAttribute('fill', 'currentColor');
+    expect(screen.queryByTestId('thumbs-up-icon')).not.toBeInTheDocument();
   });
 
   // Others' likes are counted; only the viewer's own reads "Liked".

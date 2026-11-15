@@ -28,7 +28,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Team;
@@ -40,17 +40,15 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.BoundCiphertext;
 
 class ProfileWebhookSecretsTest {
   private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String ENDPOINT = "https://hooks.example.com/services/T0/B0/hook-token";
   private static final String TOKEN_URL = "https://login.example.com/token";
-  private static final List<Function<SubscriptionConfig, Webhook>> SLOTS =
-      List.of(
-          SubscriptionConfig::getSlack,
-          SubscriptionConfig::getMsTeams,
-          SubscriptionConfig::getgChat,
-          SubscriptionConfig::getGeneric);
+  private static final ProfileWebhookSecrets.Holder HOLDER =
+      new ProfileWebhookSecrets.Holder("user", UUID.randomUUID());
+  private static final String GENERIC = "generic";
 
   @BeforeEach
   void setUp() {
@@ -68,21 +66,20 @@ class ProfileWebhookSecretsTest {
                     .withgChat(bearer("gchat-key"))
                     .withGeneric(oauth2("generic-secret").withHeaders(Map.of("X-Api-Key", "k1"))));
 
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(sent);
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, sent);
 
-    for (Function<SubscriptionConfig, Webhook> slot : SLOTS) {
-      JsonNode webhook = JsonUtils.valueToTree(slot.apply(stored.getSubscription()));
-      assertEncrypted(webhook.at("/endpoint"), ENDPOINT);
+    JsonNode subscriptions = JsonUtils.valueToTree(stored.getSubscription());
+    for (String slot : List.of("slack", "msTeams", "gChat", GENERIC)) {
+      JsonNode webhook = subscriptions.path(slot);
+      assertEncrypted(slot, "/endpoint", webhook, ENDPOINT);
       if (webhook.at("/authType/type").asText().equals("oauth2")) {
-        assertEncrypted(webhook.at("/authType/clientId"), "client");
+        assertEncrypted(slot, "/authType/clientId", webhook, "client");
         assertEquals(TOKEN_URL, webhook.at("/authType/tokenUrl").asText());
       } else {
-        assertEncrypted(webhook.at("/authType/secretKey"), "gchat-key");
+        assertEncrypted(slot, "/authType/secretKey", webhook, "gchat-key");
       }
     }
-    assertEncrypted(
-        JsonUtils.valueToTree(stored.getSubscription().getGeneric()).at("/headers/X-Api-Key"),
-        "k1");
+    assertEncrypted(GENERIC, "/headers/X-Api-Key", subscriptions.path(GENERIC), "k1");
     String storedJson = JsonUtils.pojoToJson(stored);
     List.of("slack-secret", "teams-secret", "gchat-key", "generic-secret", "hook-token")
         .forEach(secret -> assertFalse(storedJson.contains(secret), secret));
@@ -93,37 +90,39 @@ class ProfileWebhookSecretsTest {
     Profile masked = profileWith(oauth2(PASSWORD_MASK));
     Profile copied = profileWith(oauth2(Fernet.getInstance().encrypt("someone else's secret")));
 
-    assertRefused(() -> ProfileWebhookSecrets.ofANewEntity(masked), "masked value");
-    assertRefused(() -> ProfileWebhookSecrets.ofANewEntity(copied), "encrypted value");
+    assertRefused(() -> ProfileWebhookSecrets.ofANewEntity(HOLDER, masked), "masked value");
+    assertRefused(() -> ProfileWebhookSecrets.ofANewEntity(HOLDER, copied), "encrypted value");
   }
 
   @Test
   void aMaskSentBackKeepsTheStoredSecret() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("the secret")));
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
     Profile read = ProfileWebhookSecrets.masked(stored);
 
-    Profile updated = ProfileWebhookSecrets.updated(stored, read);
+    Profile updated = ProfileWebhookSecrets.updated(HOLDER, stored, read);
 
     assertEquals(JsonUtils.pojoToJson(stored), JsonUtils.pojoToJson(updated));
   }
 
   @Test
   void aSecretEnteredAgainKeepsTheStoredCiphertextAndANewOneIsEncrypted() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("the secret")));
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
     String storedSecret = clientSecretOf(stored);
 
-    Profile same = ProfileWebhookSecrets.updated(stored, profileWith(oauth2("the secret")));
-    Profile changed = ProfileWebhookSecrets.updated(stored, profileWith(oauth2("a new secret")));
+    Profile same = ProfileWebhookSecrets.updated(HOLDER, stored, profileWith(oauth2("the secret")));
+    Profile changed =
+        ProfileWebhookSecrets.updated(HOLDER, stored, profileWith(oauth2("a new secret")));
 
     assertEquals(storedSecret, clientSecretOf(same));
     assertTrue(Fernet.isTokenized(clientSecretOf(changed)));
-    assertEquals("a new secret", Fernet.getInstance().decrypt(clientSecretOf(changed)));
+    assertEquals("a new secret", opened("/authType/clientSecret", clientSecretOf(changed)));
   }
 
   @Test
   void ciphertextIsAcceptedOnlyWhereItIsStored() {
     Profile stored =
         ProfileWebhookSecrets.ofANewEntity(
+            HOLDER,
             new Profile()
                 .withSubscription(
                     new SubscriptionConfig()
@@ -133,16 +132,17 @@ class ProfileWebhookSecretsTest {
     Profile foreign = JsonUtils.deepCopy(stored, Profile.class);
     foreign.getSubscription().getGeneric().setAuthType(oauth2Map(TOKEN_URL, slackSecret));
 
-    assertRefused(() -> ProfileWebhookSecrets.updated(stored, foreign), "encrypted value");
+    assertRefused(() -> ProfileWebhookSecrets.updated(HOLDER, stored, foreign), "encrypted value");
     assertEquals(
         JsonUtils.pojoToJson(stored),
         JsonUtils.pojoToJson(
-            ProfileWebhookSecrets.updated(stored, JsonUtils.deepCopy(stored, Profile.class))));
+            ProfileWebhookSecrets.updated(
+                HOLDER, stored, JsonUtils.deepCopy(stored, Profile.class))));
   }
 
   @Test
   void aStoredSecretDoesNotFollowAMovedEndpointOrTokenUrl() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("the secret")));
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
     Profile movedEndpoint = ProfileWebhookSecrets.masked(stored);
     movedEndpoint
         .getSubscription()
@@ -154,39 +154,43 @@ class ProfileWebhookSecretsTest {
         .getGeneric()
         .setAuthType(oauth2Map("https://elsewhere.example.com/token", PASSWORD_MASK));
 
-    assertRefused(() -> ProfileWebhookSecrets.updated(stored, movedEndpoint), "no longer sends");
-    assertRefused(() -> ProfileWebhookSecrets.updated(stored, movedTokenUrl), "no longer sends");
+    assertRefused(
+        () -> ProfileWebhookSecrets.updated(HOLDER, stored, movedEndpoint), "no longer sends");
+    assertRefused(
+        () -> ProfileWebhookSecrets.updated(HOLDER, stored, movedTokenUrl), "no longer sends");
 
     Profile reentered =
         profileWith(oauth2("the secret").withEndpoint(URI.create("https://moved.example.com")));
-    Profile moved = ProfileWebhookSecrets.updated(stored, reentered);
+    Profile moved = ProfileWebhookSecrets.updated(HOLDER, stored, reentered);
     assertEquals(
         "https://moved.example.com",
-        Fernet.getInstance()
-            .decrypt(JsonUtils.valueToTree(moved).at("/subscription/generic/endpoint").asText()));
+        opened("/endpoint", JsonUtils.valueToTree(moved).at("/subscription/generic/endpoint")));
   }
 
   @Test
   void aProfileStoredInTheClearIsEncryptedWhenSentBackMasked() {
     Profile legacy = profileWith(oauth2("legacy secret"));
 
-    Profile updated = ProfileWebhookSecrets.updated(legacy, ProfileWebhookSecrets.masked(legacy));
+    Profile updated =
+        ProfileWebhookSecrets.updated(HOLDER, legacy, ProfileWebhookSecrets.masked(legacy));
 
-    assertEquals("legacy secret", Fernet.getInstance().decrypt(clientSecretOf(updated)));
+    assertEquals("legacy secret", opened("/authType/clientSecret", clientSecretOf(updated)));
   }
 
   @Test
   void aPatchCannotReadAProfileSecret() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("the secret")));
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
     JsonPatch copy =
         patch("copy", "/description", "/profile/subscription/generic/authType/clientSecret");
     JsonPatch moveSlot =
         patch("move", "/profile/subscription/slack", "/profile/subscription/generic");
 
     assertRefused(
-        () -> ProfileWebhookSecrets.validatePatch(stored, stored, copy), "cannot be copied");
+        () -> ProfileWebhookSecrets.validatePatch(HOLDER, stored, stored, copy),
+        "cannot be copied");
     assertRefused(
-        () -> ProfileWebhookSecrets.validatePatch(stored, stored, moveSlot), "cannot be copied");
+        () -> ProfileWebhookSecrets.validatePatch(HOLDER, stored, stored, moveSlot),
+        "cannot be copied");
   }
 
   @Test
@@ -206,17 +210,17 @@ class ProfileWebhookSecretsTest {
             .build();
 
     assertRefused(
-        () -> ProfileWebhookSecrets.validatePatch(legacy, patched, endpointOnly),
+        () -> ProfileWebhookSecrets.validatePatch(HOLDER, legacy, patched, endpointOnly),
         "no longer sends");
     Profile rewritten =
         profileWith(new Webhook().withEndpoint(URI.create("https://elsewhere.example.com")));
-    ProfileWebhookSecrets.validatePatch(legacy, rewritten, wholeWebhook);
+    ProfileWebhookSecrets.validatePatch(HOLDER, legacy, rewritten, wholeWebhook);
   }
 
   @Test
   void responsesMaskTheProfileAndTheProfileValuesItsHistoryRecords() {
-    Profile before = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("old secret")));
-    Profile after = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("new secret")));
+    Profile before = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("old secret")));
+    Profile after = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("new secret")));
     ChangeDescription history =
         new ChangeDescription()
             .withFieldsUpdated(
@@ -242,7 +246,7 @@ class ProfileWebhookSecretsTest {
 
   @Test
   void aChangeEventRecordsAMaskedCopyAndLeavesTheEntityAsStored() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(oauth2("the secret")));
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
     User user = new User().withName("u").withProfile(stored);
     Team team = new Team().withName("t").withProfile(stored);
     String storedJson = JsonUtils.pojoToJson(stored);
@@ -269,9 +273,9 @@ class ProfileWebhookSecretsTest {
 
   @Test
   void deliveryReadsTheSecretsDecrypted() {
-    Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(bearer("the key")));
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(bearer("the key")));
 
-    Webhook sent = ProfileWebhookSecrets.decrypted(stored).getSubscription().getGeneric();
+    Webhook sent = ProfileWebhookSecrets.decrypted(HOLDER, stored).getSubscription().getGeneric();
 
     assertEquals(URI.create(ENDPOINT), sent.getEndpoint());
     assertEquals("the key", ((Map<?, ?>) sent.getAuthType()).get("secretKey"));
@@ -279,17 +283,48 @@ class ProfileWebhookSecretsTest {
   }
 
   @Test
+  void deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt() {
+    Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
+    String storedSecret = clientSecretOf(stored);
+    ProfileWebhookSecrets.Holder another =
+        new ProfileWebhookSecrets.Holder("user", UUID.randomUUID());
+    Profile inAnotherSlot =
+        new Profile()
+            .withSubscription(
+                new SubscriptionConfig()
+                    .withSlack(oauth2("x").withAuthType(oauth2Map(TOKEN_URL, storedSecret))));
+    Profile encryptedElsewhere =
+        profileWith(oauth2(Fernet.getInstance().encrypt("a value held elsewhere")));
+
+    assertNull(ProfileWebhookSecrets.decrypted(another, stored).getSubscription().getGeneric());
+    assertNull(ProfileWebhookSecrets.decrypted(HOLDER, inAnotherSlot).getSubscription().getSlack());
+    assertNull(
+        ProfileWebhookSecrets.decrypted(HOLDER, encryptedElsewhere).getSubscription().getGeneric());
+  }
+
+  @Test
   void aProfileWithoutWebhooksIsLeftAlone() {
     Profile images = new Profile();
 
-    assertNull(ProfileWebhookSecrets.ofANewEntity(null));
-    assertEquals(images, ProfileWebhookSecrets.ofANewEntity(images));
-    assertEquals(images, ProfileWebhookSecrets.updated(null, images));
+    assertNull(ProfileWebhookSecrets.ofANewEntity(HOLDER, null));
+    assertEquals(images, ProfileWebhookSecrets.ofANewEntity(HOLDER, images));
+    assertEquals(images, ProfileWebhookSecrets.updated(HOLDER, null, images));
   }
 
-  private static void assertEncrypted(JsonNode value, String plaintext) {
-    assertTrue(Fernet.isTokenized(value.asText()), "stored in the clear: " + value);
-    assertEquals(plaintext, Fernet.getInstance().decrypt(value.asText()));
+  private static void assertEncrypted(
+      String slot, String field, JsonNode webhook, String plaintext) {
+    String value = webhook.at(field).asText();
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its webhook: " + value);
+    assertEquals(
+        plaintext, BoundCiphertext.decrypt(HOLDER.ownerOf(slot), field, value).orElseThrow());
+  }
+
+  private static String opened(String field, JsonNode value) {
+    return opened(field, value.asText());
+  }
+
+  private static String opened(String field, String value) {
+    return BoundCiphertext.decrypt(HOLDER.ownerOf(GENERIC), field, value).orElseThrow();
   }
 
   private static void assertRefused(Runnable call, String reason) {

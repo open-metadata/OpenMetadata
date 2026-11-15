@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -2048,6 +2049,55 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // PROFILER DATA LIFECYCLE ON DELETE (issue #27041)
   // ===================================================================
 
+  /**
+   * Resubmitting a stored system event must update that row in place, not fail the whole request
+   * with a 409 that also drops the events after it. The operation must be matched from
+   * profileData, where it is stored.
+   */
+  @Test
+  void systemProfile_repeatedEventUpdatesExistingRow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createEntity(createRequest(ns.prefix("system_profile_upsert_table"), ns));
+    String tableFqn = table.getFullyQualifiedName();
+    long now = System.currentTimeMillis();
+    long eventTs = now - 120_000;
+    long followingEventTs = eventTs + 1000;
+
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(
+                    new TableProfile()
+                        .withRowCount(42.0)
+                        .withColumnCount(2.0)
+                        .withTimestamp(eventTs))
+                .withSystemProfile(List.of(systemEvent(eventTs, DmlOperationType.INSERT, 10))));
+
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(
+                    new TableProfile().withRowCount(1.0).withColumnCount(2.0).withTimestamp(now))
+                .withSystemProfile(
+                    List.of(
+                        systemEvent(eventTs, DmlOperationType.INSERT, 20),
+                        systemEvent(eventTs, DmlOperationType.UPDATE, 5),
+                        systemEvent(followingEventTs, DmlOperationType.DELETE, 3))));
+
+    List<SystemProfile> profiles = listSystemProfiles(client, tableFqn);
+    assertEventRowsAffected(profiles, eventTs, DmlOperationType.INSERT, 20);
+    assertEventRowsAffected(profiles, eventTs, DmlOperationType.UPDATE, 5);
+    assertEventRowsAffected(profiles, followingEventTs, DmlOperationType.DELETE, 3);
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNotNull(latestProfile.getProfile(), "Latest table profile must be stored");
+    assertEquals(1.0, latestProfile.getProfile().getRowCount());
+  }
+
   @Test
   void delete_hardDeletePurgesProfilerData(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2294,6 +2344,32 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             HttpMethod.POST,
             "/v1/entity/profiles/name/" + Entity.TABLE + "/" + encodedFqn,
             createProfile);
+  }
+
+  private static SystemProfile systemEvent(
+      long timestamp, DmlOperationType operation, int rowsAffected) {
+    return new SystemProfile()
+        .withTimestamp(timestamp)
+        .withOperation(operation)
+        .withRowsAffected(rowsAffected);
+  }
+
+  private static void assertEventRowsAffected(
+      List<SystemProfile> profiles, long timestamp, DmlOperationType operation, int expected) {
+    List<SystemProfile> matching =
+        profiles.stream()
+            .filter(
+                profile ->
+                    Objects.equals(profile.getTimestamp(), timestamp)
+                        && profile.getOperation() == operation)
+            .toList();
+    assertEquals(
+        1,
+        matching.size(),
+        operation + " system event at " + timestamp + " must be stored exactly once");
+    assertTrue(
+        matching.stream().allMatch(profile -> Objects.equals(profile.getRowsAffected(), expected)),
+        operation + " system event at " + timestamp + " must hold rowsAffected " + expected);
   }
 
   private void writeFullProfile(OpenMetadataClient client, Table table) {
@@ -8126,6 +8202,43 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table stored =
         SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
     assertNull(stored.getTablePartition());
+  }
+
+  /**
+   * Regression test for #33623.
+   *
+   * <p>Table does not set {@code renameAllowed}, so a PATCH that changes {@code name} must be a
+   * no-op: the table's own name must not change AND every child column's {@code fullyQualifiedName}
+   * must still be prefixed with the <em>original</em> table FQN, not the rejected name.
+   */
+  @Test
+  void test_patchTable_rejectedRenameDoesNotCorruptColumnFQNs(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable request = createMinimalRequest(ns);
+    Table created = createEntity(request);
+
+    String originalFqn = created.getFullyQualifiedName();
+    String originalName = created.getName();
+
+    Table patch = client.tables().get(created.getId().toString());
+    patch.setName(originalName + "_rejected_rename");
+
+    Table updated = patchEntity(created.getId().toString(), patch);
+
+    assertEquals(
+        originalName, updated.getName(), "Table name must not change when rename is rejected");
+    assertEquals(originalFqn, updated.getFullyQualifiedName(), "Table FQN must not change");
+
+    for (Column col : updated.getColumns()) {
+      assertTrue(
+          col.getFullyQualifiedName().startsWith(originalFqn + "."),
+          "Column FQN '"
+              + col.getFullyQualifiedName()
+              + "' must be prefixed with the original table FQN '"
+              + originalFqn
+              + "'");
+    }
   }
 
   private Table createAsIngestionBot(

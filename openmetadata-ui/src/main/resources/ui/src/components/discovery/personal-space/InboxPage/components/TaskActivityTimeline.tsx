@@ -13,7 +13,7 @@
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   Check,
   Plus,
   UserPlus01,
@@ -53,7 +53,7 @@ const EVENT_ICON: Record<TaskTimelineIcon, typeof Check> = {
   approved: Check,
   assigned: UserPlus01,
   created: Plus,
-  incident: AlertTriangle,
+  incident: Alert,
   rejected: XClose,
   resolved: Check,
 };

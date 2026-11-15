@@ -30,7 +30,10 @@ import {
   generateUUID,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/StringUtils';
-import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
+import {
+  isSelectAllPayload,
+  normalizeSelectedTestProp,
+} from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestSuiteIngestionDataType } from '../AddDataQualityTest.interface';
 import { TestSuitePipelineFormValues } from './TestSuitePipelineFormFields';
 
@@ -42,13 +45,19 @@ export const toTestSuiteIngestionData = ({
   selectAllTestCases,
   raiseOnError,
 }: TestSuitePipelineFormValues): TestSuiteIngestionDataType => {
+  // A picker "Select all N test cases" payload (`selectAll: true`) is
+  // semantically "run every test case" — the same as the top-level
+  // selectAllTestCases switch — so it must set selectAllTestCases so the
+  // edit form re-opens with the switch on rather than the picker showing an
+  // empty selection.
+  const isPickerSelectAll = isSelectAllPayload(testCases);
   const testCaseNames = normalizeSelectedTestProp(testCases);
 
   return {
     cron,
     enableDebugLog,
     name,
-    selectAllTestCases,
+    selectAllTestCases: selectAllTestCases || isPickerSelectAll,
     testCases: testCaseNames.length > 0 ? testCaseNames : undefined,
     raiseOnError,
   };

@@ -15,75 +15,125 @@ import { useQuery } from '@tanstack/react-query';
 import { OntologyReleaseExportOptions } from '../../../generated/api/data/ontologyReleaseExportOptions';
 import { OntologyRelease } from '../../../generated/entity/data/ontologyRelease';
 import {
+  exportOntologyDraft,
   exportOntologyRelease,
   getOntologyRelease,
   getOntologyState,
+  listOntologyReleaseHistory,
 } from '../../../rest/ontologyAPI';
 import { OntologyReleaseExportFormat } from '../../../rest/ontologyExport.constants';
 
+export const ONTOLOGY_DRAFT_EXPORT_SCOPE = 'draft';
+const RELEASE_HISTORY_LIMIT = 50;
+
+interface OntologyExportScopes {
+  readonly activeRelease: OntologyRelease | null;
+  readonly releases: readonly OntologyRelease[];
+}
+
+/**
+ * What an ontology can export: its draft always, and every release it has
+ * captured, newest first. The active release is listed even when the history
+ * page does not reach it.
+ */
+const loadScopes = async (
+  ontologyId: string,
+  signal: AbortSignal
+): Promise<OntologyExportScopes> => {
+  const [state, history] = await Promise.all([
+    getOntologyState(ontologyId, signal),
+    listOntologyReleaseHistory(
+      ontologyId,
+      { limit: RELEASE_HISTORY_LIMIT },
+      signal
+    ),
+  ]);
+  const releases = history.data.filter(
+    (release) => release.ontology.id === ontologyId
+  );
+  if (!state.activeReleaseId) {
+    return { activeRelease: null, releases };
+  }
+  const listed = releases.find(({ id }) => id === state.activeReleaseId);
+  // The release ID comes from the state response, so this request is necessarily dependent.
+
+  const activeRelease =
+    listed ?? (await getOntologyRelease(state.activeReleaseId, signal));
+  if (activeRelease.ontology.id !== ontologyId) {
+    throw new Error('Ontology release identity does not match the scope');
+  }
+
+  return {
+    activeRelease,
+    releases: listed ? releases : [activeRelease, ...releases],
+  };
+};
+
+const firstError = (...errors: unknown[]) =>
+  errors.find((error) => error !== null && error !== undefined);
+
+/**
+ * `scopeKey` is `draft` or a release id. Left out, the active release is
+ * chosen, and the draft when nothing is published yet.
+ */
 export const useOntologyReleaseExport = (
   ontologyId: string,
   format: OntologyReleaseExportFormat,
-  options: OntologyReleaseExportOptions
+  options: OntologyReleaseExportOptions,
+  scopeKey?: string
 ) => {
-  const activeRelease = useQuery<OntologyRelease | null>({
+  const scopes = useQuery<OntologyExportScopes>({
     gcTime: 0,
-    queryKey: ['ontology-active-release', ontologyId],
+    queryKey: ['ontology-export-scopes', ontologyId],
     retry: false,
-    queryFn: async ({ signal }) => {
-      const state = await getOntologyState(ontologyId, signal);
-      if (!state.activeReleaseId) {
-        return null;
-      }
-      // The release ID comes from the state response, so this request is necessarily dependent.
-      // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
-      const release = await getOntologyRelease(state.activeReleaseId, signal);
-      if (release.ontology.id !== ontologyId) {
-        throw new Error('Ontology release identity does not match the scope');
-      }
-
-      return release;
-    },
+    queryFn: ({ signal }) => loadScopes(ontologyId, signal),
   });
-  const releaseContent = useQuery({
-    enabled: Boolean(activeRelease.data),
+  const chosen =
+    scopeKey ?? scopes.data?.activeRelease?.id ?? ONTOLOGY_DRAFT_EXPORT_SCOPE;
+  const release = scopes.data?.releases.find(({ id }) => id === chosen);
+  const isDraft = chosen === ONTOLOGY_DRAFT_EXPORT_SCOPE || !release;
+  const content = useQuery({
+    enabled: Boolean(scopes.data),
     gcTime: 0,
     queryKey: [
-      'ontology-release-export',
-      activeRelease.data?.id,
+      'ontology-export-content',
+      ontologyId,
+      isDraft ? ONTOLOGY_DRAFT_EXPORT_SCOPE : release?.id,
       format,
       options,
     ],
     retry: false,
-    queryFn: ({ signal }) => {
-      if (!activeRelease.data) {
-        throw new Error('Missing active ontology release');
-      }
-
-      return exportOntologyRelease(
-        activeRelease.data.id,
-        format,
-        options,
-        signal
-      );
-    },
+    queryFn: ({ signal }) =>
+      isDraft || !release
+        ? exportOntologyDraft(
+            ontologyId,
+            format,
+            { includeInverses: options.includeInverses },
+            signal
+          )
+        : exportOntologyRelease(release.id, format, options, signal),
   });
 
   const retry = () => {
-    if (activeRelease.isError) {
-      void activeRelease.refetch();
+    if (scopes.isError) {
+      void scopes.refetch();
 
       return;
     }
-    void releaseContent.refetch();
+    void content.refetch();
   };
 
   return {
-    content: releaseContent.data,
-    isActiveReleaseLoading: activeRelease.isLoading,
-    isError: activeRelease.isError || releaseContent.isError,
-    isPreviewLoading: releaseContent.isLoading,
-    release: activeRelease.data,
+    activeRelease: scopes.data?.activeRelease ?? undefined,
+    content: content.data,
+    isDraft,
+    error: firstError(scopes.error, content.error),
+    isError: scopes.isError || content.isError,
+    isPreviewLoading: content.isLoading,
+    isScopesLoading: scopes.isLoading,
+    release: isDraft ? undefined : release,
+    releases: scopes.data?.releases ?? [],
     retry,
+    scopeKey: isDraft ? ONTOLOGY_DRAFT_EXPORT_SCOPE : chosen,
   };
 };

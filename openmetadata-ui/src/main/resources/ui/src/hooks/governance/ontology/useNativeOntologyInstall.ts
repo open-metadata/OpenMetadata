@@ -22,6 +22,10 @@ import { getErrorText } from '../../../utils/StringUtils';
 import { useEntityPermissions } from '../../useEntityPermissions/useEntityPermissions';
 import { useOntologyChangeSetApply } from './useOntologyChangeSetApply';
 
+/** The server answers 409 when a different ontology, even a soft-deleted one, holds the name. */
+export const isOntologyNameTaken = (error: unknown) =>
+  isAxiosError(error) && error.response?.status === 409;
+
 export type NativeInstallTarget =
   | { kind: 'existing'; ontology: Ontology }
   | { kind: 'new'; request: CreateOntology };
@@ -187,6 +191,19 @@ export const useNativeOntologyInstall = ({
       await resolveTarget(attempt.current);
       setPhase('permission');
     } catch (cause) {
+      if (attempt.current?.kind === 'new' && isOntologyNameTaken(cause)) {
+        const { displayName, name } = attempt.current.request;
+        attempt.current = undefined;
+        preparing.current = false;
+        setPhase('idle');
+        setError(
+          t('message.ontology-install-name-taken', {
+            name: displayName ?? name,
+          })
+        );
+
+        return;
+      }
       block(cause);
     }
   };

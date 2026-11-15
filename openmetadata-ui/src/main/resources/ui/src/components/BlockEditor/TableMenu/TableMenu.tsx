@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ColumnDelete,
+  ColumnInsertRight,
+  RowDelete,
+  RowInsertBottom,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
-import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
-import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
-import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
-import { ReactComponent as IconDeleteRow } from '../../../assets/svg/ic-format-delete-row.svg';
 
 interface TableMenuProps {
   editor: Editor;
@@ -161,7 +163,7 @@ const TableMenu = (props: TableMenuProps) => {
       <Box align="center" gap={4}>
         <ButtonUtility
           data-testid="Add row after current row"
-          icon={IconAddRowAfter}
+          icon={RowInsertBottom}
           size="lg"
           tooltip="Add row after current row"
           onClick={() => editor.chain().focus().addRowAfter().run()}
@@ -169,7 +171,7 @@ const TableMenu = (props: TableMenuProps) => {
 
         <ButtonUtility
           data-testid="Add column after current column"
-          icon={IconAddColumnAfter}
+          icon={ColumnInsertRight}
           size="lg"
           tooltip="Add column after current column"
           onClick={() => editor.chain().focus().addColumnAfter().run()}
@@ -177,7 +179,7 @@ const TableMenu = (props: TableMenuProps) => {
 
         <ButtonUtility
           data-testid="Delete current row"
-          icon={IconDeleteRow}
+          icon={RowDelete}
           size="lg"
           tooltip="Delete current row"
           onClick={() => editor.chain().focus().deleteRow().run()}
@@ -185,7 +187,7 @@ const TableMenu = (props: TableMenuProps) => {
 
         <ButtonUtility
           data-testid="Delete current col"
-          icon={IconDeleteColumn}
+          icon={ColumnDelete}
           size="lg"
           tooltip="Delete current column"
           onClick={() => editor.chain().focus().deleteColumn().run()}
