@@ -1208,9 +1208,6 @@ export const TreeSelect = <T = unknown,>({
             )}
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}
-            // A long label truncates within the trigger's width (e.g. a
-            // max-w trigger); multi keeps its count badge unclipped.
-            ellipsis={!multiple}
             iconLeading={triggerIcon}
             // A disabled trigger opens nothing, so the affordance would lie.
             iconTrailing={disabled ? undefined : ChevronDown}
