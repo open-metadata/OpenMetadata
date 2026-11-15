@@ -119,13 +119,16 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [filterAllowedNodes]
   );
 
+  // A picker chooses among all domains, so its search skips the navbar domain
+  // filter (e.g. finding "Marketing" while "Finance" is picked).
   const fetchSearchHits = useCallback(
     async (searchTerm: string, signal?: AbortSignal) => {
       const results = (await searchDomains(
         buildDomainSearchQuery(searchTerm),
         1,
         undefined,
-        signal
+        signal,
+        true
       )) as unknown as Domain[];
 
       return { nodes: toNodes(results) };

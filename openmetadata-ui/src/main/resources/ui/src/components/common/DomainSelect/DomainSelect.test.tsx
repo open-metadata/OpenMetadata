@@ -328,6 +328,20 @@ describe('DomainSelect', () => {
     expect(nodes).toHaveLength(1);
   });
 
+  it('should search every domain, not only the active domain filter', async () => {
+    renderSelect();
+
+    await lastProps().fetchData({ searchTerm: 'Fin' });
+
+    expect(mockSearch).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
+      undefined,
+      undefined,
+      true
+    );
+  });
+
   it('should keep only the allowed (restricted) domains and their descendants', async () => {
     // restrictedDomains carries the domains a domain-restricted user may use.
     renderSelect({ restrictedDomains: [financeRef] });
