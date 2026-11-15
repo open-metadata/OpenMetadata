@@ -1,7 +1,7 @@
 # Mostly global lists keep items with no domain under a domain pick
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset) · v4 2026-11-15 (explicit domain filters include sub-domains; search aggregates follow the pick)
 - **Deciders:** Sonika Shah
 - **Guard:** `DomainNavFilterTest` (`apply_sharedConfigurationKeepsItemsWithNoDomain`,
   `apply_registeredExtensionTypeKeepsItemsWithNoDomain`), `SearchListFilterTest`
@@ -55,3 +55,16 @@ v3 2026-11-15 (replaces the tasks rule of v2):
   themselves. The backend still excludes `task` from the server-side pick, so API clients see all
   their tasks and the endpoints narrow only on an explicit `domain`.
 - Tasks with no domain are hidden under a pick, as on other strict lists.
+
+v4 2026-11-15:
+- An explicit `domain` filter on task and incident lists, and `domains` on the Data Quality search
+  lists, matches the named domain and all its sub-domains, as the navbar pick does. Guards:
+  `ListFilterTest.incidentDomainFilterMatchesEveryGivenDomainId`,
+  `SearchListFilterTest.testDomainFilterMatchesTheDomainAndItsSubDomains`.
+- Under a pick, `withDomainFilter` scopes every `/search/aggregate` request (GET `q`, POST `query`)
+  the way it scopes `/search/query`, so facet options and counts match the lists they label (e.g.
+  Explore facets, Home connector counts, tag usage counts). Tag, user and team indexes stay
+  unscoped, and a plain-text aggregate query (e.g. `*`) cannot take a clause and stays global.
+  A view that ignores the pick opts out with the skip-domain-filter header: lineage shows every
+  domain's nodes, so its filter options do too. Guards: `withDomainFilter.test.tsx`,
+  `CustomControls.test.tsx`.
