@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-14T17:29:13Z",
+  "generatedAt": "2026-11-15T03:48:35Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "41974141457",
-      "sourceSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
-      "recordedAt": "2026-11-05T06:13:15Z"
-    },
     {
       "runId": "42151309967",
       "sourceSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
@@ -53,6 +48,11 @@
       "runId": "43617762853",
       "sourceSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "recordedAt": "2026-11-14T17:29:13Z"
+    },
+    {
+      "runId": "43668471513",
+      "sourceSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
+      "recordedAt": "2026-11-15T03:48:35Z"
     }
   ],
   "entries": {
@@ -117,16 +117,27 @@
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": false
     },
+    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a reviewer assigned by the workflow sees and approves the held edit": {
+      "observations": [
+        "43668471513"
+      ],
+      "project": "GlobalSettings",
+      "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
+      "title": "Change request review lifecycle \u203a a reviewer assigned by the workflow sees and approves the held edit",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
+      "hardFailure": false
+    },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
       "observations": [
         "43197108715",
         "43353296951",
-        "43482948785"
+        "43482948785",
+        "43668471513"
       ],
       "project": "GlobalSettings",
       "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
       "title": "Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": false
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a an edit that needs two approvals is published only after the second": {
@@ -340,6 +351,16 @@
       "lastSeenSha": "2975344bc3d5b04b65bb2572c275ca0193b038af",
       "hardFailure": true
     },
+    "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case": {
+      "observations": [
+        "43668471513"
+      ],
+      "project": "Ingestion",
+      "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
+      "title": "Add TestCase New Flow \u203a Add Column Test Case",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
+      "hardFailure": false
+    },
     "Ingestion :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for Table": {
       "observations": [
         "42743759700"
@@ -352,12 +373,13 @@
     },
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
       "observations": [
-        "42151309967"
+        "42151309967",
+        "43668471513"
       ],
       "project": "Knowledge Graph",
       "file": "Features/KnowledgeGraph.spec.ts",
       "title": "Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
-      "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": false
     },
     "Ontology RDF :: Features/OntologyDataExploreRdf.spec.ts :: Ontology data exploration \u203a renders cross-page relations while paging 100+ tagged assets": {
@@ -505,12 +527,13 @@
         "43437005879",
         "43482948785",
         "43547153622",
-        "43617762853"
+        "43617762853",
+        "43668471513"
       ],
       "project": "chromium",
       "file": "Features/OntologyNativeDataMode.spec.ts",
       "title": "Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": false
     },
     "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL": {
@@ -674,12 +697,13 @@
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases": {
       "observations": [
         "43353296951",
-        "43482948785"
+        "43482948785",
+        "43668471513"
       ],
       "project": "chromium",
       "file": "Features/OntologyReview.spec.ts",
       "title": "Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": false
     },
     "chromium :: Features/OntologyReviewTasks.spec.ts :: Ontology review Tasks drawer \u203a requires a rejection reason and preserves it in the decided task and thread": {
@@ -785,12 +809,13 @@
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
       "observations": [
         "42743759700",
-        "43353296951"
+        "43353296951",
+        "43668471513"
       ],
       "project": "chromium",
       "file": "Features/Permissions/TableQueriesTabPermissions.spec.ts",
       "title": "Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": false
     },
     "chromium :: Features/ProfileSsoSettings.spec.ts :: Profile SSO Settings \u203a LDAP role mappings and reassigned roles are saved with the configuration": {
@@ -841,16 +866,6 @@
       "file": "Features/Table.spec.ts",
       "title": "Tags and glossary terms should be consistent for search \u203a Tags term should be consistent for search",
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
-      "hardFailure": true
-    },
-    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Features/Topic.spec.ts",
-      "title": "Topic entity specific tests \u203a Copy field link should have valid URL format",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Features/Workflows/WorkflowOssRestrictions.spec.ts :: OSS Workflow Capabilities \u203a Test workflow \u2014 edit mode: start node description \u203a editing the workflow description on the start node persists it on save": {
@@ -947,16 +962,6 @@
       "lastSeenSha": "2975344bc3d5b04b65bb2572c275ca0193b038af",
       "hardFailure": true
     },
-    "chromium :: Pages/Entity.spec.ts :: Topic \u203a Description Add, Update and Remove for child entities": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Pages/Entity.spec.ts",
-      "title": "Topic \u203a Description Add, Update and Remove for child entities",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
-      "hardFailure": false
-    },
     "chromium :: Pages/ExplorePageRightPanel.spec.ts :: Right Panel Test Suite \u203a Explore page right panel tests \u203a Overview panel - Deleted entity verification \u203a Should verify deleted glossary term not visible in selection for topic": {
       "observations": [
         "43617762853"
@@ -975,26 +980,6 @@
       "file": "Pages/Glossary.spec.ts",
       "title": "Glossary tests \u203a Update Glossary and Glossary Term",
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
-      "hardFailure": true
-    },
-    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Deny Permission": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Pages/Glossary.spec.ts",
-      "title": "Glossary tests \u203a Verify Glossary Deny Permission",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
-      "hardFailure": true
-    },
-    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Term Deny Permission": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Pages/Glossary.spec.ts",
-      "title": "Glossary tests \u203a Verify Glossary Term Deny Permission",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports": {
@@ -1037,26 +1022,6 @@
       "lastSeenSha": "2975344bc3d5b04b65bb2572c275ca0193b038af",
       "hardFailure": true
     },
-    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Pages/TableSharding.spec.ts",
-      "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
-      "hardFailure": true
-    },
-    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Pages/TableSharding.spec.ts",
-      "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=true",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
-      "hardFailure": true
-    },
     "chromium :: Pages/TestSuite.spec.ts :: Searching the bundle suites list from a later page resets to the first page": {
       "observations": [
         "42151309967"
@@ -1067,24 +1032,14 @@
       "lastSeenSha": "e21b5ffb53fc37c47d4a8a4ff31747337714e522",
       "hardFailure": true
     },
-    "chromium :: Pages/Users.spec.ts :: User with Data Consumer Roles \u203a Reset Password for Data Consumer": {
+    "data-insight-application :: dataInsightApp.ts :: Run Data Insight application and wait until success": {
       "observations": [
-        "41974141457"
+        "43668471513"
       ],
-      "project": "chromium",
-      "file": "Pages/Users.spec.ts",
-      "title": "User with Data Consumer Roles \u203a Reset Password for Data Consumer",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
-      "hardFailure": true
-    },
-    "chromium :: Pages/Users.spec.ts :: User with Data Steward Roles \u203a Reset Password for Data Steward": {
-      "observations": [
-        "41974141457"
-      ],
-      "project": "chromium",
-      "file": "Pages/Users.spec.ts",
-      "title": "User with Data Steward Roles \u203a Reset Password for Data Steward",
-      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
+      "project": "data-insight-application",
+      "file": "dataInsightApp.ts",
+      "title": "Run Data Insight application and wait until success",
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Classic interactions light \u203a classic-global-search-suggestions": {
@@ -7911,13 +7866,14 @@
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results": {
       "observations": [
         "43353296951",
-        "43617762853"
+        "43617762853",
+        "43668471513"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/exploreInteractions.spec.ts",
       "title": "Explore interactions dark \u203a explore-long-results",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": false
+      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
+      "hardFailure": true
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-search-error": {
       "observations": [
@@ -8593,6 +8549,7 @@
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit",
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a only the reviewers see every held edit; a requester sees their own",
+    "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
     "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode",
@@ -9592,6 +9549,7 @@
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-or",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-all",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-visible",
+    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-initial",
