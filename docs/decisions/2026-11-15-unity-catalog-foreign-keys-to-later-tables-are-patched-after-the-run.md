@@ -18,6 +18,9 @@ log, and only the service's second run added it.
 - `yield_table_constraints`, which the database topology runs after every table node, first yields
   a `Barrier` so the sink flushes its bulk buffer, then adds the held keys by PATCH. The PATCH reads
   `tableConstraints` first, so the keys already stored, such as the primary key, are kept.
+- The source sends that PATCH itself rather than through the sink, so it changes only
+  `tableConstraints`: the sink's patch renumbers columns from 1, which would shift the 0-based
+  column positions Unity Catalog reports.
 - A held key whose referred table never arrives is dropped with a warning that names both tables.
 - A failed lookup fails only its own table's keys; the other tables are still patched.
 

@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.models.barrier import Barrier
-from metadata.ingestion.models.patch_request import PatchRequest
+from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
 from metadata.ingestion.source.database.unitycatalog.models import ForeignConstrains
 
@@ -80,13 +80,22 @@ def _foreign_key_source(tables: dict) -> Mock:
 
 
 def _child_table() -> Table:
+    # Unity Catalog column positions start at 0.
     return Table(
         id=uuid4(),
         name="fk_child",
         fullyQualifiedName=CHILD_FQN,
-        columns=[Column(name="child_id", dataType=DataType.INT), Column(name="parent_id", dataType=DataType.INT)],
+        columns=[
+            Column(name="child_id", dataType=DataType.INT, ordinalPosition=0),
+            Column(name="parent_id", dataType=DataType.INT, ordinalPosition=1),
+        ],
         tableConstraints=[PRIMARY_KEY],
     )
+
+
+def _patches(source: Mock) -> list[tuple[Table, Table]]:
+    """(stored table, patched table) for each PATCH sent to OpenMetadata."""
+    return [(call.kwargs["source"], call.kwargs["destination"]) for call in source.metadata.patch.call_args_list]
 
 
 def test_foreign_key_to_an_ingested_table_stays_on_the_table():
@@ -107,11 +116,17 @@ def test_foreign_key_to_a_table_written_later_in_the_run_is_patched_after_the_fl
     # Both tables still sit in the sink's bulk buffer until that flush runs.
     child = _child_table()
     tables.update({PARENT_FQN: Mock(), CHILD_FQN: child})
-    [patch] = list(results)
+    assert list(results) == []
 
-    assert isinstance(patch.right, PatchRequest)
-    assert patch.right.original_entity == child
-    assert patch.right.new_entity.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
+    [(stored, patched)] = _patches(source)
+    assert stored == child
+    assert patched.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
+    # The JSON patch the client builds from those same arguments changes only the
+    # constraints: the 0-based column positions are not renumbered.
+    patch_args = {
+        k: v for k, v in source.metadata.patch.call_args.kwargs.items() if k not in ("entity", "skip_on_failure")
+    }
+    assert {op["path"].split("/")[1] for op in build_patch(**patch_args).patch} == {"tableConstraints"}
 
 
 def test_one_failed_lookup_does_not_stop_the_other_tables_foreign_keys():
@@ -130,11 +145,24 @@ def test_one_failed_lookup_does_not_stop_the_other_tables_foreign_keys():
         return tables.get(fqn)
 
     source.metadata.get_by_name.side_effect = get_by_name
-    _, failure, patch = list(UnitycatalogSource.yield_table_constraints(source))
+    _, failure = list(UnitycatalogSource.yield_table_constraints(source))
 
     assert "svc.demo.sales.orders" in failure.left.error
     assert "server unavailable" in failure.left.error
-    assert patch.right.new_entity.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
+    [(_, patched)] = _patches(source)
+    assert patched.tableConstraints == [PRIMARY_KEY, RESOLVED_FOREIGN_KEY]
+
+
+def test_a_failed_patch_is_reported_as_a_failure():
+    tables = {}
+    source = _foreign_key_source(tables)
+    UnitycatalogSource._get_foreign_constraints(source, [FOREIGN_KEY], "fk_child")
+    tables.update({PARENT_FQN: Mock(), CHILD_FQN: _child_table()})
+    source.metadata.patch.side_effect = RuntimeError("Failed to update Table: 400")
+
+    _, failure = list(UnitycatalogSource.yield_table_constraints(source))
+
+    assert "Failed to update Table: 400" in failure.left.error
 
 
 def test_foreign_key_to_a_table_never_ingested_is_logged_and_dropped(caplog):
@@ -143,6 +171,7 @@ def test_foreign_key_to_a_table_never_ingested_is_logged_and_dropped(caplog):
     with caplog.at_level(logging.WARNING):
         results = list(UnitycatalogSource.yield_table_constraints(source))
     assert [type(result.right) for result in results] == [Barrier]
+    assert _patches(source) == []
     assert CHILD_FQN in caplog.text
     assert PARENT_FQN in caplog.text
 

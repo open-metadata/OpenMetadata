@@ -68,7 +68,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import (
@@ -973,7 +972,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     continue
                 new_table = table.model_copy(deep=True)
                 new_table.tableConstraints = (table.tableConstraints or []) + foreign_keys
-                yield Either(right=PatchRequest(original_entity=table, new_entity=new_table, override_metadata=True))  # pyright: ignore[reportCallIssue]
+                # Patched here, not through the sink: the sink's patch renumbers columns
+                # from 1, which would shift Unity Catalog's 0-based column positions.
+                self.metadata.patch(entity=Table, source=table, destination=new_table, skip_on_failure=False)
             except Exception as exc:
                 yield Either(  # pyright: ignore[reportCallIssue]
                     left=StackTraceError(
