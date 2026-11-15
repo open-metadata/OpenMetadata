@@ -256,8 +256,13 @@ public class TaskRepository extends EntityRepository<Task> {
             .map(domain -> Entity.getEntityReferenceByName(DOMAIN, domain, NON_DELETED))
             .toList();
 
+    // A domain covers its sub-domains, as the navbar pick does.
     if (!nullOrEmpty(domains)) {
-      filter.addQueryParam("requestedDomainId", EntityUtil.getCommaSeparatedIdsFromRefs(domains));
+      filter.addQueryParam(
+          "requestedDomainId",
+          domains.stream()
+              .map(EntityUtil::domainAndSubDomainIds)
+              .collect(java.util.stream.Collectors.joining(",")));
     }
   }
 
