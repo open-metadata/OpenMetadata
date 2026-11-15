@@ -266,6 +266,24 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
+  it('does not hand-roll the domain on the task list request', async () => {
+    mockUseDomainStore.mockImplementation((selector) =>
+      selector({ activeDomain: 'Engineering' })
+    );
+
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() => expect(listMyVisibleTasks).toHaveBeenCalled());
+
+    expect(listMyVisibleTasks).not.toHaveBeenCalledWith(
+      expect.objectContaining({ domain: expect.anything() })
+    );
+  });
+
   it('lists the entity conversations, including those on its fields', async () => {
     render(
       <ActivityFeedProvider>

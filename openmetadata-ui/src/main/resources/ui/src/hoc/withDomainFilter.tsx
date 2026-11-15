@@ -25,15 +25,15 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
-// A user's tasks and approvals are their work queue: the pick never hides them, so these lists
-// only carry a domain their caller asked for (e.g. a domain page's tasks).
-const UNSCOPED_LIST_PATHS = ['/tasks'];
+// Tasks follow the pick like any other list, except a list about given assets (e.g. an asset's
+// Tasks tab): an opened asset shows all its tasks, as the rest of its page does.
+const TASKS_PATH = '/tasks';
+const ABOUT_ASSET_TASK_PARAMS = ['aboutEntity', 'aboutEntityIds', 'dataset'];
 
-const isUnscopedList = (url?: string) =>
-  UNSCOPED_LIST_PATHS.some(
-    (path) =>
-      url === path || url?.startsWith(`${path}/`) || url?.startsWith(`${path}?`)
-  );
+const isTaskListAboutAssets = (config: InternalAxiosRequestConfig) =>
+  (config.url === TASKS_PATH ||
+    Boolean(config.url?.startsWith(`${TASKS_PATH}/`))) &&
+  ABOUT_ASSET_TASK_PARAMS.some((param) => Boolean(config.params?.[param]));
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
@@ -211,7 +211,11 @@ export const withDomainFilter = (
     return withDomainOnReportBatch(config, activeDomain);
   }
 
-  if (!activeDomain || config.method !== 'get' || isUnscopedList(config.url)) {
+  if (
+    !activeDomain ||
+    config.method !== 'get' ||
+    isTaskListAboutAssets(config)
+  ) {
     return config;
   }
 

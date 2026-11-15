@@ -1,7 +1,7 @@
 # Mostly global lists keep items with no domain under a domain pick
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset)
 - **Deciders:** Sonika Shah
 - **Guard:** `DomainNavFilterTest` (`apply_sharedConfigurationKeepsItemsWithNoDomain`,
   `apply_registeredExtensionTypeKeepsItemsWithNoDomain`), `SearchListFilterTest`
@@ -42,3 +42,16 @@ v2 2026-10-30:
 - The UI's article search (`/search/query` on the `page` index, used for text search, quick filters
   and search-only sorts) keeps items with no domain too, so searching or sorting the Articles list
   does not drop the global articles its list endpoint shows.
+
+v3 2026-11-15 (replaces the tasks rule of v2):
+- In the UI, task lists follow the pick like any other list: Home "My Tasks", the inbox, the
+  notification bell and a user's Tasks tab show only tasks in the picked domain and its
+  sub-domains. v2 left them unscoped on some screens and scoped on others, so the same task showed
+  on Home and was missing from the profile.
+- A task list about given assets (`aboutEntity`, `aboutEntityIds` or `dataset`, e.g. an asset's
+  Tasks tab or a glossary's approvals) is not narrowed: an opened asset shows all its tasks, as the
+  rest of its page does, and its count matches its list.
+- `withDomainFilter` applies both rules; callers no longer add `domain=` to task requests
+  themselves. The backend still excludes `task` from the server-side pick, so API clients see all
+  their tasks and the endpoints narrow only on an explicit `domain`.
+- Tasks with no domain are hidden under a pick, as on other strict lists.
