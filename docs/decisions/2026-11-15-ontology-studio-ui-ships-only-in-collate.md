@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-15 (initial)
 - **Deciders:** Product, UI team
 - **Guard:** reviewer
-- **Related:** ADR:2026-10-30-studio-created-ontologies-take-onto-iris
+- **Supersedes:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default (for OpenMetadata; the rule now governs Collate's route)
+- **Related:** ADR:2026-10-30-studio-created-ontologies-take-onto-iris; the Studio records amended on 2026-11-15 now govern Collate code
 
 ## Context
 
