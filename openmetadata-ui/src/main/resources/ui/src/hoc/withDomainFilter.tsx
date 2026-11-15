@@ -162,22 +162,17 @@ const domainClause = (
     },
   } as QueryFieldInterface);
 
-const withDomainOnSearch = (
-  config: InternalAxiosRequestConfig,
+// Adds the domain clause to a search filter (an ES query JSON string) for the given index.
+const scopeQueryFilter = (
+  queryFilter: string | undefined,
+  index: string | string[] | undefined,
   activeDomain: string
-): InternalAxiosRequestConfig => {
-  const index = config.params?.index;
-  if (isUnscopedSearch(index)) {
-    return config;
-  }
-
+): string => {
   const field =
     index === SearchIndex.DOMAIN
       ? 'fullyQualifiedName'
       : 'domains.fullyQualifiedName';
-  const filter = parseExistingFilter(
-    config.params?.query_filter as string | undefined
-  );
+  const filter = parseExistingFilter(queryFilter);
   filter.query = {
     bool: {
       ...filter.query?.bool,
@@ -187,7 +182,92 @@ const withDomainOnSearch = (
       ],
     },
   };
-  config.params = { ...config.params, query_filter: JSON.stringify(filter) };
+
+  return JSON.stringify(filter);
+};
+
+const withDomainOnSearch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const index = config.params?.index;
+  if (isUnscopedSearch(index)) {
+    return config;
+  }
+
+  config.params = {
+    ...config.params,
+    query_filter: scopeQueryFilter(
+      config.params?.query_filter as string | undefined,
+      index,
+      activeDomain
+    ),
+  };
+
+  return config;
+};
+
+// An aggregate query is ES query JSON, with or without the outer `query`, or plain query text.
+// Plain text cannot take a clause, so it is left as it is.
+const scopeAggregateQuery = (
+  query: string | undefined,
+  index: string | string[] | undefined,
+  activeDomain: string
+): string | undefined => {
+  const trimmed = query?.trim() ?? '';
+  if (trimmed && !trimmed.startsWith('{')) {
+    return query;
+  }
+  try {
+    const parsed = trimmed ? JSON.parse(trimmed) : {};
+    const wrapped = parsed.query || !trimmed ? parsed : { query: parsed };
+
+    return scopeQueryFilter(JSON.stringify(wrapped), index, activeDomain);
+  } catch {
+    return query;
+  }
+};
+
+// Aggregates (e.g. Explore facet options, Home connector counts) are scoped like a search: a GET
+// carries its filter in `q`, a POST in the body's `query`.
+const SEARCH_AGGREGATE_PATH = '/search/aggregate';
+
+const withDomainOnAggregate = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const isPost = config.method === 'post';
+  const source = isPost ? config.data : config.params;
+  const index = source?.index;
+  if (!source || isUnscopedSearch(index)) {
+    return config;
+  }
+
+  const key = isPost ? 'query' : 'q';
+  const scoped = {
+    ...source,
+    [key]: scopeAggregateQuery(source[key], index, activeDomain),
+  };
+  if (isPost) {
+    config.data = scoped;
+  } else {
+    config.params = scoped;
+  }
+
+  return config;
+};
+
+// Only POSTs that carry a list or count filter in their body are scoped.
+const withDomainOnPost = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  if (config.url?.includes(DQ_REPORT_BATCH_PATH)) {
+    return withDomainOnReportBatch(config, activeDomain);
+  }
+  if (config.url?.includes(SEARCH_AGGREGATE_PATH)) {
+    return withDomainOnAggregate(config, activeDomain);
+  }
 
   return config;
 };
@@ -203,12 +283,8 @@ export const withDomainFilter = (
 
   const activeDomain = getRequestDomain();
 
-  if (
-    activeDomain &&
-    config.method === 'post' &&
-    config.url?.includes(DQ_REPORT_BATCH_PATH)
-  ) {
-    return withDomainOnReportBatch(config, activeDomain);
+  if (activeDomain && config.method === 'post') {
+    return withDomainOnPost(config, activeDomain);
   }
 
   if (
@@ -221,6 +297,9 @@ export const withDomainFilter = (
 
   if (config.url?.includes('/search/query')) {
     return withDomainOnSearch(config, activeDomain);
+  }
+  if (config.url?.includes(SEARCH_AGGREGATE_PATH)) {
+    return withDomainOnAggregate(config, activeDomain);
   }
   config.params = { ...config.params, domain: activeDomain };
 

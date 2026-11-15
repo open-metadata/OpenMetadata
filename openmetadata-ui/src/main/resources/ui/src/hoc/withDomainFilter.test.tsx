@@ -643,6 +643,109 @@ describe('withDomainFilter', () => {
     });
   });
 
+  describe('search aggregate requests', () => {
+    const engineeringClause = (field: string) => ({
+      bool: {
+        should: [
+          { term: { [field]: 'engineering' } },
+          { prefix: { [field]: 'engineering.' } },
+        ],
+      },
+    });
+
+    beforeEach(() => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/explore');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+    });
+
+    it('should scope a GET aggregate through its q filter, not a domain param', () => {
+      const result = withDomainFilter(
+        createMockConfig('get', '/search/aggregate', {
+          index: SearchIndex.DATA_ASSET,
+          field: 'domains.displayName.keyword',
+          q: JSON.stringify({
+            query: { bool: { must: [{ term: { entityType: 'table' } }] } },
+          }),
+        })
+      );
+
+      expect(result.params?.domain).toBeUndefined();
+      expect(JSON.parse(result.params?.q as string).query.bool.must).toEqual([
+        { term: { entityType: 'table' } },
+        engineeringClause('domains.fullyQualifiedName'),
+      ]);
+    });
+
+    it('should scope a GET aggregate with an empty q and a filter without the outer query', () => {
+      const empty = withDomainFilter(
+        createMockConfig('get', '/search/aggregate', {
+          index: SearchIndex.DATA_ASSET,
+          q: '',
+        })
+      );
+      const bare = withDomainFilter(
+        createMockConfig('get', '/search/aggregate', {
+          index: SearchIndex.DATA_ASSET,
+          q: JSON.stringify({ term: { entityType: 'table' } }),
+        })
+      );
+
+      expect(JSON.parse(empty.params?.q as string).query.bool.must).toEqual([
+        engineeringClause('domains.fullyQualifiedName'),
+      ]);
+      expect(JSON.parse(bare.params?.q as string).query.bool.must).toEqual([
+        { term: { entityType: 'table' } },
+        engineeringClause('domains.fullyQualifiedName'),
+      ]);
+    });
+
+    it('should leave a plain-text GET aggregate q as it is', () => {
+      const result = withDomainFilter(
+        createMockConfig('get', '/search/aggregate', {
+          index: SearchIndex.DATA_ASSET,
+          q: 'owner:alice',
+        })
+      );
+
+      expect(result.params?.q).toBe('owner:alice');
+    });
+
+    it('should scope a POST aggregate through its body query', () => {
+      const config = {
+        method: 'post',
+        url: '/search/aggregate',
+        data: { index: SearchIndex.DATA_ASSET, fieldName: 'serviceType' },
+        headers: {},
+      } as unknown as InternalAxiosRequestConfig;
+
+      const result = withDomainFilter(config);
+
+      expect(result.data.fieldName).toBe('serviceType');
+      expect(JSON.parse(result.data.query).query.bool.must).toEqual([
+        engineeringClause('domains.fullyQualifiedName'),
+      ]);
+    });
+
+    it('should scope a domain aggregate by its own name and skip unscoped indexes', () => {
+      const domainResult = withDomainFilter(
+        createMockConfig('get', '/search/aggregate', {
+          index: SearchIndex.DOMAIN,
+        })
+      );
+      const tagResult = withDomainFilter({
+        method: 'post',
+        url: '/search/aggregate',
+        data: { index: SearchIndex.TAG, fieldName: 'name' },
+        headers: {},
+      } as unknown as InternalAxiosRequestConfig);
+
+      expect(
+        JSON.parse(domainResult.params?.q as string).query.bool.must
+      ).toEqual([engineeringClause('fullyQualifiedName')]);
+      expect(tagResult.data.query).toBeUndefined();
+    });
+  });
+
   describe('nested domain paths', () => {
     it('should handle nested domain paths correctly', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
