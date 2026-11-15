@@ -101,8 +101,8 @@ import {
 import { findRelationClash } from '../../../../utils/governance/ontology/OntologyRelationClash.utils';
 import {
   buildDataPropertyRequest,
-  buildOntologyStudioGraph,
   buildDetachPropertyPatch,
+  buildOntologyStudioGraph,
   buildReusePropertyPatch,
   getBindableConceptProperties,
   OntologyModelRelation,

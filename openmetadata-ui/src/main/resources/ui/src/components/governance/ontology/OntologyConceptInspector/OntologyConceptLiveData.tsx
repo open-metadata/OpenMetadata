@@ -108,7 +108,8 @@ interface SearchAroundHop extends SearchAroundStep {
 
 /** The server accepts at most this many hops per query. */
 const MAX_HOPS = 5;
-// A show-more reveal, like the drawer's relationships. ADR:2026-11-13-concept-drawer-reveals-relationships-ten-at-a-time
+// A show-more reveal, like the drawer's relationships.
+// ADR:2026-11-13-concept-drawer-reveals-relationships-ten-at-a-time
 const STEP_PAGE_SIZE = 10;
 
 const conceptName = (concept: OntologyConcept) =>

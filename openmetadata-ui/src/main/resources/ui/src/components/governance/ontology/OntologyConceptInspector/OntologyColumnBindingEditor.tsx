@@ -16,8 +16,8 @@ import {
   Button,
   MultiSelect,
   Select,
-  type SelectItemType,
   Typography,
+  type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
