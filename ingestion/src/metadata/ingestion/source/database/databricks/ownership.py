@@ -143,11 +143,16 @@ class DatabricksOwnerResolver:
         if owner.is_group:
             return self.metadata.get_reference_by_name(name=owner.name, is_owner=True)
 
-        if self._is_email(owner.name):
-            # An email names one person: only the user or team with that email owns the asset.
-            # A name lookup would hand it to whoever shares the local part, or to a fuzzy match
-            # of the address. OpenMetadata stores emails lowercase and searches them exactly.
-            return self.metadata.get_reference_by_email(email=owner.name.lower())
+        try:
+            owner_email = EMAIL_STR_ADAPTER.validate_python(owner.name)
+            owner_ref = self.metadata.get_reference_by_email(email=owner_email)
+            if owner_ref:
+                return owner_ref
+            owner_ref = self.metadata.get_reference_by_name(name=owner_email.split("@")[0])
+            if owner_ref:
+                return owner_ref
+        except ValidationError:
+            pass
 
         return self.metadata.get_reference_by_name(name=owner.name)
 

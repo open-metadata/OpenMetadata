@@ -14,7 +14,7 @@ Databricks Unity Catalog Source source methods.
 
 import json
 import traceback
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
 from functools import cached_property, partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
@@ -63,6 +63,7 @@ from metadata.ingestion.api.delete import delete_entity_by_name, delete_entity_f
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
@@ -974,6 +975,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
 
     def _mark_listed_tables_as_deleted(self) -> Iterable[Either]:
         """The base stale-table cleanup, leaving out the scopes whose listing failed."""
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError("No Database found in the context. We cannot run the table deletion.")
         catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         if not self.source_config.markDeletedTables or self._skip_incomplete_listing((catalog_name,), "tables"):
             return
@@ -1000,16 +1003,32 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 },
             )
 
-    def mark_schemas_as_deleted(self):
+    def mark_schemas_as_deleted(self) -> Generator[Either[DeleteEntity], Any, None]:
         catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         if self.source_config.markDeletedSchemas and self._skip_incomplete_listing((catalog_name,), "schemas"):
             return
         yield from super().mark_schemas_as_deleted()
 
-    def mark_databases_as_deleted(self):
-        if self.source_config.markDeletedDatabases and self._skip_incomplete_listing((), "databases"):
+    def mark_databases_as_deleted(self) -> Generator[Either[DeleteEntity], Any, None]:
+        """
+        The base stale-database cleanup, with the catalog listing checked after it ran. The
+        cleanup lists the catalogs again to keep those this run did not walk; with a configured
+        catalog that listing is the run's only one, so its failure must stop the cleanup too.
+        """
+        if not self.source_config.markDeletedDatabases:
             return
-        yield from super().mark_databases_as_deleted()
+        service_name = self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
+        logger.info("Mark Deleted Databases set to True. Processing service [%s]", service_name)
+        listed = set(self._get_filtered_database_names(return_fqn=True))
+        if self._skip_incomplete_listing((), "databases"):
+            return
+        yield from delete_entity_from_source(
+            metadata=self.metadata,
+            entity_type=Database,
+            entity_source_state=self.database_entity_source_state | listed,
+            recursive=self.source_config.markDeletedDatabases,
+            params={"service": service_name},
+        )
 
     def add_complex_datatype_descriptions(self, column: Column, column_json: ColumnJson):
         """

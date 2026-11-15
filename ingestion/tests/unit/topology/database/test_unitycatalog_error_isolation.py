@@ -204,12 +204,24 @@ class TestStaleCleanupAfterFailedListing:
     def _server(self, uc_source):
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = None
-        uc_source.client.schemas.get.return_value = SchemaInfo(catalog_name="hive_metastore", name="default")
+        schema = SchemaInfo(catalog_name="hive_metastore", name="default")
+        # The cleanup relists the schemas before reconciling. Answer both the single-schema
+        # get and the full listing, so a cleanup that is not skipped always has a scope to
+        # send and an empty result can only mean the cleanup was skipped.
+        uc_source.client.schemas.get.return_value = schema
+        uc_source.client.schemas.list.return_value = [schema]
 
     @staticmethod
     def _stale_cleanup_scopes(uc_source, cleanup):
         list(cleanup())
         return [call.kwargs["scope_params"] for call in uc_source.metadata.delete_stale_entities.call_args_list]
+
+    def test_table_cleanup_without_a_database_in_context_raises(self, uc_source):
+        del uc_source.context.get().__dict__["database"]
+
+        with pytest.raises(ValueError, match="No Database found in the context"):
+            list(uc_source.mark_tables_as_deleted())
+        uc_source.metadata.delete_stale_entities.assert_not_called()
 
     def test_complete_table_listing_runs_stale_table_cleanup(self, uc_source):
         uc_source.client.api_client.do = MagicMock(return_value={"tables": [{"name": "t1", "table_type": "MANAGED"}]})
@@ -280,6 +292,29 @@ class TestStaleCleanupAfterFailedListing:
 
         assert list(uc_source.get_database_names_raw()) == ["demo"]
         assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == []
+
+    def test_complete_catalog_listing_of_the_cleanup_runs_stale_database_cleanup(self, uc_source):
+        uc_source.source_config.markDeletedDatabases = True
+        uc_source.client.catalogs.list.return_value = [CatalogInfo(name="hive_metastore"), CatalogInfo(name="main")]
+
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == [
+            {"service": "local_unitycatalog"}
+        ]
+
+    def test_failed_catalog_listing_of_the_cleanup_skips_stale_database_cleanup(self, uc_source):
+        # With a configured catalog the walk lists no catalogs: the cleanup's own listing is
+        # the only one, and it fails here after the walk succeeded.
+        uc_source.source_config.markDeletedDatabases = True
+        uc_source.client.catalogs.list.side_effect = lambda: _raising_listing(
+            [CatalogInfo(name="hive_metastore")], Exception("500 Internal Server Error")
+        )
+
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == []
+        with (
+            patch.object(DatabaseServiceSource, "_iter", return_value=iter([])),
+            pytest.raises(WorkflowFatalError, match=r"for databases in \[local_unitycatalog\]"),
+        ):
+            list(uc_source._iter())
 
 
 class TestColumnErrorIsolation:
