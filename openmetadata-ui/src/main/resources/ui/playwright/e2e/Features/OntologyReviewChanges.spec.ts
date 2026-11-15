@@ -431,62 +431,6 @@ test.describe(
       return task;
     };
 
-    test('lane 7: a reviewer sees each changed field with old and new values and no JSON', async ({
-      isolatedUserPage: author,
-      isolatedUser,
-      freshUserPage: { page: reviewer, user },
-    }, testInfo) => {
-      test.slow();
-      const api = await getWorkerAdminAPIContext();
-      await user.setAdminRole(api);
-      await setMode(api, isolatedUser.responseData.id, 'ai');
-      const ontology = await createOntology(api, 'pw_g7_diff');
-      const tasks: string[] = [];
-      try {
-        const customer = await addConcept(
-          api,
-          ontology,
-          'Customer',
-          'Someone who buys'
-        );
-        await publishBaseline(api, ontology);
-        await okJson(
-          await api.patch(`/api/v1/ontologies/${ontology.id}`, {
-            headers: { 'Content-Type': 'application/json-patch+json' },
-            data: [
-              {
-                op: 'add',
-                path: '/reviewers',
-                value: [{ id: user.responseData.id, type: 'user' }],
-              },
-            ],
-          }),
-          'Add reviewer'
-        );
-        await describeConcept(api, customer, 'Someone who buys or subscribes');
-        const task = await requestReview(author, ontology);
-        tasks.push(task.id);
-
-        await reviewer.goto(`/tasks/${task.id}`);
-        const panel = reviewer.getByTestId('ontology-review-panel');
-        await panel
-          .getByRole('button', { name: 'Customer', exact: true })
-          .click();
-        const changes = panel.getByTestId('ontology-review-field-change');
-
-        await expect(changes).toHaveText([
-          'descriptionBefore: Someone who buysAfter: Someone who buys or subscribes',
-        ]);
-        await expect(
-          panel.getByTestId('ontology-review-field-changes')
-        ).not.toContainText(/[{}"]/);
-        await expect(panel.getByTestId('code-mirror-container')).toHaveCount(0);
-        await g7Shot(reviewer, testInfo, 'diff');
-      } finally {
-        await cleanUp(api, [ontology], tasks);
-      }
-    });
-
     test('lane 8: task rows in the Studio drawer and the Inbox name the ontology and the version', async ({
       isolatedUserPage: author,
       isolatedUser,

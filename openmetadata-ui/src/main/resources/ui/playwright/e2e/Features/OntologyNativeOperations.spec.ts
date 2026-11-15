@@ -26,7 +26,6 @@ import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
   clickIgnoringToasts,
   getWorkerAdminAPIContext,
-  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import {
@@ -140,15 +139,10 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
-          const columnSelect = editor.getByRole('combobox', {
-            name: /Column/,
-          });
-          // The editor pre-selects the column whose name matches the property.
-          await expect(columnSelect).toHaveValue(/profile › customer_id/);
-          await selectOptionWithRetry(
-            columnSelect,
-            page.getByRole('option', { name: /profile › customer_id/ })
-          );
+          // The editor pre-selects, as a chip, the column whose name matches the property.
+          await expect(
+            editor.getByText('profile › customer_id', { exact: true })
+          ).toBeVisible();
           const saved = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname === bindingPath &&
