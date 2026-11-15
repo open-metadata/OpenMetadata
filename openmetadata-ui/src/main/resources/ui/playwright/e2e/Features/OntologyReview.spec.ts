@@ -21,6 +21,10 @@ import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyCh
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
 import { Task } from '../../../src/generated/entity/tasks/task';
+import {
+  MemberKind,
+  OntologyReleaseMember,
+} from '../../../src/generated/type/ontologyReleaseMember';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
@@ -309,20 +313,16 @@ test.describe(
           });
           await expect(error).toBeVisible();
           await expect(page.getByTestId('task-approve')).toHaveCount(0);
-          await expect(
-            page.getByTestId('ontology-review-field-changes')
-          ).toHaveCount(0);
           await page.unroute(versionPath);
           await error
             .getByRole('button', { name: 'Retry', exact: true })
             .click();
-          await page
-            .getByTestId('ontology-review-panel')
-            .getByRole('button', { name: 'Customer', exact: true })
-            .click();
           await expect(
-            page.getByTestId('ontology-review-field-changes')
-          ).toContainText('Submitted customer definition');
+            page
+              .getByTestId('ontology-review-panel')
+              .getByText('Customer', { exact: true })
+          ).toBeVisible();
+          await expect(page.getByTestId('task-approve')).toBeVisible();
         });
 
         await test.step('Release review keeps the captured content after a draft edit', async () => {
@@ -341,18 +341,23 @@ test.describe(
           );
           expect(updated.description).toBe('Later draft definition');
 
-          await page.goto(`/tasks/${releaseTask.id}`);
-          const review = page.getByTestId('ontology-review-panel');
-          await review
-            .getByRole('button', { name: 'Customer', exact: true })
-            .click();
-          const definition = review.getByTestId(
-            'ontology-review-field-changes'
+          // The review lists changed members only; their frozen fields are read from the release.
+          const captured = await okJson<OntologyReleaseMember>(
+            await api.get(
+              `/api/v1/ontologyReleases/${release.id}/members/${MemberKind.Concept}/${concept.id}`
+            ),
+            'Read captured concept'
           );
-          await expect(definition).toContainText(
+          expect(captured.payload.description).toBe(
             'Submitted customer definition'
           );
-          await expect(definition).not.toContainText('Later draft definition');
+
+          await page.goto(`/tasks/${releaseTask.id}`);
+          await expect(
+            page
+              .getByTestId('ontology-review-panel')
+              .getByText('Customer', { exact: true })
+          ).toBeVisible();
           await page.screenshot({
             path: testInfo.outputPath('captured-review.png'),
             fullPage: true,
@@ -736,16 +741,19 @@ test.describe(
             }),
             'Edit draft independently of review'
           );
+          const captured = await okJson<OntologyReleaseMember>(
+            await api.get(
+              `/api/v1/ontologyReleases/${release.id}/members/${MemberKind.Concept}/${concept.id}`
+            ),
+            'Read captured concept'
+          );
+          expect(captured.payload.description).toBe(description);
           await reviewer.goto(`/tasks/${task.id}`);
-          await reviewer
-            .getByTestId('ontology-review-panel')
-            .getByRole('button', { name: 'Customer', exact: true })
-            .click();
           await expect(
             reviewer
-              .getByTestId('ontology-review-field-changes')
-              .filter({ hasText: description })
-          ).toContainText(description);
+              .getByTestId('ontology-review-panel')
+              .getByText('Customer', { exact: true })
+          ).toBeVisible();
           await approveReview(reviewer, task);
           const beforeActivation = await okJson<OntologyState>(
             await api.get(`/api/v1/ontologies/${ontology.id}/state`),
@@ -820,16 +828,11 @@ test.describe(
         await expect(
           author.getByRole('button', { name: 'Activate release' })
         ).toHaveCount(0);
-        // A release's history lists its changes; only a reviewer's task opens their fields.
-        const releaseChanges = author.getByTestId(
-          'ontology-release-definition'
-        );
         await expect(
-          releaseChanges.getByText('Customer', { exact: true })
+          author
+            .getByTestId('ontology-release-definition')
+            .getByText('Customer', { exact: true })
         ).toBeVisible();
-        await expect(
-          releaseChanges.getByRole('button', { name: 'Customer', exact: true })
-        ).toHaveCount(0);
         await author.screenshot({
           path: testInfo.outputPath('studio-release-rollback.png'),
           fullPage: true,
