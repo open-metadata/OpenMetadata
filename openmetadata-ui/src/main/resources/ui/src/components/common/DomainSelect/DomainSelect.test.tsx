@@ -405,6 +405,18 @@ describe('DomainSelect', () => {
     expect(onUpdate).toHaveBeenCalledWith(undefined);
   });
 
+  it('should keep the scope when the active domain is picked again', () => {
+    const { onUpdate } = renderSelect({
+      showAllDomains: true,
+      selectedDomain: financeRef,
+    });
+
+    // The core tree toggles a re-picked node off and reports null.
+    lastProps().onChange(null);
+
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
   it('should call onUpdate with the array in multiple mode', () => {
     const { onUpdate } = renderSelect({ multiple: true });
 
