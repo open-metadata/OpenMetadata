@@ -16,10 +16,18 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import pytest
+from clickhouse_sqlalchemy.exceptions import DatabaseException
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.pool import StaticPool
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -29,16 +37,23 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Uuid,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.source.database.clickhouse.lineage import ClickhouseLineageSource
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
+    get_distributed_local_table,
+    get_distributed_table_lineage,
     get_materialized_view_target_table,
     get_mv_target_lineage,
     get_view_lineage_parser,
 )
+from metadata.ingestion.source.database.lineage_source import LineageSource as BaseLineageSource
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
 
 
@@ -416,3 +431,281 @@ def test_clickhouse_view_parser_retains_native_graph_if_normalized_parse_fails(m
         str(table) for table in original.intermediate_tables
     ]
     assert parser.masked_query == original.masked_query
+
+
+class TestDistributedLocalTable:
+    """The samples are shaped like `system.tables.engine_full` results."""
+
+    @pytest.mark.parametrize(
+        "engine_full,expected",
+        [
+            pytest.param(
+                "Distributed('my_cluster', 'default', 'events_local', rand())",
+                ("default", "events_local"),
+                id="sharding-key",
+            ),
+            pytest.param(
+                "Distributed('my_cluster', 'default', 'events_local')",
+                ("default", "events_local"),
+                id="no-sharding-key",
+            ),
+            pytest.param(
+                "Distributed('{cluster}', 'other_db', 'events_local', cityHash64(user_id, ','), 'default') "
+                "SETTINGS fsync_after_insert = 0",
+                ("other_db", "events_local"),
+                id="macro-cluster-policy-and-settings",
+            ),
+            pytest.param(
+                "Distributed(my_cluster, default, events_local)",
+                ("default", "events_local"),
+                id="bare-identifiers",
+            ),
+            pytest.param(
+                "Distributed(`my_cluster`, `other db`, `events.local`)",
+                ("other db", "events.local"),
+                id="backquoted-identifiers",
+            ),
+            pytest.param(
+                "Distributed('my_cluster', 'default', 'event\\'s_local')",
+                ("default", "event's_local"),
+                id="escaped-quote",
+            ),
+        ],
+    )
+    def test_local_table_is_extracted(self, engine_full, expected):
+        assert get_distributed_local_table(engine_full) == expected
+
+    @pytest.mark.parametrize(
+        "engine_full",
+        [
+            pytest.param("Distributed('my_cluster', '', 'events_local')", id="empty-database"),
+            pytest.param("Distributed('my_cluster', currentDatabase(), 'events_local')", id="unevaluated-database"),
+            pytest.param("Distributed()", id="no-arguments"),
+            pytest.param("Distributed('my_cluster', 'default')", id="missing-table"),
+            pytest.param("Distributed('my_cluster', 'default', '')", id="empty-table"),
+            pytest.param("Distributed('my_cluster', 'default', concat('events', '_local'))", id="table-expression"),
+            pytest.param("MergeTree ORDER BY id", id="other-engine"),
+            pytest.param(
+                "ReplicatedMergeTree('/clickhouse/tables/{shard}/events', '{replica}', version) ORDER BY id",
+                id="other-engine-with-arguments",
+            ),
+            pytest.param("", id="empty"),
+            pytest.param(None, id="none"),
+        ],
+    )
+    def test_no_local_table(self, engine_full):
+        assert get_distributed_local_table(engine_full) is None
+
+
+class TestDistributedTableLineage:
+    """
+    A Distributed table reads from and writes into a local table on each shard, so the local
+    table is its upstream.
+    """
+
+    SERVICE_NAME = "clickhouse_service"
+
+    @pytest.fixture(autouse=True)
+    def _clear_search_cache(self):
+        search_cache.clear()
+
+    @pytest.fixture
+    def tables(self) -> dict:
+        return {}
+
+    @pytest.fixture
+    def metadata(self, tables):
+        def es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
+            if entity_type is not Table:
+                return []
+            *_, schema, name = (fqn.unquote_name(part) for part in fqn.split(fqn_search_string))
+            return list(tables.get((schema, name), []))
+
+        metadata = MagicMock()
+        metadata.es_search_from_fqn = es_search_from_fqn
+        metadata.get_by_name.return_value = None
+        return metadata
+
+    @pytest.fixture
+    def system_tables(self):
+        """An in-memory stand-in for `system.tables`, queried with the connector's SQL"""
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        with engine.begin() as conn:
+            conn.execute(text("ATTACH DATABASE ':memory:' AS system"))
+            conn.execute(text("CREATE TABLE system.tables (database TEXT, name TEXT, engine TEXT, engine_full TEXT)"))
+        return engine
+
+    def _add_table(self, tables: dict, schema: str, name: str) -> Table:
+        table = Table(
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root=name),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root=".".join(fqn.quote_name(part) for part in (self.SERVICE_NAME, "default", schema, name))
+            ),
+            serviceType=DatabaseServiceType.Clickhouse,
+            columns=[],
+        )
+        tables.setdefault((schema, name), []).append(table)
+        return table
+
+    @staticmethod
+    def _add_row(engine, schema: str, name: str, engine_name: str, engine_full: str):
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO system.tables VALUES (:schema, :name, :engine, :engine_full)"),
+                {"schema": schema, "name": name, "engine": engine_name, "engine_full": engine_full},
+            )
+
+    def _run(self, metadata, engine, source_config=None) -> list:
+        results = list(
+            get_distributed_table_lineage(
+                metadata=metadata,
+                engine=engine,
+                service_name=self.SERVICE_NAME,
+                source_config=source_config or DatabaseServiceQueryLineagePipeline(),
+            )
+        )
+        assert all(result.left is None for result in results)
+        return [result.right for result in results]
+
+    def test_local_table_is_linked_to_the_distributed_table(self, metadata, tables, system_tables, caplog):
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events_local", "MergeTree", "MergeTree ORDER BY id")
+        self._add_row(
+            system_tables,
+            "default",
+            "events",
+            "Distributed",
+            "Distributed('my_cluster', 'default', 'events_local', rand())",
+        )
+
+        with caplog.at_level("WARNING"):
+            (request,) = self._run(metadata, system_tables)
+
+        assert "Cannot read the local table" not in caplog.text
+        assert isinstance(request, AddLineageRequest)
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+        assert request.edge.lineageDetails.source == LineageSource.ViewLineage
+
+    def test_local_table_in_another_database(self, metadata, tables, system_tables):
+        self._add_table(tables, "default", "events_local")
+        local = self._add_table(tables, "other db", "events.local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed(`c`, `other db`, `events.local`)")
+
+        (request,) = self._run(metadata, system_tables)
+
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+
+    def test_local_table_not_ingested_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.events_local] of Distributed table [default.events] not found" in caplog.text
+
+    def test_distributed_table_not_ingested_is_skipped(self, metadata, tables, system_tables):
+        self._add_table(tables, "default", "events_local")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        assert self._run(metadata, system_tables) == []
+
+    def test_unknown_local_database_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', '', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Cannot read the local table of Distributed table [default.events]" in caplog.text
+
+    def test_ambiguous_local_table_is_skipped(self, metadata, tables, system_tables):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        assert self._run(metadata, system_tables) == []
+
+    def test_distributed_table_naming_itself_is_skipped(self, metadata, tables, system_tables):
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events')")
+
+        assert self._run(metadata, system_tables) == []
+
+    @pytest.mark.parametrize(
+        "source_config",
+        [
+            pytest.param(
+                DatabaseServiceQueryLineagePipeline(databaseFilterPattern=FilterPattern(excludes=["default"])),
+                id="database",
+            ),
+            pytest.param(
+                DatabaseServiceQueryLineagePipeline(schemaFilterPattern=FilterPattern(includes=["other_db"])),
+                id="schema",
+            ),
+            pytest.param(
+                DatabaseServiceQueryLineagePipeline(tableFilterPattern=FilterPattern(excludes=["^events$"])),
+                id="table",
+            ),
+        ],
+    )
+    def test_filtered_distributed_table_is_skipped(self, metadata, tables, system_tables, source_config):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        assert self._run(metadata, system_tables, source_config) == []
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            pytest.param(DatabaseException("Code: 159. DB::Exception: TIMEOUT_EXCEEDED"), id="http-driver"),
+            pytest.param(OperationalError("SELECT", {}, Exception("connection refused")), id="sqlalchemy"),
+        ],
+    )
+    def test_failed_system_tables_query_is_reported(self, metadata, error):
+        engine = MagicMock()
+        engine.connect.side_effect = error
+
+        (result,) = get_distributed_table_lineage(
+            metadata=metadata,
+            engine=engine,
+            service_name=self.SERVICE_NAME,
+            source_config=DatabaseServiceQueryLineagePipeline(),
+        )
+
+        assert result.right is None
+        assert "Failed to fetch the Clickhouse Distributed tables" in result.left.error
+
+
+def test_distributed_table_lineage_follows_the_view_lineage(monkeypatch):
+    view_edge = Either(right=MagicMock())
+    distributed_edge = Either(right=MagicMock())
+    calls = {}
+
+    def distributed_lineage(**kwargs):
+        calls.update(kwargs)
+        yield distributed_edge
+
+    monkeypatch.setattr(BaseLineageSource, "yield_view_lineage", lambda _self: iter([view_edge]))
+    monkeypatch.setattr(
+        "metadata.ingestion.source.database.clickhouse.lineage.get_distributed_table_lineage", distributed_lineage
+    )
+    source = ClickhouseLineageSource.__new__(ClickhouseLineageSource)
+    source.metadata = MagicMock()
+    source.engine = MagicMock()
+    source.config = MagicMock(serviceName="clickhouse_service")
+    source.source_config = DatabaseServiceQueryLineagePipeline()
+
+    assert list(source.yield_view_lineage()) == [view_edge, distributed_edge]
+    assert calls == {
+        "metadata": source.metadata,
+        "engine": source.engine,
+        "service_name": "clickhouse_service",
+        "source_config": source.source_config,
+    }

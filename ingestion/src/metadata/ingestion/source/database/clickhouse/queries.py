@@ -59,6 +59,17 @@ CLICKHOUSE_TABLE_NAMES_AND_ENGINES = (
     "AND database = :database"
 )
 
+CLICKHOUSE_DISTRIBUTED_TABLES = textwrap.dedent(
+    """
+SELECT
+      database as schema,
+      name as table_name,
+      engine_full
+  FROM system.tables
+ WHERE engine = 'Distributed'
+"""
+)
+
 CLICKHOUSE_VIEW_DEFINITIONS = textwrap.dedent(
     """
 select

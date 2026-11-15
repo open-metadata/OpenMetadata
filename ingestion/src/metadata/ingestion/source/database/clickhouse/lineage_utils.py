@@ -16,20 +16,37 @@ row it computes is written into that target table. The SQL parsers report the vi
 itself as the only write target of a `CREATE ... VIEW`, so the target has to be read off
 the DDL to build the downstream edge.
 
-Plugged into the generic view lineage through `LineageSource.get_view_lineage_extension`.
+A Distributed table holds no data either: it reads from and writes into a local table on
+each shard, named by its engine arguments. No query against it says so, so that edge is
+read off `system.tables` as well.
+
+The materialized view edge is plugged into the generic view lineage through
+`LineageSource.get_view_lineage_extension`; the Distributed table edges follow the view
+lineage in `ClickhouseLineageSource.yield_view_lineage`.
 Kept free of any `clickhouse_sqlalchemy` import so that it costs nothing to load.
 """
 
 import re
+import traceback
 from collections.abc import Iterable
 from typing import NamedTuple
 
 import sqlglot
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 from sqlglot import expressions as exp
 
+from metadata.entity_resolution.table_search import search_table_entities
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
+)
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import QueryParserType
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
@@ -39,7 +56,11 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.clickhouse.queries import CLICKHOUSE_DISTRIBUTED_TABLES
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.timeout import timeout
 
@@ -60,6 +81,8 @@ TOKEN_PATTERN = re.compile(
 
 MATERIALIZED_VIEW_HEADER_PATTERN = re.compile(r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?MATERIALIZED\s+VIEW\b", re.IGNORECASE)
 
+DISTRIBUTED_ENGINE_PATTERN = re.compile(r"^\s*Distributed\s*\(")
+
 # `TO INNER UUID '<uuid>'` points at the implicit inner table of a replicated
 # materialized view, which is not ingested as an entity.
 INNER_TARGET = "INNER"
@@ -71,6 +94,13 @@ class MaterializedViewTarget(NamedTuple):
     """Table a materialized view writes its rows into"""
 
     schema_name: str | None
+    table_name: str
+
+
+class DistributedLocalTable(NamedTuple):
+    """Table a Distributed table reads from and writes into on each shard"""
+
+    schema_name: str
     table_name: str
 
 
@@ -221,4 +251,133 @@ def get_mv_target_lineage(
             masked_query=masked_query,
             column_lineage_map={},
             lineage_source=LineageSource.ViewLineage,
+        )
+
+
+def get_distributed_local_table(engine_full: str | None) -> DistributedLocalTable | None:
+    """
+    Return the local table named by `Distributed(cluster, database, table[, sharding_key[, policy]])`.
+
+    Clickhouse evaluates the database and table arguments when the table is created and stores
+    them as string literals, so `currentDatabase()` or a bare identifier is read back as a quoted
+    name. An empty database stands for the default database of each shard, which the Distributed
+    table does not record, so no local table is returned for it.
+    """
+    if not engine_full:
+        return None
+
+    header = DISTRIBUTED_ENGINE_PATTERN.match(engine_full)
+    if not header:
+        return None
+
+    tokens = TOKEN_PATTERN.findall(engine_full[header.end() :])
+    if len(tokens) < 6 or tokens[1] != "," or tokens[3] != "," or tokens[5] not in (",", ")"):
+        return None
+
+    schema_name = _identifier(tokens[2])
+    table_name = _identifier(tokens[4])
+    if not schema_name or not table_name:
+        return None
+
+    return DistributedLocalTable(schema_name=schema_name, table_name=table_name)
+
+
+def _get_single_table(metadata: OpenMetadata, service_name: str, schema_name: str, table_name: str) -> Table | None:
+    tables = search_table_entities(
+        metadata=metadata,
+        service_names=service_name,
+        database=None,
+        database_schema=schema_name,
+        table=table_name,
+    )
+    if tables and len(tables) > 1:
+        logger.warning(
+            "Table [%s.%s] matches %d tables in service [%s], skipping Distributed table lineage",
+            schema_name,
+            table_name,
+            len(tables),
+            service_name,
+        )
+        return None
+    return tables[0] if tables else None
+
+
+def get_distributed_table_lineage(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_name: str,
+    source_config: DatabaseServiceQueryLineagePipeline,
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Build the local table -> Distributed table edge of every Distributed table of the service.
+
+    The local table is looked up in the same service by its database and name; the cluster
+    argument plays no part in it. The filter patterns apply to the Distributed table, as they
+    apply to the view in the view lineage.
+    """
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text(CLICKHOUSE_DISTRIBUTED_TABLES)).fetchall()
+    # Broad on purpose: the default `clickhouse+http` driver raises its own `DatabaseException`
+    # for any server-side error, and SQLAlchemy does not wrap it
+    except Exception as exc:
+        yield Either(
+            left=StackTraceError(
+                name="Distributed table lineage",
+                error=f"Failed to fetch the Clickhouse Distributed tables, skipping their lineage: {exc}",
+                stackTrace=traceback.format_exc(),
+            ),
+            right=None,
+        )
+        return
+
+    for schema_name, table_name, engine_full in rows:
+        if filter_by_schema(source_config.schemaFilterPattern, schema_name) or filter_by_table(
+            source_config.tableFilterPattern, table_name
+        ):
+            continue
+
+        distributed_entity = _get_single_table(metadata, service_name, schema_name, table_name)
+        if distributed_entity is None:
+            logger.debug("Distributed table [%s.%s] not found, skipping its lineage", schema_name, table_name)
+            continue
+        database_name = fqn.unquote_name(fqn.split(model_str(distributed_entity.fullyQualifiedName))[1])
+        if filter_by_database(source_config.databaseFilterPattern, database_name):
+            continue
+
+        local_table = get_distributed_local_table(engine_full)
+        if local_table is None:
+            logger.warning(
+                "Cannot read the local table of Distributed table [%s.%s] from [%s], skipping its lineage",
+                schema_name,
+                table_name,
+                engine_full,
+            )
+            continue
+
+        local_entity = _get_single_table(metadata, service_name, local_table.schema_name, local_table.table_name)
+        if local_entity is None:
+            logger.warning(
+                "Local table [%s.%s] of Distributed table [%s.%s] not found, skipping its lineage",
+                local_table.schema_name,
+                local_table.table_name,
+                schema_name,
+                table_name,
+            )
+            continue
+        # A server that holds no shard of the cluster may name the Distributed table itself
+        if local_entity.id == distributed_entity.id:
+            continue
+
+        # Not marked to override: a materialized view writing `TO` the Distributed table leaves
+        # a view lineage edge into it as well, which overriding would delete
+        yield Either(
+            left=None,
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=local_entity.id, type="table"),
+                    toEntity=EntityReference(id=distributed_entity.id, type="table"),
+                    lineageDetails=LineageDetails(source=LineageSource.ViewLineage),
+                )
+            ),
         )
