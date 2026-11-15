@@ -986,4 +986,20 @@ class ListFilterTest {
     assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
     assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
   }
+
+  // An incident list filtered by a domain covers its sub-domains, so the param holds several ids.
+  @Test
+  void incidentDomainFilterMatchesEveryGivenDomainId() {
+    ListFilter grouped = new ListFilter(Include.ALL).addQueryParam("incidentDomainId", "d1,d2");
+    ListFilter flat = new ListFilter(Include.ALL).addQueryParam("incidentListDomainId", "d1,d2");
+
+    String groupedCondition = grouped.getCondition();
+    String flatCondition = flat.getCondition();
+
+    assertTrue(groupedCondition.contains(".fromId IN (:incidentDomainId_0,:incidentDomainId_1)"));
+    assertTrue(
+        flatCondition.contains(".fromId IN (:incidentListDomainId_0,:incidentListDomainId_1)"));
+    assertEquals("d2", grouped.getQueryParams().get("incidentDomainId_1"));
+    assertFalse(groupedCondition.contains(".fromId = :incidentDomainId"));
+  }
 }

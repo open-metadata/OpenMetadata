@@ -1010,9 +1010,15 @@ public class ListFilter extends Filter<ListFilter> {
   // A test case is in the domain it has itself or, as is usual, the one its table has — which the
   // table may in turn inherit from its schema, database or service. Inherited domains are resolved
   // at read time and leave no relationship on the entity that inherits them, and a level inherits
-  // only when it has no domain of its own: the nearest level with one decides.
-  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
-    String inDomain = " AND " + DOMAIN_RELATION_ALIAS + ".fromId = :" + domainParam;
+  // only when it has no domain of its own: the nearest level with one decides. The param holds the
+  // domain and its sub-domains.
+  private String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    String inDomain =
+        " AND "
+            + DOMAIN_RELATION_ALIAS
+            + ".fromId IN ("
+            + buildIndexedBindParams(domainParam, queryParams.get(domainParam))
+            + ")";
     List<UnaryOperator<String>> levels = testCaseDomainLevels(testCaseAlias);
     return IntStream.range(0, levels.size())
         .mapToObj(i -> nearestDomainLevel(levels.subList(0, i), levels.get(i), inDomain))

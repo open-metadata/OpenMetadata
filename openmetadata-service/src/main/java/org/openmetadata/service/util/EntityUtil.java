@@ -1254,7 +1254,7 @@ public final class EntityUtil {
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
   // fqnHash LIKE inside the query (e.g. Postgres generic plans then probe every domain asset).
-  private static String domainAndSubDomainIds(EntityReference domain) {
+  public static String domainAndSubDomainIds(EntityReference domain) {
     String fqn = domain.getFullyQualifiedName();
     if (nullOrEmpty(fqn)) {
       return domain.getId().toString();
