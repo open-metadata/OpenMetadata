@@ -15,6 +15,7 @@ import { Provenance, Status } from '../generated/api/data/updateTermRelation';
 import APIClient from './axiosClient';
 import {
   getGlossaryTermAssets,
+  getGlossaryTermPropertyImpact,
   getOntologyDataGraph,
   getOntologySummary,
   removeTermRelationById,
@@ -124,5 +125,22 @@ describe('glossaryAPI stable relationship operations', () => {
         signal: controller.signal,
       }
     );
+  });
+});
+
+describe('glossaryAPI term property impact', () => {
+  it('reads the impact of removing a property, escaping its name in the path', async () => {
+    const impact = { termsWithEntries: 2, sample: [] };
+    mockedApiClient.get.mockResolvedValue({ data: impact });
+
+    const result = await getGlossaryTermPropertyImpact(
+      'term-id',
+      'Sla tier #1?'
+    );
+
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/glossaryTerms/term-id/propertyDefinitions/Sla%20tier%20%231%3F/impact'
+    );
+    expect(result).toEqual(impact);
   });
 });

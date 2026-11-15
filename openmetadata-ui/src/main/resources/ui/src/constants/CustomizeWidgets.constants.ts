@@ -95,6 +95,12 @@ export const WORKFLOW_HISTORY_WIDGET: CommonWidgetType = {
   data: { gridSizes: ['small'] },
 };
 
+export const PROPERTIES_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.PROPERTIES,
+  name: i18n.t('label.property-plural'),
+  data: { gridSizes: ['large'] },
+};
+
 export const SYNONYMS_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
   name: i18n.t('label.synonym-plural'),

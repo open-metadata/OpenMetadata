@@ -95,6 +95,31 @@
       },
       "default": []
     },
+    "propertyDefinitions": {
+      "description": "Typed properties this term declares. Inheritable ones apply to every term below it.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/glossaryTermProperty.json"
+      },
+      "maxItems": 50,
+      "default": null
+    },
+    "propertyValues": {
+      "description": "Values this term sets, keyed by property name. An empty list means the term deliberately has no value, and the terms below it inherit that absence.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<java.lang.String, java.util.List<java.lang.String>>",
+      "additionalProperties": {
+        "$ref": "../../type/glossaryTermProperty.json#/definitions/glossaryTermPropertyValues"
+      }
+    },
+    "effectiveProperties": {
+      "description": "Read-only. Every property the term has, declared or inherited, with the values that apply to it. Computed on read when `fields` asks for it.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/glossaryTermProperty.json#/definitions/effectiveGlossaryTermProperty"
+      },
+      "default": null
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"

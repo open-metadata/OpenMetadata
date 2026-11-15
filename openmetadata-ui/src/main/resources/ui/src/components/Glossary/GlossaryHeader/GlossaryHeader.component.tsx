@@ -96,6 +96,8 @@ import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
+import GlossaryAddMenuItemLabel from '../../governance/glossary/GlossaryTermProperties/GlossaryAddMenuItemLabel';
+import GlossaryTermPropertyModal from '../../governance/glossary/GlossaryTermProperties/GlossaryTermPropertyModal';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -547,6 +549,7 @@ const GlossaryHeader = ({
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
   const [isOntologyImportOpen, setIsOntologyImportOpen] = useState(false);
+  const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false);
   const isGlossary = entityType === EntityType.GLOSSARY;
   const { permissions: globalPermissions } = usePermissionProvider();
   const { refreshGlossaryTerms } = useGlossaryStore();
@@ -607,10 +610,8 @@ const GlossaryHeader = ({
   // (glossaryTermStatus / EntityStatus.Approved, used for createButtons) is a
   // separate, unrelated concept and is left untouched per the batch's guidance not to
   // fold status logic into permission flags.
-  const { canEditAll, canEditDisplayName } = useMemo(
-    () => getDerivedPermissionFlags(permissions),
-    [permissions]
-  );
+  const { canEditAll, canEditDisplayName, canEditGlossaryTermProperties } =
+    useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
 
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', selectedData.votes),
@@ -702,10 +703,29 @@ const GlossaryHeader = ({
 
   const addButtonContent = [
     {
-      label: t('label.glossary-term'),
+      label: (
+        <GlossaryAddMenuItemLabel
+          description={t('message.child-term-inherits-properties')}
+          name={t('label.child-term')}
+        />
+      ),
       key: '1',
       onClick: handleAddGlossaryTermClick,
     },
+    ...(canEditGlossaryTermProperties
+      ? [
+          {
+            label: (
+              <GlossaryAddMenuItemLabel
+                description={t('message.define-property-on-this-term')}
+                name={t('label.property')}
+              />
+            ),
+            key: '3',
+            onClick: () => setIsAddPropertyOpen(true),
+          },
+        ]
+      : []),
     {
       label: t('label.asset-plural'),
       key: '2',
@@ -857,6 +877,13 @@ const GlossaryHeader = ({
   return (
     <>
       {!isAiMode && <div className="tw:mb-3">{breadcrumbEl}</div>}
+      {isAddPropertyOpen && (
+        <GlossaryTermPropertyModal
+          mode="new"
+          term={selectedData}
+          onClose={() => setIsAddPropertyOpen(false)}
+        />
+      )}
       {!isVersionView && selectedData && (
         <DomainMismatchAlert
           className="tw:mb-3"

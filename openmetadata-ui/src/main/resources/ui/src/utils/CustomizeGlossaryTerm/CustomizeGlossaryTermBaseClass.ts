@@ -22,6 +22,7 @@ import {
   DOMAIN_WIDGET,
   KNOWLEDGE_ARTICLE_WIDGET,
   OWNER_WIDGET,
+  PROPERTIES_WIDGET,
   REFERENCES_WIDGET,
   RELATED_TERMS_WIDGET,
   REVIEWER_WIDGET,
@@ -71,6 +72,10 @@ type ComponentMap = {
     props: WidgetCommonProps;
   };
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: {
+    component: ComponentType<WidgetCommonProps>;
+    props: WidgetCommonProps;
+  };
+  [GlossaryTermDetailPageWidgetKeys.PROPERTIES]: {
     component: ComponentType<WidgetCommonProps>;
     props: WidgetCommonProps;
   };
@@ -140,6 +145,7 @@ const WIDGET_NAME_TO_KEY: Record<string, GlossaryTermDetailPageWidgetKeys> = {
   CUSTOM_PROPERTIES: GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES,
   TABS: GlossaryTermDetailPageWidgetKeys.TABS,
   SYNONYMS: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
+  PROPERTIES: GlossaryTermDetailPageWidgetKeys.PROPERTIES,
   RELATED_TERMS: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
   REFERENCES: GlossaryTermDetailPageWidgetKeys.REFERENCES,
   OWNER: GlossaryTermDetailPageWidgetKeys.OWNER,
@@ -158,6 +164,7 @@ const WIDGET_KEY_TO_HEIGHT_PROP: Record<
   [GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES]: 'CUSTOM_PROPERTIES',
   [GlossaryTermDetailPageWidgetKeys.TABS]: 'TABS',
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: 'SYNONYMS',
+  [GlossaryTermDetailPageWidgetKeys.PROPERTIES]: 'PROPERTIES',
   [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: 'RELATED_TERMS',
   [GlossaryTermDetailPageWidgetKeys.REFERENCES]: 'REFERENCES',
   [GlossaryTermDetailPageWidgetKeys.OWNER]: 'OWNER',
@@ -208,6 +215,10 @@ class CustomizeGlossaryTermPageClassBase {
           component: GenericWidget,
           props: {} as WidgetCommonProps,
         },
+        [GlossaryTermDetailPageWidgetKeys.PROPERTIES]: {
+          component: GenericWidget,
+          props: {} as WidgetCommonProps,
+        },
         [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: {
           component: GenericWidget,
           props: {} as WidgetCommonProps,
@@ -247,6 +258,7 @@ class CustomizeGlossaryTermPageClassBase {
       CUSTOM_PROPERTIES: 4,
       TABS: 10,
       SYNONYMS: 2,
+      PROPERTIES: 3,
       RELATED_TERMS: 2,
       REFERENCES: 2,
       OWNER: 2,
@@ -341,11 +353,19 @@ class CustomizeGlossaryTermPageClassBase {
               static: false,
             },
             {
+              h: this.detailPageWidgetDefaultHeights.PROPERTIES,
+              i: GlossaryTermDetailPageWidgetKeys.PROPERTIES,
+              w: 1,
+              x: 0,
+              y: 1,
+              static: false,
+            },
+            {
               h: this.detailPageWidgetDefaultHeights.SYNONYMS,
               i: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
               w: 0.5,
               x: 0,
-              y: 1,
+              y: 2,
               static: false,
             },
             {
@@ -353,7 +373,7 @@ class CustomizeGlossaryTermPageClassBase {
               i: GlossaryTermDetailPageWidgetKeys.REFERENCES,
               w: 0.5,
               x: 0,
-              y: 2,
+              y: 3,
               static: false,
             },
             {
@@ -361,7 +381,7 @@ class CustomizeGlossaryTermPageClassBase {
               i: DetailPageWidgetKeys.TAGS,
               w: 0.5,
               x: 3,
-              y: 2,
+              y: 3,
               static: false,
             },
             {
@@ -369,7 +389,7 @@ class CustomizeGlossaryTermPageClassBase {
               i: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
               w: 1,
               x: 0,
-              y: 3,
+              y: 4,
               static: false,
             },
           ],
@@ -438,6 +458,7 @@ class CustomizeGlossaryTermPageClassBase {
       : [
           ...commonWidgetList,
           OWNER_WIDGET,
+          PROPERTIES_WIDGET,
           SYNONYMS_WIDGET,
           RELATED_TERMS_WIDGET,
         ];

@@ -64,7 +64,7 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties that never belong in the graph, for four reasons:
+  // Properties that never belong in the graph, for five reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
   //   2. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
   //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
@@ -79,6 +79,9 @@ public class RdfPropertyMapper {
   //      ADR:2026-10-30-the-rdf-projection-never-carries-stored-secrets
   //   4. Per-user UI state with no metadata meaning: isFirstTimeUser only decides whether the
   //      first-login welcome screen shows.
+  //   5. Glossary term properties are governance metadata with no IRI; glossary RDF stays SKOS
+  // only.
+  //      ADR:2026-11-12-glossary-terms-declare-their-own-properties-and-values
   //
   // These must not be fetched at all — see isIndexableEntityField.
   static final Set<String> CREDENTIAL_PROPERTIES =
@@ -90,7 +93,14 @@ public class RdfPropertyMapper {
           "authenticationMechanism");
   private static final Set<String> NON_GRAPH_PROPERTIES =
       Stream.concat(
-              Stream.of("changeDescription", "votes", "testCaseResult", "isFirstTimeUser"),
+              Stream.of(
+                  "changeDescription",
+                  "votes",
+                  "testCaseResult",
+                  "isFirstTimeUser",
+                  "propertyDefinitions",
+                  "propertyValues",
+                  "effectiveProperties"),
               CREDENTIAL_PROPERTIES.stream())
           .collect(Collectors.toUnmodifiableSet());
 

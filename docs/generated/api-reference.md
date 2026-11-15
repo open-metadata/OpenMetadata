@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1991 endpoints** across 75 resource packages · 1981 carry a summary.
+**1995 endpoints** across 75 resource packages · 1985 carry a summary.
 
 ## (root)
 
@@ -720,6 +720,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/domains/name/{fqn}/assets` | Get assets for a domain by name |
 | `DELETE` | `/v1/domains/name/{name}` | Delete a domain by name |
 | `GET` | `/v1/domains/name/{name}` | Get a domain by name |
+| `GET` | `/v1/domains/styles` | List domain and data product styles |
 | `GET` | `/v1/domains/{fqn}/tasks` | List tasks for a domain |
 | `DELETE` | `/v1/domains/{id}` | Delete a domain by Id |
 | `GET` | `/v1/domains/{id}` | Get a domain by Id |
@@ -1106,6 +1107,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/glossaryTerms/{id}/assets/add` | Bulk Add Glossary Term to Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/assets/remove` | Bulk Remove Glossary Term from Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/moveAsync` | Move a glossary term to a new parent or glossary |
+| `GET` | `/v1/glossaryTerms/{id}/propertyDefinitions/{name}/impact` | Preview the effect of removing a term property |
 | `POST` | `/v1/glossaryTerms/{id}/relations` | Add a typed relation to another glossary term |
 | `DELETE` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Remove one glossary-term relationship by its stable ID |
 | `PUT` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Update one glossary-term relationship by its stable ID |
@@ -2085,6 +2087,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/health` | Health check endpoint |
 | `GET` | `/v1/system/mcp/config` | Get MCP server configuration |
 | `PUT` | `/v1/system/mcp/config` | Update MCP server configuration |
+| `GET` | `/v1/system/mcp/tools` | List the MCP server's tools |
 | `GET` | `/v1/system/search/fitness` | Diagnose whether the search cluster is sized for current data |
 | `GET` | `/v1/system/search/nlq` | Check if Nlq is enabled in elastic search setting |
 | `GET` | `/v1/system/security/config` | Get complete security configuration |
@@ -2099,6 +2102,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/settings` | List all settings |
 | `PUT` | `/v1/system/settings` | Update setting |
 | `GET` | `/v1/system/settings/customLogicOps` | Get a list of custom JSON logic operations |
+| `PATCH` | `/v1/system/settings/entityRulesSettings/rules/{ruleName}` | Patch one Data Asset Rule |
 | `GET` | `/v1/system/settings/entityRulesSettings/{entityType}` | Get a setting for an entity type |
 | `GET` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes` | List glossary term relation types |
 | `POST` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes` | Create a glossary term relation type |

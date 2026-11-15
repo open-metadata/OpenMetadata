@@ -62,6 +62,7 @@ import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.GlossaryTermPropertyImpact;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
@@ -86,6 +87,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ApprovalGate;
@@ -133,7 +135,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount,"
+          + "propertyDefinitions,propertyValues,effectiveProperties";
   // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
   // separators) well below Jetty's default 8 KB request-header limit
   // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
@@ -154,12 +157,22 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   public GlossaryTermResource(Authorizer authorizer, Limits limits) {
     super(Entity.GLOSSARY_TERM, authorizer, limits);
+    // Without the mapping a patch of either field would fall back to EditAll.
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.GLOSSARY_TERM,
+        "propertyDefinitions",
+        MetadataOperation.EDIT_GLOSSARY_TERM_PROPERTIES);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.GLOSSARY_TERM, "propertyValues", MetadataOperation.EDIT_GLOSSARY_TERM_PROPERTIES);
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("children,relatedTerms,reviewers,usageCount", MetadataOperation.VIEW_BASIC);
-    return null;
+    addViewOperation(
+        "children,relatedTerms,reviewers,usageCount,"
+            + "propertyDefinitions,propertyValues,effectiveProperties",
+        MetadataOperation.VIEW_BASIC);
+    return List.of(MetadataOperation.EDIT_GLOSSARY_TERM_PROPERTIES);
   }
 
   public static class GlossaryTermList extends ResultList<GlossaryTerm> {
@@ -1177,6 +1190,42 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             repository.getGlossaryTermAssets(
                 id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
         .build();
+  }
+
+  @GET
+  @Path("/{id}/propertyDefinitions/{name}/impact")
+  @Operation(
+      operationId = "getGlossaryTermPropertyImpact",
+      summary = "Preview the effect of removing a term property",
+      description =
+          "Counts the terms below the declaring term that store a value for one of its "
+              + "properties, with a sample of up to 20. Deleting the property or turning off its "
+              + "inheritance removes those values.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The terms that hold a value",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTermPropertyImpact.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "The term does not declare a property with this name")
+      })
+  public GlossaryTermPropertyImpact getPropertyImpact(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the declaring glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Name of the property", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return repository.getPropertyImpact(id, name);
   }
 
   @GET

@@ -27,7 +27,9 @@ public class GlossaryTermMapper implements EntityMapper<GlossaryTerm, CreateGlos
             toTermRelations(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms())))
         .withReferences(create.getReferences())
         .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
+        .withMutuallyExclusive(create.getMutuallyExclusive())
+        .withPropertyDefinitions(create.getPropertyDefinitions())
+        .withPropertyValues(create.getPropertyValues());
   }
 
   private List<TermRelation> toTermRelations(List<EntityReference> entityReferences) {

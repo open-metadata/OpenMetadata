@@ -20,7 +20,9 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getIsErrorMatch } from '../../../utils/APIUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { setCreateEntityFieldError } from '../../../utils/FormDrawerUtils';
+import { getInheritableEntries } from '../../../utils/governance/glossary/GlossaryTermProperties.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -62,6 +64,21 @@ const GlossaryTermDrawer = ({
     gcTime: 0,
   });
   const glossaryTerm = termQuery.data;
+  // In create mode `glossaryTermFQN` is the parent; its inheritable properties show on the form.
+  const parentQuery = useQuery({
+    queryKey: ['glossary-term-form', 'parent-properties', glossaryTermFQN],
+    queryFn: () =>
+      getGlossaryTermByFQN(glossaryTermFQN, {
+        fields: TabSpecificField.EFFECTIVE_PROPERTIES,
+      }),
+    enabled: !editMode && Boolean(glossaryTermFQN),
+    staleTime: Infinity,
+    gcTime: 0,
+  });
+  const inheritedProperties = useMemo(
+    () => getInheritableEntries(parentQuery.data?.effectiveProperties),
+    [parentQuery.data]
+  );
   const termFormValues = useMemo(
     () => glossaryTerm && getGlossaryTermFormValues(glossaryTerm),
     [glossaryTerm]
@@ -71,6 +88,12 @@ const GlossaryTermDrawer = ({
     values: termFormValues,
   });
   const intake = useGlossaryTermIntakeForm(editMode);
+
+  useEffect(() => {
+    if (parentQuery.error) {
+      showErrorToast(parentQuery.error as AxiosError);
+    }
+  }, [parentQuery.error]);
 
   useEffect(() => {
     if (termQuery.error) {
@@ -127,6 +150,7 @@ const GlossaryTermDrawer = ({
             glossaryTerm,
             currentUserId: currentUser?.id,
             customProperties: intake.customProperties,
+            inheritedProperties,
           })
         );
       } catch (error) {
@@ -139,13 +163,15 @@ const GlossaryTermDrawer = ({
       currentUser?.id,
       editMode,
       glossaryTerm,
+      inheritedProperties,
       intake.customProperties,
       mapSaveErrorToField,
       onSave,
     ]
   );
 
-  const isLoading = (editMode && termQuery.isPending) || !intake.isLoaded;
+  const isTermLoading = editMode ? termQuery.isPending : parentQuery.isLoading;
+  const isLoading = isTermLoading || !intake.isLoaded;
 
   const { formDrawer } = useFormDrawerWithHook<GlossaryTermFormValues>({
     title: editMode
@@ -170,7 +196,9 @@ const GlossaryTermDrawer = ({
             editMode={editMode}
             form={form}
             glossaryTerm={glossaryTerm}
+            inheritedProperties={inheritedProperties}
             intake={intake}
+            parentName={parentQuery.data && getEntityName(parentQuery.data)}
             onSubmit={handleSubmit}
           />
         )}

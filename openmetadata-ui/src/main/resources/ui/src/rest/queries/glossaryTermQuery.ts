@@ -31,6 +31,9 @@ export const GLOSSARY_TERM_DEFAULT_FIELDS = [
   TabSpecificField.DOMAINS,
   TabSpecificField.EXTENSION,
   TabSpecificField.CHILDREN_COUNT,
+  TabSpecificField.PROPERTY_DEFINITIONS,
+  TabSpecificField.PROPERTY_VALUES,
+  TabSpecificField.EFFECTIVE_PROPERTIES,
 ].join(',');
 
 export const glossaryTermQueryKey = (fqn: string, fields: string) =>

@@ -39,6 +39,7 @@ import {
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
 import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
+import GlossaryTermPropertiesFormSection from '../../governance/glossary/GlossaryTermProperties/GlossaryTermPropertiesFormSection';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import { useUserTeamOptions } from '../hooks/useEntityReferenceOptions';
 import { useGlossaryFormFields } from '../hooks/useGlossaryFormFields';
@@ -56,6 +57,8 @@ const AddGlossaryTermForm = ({
   editMode,
   form,
   glossaryTerm,
+  inheritedProperties = [],
+  parentName,
   intake,
   onSubmit,
 }: AddGlossaryTermFormProps) => {
@@ -346,6 +349,14 @@ const AddGlossaryTermForm = ({
           </Box>
         ))}
       </Box>
+
+      {!editMode && (
+        <GlossaryTermPropertiesFormSection
+          form={form}
+          inheritedProperties={inheritedProperties}
+          parentName={parentName}
+        />
+      )}
 
       {getField(
         applyIntakeRequired(

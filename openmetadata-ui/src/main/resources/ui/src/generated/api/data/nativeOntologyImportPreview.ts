@@ -293,6 +293,10 @@ export enum RestrictionKind {
  *
  * Reference to the data contract for this entity.
  *
+ * The glossary term that declares the property.
+ *
+ * The glossary term whose entry supplied the values. Absent when no entry applies.
+ *
  * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
@@ -1059,6 +1063,11 @@ export interface GlossaryTerm {
      */
     domains?: EntityReference[];
     /**
+     * Read-only. Every property the term has, declared or inherited, with the values that apply
+     * to it. Computed on read when `fields` asks for it.
+     */
+    effectiveProperties?: EffectiveGlossaryTermProperty[];
+    /**
      * Approval status of the glossary term.
      */
     entityStatus?: EntityStatus;
@@ -1117,8 +1126,17 @@ export interface GlossaryTerm {
      * Parent glossary term that this term is child of. When `null` this term is the root term
      * of the glossary.
      */
-    parent?:   EntityReference;
-    provider?: ProviderType;
+    parent?: EntityReference;
+    /**
+     * Typed properties this term declares. Inheritable ones apply to every term below it.
+     */
+    propertyDefinitions?: GlossaryTermProperty[];
+    /**
+     * Values this term sets, keyed by property name. An empty list means the term deliberately
+     * has no value, and the terms below it inherit that absence.
+     */
+    propertyValues?: { [key: string]: string[] };
+    provider?:       ProviderType;
     /**
      * Link to a reference from an external glossary.
      */
@@ -1165,6 +1183,92 @@ export interface GlossaryTerm {
      * Votes on the entity.
      */
     votes?: Votes;
+}
+
+/**
+ * A property a glossary term has, declared by the term itself or inherited from an
+ * ancestor, with the values that apply to the term.
+ */
+export interface EffectiveGlossaryTermProperty {
+    /**
+     * The glossary term that declares the property.
+     */
+    declaredBy: EntityReference;
+    /**
+     * True when another term declares the property.
+     */
+    inherited: boolean;
+    /**
+     * The property definition.
+     */
+    property: GlossaryTermProperty;
+    /**
+     * Values that apply to this term. Empty when the property has no value here.
+     */
+    values: string[];
+    /**
+     * The glossary term whose entry supplied the values. Absent when no entry applies.
+     */
+    valuesFrom?: EntityReference;
+}
+
+/**
+ * The property definition.
+ *
+ * A typed property that a glossary term declares for itself and, when inheritable, for
+ * every term below it. See
+ * ADR:2026-11-12-glossary-terms-declare-their-own-properties-and-values.
+ */
+export interface GlossaryTermProperty {
+    /**
+     * Datatype of the property's values. It never changes after the property is declared.
+     */
+    datatype: GlossaryTermPropertyDatatype;
+    /**
+     * What the property captures.
+     */
+    description?: string;
+    /**
+     * Label shown for the property. It can change at any time.
+     */
+    displayName?: string;
+    /**
+     * Allowed values of an `enum` property. Required for `enum` and rejected otherwise.
+     */
+    enumValues?: string[];
+    /**
+     * When true every term below the declaring term gets the property and can inherit its value.
+     */
+    inheritable?: boolean;
+    /**
+     * When true the property holds up to 100 values. Allowed for `string` and `enum` only.
+     */
+    multiValued?: boolean;
+    /**
+     * Name of the property. Values are keyed by it, so it never changes.
+     */
+    name: string;
+    /**
+     * Display unit for the values. Nothing converts between units.
+     */
+    unit?: string;
+}
+
+/**
+ * Datatype of the property's values. It never changes after the property is declared.
+ *
+ * Datatype of a glossary term property. Values are stored as lexical strings and checked
+ * against the matching XSD datatype.
+ */
+export enum GlossaryTermPropertyDatatype {
+    Boolean = "boolean",
+    Date = "date",
+    DateTime = "dateTime",
+    Decimal = "decimal",
+    Enum = "enum",
+    Integer = "integer",
+    String = "string",
+    URL = "url",
 }
 
 export interface TermReference {

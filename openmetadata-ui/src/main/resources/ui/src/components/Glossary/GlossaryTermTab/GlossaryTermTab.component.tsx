@@ -147,6 +147,7 @@ import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ProposalSourceMark from '../../governance/glossary/GlossaryReview/ProposalSourceMark';
 import ProposalStatusBadge from '../../governance/glossary/GlossaryReview/ProposalStatusBadge';
+import GlossaryTermPropertyCounts from '../../governance/glossary/GlossaryTermProperties/GlossaryTermPropertyCounts';
 import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
@@ -773,7 +774,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         limit: pageSize,
         offset: options?.offset ?? 0,
         fields:
-          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount,effectiveProperties',
         entityStatus: entityStatusParam,
       });
 
@@ -896,6 +897,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           TabSpecificField.PARENT,
           TabSpecificField.CHILDREN,
           TabSpecificField.CHILDREN_COUNT,
+          TabSpecificField.EFFECTIVE_PROPERTIES,
         ],
       });
 
@@ -1397,6 +1399,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </div>
           );
         },
+      },
+      {
+        title: t('label.property-plural'),
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.PROPERTIES,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.PROPERTIES,
+        width: tableColumnsWidth.properties,
+        render: (_, record) =>
+          record.isLoadMoreButton ? null : (
+            <GlossaryTermPropertyCounts
+              effectiveProperties={record.effectiveProperties}
+            />
+          ),
       },
       ...ownerTableObject<ModifiedGlossaryTerm>().map((col) => ({
         ...col,

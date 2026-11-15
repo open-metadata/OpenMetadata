@@ -64,6 +64,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipCou
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindConcat;
@@ -901,6 +902,98 @@ public interface EntityDataDAOs {
                 parts = {":fqnhash", ".%"},
                 hash = true)
             String fqnhash);
+
+    /**
+     * One keyset page of the terms below {@code fqnhash}, soft-deleted ones included. Callers pass
+     * the last id of the previous page, or an empty string for the first.
+     */
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :concatFqnhash "
+            + "AND id > :afterId ORDER BY id LIMIT :limit")
+    List<String> listSubtreeAfter(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+
+    /** Terms below {@code fqnhash} that store an entry for a property, soft-deleted included. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :concatFqnhash "
+                + "AND JSON_CONTAINS_PATH(json, 'one', :path)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :concatFqnhash "
+                + "AND json #> ARRAY['propertyValues', :name] IS NOT NULL",
+        connectionType = POSTGRES)
+    int countPropertyEntries(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("path") String path,
+        @Bind("name") String name);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :concatFqnhash "
+                + "AND JSON_CONTAINS_PATH(json, 'one', :path) ORDER BY fqnHash LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :concatFqnhash "
+                + "AND json #> ARRAY['propertyValues', :name] IS NOT NULL "
+                + "ORDER BY fqnHash LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listPropertyEntries(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("path") String path,
+        @Bind("name") String name,
+        @Bind("limit") int limit);
+
+    /**
+     * Removes one property's entry from every term below {@code fqnhash}, soft-deleted ones
+     * included, without a new version; a term left with no entries loses the empty map too. The
+     * name is bound, never formatted into the statement.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE glossary_term_entity SET json = IF("
+                + "JSON_LENGTH(JSON_REMOVE(json, :path), '$.propertyValues') = 0, "
+                + "JSON_REMOVE(json, :path, '$.propertyValues'), JSON_REMOVE(json, :path)) "
+                + "WHERE fqnHash LIKE :concatFqnhash AND JSON_CONTAINS_PATH(json, 'one', :path)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE glossary_term_entity SET json = CASE "
+                + "WHEN (json #- ARRAY['propertyValues', :name]) -> 'propertyValues' = '{}'::jsonb "
+                + "THEN (json #- ARRAY['propertyValues', :name]) #- ARRAY['propertyValues'] "
+                + "ELSE json #- ARRAY['propertyValues', :name] END "
+                + "WHERE fqnHash LIKE :concatFqnhash "
+                + "AND json #> ARRAY['propertyValues', :name] IS NOT NULL",
+        connectionType = POSTGRES)
+    int removePropertyEntries(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("path") String path,
+        @Bind("name") String name);
+
+    /** The MySQL JSON path of a property's entry; a property name holds no quote or backslash. */
+    static String propertyEntryPath(String propertyName) {
+      return "$.propertyValues.\"" + propertyName + "\"";
+    }
 
     @SqlQuery(
         "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")

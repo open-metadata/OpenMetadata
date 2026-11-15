@@ -20,6 +20,31 @@ const perms = (
 ): OperationPermission => ({ ...overrides } as OperationPermission);
 
 describe('getDerivedPermissionFlags', () => {
+  it('canEditGlossaryTermProperties follows its own operation, falling back to EditAll', () => {
+    expect(
+      getDerivedPermissionFlags(
+        perms({ [Operation.EditGlossaryTermProperties]: true })
+      ).canEditGlossaryTermProperties
+    ).toBe(true);
+    expect(
+      getDerivedPermissionFlags(perms({ [Operation.EditAll]: true }))
+        .canEditGlossaryTermProperties
+    ).toBe(true);
+    expect(
+      getDerivedPermissionFlags(
+        perms({
+          [Operation.EditGlossaryTermProperties]: false,
+          [Operation.EditAll]: true,
+        })
+      ).canEditGlossaryTermProperties
+    ).toBe(false);
+    expect(
+      getDerivedPermissionFlags(
+        perms({ [Operation.EditGlossaryTermProperties]: true })
+      ).canEditTags
+    ).toBe(false);
+  });
+
   it('field-level edit permission wins over EditAll (prioritization)', () => {
     const flags = getDerivedPermissionFlags(
       perms({ [Operation.EditTags]: false, [Operation.EditAll]: true })

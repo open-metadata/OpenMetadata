@@ -1,0 +1,103 @@
+{
+  "$id": "https://open-metadata.org/schema/type/glossaryTermProperty.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GlossaryTermProperty",
+  "description": "A typed property that a glossary term declares for itself and, when inheritable, for every term below it. See ADR:2026-11-12-glossary-terms-declare-their-own-properties-and-values.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.GlossaryTermProperty",
+  "definitions": {
+    "glossaryTermPropertyDatatype": {
+      "description": "Datatype of a glossary term property. Values are stored as lexical strings and checked against the matching XSD datatype.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.GlossaryTermPropertyDatatype",
+      "enum": ["string", "integer", "decimal", "boolean", "date", "dateTime", "enum", "url"]
+    },
+    "glossaryTermPropertyValues": {
+      "description": "Values of a glossary term property, as lexical strings. An empty list means the term deliberately has no value.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2048
+      },
+      "maxItems": 100
+    },
+    "effectiveGlossaryTermProperty": {
+      "description": "A property a glossary term has, declared by the term itself or inherited from an ancestor, with the values that apply to the term.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.EffectiveGlossaryTermProperty",
+      "properties": {
+        "property": {
+          "description": "The property definition.",
+          "$ref": "#"
+        },
+        "declaredBy": {
+          "description": "The glossary term that declares the property.",
+          "$ref": "entityReference.json"
+        },
+        "inherited": {
+          "description": "True when another term declares the property.",
+          "type": "boolean"
+        },
+        "values": {
+          "description": "Values that apply to this term. Empty when the property has no value here.",
+          "$ref": "#/definitions/glossaryTermPropertyValues"
+        },
+        "valuesFrom": {
+          "description": "The glossary term whose entry supplied the values. Absent when no entry applies.",
+          "$ref": "entityReference.json"
+        }
+      },
+      "required": ["property", "declaredBy", "inherited", "values"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the property. Values are keyed by it, so it never changes.",
+      "$ref": "basic.json#/definitions/customPropertyName"
+    },
+    "displayName": {
+      "description": "Label shown for the property. It can change at any time.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "description": {
+      "description": "What the property captures.",
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "datatype": {
+      "description": "Datatype of the property's values. It never changes after the property is declared.",
+      "$ref": "#/definitions/glossaryTermPropertyDatatype"
+    },
+    "enumValues": {
+      "description": "Allowed values of an `enum` property. Required for `enum` and rejected otherwise.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2048
+      },
+      "minItems": 2,
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "default": null
+    },
+    "unit": {
+      "description": "Display unit for the values. Nothing converts between units.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "multiValued": {
+      "description": "When true the property holds up to 100 values. Allowed for `string` and `enum` only.",
+      "type": "boolean",
+      "default": false
+    },
+    "inheritable": {
+      "description": "When true every term below the declaring term gets the property and can inherit its value.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["name", "datatype"],
+  "additionalProperties": false
+}
