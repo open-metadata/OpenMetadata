@@ -20,15 +20,32 @@ class DomainNavFilterTest {
 
   @Test
   void shouldNotApply_forExcludedType() {
-    // user/team/tag/classification support domains but their lists are reference/settings surfaces.
+    // users and teams support domains but their lists are reference/settings surfaces.
     assertFalse(DomainNavFilter.shouldApply(Entity.USER, true, false, DOMAIN_ID));
-    assertFalse(DomainNavFilter.shouldApply(Entity.TAG, true, false, DOMAIN_ID));
     assertFalse(DomainNavFilter.shouldApply(Entity.TEST_CASE, true, false, DOMAIN_ID));
     // Basic test suites and queries inherit their table's domain, like test cases.
     assertFalse(DomainNavFilter.shouldApply(Entity.TEST_SUITE, true, false, DOMAIN_ID));
     assertFalse(DomainNavFilter.shouldApply(Entity.QUERY, true, false, DOMAIN_ID));
     // Tasks and approvals are the user's work queue, whatever domain they are about.
     assertFalse(DomainNavFilter.shouldApply(Entity.TASK, true, false, DOMAIN_ID));
+  }
+
+  @Test
+  void classificationsAndTagsFollowThePickButKeepSystemProvidedOnes() {
+    for (String type : new String[] {Entity.CLASSIFICATION, Entity.TAG}) {
+      ListFilter filter = new ListFilter();
+      DomainNavFilter.apply(filter, type, true, DOMAIN_ID, () -> DOMAIN_ID);
+      assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+      assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
+      assertEquals("true", filter.getQueryParams().get(ListFilter.KEEPS_SYSTEM_PROVIDED));
+    }
+  }
+
+  @Test
+  void dataAssetsDoNotKeepSystemProvidedItems() {
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, () -> DOMAIN_ID);
+    assertNull(filter.getQueryParams().get(ListFilter.KEEPS_SYSTEM_PROVIDED));
   }
 
   @Test

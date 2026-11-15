@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -41,6 +42,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   public static final String NULL_PARAM = "null";
   public static final String QUERY_RUNNER_REQUESTER_ID = "queryRunnerRequesterId";
+  public static final String KEEPS_SYSTEM_PROVIDED = "domainKeepsSystemProvided";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
@@ -1232,13 +1234,26 @@ public class ListFilter extends Filter<ListFilter> {
     String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return domainAccessCondition(entityIdColumn, domainInClause);
+      return orSystemProvided(domainAccessCondition(entityIdColumn, domainInClause), tableName);
     }
 
     return String.format(
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps system-provided rows too when the list asks (e.g. Tier and PII under any pick).
+  private String orSystemProvided(String condition, String tableName) {
+    if (!Boolean.parseBoolean(getQueryParam(KEEPS_SYSTEM_PROVIDED))) {
+      return condition;
+    }
+    String column = nullOrEmpty(tableName) ? "json" : tableName + ".json";
+    String provider =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? String.format("JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider'))", column)
+            : String.format("%s->>'provider'", column);
+    return String.format("(%s OR %s = '%s')", condition, provider, ProviderType.SYSTEM.value());
   }
 
   // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the

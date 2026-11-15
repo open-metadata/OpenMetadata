@@ -1,7 +1,7 @@
 # Mostly global lists keep items with no domain under a domain pick
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset) · v4 2026-11-15 (explicit domain filters include sub-domains)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset) · v4 2026-11-15 (explicit domain filters include sub-domains; classifications and tags follow the pick)
 - **Deciders:** Sonika Shah
 - **Guard:** `DomainNavFilterTest` (`apply_sharedConfigurationKeepsItemsWithNoDomain`,
   `apply_registeredExtensionTypeKeepsItemsWithNoDomain`), `SearchListFilterTest`
@@ -26,8 +26,8 @@ under a pick without a domain disappeared from the list it was created in.
 - A distribution adds its own types with `DomainFilterExclusions.registerKeepsUnassigned` when its
   repository is constructed (e.g. Collate's governance automations). It is a set of type names
   fixed at startup, not a cache.
-- Types that must ignore the pick entirely (users, teams, tags, classifications, and types that
-  inherit their domain from a table) stay in the existing exclusion list.
+- Types that must ignore the pick entirely (users, teams, and types that inherit their domain from
+  a table) stay in the existing exclusion list. Tags and classifications left it in v4.
 
 ## Consequences
 Every other type that supports domains keeps the strict rule: under a pick, items with no domain
@@ -61,3 +61,11 @@ v4 2026-11-15:
   lists, matches the named domain and all its sub-domains, as the navbar pick does. Guards:
   `ListFilterTest.incidentDomainFilterMatchesEveryGivenDomainId`,
   `SearchListFilterTest.testDomainFilterMatchesTheDomainAndItsSubDomains`.
+- Classifications and tags follow the pick like the other mostly global lists: under a pick they
+  show the picked domain's items and items with no domain, and hide other domains' items.
+  System-provided ones (e.g. Tier, PII, Certification) always stay listed, even when given a
+  domain, so every asset can still be tiered and classified. Tag pickers search the tag index,
+  which the UI leaves unscoped, so they still offer every tag. A tag whose domain is only
+  inherited from its classification counts as having no domain in a flat tag list. Guards:
+  `DomainNavFilterTest.classificationsAndTagsFollowThePickButKeepSystemProvidedOnes`,
+  `ListFilterTest.getDomainCondition_keepsSystemProvidedItemsWhenAsked`.

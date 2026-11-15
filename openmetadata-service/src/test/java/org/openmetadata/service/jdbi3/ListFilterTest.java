@@ -359,6 +359,29 @@ class ListFilterTest {
     assertFalse(condition.contains("domain_entity"));
   }
 
+  @ParameterizedTest
+  @CsvSource({"true", "false"})
+  void getDomainCondition_keepsSystemProvidedItemsWhenAsked(boolean mysql) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+      filter.addQueryParam("domainAccessControl", "true");
+      assertFalse(filter.getDomainCondition("classification").contains("provider"));
+
+      filter.addQueryParam(ListFilter.KEEPS_SYSTEM_PROVIDED, "true");
+      String provider =
+          mysql
+              ? "JSON_UNQUOTE(JSON_EXTRACT(classification.json, '$.provider'))"
+              : "classification.json->>'provider'";
+      assertTrue(
+          filter.getDomainCondition("classification").endsWith(" OR " + provider + " = 'system')"),
+          filter.getDomainCondition("classification"));
+    }
+  }
+
   @Test
   void getDomainCondition_bindsAnIdThatIsNotAUuid() {
     ListFilter filter = new ListFilter();
