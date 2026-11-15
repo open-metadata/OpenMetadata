@@ -1118,8 +1118,12 @@ public final class EntityUtil {
     if (domainRestricted) {
       List<EntityReference> allowed = subjectContext.getUserDomains();
       if (!nullOrEmpty(allowed)) {
-        // The navbar selection narrows within the role's scope; it can never widen past it.
-        EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+        // The navbar selection narrows within the role's scope; it can never widen past it. Types
+        // the pick never narrows (e.g. a task list about an asset) keep the role's full scope.
+        EntityReference selected =
+            DomainFilterExclusions.isExcluded(entityType)
+                ? null
+                : resolveSelectedDomain(activeDomain(securityContext));
         boolean selectedAllowed =
             selected != null && allowed.stream().anyMatch(d -> coversDomain(d, selected));
         filter.addQueryParam(
