@@ -1149,6 +1149,15 @@ public final class EntityUtil {
     }
   }
 
+  /**
+   * As above, for a count computed where no security context is at hand (e.g. a glossary's term
+   * count): the selection comes from the request, and there is none on bot or background threads.
+   */
+  public static void addNavbarDomainFilter(
+      ListFilter filter, String entityType, Supplier<ResourceContextInterface> parent) {
+    applyNavbarDomain(null, filter, entityType, parent);
+  }
+
   // Global (navbar) domain filter: a view preference that narrows lists to the selected domain and
   // never restricts access, so it applies to admins too.
   private static void applyNavbarDomain(

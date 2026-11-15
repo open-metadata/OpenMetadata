@@ -1111,6 +1111,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
         "directChildrenOf must not list a term whose own domain is outside the selection");
+
+    // The glossary's term count labels that list, so it must agree with it.
+    String counted = getAs(user, "/v1/glossaries/" + glossary.getId() + "?fields=termCount");
+    assertEquals(1, JsonUtils.readTree(counted).get("termCount").asInt());
   }
 
   @Test
