@@ -12,6 +12,7 @@
 Tests that extracting a .pbit archive cannot write outside the extract directory.
 """
 
+import io
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
@@ -68,7 +69,35 @@ class TestExtractPbit:
         assert not (dest / "bad.txt").exists()
 
 
+def _write_damaged_pbit(path: Path) -> None:
+    """A ZIP whose central directory is valid but whose deflate stream is garbage,
+    so opening succeeds and only extraction fails (with zlib.error)."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("DataModelSchema", "schema " * 2000)
+    data = bytearray(buffer.getvalue())
+    with zipfile.ZipFile(io.BytesIO(bytes(data))) as zf:
+        info = zf.infolist()[0]
+    start = info.header_offset + 30 + len(info.filename) + len(info.extra)
+    data[start : start + info.compress_size] = b"\xff" * info.compress_size
+    path.write_bytes(bytes(data))
+
+
 class TestGetDatamodelSchemaFilesFromPbit:
+    def test_damaged_compressed_data_does_not_skip_the_others(self, tmp_path):
+        _write_damaged_pbit(tmp_path / "damaged.pbit")
+        _write_pbit(tmp_path / "good.pbit", {"Connections": "{}", "DataModelSchema": "{}"})
+
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.file_client._get_datamodel_schema_list",
+            return_value=[],
+        ) as schema_list:
+            result = get_datamodel_schema_files_from_pbit(str(tmp_path))
+
+        assert result == [], "an archive that fails mid-extraction must not turn the whole run into None"
+        schema_list.assert_called_once_with(str(tmp_path))
+        assert (tmp_path / "extracted" / "good" / "Connections").exists()
+
     def test_corrupt_pbit_does_not_skip_the_others(self, tmp_path):
         (tmp_path / "broken.pbit").write_bytes(b"not a zip archive")
         _write_pbit(tmp_path / "good.pbit", {"Connections": "{}", "DataModelSchema": "{}"})

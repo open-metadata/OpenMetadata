@@ -184,11 +184,14 @@ def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | N
         file_paths = reader.get_local_files(search_key=".pbit")
 
         for file_path in file_paths:
-            # one unreadable .pbit must not drop the schemas of the others
+            # One unreadable .pbit must not drop the schemas of the others. Damaged
+            # archives fail during extraction with many types (BadZipFile, zlib.error,
+            # EOFError, RuntimeError for encrypted entries, NotImplementedError for
+            # unsupported compression), so any failure skips only this file.
             try:
                 with zipfile.ZipFile(file_path, "r") as zip_ref:
                     _extract_pbit(zip_ref, f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
-            except (zipfile.BadZipFile, OSError) as exc:
+            except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Skipping .pbit file {file_path}: {exc}")
 
