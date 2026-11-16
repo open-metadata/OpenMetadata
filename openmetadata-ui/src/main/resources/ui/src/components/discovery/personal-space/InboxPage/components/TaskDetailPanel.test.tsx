@@ -617,6 +617,33 @@ describe('TaskDetailPanel', () => {
     ).toBeGreaterThan(0);
   });
 
+  // Not the list row it falls back on: the server's task carries the status
+  // the list needs to file a linked task under its tab.
+  it('reports the full task once it loads', async () => {
+    const onLoaded = jest.fn();
+    const listRow = { ...TASK, status: 'Open' } as unknown as ComponentProps<
+      typeof TaskDetailPanel
+    >['fallbackTask'];
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, status: 'Rejected' },
+    });
+
+    await act(async () =>
+      render(
+        <TaskDetailPanel
+          fallbackTask={listRow}
+          taskId="task-1"
+          onLoaded={onLoaded}
+        />
+      )
+    );
+
+    expect(onLoaded).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Rejected' })
+    );
+    expect(onLoaded).not.toHaveBeenCalledWith(listRow);
+  });
+
   it('fetches the task with the full field set', async () => {
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 

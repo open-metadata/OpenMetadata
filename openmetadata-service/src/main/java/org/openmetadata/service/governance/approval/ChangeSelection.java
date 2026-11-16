@@ -166,6 +166,20 @@ public record ChangeSelection(
         .collect(Collectors.toCollection(TreeSet::new));
   }
 
+  /**
+   * Whether {@code decision} gives any change this verdict. A decision made change by change can
+   * approve some changes and reject others; one on the whole revision gives every change its own.
+   */
+  static boolean givesAny(ApprovalDecision decision, DecisionType verdict) {
+    boolean wholeRevision =
+        nullOrEmpty(decision.getApprovedChanges()) && nullOrEmpty(decision.getRejectedChanges());
+    List<ChangeRef> changes =
+        verdict == DecisionType.APPROVE
+            ? decision.getApprovedChanges()
+            : decision.getRejectedChanges();
+    return wholeRevision ? decision.getDecision() == verdict : !nullOrEmpty(changes);
+  }
+
   private static boolean gives(ApprovalDecision decision, String target, DecisionType verdict) {
     boolean wholeRevision =
         nullOrEmpty(decision.getApprovedChanges()) && nullOrEmpty(decision.getRejectedChanges());
