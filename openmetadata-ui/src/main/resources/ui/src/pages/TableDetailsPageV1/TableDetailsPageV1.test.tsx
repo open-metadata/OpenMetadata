@@ -328,11 +328,6 @@ jest.mock('../../components/common/Loader/Loader', () => ({
 
 jest.useFakeTimers();
 
-jest.mock('./TableLinkedConcepts', () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
 jest.mock('../../hoc/LimitWrapper', () => {
   return jest
     .fn()

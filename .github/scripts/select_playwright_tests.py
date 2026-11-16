@@ -257,7 +257,7 @@ def main() -> None:
                 "directChangedSpecs": sorted(direct_changed_specs),
                 "changedFiles": changed_files,
                 # Drop specs that are delegated to a dedicated lane
-                # (@ontology-rdf / @knowledge-graph, Auth, nightly,
+                # (@knowledge-graph, Auth, nightly,
                 # VisualRegression, …). A directly changed delegated spec
                 # already routes to delegatedChangedSpecs above; this also
                 # drops ones pulled in by a source->spec mapping glob

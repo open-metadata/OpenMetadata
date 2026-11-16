@@ -9,6 +9,8 @@ import io.modelcontextprotocol.server.McpSyncListFilter;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
+import jakarta.servlet.DispatcherType;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -312,6 +314,8 @@ public class McpServer implements McpServerProvider {
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
 
+      registerAvailabilityFilter(environment);
+
       // Register well-known filter via Dropwizard's environment.servlets() API.
       // This must use addFilter (not servlet registration) because the OpenMetadataAssetServlet
       // at "/*" treats all extension-less paths as SPA routes and serves index.html,
@@ -364,9 +368,15 @@ public class McpServer implements McpServerProvider {
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
       // invokes this handler, which asks the user to approve the client before a code is minted.
+      // The SAML ACS is not under /mcp/, so it checks availability itself.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
-          (req, resp, username, email, relayState) ->
-              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+          (req, resp, username, email, relayState) -> {
+            if (McpAvailabilityFilter.isMcpAvailable()) {
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState);
+            } else {
+              McpAvailabilityFilter.refuse(resp);
+            }
+          });
       LOG.info("Registered MCP SAML callback handler for SAML SSO support");
 
       // Register MCP callback servlet unconditionally — SSO availability is checked at
@@ -385,6 +395,15 @@ public class McpServer implements McpServerProvider {
               + "and restart.",
           ex);
     }
+  }
+
+  /** FORWARD covers the SSO callback, which /callback forwards to /mcp/callback. */
+  private static void registerAvailabilityFilter(Environment environment) {
+    environment
+        .servlets()
+        .addFilter("mcp-availability", new McpAvailabilityFilter())
+        .addMappingForUrlPatterns(
+            EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD), false, "/mcp/*");
   }
 
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
