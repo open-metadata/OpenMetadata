@@ -78,6 +78,28 @@ interface KnowledgeCardFooterProps {
   tags: KnowledgePage['tags'];
 }
 
+const KnowledgeCardOwner: FC<{
+  owner?: NonNullable<KnowledgePage['owners']>[number];
+}> = ({ owner }) =>
+  owner ? (
+    <UserPopOverCard
+      showUserName
+      className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
+      displayName={owner.displayName || undefined}
+      profileWidth={20}
+      type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+      userName={owner.name ?? owner.displayName ?? ''}
+    />
+  ) : (
+    <Typography
+      className="tw:text-utility-gray-400"
+      data-testid="owner-name"
+      size="text-xs"
+      weight="medium">
+      {NO_DATA_PLACEHOLDER}
+    </Typography>
+  );
+
 const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
   owners,
   firstDomain,
@@ -91,24 +113,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
       className="tw:pt-2"
       data-testid="knowledge-footer"
       gap={3}>
-      {owners?.[0] ? (
-        <UserPopOverCard
-          showUserName
-          className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
-          displayName={owners[0].displayName}
-          profileWidth={20}
-          type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owners[0].name ?? owners[0].displayName ?? ''}
-        />
-      ) : (
-        <Typography
-          className="tw:text-utility-gray-400"
-          data-testid="owner-name"
-          size="text-xs"
-          weight="medium">
-          {NO_DATA_PLACEHOLDER}
-        </Typography>
-      )}
+      <KnowledgeCardOwner owner={owners?.[0]} />
 
       <Dot className="tw:text-fg-quaternary" size="micro" />
       <div className="tw:max-w-40 tw:mb-0.5">

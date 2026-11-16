@@ -175,7 +175,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
           <Grid.Item span={16}>
             <UserPopOverCard
               showUserName
-              displayName={feedback.createdBy.displayName}
+              displayName={feedback.createdBy.displayName || undefined}
               profileWidth={22}
               userName={feedback.createdBy.name}
             />

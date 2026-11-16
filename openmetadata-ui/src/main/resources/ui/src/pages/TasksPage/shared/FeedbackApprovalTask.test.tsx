@@ -350,6 +350,31 @@ describe('FeedbackApprovalTask', () => {
     );
   });
 
+  it('should fall back to the login when the submitter display name is empty', () => {
+    const task = {
+      ...mockProps.task,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          createdBy: {
+            id: 'user-id',
+            type: 'user',
+            name: 'admin',
+            displayName: '',
+          },
+        },
+      },
+    } as unknown as Task;
+
+    render(<FeedbackApprovalTask task={task} />, { wrapper: Wrapper });
+
+    expect(UserPopOverCard).toHaveBeenLastCalledWith(
+      expect.objectContaining({ displayName: undefined, userName: 'admin' }),
+      expect.anything()
+    );
+  });
+
   it('should not render a submitter when createdBy has no name', () => {
     const taskWithoutCreatorName = {
       ...mockProps.task,
