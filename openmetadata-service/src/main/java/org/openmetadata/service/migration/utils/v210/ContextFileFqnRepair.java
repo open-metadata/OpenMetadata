@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,9 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.IdBatches;
@@ -48,9 +51,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * already stored.
  *
  * <p>The derived FQN is the one {@code ContextFileRepository.setFullyQualifiedName} builds: the
- * folder's FQN and the file's name, or the name alone at the root. A repaired file keeps its tags:
- * tag_usage is keyed by FQN, so the rows under the stored FQN move to the derived one, as a rename
- * moves them, and a tag already there from before the edit stays.
+ * folder's FQN and the file's name, or the name alone at the root. tag_usage is keyed by FQN alone
+ * and does not record which entity a row belongs to. When no other entity, of any type and live or
+ * soft-deleted, has the stored FQN, every row under it is the file's: the rows move to the derived
+ * FQN, as a rename moves them, and a tag already there from before the edit stays. When another
+ * entity has it, as a root folder, metric, service, glossary, domain or data product named like the
+ * file can, the rows under it may be that entity's, and nothing proves which are the file's: a
+ * version of the file saved after the edit lists every tag under the stored FQN, and one row can be
+ * the tag of both. The file's FQN is still repaired, its rows are left where they are, and the
+ * file, both FQNs and the other entities are logged for repair by hand.
  *
  * <p>A file's stored JSON carries its extracted text, up to 200,000 characters, so the scan reads
  * only each file's name, FQN and nameHash, and a rewrite loads one file at a time.
@@ -213,8 +222,11 @@ public final class ContextFileFqnRepair {
       if (otherHolder(handle, misnamed).isPresent()) {
         return Outcome.HELD_BY_ANOTHER_FILE;
       }
+      List<String> sharing = movesTags(misnamed) ? entitiesSharing(handle, misnamed) : List.of();
       Optional<ContextFile> repaired =
-          handle.inTransaction(transaction -> rewrite(transaction, misnamed));
+          handle.inTransaction(
+              transaction ->
+                  rewrite(transaction, misnamed, movesTags(misnamed) && sharing.isEmpty()));
       if (repaired.isEmpty()) {
         LOG.info(
             "Context Center file {} changed while its FQN was derived; its next edit derives it",
@@ -224,6 +236,18 @@ public final class ContextFileFqnRepair {
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.storedFqn());
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
       reindex(repaired.get());
+      if (!sharing.isEmpty()) {
+        LOG.warn(
+            "Context Center file {} now has the FQN {}. Its old FQN {} is also the FQN of {}, and"
+                + " tag_usage does not record which entity a row belongs to, so every tag under {}"
+                + " was left where it is. Move the file's own tags to {} by hand",
+            misnamed.id(),
+            misnamed.derivedFqn(),
+            misnamed.storedFqn(),
+            sharing,
+            misnamed.storedFqn(),
+            misnamed.derivedFqn());
+      }
       return Outcome.REPAIRED;
     } catch (Exception e) {
       LOG.warn(
@@ -247,7 +271,8 @@ public final class ContextFileFqnRepair {
   }
 
   /** Empty when the row no longer holds what the scan read, and then nothing is written. */
-  private static Optional<ContextFile> rewrite(final Handle transaction, final Misnamed misnamed) {
+  private static Optional<ContextFile> rewrite(
+      final Handle transaction, final Misnamed misnamed, final boolean moveTags) {
     Optional<String> storedJson =
         transaction
             .createQuery(FILE_JSON_SQL)
@@ -266,10 +291,52 @@ public final class ContextFileFqnRepair {
     if (dao.contextFileDAO().updateIfMatches(file, storedJson.get()) == 0) {
       return Optional.empty();
     }
-    if (misnamed.storedFqn() != null && !misnamed.storedFqn().equals(misnamed.derivedFqn())) {
+    if (moveTags) {
       moveTags(transaction, dao, misnamed.storedFqn(), misnamed.derivedFqn());
     }
     return Optional.of(file);
+  }
+
+  private static boolean movesTags(final Misnamed misnamed) {
+    return misnamed.storedFqn() != null && !misnamed.storedFqn().equals(misnamed.derivedFqn());
+  }
+
+  /**
+   * Every other entity, live or soft-deleted, whose FQN is the file's stored FQN, as type and id.
+   * Every registered entity table is looked up by its name hash, so no type is left out. A type
+   * that cannot be looked up is listed too, so its rows are never taken from it. The table and
+   * column names come from the registered DAOs, never from input, since SQL cannot bind them.
+   */
+  private static List<String> entitiesSharing(final Handle handle, final Misnamed misnamed) {
+    String storedHash = FullyQualifiedName.buildHash(misnamed.storedFqn());
+    List<String> sharing = new ArrayList<>();
+    for (String entityType : new TreeSet<>(Entity.getEntityList())) {
+      EntityDAO<?> entityDao;
+      try {
+        entityDao = Entity.getEntityRepository(entityType).getDao();
+      } catch (EntityNotFoundException e) {
+        // A time series type, whose records have no FQN of their own.
+        continue;
+      }
+      try {
+        handle
+            .createQuery(
+                "SELECT id FROM "
+                    + entityDao.getTableName()
+                    + " WHERE "
+                    + entityDao.getNameHashColumn()
+                    + " = :nameHash")
+            .bind("nameHash", storedHash)
+            .mapTo(String.class)
+            .list()
+            .stream()
+            .filter(id -> !CONTEXT_FILE.equals(entityType) || !id.equals(misnamed.id().toString()))
+            .forEach(id -> sharing.add(entityType + " " + id));
+      } catch (Exception e) {
+        sharing.add(entityType + " (not looked up: " + e.getMessage() + ")");
+      }
+    }
+    return sharing;
   }
 
   /** A tag under both FQNs keeps its row under the derived one, so the move breaks no key. */

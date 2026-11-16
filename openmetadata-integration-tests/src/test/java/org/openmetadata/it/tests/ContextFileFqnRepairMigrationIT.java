@@ -6,6 +6,8 @@ import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -16,9 +18,11 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -42,8 +46,11 @@ import org.openmetadata.service.util.FullyQualifiedName;
 class ContextFileFqnRepairMigrationIT {
   private static final String FILES = "/v1/contextCenter/drive/files";
   private static final String FOLDERS = "/v1/contextCenter/drive/folders";
+  private static final String GLOSSARIES = "/v1/glossaries";
   private static final String TAG_BEFORE_THE_EDIT = "PII.NonSensitive";
   private static final String TAG_FROM_THE_EDIT = "PersonalData.Personal";
+  private static final String OTHER_ENTITY_TAG = "PII.NonSensitive";
+  private static final String FILE_TAG = "PersonalData.SpecialCategory";
 
   @Test
   void aFileEditedInAFolderGetsItsFolderBackInItsFqn(TestNamespace ns) {
@@ -66,8 +73,9 @@ class ContextFileFqnRepairMigrationIT {
     assertEquals(FullyQualifiedName.buildHash(folderFqn), storedNameHash(file.getId()));
     assertEquals(
         List.of(TAG_BEFORE_THE_EDIT, TAG_FROM_THE_EDIT),
-        repaired.getTags().stream().map(TagLabel::getTagFQN).sorted().toList(),
+        tagFqns(repaired.getTags()),
         "the tags from before and from the edit, each once");
+    assertEquals(0, tagRowsUnder(name), "no other entity has the bare name, so its rows moved");
     assertEquals(
         name,
         createFile(name, null, null).getFullyQualifiedName(),
@@ -90,6 +98,65 @@ class ContextFileFqnRepairMigrationIT {
 
     assertEquals(name, getById(file.getId()).getFullyQualifiedName());
     assertEquals(holder.getId(), getByName(holder.getFullyQualifiedName()).getId());
+  }
+
+  @Test
+  void aRootFolderNamedLikeTheFileKeepsEveryTagRowUnderTheBareName(TestNamespace ns) {
+    // A root folder's FQN is its name, the bare FQN an edit gave a file in another folder.
+    String bareName = ns.shortPrefix("Finance");
+    Folder rootFolder = createFolder(bareName, OTHER_ENTITY_TAG, FILE_TAG);
+    ContextFile file = createFile(bareName, createFolder(ns.shortPrefix("Archive")), FILE_TAG);
+
+    assertSharedRowsStayWithTheOtherEntity(file, () -> folderTags(rootFolder));
+  }
+
+  @Test
+  void aRootGlossaryNamedLikeTheFileKeepsEveryTagRowUnderTheBareName(TestNamespace ns) {
+    String bareName = ns.shortPrefix("Finance");
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.POST,
+                    GLOSSARIES,
+                    new CreateGlossary()
+                        .withName(bareName)
+                        .withDescription("Named like a Context Center file")
+                        .withTags(List.of(tagLabel(OTHER_ENTITY_TAG), tagLabel(FILE_TAG))),
+                    Glossary.class));
+    ContextFile file = createFile(bareName, createFolder(ns.shortPrefix("Archive")), FILE_TAG);
+
+    assertSharedRowsStayWithTheOtherEntity(file, () -> glossaryTags(glossary));
+  }
+
+  /**
+   * Damages {@code file} as an edit did, writing a tag under its bare name, which another entity
+   * also has as its FQN, with one tag the file also has under its folder FQN. The repair gives the
+   * file its folder FQN and leaves every row under the bare name where it is: the other entity
+   * shows what it showed, and the file only its own.
+   */
+  private static void assertSharedRowsStayWithTheOtherEntity(
+      ContextFile file, Supplier<List<String>> otherEntityTags) {
+    String bareName = file.getName();
+    String folderFqn = file.getFullyQualifiedName();
+    damageAsAnEditDid(file, TAG_FROM_THE_EDIT);
+    List<String> shownBefore = otherEntityTags.get();
+    assertEquals(List.of(OTHER_ENTITY_TAG, TAG_FROM_THE_EDIT, FILE_TAG), shownBefore);
+    int rowsUnderBareName = tagRowsUnder(bareName);
+
+    assertEquals(1, repairAll());
+
+    ContextFile repaired = getByName(folderFqn);
+    assertEquals(file.getId(), repaired.getId());
+    assertEquals(FullyQualifiedName.buildHash(folderFqn), storedNameHash(file.getId()));
+    assertEquals(shownBefore, otherEntityTags.get(), "the other entity keeps every tag it had");
+    assertEquals(
+        rowsUnderBareName, tagRowsUnder(bareName), "no row under the bare name moves or goes");
+    assertEquals(
+        List.of(FILE_TAG), tagFqns(repaired.getTags()), "the file gains no tag it did not own");
+    assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
   }
 
   private static int repairAll() {
@@ -134,10 +201,58 @@ class ContextFileFqnRepairMigrationIT {
                     .one());
   }
 
-  private static Folder createFolder(String name) {
+  private static int tagRowsUnder(String targetFqn) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM tag_usage WHERE targetFQNHash = :hash")
+                    .bind("hash", FullyQualifiedName.buildHash(targetFqn))
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private static List<String> tagFqns(List<TagLabel> tags) {
+    return tags.stream().map(TagLabel::getTagFQN).sorted().toList();
+  }
+
+  private static List<String> glossaryTags(Glossary glossary) {
+    return tagFqns(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                GLOSSARIES + "/" + glossary.getId() + "?fields=tags",
+                null,
+                Glossary.class)
+            .getTags());
+  }
+
+  private static List<String> folderTags(Folder folder) {
+    return tagFqns(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET, FOLDERS + "/" + folder.getId() + "?fields=tags", null, Folder.class)
+            .getTags());
+  }
+
+  private static Folder createFolder(String name, String... tags) {
+    CreateFolder request = new CreateFolder().withName(name);
+    if (tags.length > 0) {
+      request.withTags(Stream.of(tags).map(ContextFileFqnRepairMigrationIT::tagLabel).toList());
+    }
     return SdkClients.adminClient()
         .getHttpClient()
-        .execute(HttpMethod.POST, FOLDERS, new CreateFolder().withName(name), Folder.class);
+        .execute(HttpMethod.POST, FOLDERS, request, Folder.class);
+  }
+
+  private static TagLabel tagLabel(String tag) {
+    return new TagLabel()
+        .withTagFQN(tag)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
   }
 
   private static ContextFile createFile(String name, Folder folder, String tag) {
@@ -150,13 +265,7 @@ class ContextFileFqnRepairMigrationIT {
       request.withFolder(folder.getFullyQualifiedName());
     }
     if (tag != null) {
-      request.withTags(
-          List.of(
-              new TagLabel()
-                  .withTagFQN(tag)
-                  .withSource(TagLabel.TagSource.CLASSIFICATION)
-                  .withLabelType(TagLabel.LabelType.MANUAL)
-                  .withState(TagLabel.State.CONFIRMED)));
+      request.withTags(List.of(tagLabel(tag)));
     }
     return SdkClients.adminClient()
         .getHttpClient()
