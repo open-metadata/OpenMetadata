@@ -307,6 +307,21 @@ describe('Topic Schema', () => {
     );
   });
 
+  it('restores the name sort from the URL on reload', async () => {
+    render(
+      <MemoryRouter initialEntries={['/topic/test-fqn?fieldSort=desc']}>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(mockGetTopicSchemaFields).toHaveBeenCalledWith(
+        'sample_kafka.customer_events',
+        expect.objectContaining({ offset: 0, sortOrder: 'desc' })
+      )
+    );
+  });
+
   it('sorts by name on the server before paging', async () => {
     render(
       <MemoryRouter>
