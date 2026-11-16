@@ -139,7 +139,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
             })}
             footer={
               <>
-                <Typography as="p" className="tw:text-secondary" size="text-xs">
+                <Typography as="p" color="secondary" size="text-xs">
                   <Transi18next
                     i18nKey="message.refer-to-our-doc"
                     renderElement={
