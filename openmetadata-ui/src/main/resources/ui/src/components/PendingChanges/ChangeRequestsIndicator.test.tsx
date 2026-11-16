@@ -304,4 +304,56 @@ describe('ChangeRequestsIndicator', () => {
       screen.queryByTestId('accept-cr-1|2|description')
     ).not.toBeInTheDocument();
   });
+
+  it("reads a column change column by column, with each column's published and proposed value", async () => {
+    const column = (name: string, description: string) => ({
+      name,
+      fullyQualifiedName: `svc.db.schema.orders.${name}`,
+      dataType: 'VARCHAR',
+      description,
+    });
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({
+        activeRevision: {
+          ...request({}).activeRevision,
+          ops: [
+            {
+              op: MutationOpType.Set,
+              field: 'description',
+              value: JSON.stringify('<p>Orders placed</p>'),
+              baseValue: JSON.stringify('<p>Orders</p>'),
+            },
+            {
+              op: MutationOpType.Set,
+              field: 'columns',
+              baseValue: JSON.stringify([
+                column('id', 'Old id'),
+                column('status', 'Old status'),
+              ]),
+              value: JSON.stringify([
+                column('id', 'Order identifier'),
+                column('status', 'Fulfilment state'),
+              ]),
+            },
+          ],
+        } as ChangeRequest['activeRevision'],
+      }),
+    ]);
+
+    await openModal();
+
+    const columns = screen.getByTestId('suggestion-cr-1|2|columns');
+
+    expect(
+      screen.getByTestId('change-column-id-description-updated')
+    ).toHaveTextContent('Old id+ Order identifier');
+    expect(
+      screen.getByTestId('change-column-status-description-updated')
+    ).toHaveTextContent('Old status+ Fulfilment state');
+    expect(columns).not.toHaveTextContent('svc.db.schema.orders.id');
+    expect(screen.queryByText(/svc\.db\.schema\.orders/)).toBeNull();
+    expect(
+      screen.getByTestId('suggestion-cr-1|2|description')
+    ).toBeInTheDocument();
+  });
 });

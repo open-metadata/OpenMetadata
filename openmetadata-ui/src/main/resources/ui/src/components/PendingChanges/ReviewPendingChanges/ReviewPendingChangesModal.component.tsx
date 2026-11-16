@@ -58,6 +58,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { MapPatchAPIResponse } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { computeTaskOwnershipFlags } from '../../Entity/Task/TaskTab/TaskTab.utils';
+import ChangeRequestChanges from '../ChangeRequestChanges/ChangeRequestChanges.component';
 import { RequestHistory } from '../ChangeRequestTools/ChangeRequestTools.component';
 import {
   buildResolutions,
@@ -66,6 +67,7 @@ import {
   FieldGroup,
   groupSuggestions,
   incompleteRequests,
+  isColumnsChange,
   isCompeting,
   isConflicted,
   isTextChange,
@@ -255,6 +257,9 @@ const TextDiff = ({ before, after }: { before: string; after: string }) => (
 
 const SuggestionBody = ({ suggestion }: { suggestion: Suggestion }) => {
   const [first] = suggestion.ops;
+  if (isColumnsChange(suggestion)) {
+    return <ChangeRequestChanges ops={suggestion.ops} />;
+  }
   if (isTextChange(suggestion)) {
     return (
       <TextDiff

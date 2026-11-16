@@ -27,7 +27,10 @@ import {
   MutationOp,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
-import { toValue } from '../ChangeRequestChanges/ChangeRequestChanges.utils';
+import {
+  COLUMNS_FIELD,
+  toValue,
+} from '../ChangeRequestChanges/ChangeRequestChanges.utils';
 
 export enum Verdict {
   Accepted = 'accepted',
@@ -172,10 +175,15 @@ export const listCounts = ({ ops }: Suggestion) => ({
   removed: ops.filter((op) => op.op === MutationOpType.Remove).length,
 });
 
+/** A suggestion that replaces the asset's column list, read column by column. */
+export const isColumnsChange = ({ field }: Suggestion) =>
+  field === COLUMNS_FIELD;
+
 /**
  * The pending requests' changes still under review grouped by field, in the order the fields first
  * appear, one suggestion per request on each field. A field's published value is read from its changes, or
  * from {@code published}, the asset as it is now, for list fields whose changes do not carry it.
+ * Columns carry no field-level value: each changed column shows its own published value.
  */
 export const groupSuggestions = (
   requests: ChangeRequest[],
@@ -207,7 +215,11 @@ export const groupSuggestions = (
         current = textOf(published[field]);
       }
 
-      return { field, current, suggestions: items };
+      return {
+        field,
+        current: field === COLUMNS_FIELD ? undefined : current,
+        suggestions: items,
+      };
     }
   );
 };

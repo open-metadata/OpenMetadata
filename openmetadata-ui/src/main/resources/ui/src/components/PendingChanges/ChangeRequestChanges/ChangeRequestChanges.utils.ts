@@ -53,7 +53,8 @@ interface Column {
 }
 
 const MAX_TEXT_LENGTH = 120;
-const COLUMNS_FIELD = 'columns';
+
+export const COLUMNS_FIELD = 'columns';
 const TAGS_FIELD = 'tags';
 const GLOSSARY_SOURCE = 'Glossary';
 // Column attributes a reviewer reads; tags are compared by FQN separately.

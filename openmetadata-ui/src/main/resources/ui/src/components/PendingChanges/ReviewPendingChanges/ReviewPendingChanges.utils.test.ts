@@ -27,6 +27,7 @@ import {
   buildResolutions,
   groupSuggestions,
   incompleteRequests,
+  isColumnsChange,
   isCompeting,
   listCounts,
   suggestionId,
@@ -168,6 +169,29 @@ describe('ReviewPendingChanges utils', () => {
     expect(groups.map((group) => group.field)).toEqual(['description', 'tags']);
     expect(tags?.suggestions[0].ops).toEqual([REMOVED_TAG]);
     expect(groupSuggestions([request('b', true, [appliedTag])])).toEqual([]);
+  });
+
+  it('leaves a column change without a field-level published value', () => {
+    const columns = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([
+        { name: 'id', fullyQualifiedName: 't.id', description: 'old' },
+      ]),
+      value: JSON.stringify([
+        { name: 'id', fullyQualifiedName: 't.id', description: 'new' },
+      ]),
+    };
+    const groups = groupSuggestions([
+      request('a', true, [DESCRIPTION, columns]),
+    ]);
+    const columnGroup = groups.find((group) => group.field === 'columns');
+
+    expect(columnGroup?.current).toBeUndefined();
+    expect(columnGroup?.suggestions[0].ops).toEqual([columns]);
+    expect(columnGroup && isColumnsChange(columnGroup.suggestions[0])).toBe(
+      true
+    );
   });
 
   it('compares descriptions by their words, not their markup', () => {
