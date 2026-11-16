@@ -5330,6 +5330,7 @@
     "import-terms-into-glossary": "{{glossary}}(으)로 용어 가져오기.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "이 데이터베이스에서",
+    "inbox-activity-capped": "이 기간의 최신 업데이트만 표시됩니다.",
     "inbox-desc": "작업과 활동을 한곳에서.",
     "incident-group-filtered": "그룹 필터와 일치하는 인시던트만 표시됩니다.",
     "incident-group-seen-range": "최초 발생 {{firstSeen}} · 마지막 발생 {{lastSeen}}",

@@ -5330,6 +5330,7 @@
     "import-terms-into-glossary": "وارد کردن اصطلاحات به {{glossary}}.",
     "importing-entity": "در حال وارد کردن {{entity}}...",
     "in-this-database": "در این پایگاه داده",
+    "inbox-activity-capped": "فقط جدیدترین به‌روزرسانی‌های این بازه زمانی نمایش داده می‌شوند.",
     "inbox-desc": "وظایف و فعالیت شما، همه در یک جا.",
     "incident-group-filtered": "فقط رویدادهایی که با فیلترهای گروه‌ها مطابقت دارند نمایش داده می‌شوند.",
     "incident-group-seen-range": "نخستین مشاهده {{firstSeen}} · آخرین مشاهده {{lastSeen}}",

@@ -5330,6 +5330,7 @@
     "import-terms-into-glossary": "Importera termer till {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "I den här databasen",
+    "inbox-activity-capped": "Endast de senaste uppdateringarna i detta datumintervall visas.",
     "inbox-desc": "Dina uppgifter och din aktivitet, samlat på ett ställe.",
     "incident-group-filtered": "Endast incidenter som matchar gruppernas filter visas.",
     "incident-group-seen-range": "först sedd {{firstSeen}} · senast sedd {{lastSeen}}",

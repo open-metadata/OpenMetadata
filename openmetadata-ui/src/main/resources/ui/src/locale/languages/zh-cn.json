@@ -5330,6 +5330,7 @@
     "import-terms-into-glossary": "将术语导入到 {{glossary}}。",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "在此数据库中",
+    "inbox-activity-capped": "仅显示此日期范围内的最新动态。",
     "inbox-desc": "你的任务和活动，尽在一处。",
     "incident-group-filtered": "仅列出与分组筛选条件匹配的事件。",
     "incident-group-seen-range": "首次出现于 {{firstSeen}} · 最后出现于 {{lastSeen}}",
