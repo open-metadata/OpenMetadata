@@ -79,8 +79,22 @@ class OntologyDateDatatypeTest {
     OntologyPropertyRdfWriter.write(model, dateProperty(OwlDatatypeSupport.DATE), null);
     final NativeOntologyDocument document = NativeOntologyRdfImporter.read(model);
     assertEquals(0, document.skipped().getTotal());
+    assertEquals(List.of(), document.axioms());
+    assertEquals(List.of(), document.concepts());
     assertEquals(1, document.properties().size());
     assertEquals(List.of(OwlDatatypeSupport.DATE), document.properties().getFirst().getRange());
+  }
+
+  @Test
+  void dateDefinitionAloneNeverBecomesAnAxiom() {
+    final Model model = ModelFactory.createDefaultModel();
+    model
+        .createResource(OwlDatatypeSupport.DATE.toString())
+        .addProperty(RDF.type, RDFS.Datatype)
+        .addProperty(OWL2.equivalentClass, XSD.dateTime);
+    final NativeOntologyDocument document = NativeOntologyRdfImporter.read(model);
+    assertEquals(List.of(), document.axioms());
+    assertEquals(List.of(), document.concepts());
   }
 
   @Test

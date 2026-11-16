@@ -105,6 +105,7 @@ final class NativeOntologyRdfReader {
       individuals();
       final List<OntologyConcept> concepts = concepts();
       final List<OntologyProperty> properties = properties();
+      dateDefinition();
       final List<OntologyAxiom> axioms = axioms(properties);
       references();
       skipRemaining();
@@ -702,12 +703,19 @@ final class NativeOntologyRdfReader {
                     == OwlEntityDeclarations.EntityKind.CLASS));
   }
 
-  private void references() {
+  /**
+   * The definition every export writes for {@link OwlDatatypeSupport#DATE}. It is part of the
+   * datatype, not an authored axiom, so it is taken before axioms are read.
+   */
+  private void dateDefinition() {
     remaining.remove(
         model.createStatement(
             model.createResource(OwlDatatypeSupport.DATE.toString()),
             OWL2.equivalentClass,
             XSD.dateTime));
+  }
+
+  private void references() {
     for (final Statement statement : List.copyOf(remaining)) {
       if (!statement.getPredicate().equals(RDF.type)
           || !statement.getSubject().isURIResource()
