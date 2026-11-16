@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -1737,15 +1738,17 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Test
   void schemaFieldSearch_unknownTopic_404() {
-    assertThrows(
-        Exception.class,
-        () ->
-            SdkClients.adminClient()
-                .getHttpClient()
-                .executeForString(
-                    HttpMethod.GET,
-                    "/v1/topics/name/" + UUID.randomUUID() + ".missing/columns/search?q=id",
-                    null));
+    final OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        "/v1/topics/name/" + UUID.randomUUID() + ".missing/columns/search?q=id",
+                        null));
+    assertEquals(404, notFound.getStatusCode());
   }
 
   private Topic createSearchableSchemaTopic(TestNamespace ns) {
