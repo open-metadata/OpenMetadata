@@ -10915,6 +10915,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/UnsavedChangesPrompt.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/customProperties/CustomPropertyRow.tsx"
       ],
       "specs": [
