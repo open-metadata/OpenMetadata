@@ -933,6 +933,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (appendPayloadBytes != null) {
       rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
     }
+    // Small enough that an ontology of a few hundred definitions takes the staged, chunked path
+    // that a production ontology takes above 16 MiB.
+    rdfConfig.setGraphReplaceChunkBytes(Integer.getInteger("rdfGraphReplaceChunkBytes", 65_536));
     final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
     if (appendEntityBatchSize != null) {
       rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);

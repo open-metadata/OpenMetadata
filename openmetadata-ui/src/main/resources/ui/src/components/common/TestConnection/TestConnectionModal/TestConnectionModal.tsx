@@ -34,6 +34,7 @@ import {
 } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
+import { formatDuration } from '../../../../utils/date-time/DateTimeUtils';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import {
   ConnectionCapabilitySection,
@@ -290,7 +291,7 @@ const TestConnectionModal = ({
           const summary = result.resultSummary || result.message;
           if (summary) {
             const timing = result.durationMs
-              ? ` (${result.durationMs} ms)`
+              ? ` (${formatDuration(result.durationMs)})`
               : '';
             parts.push(`  ${summary}${timing}`);
           }

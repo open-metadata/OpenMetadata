@@ -39,6 +39,7 @@ import {
   TaskCategory,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
@@ -51,14 +52,22 @@ import {
   EXTENSION_POINTS,
   InboxTaskPanelContribution,
 } from '../../../../../utils/ExtensionPointTypes';
+import ontologyExplorerClassBase from '../../../../../utils/OntologyExplorerClassBase';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
-import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
-import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
+import {
+  getTaskAboutPath,
+  hasVotedInCurrentStage,
+  isAllowedDecider,
+} from '../../../../../utils/TaskNavigationUtils';
+import {
+  isAwaitingReviewPanel,
+  isOntologyReviewTask,
+} from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
+import TaskReviewVotes from '../../../../Entity/Task/TaskReviewVotes/TaskReviewVotes';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
@@ -116,6 +125,8 @@ export interface TaskDetailPanelProps {
   // Fired after a comment is added/edited/deleted with the reloaded task, so the
   // list row's comment count stays in sync.
   onCommentsChanged?: (task: Task) => void;
+  // Fired with the full task once it loads, and again whenever it changes.
+  onLoaded?: (task: Task) => void;
 }
 
 // Locate the whitespace-delimited token in the title that contains the asset
@@ -275,9 +286,26 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   );
 };
 
+const getResolveDeniedMessageKey = (isFiler: boolean, isAssignee: boolean) => {
+  if (!isAssignee) {
+    return 'message.only-assignees-can-approve-or-reject';
+  }
+
+  return isFiler
+    ? 'message.no-permission-for-action'
+    : 'message.only-reviewers-can-approve-or-reject';
+};
+
 // A filer is denied their own task (self-approval); anyone else is not one of
-// its approvers.
-const TaskResolveDeniedHint = ({ isFiler }: { isFiler: boolean }) => {
+// its approvers. A workflow approval names its approvers as assignees, so a
+// reviewer added after it opened is told it is not assigned to them.
+const TaskResolveDeniedHint = ({
+  isFiler,
+  isAssignee,
+}: {
+  isFiler: boolean;
+  isAssignee: boolean;
+}) => {
   const { t } = useTranslation();
 
   return (
@@ -285,9 +313,7 @@ const TaskResolveDeniedHint = ({ isFiler }: { isFiler: boolean }) => {
       className="tw:text-tertiary"
       data-testid="task-resolve-denied-hint"
       size="text-sm">
-      {isFiler
-        ? t('message.no-permission-for-action')
-        : t('message.only-reviewers-can-approve-or-reject')}
+      {t(getResolveDeniedMessageKey(isFiler, isAssignee))}
     </Typography>
   );
 };
@@ -337,12 +363,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onResolved,
   onTaskUpdated,
   onCommentsChanged,
+  onLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
     useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
+  const currentUserId = useApplicationStore().currentUser?.id;
+  const currentUserIds = useCurrentUserIds();
   const { extensionRegistry } = useApplicationsProvider();
+  const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<AxiosError>();
@@ -486,6 +516,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
+
+  useEffect(() => {
+    if (task && hasFullTask) {
+      onLoaded?.(task);
+    }
+  }, [task, hasFullTask, onLoaded]);
+
   const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
       return { actions: [], isResolveDenied: false };
@@ -499,9 +536,28 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
+    // A voter waits for the other approvers; TaskReviewVotes says so. Checked
+    // before the assignee rule: the server drops a voter's own assignee entry
+    // after a vote that does not reach the threshold.
+    if (hasVotedInCurrentStage(task, { id: currentUserId })) {
+      return {
+        actions: effective.filter(
+          (action) =>
+            action.kind !== 'approve' &&
+            action.kind !== 'reject' &&
+            action.id !== 'resolve'
+        ),
+        isResolveDenied: false,
+      };
+    }
+
+    // ResolveTask lets a reviewer through, but the server lets only an
+    // assignee decide a workflow approval.
+    const canDecide = canResolveTask && isAllowedDecider(task, currentUserIds);
+
     // Drop resolve actions when ResolveTask is denied; keep assignee
     // transitions — those are permissioned by EditTask, not ResolveTask.
-    if (!canResolveTask) {
+    if (!canDecide) {
       const permitted = effective.filter(
         (action) =>
           action.kind !== 'approve' &&
@@ -512,17 +568,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return {
         actions: permitted,
         isResolveDenied:
-          canResolveTask === false && permitted.length < effective.length,
+          canResolveTask !== undefined && permitted.length < effective.length,
       };
     }
 
     return {
-      actions:
-        isOntologyReviewTask(task) && readyReviewTask !== task.id
-          ? effective.filter(
-              (action) => action.kind !== 'approve' && action.kind !== 'reject'
-            )
-          : effective,
+      actions: isAwaitingReviewPanel(task, readyReviewTask)
+        ? effective.filter(
+            (action) => action.kind !== 'approve' && action.kind !== 'reject'
+          )
+        : effective,
       isResolveDenied: false,
     };
   }, [
@@ -531,6 +586,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     hasFullTask,
     isSyncingTransitions,
     canResolveTask,
+    currentUserIds,
+    currentUserId,
     formSchema,
     descriptor,
     t,
@@ -724,8 +781,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
 
-  const currentUserIds = useCurrentUserIds();
-
   if (!task || !descriptor) {
     return isLoading ? (
       <TaskDetailSkeleton />
@@ -753,10 +808,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   ) : null;
   const LegacyPanel = contribution?.component;
   const renderDetails = () => {
-    if (isOntologyReviewTask(task)) {
-      return (
-        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
-      );
+    if (isOntologyReviewTask(task) && ReviewPanel) {
+      return <ReviewPanel task={task} onReadyChange={handleReviewReady} />;
     }
 
     return (
@@ -776,6 +829,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             rows={descriptor.rows}
           />
         )}
+        <TaskReviewVotes currentUserId={currentUserId} task={task} />
       </>
     );
   };
@@ -807,6 +861,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           <TaskByline subtitleKey={descriptor.subtitleKey} task={task} />
           {isResolveDenied && (
             <TaskResolveDeniedHint
+              isAssignee={isAllowedDecider(task, currentUserIds)}
               isFiler={currentUserIds.has(task.createdBy?.id)}
             />
           )}

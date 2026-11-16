@@ -132,12 +132,6 @@ const SwaggerPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/SwaggerPage/SwaggerPage'))
 );
 
-const ProductTourPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/product-tour/ProductTourPage/ProductTourPage')
-  )
-);
-
 const UserPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/UserPage/UserPage.component'))
 );
@@ -203,15 +197,18 @@ const ExplorePageV1 = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
 );
 
-const OntologyExplorerPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
-  )
-);
-
 const SparqlPlaygroundPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
+  )
+);
+
+const OntologyExplorerPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/governance/ontology/OntologyExplorerPage/OntologyExplorerPage'
+      )
   )
 );
 
@@ -372,7 +369,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.FORBIDDEN}
       />
       <Route element={<MyDataPage />} path={ROUTES.MY_DATA} />
-      <Route element={<ProductTourPage />} path={ROUTES.TOUR} />
       <Route
         element={<ExplorePageV1 pageTitle={t('label.explore')} />}
         path={ROUTES.EXPLORE}

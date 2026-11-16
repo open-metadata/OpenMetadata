@@ -364,6 +364,7 @@ final class NativeOntologyRdfReader {
                 kind == OntologyPropertyKind.ANNOTATION
                     ? List.of()
                     : iris(subject, OWL2.propertyDisjointWith))
+            .withSuperProperties(superProperties(subject))
             .withUnit(text(subject, OntologyRdfVocabulary.UNIT))
             .withDeprecated(flag(subject, OWL2.deprecated))
             .withReplacedBy(annotationIri(subject, DCTerms.isReplacedBy));
@@ -392,6 +393,21 @@ final class NativeOntologyRdfReader {
   /** Several {@code rdfs:domain} statements are an intersection, which is also how the list reads back. */
   private List<URI> domain(final Resource subject) {
     return iris(subject, RDFS.domain);
+  }
+
+  /**
+   * Named superproperties are kept whether or not the source declares them; the importer drops a
+   * link to a property its target cannot resolve. A property is trivially its own subproperty, so
+   * that statement is skipped rather than stored.
+   */
+  private List<URI> superProperties(final Resource subject) {
+    final List<URI> supers = new ArrayList<>(iris(subject, RDFS.subPropertyOf));
+    if (supers.remove(URI.create(subject.getURI()))) {
+      ledger.skip(
+          NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE,
+          model.createStatement(subject, RDFS.subPropertyOf, subject));
+    }
+    return List.copyOf(supers);
   }
 
   /** Several chains are separate axioms; the lexicographically first usable one is kept. */

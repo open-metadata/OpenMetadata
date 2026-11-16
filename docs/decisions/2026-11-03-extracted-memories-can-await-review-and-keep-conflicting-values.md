@@ -1,7 +1,8 @@
 # Extracted memories can await review and keep every value a document gives for one fact
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a held value is approved in Context Center)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a held value is approved in Context Center) ·
+  v3 2026-11-09 (a decision covers every document; identical reuse takes every stage)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryExtractorTest`, `ContextMemoryReconcilerTest`, `MemoryConflictReviewTasksTest`
 - **Related:** ADR:2026-09-29-context-file-memory-reuse, ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
@@ -96,3 +97,22 @@ v2 (2026-11-06): a held value no longer waits for a PATCH through the API: an ad
 rejects it in the memory panel. An admin or the document's owner approves the document's other
 extracted memories from the document, which leaves a held value, and a second value of a question,
 pending for that admin (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
+
+v3 (2026-11-09): a person's decision on a memory covers every document that states its fact
+(ADR:2026-09-29-context-file-memory-reuse, v3). Reuse of an identical file no longer requires
+Approved memories: the copy links every memory of the original that is not soft-deleted, each in
+its stage, so a copy uploaded before review awaits the same review instead of being extracted
+again. Another file's equivalent fact links to its memory in any stage and takes its decision. A
+derived value whose number conflicts with a memory a person decided in another document (Rejected,
+Superseded, Invalidated, Deprecated, Archived, or a person's own: a correction, or a note citing
+that document) starts `Unprocessed` under every
+provider when re-extraction would pair the two as one question, the same question with the pair
+clearing the identity bar, or when it may be the figure a person's correction replaced, as above
+(an edit-modal correction matches its old figure by topic only): "billed on the 10th" waits beside
+a rejected "billed on the 5th", while a question for another year is another fact, beside a
+correction too. No field records a human approval, so an Approved memory
+is no decision here. One memory has one review: a document's listing shows a waiting memory to the
+owners of every document its source links name, read for the page and never returned, and approval from
+a document leaves for an admin both what another linked document leaves for a decision and a value
+a decision in another document holds
+(ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).

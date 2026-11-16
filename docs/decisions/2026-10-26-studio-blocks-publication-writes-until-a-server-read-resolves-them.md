@@ -1,9 +1,9 @@
 # Studio blocks publication writes until a server read resolves an uncertain outcome
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-15 (UI guards moved to Collate) · v3 2026-11-16 (the utils guard moved too)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** useOntologyPublication.test.tsx, useOntologyPublication.utils.test.ts
+- **Guard:** useOntologyPublication.test.tsx *(openmetadata-collate)*, useOntologyPublication.utils.test.ts *(openmetadata-collate)*
 - **Related:** ADR:2026-10-19-ontology-releases-allocate-semantic-versions, PR #36187
 
 ## Context
@@ -28,3 +28,7 @@ At most 8 receipts and 64 KiB are kept per origin tab. Beyond either, writes for
 ## Consequences
 
 An outage never causes a duplicate capture, task or activation, at the cost of a disabled panel until the next successful read. A receipt for a capture that changed nothing on the server stays until a later edit or activation moves the working or activation revision, or a capture with the same notes and version bump lands from another tab and is adopted as this attempt's capture. The caps keep the storage bounded, and a user with 8 unresolved ontologies in one tab must resolve one before touching a ninth. Changing a status in the definitive list or a cap needs this record amended.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

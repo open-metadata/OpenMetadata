@@ -65,6 +65,11 @@ final class MemoryTextSimilarity {
     return !a.isEmpty() && !b.isEmpty() && !a.containsAll(b) && !b.containsAll(a);
   }
 
+  /** Whether {@code text} states a number another value could replace. */
+  static boolean hasNumbers(String text) {
+    return !numbers(text).isEmpty();
+  }
+
   private static Set<String> numbers(String text) {
     return text == null
         ? Set.of()

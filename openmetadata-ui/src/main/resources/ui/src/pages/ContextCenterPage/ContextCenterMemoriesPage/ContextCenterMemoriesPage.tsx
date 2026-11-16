@@ -898,9 +898,7 @@ const ContextCenterMemoriesPage: FC = () => {
       <PageLayout
         className={pageLayoutClassNames.root}
         data-testid="context-center-page-layout">
-        <PageLayout.Header
-          className={pageLayoutClassNames.header}
-          data-tour-step="memories">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
           <ContextCenterHeader
             actionsSlot={headerActions}
             breadcrumbs={[

@@ -105,12 +105,14 @@ public final class TestLoginSamlHandler {
       HttpServletRequestWrapper wrappedRequest = new HttpServletRequestWrapper(request);
       Auth auth = new Auth(settings, wrappedRequest, new HttpServletResponseWrapper(response));
       auth.processResponse();
-      if (isAccepted(auth)) {
+      if (SamlResponseValidator.isAccepted(auth)) {
         SamlResponseValidator.validate(settings, wrappedRequest);
         validated = Optional.of(auth);
         recorder.pass(TestLoginStage.TOKEN_VALIDATED);
       } else {
-        recorder.fail(TestLoginStage.TOKEN_VALIDATED, rejectionOf(auth));
+        recorder.fail(
+            TestLoginStage.TOKEN_VALIDATED,
+            "The SAML response was not accepted: " + SamlResponseValidator.rejectionReason(auth));
       }
     } catch (Exception e) {
       // processResponse declares Exception; settings, signature and XML failures all arrive here.
@@ -120,17 +122,6 @@ public final class TestLoginSamlHandler {
           "The SAML response was not accepted: " + TestLoginService.rootMessage(e));
     }
     return validated;
-  }
-
-  /** The same acceptance rule the live ACS handler applies. */
-  private static boolean isAccepted(Auth auth) {
-    return auth.isAuthenticated() && auth.getErrors().isEmpty();
-  }
-
-  private static String rejectionOf(Auth auth) {
-    String reason = auth.getLastErrorReason();
-    return "The SAML response was not accepted: "
-        + (nullOrEmpty(reason) ? String.join(", ", auth.getErrors()) : reason);
   }
 
   private static SamlIdentityResolver.SamlAssertionAccessor assertionOf(Auth auth) {

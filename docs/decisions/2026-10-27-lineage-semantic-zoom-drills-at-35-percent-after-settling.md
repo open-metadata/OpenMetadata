@@ -2,11 +2,13 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-27 (initial); v2 2026-11-04 (a settled zoom is judged against the
-  zoom it last rested at)
+  zoom it last rested at); v3 2026-11-12 (a zoom-out at the minimum zoom goes up a level)
 - **Deciders:** Chirag Madlani
 - **Guard:** `LineageMap.utils.test.ts` (threshold either side of 35%, nearest-centre box,
   drillable-with-children predicate); `PlatformLineage.spec.ts` (a fast zoom-in past the maximum
-  still drills); the settle delay and targeting are `reviewer`
+  still drills; the zoom-out button and a wheel step over the canvas at the minimum zoom go up to
+  the parent level, on a scene too wide to leave by the one-third rule); the settle delay and
+  targeting are `reviewer`
 - **Related:** #36363, #36370
 
 ## Context
@@ -36,3 +38,13 @@ Drilling takes about half the wheel steps it did. A user zooming in only to read
 level sooner; the settle delay and the pointer-aimed target keep that deliberate. Revisit the
 threshold if card widths or the default landing zoom change, and drop the children check once the
 API stops marking empty containers expandable.
+
+## Amendment (v3, 2026-11-12)
+At the minimum zoom a zoom-out no longer moves the viewport, so no move arrives to judge against
+the one-third rule and a large scene could not be left by zooming out. There, the zoom-out
+gesture itself (a wheel step down over the canvas, or the zoom-out button) goes up one level,
+mirroring the drill at the maximum zoom. It honours the same semantic-zoom cooldown and
+suppression after a fit, and counts only wheel events over the React Flow renderer (where d3-zoom
+listens) and not in a `.nowheel` element, so scrolling a dialog, menu or panel over the map does
+not navigate it. Above
+the minimum zoom, zooming out still follows the one-third rule.
