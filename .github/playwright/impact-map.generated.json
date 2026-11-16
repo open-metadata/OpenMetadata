@@ -7912,7 +7912,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Learning/ResourcePlayer/ResourcePlayerModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
     },
@@ -8572,6 +8571,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/Pagination.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ProductTour/ProductTourModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/WelcomeScreen.spec.ts"
       ]
     },
     {
