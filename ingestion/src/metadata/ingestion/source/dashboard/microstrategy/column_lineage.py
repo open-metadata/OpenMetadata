@@ -56,10 +56,41 @@ def table_name_of(table: exp.Table) -> str:
     return ".".join(part for part in (table.catalog, table.db, table.name) if part).lower()
 
 
-# A pass may open with comments before its first keyword.
-SQL_START = r"(?:\s*(?:--[^\n]*(?:\n|$)|/\*[\s\S]*?\*/))*\s*(?:select|with|create|insert|drop|update|delete|merge)\b"
+SQL_KEYWORD = re.compile(r"(?:select|with|create|insert|drop|update|delete|merge)\b", re.IGNORECASE)
 # MicroStrategy separates the passes of a cube SQL with blank lines, not semicolons.
-PASS_BOUNDARY = re.compile(rf"\n\s*\n(?={SQL_START})", re.IGNORECASE)
+BLANK_LINES = re.compile(r"\n[ \t\r\f\v]*\n")
+
+
+def starts_with_sql(text: str) -> bool:
+    """
+    Whether the text opens with a SQL keyword once leading comments are skipped. A loop, not a
+    regex: a repeated comment group in a regex backtracks exponentially on an unclosed ``/*``.
+    """
+    position, length = 0, len(text)
+    while True:
+        while position < length and text[position].isspace():
+            position += 1
+        if text.startswith("--", position):
+            newline = text.find("\n", position)
+            position = length if newline < 0 else newline + 1
+        elif text.startswith("/*", position):
+            close = text.find("*/", position + 2)
+            if close < 0:
+                return False
+            position = close + 2
+        else:
+            return bool(SQL_KEYWORD.match(text, position))
+
+
+def sql_passes(sql: str) -> list[str]:
+    """The passes of a cube SQL. A blank line splits only before a statement, not inside one."""
+    passes: list[list[str]] = []
+    for chunk in BLANK_LINES.split(sql):
+        if passes and not starts_with_sql(chunk):
+            passes[-1].append(chunk)
+        else:
+            passes.append([chunk])
+    return ["\n\n".join(chunks) for chunks in passes]
 
 
 def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
@@ -69,9 +100,9 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
     column lineage and leaves table lineage to the lineage parser.
     """
     columns: set[SourceColumn] = set()
-    for sql_pass in PASS_BOUNDARY.split(sql):
+    for sql_pass in sql_passes(sql):
         # A cube built from a file answers with a note, not SQL.
-        if not re.match(SQL_START, sql_pass, re.IGNORECASE):
+        if not starts_with_sql(sql_pass):
             continue
         try:
             statements = timeout(seconds=LINEAGE_PARSING_TIMEOUT)(sqlglot.parse)(

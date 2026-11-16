@@ -17,6 +17,7 @@ The payloads are trimmed from responses of the public MicroStrategy demo server.
 from __future__ import annotations
 
 import json
+import time
 from collections import OrderedDict
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
@@ -1049,6 +1050,12 @@ class TestColumnLineage:
         sql = "select a.x x from `p`.`d`.`t` a\n\n-- custom SQL\n/* by the analyst */\nselect b.y y from `p`.`d`.`u` b"
 
         assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x"), ("p.d.u", "y")}
+
+    def test_an_unclosed_comment_is_not_sql_and_is_read_in_linear_time(self):
+        started = time.monotonic()
+
+        assert read_columns("/" + "//*" * 20000, Dialect.BIGQUERY) == frozenset()
+        assert time.monotonic() - started < 1
 
     def test_a_schema_attribute_form_maps_to_the_column_the_cube_reads(self, server, client):
         _model_routes(server, {SCHEMA_CUBE: 776})
