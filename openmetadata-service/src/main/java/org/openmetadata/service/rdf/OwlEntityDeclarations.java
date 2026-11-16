@@ -79,7 +79,7 @@ public final class OwlEntityDeclarations {
     if (!isBuiltIn(iri)) {
       final EntityKind kind = isSkos(iri) ? SKOS_KINDS.getOrDefault(iri, requested) : requested;
       final Resource entity = model.createResource(iri).addProperty(RDF.type, kind.declarationType);
-      if (kind == EntityKind.DATATYPE && OwlDatatypeSupport.DATE.toString().equals(iri)) {
+      if (kind == EntityKind.DATATYPE && OwlDatatypeSupport.isDate(iri)) {
         entity.addProperty(OWL2.equivalentClass, XSD.dateTime);
       }
     }
@@ -113,7 +113,7 @@ public final class OwlEntityDeclarations {
     return iri != null
         && (iri.startsWith(XSD.NS)
             || NON_XSD_DATATYPES.contains(iri)
-            || OwlDatatypeSupport.DATE.toString().equals(iri));
+            || OwlDatatypeSupport.isDate(iri));
   }
 
   /** Fixed vocabulary kinds can be resolved without redefining or fetching remote terms. */
