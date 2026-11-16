@@ -30,7 +30,9 @@ import Fqn from '../../Fqn';
 import { identifyGraphEdges } from './knowledge-graph.utils';
 
 export const isConceptNode = (node: GraphNode) =>
-  ['glossaryterm', 'concept', 'term'].includes(node.type.toLowerCase());
+  ['glossaryterm', 'ontologyconcept', 'concept', 'term'].includes(
+    node.type.toLowerCase()
+  );
 
 export const isCoverageNode = (node: GraphNode) =>
   [
@@ -71,6 +73,7 @@ export const getGraphNodeLabel = (node: GraphNode) => {
 };
 
 const mappingPredicates = new Set([
+  'boundasset',
   'hasglossaryterm',
   'hasglossary',
   'hastag',
