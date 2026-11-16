@@ -240,6 +240,17 @@ export const styles = sortCx({
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
+    // Neutral text on a warning outline: the action inside a warning notice, which already
+    // carries the colour, so the button only echoes it in its edge.
+    'secondary-warning-outline': {
+      root: [
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-warning-300`,
+        'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:*:data-icon:text-utility-gray-500',
+      ].join(' '),
+    },
     'secondary-brand': {
       root: [
         'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
@@ -278,6 +289,8 @@ export interface CommonProps {
    * beside it (antd's `type="link"`).
    */
   boxed?: boolean;
+  /** Fully rounded ends, for a button inside a pill-shaped notice or toolbar */
+  pill?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
   /**
@@ -345,6 +358,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       noTextPadding,
       boxed,
       ellipsis,
+      pill,
       wrap,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
@@ -415,6 +429,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
+          pill && 'tw:rounded-full tw:before:rounded-full',
           wrap &&
             'tw:min-w-0 tw:justify-start tw:text-start tw:whitespace-normal',
           (loading || (href && (disabled || loading))) &&
@@ -448,7 +463,10 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           <span
             data-text
             className={cx(
-              'tw:transition-inherit-all',
+              // Only the underline is the span's own colour. Transitioning the
+              // inherited `color` as well restarts every frame of the root's
+              // colour transition, so the label lags the background.
+              'tw:transition-[text-decoration-color] tw:duration-100 tw:ease-linear',
               !noTextPadding && 'tw:px-0.5',
               ellipsis && 'tw:truncate tw:min-w-0',
               wrap && 'tw:min-w-0 tw:wrap-break-word'

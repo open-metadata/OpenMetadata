@@ -33,7 +33,6 @@ LIFECYCLE_PROJECTS: frozenset[str] = frozenset(
         "data-insight-application",
         "search-rbac-setup",
         "search-rbac-teardown",
-        "ontology-rdf-setup",
     }
 )
 

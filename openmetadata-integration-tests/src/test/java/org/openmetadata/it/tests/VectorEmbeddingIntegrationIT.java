@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -254,16 +255,12 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateEntityEmbedding(entity2, TEST_INDEX);
     Thread.sleep(1000);
 
-    Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
+    Map<String, Supplier<String>> currentById =
         Map.of(
             entity1Id.toString(),
-            new OpenSearchVectorService.EntityFingerprintInput(
-                entity1.getUpdatedAt(),
-                () -> VectorDocBuilder.computeFingerprintForEntity(entity1)),
+            () -> VectorDocBuilder.computeFingerprintForEntity(entity1),
             entity2Id.toString(),
-            new OpenSearchVectorService.EntityFingerprintInput(
-                entity2.getUpdatedAt(),
-                () -> VectorDocBuilder.computeFingerprintForEntity(entity2)));
+            () -> VectorDocBuilder.computeFingerprintForEntity(entity2));
 
     Map<String, JsonNode> cachedEmbeddings =
         vectorService.getExistingEmbeddingsBatch(TEST_INDEX, currentById);

@@ -344,8 +344,9 @@ class TestErrorPack:
             (RuntimeError("No valid connection settings."), "SQL warehouse not configured"),
             (
                 RuntimeError("[FAILED_JDBC.CONNECTION] ... Failed to connect to the database. SQLSTATE: HV000"),
-                "SQL warehouse not reachable",
+                "Foreign catalog connection failed",
             ),
+            (RuntimeError("Failed to connect to the database"), "SQL warehouse not reachable"),
             (RuntimeError("Table system.access.table_lineage does not exist"), "Object not found"),
         ],
     )

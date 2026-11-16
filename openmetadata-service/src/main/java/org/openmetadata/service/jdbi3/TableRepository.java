@@ -1395,6 +1395,22 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  // The labels a data model applies, keyed by the table or matching stored column they land on.
+  private static Map<String, List<TagLabel>> modelTagsByTarget(Table table, DataModel dataModel) {
+    Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
+    tagsByTarget.put(table.getFullyQualifiedName(), listOrEmpty(dataModel.getTags()));
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+      listOrEmpty(table.getColumns()).stream()
+          .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
+          .findAny()
+          .ifPresent(
+              column ->
+                  tagsByTarget.put(
+                      column.getFullyQualifiedName(), listOrEmpty(modelColumn.getTags())));
+    }
+    return tagsByTarget;
+  }
+
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
@@ -1404,6 +1420,8 @@ public class TableRepository extends EntityRepository<Table> {
             getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
