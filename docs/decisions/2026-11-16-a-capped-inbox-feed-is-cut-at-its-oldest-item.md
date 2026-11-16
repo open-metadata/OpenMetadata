@@ -5,8 +5,10 @@
 - **Deciders:** Harsh Vador
 - **Guard:** `useInboxActivity.test.tsx` ("cuts the conversations at the oldest event of a capped
   activity list", "cuts the events at the oldest conversation of a capped conversation list",
-  "leaves Mentions whole when its conversations are capped"),
-  `ActivityTab.test.tsx` ("marks the cut day as a floor and says the feed is capped"),
+  "leaves Mentions whole when its conversations are capped", "places no cut when only the Mentions
+  events are capped"),
+  `ActivityTab.test.tsx` ("marks the cut day as a floor and says the feed is capped", "marks the day
+  the feed was cut, not the day of its last card"),
   `inbox.utils.test.ts` ("offers Today in place of Yesterday, up to 30 days", "bounds a window by
   the viewer's own days, not UTC's")
 - **Related:** #37885, #37886, ADR:2026-10-28-inbox-activity-opens-on-the-filter-a-link-names
@@ -38,5 +40,7 @@ time; then the cut can give way to paging, and a "Yesterday" preset can return.
 v2 2026-11-16: the Mentions feed is left whole. A mention event carries the event's own time, not
 the mention's, so an old event mentioned today would fall before any cut taken from the
 conversations. When the Mentions conversations come back a full page, the feed can show mention
-events older than its oldest conversation; it is still marked capped, so the cut day's count reads
-"N+" and the end-of-feed note shows. Every other feed is cut as above.
+events older than its oldest conversation. The day marked "N+" is the one where the feed was cut,
+not the day of its last card: for Mentions, where its conversations stop. When only its events are
+capped no day is marked, since their times don't say where the mentions stop; the end-of-feed note
+still shows. Every other feed is cut as above.

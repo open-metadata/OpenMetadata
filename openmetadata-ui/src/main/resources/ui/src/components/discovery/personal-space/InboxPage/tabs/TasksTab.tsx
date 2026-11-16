@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
@@ -357,6 +362,10 @@ interface TasksTabBodyProps {
   groups?: TaskTypeGroup[];
   // Pages are still unread, so a group's count is only a floor.
   isPartial?: boolean;
+  // The last page failed. Neither the read-ahead nor a list too short to
+  // scroll would ask again, so the list offers its own retry.
+  isLoadMoreError?: boolean;
+  onRetryLoadMore: () => void;
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
@@ -444,6 +453,34 @@ const getListEmptyState = (
 ): ReactNode =>
   onOpenTask || selectedTaskId || isNoMatch ? emptyState : undefined;
 
+// A failed later page, with a way to ask for it again.
+const LoadMoreRetry = ({
+  isLoadMoreError,
+  isLoadingMore,
+  onRetry,
+}: {
+  isLoadMoreError?: boolean;
+  isLoadingMore: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return isLoadMoreError && !isLoadingMore ? (
+    <Box
+      align="center"
+      className="tw:justify-center tw:py-4"
+      data-testid="inbox-tasks-load-more-error"
+      gap={3}>
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t('server.entity-fetch-error', { entity: t('label.task-plural') })}
+      </Typography>
+      <Button color="secondary" size="xs" onClick={onRetry}>
+        {t('label.retry')}
+      </Button>
+    </Box>
+  ) : null;
+};
+
 // The two panes: the list column (its controls over the grouped rows) and the
 // selected task's detail, each scrolling on its own.
 const TasksTabBody: React.FC<TasksTabBodyProps> = ({
@@ -456,6 +493,8 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   tasks,
   groups,
   isPartial = false,
+  isLoadMoreError,
+  onRetryLoadMore,
   selectedTaskId,
   scrollRef,
   sentinelRef,
@@ -562,6 +601,11 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
             <Loader />
           </div>
         )}
+        <LoadMoreRetry
+          isLoadMoreError={isLoadMoreError}
+          isLoadingMore={isLoadingMore}
+          onRetry={onRetryLoadMore}
+        />
       </div>
     </Box>
   );
@@ -995,6 +1039,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
         isLoadFailed={isWholeTabLoadFailed(error, tasks, isNarrowed)}
+        isLoadMoreError={isLoadMoreError}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
         isNoMatch={showEmptyState && isNarrowed}
@@ -1025,6 +1070,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
           />
         }
         onOpenTask={onOpenTask}
+        onRetryLoadMore={loadMore}
       />
     </Box>
   );
