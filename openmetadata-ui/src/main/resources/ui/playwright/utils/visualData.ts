@@ -1511,11 +1511,13 @@ export const installVisualData = async (
                   'metrics.value': state === 'empty' ? 0 : 3600000,
                 }));
               } else if (
-                aggregationQuery.includes('aggType=cardinality') &&
+                /aggType=(cardinality|value_count)/.test(aggregationQuery) &&
                 !aggregationQuery.includes('date_histogram')
               ) {
                 // Scalar coverage and histogram cardinality have different row
                 // shapes. Returning a coverage row to a chart renders NaN.
+                // The table total counts with value_count; the coverage widget
+                // reads its first row, so an empty report throws.
                 data = [
                   {
                     originEntityFQN: state === 'empty' ? '0' : '1',

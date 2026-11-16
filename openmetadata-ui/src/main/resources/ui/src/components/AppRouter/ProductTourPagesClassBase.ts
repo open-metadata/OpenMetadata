@@ -20,7 +20,6 @@ const CLASSIC_TOUR_PAGES: Array<() => Promise<unknown>> = [
   () => import('../../pages/ServicesPage/ServicesPage'),
   () => import('./GlossaryRouter/GlossaryRouter'),
   () => import('../../pages/Glossary/GlossaryPage/GlossaryPage.component'),
-  () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage'),
   () => import('../../pages/DataQuality/DataQualityPage'),
   () => import('../../pages/DataMarketplacePage/DataMarketplacePage.component'),
   () => import('./ContextCenterRouter/ContextCenterRouter'),

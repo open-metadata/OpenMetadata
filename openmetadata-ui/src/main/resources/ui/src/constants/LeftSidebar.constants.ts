@@ -58,8 +58,8 @@ const DataProductIcon = createIconWithStroke(
 );
 
 export const SIDEBAR_NESTED_KEYS = {
-  [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
+  [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.CONTEXT_CENTER_OVERVIEW]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_DOCUMENTS]: ROUTES.CONTEXT_CENTER,
@@ -189,7 +189,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       },
       {
         key: ROUTES.ONTOLOGY_EXPLORER,
-        title: 'label.ontology-studio',
+        title: 'label.ontology-explorer',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
         icon: OntologyStudioIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,

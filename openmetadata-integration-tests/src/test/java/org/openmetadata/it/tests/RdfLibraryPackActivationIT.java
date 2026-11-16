@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +27,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -44,6 +45,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
+import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.rdf.OntologyActiveGraph;
 import org.openmetadata.service.rdf.OntologyReleaseProjection;
@@ -68,9 +70,14 @@ public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
     RdfTestUtils.restoreSuiteRdf();
   }
 
+  /**
+   * FHIR is too large for the in-memory query worker, so the triplestore answers it from the
+   * ontology's own graph, which holds exactly the asserted projection.
+   */
   @ParameterizedTest(name = "{0}")
-  @ValueSource(strings = {"fibo", "fhir"})
-  void aLargePackCapturesAsAReleaseAndActivates(final String packId, final TestNamespace ns) {
+  @CsvSource({"fibo,false", "fhir,true"})
+  void aLargePackCapturesAsAReleaseAndActivates(
+      final String packId, final boolean servedByStore, final TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final Set<String> moduleIds =
         OntologyPackCatalog.bundled().require(packId).getModules().stream()
@@ -124,6 +131,13 @@ public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
     final long served = servedTriples(ontology);
     report.put("sparqlTriples", served);
     assertTrue(served > 0, packId + " serves triples after activation");
+    if (servedByStore) {
+      assertEquals(
+          (long) report.get("projectionTriples"),
+          served,
+          packId + " is answered from its own graph and no other");
+      assertEquals(Set.of(OntologyActiveGraph.graph(ontology.getId())), namedGraphs(ontology));
+    }
     publish(report);
   }
 
@@ -153,15 +167,41 @@ public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
   }
 
   private static long servedTriples(final Ontology ontology) {
-    final JsonNode result =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(
-                HttpMethod.POST,
-                "/v1/ontologies/" + ontology.getId() + "/sparql",
-                new SparqlQuery().withQuery("SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }"),
-                JsonNode.class);
+    final JsonNode result = queryOnceServed(ontology, "SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }");
     return result.path("results").path("bindings").get(0).path("n").path("value").asLong();
+  }
+
+  private static Set<String> namedGraphs(final Ontology ontology) {
+    final JsonNode result =
+        queryOnceServed(ontology, "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }");
+    final Set<String> graphs = new HashSet<>();
+    result
+        .path("results")
+        .path("bindings")
+        .forEach(binding -> graphs.add(binding.path("g").path("value").asText()));
+    return graphs;
+  }
+
+  /** Activation loads the triplestore's graph asynchronously; until then a served query is refused. */
+  private static JsonNode queryOnceServed(final Ontology ontology, final String sparql) {
+    return Awaitility.await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptionsMatching(
+            failure ->
+                String.valueOf(failure.getMessage())
+                    .contains(OntologyReleaseQuery.GRAPH_LOADING_MESSAGE))
+        .until(() -> query(ontology, sparql), result -> result != null);
+  }
+
+  private static JsonNode query(final Ontology ontology, final String sparql) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/ontologies/" + ontology.getId() + "/sparql",
+            new SparqlQuery().withQuery(sparql),
+            JsonNode.class);
   }
 
   private static void projection(final UUID releaseId, final Map<String, Object> report) {
