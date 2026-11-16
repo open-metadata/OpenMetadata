@@ -2305,6 +2305,9 @@ public class SearchRepository {
             false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
+    if (vectorEmbeddingHandler != null) {
+      vectorEmbeddingHandler.refreshEmbedding(entity);
+    }
   }
 
   /**

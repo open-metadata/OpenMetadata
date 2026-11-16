@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -51,6 +52,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
@@ -71,6 +74,7 @@ import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -116,8 +120,11 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -3357,6 +3364,68 @@ class SearchRepositoryBehaviorTest {
     }
 
     verify(spyRepository).updateEntityIndex(entity);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void aMemoryReferenceRefreshRemovesOldVectorSourceLabels(boolean deleted) throws Exception {
+    SearchRepository search = spy(repository);
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withFullyQualifiedName("memory")
+            .withQuestion("What is the refund window?")
+            .withAnswer("Thirty days")
+            .withDeleted(deleted)
+            .withSourceFile(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.CONTEXT_FILE)
+                    .withName("private-acquisition-plan"));
+    Map<String, Object> stored = new HashMap<>();
+    stored.put("textToEmbed", "source file: private-acquisition-plan");
+    stored.put("textToLLMContext", "source file: private-acquisition-plan");
+    VectorIndexService vector = mock(VectorIndexService.class);
+    EmbeddingClient embedding = mock(EmbeddingClient.class);
+    when(embedding.embed(anyString())).thenReturn(new float[] {1});
+    doAnswer(
+            call -> {
+              stored.clear();
+              return null;
+            })
+        .when(vector)
+        .clearEntityEmbedding(anyString(), anyString());
+    doAnswer(
+            call -> {
+              stored.putAll(VectorDocBuilder.buildEmbeddingFields(call.getArgument(0), embedding));
+              return null;
+            })
+        .when(vector)
+        .updateEntityEmbeddings(any(), anyString());
+    setPrivateField(search, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
+    doNothing().when(search).updateEntityIndex(memory);
+    doReturn(TABLE_MAPPING).when(search).getIndexMapping(Entity.CONTEXT_MEMORY);
+    @SuppressWarnings("unchecked")
+    EntityRepository<ContextMemory> memories = mock(EntityRepository.class);
+    Entity.registerEntity(ContextMemory.class, Entity.CONTEXT_MEMORY, memories);
+    doReturn(memory)
+        .when(memories)
+        .get(isNull(), eq(memory.getId()), any(), eq(Include.ALL), eq(false));
+    ContextMemoryBodyTextContributor.INSTANCE.register();
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(search);
+      entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(memories);
+      entities.when(() -> Entity.isVectorEmbeddable(memory)).thenReturn(true);
+      search.updateEntity(memory.getEntityReference(), Include.ALL);
+    }
+
+    assertFalse(stored.toString().contains("private-acquisition-plan"), stored.toString());
+    if (!deleted) {
+      assertTrue(stored.get("textToLLMContext").toString().contains("Thirty days"));
+      assertTrue(stored.get("textToEmbed").toString().contains("Thirty days"));
+    }
   }
 
   @Test

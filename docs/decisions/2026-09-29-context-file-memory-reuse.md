@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-09-29 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers) ·
   v3 2026-11-09 (a ranked lookup; candidates in every stage keep their decision; the AI provider
   supplies the judge; a restricted copy is never named on a memory) ·
-  v4 2026-11-10 (§4: archiving, restoring and re-sharing a document move its memories)
+  v4 2026-11-10 (§4: archiving, restoring and re-sharing a document move its memories) ·
+  v5 2026-11-16 (vector source labels, copy locking and independent archive moves)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
   `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `AiProviderHolderTest`,
@@ -345,3 +346,26 @@ Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclo
   and bounded attempts cannot succeed within one snapshot. A re-extraction's release that a decision
   overtook leaves the link, as the reconciler's other conditional writes do, and the next extraction
   reconciles it.
+
+v5 (2026-11-16): source names and lifecycle moves follow the same disclosure and review rules
+in vector search and under concurrent writes. This amends v4.
+
+- Memory vector text contains the memory's content, never its source file's name. File labels stay
+  in the separately redacted references. A reference refresh clears existing entity embedding fields
+  and chunk documents before rebuilding a live, eligible memory's vectors. An archived memory keeps
+  its deleted state and loses its old vector text. An unavailable embedding provider leaves the old
+  text cleared. Pre-release instances reindex `contextMemory` after upgrading to replace earlier text.
+- A source copy locks and rereads the original memory's row, then creates the copy and removes the
+  source link in that transaction. The locked row supplies its content and stage. A retired or
+  deleted memory produces no copy, so a decision that landed after an earlier read cannot be
+  republished as current knowledge.
+- After a document's archive commits, each memory's move runs in its own transaction, with its row
+  locked. Its archive and archive mark commit together. A failed move is reported after every other
+  memory has been attempted. Within an existing caller transaction, failure instead propagates to
+  that transaction. These rules replace v4's non-transactional archive moves and separate mark write.
+- Source archival archives the individual memory, without cascading through `parentMemory` or
+  `rootMemory`: a child can still be stated by another live document. Ordinary user deletion keeps
+  its hierarchy checks and explicit recursive behavior.
+
+Guarded by `ContextMemoryBodyTextContributorTest`, `SearchRepositoryBehaviorTest`,
+`MemorySourceLifecycleTest` and `ContextMemoryExtractionIT`.

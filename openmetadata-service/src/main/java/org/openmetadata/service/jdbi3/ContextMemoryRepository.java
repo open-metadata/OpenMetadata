@@ -1278,6 +1278,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     new MemorySourceLifecycle(this).releaseExtractedMemory(memoryId, source);
   }
 
+  /** A memory hierarchy does not make another document's live claims children of its archive. */
+  @Override
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    if (hardDelete || !MemoryRelinking.isRelinking(id)) {
+      super.deleteChildren(id, recursive, hardDelete, updatedBy);
+    }
+  }
+
   /**
    * Reindexes the memory from the database after the write commits. A source-link change can leave
    * the stored memory unchanged, and an unchanged update never rewrites the search document. Only

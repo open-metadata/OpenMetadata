@@ -10,9 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
+import java.lang.reflect.Field;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -94,6 +98,7 @@ import org.openmetadata.service.context.center.ContextMemoryReconciler;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor;
 import org.openmetadata.service.context.center.DuplicateMatch;
 import org.openmetadata.service.context.center.KnowledgePill;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.center.PageContextProcessingEngine;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
@@ -109,6 +114,15 @@ import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.llm.NoopCompletionClient;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /** Persistent sources and queue rows, scripting only the document-provider boundary. */
@@ -725,6 +739,114 @@ class ContextMemoryExtractionIT {
     awaitChips(ns, shared, original, Set.of(copy.getId()));
     assertEquals(Set.of(shared.getId()), ids(extracted(copy.getEntityReference())));
     assertEquals(1, readFile(copy).getMemoryCount());
+  }
+
+  @Test
+  void archivingARootMemoryKeepsAnotherDocumentsChildLive(TestNamespace ns) throws Exception {
+    ContextFile original = file(ns, "root-source", "Root fact " + ns.shortPrefix());
+    runFile(original);
+    ContextMemory root = extracted(original.getEntityReference()).getFirst();
+    ContextFile other = file(ns, "child-source", "Child fact " + ns.shortPrefix());
+    ContextMemory child =
+        pill("Child fact", other.getEntityReference(), ContextMemorySourceType.MANUAL)
+            .withRootMemory(root.getEntityReference())
+            .withParentMemory(root.getEntityReference());
+    memoryRepository().create(null, child);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, child.getId());
+
+    try {
+      RestClient.admin().delete(FILES, original.getId());
+
+      assertArchived(ns, root);
+      assertEquals(child.getId(), readMemory(child).getId());
+      assertEquals(Set.of(other.getId()), sourceIds(child));
+      RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+      assertEquals(root.getId(), readMemory(root).getId());
+    } finally {
+      memoryRepository().delete(Entity.ADMIN_USER_NAME, child.getId(), false, true);
+    }
+  }
+
+  @Test
+  void aSourceCopyDoesNotRepublishADecisionThatRetiredItsMemory(TestNamespace ns) throws Exception {
+    ContextFile original = file(ns, "retired-original", "Retired fact " + ns.shortPrefix());
+    runFile(original);
+    ContextMemory stale = extracted(original.getEntityReference()).getFirst();
+    ContextFile other = file(ns, "retired-copy", "Other fact " + ns.shortPrefix(), privately());
+    memoryRepository().linkExtractedMemory(stale.getId(), other.getEntityReference());
+    ContextMemory current = readMemory(stale);
+    ContextMemory retired =
+        JsonUtils.deepCopy(current, ContextMemory.class)
+            .withEntityStatus(ContextMemoryStatus.INVALIDATED)
+            .withStatusReason("Retired by review");
+    RestClient.admin()
+        .patch(
+            MEMORIES, current.getId(), JsonUtils.pojoToJson(current), retired, ContextMemory.class);
+
+    assertTrue(
+        new MemorySourceLifecycle(memoryRepository())
+            .copyForSource(stale.getId(), other.getEntityReference())
+            .isEmpty());
+
+    assertEquals(ContextMemoryStatus.INVALIDATED, readMemory(stale).getEntityStatus());
+    assertEquals(Set.of(stale.getId()), Set.copyOf(ids(extracted(other.getEntityReference()))));
+  }
+
+  @Test
+  void restrictingAFileClearsOldVectorTextEvenWhenEmbeddingIsUnavailable(TestNamespace ns)
+      throws Exception {
+    ContextFile document =
+        fileOwnedBy(ns, "vector-source", "Refund policy " + ns.shortPrefix(), null);
+    ContextMemory memory =
+        pill("Thirty days.", document.getEntityReference(), ContextMemorySourceType.MANUAL)
+            .withOwners(List.of(SharedEntities.get().USER1_REF));
+    memoryRepository().create(null, memory);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    SearchRepository search = Entity.getSearchRepository();
+    String index =
+        search.getIndexMapping(Entity.CONTEXT_MEMORY).getIndexName(search.getClusterAlias());
+    Awaitility.await("the memory is indexed")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> searchMemorySource(searchMemoryAsOwner(memory), memory));
+    search
+        .getSearchClient()
+        .updateEntity(
+            index,
+            memory.getId().toString(),
+            Map.of(
+                "textToEmbed",
+                "source file: " + document.getName(),
+                "textToLLMContext",
+                "source file: " + document.getName()),
+            "ctx._source.putAll(params)");
+    EmbeddingClient embedding = mock(EmbeddingClient.class);
+    when(embedding.isAvailable()).thenReturn(true);
+    when(embedding.embed(anyString()))
+        .thenThrow(new EmbeddingUnavailableException("Provider unavailable"));
+    VectorIndexService vector =
+        search.getSearchClient() instanceof ElasticSearchClient elastic
+            ? new ElasticSearchVectorService(elastic.getNewClient(), embedding)
+            : new OpenSearchVectorService(
+                ((OpenSearchClient) search.getSearchClient()).getNewClient(), embedding);
+    Field handler = SearchRepository.class.getDeclaredField("vectorEmbeddingHandler");
+    handler.setAccessible(true);
+    Object previous = handler.get(search);
+    try {
+      handler.set(search, new VectorEmbeddingHandler(vector));
+      share(document, privately());
+      Awaitility.await("old vector text no longer discloses the restricted source")
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () -> {
+                String result = searchMemoryAsOwner(memory);
+                JsonNode source = searchMemorySource(result, memory);
+                assertFalse(result.contains(document.getName()), result);
+                assertFalse(source.has("textToEmbed"), result);
+                assertFalse(source.has("textToLLMContext"), result);
+              });
+    } finally {
+      handler.set(search, previous);
+    }
   }
 
   @Test

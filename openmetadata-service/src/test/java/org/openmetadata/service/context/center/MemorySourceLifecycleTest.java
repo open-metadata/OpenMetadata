@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jdbi.v3.sqlobject.transaction.TransactionalCallback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,6 +94,12 @@ class MemorySourceLifecycleTest {
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
     when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
     when(daoCollection.isInTransaction()).thenReturn(true);
+    when(daoCollection.inTransaction(any()))
+        .thenAnswer(
+            call -> {
+              TransactionalCallback<?, CollectionDAO, ?> work = call.getArgument(0);
+              return work.inTransaction(daoCollection);
+            });
     Entity.setCollectionDAO(daoCollection);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(daoCollection));
     repository = new ContextMemoryRepository();
@@ -1242,6 +1249,55 @@ class MemorySourceLifecycleTest {
    * document, and none of the original's owners, sharing, disputes or usage.
    */
   @Test
+  void copyingASourceRereadsTheDecisionThatRetiredItsMemory() {
+    EntityReference source = contextFile("Private copy");
+    ContextMemory original = anchoredMemory(contextFile("Original"));
+    ContextMemory retired =
+        supersededByAnArchivedMemory(JsonUtils.deepCopy(original, ContextMemory.class));
+    committed(retired);
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories = createsKept(spy(repository), created, new Edges());
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> ignored = quietDispatcher()) {
+      assertTrue(
+          new MemorySourceLifecycle(memories).copyForSource(original.getId(), source).isEmpty());
+    }
+
+    assertTrue(created.isEmpty(), "the retired claim must not become a live approved copy");
+  }
+
+  @Test
+  void anArchiveStillVisitsLaterMemoriesAfterOneMoveFails() {
+    EntityReference source = contextFile("Archived").withDeleted(true);
+    ContextMemory first = anchoredMemory(source);
+    ContextMemory second = anchoredMemory(source);
+    when(daoCollection.isInTransaction()).thenReturn(false);
+    sourceMentions(source, first, second);
+    linkSources(first.getId(), source);
+    linkSources(second.getId(), source);
+    ContextMemoryRepository memories = deletesRecorded(spy(repository));
+    doThrow(new PreconditionFailedException("The memory kept changing"))
+        .when(memories)
+        .delete(Entity.ADMIN_USER_NAME, first.getId(), false, false);
+    doAnswer(
+            call -> {
+              second.setDeleted(true);
+              return new DeleteResponse<>(second, EventType.ENTITY_SOFT_DELETED);
+            })
+        .when(memories)
+        .delete(Entity.ADMIN_USER_NAME, second.getId(), false, false);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () ->
+            new MemorySourceLifecycle(memories)
+                .archiveExtractedMemories(source.getId(), source.getType()));
+
+    assertTrue(
+        Boolean.TRUE.equals(second.getDeleted()), "one failure must not strand later memories");
+  }
+
+  @Test
   void copyForSourceRestatesTheMemoryForItsDocumentAlone() {
     EntityReference source = contextFile("Private copy");
     ContextMemory memory =
@@ -1263,6 +1319,7 @@ class MemorySourceLifecycleTest {
                     .withSharedWith(
                         List.of(new MemorySharedPrincipal().withPrincipal(user("another")))));
     List<ContextMemory> created = new ArrayList<>();
+    committed(memory);
     ContextMemoryRepository memories = createsKept(spy(repository), created, new Edges());
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
 
@@ -1270,7 +1327,8 @@ class MemorySourceLifecycleTest {
     try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
         mockStatic(EntityLifecycleEventDispatcher.class)) {
       lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
-      copy = new MemorySourceLifecycle(memories).copyForSource(memory, source).orElseThrow();
+      copy =
+          new MemorySourceLifecycle(memories).copyForSource(memory.getId(), source).orElseThrow();
     }
 
     assertEquals(List.of(copy), created);
@@ -1343,6 +1401,7 @@ class MemorySourceLifecycleTest {
 
   /** The source's MENTIONED_IN edges to the memories, as a lookup of the source's memories reads them. */
   private void sourceMentions(EntityReference source, ContextMemory... memories) {
+    committed(memories);
     when(relationshipDAO.findTo(
             source.getId(),
             source.getType(),
@@ -1426,7 +1485,20 @@ class MemorySourceLifecycleTest {
 
   /** Restores are recorded, not run: the restore pipeline itself is covered by the ITs. */
   private static ContextMemoryRepository restoresRecorded(ContextMemoryRepository memories) {
-    doReturn(null).when(memories).restoreEntity(any(), any(UUID.class));
+    doAnswer(
+            call -> {
+              UUID id = call.getArgument(1);
+              ContextMemory restored =
+                  JsonUtils.readValue(
+                      memories.getDao().findJsonByIdForUpdate(id, Include.ALL),
+                      ContextMemory.class);
+              restored.setDeleted(false);
+              when(memories.getDao().findJsonByIdForUpdate(id, Include.ALL))
+                  .thenReturn(JsonUtils.pojoToJson(restored));
+              return null;
+            })
+        .when(memories)
+        .restoreEntity(any(), any(UUID.class));
     return memories;
   }
 

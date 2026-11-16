@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
@@ -21,11 +22,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * What a memory does when one of its source documents is linked, archived, restored, permanently
  * deleted or shared differently (ADR:2026-09-29-context-file-memory-reuse).
  */
+@Slf4j
 public class MemorySourceLifecycle {
   private final ContextMemoryRepository memories;
   private final ArchivedWithSources archivedWithSources;
@@ -81,10 +84,38 @@ public class MemorySourceLifecycle {
    */
   public void archiveExtractedMemories(UUID sourceId, String sourceType) {
     EntityReference source = new EntityReference().withId(sourceId).withType(sourceType);
+    boolean callerTransaction = memories.getDaoCollection().isInTransaction();
+    RuntimeException firstFailure = null;
     for (EntityReference memory :
         memories.findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY)) {
-      archiveExtractedMemory(memory.getId(), source);
+      try {
+        archiveIndividually(memory.getId(), source);
+      } catch (RuntimeException failure) {
+        if (callerTransaction) {
+          throw failure;
+        }
+        LOG.warn("Unable to archive memory {} with source {}", memory.getId(), sourceId, failure);
+        if (firstFailure == null) {
+          firstFailure = failure;
+        }
+      }
     }
+    if (firstFailure != null) {
+      throw firstFailure;
+    }
+  }
+
+  private void archiveIndividually(UUID memoryId, EntityReference source) {
+    memories.executeInTransaction(
+        () -> {
+          try (var ignored = FreshReadScope.enter()) {
+            ContextMemory current = lockedMemory(memoryId);
+            if (current != null && !Boolean.TRUE.equals(current.getDeleted())) {
+              archiveExtractedMemory(memoryId, source);
+            }
+          }
+          return null;
+        });
   }
 
   /**
@@ -167,13 +198,24 @@ public class MemorySourceLifecycle {
   /**
    * A copy of the memory for {@code source}'s readers, anchored on and linked to that source, which
    * stops linking the original; none for a retired memory. Nothing extracts, reconciles or judges it.
+   * The current row stays locked until the copy and source-link move commit together.
    */
-  public Optional<ContextMemory> copyForSource(ContextMemory memory, EntityReference source) {
-    Optional<ContextMemory> copy = MemoryCopy.of(memory, source);
+  public Optional<ContextMemory> copyForSource(UUID memoryId, EntityReference source) {
+    return memories.executeInTransaction(
+        () -> {
+          ContextMemory current = lockedMemory(memoryId);
+          return current == null || Boolean.TRUE.equals(current.getDeleted())
+              ? Optional.empty()
+              : createSourceCopy(current, source);
+        });
+  }
+
+  private Optional<ContextMemory> createSourceCopy(ContextMemory current, EntityReference source) {
+    Optional<ContextMemory> copy = MemoryCopy.of(current, source);
     copy.ifPresent(
         made -> {
           writes.relinking(made.getId(), () -> memories.create(null, made));
-          unlinkSource(memory.getId(), source);
+          unlinkSource(current.getId(), source);
         });
     return copy;
   }
@@ -210,7 +252,7 @@ public class MemorySourceLifecycle {
     settle(memoryId);
   }
 
-  /** No transaction spans an archive's hook, so each attempt reads the memory afresh. */
+  /** Moves the anchor while this memory's archive transaction holds its row lock. */
   private EntityReference moveAnchorOffArchived(UUID memoryId, EntityReference archived) {
     AtomicReference<EntityReference> anchor = new AtomicReference<>();
     writes.onFreshReads(
@@ -280,10 +322,7 @@ public class MemorySourceLifecycle {
   }
 
   private void copyFor(UUID memoryId, List<EntityReference> sources) {
-    if (!sources.isEmpty()) {
-      ContextMemory memory = storedMemory(memoryId);
-      sources.forEach(source -> copyForSource(memory, source));
-    }
+    sources.forEach(source -> copyForSource(memoryId, source));
   }
 
   /**
@@ -292,9 +331,8 @@ public class MemorySourceLifecycle {
    */
   void copyForTheSourcesItWouldShow(UUID memoryId) {
     EntityReference shown = restrictedShownSource(memoryId);
-    ContextMemory memory = shown == null ? null : storedMemory(memoryId);
     while (shown != null) {
-      if (copyForSource(memory, shown).isEmpty()) {
+      if (copyForSource(memoryId, shown).isEmpty()) {
         unlinkSource(memoryId, shown);
       }
       shown = restrictedShownSource(memoryId);
@@ -310,10 +348,6 @@ public class MemorySourceLifecycle {
         MemorySourceDisclosure.shownSource(anchor, documents, this::readableByEveryone);
     boolean named = shown == null || isSameSource(shown, anchor) || readableByEveryone(shown);
     return named ? null : shown;
-  }
-
-  private ContextMemory storedMemory(UUID memoryId) {
-    return memories.get(null, memoryId, memories.getFields(""), Include.NON_DELETED, false);
   }
 
   /** A live article or org-wide file; a file this write shares differently, as it leaves it. */

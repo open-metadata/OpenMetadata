@@ -60,6 +60,15 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     deleteChunks(entity);
   }
 
+  /** Removes old disclosure-bearing text before rebuilding from the entity's current content. */
+  public void refreshEmbedding(EntityInterface<?> entity) {
+    deleteChunks(entity);
+    clearEntityEmbedding(entity);
+    if (entity != null && !Boolean.TRUE.equals(entity.getDeleted())) {
+      updateEmbedding(entity);
+    }
+  }
+
   @Override
   public void onEntitySoftDeletedOrRestored(
       EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
