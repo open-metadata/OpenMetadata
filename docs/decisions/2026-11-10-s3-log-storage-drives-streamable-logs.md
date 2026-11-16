@@ -35,6 +35,12 @@ missed kept its logs only in its pod, which the Kubernetes orchestrator deletes.
   pipeline's flag decides, as before. `IngestionPipelineRepository.readsRunLogsFromStorage` holds
   the rule, and every reader goes through it: the last run's logs, their download, the live log
   stream and an application's logs.
+- Stored logs include `partial.txt` and a stream the server still holds open, not only
+  `logs.txt`. A run reports its final status before it closes its log stream, and that close is
+  best effort, so a finished run can have readable logs long before `logs.txt` exists.
+- A run is judged by its own status row. Runs of one pipeline can overlap (a manual run next to a
+  scheduled one, or Airflow with `maxActiveRuns` above 1), so the latest row speaks only for the
+  latest run.
 - Two redeploys do not save the flag yet: a data contract redeploying a deployed pipeline, and the
   redeploy after deleting a pipeline of the same name. Their finished runs are still read from where
   they wrote; a run in progress is read from the runner until it finishes.

@@ -1725,6 +1725,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return run != null && !FINISHED_RUN_STATES.contains(run.getPipelineState());
   }
 
+  /**
+   * Whether a run is still going. Runs of one pipeline can overlap, so the latest status row speaks
+   * only for the latest run, and any other run is judged by its own row. A run with no row yet has
+   * just been triggered, so it counts as going.
+   */
+  public boolean isRunGoing(String pipelineFQN, String runId, PipelineStatus latestStatus) {
+    boolean latestRun = latestStatus != null && Objects.equals(runId, latestStatus.getRunId());
+    PipelineStatus run = latestRun ? latestStatus : ownRunStatus(pipelineFQN, runId);
+    return run == null || isRunGoing(run);
+  }
+
+  private PipelineStatus ownRunStatus(String pipelineFQN, String runId) {
+    return runId == null ? null : getPipelineStatus(pipelineFQN, runId);
+  }
+
   /** Storage keys a run's logs by the run's UUID, so a run named any other way is not there. */
   private static boolean isStorageRunKey(String runId) {
     boolean keyed = false;

@@ -407,18 +407,22 @@ public class IngestionPipelineLogStreamingResourceIT {
     UserTestFactory.getDataConsumer(null);
     IngestionPipeline pipeline = createTestPipeline(ns);
     OpenMetadataClient client = SdkClients.dataConsumerClient();
+    String runLogs = logPath(pipeline);
 
-    assertEquals(403, statusOfLogWrite(client, logPath(pipeline)));
-    assertEquals(403, statusOfLogWrite(client, logPath(pipeline) + "/close"));
+    assertEquals(403, statusOfLogWrite(client, runLogs));
+    assertEquals(403, statusOfLogWrite(client, runLogs + "/close"));
   }
 
+  // This server keeps logs in the default storage, which answers every permitted write with 500
+  // because it cannot store them, so only a refusal tells the write apart. Closing has no such
+  // limit and must succeed.
   private void assertLogWriteNotRefused(IngestionPipeline pipeline, String botName) {
     String email = botName + "@open-metadata.org";
     OpenMetadataClient bot = SdkClients.createClient(email, email, new String[] {"bot"});
+    String runLogs = logPath(pipeline);
 
-    assertNotEquals(403, statusOfLogWrite(bot, logPath(pipeline)), botName + " writing logs");
-    assertEquals(
-        200, statusOfLogWrite(bot, logPath(pipeline) + "/close"), botName + " closing logs");
+    assertNotEquals(403, statusOfLogWrite(bot, runLogs), botName + " writing logs");
+    assertEquals(200, statusOfLogWrite(bot, runLogs + "/close"), botName + " closing logs");
   }
 
   private String logPath(IngestionPipeline pipeline) {

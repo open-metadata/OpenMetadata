@@ -694,16 +694,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId);
   }
 
-  // Only the latest run's state is loaded, so an older run named here is taken as finished.
   private static boolean readsAppRunLogsFromStorage(
       IngestionPipelineRepository ingestionPipelineRepository,
       IngestionPipeline ingestionPipeline,
       String runId,
       PipelineStatus latestStatus) {
     boolean runGoing =
-        latestStatus != null
-            && Objects.equals(runId, latestStatus.getRunId())
-            && IngestionPipelineRepository.isRunGoing(latestStatus);
+        ingestionPipelineRepository.isRunGoing(
+            ingestionPipeline.getFullyQualifiedName(), runId, latestStatus);
     return ingestionPipelineRepository.readsRunLogsThroughLogStorage(
         ingestionPipeline, runId, runGoing);
   }

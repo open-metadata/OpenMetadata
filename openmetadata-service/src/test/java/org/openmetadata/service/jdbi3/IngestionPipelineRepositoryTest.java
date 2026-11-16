@@ -41,6 +41,8 @@ import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
@@ -527,6 +529,42 @@ class IngestionPipelineRepositoryTest {
         new IngestionPipeline().withFullyQualifiedName("svc.agent").withEnableStreamableLogs(true);
 
     assertFalse(logRepository.readsRunLogsFromStorage(pipeline, RUN_ID, false));
+  }
+
+  private static final String NEWER_RUN_ID = "22222222-2222-2222-2222-222222222222";
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("runsAndWhetherTheyAreGoing")
+  void aRunIsJudgedByItsOwnStatus(
+      String scenario, PipelineStatus latestRun, PipelineStatus ownRow, boolean expected) {
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    doReturn(ownRow).when(logRepository).getPipelineStatus("svc.agent", RUN_ID);
+
+    assertEquals(expected, logRepository.isRunGoing("svc.agent", RUN_ID, latestRun), scenario);
+  }
+
+  private static Stream<Arguments> runsAndWhetherTheyAreGoing() {
+    return Stream.of(
+        Arguments.of(
+            "the latest run, going", runStatus(RUN_ID, PipelineStatusType.RUNNING), null, true),
+        Arguments.of(
+            "the latest run, finished", runStatus(RUN_ID, PipelineStatusType.SUCCESS), null, false),
+        Arguments.of(
+            "an earlier run still going after a newer one started",
+            runStatus(NEWER_RUN_ID, PipelineStatusType.RUNNING),
+            runStatus(RUN_ID, PipelineStatusType.RUNNING),
+            true),
+        Arguments.of(
+            "an earlier run that finished",
+            runStatus(NEWER_RUN_ID, PipelineStatusType.RUNNING),
+            runStatus(RUN_ID, PipelineStatusType.FAILED),
+            false),
+        Arguments.of("a run just triggered, with no status yet", null, null, true));
+  }
+
+  private static PipelineStatus runStatus(String runId, PipelineStatusType state) {
+    return new PipelineStatus().withRunId(runId).withPipelineState(state);
   }
 
   @Test
