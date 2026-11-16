@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../../../components/common/Loader/Loader';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { INCIDENT_TASK_TYPES } from '../../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -789,7 +790,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   }
 
-  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
+  // The list row has no assignees, so its badge would read "Unassigned".
+  const getStatusBadge = () =>
+    hasFullTask ? getTaskStatusLabel(task, currentUserIds, t) : undefined;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -834,6 +837,31 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   };
 
+  // The list row carries only what the header needs; the details and timeline
+  // read fields (payload, assignees, ontologyReview) only the full task has.
+  const renderBody = () => {
+    if (!hasFullTask) {
+      return isLoading ? (
+        <Loader size="small" />
+      ) : (
+        <TaskUnavailable error={loadError} onRetry={loadTask} />
+      );
+    }
+
+    return (
+      <>
+        {renderDetails()}
+
+        <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
+          incidentStatuses={about?.incidentStatuses}
+          task={task}
+          onCommentChanged={handleCommentMutated}
+        />
+      </>
+    );
+  };
+
   return (
     <Box
       className="tw:h-full tw:w-full tw:min-h-0"
@@ -849,7 +877,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
-          statusBadge={statusBadge}
+          statusBadge={getStatusBadge()}
           task={task}
           typeBadge={descriptor.typeBadge}
           onAssigneeUpdate={handleAssigneeTransition}
@@ -875,14 +903,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
-        {renderDetails()}
-
-        <TaskActivityTimeline
-          createdEvent={descriptor.createdEvent}
-          incidentStatuses={about?.incidentStatuses}
-          task={task}
-          onCommentChanged={handleCommentMutated}
-        />
+        {renderBody()}
       </Box>
 
       <Box
