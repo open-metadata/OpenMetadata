@@ -47,15 +47,20 @@ describe('TaskNode', () => {
     ['Successful', 'tw:bg-visualization-green-3'],
     ['Failed', 'tw:bg-visualization-red-3'],
     ['Pending', 'tw:bg-visualization-yellow-2'],
-  ])('colours the status dot for %s with a theme token', async (taskStatus, tokenClass) => {
-    render(<TaskNode {...mockProps} data={{ ...mockProps.data, taskStatus }} />);
+  ])(
+    'colours the status dot for %s with a theme token',
+    async (taskStatus, tokenClass) => {
+      render(
+        <TaskNode {...mockProps} data={{ ...mockProps.data, taskStatus }} />
+      );
 
-    expect(await screen.findByTestId('node-label-status')).toHaveClass(
-      'tw:size-2.5',
-      'tw:rounded-full',
-      tokenClass
-    );
-  });
+      expect(await screen.findByTestId('node-label-status')).toHaveClass(
+        'tw:size-2.5',
+        'tw:rounded-full',
+        tokenClass
+      );
+    }
+  );
 
   it('uses theme surface and text tokens on the node', async () => {
     render(<TaskNode {...mockProps} />);
