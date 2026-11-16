@@ -132,8 +132,12 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
   Two tables that share a name in different schemas or projects are never linked to each other's
   columns.
 - **Data Import cube** (report subtype 779 or 780), which the modeling API refuses: an object is
-  matched on its name, which the import derives from the column (`Order Id` ↔ `order_id`). A renamed
-  object gets no column edge.
+  matched on its name, which the import derives from the column (`Order Id` ↔ `order_id`): the
+  column of the same name, else the only column whose name matches once case, spaces and punctuation
+  are dropped (letters of every script are kept). No column edge when that is not one column, when
+  two objects of the cube match alike, or when the object was renamed.
+- **Columns resolve within their own SELECT**: a nested query's aliases never resolve an outer
+  column, and a pass that opens with comments is still read.
 - **Schema cube metric:** no column edge. A metric built in Workstation refers to an embedded
   aggregation the API does not serve, so the fact column it aggregates is unknown, and mapping
   `WJXBFSn` aliases to metrics by position would be a guess.

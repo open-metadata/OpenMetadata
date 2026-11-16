@@ -56,7 +56,8 @@ def table_name_of(table: exp.Table) -> str:
     return ".".join(part for part in (table.catalog, table.db, table.name) if part).lower()
 
 
-SQL_START = r"\s*(?:select|with|create|insert|drop|update|delete|merge)\b"
+# A pass may open with comments before its first keyword.
+SQL_START = r"(?:\s*(?:--[^\n]*(?:\n|$)|/\*[\s\S]*?\*/))*\s*(?:select|with|create|insert|drop|update|delete|merge)\b"
 # MicroStrategy separates the passes of a cube SQL with blank lines, not semicolons.
 PASS_BOUNDARY = re.compile(rf"\n\s*\n(?={SQL_START})", re.IGNORECASE)
 
@@ -96,6 +97,9 @@ def _select_columns(select: exp.Select) -> set[SourceColumn]:
     columns = set()
     for projection in select.expressions:
         for column in projection.find_all(exp.Column):
+            # A nested query is read on its own, against its own aliases.
+            if column.find_ancestor(exp.Select) is not select:
+                continue
             table = tables.get(column.table.lower()) if column.table else only_table
             if table:
                 columns.add((table, column.name.lower()))
@@ -103,8 +107,27 @@ def _select_columns(select: exp.Select) -> set[SourceColumn]:
 
 
 def normalized(name: str) -> str:
-    """``Order Id`` and ``order_id`` alike, for names a Data Import cube derives from columns"""
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    """
+    ``Order Id`` and ``order_id`` alike, for names a Data Import cube derives from columns. Letters
+    and digits of every script are kept, so ``数量`` and ``金额`` stay apart.
+    """
+    return re.sub(r"[\W_]+", "", name.casefold())
+
+
+def name_match(name: str, columns: set[str], ambiguous: set[str]) -> str | None:
+    """
+    The one column a Data Import object is named after: the column of the same name, else the only
+    column whose normalized name is the object's. None when that is not a single column, or when
+    another object of the cube normalizes to the same name.
+    """
+    exact = {column for column in columns if column.casefold() == name.casefold()}
+    if len(exact) == 1:
+        return exact.pop()
+    key = normalized(name)
+    if not key or key in ambiguous:
+        return None
+    matches = {column for column in columns if normalized(column) == key}
+    return matches.pop() if len(matches) == 1 else None
 
 
 def same_table(sql_table: str, other: str) -> bool:

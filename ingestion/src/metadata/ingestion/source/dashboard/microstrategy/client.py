@@ -329,23 +329,31 @@ class MicroStrategyClient:
             }
         except MicroStrategyApiError as exc:
             if exc.status_code == 403:
-                # Without the privilege every attribute fails alike, so none is asked for again.
-                logger.warning(
-                    "Schema cubes get table-level lineage only: column-level lineage needs the service account "
-                    "to read schema objects (Architect privileges): %s",
-                    exc,
-                )
-                self.modeling_denied = True
+                self._deny_modeling(exc)
                 return None
             self._attribute_failed(attribute_id, exc)
             forms = None
         except Exception as exc:
             self._attribute_failed(attribute_id, exc)
             forms = None
+        if self.modeling_denied:
+            # A table read was refused while reading the forms: what was read is incomplete.
+            return None
         self._form_columns[attribute_id] = forms
         if len(self._form_columns) > CACHE_SIZE:
             self._form_columns.popitem(last=False)
         return forms
+
+    def _deny_modeling(self, exc: MicroStrategyApiError) -> None:
+        """Without the privilege every schema object is refused alike, so none is asked for again"""
+        if self.modeling_denied:
+            return
+        logger.warning(
+            "Schema cubes get table-level lineage only: column-level lineage needs the service account "
+            "to read schema objects (Architect privileges): %s",
+            exc,
+        )
+        self.modeling_denied = True
 
     def _attribute_failed(self, attribute_id: str, exc: Exception) -> None:
         """One warning for the run, so a server refusing many attributes does not flood the log"""
@@ -378,8 +386,18 @@ class MicroStrategyClient:
         then the table name.
         """
 
+        if self.modeling_denied:
+            return None
+
         def fetch() -> str | None:
-            physical = self._get(f"/model/tables/{logical_table_id}", project_id=project_id).get("physicalTable") or {}
+            try:
+                table = self._get(f"/model/tables/{logical_table_id}", project_id=project_id)
+            except MicroStrategyApiError as exc:
+                if exc.status_code != 403:
+                    raise
+                self._deny_modeling(exc)
+                return None
+            physical = table.get("physicalTable") or {}
             name = physical.get("tableName")
             if not name:
                 return None

@@ -1029,6 +1029,16 @@ class TestColumnLineage:
 
         assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x")}
 
+    def test_a_nested_query_resolves_its_columns_against_its_own_aliases(self):
+        sql = "select a.id id, (select max(a.amount) from `p`.`s`.`refunds` a) amount from `p`.`s`.`orders` a"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "id"), ("p.s.refunds", "amount")}
+
+    def test_a_pass_that_opens_with_comments_is_read(self):
+        sql = "select a.x x from `p`.`d`.`t` a\n\n-- custom SQL\n/* by the analyst */\nselect b.y y from `p`.`d`.`u` b"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x"), ("p.d.u", "y")}
+
     def test_a_schema_attribute_form_maps_to_the_column_the_cube_reads(self, server, client):
         _model_routes(server, {SCHEMA_CUBE: 776})
         source = _source(client)
@@ -1100,6 +1110,56 @@ class TestColumnLineage:
             (["unit_price"], f"{IMPORT_CUBE}.Unit Price"),
         ]
         assert server.requests_to("/model/") == []
+
+    @pytest.mark.parametrize(
+        ("names", "columns", "expected"),
+        [
+            # Names in other scripts are kept apart, not reduced to the same empty key.
+            (["数量", "金额"], ["数量", "金额"], [(["数量"], "数量"), (["金额"], "金额")]),
+            # Two columns that normalize alike: only the one of the same name is linked.
+            (["ab", "A B"], ["ab", "a_b"], [(["ab"], "ab")]),
+            # One object, two columns that normalize to its name: neither is a safe guess.
+            (["A B"], ["ab", "a_b"], []),
+        ],
+    )
+    def test_a_data_import_object_is_linked_only_to_the_one_column_it_is_named_after(
+        self, server, client, names, columns, expected
+    ):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        source = _source(client)
+        dataset = _dataset(
+            IMPORT_CUBE, [{"id": f"M{i}", "name": name, "type": "metric"} for i, name in enumerate(names)]
+        )
+        reads = frozenset(("project-x.sales.t", column) for column in columns)
+
+        lineage = source._column_lineage("P", dataset, reads, _table("t", columns), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(cols, f"{IMPORT_CUBE}.{target}") for cols, target in expected]
+
+    def test_a_refused_table_read_stops_modeling_calls_and_warns_once(self, server, client, caplog):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        for table_id in LOGICAL_TABLES:
+            server.overrides[f"/model/tables/{table_id}"] = lambda: (
+                403,
+                {"code": "ERR014", "message": "You do not have Use Architect Editors privilege"},
+            )
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_ORDER", "name": "Order", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_STATUS", "name": "Status", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+        model = _data_model(source, dataset)
+
+        for name in ("order_items", "orders"):
+            assert source._column_lineage("P", dataset, reads, _table(name, ["order_id", "status"]), model) == []
+
+        assert source.client.modeling_denied
+        assert caplog.text.count("column-level lineage needs the service account") == 1
+        assert len(server.requests_to("/model/")) == 2
 
     def test_without_modeling_privileges_a_schema_cube_keeps_table_lineage_and_warns_once(self, server, client, caplog):
         server.overrides[f"/objects/{SCHEMA_CUBE}"] = lambda: (200, {"type": 3, "subtype": 776})

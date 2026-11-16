@@ -11,7 +11,7 @@
 """MicroStrategy source module"""
 
 import traceback
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from collections.abc import Iterable
 from functools import partial
 from typing import Any, cast
@@ -72,6 +72,7 @@ from metadata.ingestion.source.dashboard.microstrategy.client import (
 from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
     ParsedCube,
     SourceColumn,
+    name_match,
     normalized,
     read_columns,
     same_table,
@@ -471,9 +472,13 @@ class MicrostrategySource(DashboardServiceSource):
         table_entity = self._with_columns(table_entity)
         data_import = self.client.get_dataset_subtype(project_id, dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
         targets = self._data_model_columns(dataset, datamodel_entity)
+        keys = Counter(normalized(available_object.name or "") for available_object in dataset.availableObjects or [])
+        ambiguous = {key for key, count in keys.items() if count > 1}
         lineage = []
         for available_object in dataset.availableObjects or []:
-            for target, columns in self._object_columns(project_id, available_object, data_import, reads, targets):
+            for target, columns in self._object_columns(
+                project_id, available_object, data_import, reads, targets, ambiguous
+            ):
                 from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
                 if from_columns:
                     lineage.append(
@@ -491,6 +496,7 @@ class MicrostrategySource(DashboardServiceSource):
         data_import: bool,
         reads: set[SourceColumn],
         targets: dict[str, str],
+        ambiguous: set[str],
     ) -> Iterable[tuple[str, set[str]]]:
         """
         (data model column FQN, warehouse columns of this table it reads) for one dataset object.
@@ -501,7 +507,8 @@ class MicrostrategySource(DashboardServiceSource):
         if not target:
             return
         if data_import:
-            columns = {column for _, column in reads if normalized(column) == normalized(available_object.name)}
+            match = name_match(available_object.name or "", {column for _, column in reads}, ambiguous)
+            columns = {match} if match else set()
         elif available_object.type == "attribute":
             form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}
             expressions = [form_columns.get(str(form.get("id")), frozenset()) for form in available_object.forms or []]
