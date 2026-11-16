@@ -56,12 +56,6 @@ export const CLASSIC_TOUR_STEPS: ProductTourStep[] = [
     position: 'right',
   },
   {
-    route: ROUTES.ONTOLOGY_EXPLORER,
-    selector: '[data-tour-step="ontology-studio"]',
-    i18nKey: 'message.product-tour-step-ontology-studio',
-    labelKey: 'label.ontology-studio',
-  },
-  {
     route: ROUTES.DATA_QUALITY,
     selector: '[data-tour-step="data-quality-data-health"]',
     i18nKey: 'message.product-tour-step-data-quality',

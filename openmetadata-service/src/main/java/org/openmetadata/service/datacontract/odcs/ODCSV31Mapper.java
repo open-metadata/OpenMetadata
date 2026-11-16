@@ -105,6 +105,8 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
     // The metadata overlay can restore source-version rule names after native serialization.
     ODCSImportQuality.normalize(document, false);
     ODCSImportCompatibility.finalizeQuality(document);
+    if (contract.getOdcsPreservedFields() != null)
+      ODCSImportCompatibility.embedImportedRules(document);
     return document;
   }
 

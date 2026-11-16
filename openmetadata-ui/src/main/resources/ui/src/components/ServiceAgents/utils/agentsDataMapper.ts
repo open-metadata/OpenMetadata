@@ -413,6 +413,7 @@ export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
 
   return {
     id: status.runId ?? String(status.timestamp),
+    runId: status.runId,
     status: toRunStatus(status.pipelineState),
     startedAt: startedAtMillis
       ? customFormatDateTime(startedAtMillis, RUN_STARTED_AT_FORMAT)

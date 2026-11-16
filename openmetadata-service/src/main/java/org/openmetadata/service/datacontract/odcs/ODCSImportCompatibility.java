@@ -16,12 +16,15 @@ package org.openmetadata.service.datacontract.odcs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.networknt.schema.path.NodePath;
+import com.networknt.schema.path.PathType;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Only documented legacy OpenMetadata encodings are repaired before profile validation. */
@@ -68,6 +71,8 @@ final class ODCSImportCompatibility {
           "mustBeLessOrEqualTo",
           "mustBeBetween",
           "mustNotBeBetween");
+  private static final NodePath DATA_QUALITY =
+      new NodePath(PathType.JSON_POINTER).append("$defs").append("DataQuality");
   private static final Set<String> QUALITY_METADATA =
       ODCSExportModelWriter.fields(
           ODCSExportModelWriter.schema(ODCSExportService.DEFAULT_VERSION).at("/$defs/DataQuality"));
@@ -105,14 +110,52 @@ final class ODCSImportCompatibility {
     return wrapper;
   }
 
+  /** Whether the published format can express a rule; its column is a placement, not a field. */
+  static boolean isPublishedRule(JsonNode rule) {
+    ObjectNode declaration = rule.deepCopy();
+    declaration.remove("column");
+    return ODCSProfiles.validFragment(ODCSExportService.DEFAULT_VERSION, DATA_QUALITY, declaration);
+  }
+
+  /** A declaration the published format cannot express travels whole inside a custom rule. */
+  static ObjectNode embeddedRule(ObjectNode declaration) {
+    ObjectNode wrapper = declaration.objectNode().put("type", "custom").put("engine", "odcs");
+    if (declaration.has("name")) wrapper.set("name", declaration.path("name"));
+    wrapper.put(
+        "implementation",
+        declaration.objectNode().set("odcsRule", declaration.deepCopy()).toString());
+    return wrapper;
+  }
+
   static void finalizeQuality(ObjectNode element) {
+    replaceQualityRules(element, ODCSImportCompatibility::qualityRule);
+  }
+
+  /**
+   * Applied to every rule of a contract carrying import metadata. Import accepts legacy rules the
+   * published format cannot express, such as a custom rule without an engine or an unpublished
+   * metric, as embedded declarations; restoring their source form would fail the published schema,
+   * so any such rule the legacy reader accepts leaves in that same embedded form.
+   */
+  static void embedImportedRules(ObjectNode element) {
+    replaceQualityRules(element, ODCSImportCompatibility::embedUnpublished);
+  }
+
+  private static ObjectNode embedUnpublished(ObjectNode rule) {
+    ObjectNode declaration = ODCSImportQuality.embeddedDeclaration(rule);
+    boolean acceptedLegacyRule =
+        !isPublishedRule(rule) && ODCSLegacyQualityValidator.isValid(declaration);
+    return acceptedLegacyRule ? embeddedRule(declaration) : rule;
+  }
+
+  private static void replaceQualityRules(ObjectNode element, UnaryOperator<ObjectNode> replace) {
     if (element.path("quality") instanceof ArrayNode quality)
       for (int index = 0; index < quality.size(); index++)
-        if (quality.get(index) instanceof ObjectNode rule) quality.set(index, qualityRule(rule));
+        if (quality.get(index) instanceof ObjectNode rule) quality.set(index, replace.apply(rule));
     for (String collection : List.of("schema", "properties"))
       for (JsonNode child : element.path(collection))
-        if (child instanceof ObjectNode object) finalizeQuality(object);
-    if (element.path("items") instanceof ObjectNode items) finalizeQuality(items);
+        if (child instanceof ObjectNode object) replaceQualityRules(object, replace);
+    if (element.path("items") instanceof ObjectNode items) replaceQualityRules(items, replace);
   }
 
   private static final Map<String, String> LEGACY_TYPES =
@@ -194,11 +237,7 @@ final class ODCSImportCompatibility {
       ObjectNode rule = ODCSLegacyQualityValidator.requireRootRule(source);
       if (schemaAbsent && rule.has("column")) {
         ODCSLegacyQualityValidator.requireValid(rule);
-        ObjectNode wrapper = rule.objectNode().put("type", "custom").put("engine", "odcs");
-        if (rule.has("name")) wrapper.set("name", rule.path("name"));
-        wrapper.put(
-            "implementation", rule.objectNode().set("odcsRule", rule.deepCopy()).toString());
-        ((ObjectNode) root.at("/schema/0")).withArray("quality").add(wrapper);
+        ((ObjectNode) root.at("/schema/0")).withArray("quality").add(embeddedRule(rule));
       } else projectRule(root, rule);
     }
     root.remove("quality");

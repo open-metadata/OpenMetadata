@@ -6615,6 +6615,10 @@ public class WorkflowDefinitionResourceIT {
   void test_approvedGlossaryTermMoveRewritesTaggedAssetsInSearch(TestNamespace ns)
       throws Exception {
     MoveFixture fixture = moveFixture(ns, "moveTagged");
+    // Only an Approved term can be applied to an asset, so the term is approved before tagging.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    approve(awaitOwnApprovalTask(admin, fixture.moved()));
+    awaitGlossaryTermStatus(admin, fixture.moved(), EntityStatus.APPROVED);
     Table table = tableTaggedWith(ns, fixture.moved());
     awaitDoc(
         "table_search_index",
@@ -9182,6 +9186,24 @@ public class WorkflowDefinitionResourceIT {
                 .withGlossary(glossary.getFullyQualifiedName())
                 .withParent(parent == null ? null : parent.getFullyQualifiedName())
                 .withDescription("%s definition".formatted(name)));
+  }
+
+  // The aboutEntity filter matches by FQN prefix, so it also lists the approval tasks of the term's
+  // children; only the task about the term itself approves it.
+  private Task awaitOwnApprovalTask(OpenMetadataClient client, GlossaryTerm term) throws Exception {
+    await("open approval task about %s".formatted(term.getFullyQualifiedName()))
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> ownApprovalTask(client, term) != null);
+    return ownApprovalTask(client, term);
+  }
+
+  private Task ownApprovalTask(OpenMetadataClient client, GlossaryTerm term) throws Exception {
+    return listOpenApprovalTasks(client, term.getFullyQualifiedName()).getData().stream()
+        .filter(task -> task.getAbout() != null && term.getId().equals(task.getAbout().getId()))
+        .findFirst()
+        .orElse(null);
   }
 
   private static Table tableTaggedWith(TestNamespace ns, GlossaryTerm term) {
