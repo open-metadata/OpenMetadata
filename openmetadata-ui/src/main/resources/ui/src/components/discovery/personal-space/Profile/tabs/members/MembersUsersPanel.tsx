@@ -212,10 +212,14 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setUsers(data);
         setPaging({ total: response.hits.total.value });
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (searchId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (searchId === latestLoadIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [pageSize, isAdmin, showDeleted, setPaging]
@@ -231,6 +235,8 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const handleSearch = useCallback(
     (value: string) => {
       setSearchValue(value);
+      // Drops a page jump still walking, so it cannot replace the results.
+      resetPages();
       resetToFirstPage();
       if (value) {
         void searchUsers(value);
@@ -238,7 +244,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         void fetchUsers();
       }
     },
-    [resetToFirstPage, fetchUsers, searchUsers]
+    [resetPages, resetToFirstPage, fetchUsers, searchUsers]
   );
 
   const handleShowDeletedChange = useCallback(

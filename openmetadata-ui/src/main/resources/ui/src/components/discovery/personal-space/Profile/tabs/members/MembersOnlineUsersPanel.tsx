@@ -173,6 +173,8 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const handleSearch = useCallback(
     async (query: string) => {
       setSearchText(query);
+      // Drops a page jump still walking, so it cannot replace the results.
+      resetPages();
 
       if (!query.trim()) {
         handlePageChange(INITIAL_PAGING_VALUE);
@@ -225,7 +227,14 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         }
       }
     },
-    [timeWindow, pageSize, setPaging, handlePageChange, fetchOnlineUsers]
+    [
+      timeWindow,
+      pageSize,
+      setPaging,
+      handlePageChange,
+      fetchOnlineUsers,
+      resetPages,
+    ]
   );
 
   const handleTimeWindowChange = useCallback((key: string | number | null) => {
