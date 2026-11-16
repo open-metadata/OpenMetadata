@@ -8961,7 +8961,11 @@ public class WorkflowDefinitionResourceIT {
               new ResolveTask().withResolutionType(TaskResolutionType.Approved));
     }
 
-    ApprovalOutcome outcome = awaitRecordedApprovals(glossary, 1).get(0);
+    List<ApprovalOutcome> outcomes = awaitRecordedApprovals(glossary, 1);
+    // The first vote leaves the step one vote short, so its completion is refused and records
+    // nothing; only the vote that decides the step is recorded.
+    assertEquals(1, outcomes.size());
+    ApprovalOutcome outcome = outcomes.get(0);
     assertEquals(ApprovalOutcomeDecision.APPROVED, outcome.getDecision());
     assertEquals(
         Set.of(shared.USER1.getName(), shared.USER3.getName()), Set.copyOf(outcome.getDecidedBy()));
