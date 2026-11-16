@@ -1,7 +1,8 @@
 # A document's extracted memories are approved from the document, by admins or its owners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-09 (a hold from another document needs an admin)
+- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-09 (a hold from another document needs an admin) ·
+  v3 2026-11-16 (another document's answer needs a decision)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryReconcilerTest`,
   `ContextMemoryRepositoryTest#aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt`,
@@ -105,3 +106,14 @@ rather than approve without the check. Rejecting stays with admins
 user's private copy never blocks an owner's approval, which is written as that owner: a restricted
 copy is linked by its source edge alone, and only to a memory whose shown source everyone may
 read, so it is never named on the memory, its source included.
+
+## Amendment — 2026-11-16: another document's answer needs a decision
+
+Preview and approval also leave pending, as needing a decision, a pending value that another
+document's memory answers otherwise, in any stage that still states a value
+(`SemanticMemoryDuplicateFinder.isHeldAcrossDocuments`, by
+ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v4). The owner
+approving one document never approves a second value beside another document's: an admin decides it,
+or reconciliation holds it in a conflict review once the other value is Approved. Every pending pill
+is looked up now, with or without a number, so preview and approval still answer 503 without the
+memory index.

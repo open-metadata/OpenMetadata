@@ -223,6 +223,53 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(openTasks(conflict.reviewed()).isEmpty());
   }
 
+  /**
+   * Two values disputing one Approved value: approving the first supersedes it, so approving the
+   * second is refused until its review disputes the first, and then supersedes it. Never two
+   * values of one fact Approved side by side.
+   */
+  @Test
+  void approvingASecondValueOfAReplacedFactWeighsTheValueThatReplacedItFirst(TestNamespace ns) {
+    Conflict first = conflict(ns, "chain-eight");
+    ContextMemory second = pending(ns, "chain-seven", shared().USER2_REF);
+    ContextMemory heldSecond =
+        admin()
+            .patch(
+                idOf(second),
+                JsonUtils.readTree(
+                    HOLD_FOR_REVIEW.formatted(first.disputed().getId(), THRESHOLD_REASON)));
+    Task secondTask = openTask(heldSecond);
+    resolve(
+        SdkClients.adminClient(),
+        openTask(first.reviewed()),
+        "approve",
+        TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(), secondTask, "approve", TaskResolutionType.Approved));
+
+    assertTrue(refused.getMessage().contains("Another decision replaced"), refused.getMessage());
+    ContextMemory repointed = admin().get(idOf(heldSecond));
+    assertEquals(ContextMemoryStatus.DRAFT, repointed.getEntityStatus());
+    assertEquals(
+        List.of(first.reviewed().getId()),
+        listOrEmpty(repointed.getDisputes()).stream()
+            .map(dispute -> dispute.getMemory().getId())
+            .toList());
+    assertEquals(secondTask.getId(), openTask(heldSecond).getId(), "the same review stays open");
+
+    resolve(SdkClients.adminClient(), secondTask, "approve", TaskResolutionType.Approved);
+
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(heldSecond)).getEntityStatus());
+    ContextMemory replaced = admin().get(idOf(first.reviewed()));
+    assertEquals(ContextMemoryStatus.SUPERSEDED, replaced.getEntityStatus());
+    assertEquals(heldSecond.getId(), replaced.getSupersededBy().getId());
+  }
+
   @Test
   void rejectingRejectsTheReviewedMemoryAndKeepsTheDisputedOne(TestNamespace ns) {
     Conflict conflict = conflict(ns, "reject");

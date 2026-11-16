@@ -14,7 +14,9 @@
 package org.openmetadata.service.context.center;
 
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -35,7 +37,52 @@ public final class MemoryReviewHolds {
           ContextMemoryStatus.DEPRECATED,
           ContextMemoryStatus.ARCHIVED);
 
+  /** What a parenthesized citation leaves once set aside. */
+  private static final Pattern EMPTY_PARENTHESES = Pattern.compile("\\(\\s*\\)");
+
+  /** Stages in which a memory still gives its question a value; a legacy one has no stage. */
+  static final Set<ContextMemoryStatus> STATING_STAGES =
+      EnumSet.of(
+          ContextMemoryStatus.APPROVED, ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT);
+
   private MemoryReviewHolds() {}
+
+  /**
+   * Whether {@code stating}, a memory of another document, answers {@code value}'s question with
+   * another answer: two values of one fact, which a person must choose between, so neither may be
+   * approved beside the other unreviewed
+   * (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v4).
+   */
+  public static boolean givesAnotherValue(ContextMemory stating, ContextMemory value) {
+    return isStating(stating) && sameQuestion(stating, value) && !sameAnswer(stating, value);
+  }
+
+  /** Whether {@code memory} is Approved, or a legacy memory saved before stages existed. */
+  public static boolean isApproved(ContextMemory memory) {
+    return memory.getEntityStatus() == null
+        || memory.getEntityStatus() == ContextMemoryStatus.APPROVED;
+  }
+
+  private static boolean isStating(ContextMemory memory) {
+    return memory.getEntityStatus() == null || STATING_STAGES.contains(memory.getEntityStatus());
+  }
+
+  /** Case, spacing and a parenthesized citation never make two answers differ. */
+  private static boolean sameAnswer(ContextMemory a, ContextMemory b) {
+    return comparableAnswer(a).equals(comparableAnswer(b));
+  }
+
+  private static String comparableAnswer(ContextMemory memory) {
+    String answer = MemoryTextSimilarity.withoutCitations(memory.getAnswer());
+    return answer == null
+        ? ""
+        : EMPTY_PARENTHESES
+            .matcher(answer)
+            .replaceAll(" ")
+            .replaceAll("\\s+", " ")
+            .strip()
+            .toLowerCase(Locale.ROOT);
+  }
 
   /**
    * Whether a person decided {@code pill}: a review retired it, or a person corrected it (Manual).

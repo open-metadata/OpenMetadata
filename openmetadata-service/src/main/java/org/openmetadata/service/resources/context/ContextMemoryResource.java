@@ -132,7 +132,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     extractedMemoryApprover =
         new ExtractedMemoryApprover(
             repository,
-            SemanticMemoryDuplicateFinder.forDecisionChecks(repository)::isHeldByADecision);
+            SemanticMemoryDuplicateFinder.forDecisionChecks(repository)::isHeldAcrossDocuments);
   }
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {

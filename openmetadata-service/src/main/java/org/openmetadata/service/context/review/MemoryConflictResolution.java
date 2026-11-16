@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.AuthorizationException;
@@ -163,6 +164,9 @@ public final class MemoryConflictResolution {
     ContextMemory reviewed = reviewedMemory(task);
     List<MemoryDispute> disputes = disputesOf(task, reviewed);
     Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+    if (verdict == Verdict.APPROVE) {
+      requireNoLaterValue(reviewed, disputes, disputed, decision.user());
+    }
     MemoryConflictDecision.requireComparedAsIs(decision.comparison(), reviewed, disputes, disputed);
     List<MemoryChange> changes =
         verdict == Verdict.APPROVE
@@ -178,6 +182,44 @@ public final class MemoryConflictResolution {
         decision.user(),
         verdict,
         reviewed.getId());
+  }
+
+  /**
+   * Approving over a claim another decision replaced since detection would leave two values
+   * Approved. The review is pointed at the value that replaced it, written as the person deciding,
+   * who must be able to read it, and the decision is refused so they compare it first.
+   */
+  private static void requireNoLaterValue(
+      ContextMemory reviewed,
+      List<MemoryDispute> disputes,
+      Map<UUID, ContextMemory> disputed,
+      String user) {
+    Map<UUID, ContextMemory> later =
+        reviewed.getEntityStatus() == ContextMemoryStatus.DRAFT
+            ? MemoryConflictDecision.laterValues(reviewed, disputed, MemoryConflictResolution::live)
+            : Map.of();
+    if (!later.isEmpty()) {
+      List<MemoryDispute> repointed =
+          MemoryConflictDecision.repointed(disputes, later, System.currentTimeMillis());
+      write(
+          new MemoryChange(
+              reviewed, JsonUtils.deepCopy(reviewed, ContextMemory.class).withDisputes(repointed)),
+          user);
+      throw new PreconditionFailedException(MemoryConflictDecision.REPLACED_SINCE_DETECTION);
+    }
+  }
+
+  private static Optional<ContextMemory> live(UUID memoryId) {
+    Optional<ContextMemory> memory = Optional.empty();
+    try {
+      memory =
+          Optional.of(
+              Entity.getEntity(
+                  Entity.CONTEXT_MEMORY, memoryId, DISPUTED_FIELDS, Include.NON_DELETED));
+    } catch (EntityNotFoundException deleted) {
+      LOG.debug("[MemoryConflictReview] replacing memory {} is gone", memoryId, deleted);
+    }
+    return memory;
   }
 
   /**

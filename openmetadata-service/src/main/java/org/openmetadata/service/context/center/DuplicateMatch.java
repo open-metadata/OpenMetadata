@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.context.center;
 
+import java.util.List;
 import org.openmetadata.schema.entity.context.ContextMemory;
 
 /**
@@ -29,6 +30,17 @@ public sealed interface DuplicateMatch {
    * MemoryReviewHolds#isDecided}), so its memory waits for review under every provider.
    */
   record ConflictsWithDecision(ContextMemory decided) implements DuplicateMatch {}
+
+  /**
+   * Another document answers the fact's question with another value ({@link
+   * MemoryReviewHolds#givesAnotherValue}): the memory opens a conflict review against the {@code
+   * approved} ones, or, when none is Approved yet, waits for review beside the pending ones.
+   */
+  record AnotherValue(List<ContextMemory> approved) implements DuplicateMatch {
+    public AnotherValue {
+      approved = List.copyOf(approved);
+    }
+  }
 
   /** No memory states the fact. */
   record None() implements DuplicateMatch {}

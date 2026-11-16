@@ -48,7 +48,8 @@ import org.openmetadata.service.security.AuthorizationException;
  * question of another Unprocessed, Draft or Approved pill with a different answer is a second value,
  * and one re-extraction would hold beside a decided pill may be that decision reworded: both stay
  * pending. A pill several documents share has one review, so what any of them leaves pending stays
- * pending from the others, and so does a value a decision in another document holds.
+ * pending from the others, and so does a value another document holds: by a decision, or by giving
+ * another value for the same question.
  */
 @Slf4j
 public final class ExtractedMemoryApprover {
@@ -61,13 +62,16 @@ public final class ExtractedMemoryApprover {
           ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT, ContextMemoryStatus.APPROVED);
 
   private final ContextMemoryRepository repository;
-  private final Predicate<ContextMemory> heldByADecision;
+  private final Predicate<ContextMemory> heldAcrossDocuments;
 
-  /** {@code heldByADecision}: whether, read now, a memory a person decided holds a pending pill. */
+  /**
+   * {@code heldAcrossDocuments}: whether, read now, another document's memory holds a pending pill,
+   * as a decision or as another value for its question.
+   */
   public ExtractedMemoryApprover(
-      ContextMemoryRepository repository, Predicate<ContextMemory> heldByADecision) {
+      ContextMemoryRepository repository, Predicate<ContextMemory> heldAcrossDocuments) {
     this.repository = repository;
-    this.heldByADecision = heldByADecision;
+    this.heldAcrossDocuments = heldAcrossDocuments;
   }
 
   /** The pills approval may take, and those it leaves for a person to decide. */
@@ -119,7 +123,7 @@ public final class ExtractedMemoryApprover {
     Plan plan =
         plan(
             memories,
-            pill -> heldInLinkedDocuments.contains(pill.getId()) || heldByADecision.test(pill));
+            pill -> heldInLinkedDocuments.contains(pill.getId()) || heldAcrossDocuments.test(pill));
     return new Plan(
         ContextMemoryVisibility.filterByVisibility(plan.approvable(), user, isAdmin),
         ContextMemoryVisibility.filterByVisibility(plan.needsDecision(), user, isAdmin));

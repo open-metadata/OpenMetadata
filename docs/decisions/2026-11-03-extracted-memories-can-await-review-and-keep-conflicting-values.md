@@ -2,9 +2,11 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a held value is approved in Context Center) ·
-  v3 2026-11-09 (a decision covers every document; identical reuse takes every stage)
+  v3 2026-11-09 (a decision covers every document; identical reuse takes every stage) ·
+  v4 2026-11-16 (another document's answer to the question is a conflict)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `ContextMemoryExtractorTest`, `ContextMemoryReconcilerTest`, `MemoryConflictReviewTasksTest`
+- **Guard:** `ContextMemoryExtractorTest`, `ContextMemoryReconcilerTest`, `MemoryConflictReviewTasksTest`,
+  `MemoryReviewHoldsTest`, `SemanticMemoryDuplicateFinderTest`, `ContextMemoryExtractionIT`
 - **Related:** ADR:2026-09-29-context-file-memory-reuse, ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
 
 ## Context
@@ -116,3 +118,29 @@ owners of every document its source links name, read for the page and never retu
 a document leaves for an admin both what another linked document leaves for a decision and a value
 a decision in another document holds
 (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
+
+## Amendment — 2026-11-16: another document's answer to the question is a conflict
+
+Release testing approved one file's support desk hours, then uploaded two files giving other hours:
+neither was held, and Collate's reconciliation approved both. An Approved memory was no decision
+(v3), and separate documents are never one reconciliation group.
+
+A derived value is now also held by another document's memory that answers its question otherwise
+(`MemoryReviewHolds.givesAnotherValue`): one in a stage that still states a value (Approved,
+Unprocessed, Draft, or none), asking the same question as `sameQuestion` reads it, with another
+answer, case, spacing and parenthesized citations aside. Only the duplicate check's candidates count:
+document facts of the value's scope, anchored where everyone may read them. An equivalent fact still
+links first.
+
+- Beside an Approved value the derived one is created in `Draft`, disputing each Approved value for
+  a fixed reason that names no memory (`ContextMemoryReconciler.ANOTHER_DOCUMENTS_VALUE`), so a
+  conflict review opens for the owners of both sides, under every provider
+  (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+- Beside values only awaiting review it starts `Unprocessed`, disputing none.
+- A person's correction or note that is Approved and asks the same question is such a value too, so
+  it disputes the other figure instead of only holding it; a retired value still holds as a decision.
+- Approving a document's memories leaves for an admin a pending value another document answers
+  otherwise (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document, v3).
+
+Two answers to one question that differ without numbers are now a conflict across documents, not a
+rewording; within one document extraction still keeps the first.
