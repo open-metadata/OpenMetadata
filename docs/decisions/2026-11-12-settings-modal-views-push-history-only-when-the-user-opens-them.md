@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-12 (initial); v2 2026-11-16 (`useSettingsHashSync` runs in the eager
-  `AppShell`, not the lazy `PersonalSpaceModal`)
+  `AppShell`, not the lazy `PersonalSpaceModal`); v3 2026-11-16 (Platform Settings opts in)
 - **Deciders:** Harsh Vador
 - **Guard:** `useSettingsHash.test.tsx` (`setHash` replaces unless asked to push; closing goes
   back past the views the modal pushed; the sync hook reopens a closed modal on a view change and
@@ -50,3 +50,11 @@ again, so Back is trapped.
   replaces the current entry, which leaves a duplicate page entry, never a settings one.
 - Revisit if the router gains a blocker that can guard popstate, or if every tab adopts push, at
   which point the default could flip with the redirects marked `replace` explicitly.
+
+## Amendment (v3, 2026-11-16)
+Platform Settings is the second panel to push. Opening a card, a breadcrumb or Edit pushes; leaving
+an editor for its own page view (Save, Cancel) replaces (`isLeavingEditor` in
+`PlatformSettings.utils.ts`). Its forms share the unsaved-changes guard
+(`useUnsavedExitGuard`), so breadcrumbs, Cancel, the sidebar, Esc and Close ask first; Back still
+does not. Guard: `PlatformSettingsPanel.test.tsx`, `ProfilePlatformSettings.spec.ts` ("browser
+Back walks the opened views and never reopens a saved form").
