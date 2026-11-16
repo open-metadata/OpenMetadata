@@ -865,6 +865,7 @@
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
@@ -3432,6 +3433,7 @@
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
@@ -3795,6 +3797,7 @@
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
@@ -4374,6 +4377,7 @@
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
@@ -7435,9 +7439,10 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/EntityStatusBadge.component.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/EntityStageBadge.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
       ]
     },
@@ -12943,6 +12948,7 @@
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Workflows/GitSinkTokenMask.spec.ts",
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts",
         "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts",
         "playwright/e2e/Features/Workflows/RecognizerFeedbackSchemaNodeLock.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowCheckConditionNegation.spec.ts",
