@@ -84,7 +84,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty && !isSaveLoading
+    form.formState.isDirty
   );
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
 

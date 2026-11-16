@@ -57,7 +57,7 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    ruleForm.formState.isDirty && !isSaving
+    ruleForm.formState.isDirty
   );
   // A rule link can be opened directly, past the detail page's edit gate.
   const { canEditAll, isLoading: isPermissionLoading } = useEntityPermissions(

@@ -113,12 +113,20 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     reset: resetPages,
   } = useCursorPageJump(fetchPaging);
 
+  // Only the latest list or search load may fill the table: the pager stays
+  // clickable while a page loads.
+  const latestLoadIdRef = useRef(0);
+
   const fetchOnlineUsers = useCallback(
     async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
+      const loadId = ++latestLoadIdRef.current;
       setLoading(true);
 
       try {
         const response = await getOnlineUsers({ ...listParams, ...params });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
         // Page 1 is a fresh load (window, size, search cleared), so older
         // cursors may no longer line up.
         if (page === INITIAL_PAGING_VALUE) {
@@ -129,10 +137,14 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         setUsers(response.data);
         setPaging(response.paging);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [listParams, rememberPage, resetPages, setPaging]
@@ -143,7 +155,14 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     if (searchText) {
       return;
     }
-    const cursor = await cursorFor(newPage, currentPage);
+    let cursor: PageCursor | undefined;
+    try {
+      cursor = await cursorFor(newPage, currentPage);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return;
+    }
     if (!cursor) {
       return;
     }
@@ -162,6 +181,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         return;
       }
 
+      const loadId = ++latestLoadIdRef.current;
       setLoading(true);
 
       try {
@@ -172,6 +192,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           pageNumber: INITIAL_PAGING_VALUE,
           queryFilter: getTermQuery({ isBot: 'false' }),
         });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
 
         const now = Date.now();
         const windowMs = timeWindow * 60 * 1000;
@@ -192,10 +215,14 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         });
         handlePageChange(INITIAL_PAGING_VALUE);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [timeWindow, pageSize, setPaging, handlePageChange, fetchOnlineUsers]

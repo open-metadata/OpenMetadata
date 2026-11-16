@@ -128,7 +128,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   const [isAdminUser, setIsAdminUser] = useState(Boolean(isAdmin));
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty && !isSaveLoading
+    form.formState.isDirty
   );
 
   const [generatedPassword, setGeneratedPassword] = useState('');

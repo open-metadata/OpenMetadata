@@ -112,7 +112,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
     },
   });
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty && !isSaving
+    form.formState.isDirty
   );
   const { handleSubmit } = form;
 

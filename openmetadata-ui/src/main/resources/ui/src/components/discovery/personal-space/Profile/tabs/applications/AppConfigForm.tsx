@@ -189,9 +189,16 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
     () => getDefaultFormState(validator, jsonSchema, formData),
     [jsonSchema, formData]
   );
-  const [isDirty, setIsDirty] = useState(false);
+  // Derived, not a flag: when a save updates the app, the baseline moves and
+  // the form reads as clean again.
+  const [currentFormData, setCurrentFormData] = useState<unknown>();
+  const isDirty = useMemo(
+    () =>
+      currentFormData !== undefined && !isEqual(currentFormData, savedFormData),
+    [currentFormData, savedFormData]
+  );
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    !isReadOnly && isDirty && !isSaving
+    !isReadOnly && isDirty
   );
 
   const handleSubmit = (event: IChangeEvent) =>
@@ -209,9 +216,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         schema={jsonSchema}
         templates={APP_FORM_TEMPLATES}
         uiSchema={uiSchema}
-        onChange={(event) =>
-          setIsDirty(!isEqual(event.formData, savedFormData))
-        }
+        onChange={(event) => setCurrentFormData(event.formData)}
         onSubmit={handleSubmit}
       />
       {!isReadOnly && (

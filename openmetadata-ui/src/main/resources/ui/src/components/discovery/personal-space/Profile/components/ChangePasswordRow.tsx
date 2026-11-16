@@ -62,8 +62,8 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const isDirty = useMemo(
-    () => isEditing && !isSaving && !isEqual(form, EMPTY_FORM),
-    [isEditing, isSaving, form]
+    () => isEditing && !isEqual(form, EMPTY_FORM),
+    [isEditing, form]
   );
   const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty);
 

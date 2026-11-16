@@ -67,7 +67,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
     },
   });
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty && !isSubmitting
+    form.formState.isDirty
   );
 
   const tokenExpiryOptions = useMemo(

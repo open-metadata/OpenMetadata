@@ -100,7 +100,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const latestSearchIdRef = useRef(0);
+  const latestLoadIdRef = useRef(0);
 
   // Only page + size go to the settings hash; cursors stay in state, so a
   // reloaded page > 1 has no cursor to resume from and restarts at page 1.
@@ -155,9 +155,15 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
 
   const fetchUsers = useCallback(
     async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
+      // Only the latest list or search load may fill the table: the pager
+      // stays clickable while a page loads.
+      const loadId = ++latestLoadIdRef.current;
       setIsLoading(true);
       try {
         const response = await getUsers({ ...listParams, ...params });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
         // Page 1 is a fresh load (filter, size, restore), so older cursors
         // may no longer line up.
         if (page === INITIAL_PAGING_VALUE) {
@@ -167,13 +173,17 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setUsers(response.data);
         setPaging(response.paging);
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', { entity: t('label.user') })
-        );
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', { entity: t('label.user') })
+          );
+          setUsers([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [listParams, rememberPage, resetPages, setPaging, t]
@@ -181,7 +191,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
 
   const searchUsers = useCallback(
     async (query: string, page = INITIAL_PAGING_VALUE) => {
-      const searchId = ++latestSearchIdRef.current;
+      const searchId = ++latestLoadIdRef.current;
       setIsLoading(true);
       try {
         const response = await searchQuery({
@@ -195,7 +205,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             ...(isAdmin && { isAdmin: 'true' }),
           }),
         });
-        if (searchId !== latestSearchIdRef.current) {
+        if (searchId !== latestLoadIdRef.current) {
           return;
         }
         const data = response.hits.hits.map(({ _source }) => _source as User);
@@ -248,7 +258,17 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       return;
     }
 
-    const cursor = await cursorFor(newPage, currentPage);
+    let cursor: PageCursor | undefined;
+    try {
+      cursor = await cursorFor(newPage, currentPage);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.user') })
+      );
+
+      return;
+    }
     if (!cursor) {
       return;
     }

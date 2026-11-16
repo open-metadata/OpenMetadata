@@ -60,7 +60,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
     defaultValues: { name: '', displayName: '', users: [] },
   });
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty && !isSaving
+    form.formState.isDirty
   );
   const { handleSubmit } = form;
 

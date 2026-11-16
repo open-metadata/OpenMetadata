@@ -188,9 +188,9 @@ const PlatformSettingsPanel = ({
   // Cancel) replaces, so Back never reopens a submitted form
   // (ADR:2026-11-12-settings-modal-views-push-history-only-when-the-user-opens-them).
   const onNavigate = useCallback(
-    (next: PlatformSettingsView) =>
+    (next: PlatformSettingsView, options?: { replace?: boolean }) =>
       setHash(PLATFORM_SETTINGS_HASH_TAB, viewToSubPath(next), undefined, {
-        push: !isLeavingEditor(view, next),
+        push: !options?.replace && !isLeavingEditor(view, next),
       }),
     [setHash, view]
   );

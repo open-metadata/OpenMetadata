@@ -131,7 +131,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
   const isEditMode = Boolean(fqn);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    !saving && !isEqual(formData, loadedFormData)
+    !isEqual(formData, loadedFormData)
   );
 
   const sources = formData.resources ?? NO_SOURCES;

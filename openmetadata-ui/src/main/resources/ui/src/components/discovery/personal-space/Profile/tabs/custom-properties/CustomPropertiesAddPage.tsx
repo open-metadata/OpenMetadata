@@ -65,7 +65,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
     },
   });
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty && !isSaving
+    form.formState.isDirty
   );
 
   const fetchPropertyTypes = useCallback(async () => {

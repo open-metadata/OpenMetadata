@@ -80,7 +80,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
 
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    (form.formState.isDirty || ruleForm.formState.isDirty) && !isSaveLoading
+    form.formState.isDirty || ruleForm.formState.isDirty
   );
 
   const handleCreate = async () => {

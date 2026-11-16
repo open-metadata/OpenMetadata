@@ -276,6 +276,50 @@ describe('MembersUsersPanel', () => {
     );
   });
 
+  it('keeps the newest page when an older page responds last', async () => {
+    const named = (name: string, paging: Record<string, unknown>) => ({
+      ...usersPage(paging),
+      data: [{ ...usersPage({}).data[0], id: name, name }],
+    });
+    const heldPageTwo: Array<(value: unknown) => void> = [];
+    let pageTwoCalls = 0;
+    mockGetUsers.mockImplementation(({ after }: { after?: string }) => {
+      if (after === 'cursor-2') {
+        pageTwoCalls++;
+
+        // Page 2's own load hangs; the page-3 jump's walk gets an answer.
+        return pageTwoCalls === 1
+          ? new Promise((resolve) => heldPageTwo.push(resolve))
+          : Promise.resolve(
+              named('walk-user', { after: 'cursor-3', total: 100 })
+            );
+      }
+
+      return Promise.resolve(
+        after === 'cursor-3'
+          ? named('page-three-user', { after: 'cursor-4', total: 100 })
+          : named('page-one-user', { after: 'cursor-2', total: 100 })
+      );
+    });
+    renderComponent();
+    await screen.findByText('page-one-user');
+
+    fireEvent.click(screen.getByText('2', { selector: 'button' }));
+    await waitFor(() => expect(pageTwoCalls).toBe(1));
+    fireEvent.click(screen.getByText('3', { selector: 'button' }));
+
+    expect(await screen.findByText('page-three-user')).toBeInTheDocument();
+
+    await act(async () =>
+      heldPageTwo.forEach((resolve) =>
+        resolve(named('page-two-user', { after: 'cursor-3', total: 100 }))
+      )
+    );
+
+    expect(screen.getByText('page-three-user')).toBeInTheDocument();
+    expect(screen.queryByText('page-two-user')).not.toBeInTheDocument();
+  });
+
   it('renders the users list container', async () => {
     renderComponent();
 

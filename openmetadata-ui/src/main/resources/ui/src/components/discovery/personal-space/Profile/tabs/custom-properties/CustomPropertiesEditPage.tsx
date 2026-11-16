@@ -37,7 +37,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty && !isSaving);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty);
 
   const handleSubmit = useCallback(
     async (changes: CustomPropertyChanges) => {

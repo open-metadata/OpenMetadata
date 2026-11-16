@@ -83,7 +83,7 @@ const SettingsFormLayout = <T extends FieldValues>({
   // Discard or Continue editing rather than a "Save & go" that could leave
   // after a failed save.
   const { isPromptOpen, anchorRef, runGuarded, confirmExit, cancelExit } =
-    useUnsavedExitGuard(form.formState.isDirty && !isSaving);
+    useUnsavedExitGuard(form.formState.isDirty);
 
   return (
     <HookForm
