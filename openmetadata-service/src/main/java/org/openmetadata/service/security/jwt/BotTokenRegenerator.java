@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.jwt;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.UserUtil;
 
@@ -182,10 +184,13 @@ public class BotTokenRegenerator {
       return false;
     }
     try {
-      DecodedJWT verified =
-          JWT.require(generator.internalVerificationAlgorithm()).build().verify(token);
+      DecodedJWT decoded = JWT.decode(token);
+      Algorithm algorithm =
+          JWTTokenGenerator.ownTokenVerificationAlgorithm(
+              decoded.getAlgorithm(), generator.getPublicKey());
+      DecodedJWT verified = JWT.require(algorithm).build().verify(token);
       return Objects.equals(generator.getKid(), verified.getKeyId());
-    } catch (JWTVerificationException e) {
+    } catch (JWTVerificationException | AuthenticationException e) {
       return false;
     }
   }

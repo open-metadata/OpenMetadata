@@ -76,6 +76,9 @@ EXTRACT_REFRESH_JOB_TYPES = ["refresh_extracts", "increment_extracts"]
 MAX_EXTRACT_REFRESH_JOB_LOOKUPS = 1000
 # The version TSC keeps when it cannot read the server's; too old for flows.
 FALLBACK_API_VERSION = "2.4"
+# The warnings Tableau sends next to an answer it cut short.
+# https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_errors.html
+TRUNCATION_ERROR_CODES = frozenset({"NODE_LIMIT_EXCEEDED", "TIME_LIMIT_EXCEEDED"})
 # (connect, read) seconds for every Tableau call. ADR:2026-10-30-tableau-pipeline-http-timeout
 HTTP_TIMEOUT = (10, 60)
 # Longest Retry-After waited out. ADR:2026-10-30-tableau-pipeline-retry-after-cap
@@ -87,8 +90,8 @@ class TableauSiteAdminRequiredError(Exception):
 
 
 class TableauMetadataApiError(Exception):
-    """The Metadata API failed or answered only with errors (as opposed to
-    answering with no data)."""
+    """The Metadata API failed, answered only with errors, or returned only part
+    of a flow (as opposed to answering with no data)."""
 
 
 class TableauFlowRecordError(TableauMetadataApiError):
@@ -98,6 +101,11 @@ class TableauFlowRecordError(TableauMetadataApiError):
 
 def _has_status(exc: ServerResponseError, status: int) -> bool:
     return str(exc.code).startswith(str(status))
+
+
+def _is_truncation(error: dict) -> bool:
+    code = (error.get("extensions") or {}).get("code")
+    return code in TRUNCATION_ERROR_CODES or "node limit" in str(error.get("message", ""))
 
 
 def _join_notes(notes: list[str]) -> str | None:
@@ -366,6 +374,11 @@ class TableauPipelineClient:
             for task in Pager(self.tableau_server.tasks):
                 if task.target is not None and task.target.id:
                     targets.setdefault(str(task.target.id), task.target.type)
+                else:
+                    logger.warning(
+                        "Skipping Tableau extract refresh task %s: it does not name a data source or workbook.",
+                        task.id,
+                    )
         except Exception as exc:
             self.extract_refresh_listing_complete = False
             logger.warning("Unable to list Tableau extract refresh tasks: %s", exc)
@@ -474,6 +487,13 @@ class TableauPipelineClient:
                 "Tableau did not say which data source or workbook its refresh jobs refreshed; "
                 "extract refresh pipelines are ingested without status."
             )
+        elif jobs_without_target:
+            logger.warning(
+                "%s of %s Tableau refresh jobs could not be tied to a data source or workbook; "
+                "their runs are not ingested.",
+                jobs_without_target,
+                lookups,
+            )
         return {
             target: sorted(target_runs, key=_started_at, reverse=True)[: self.number_of_status]
             for target, target_runs in runs.items()
@@ -542,18 +562,50 @@ class TableauPipelineClient:
     def get_flow_lineage(self, flow_luid: str) -> TableauFlowLineage | None:
         """Fetch the inputs and outputs of a flow via the Metadata API.
 
-        Returns None when the flow has no lineage records yet (the Metadata store
-        lags live publishes by a few minutes on Tableau Server); raises
-        TableauMetadataApiError when the Metadata API cannot be queried or its
-        record cannot be read, so the source keeps the flow's stored tasks.
+        Input and output fields are read PAGE_SIZE at a time, so a wide flow stays
+        under the node limit. Returns None when the flow has no lineage records yet
+        (the Metadata store lags live publishes by a few minutes on Tableau Server);
+        raises TableauMetadataApiError when the Metadata API cannot be queried, when
+        a page is cut short or comes back without the flow, or when the flow record
+        cannot be read, so the source keeps the flow's stored tasks.
         """
-        data = self._metadata_query(TABLEAU_FLOW_LINEAGE_QUERY.format(flow_luid=flow_luid), f"flow {flow_luid}")
-        flows = data.get("flows") or []
-        if not flows:
+        record: dict | None = None
+        cursors: dict[str, str | None] = {"inputFields": None, "outputFields": None}
+        done: set[str] = set()
+        while len(done) < len(cursors):
+            data = self._metadata_query(
+                TABLEAU_FLOW_LINEAGE_QUERY.format(
+                    flow_luid=flow_luid,
+                    **{f"{side}_first": 0 if side in done else PAGE_SIZE for side in cursors},
+                    **{f"{side}_after": json.dumps(cursor) for side, cursor in cursors.items()},
+                ),
+                f"flow {flow_luid}",
+                truncation_fails=True,
+            )
+            flows = data.get("flows") or []
+            if not flows and record is not None:
+                raise TableauMetadataApiError(
+                    f"Tableau Metadata API answer for flow {flow_luid} lost the flow after its first page of fields"
+                )
+            if not flows:
+                break
+            page_record: dict = flows[0]
+            record = record or page_record
+            for side in cursors.keys() - done:
+                connection = page_record.get(f"{side}Connection")
+                if connection is not None:
+                    record.setdefault(side, []).extend(connection.get("nodes") or [])
+                page = (connection or {}).get("pageInfo") or {}
+                # Tableau answers the last page with endCursor null.
+                if page.get("hasNextPage") and page.get("endCursor"):
+                    cursors[side] = page["endCursor"]
+                else:
+                    done.add(side)
+        if record is None:
             logger.debug("Metadata API returned no flow record for luid=%s", flow_luid)
             return None
         try:
-            lineage = TableauFlowLineage.model_validate(flows[0])
+            lineage = TableauFlowLineage.model_validate(record)
         except Exception as exc:
             raise TableauFlowRecordError(f"Unable to parse the Tableau lineage of flow {flow_luid}: {exc}") from exc
         self._attach_custom_sql(lineage)
@@ -582,7 +634,11 @@ class TableauPipelineClient:
         """Fetch the custom SQL of the upstream tables Tableau returns without a
         name, the only ones whose lineage is read from it. A failure here only
         costs those tables: the rest of the flow's lineage is already parsed."""
-        unnamed = {table.id: table for table in lineage.upstream_tables if not table.name and table.id}
+        unnamed = {
+            table.id: table
+            for table in lineage.upstream_tables
+            if not table.name and table.id and not table.referenced_by_queries
+        }
         if not unnamed:
             return
         table_ids = ", ".join(json.dumps(table_id) for table_id in unnamed)
@@ -600,15 +656,20 @@ class TableauPipelineClient:
                     TableauReferencedQuery.model_validate(query) for query in table.get("referencedByQueries") or []
                 ]
 
-    def _metadata_query(self, query: str, subject: str) -> dict:
-        """The `data` of a Metadata API answer. A node-limit or permission error
-        still returns partial data next to `errors`; the data is kept and the
-        truncation logged. Errors with no data at all, as a timed-out or rejected
-        query answers, are a failed query, not an empty one."""
+    def _metadata_query(self, query: str, subject: str, truncation_fails: bool = False) -> dict:
+        """The `data` of a Metadata API answer. A node-limit, time-limit or
+        permission error still returns partial data next to `errors`; the data is
+        kept and the errors logged, unless `truncation_fails` and Tableau cut the
+        answer short. Errors with no data at all, as a timed-out or rejected query
+        answers, are a failed query, not an empty one."""
         try:
             result = self.tableau_server.metadata.query(query=query)
         except Exception as exc:
             raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {exc}") from exc
+        if truncation_fails and any(_is_truncation(error) for error in result.get("errors") or []):
+            raise TableauMetadataApiError(
+                f"Tableau Metadata API answer for {subject} was cut short: {result['errors']}"
+            )
         if result.get("errors") and not any((result.get("data") or {}).values()):
             raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {result['errors']}")
         if result.get("errors"):

@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.openmetadata.it.sso.SsoFlows.SESSION_COOKIE;
+import static org.openmetadata.it.sso.SsoFlows.assertLoginEndsOnSignIn;
 import static org.openmetadata.it.sso.SsoFlows.idTokenFrom;
 import static org.openmetadata.it.sso.SsoFlows.loggedInUser;
 import static org.openmetadata.it.sso.SsoFlows.login;
@@ -18,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,10 +37,12 @@ import org.openmetadata.it.sso.MockResponseGate;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
+import org.openmetadata.it.sso.config.SecurityConfigSwap.Answer;
 import org.openmetadata.it.sso.config.SsoConfigs;
 import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.sso.oidc.MockOidcIdentity;
 import org.openmetadata.it.sso.oidc.MockOidcProvider;
+import org.openmetadata.it.sso.oidc.RefreshOutcome;
 import org.openmetadata.it.sso.state.StoredSessions;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -47,7 +52,9 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OidcClientConfig.ClientAuthenticationMethod;
+import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 
@@ -66,6 +73,12 @@ class SsoOidcConfidentialLoginIT {
   private static final Duration TOKEN_EXCHANGE_ARRIVAL = Duration.ofSeconds(10);
   // The server gives up on a token request after 5 s, so a held exchange must be released sooner.
   private static final Duration SECOND_TOKEN_EXCHANGE_ARRIVAL = Duration.ofSeconds(4);
+  // What the sign-in page is told about a failed sign-in: a fixed code, never the provider's text.
+  private static final String PROVIDER_REFUSED = "provider_refused";
+  private static final String TOKEN_EXCHANGE_FAILED = "token_exchange_failed";
+  private static final String ACCOUNT_NOT_ALLOWED = "account_not_allowed";
+  private static final String CLIENT_AUTHENTICATION_PATH =
+      "/authenticationConfiguration/oidcConfiguration/clientAuthenticationMethod";
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
@@ -224,6 +237,116 @@ class SsoOidcConfidentialLoginIT {
   }
 
   @Test
+  @DisplayName("OC-07 a provider that refuses the sign-in sends the browser back to sign in")
+  void providerRefusalEndsOnTheSignInPage(TestNamespace ns) {
+    MockOidcIdentity declined = signInAs(ns, "declined");
+    provider.refuseNextAuthorization("access_denied");
+    SsoBrowser browser = new SsoBrowser();
+
+    SsoNavigation navigation = login(browser);
+
+    assertLoginEndsOnSignIn(browser, navigation, PROVIDER_REFUSED);
+    assertTrue(provider.tokenRequests().isEmpty(), "a refused login has no code to redeem");
+    assertNoAccountFor(declined);
+  }
+
+  @Test
+  @DisplayName("OC-14 a wrong client secret sends the browser back to sign in with the reason")
+  void wrongClientSecretEndsOnTheSignInPage(TestNamespace ns) throws Throwable {
+    MockOidcIdentity identity = signInAs(ns, "badsecret");
+    securityConfig.withVariant(
+        config -> {
+          oidcOf(config).withSecret("not-the-registered-secret");
+          return config;
+        },
+        () -> {
+          SsoBrowser browser = new SsoBrowser();
+          assertLoginEndsOnSignIn(browser, login(browser), TOKEN_EXCHANGE_FAILED);
+        });
+    assertNoAccountFor(identity);
+  }
+
+  @Test
+  @DisplayName("OC-17 a failing or silent token endpoint sends the browser back to sign in")
+  void failingTokenEndpointEndsOnTheSignInPage(TestNamespace ns) {
+    MockOidcIdentity identity = signInAs(ns, "tokenfail");
+    provider.answerNextCodeExchangeWith(RefreshOutcome.serverError());
+    SsoBrowser failed = new SsoBrowser();
+    assertLoginEndsOnSignIn(failed, login(failed), TOKEN_EXCHANGE_FAILED);
+
+    MockResponseGate unanswered = provider.holdNextTokenResponse();
+    try {
+      SsoBrowser timedOut = new SsoBrowser();
+      assertLoginEndsOnSignIn(timedOut, login(timedOut), TOKEN_EXCHANGE_FAILED);
+    } finally {
+      unanswered.release();
+    }
+    assertNoAccountFor(identity);
+  }
+
+  @Test
+  @DisplayName("ID-13 a sign-in the server may not provision sends the browser back to sign in")
+  void refusedProvisioningEndsOnTheSignInPage(TestNamespace ns) throws Throwable {
+    MockOidcIdentity stranger = signInAs(ns, "stranger");
+    securityConfig.withVariant(
+        config -> {
+          config.getAuthenticationConfiguration().withEnableSelfSignup(false);
+          return config;
+        },
+        () -> {
+          SsoBrowser browser = new SsoBrowser();
+          assertLoginEndsOnSignIn(browser, login(browser), ACCOUNT_NOT_ALLOWED);
+        });
+    securityConfig.withVariant(
+        config -> {
+          config
+              .getAuthorizerConfiguration()
+              .withAllowedEmailRegistrationDomains(Set.of("registration-only.example.com"));
+          return config;
+        },
+        () -> {
+          SsoBrowser browser = new SsoBrowser();
+          assertLoginEndsOnSignIn(browser, login(browser), ACCOUNT_NOT_ALLOWED);
+        });
+    assertNoAccountFor(stranger);
+  }
+
+  @Test
+  @DisplayName("OC-15 a client authentication method the server cannot use is refused at save")
+  void unusableClientAuthenticationMethodIsRefusedAtSave(TestNamespace ns) {
+    for (ClientAuthenticationMethod unusable :
+        List.of(
+            ClientAuthenticationMethod.CLIENT_SECRET_JWT,
+            ClientAuthenticationMethod.PRIVATE_KEY_JWT)) {
+      SecurityConfiguration candidate = securityConfig.baselineCopy();
+      oidcOf(candidate).withClientAuthenticationMethod(unusable);
+      try {
+        Answer put = SecurityConfigSwap.attemptPut(candidate);
+        assertEquals(400, put.status(), unusable + " was saved: " + put.body());
+        Answer patch =
+            SecurityConfigSwap.attemptPatch(
+                "[{\"op\":\"add\",\"path\":\""
+                    + CLIENT_AUTHENTICATION_PATH
+                    + "\",\"value\":\""
+                    + unusable.value()
+                    + "\"}]");
+        assertEquals(400, patch.status(), unusable + " was patched in: " + patch.body());
+        Answer validate = SecurityConfigSwap.attemptValidate(candidate);
+        assertEquals(200, validate.status(), validate.body());
+        assertEquals(
+            SecurityValidationResponse.Status.FAILED,
+            JsonUtils.readValue(validate.body(), SecurityValidationResponse.class).getStatus(),
+            unusable + " passed validation: " + validate.body());
+      } finally {
+        securityConfig.restoreBaseline();
+      }
+    }
+
+    signInAs(ns, "unchanged");
+    idTokenFrom(login(new SsoBrowser()));
+  }
+
+  @Test
   @DisplayName("OC-20 signing in again on a browser revokes only the session it replaces")
   void signingInAgainRevokesOnlyTheReplacedSession(TestNamespace ns) {
     signInAs(ns, "again");
@@ -378,6 +501,16 @@ class SsoOidcConfidentialLoginIT {
 
   private static OidcClientConfig oidcOf(SecurityConfiguration config) {
     return config.getAuthenticationConfiguration().getOidcConfiguration();
+  }
+
+  private static void assertNoAccountFor(MockOidcIdentity identity) {
+    String name = identity.email().substring(0, identity.email().indexOf('@'));
+    OpenMetadataException missing =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().users().getByName(name),
+            "a failed sign-in must not create " + name);
+    assertEquals(404, missing.getStatusCode(), missing.getMessage());
   }
 
   private static User userFor(MockOidcIdentity identity) {
