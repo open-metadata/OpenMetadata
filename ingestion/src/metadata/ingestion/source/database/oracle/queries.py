@@ -108,6 +108,61 @@ WHERE m.owner = :owner
 """
 )
 
+# TEXT_VC and ORACLE_MAINTAINED were added in Oracle 12.1, and an older server rejects the
+# two queries above with ORA-00904. Before 12.1 there are no pluggable databases and no
+# linked views, so these keep reading TEXT and calling GET_DDL for every other view.
+ORACLE_VIEW_DEFINITIONS_PRE_12C = textwrap.dedent(
+    """
+SELECT
+    LOWER(v.view_name) AS "view_name",
+    LOWER(v.owner) AS "schema",
+    text AS "view_def",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_VIEWS v
+WHERE v.owner = :owner
+UNION ALL
+SELECT
+    LOWER(m.mview_name) AS "view_name",
+    LOWER(m.owner) AS "schema",
+    query AS "view_def",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_MVIEWS m
+WHERE m.owner = :owner
+"""
+)
+
+ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C = textwrap.dedent(
+    """
+SELECT
+    v.view_name AS "view_name",
+    v.owner AS "schema",
+    text AS "view_def",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_VIEWS v
+WHERE v.owner = :owner
+UNION ALL
+SELECT
+    m.mview_name AS "view_name",
+    m.owner AS "schema",
+    query AS "view_def",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_MVIEWS m
+WHERE m.owner = :owner
+"""
+)
+
 
 # Fallback for the bulk view-definition fetch. DBA_VIEWS.TEXT / DBA_MVIEWS.QUERY
 # are LONG columns, and in Oracle thick mode a value larger than OCI's fetch

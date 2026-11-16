@@ -37,7 +37,9 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
     ORACLE_VIEW_DEFINITIONS,
+    ORACLE_VIEW_DEFINITIONS_PRE_12C,
     ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE,
+    ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C,
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -107,7 +109,10 @@ def get_view_definition(
     if info_cache is not None:
         info_cache.pop(VIEW_DEFINITION_CACHE_KEY, None)
     cached = None
-    query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE if preserve_case else ORACLE_VIEW_DEFINITIONS
+    if self.server_version_info >= (12,):
+        query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE if preserve_case else ORACLE_VIEW_DEFINITIONS
+    else:
+        query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C if preserve_case else ORACLE_VIEW_DEFINITIONS_PRE_12C
     definitions = dict(get_all_view_definitions(self, connection, query.format(prefix=prefix), owner))
     if info_cache is not None:
         info_cache[VIEW_DEFINITION_CACHE_KEY] = (scope, definitions)

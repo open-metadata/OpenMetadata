@@ -69,8 +69,9 @@ def catalog(tmp_path):
     engine.dispose()
 
 
-def dialect(prefix="DBA", preserve=False):
+def dialect(prefix="DBA", preserve=False, version=(19,)):
     result = OracleDialect()
+    result.server_version_info = version
     result.table_prefix = prefix
     result.preserve_identifier_case = preserve
     result.default_schema_name = "MY_SCHEMA"
@@ -560,3 +561,41 @@ class TestOracleMaintainedLinkedViews:
             assert refused == []
         finally:
             cache.clear()
+
+
+@pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+@pytest.mark.parametrize("preserve", [False, True])
+def test_pre_12c_catalog_keeps_the_single_bulk_query(catalog, prefix, preserve):
+    """TEXT_VC and ORACLE_MAINTAINED only exist from Oracle 12.1, so an 11g server must not
+    be sent a bulk query that names them, or every schema falls back to one query per view."""
+    engine, executions = catalog
+    with engine.begin() as connection:
+        for catalog_prefix in ("ALL", "DBA"):
+            connection.exec_driver_sql(f"ALTER TABLE {catalog_prefix}_VIEWS DROP COLUMN text_vc")
+            connection.exec_driver_sql(f"ALTER TABLE {catalog_prefix}_USERS DROP COLUMN oracle_maintained")
+            connection.exec_driver_sql(
+                f"INSERT INTO {catalog_prefix}_VIEWS VALUES ('MY_SCHEMA', 'NO_TEXT_VIEW', NULL, 9)"
+            )
+    executions.clear()
+    schema = "MY_SCHEMA" if preserve else "my_schema"
+
+    def name(value):
+        return value if preserve else value.lower()
+
+    cache = {}
+    try:
+        with engine.connect() as connection:
+            oracle = dialect(prefix, preserve, version=(11, 2))
+            assert get_view_definition(oracle, connection, name("MY_VIEW"), schema, info_cache=cache).endswith(
+                "AS SELECT 1"
+            )
+            assert get_view_definition(oracle, connection, name("MY_MVIEW"), schema, info_cache=cache).endswith(
+                "AS SELECT 11"
+            )
+            assert (
+                get_view_definition(oracle, connection, name("NO_TEXT_VIEW"), schema, info_cache=cache)
+                == "CREATE VIEW my_view AS SELECT 9"
+            )
+        assert len(executions) == 1
+    finally:
+        cache.clear()
