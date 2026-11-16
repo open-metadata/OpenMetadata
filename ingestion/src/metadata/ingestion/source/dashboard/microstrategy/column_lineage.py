@@ -60,8 +60,9 @@ SQL_KEYWORD = re.compile(r"(?:select|with|create|insert|drop|update|delete|merge
 
 
 # The tokens a pass split must tell apart, each without nested repetition so the scan stays
-# linear: a quote opening, a comment opening, a line comment, a blank line, and anything else.
-SQL_TOKEN = re.compile(r"['\"`]|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[^\s'\"`/-]+|[\s\S]")
+# linear: a quote opening, a comment opening, a line comment, a blank line, a parenthesis, and
+# anything else.
+SQL_TOKEN = re.compile(r"['\"`]|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[()]|[^\s'\"`/()-]+|[\s\S]")
 QUOTE_STOPS = {
     (quote, escapes): re.compile("[" + re.escape(quote) + ("\\\\" if escapes else "") + "]")
     for quote in ("'", '"', "`")
@@ -117,10 +118,11 @@ def starts_with_sql(text: str) -> bool:
 def sql_passes(sql: str, escapes: bool = False) -> list[str]:
     """
     The passes of a cube SQL. MicroStrategy separates them with blank lines, not semicolons, so a
-    pass starts after a blank line whose next statement token is a SQL keyword. Blank lines inside
-    comments or quoted text never split. One scan, linear in the length of the SQL.
+    pass starts after a blank line whose next statement token is a SQL keyword, outside any
+    parentheses. Blank lines inside comments, quoted text, a CTE or a subquery never split. One
+    scan, linear in the length of the SQL.
     """
-    starts, pending, position = [0], None, 0
+    starts, pending, position, depth = [0], None, 0, 0
     while match := SQL_TOKEN.search(sql, position):
         token = match.group()
         position = match.end()
@@ -146,7 +148,11 @@ def sql_passes(sql: str, escapes: bool = False) -> list[str]:
             # The closing newline may open the next blank line.
             position = match.end() - 1
         elif not token.isspace():
-            if pending is not None and SQL_KEYWORD.match(sql, match.start()):
+            if token == "(":
+                depth += 1
+            elif token == ")":
+                depth = max(depth - 1, 0)
+            if pending is not None and depth == 0 and SQL_KEYWORD.match(sql, match.start()):
                 starts.append(pending)
             pending = None
     ends = starts[1:] + [len(sql)]

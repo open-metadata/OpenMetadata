@@ -119,8 +119,8 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
 
 - A data model column is matched on the **warehouse columns a projection reads**, never on the
   projection's alias. MicroStrategy generates aliases (`WJXBFS1`, `CATEGORY0`) that name nothing.
-  The SQL is read pass by pass (passes are separated by blank lines, not semicolons); a pass that
-  is not SQL, or does not parse, contributes no columns and leaves table lineage as it was.
+  The SQL is read pass by pass (passes are separated by blank lines, not semicolons; a blank line
+  inside parentheses, a comment or quoted text never splits one); a pass that is not SQL, or does not parse, contributes no columns and leaves table lineage as it was.
 - **Schema cube attribute:** its form's expression, read through the modeling API
   (`/model/attributes`, logical → physical table through `/model/tables`), gives the (table, column)
   pairs the form can read. The physical table is named as the SQL names it: its table prefix when

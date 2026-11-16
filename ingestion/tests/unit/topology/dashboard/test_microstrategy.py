@@ -1070,6 +1070,14 @@ class TestColumnLineage:
 
         assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x"), ("p.d.u", "y"), ("p.d.v", "z")}
 
+    def test_a_blank_line_inside_a_cte_or_subquery_does_not_split_a_pass(self):
+        sql = (
+            "with c as (\n\nselect o.order_id from `p`.`s`.`orders` o\n)\nselect order_id from c\n\n"
+            "select x.n from (\n\nselect i.n from `p`.`s`.`items` i\n) x"
+        )
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "order_id"), ("p.s.items", "n")}
+
     def test_a_correlated_reference_reaches_the_outer_table(self):
         sql = "select a.id id, (select a.price) price from `p`.`s`.`orders` a"
 
