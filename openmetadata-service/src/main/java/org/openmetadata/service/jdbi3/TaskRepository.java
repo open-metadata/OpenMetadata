@@ -308,25 +308,24 @@ public class TaskRepository extends EntityRepository<Task> {
     filter.removeQueryParam("requestedDomainId");
   }
 
-  private String intersectDomainIds(String requestedDomainId, String allowedDomainId) {
+  static String intersectDomainIds(String requestedDomainId, String allowedDomainId) {
     if (ListFilter.NULL_PARAM.equals(allowedDomainId)) {
       return ListFilter.NULL_PARAM;
     }
 
-    List<String> requestedIds =
-        Arrays.stream(requestedDomainId.split(","))
-            .map(String::trim)
-            .filter(id -> !id.isEmpty())
-            .toList();
-    Set<String> allowedIds =
-        new LinkedHashSet<>(
-            Arrays.stream(allowedDomainId.split(","))
-                .map(String::trim)
-                .filter(id -> !id.isEmpty())
-                .toList());
+    // The requested ids come bare (a domain and its sub-domains), the role's scope quoted.
+    List<String> requestedIds = bareIds(requestedDomainId);
+    Set<String> allowedIds = new LinkedHashSet<>(bareIds(allowedDomainId));
     List<String> intersection = requestedIds.stream().filter(allowedIds::contains).toList();
 
     return intersection.isEmpty() ? ListFilter.NULL_PARAM : String.join(",", intersection);
+  }
+
+  private static List<String> bareIds(String ids) {
+    return Arrays.stream(ids.replace("'", "").split(","))
+        .map(String::trim)
+        .filter(id -> !id.isEmpty())
+        .toList();
   }
 
   @Override
