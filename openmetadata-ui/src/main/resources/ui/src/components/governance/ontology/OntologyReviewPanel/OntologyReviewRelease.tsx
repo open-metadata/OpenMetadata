@@ -17,7 +17,7 @@ import {
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,17 +26,14 @@ import {
   MemberKind,
   type OntologyReleaseDiff,
 } from '../../../../generated/api/data/ontologyReleaseDiff';
-import {
-  getOntologyReleaseDiff,
-  getOntologyReleaseMember,
-} from '../../../../rest/ontologyAPI';
+import { getOntologyReleaseDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeFilters from '../OntologyReleasePanel/OntologyReleaseChangeFilters';
 import type {
   ChangeFilter,
   ChangeKindCounts,
 } from '../OntologyReleasePanel/OntologyReleaseChanges.utils';
-import OntologyReviewFieldChanges from './OntologyReviewFieldChanges';
 
 const EMPTY_COUNTS: ChangeKindCounts = {
   concepts: 0,
@@ -73,14 +70,11 @@ const KIND_LABELS: Record<MemberKind, string> = {
   [MemberKind.Ontology]: 'label.ontology',
 };
 
-const CHANGE_GLYPHS: Record<
-  ChangeType,
-  ['success' | 'warning' | 'danger', string]
-> = {
-  [ChangeType.Added]: ['success', '+'],
-  [ChangeType.Changed]: ['warning', '~'],
-  [ChangeType.Deprecated]: ['warning', '~'],
-  [ChangeType.Removed]: ['danger', '−'],
+const CHANGE_TEXT_COLORS: Record<ChangeType, string> = {
+  [ChangeType.Added]: 'tw:text-tertiary',
+  [ChangeType.Changed]: 'tw:text-warning-primary',
+  [ChangeType.Deprecated]: 'tw:text-warning-primary',
+  [ChangeType.Removed]: 'tw:text-error-primary',
 };
 
 const filterChanges = (
@@ -118,8 +112,6 @@ const OntologyReviewRelease = ({
   const [filter, setFilter] = useState<ChangeFilter>('all');
   const [search, setSearch] = useState('');
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const [selected, setSelected] =
-    useState<OntologyReleaseDiff['data'][number]>();
   const after = cursors[cursors.length - 1];
   const page = useQuery({
     queryKey: ['ontology-review-members', releaseId, baseReleaseId, after],
@@ -132,41 +124,7 @@ const OntologyReviewRelease = ({
         signal
       ),
   });
-  const snapshots = selected
-    ? [
-        { releaseId: selected.beforeReleaseId, label: 'label.before' },
-        { releaseId: selected.afterReleaseId, label: 'label.after' },
-      ].filter((snapshot) => snapshot.releaseId)
-    : [];
-  const members = useQueries({
-    queries: snapshots.map((snapshot) => ({
-      queryKey: [
-        'ontology-review-member',
-        snapshot.releaseId,
-        selected?.memberKind,
-        selected?.entity.id,
-      ],
-      retry: false,
-      gcTime: 0,
-      queryFn: ({ signal }: { signal: AbortSignal }) => {
-        if (!selected || !snapshot.releaseId) {
-          throw new Error('Missing captured ontology member');
-        }
-
-        return getOntologyReleaseMember(
-          snapshot.releaseId,
-          selected.memberKind,
-          selected.entity.id,
-          signal
-        );
-      },
-    })),
-  });
-
-  const ready =
-    page.isSuccess &&
-    !page.isFetching &&
-    members.every((member) => member.isSuccess && !member.isFetching);
+  const ready = page.isSuccess && !page.isFetching;
   useEffect(() => {
     onReadyChange?.(ready);
 
@@ -178,33 +136,6 @@ const OntologyReviewRelease = ({
       <Alert variant="error">{t('message.ontology-review-unavailable')}</Alert>
     );
   }
-
-  const renderMember = () => {
-    if (!selected) {
-      return null;
-    }
-    if (members.some((member) => member.isError)) {
-      return (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
-      );
-    }
-    if (members.some((member) => member.isPending)) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
-    }
-
-    const payloadOf = (label: string) =>
-      members[snapshots.findIndex((snapshot) => snapshot.label === label)]?.data
-        ?.payload;
-
-    return (
-      <OntologyReviewFieldChanges
-        after={payloadOf('label.after')}
-        before={payloadOf('label.before')}
-      />
-    );
-  };
 
   const renderFilters = (changes: readonly Change[]) =>
     filterable && (
@@ -222,32 +153,27 @@ const OntologyReviewRelease = ({
         onSearchChange={setSearch}
       />
     );
-  const renderRow = (change: Change) => {
-    const [color, glyph] = CHANGE_GLYPHS[change.changeType];
-
-    return (
-      <li
-        className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
-        key={`${change.memberKind}:${change.entity.id}`}>
-        <Typography aria-hidden color={color} size="text-sm" weight="semibold">
-          {glyph}
-        </Typography>
-        <Button
-          className="tw:min-w-0 tw:flex-1 tw:justify-start"
-          color="link-color"
-          size="sm"
-          onPress={() => setSelected(change)}>
-          {getEntityName(change.entity)}
-        </Button>
-        <Typography as="span" color={color} size="text-xs">
-          {t(`label.${change.changeType.toLowerCase()}`)}
-        </Typography>
-      </li>
-    );
-  };
+  const renderRow = (change: Change) => (
+    <li
+      className="tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
+      key={`${change.memberKind}:${change.entity.id}`}>
+      <Typography
+        className="tw:min-w-0 tw:flex-1 tw:truncate"
+        size="text-sm"
+        weight="regular">
+        {getEntityName(change.entity)}
+      </Typography>
+      <Typography
+        as="span"
+        className={CHANGE_TEXT_COLORS[change.changeType]}
+        size="text-xs">
+        {t(`label.${change.changeType.toLowerCase()}`)}
+      </Typography>
+    </li>
+  );
   const renderChanges = () => {
     if (page.isPending) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     const changes = page.data.data;
     const visible = filterable
@@ -264,15 +190,11 @@ const OntologyReviewRelease = ({
                 <Box
                   align="center"
                   className={classNames(
-                    'tw:px-4 tw:py-2',
+                    'tw:bg-secondary tw:px-4 tw:py-2.5',
                     index > 0 && 'tw:border-t tw:border-secondary'
                   )}
                   justify="between">
-                  <Typography
-                    className="tw:uppercase tw:tracking-wide"
-                    color="secondary"
-                    size="text-xs"
-                    weight="semibold">
+                  <Typography size="text-sm" weight="semibold">
                     {t(label)}
                   </Typography>
                   <Typography color="secondary" size="text-xs">
@@ -293,29 +215,28 @@ const OntologyReviewRelease = ({
   return (
     <Box direction="col" gap={3}>
       {renderChanges()}
-      <Box gap={2}>
-        <Button
-          color="secondary"
-          isDisabled={page.isPending || cursors.length === 1}
-          size="sm"
-          onPress={() => {
-            setSelected(undefined);
-            setCursors((current) => current.slice(0, -1));
-          }}>
-          {t('label.previous')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={page.isPending || !page.data?.paging.after}
-          size="sm"
-          onPress={() => {
-            setSelected(undefined);
-            setCursors((current) => [...current, page.data?.paging.after]);
-          }}>
-          {t('label.next')}
-        </Button>
-      </Box>
-      {renderMember()}
+      {(cursors.length > 1 || page.data?.paging.after) && (
+        <Box gap={2}>
+          <Button
+            color="secondary"
+            isDisabled={page.isPending || cursors.length === 1}
+            size="sm"
+            onPress={() => {
+              setCursors((current) => current.slice(0, -1));
+            }}>
+            {t('label.previous')}
+          </Button>
+          <Button
+            color="secondary"
+            isDisabled={page.isPending || !page.data?.paging.after}
+            size="sm"
+            onPress={() => {
+              setCursors((current) => [...current, page.data?.paging.after]);
+            }}>
+            {t('label.next')}
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

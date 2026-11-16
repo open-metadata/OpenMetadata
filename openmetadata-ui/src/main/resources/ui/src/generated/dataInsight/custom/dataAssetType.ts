@@ -12,9 +12,11 @@
  */
 /**
  * Entity type reachable under the `di-data-assets-*` wildcard. Asset types are ingested by
- * DataInsightsApp and configured in `dataInsights/config.json`. Test results and resolution
- * statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the app must never
- * create or delete data streams for those live-index aliases.
+ * DataInsightsApp and configured in `dataInsights/config.json`. Test cases, test results
+ * and resolution statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the
+ * app must never create or delete data streams for those live-index aliases. Test case
+ * documents carry no `@timestamp`, so test cases are charted in live mode (`searchIndex:
+ * testCase`) rather than over a time window.
  */
 export enum DataAssetType {
     APIEndpoint = "apiEndpoint",
@@ -33,6 +35,7 @@ export enum DataAssetType {
     StoredProcedure = "storedProcedure",
     Table = "table",
     Tag = "tag",
+    TestCase = "testCase",
     TestCaseResolutionStatus = "testCaseResolutionStatus",
     TestCaseResult = "testCaseResult",
     Topic = "topic",

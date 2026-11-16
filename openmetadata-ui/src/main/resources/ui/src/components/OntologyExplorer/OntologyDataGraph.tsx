@@ -1655,20 +1655,20 @@ const OntologyDataGraph = ({
       return null;
     }
     const isShowingMore = hiddenAssetCount > 0 || term.isLoadingAssets;
-    let label = t('label.show-less-lowercase');
-    if (term.isLoadingAssets) {
-      label = t('label.loading');
-    } else if (hiddenAssetCount > 0) {
-      label = t('label.show-count-more', { count: hiddenAssetCount });
-    }
+    const label =
+      hiddenAssetCount > 0
+        ? t('label.show-count-more', { count: hiddenAssetCount })
+        : t('label.show-less-lowercase');
 
     return (
       <Box className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5">
         <Button
+          showTextWhileLoading
           color="link-color"
           data-testid={`ontology-load-more-assets-${term.id}`}
           iconLeading={isShowingMore ? ChevronDown : ChevronUp}
           isDisabled={term.isLoadingAssets}
+          isLoading={term.isLoadingAssets}
           size="sm"
           onClick={() => toggleCard(term, unloadedAssetCount)}>
           {label}
@@ -1693,15 +1693,15 @@ const OntologyDataGraph = ({
         <Box gap={4}>
           {hiddenAssetCount > 0 || term.isLoadingAssets ? (
             <Button
+              showTextWhileLoading
               color="link-color"
               data-testid={`ontology-load-more-assets-${term.id}`}
               iconLeading={ChevronDown}
               isDisabled={term.isLoadingAssets}
+              isLoading={term.isLoadingAssets}
               size="sm"
               onClick={() => toggleCard(term, unloadedAssetCount)}>
-              {term.isLoadingAssets
-                ? t('label.loading')
-                : t('label.load-more-count', { count: hiddenAssetCount })}
+              {t('label.load-more-count', { count: hiddenAssetCount })}
             </Button>
           ) : null}
           {canShowLess ? (

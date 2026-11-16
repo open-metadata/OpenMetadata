@@ -104,6 +104,7 @@ public class PatchEntityTool implements McpTool {
     String fqn = (String) params.get("fqn");
     requireTarget(entityType, fqn);
     requireGenericPatchLifecycle(entityType);
+    CommonUtils.refuseImpersonatedGrantWrite(securityContext, entityType);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
     requireConnectionUntouched(entityType, jsonPatch);
@@ -137,9 +138,11 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(
-        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
-        response.changeType());
+    return McpResponseUtils.markHeld(
+        McpResponseUtils.compactPatch(
+            CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+            response.changeType()),
+        response.pendingChangeRequestId());
   }
 
   private static void requireTarget(String entityType, String fqn) {

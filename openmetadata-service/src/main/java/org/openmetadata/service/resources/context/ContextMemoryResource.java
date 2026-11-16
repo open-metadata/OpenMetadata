@@ -58,6 +58,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -73,6 +74,7 @@ import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.MemoryDerivations;
 import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
 import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
@@ -961,6 +963,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       throw new WebApplicationException(STALE_RECOUNT, Response.Status.CONFLICT);
     }
     return addHref(uriInfo, repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false));
+  }
+
+  @GET
+  @Path("/extractionAvailability")
+  @Operation(
+      operationId = "getMemoryExtractionAvailability",
+      summary = "Get whether memories can be extracted",
+      description =
+          "Whether memories can be extracted from Context Center documents and articles now, and"
+              + " why not when they cannot. Any authenticated user may read it.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Whether memory extraction is available",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ExtractionAvailability.class)))
+      })
+  public ExtractionAvailability getExtractionAvailability() {
+    return AiProviderHolder.get().extractionAvailability();
   }
 
   @GET

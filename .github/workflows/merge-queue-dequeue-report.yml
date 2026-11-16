@@ -37,6 +37,10 @@ on:
         description: PR number to report on
         required: true
         type: number
+      dequeue:
+        description: Which dequeue to report on, counted back from the latest (1)
+        type: number
+        default: 1
       dry_run:
         description: Print to the job summary instead of commenting on the PR
         type: boolean
@@ -60,6 +64,7 @@ jobs:
       OWNER: ${{ github.repository_owner }}
       REPO: ${{ github.event.repository.name }}
       PR: ${{ github.event.number || inputs.pr }}
+      DEQUEUE: ${{ inputs.dequeue || 1 }}
       BASE_REF: ${{ github.event.repository.default_branch }}
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
       SLACK_CHANNEL: C0AC5T013V1 # #ci-cleanup
@@ -79,11 +84,11 @@ jobs:
           # matches at once, and its createdAt in the comment exposes a stale read.
           # shellcheck disable=SC2016  # the GraphQL query and jq filter must not expand
           for _ in 1 2 3; do
-            gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -f query='
-              query($owner: String!, $repo: String!, $pr: Int!) {
+            gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -F last="$DEQUEUE" -f query='
+              query($owner: String!, $repo: String!, $pr: Int!, $last: Int!) {
                 repository(owner: $owner, name: $repo) {
                   pullRequest(number: $pr) {
-                    timelineItems(last: 1, itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT]) {
+                    timelineItems(last: $last, itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT]) {
                       nodes {
                         ... on RemovedFromMergeQueueEvent {
                           reason
@@ -94,7 +99,8 @@ jobs:
                     }
                   }
                 }
-              }' --jq '.data.repository.pullRequest.timelineItems.nodes[0]
+              }' --jq '.data.repository.pullRequest.timelineItems.nodes
+                       | select(length == ($ENV.DEQUEUE | tonumber)) | .[0]
                        | select(.reason != null)
                        | "\(.reason)\t\(.beforeCommit.oid // "")\t\(.createdAt)"' > event.tsv || true
 
@@ -115,6 +121,11 @@ jobs:
             sleep 5
           done
 
+          # A dispatch replaying an older dequeue must find it, never report another.
+          if [ "$DEQUEUE" != 1 ]; then
+            echo "::error::PR #$PR has no dequeue $DEQUEUE back from the latest (1-100)."
+            exit 1
+          fi
           echo "No RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
 
       - name: Label what the entry conflicts with
