@@ -21,8 +21,7 @@ import { expect, test } from '../fixtures/pages';
 
 type ImpersonatingBot = { id: string; displayName: string; token: string };
 
-// Impersonation can only be granted when a bot is created. JwtFilter names a bot after its
-// email's local part, so the bot user's name must equal it.
+// Impersonation can only be granted when a bot is created, and BotClass does not grant it.
 const createImpersonatingBot = async (
   apiContext: APIRequestContext
 ): Promise<ImpersonatingBot> => {

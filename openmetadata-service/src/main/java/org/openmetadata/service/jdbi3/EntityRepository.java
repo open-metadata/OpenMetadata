@@ -3603,6 +3603,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Delete, restore and the bulk writes rebuild the entity from its stored copy or a request and
+   * set only who wrote it, so they also set impersonatedBy: the stored copy names the bot of the
+   * previous change. The bot is the current request's, null for a direct or a system write.
+   */
+  private static void recordWriter(EntityInterface<?> entity, String updatedBy) {
+    entity.setUpdatedBy(updatedBy);
+    entity.setImpersonatedBy(ImpersonationContext.getImpersonatedBy());
+  }
+
+  /**
    * Creation audit is immutable. Carrying it from the stored entity onto the incoming one before any
    * diffing means a PUT that omits it or a PATCH that rewrites it cannot move it, and no change is
    * ever recorded against it.
@@ -5926,7 +5936,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         EventType changeType;
         T updated = loadForDelete(original.getId());
         if (supportsSoftDelete && !hardDelete) {
-          updated.setUpdatedBy(deletedBy);
+          recordWriter(updated, deletedBy);
           updated.setUpdatedAt(System.currentTimeMillis());
           updated.setDeleted(true);
           EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
@@ -8302,7 +8312,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       setFieldsInternal(original, putFields, ALL);
       setInheritedFields(original, putFields);
       T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-      updated.setUpdatedBy(updatedBy);
+      recordWriter(updated, updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
@@ -9066,7 +9076,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase(phaseName)) {
       for (T original : originals) {
         T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-        updated.setUpdatedBy(updatedBy);
+        recordWriter(updated, updatedBy);
         updated.setUpdatedAt(now);
         if (mutator != null) {
           mutator.accept(updated);
@@ -11478,6 +11488,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       } else if (!versionChanged) {
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setImpersonatedBy(original.getImpersonatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
       }
     }
@@ -12890,6 +12901,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         LOG.info("No version change and entityChanged=false, checking previous");
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setImpersonatedBy(original.getImpersonatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
@@ -12970,6 +12982,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       } else { // Update did not change the entity version
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setImpersonatedBy(original.getImpersonatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
@@ -15125,7 +15138,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     updated.setChangeDescription(change);
     updated.setVersion(EntityUtil.nextVersion(original.getVersion())); // Manually bump version ONCE
-    updated.setUpdatedBy(updatedBy);
+    recordWriter(updated, updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
 
     storeVersions(List.of(original));
@@ -15426,7 +15439,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               updateFrequencyByFqn.getOrDefault(fqn, 0) > 1
                   ? JsonUtils.deepCopy(hydratedOriginal, entityClass)
                   : hydratedOriginal;
-          entity.setUpdatedBy(userName);
+          recordWriter(entity, userName);
           entity.setUpdatedAt(System.currentTimeMillis());
           final ChangeActor actor = ChangeActor.recorded(userName, null);
           authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
@@ -15598,6 +15611,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // A refused create fails alone, with the 403 a refused update in this request gets.
     newEntities.removeIf(entity -> refusesBulkCreate(entity, userName, failedRequests));
+    newEntities.forEach(entity -> recordWriter(entity, userName));
 
     // Batch create new entities
     if (!newEntities.isEmpty()) {

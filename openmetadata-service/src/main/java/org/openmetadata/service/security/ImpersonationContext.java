@@ -31,6 +31,23 @@ public class ImpersonationContext {
     return impersonatedBy.get();
   }
 
+  /**
+   * Runs {@code task} with the bot of the thread that submits it. A task on a worker thread does not
+   * see that bot, so the writes it makes would be stamped as nobody's; the bot is captured here and
+   * cleared from the worker when the task ends.
+   */
+  public static Runnable propagate(Runnable task) {
+    String submitter = getImpersonatedBy();
+    return () -> {
+      setImpersonatedBy(submitter);
+      try {
+        task.run();
+      } finally {
+        clear();
+      }
+    };
+  }
+
   public static boolean isValidated(String botName, String targetUser) {
     return validationKey(botName, targetUser).equals(validatedImpersonation.get());
   }
