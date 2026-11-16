@@ -922,6 +922,14 @@
     }
   },
   {
+    "id": "page-ontology",
+    "group": "Pages",
+    "path": "/governance/ontology",
+    "ready": {
+      "testId": "ontology-explorer-stats"
+    }
+  },
+  {
     "id": "page-sparql",
     "group": "Pages",
     "path": "/governance/sparql",
