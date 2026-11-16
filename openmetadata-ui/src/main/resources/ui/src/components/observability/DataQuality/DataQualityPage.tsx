@@ -17,7 +17,6 @@ import {
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import {
   ChevronDown,
   Plus,
@@ -39,6 +38,7 @@ import DataQualityProvider, {
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
@@ -46,7 +46,10 @@ import BundleSuiteFormDrawer from '../../DataQuality/BundleSuiteForm/BundleSuite
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportData } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import { OBSERVABILITY_ROUTES, OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
+import {
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+  OBSERVABILITY_ROUTES,
+} from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 
 const DataQualityDashboard = withSuspenseFallback(

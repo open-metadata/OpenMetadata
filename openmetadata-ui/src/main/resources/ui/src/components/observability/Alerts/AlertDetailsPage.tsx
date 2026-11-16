@@ -50,7 +50,10 @@ import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUt
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
-import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY, OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
+import {
+  OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+} from '../observability.constants';
 import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
 import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
@@ -470,7 +473,9 @@ const AlertDetailsPage = ({
           <Loader />
         </>
       ) : (
-        <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS} data-testid="alert-details-ai-page">
+        <PageLayout
+          className={OBSERVABILITY_PAGE_LAYOUT_CLASS}
+          data-testid="alert-details-ai-page">
           <DocumentTitle title={alertName} />
           <PageLayout.PageHeader
             actions={headerActions}

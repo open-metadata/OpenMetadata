@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { PageLayout } from '@openmetadata/ui-core-components';
-import { OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
-import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -20,9 +18,11 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
+import { OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
 import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';

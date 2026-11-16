@@ -12,7 +12,6 @@
  */
 
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
-import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -31,7 +30,11 @@ import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY, OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
+import {
+  OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+} from '../observability.constants';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
