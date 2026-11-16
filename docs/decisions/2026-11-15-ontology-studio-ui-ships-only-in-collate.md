@@ -1,7 +1,7 @@
 # The Ontology Studio UI ships only in Collate; OSS keeps the ontology APIs and shared pieces
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-15 (initial) · v2 2026-11-16 (OpenMetadata serves the read-only Ontology Explorer again)
+- **Revisions:** v1 2026-11-15 (initial) · v2 2026-11-16 (OpenMetadata serves the read-only Ontology Explorer again) · v3 2026-11-16 (the empty Ontology RDF Playwright project is removed)
 - **Deciders:** Product, UI team
 - **Guard:** reviewer
 - **Supersedes:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default (for OpenMetadata; the rule now governs Collate's route)
@@ -47,3 +47,8 @@ again (`pages/governance/ontology/OntologyExplorerPage`): the existing `Ontology
 `scope="global"`, with no authoring, under Govern in both modes. Collate's route, sidebar item and
 AI-mode Govern module replace it with Ontology Studio. The "View all" and linked-concept links no
 longer point at an unserved route.
+
+v3 (2026-11-16): the empty `Ontology RDF` and `ontology-rdf-setup` Playwright projects are removed,
+with the `rdf` lane's `--project="Ontology RDF"` and its `Ontology*Rdf.spec.ts` path filter. No
+OpenMetadata spec is tagged `@ontology-rdf` and `Knowledge Graph` never depended on the setup; the
+`rdf` lane runs `Knowledge Graph` alone.
