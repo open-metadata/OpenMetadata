@@ -21,6 +21,7 @@ import {
   Modal,
   ModalOverlay,
   Owner,
+  PageLayout,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -44,6 +45,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
@@ -56,9 +58,11 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
 import TestSuitePipelineTab from '../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
+import {
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+  OBSERVABILITY_ROUTES,
+} from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
@@ -391,9 +395,15 @@ const TestSuiteDetail = () => {
   }
 
   return (
-    <ObservabilityPageShell
-      data-testid="test-suite-detail-page"
-      header={
+    <PageLayout
+      className={OBSERVABILITY_PAGE_LAYOUT_CLASS}
+      data-testid="test-suite-detail-page">
+      <DocumentTitle
+        title={t('label.entity-detail-plural', {
+          entity: getEntityName(testSuite),
+        })}
+      />
+      <PageLayout.Header>
         <Box
           className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
           data-testid="test-suite-header-container"
@@ -502,36 +512,35 @@ const TestSuiteDetail = () => {
             </div>
           </Box>
         </Box>
-      }
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(testSuite),
-      })}>
-      <div className="test-suite-details-tabs" data-testid="tabs-root">
-        <div className="tw:flex tw:items-end tw:border-b tw:border-secondary">
-          <Tabs
-            className="tw:w-fit"
-            data-testid="tabs"
-            selectedKey={activeTab}
-            onSelectionChange={(key) => setActiveTab(String(key))}>
-            <Tabs.List size="sm" type="underline">
-              <Tabs.Item
-                badge={getTabBadge(pagingData.paging.total)}
-                data-testid={EntityTabs.TEST_CASES}
-                id={EntityTabs.TEST_CASES}
-                label={t('label.test-case-plural')}
-              />
-              <Tabs.Item
-                badge={getTabBadge(ingestionPipelineCount)}
-                data-testid={EntityTabs.PIPELINE}
-                id={EntityTabs.PIPELINE}
-                label={t('label.pipeline-plural')}
-              />
-            </Tabs.List>
-          </Tabs>
+      </PageLayout.Header>
+      <PageLayout.Content>
+        <div className="test-suite-details-tabs" data-testid="tabs-root">
+          <div className="tw:flex tw:items-end tw:border-b tw:border-secondary">
+            <Tabs
+              className="tw:w-fit"
+              data-testid="tabs"
+              selectedKey={activeTab}
+              onSelectionChange={(key) => setActiveTab(String(key))}>
+              <Tabs.List size="sm" type="underline">
+                <Tabs.Item
+                  badge={getTabBadge(pagingData.paging.total)}
+                  data-testid={EntityTabs.TEST_CASES}
+                  id={EntityTabs.TEST_CASES}
+                  label={t('label.test-case-plural')}
+                />
+                <Tabs.Item
+                  badge={getTabBadge(ingestionPipelineCount)}
+                  data-testid={EntityTabs.PIPELINE}
+                  id={EntityTabs.PIPELINE}
+                  label={t('label.pipeline-plural')}
+                />
+              </Tabs.List>
+            </Tabs>
+          </div>
+          <div className="test-suite-details-tab-panel">{activeTabContent}</div>
         </div>
-        <div className="test-suite-details-tab-panel">{activeTabContent}</div>
-      </div>
-    </ObservabilityPageShell>
+      </PageLayout.Content>
+    </PageLayout>
   );
 };
 

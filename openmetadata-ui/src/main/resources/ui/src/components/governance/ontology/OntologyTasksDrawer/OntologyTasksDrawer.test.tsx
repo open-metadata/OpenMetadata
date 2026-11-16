@@ -638,7 +638,9 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       .map(([, config]) => config.params.after)
   ).toEqual(['cursor-7', undefined]);
   expect(screen.getByText(/PAGE-01/)).toBeInTheDocument();
-}, 20_000);
+  // About 90 sequential page loads: ~3 s locally, but CI coverage runs are ~4x
+  // slower and overran 20 s, leaving this loop clicking inside later tests.
+}, 60_000);
 
 it('does not invent a zero pending count when paging is unavailable', async () => {
   get.mockResolvedValue({ data: { data: [] } });
