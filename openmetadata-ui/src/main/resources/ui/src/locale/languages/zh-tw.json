@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "資料資產",
     "data-asset-name": "資料資產名稱",
     "data-asset-plural": "資料資產",
+    "data-asset-plural-by-connector": "依連接器劃分的資料資產",
     "data-asset-plural-coverage": "資料資產涵蓋範圍",
     "data-asset-plural-with-field": "具有 {{field}} 的資料資產",
     "data-asset-rules": "資料資產規則",

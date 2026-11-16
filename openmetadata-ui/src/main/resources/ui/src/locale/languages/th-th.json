@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "สินทรัพย์ข้อมูล",
     "data-asset-name": "ชื่อทรัพย์สินข้อมูล",
     "data-asset-plural": "ทรัพย์สินข้อมูลหลายรายการ",
+    "data-asset-plural-by-connector": "ทรัพย์สินข้อมูลตามตัวเชื่อมต่อ",
     "data-asset-plural-coverage": "ความครอบคลุมของทรัพย์สินข้อมูล",
     "data-asset-plural-with-field": "ทรัพย์สินข้อมูลที่มี {{field}}",
     "data-asset-rules": "กฎสินทรัพย์ข้อมูล",

@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "נכסי מידע",
     "data-asset-name": "שם נכס נתונים",
     "data-asset-plural": "נכסי נתונים",
+    "data-asset-plural-by-connector": "נכסי נתונים לפי מחבר",
     "data-asset-plural-coverage": "כיסוי נכסי נתונים",
     "data-asset-plural-with-field": "נכסי נתונים עם {{field}}",
     "data-asset-rules": "כללי נכסי נתונים",

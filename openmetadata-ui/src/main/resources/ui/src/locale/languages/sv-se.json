@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "datatillgångar",
     "data-asset-name": "Namn på datatillgång",
     "data-asset-plural": "Datatillgångar",
+    "data-asset-plural-by-connector": "Datatillgångar per koppling",
     "data-asset-plural-coverage": "Täckning av datatillgångar",
     "data-asset-plural-with-field": "Datatillgångar med {{field}}",
     "data-asset-rules": "Regler för datatillgångar",

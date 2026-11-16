@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "объекты данных",
     "data-asset-name": "Наименование объекта данных",
     "data-asset-plural": "Объекты данных",
+    "data-asset-plural-by-connector": "Объекты данных по коннекторам",
     "data-asset-plural-coverage": "Покрытие проверками",
     "data-asset-plural-with-field": "Объекты данных с {{field}}",
     "data-asset-rules": "Правила активов данных",

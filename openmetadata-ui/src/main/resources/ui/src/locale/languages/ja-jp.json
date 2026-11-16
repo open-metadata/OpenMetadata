@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "データアセット",
     "data-asset-name": "データアセット名",
     "data-asset-plural": "データアセット",
+    "data-asset-plural-by-connector": "コネクタ別データアセット",
     "data-asset-plural-coverage": "データアセットカバレッジ",
     "data-asset-plural-with-field": "{{field}}のデータアセット",
     "data-asset-rules": "データアセットルール",

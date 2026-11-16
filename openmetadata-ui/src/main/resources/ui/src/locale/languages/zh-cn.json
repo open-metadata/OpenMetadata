@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "数据资产",
     "data-asset-name": "数据资产名",
     "data-asset-plural": "数据资产",
+    "data-asset-plural-by-connector": "按连接器划分的数据资产",
     "data-asset-plural-coverage": "数据资产覆盖范围",
     "data-asset-plural-with-field": "带有{{field}}信息的数据资产",
     "data-asset-rules": "数据资产规则",
