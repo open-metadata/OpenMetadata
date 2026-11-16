@@ -17,6 +17,8 @@ for Prep flows and extract refreshes
 import heapq
 import json
 from collections.abc import Callable, Iterable, Iterator
+from types import TracebackType
+from typing import Any
 
 import requests
 from pydantic import ValidationError
@@ -31,7 +33,12 @@ from tableauserverclient import (
     TableauAuth,
 )
 from tableauserverclient.models import BackgroundJobItem, FlowItem, FlowRunItem, TaskItem
+from tableauserverclient.server.endpoint.endpoint import TABLEAU_AUTH_HEADER
 from tableauserverclient.server.endpoint.exceptions import ServerResponseError
+from typing_extensions import Self
+from urllib3.connectionpool import ConnectionPool
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError
+from urllib3.response import BaseHTTPResponse
 from urllib3.util.retry import Retry
 
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
@@ -69,6 +76,10 @@ EXTRACT_REFRESH_JOB_TYPES = ["refresh_extracts", "increment_extracts"]
 MAX_EXTRACT_REFRESH_JOB_LOOKUPS = 1000
 # The version TSC keeps when it cannot read the server's; too old for flows.
 FALLBACK_API_VERSION = "2.4"
+# (connect, read) seconds for every Tableau call. ADR:2026-10-30-tableau-pipeline-http-timeout
+HTTP_TIMEOUT = (10, 60)
+# Longest Retry-After waited out. ADR:2026-10-30-tableau-pipeline-retry-after-cap
+MAX_RETRY_AFTER_SECONDS = 30
 
 
 class TableauSiteAdminRequiredError(Exception):
@@ -76,8 +87,13 @@ class TableauSiteAdminRequiredError(Exception):
 
 
 class TableauMetadataApiError(Exception):
-    """The Metadata API could not be queried at all (as opposed to answering
-    with no data)."""
+    """The Metadata API failed or answered only with errors (as opposed to
+    answering with no data)."""
+
+
+class TableauFlowRecordError(TableauMetadataApiError):
+    """Tableau returned a flow record the connector cannot read; the Metadata
+    API itself works."""
 
 
 def _has_status(exc: ServerResponseError, status: int) -> bool:
@@ -92,11 +108,44 @@ def _started_at(run: TableauRunItem | FlowRunItem) -> float:
     return run.started_at.timestamp() if run.started_at else 0.0
 
 
+class _TableauRetry(Retry):
+    """Tableau Cloud answers a used-up hourly quota with a Retry-After that runs
+    to the top of the hour. Waiting that out would stall the run without a word,
+    so a longer wait is not retried: the 429 reaches the caller at once. Nor is
+    a read timeout: the host took the request and went silent, and a retry would
+    only multiply the wait. A dropped connection is retried like any other error."""
+
+    def increment(
+        self,
+        method: str | None = None,
+        url: str | None = None,
+        response: BaseHTTPResponse | None = None,
+        error: Exception | None = None,
+        _pool: ConnectionPool | None = None,
+        _stacktrace: TracebackType | None = None,
+    ) -> Self:
+        if isinstance(error, ReadTimeoutError):
+            raise error
+        wait = self.get_retry_after(response) if response is not None else None
+        if response is not None and _pool is not None and wait is not None and wait > MAX_RETRY_AFTER_SECONDS:
+            logger.warning(
+                "Tableau answered HTTP %s with Retry-After %ss: not waiting longer than %ss.",
+                response.status,
+                int(wait),
+                MAX_RETRY_AFTER_SECONDS,
+            )
+            raise MaxRetryError(_pool, url)
+        retry = super().increment(method, url, response, error, _pool, _stacktrace)
+        if response is not None and wait is not None:
+            logger.warning("Tableau answered HTTP %s with Retry-After %ss: waiting.", response.status, int(wait))
+        return retry
+
+
 def _retrying_session() -> requests.Session:
     """Tableau throttles with 429 and answers 502-504 while it restarts, and TSC
     does not retry. Every call the connector makes is a read, so POSTs (sign-in,
     Metadata API) are safe to retry too."""
-    retry = Retry(
+    retry = _TableauRetry(
         total=3,
         backoff_factor=1,
         status_forcelist=(429, 502, 503, 504),
@@ -121,7 +170,7 @@ class TableauPipelineClient:
         verify_ssl: bool | str | None,
         ssl_manager: SSLManager | None = None,
     ) -> None:
-        http_options: dict = {"verify": verify_ssl}
+        http_options: dict = {"verify": verify_ssl, "timeout": HTTP_TIMEOUT}
         if ssl_manager and ssl_manager.cert_file_path and ssl_manager.key_file_path:
             http_options["cert"] = (ssl_manager.cert_file_path, ssl_manager.key_file_path)
         # The options go in the constructor: it is where use_server_version reads
@@ -141,16 +190,37 @@ class TableauPipelineClient:
                 config.hostPort,
                 FALLBACK_API_VERSION,
             )
+        self._auth = tableau_server_auth
+        self.tableau_server.session.hooks["response"].append(self._sign_in_again)
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
         self.ssl_manager = ssl_manager
         self.number_of_status = config.numberOfStatus or DEFAULT_NUMBER_OF_STATUS
         self._user_emails: LRUCache[str | None] = LRUCache(USER_EMAIL_CACHE_SIZE)
         self._user_lookup_failed = False
+        self.flow_listing_complete = False
         self.extract_refresh_listing_complete = True
         self._extract_targets: frozenset[str] = frozenset()
         # Holds at most MAX_EXTRACT_REFRESH_JOB_LOOKUPS runs, one per looked-up job.
         self._extract_runs: dict[str, list[TableauRunItem]] | None = None
+
+    def _sign_in_again(self, response: requests.Response, **kwargs: Any) -> requests.Response:
+        """Tableau keeps one session per personal access token: a sign-in with the
+        same token anywhere else ends this one, and every later call answers 401.
+        Sign in again once and resend the call. ADR:2026-10-30-tableau-pipeline-sign-in-again"""
+        request = response.request
+        if response.status_code != 401 or "/auth/" in str(request.url):
+            return response
+        logger.warning(
+            "Tableau ended the session: it expired, or the same personal access token signed in elsewhere. "
+            "Signing in again."
+        )
+        self.tableau_server.auth.sign_in(self._auth)
+        resent = request.copy()
+        # Without this hook, a second 401 reaches the caller instead of another sign-in.
+        resent.hooks = {"response": []}
+        resent.headers[TABLEAU_AUTH_HEADER] = self.tableau_server.auth_token
+        return self.tableau_server.session.send(resent, **kwargs)
 
     def get_pipelines(
         self, keep: Callable[[TableauPipelineDetails], bool] = lambda _: True
@@ -164,6 +234,8 @@ class TableauPipelineClient:
             yield from self.get_extract_refresh_pipelines(keep)
 
     def _get_flow_pipelines(self) -> Iterable[TableauPipelineDetails]:
+        """Every flow. `flow_listing_complete` turns true only once the last page
+        is read, so a listing that fails part way deletes nothing."""
         flow: FlowItem
         for flow in Pager(self.tableau_server.flows):
             yield TableauPipelineDetails(
@@ -177,6 +249,7 @@ class TableauPipelineClient:
                 owner_id=str(flow.owner_id) if flow.owner_id else None,
                 tags=sorted(flow.tags) if flow.tags else [],
             )
+        self.flow_listing_complete = True
 
     def get_user_email(self, user_id: str) -> str | None:
         """Resolve a Tableau user id to an email address, or None on failure.
@@ -471,7 +544,8 @@ class TableauPipelineClient:
 
         Returns None when the flow has no lineage records yet (the Metadata store
         lags live publishes by a few minutes on Tableau Server); raises
-        TableauMetadataApiError when the Metadata API cannot be queried.
+        TableauMetadataApiError when the Metadata API cannot be queried or its
+        record cannot be read, so the source keeps the flow's stored tasks.
         """
         data = self._metadata_query(TABLEAU_FLOW_LINEAGE_QUERY.format(flow_luid=flow_luid), f"flow {flow_luid}")
         flows = data.get("flows") or []
@@ -481,8 +555,7 @@ class TableauPipelineClient:
         try:
             lineage = TableauFlowLineage.model_validate(flows[0])
         except Exception as exc:
-            logger.warning("Unable to parse the Tableau lineage of flow %s: %s", flow_luid, exc)
-            return None
+            raise TableauFlowRecordError(f"Unable to parse the Tableau lineage of flow {flow_luid}: {exc}") from exc
         self._attach_custom_sql(lineage)
         return lineage
 
@@ -530,11 +603,14 @@ class TableauPipelineClient:
     def _metadata_query(self, query: str, subject: str) -> dict:
         """The `data` of a Metadata API answer. A node-limit or permission error
         still returns partial data next to `errors`; the data is kept and the
-        truncation logged."""
+        truncation logged. Errors with no data at all, as a timed-out or rejected
+        query answers, are a failed query, not an empty one."""
         try:
             result = self.tableau_server.metadata.query(query=query)
         except Exception as exc:
             raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {exc}") from exc
+        if result.get("errors") and not any((result.get("data") or {}).values()):
+            raise TableauMetadataApiError(f"Tableau Metadata API query failed for {subject}: {result['errors']}")
         if result.get("errors"):
             logger.warning("Tableau Metadata API returned errors for %s: %s", subject, result["errors"])
         return result.get("data") or {}
