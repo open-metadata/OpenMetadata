@@ -64,8 +64,9 @@ export const OPEN_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] = [
   TestCaseResolutionStatusTypes.Assigned,
 ];
 
-export const RESOLVED_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] =
-  [TestCaseResolutionStatusTypes.Resolved];
+export const RESOLVED_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] = [
+  TestCaseResolutionStatusTypes.Resolved,
+];
 
 export const TEST_CASE_STATUS: Record<
   TestCaseResolutionStatusTypes,
