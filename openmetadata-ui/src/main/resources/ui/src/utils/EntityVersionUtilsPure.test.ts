@@ -128,7 +128,7 @@ describe('getColumnsDiff', () => {
     expect(JSON.stringify(result)).not.toContain('bad');
   });
 
-  it('keeps marking added columns without throwing on malformed diffs', () => {
+  it('marks valid added columns and leaves malformed entries untouched', () => {
     const columnsDiff = {
       added: {
         name: 'columns',
@@ -138,6 +138,28 @@ describe('getColumnsDiff', () => {
     } as unknown as EntityDiffProps;
     const colList = [{ name: 'good' }, { name: 'bad' }] as unknown as Column[];
 
-    expect(() => getColumnsDiff(columnsDiff, colList)).not.toThrow();
+    const result = getColumnsDiff(columnsDiff, colList);
+    const good = result.find((c) => c.name.includes('good'));
+    const bad = result.find((c) => c.name === 'bad');
+
+    expect(good?.name).toContain('diff-added');
+    expect(bad).toBeDefined();
+  });
+
+  it('renders deleted columns with non-string properties without crashing', () => {
+    const columnsDiff = {
+      deleted: {
+        name: 'columns',
+        oldValue: '[{"name":"deleted","description":{"text":"bad"}}]',
+        newValue: '',
+      },
+    } as unknown as EntityDiffProps;
+
+    expect(() => getColumnsDiff(columnsDiff, [] as Column[], '')).not.toThrow();
+
+    const result = getColumnsDiff(columnsDiff, [] as Column[], '');
+
+    expect(result).toHaveLength(1);
+    expect(JSON.stringify(result)).toContain('deleted');
   });
 });
