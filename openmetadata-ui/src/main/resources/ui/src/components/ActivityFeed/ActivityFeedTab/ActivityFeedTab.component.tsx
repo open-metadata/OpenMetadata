@@ -542,6 +542,7 @@ export const ActivityFeedTab = ({
     userId,
     selectedActivity,
     setActiveActivity,
+    refreshActivityFeed,
   } = useActivityFeedProvider();
 
   const isUserEntity = useMemo(
@@ -576,6 +577,9 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = useCallback(
     (subTab: string) => {
+      if (subTab === activeTab) {
+        return;
+      }
       setIsFirstLoad(true);
       navigate(
         entityUtilClassBase.getEntityLink(
@@ -586,11 +590,22 @@ export const ActivityFeedTab = ({
         ),
         { replace: true }
       );
+      refreshActivityFeed([]);
       setActiveThread();
       setActiveTask();
+      setActiveActivity(undefined);
       setIsFullWidth(false);
     },
-    [entityType, fqn, navigate, setActiveThread, setActiveTask]
+    [
+      activeTab,
+      entityType,
+      fqn,
+      navigate,
+      refreshActivityFeed,
+      setActiveThread,
+      setActiveTask,
+      setActiveActivity,
+    ]
   );
 
   const placeholderText = useMemo(() => {
