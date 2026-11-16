@@ -14,7 +14,7 @@ import traceback
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import partial
-from typing import cast
+from typing import Any, cast
 
 from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -62,8 +62,10 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.microstrategy.client import (
+    CACHE_SIZE,
     MicroStrategyApiError,
     MicroStrategyClient,
     cached,
@@ -120,6 +122,13 @@ def chart_name(dossier_id: str, page_key: str, visualization_key: str) -> str:
     return f"{dossier_id}_{page_key}{visualization_key}"
 
 
+def remember(cache: OrderedDict, key: Any, value: Any) -> None:
+    """Store in a bounded LRU cache"""
+    cache[key] = value
+    if len(cache) > CACHE_SIZE:
+        cache.popitem(last=False)
+
+
 class MicrostrategySource(DashboardServiceSource):
     """
     Microstrategy Source Class
@@ -135,8 +144,8 @@ class MicrostrategySource(DashboardServiceSource):
         self.definition_failed = False
         # A dossier whose existing charts could not be read from OpenMetadata produced no charts.
         self.charts_unknown = False
-        self._dialects: dict[str, Dialect | None] = {}
-        self._service_databases: dict[str, frozenset[str]] = {}
+        self._dialects: OrderedDict[str, Dialect | None] = OrderedDict()
+        self._service_databases: OrderedDict[str, frozenset[str]] = OrderedDict()
         self._source_tables: OrderedDict[tuple[str, Dialect], tuple[str, ...] | None] = OrderedDict()
 
     @property
@@ -382,6 +391,7 @@ class MicrostrategySource(DashboardServiceSource):
         is remembered; a failed lookup is not, so it is tried again for the next dossier.
         """
         if service_name in self._dialects:
+            self._dialects.move_to_end(service_name)
             return self._dialects[service_name]
         try:
             database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
@@ -394,8 +404,7 @@ class MicrostrategySource(DashboardServiceSource):
         dialect = (
             ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value) if database_service else None
         )
-        # One entry per dbServicePrefixes service, so the configuration bounds it.
-        self._dialects[service_name] = dialect
+        remember(self._dialects, service_name, dialect)
         return dialect
 
     def _parse_source_tables(self, project_id: str, cube_id: str, dialect: Dialect) -> tuple[str, ...]:
@@ -456,16 +465,17 @@ class MicrostrategySource(DashboardServiceSource):
         The database names of a dbServicePrefixes service, lowercased. A failed read is not
         remembered, and every database is then assumed possible.
         """
-        if service_name not in self._service_databases:
+        if service_name in self._service_databases:
+            self._service_databases.move_to_end(service_name)
+        else:
             try:
                 databases = self.metadata.list_all_entities(entity=Database, params={"service": service_name})
-                names = frozenset(str(database.name.root).lower() for database in databases)
+                names = frozenset(model_str(database.name).lower() for database in databases)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not list the databases of service [%s]: %s", service_name, exc)
                 return None
-            # One entry per dbServicePrefixes service, so the configuration bounds it.
-            self._service_databases[service_name] = names
+            remember(self._service_databases, service_name, names)
         return self._service_databases[service_name]
 
     @staticmethod

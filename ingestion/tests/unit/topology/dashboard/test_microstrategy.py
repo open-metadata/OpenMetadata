@@ -36,11 +36,12 @@ from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.dashboard.microstrategy.client import (
+    CACHE_SIZE,
     MicroStrategyApiError,
     MicroStrategyClient,
     strip_engine_steps,
 )
-from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource
+from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource, remember
 from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard
 
 if TYPE_CHECKING:
@@ -316,8 +317,8 @@ def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategyS
     source.listing_failed = False
     source.definition_failed = False
     source.charts_unknown = False
-    source._dialects = {}
-    source._service_databases = {}
+    source._dialects = OrderedDict()
+    source._service_databases = OrderedDict()
     source._source_tables = OrderedDict()
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(dashboard_service="mstr", charts=[])
@@ -482,6 +483,16 @@ class TestClient:
 
     def test_owner_email_is_the_default_address(self, client):
         assert client.get_owner_email(OWNER_ID) == "owner@example.com"
+
+
+def test_remember_keeps_the_most_recent_entries_only():
+    cache = OrderedDict()
+    for key in range(CACHE_SIZE + 2):
+        remember(cache, key, key)
+
+    assert len(cache) == CACHE_SIZE
+    assert 0 not in cache and 1 not in cache
+    assert CACHE_SIZE + 1 in cache
 
 
 class TestSource:
