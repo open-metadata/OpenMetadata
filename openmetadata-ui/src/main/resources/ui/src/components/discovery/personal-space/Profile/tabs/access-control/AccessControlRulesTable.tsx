@@ -31,6 +31,7 @@ import {
 } from '../../../../../../generated/api/policies/createPolicy';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 type RuleColumnId =
   | 'name'
@@ -50,7 +51,8 @@ interface AccessControlRulesTableProps {
   onDelete: (ruleName: string) => Promise<boolean>;
 }
 
-const formatList = (items?: string[]) => items?.join(', ') || '--';
+const formatList = (items?: string[]) =>
+  items?.join(', ') || NO_DATA_PLACEHOLDER;
 
 const EffectCell = ({ effect }: { effect: Rule['effect'] }) => (
   <Typography
@@ -124,7 +126,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
         return rule.description ? (
           <RichTextEditorPreviewerV1 markdown={rule.description} />
         ) : (
-          '--'
+          NO_DATA_PLACEHOLDER
         );
       default:
         return (

@@ -30,6 +30,7 @@ import type { MembersView } from './Members.types';
 import type { TeamTab } from './MembersTeamDetail.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash, ProfileHashTarget } from './profileHash.utils';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
@@ -314,7 +315,8 @@ export const getEntityRefColumns = (
     title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
-    render: (_: unknown, record: EntityReference) => record.description || '--',
+    render: (_: unknown, record: EntityReference) =>
+      record.description || NO_DATA_PLACEHOLDER,
   },
   ...(canEditAll
     ? [

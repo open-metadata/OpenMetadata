@@ -43,6 +43,7 @@ import {
   getPropertyTypeBadge,
   getPropertyTypeOptions,
 } from './CustomPropertyTable.utils';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 
 const MAX_VISIBLE_CONFIG_VALUES = 3;
 
@@ -59,7 +60,7 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
         className="tw:text-fg-quaternary"
         data-testid="no-config"
         size="text-sm">
-        —
+        {NO_DATA_PLACEHOLDER}
       </Typography>
     );
   }

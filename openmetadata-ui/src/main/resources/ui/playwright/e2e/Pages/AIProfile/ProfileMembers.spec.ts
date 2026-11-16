@@ -458,9 +458,11 @@ test.describe('AI Profile Members - admin paging', () => {
     await openAdminsPanel(page);
 
     const usersList = page.getByTestId('users-list-container');
-    const pageIndicator = usersList.getByTestId('page-indicator');
+    const currentPage = usersList.getByRole('textbox', {
+      name: 'Current page',
+    });
 
-    await expect(pageIndicator).toContainText('Page 1');
+    await expect(currentPage).toHaveValue('1');
     await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
 
     const nextResponse = page.waitForResponse((response) => {
@@ -474,21 +476,87 @@ test.describe('AI Profile Members - admin paging', () => {
     await clickIgnoringToasts(usersList.getByTestId('next'));
     await nextResponse;
 
-    await expect(pageIndicator).toContainText('Page 2');
+    await expect(currentPage).toHaveValue('2');
     await expect(getRowByName(page, secondPageAdmin)).toBeVisible();
 
+    // Page 1 needs no cursor: it reloads the list from the start.
     const previousResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
 
       return (
         isAdminListRequest(url) &&
-        url.searchParams.get('before') === 'pw-cursor-before'
+        !url.searchParams.has('after') &&
+        !url.searchParams.has('before')
       );
     });
     await clickIgnoringToasts(usersList.getByTestId('previous'));
     await previousResponse;
 
-    await expect(pageIndicator).toContainText('Page 1');
+    await expect(currentPage).toHaveValue('1');
     await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
+  });
+});
+
+test.describe('AI Profile Members - Users pagination', () => {
+  // Enough users for three pages at the smallest page size, whatever else the
+  // tenant holds.
+  const pagedUsers: UserClass[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    pagedUsers.length = 0;
+    pagedUsers.push(...Array.from({ length: 31 }, () => new UserClass()));
+    await Promise.all(pagedUsers.map((user) => user.create(apiContext)));
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await Promise.all(
+      pagedUsers.map((user) => user.delete(apiContext).catch(() => undefined))
+    );
+    await afterAction();
+  });
+
+  test('Should open an unvisited page with that page’s users', async ({
+    page,
+  }) => {
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+
+    // The list is cursor-paged: reaching page 3 from page 1 fetches page 2 for
+    // its cursor, then page 3 from that cursor.
+    const cursorPages: { after: string | null; body: Promise<unknown> }[] = [];
+    page.on('response', (response) => {
+      const url = new URL(response.url());
+      if (
+        url.pathname.endsWith('/api/v1/users') &&
+        url.searchParams.has('after')
+      ) {
+        cursorPages.push({
+          after: url.searchParams.get('after'),
+          body: response.json(),
+        });
+      }
+    });
+
+    await page
+      .getByTestId('users-list-container')
+      .locator('button', { hasText: /^3$/ })
+      .click();
+
+    await expect.poll(() => cursorPages.length).toBe(2);
+    const pageTwo = (await cursorPages[0].body) as {
+      paging: { after: string };
+    };
+    const pageThree = (await cursorPages[1].body) as {
+      data: { name: string }[];
+    };
+
+    expect(cursorPages[1].after).toBe(pageTwo.paging.after);
+    await expect(getRowByName(page, pageThree.data[0].name)).toBeVisible();
+    await expect(
+      page.getByRole('textbox', { name: 'Current page' })
+    ).toHaveValue('3');
   });
 });

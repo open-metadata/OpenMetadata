@@ -17,6 +17,7 @@ import type { Key, ReactNode } from 'react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
@@ -52,6 +53,7 @@ import {
   getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
+  isLeavingEditor,
   viewToSubPath,
 } from './PlatformSettings.utils';
 import PlatformSettingsLanding from './PlatformSettingsLanding';
@@ -183,10 +185,15 @@ const PlatformSettingsPanel = ({
     [activePageId]
   );
 
+  // Opening a view pushes so Back returns to it; leaving an editor (Save or
+  // Cancel) replaces, so Back never reopens a submitted form
+  // (ADR:2026-11-12-settings-modal-views-push-history-only-when-the-user-opens-them).
   const onNavigate = useCallback(
     (next: PlatformSettingsView) =>
-      setHash(PLATFORM_SETTINGS_HASH_TAB, viewToSubPath(next)),
-    [setHash]
+      setHash(PLATFORM_SETTINGS_HASH_TAB, viewToSubPath(next), undefined, {
+        push: !isLeavingEditor(view, next),
+      }),
+    [setHash, view]
   );
 
   useEffect(() => {
@@ -230,10 +237,17 @@ const PlatformSettingsPanel = ({
       ),
       icon: activePage?.icon ?? Sliders02,
       onBreadcrumbAction: (id: Key) => {
+        // A crumb leaves a dirty form like the sidebar does, so it asks first.
+        const go = (next: PlatformSettingsView) => {
+          const exit = () => onNavigate(next);
+          if (!usePersonalSpaceStore.getState().exitGuard?.(exit)) {
+            exit();
+          }
+        };
         if (id === PLATFORM_SETTINGS_HASH_TAB) {
-          onNavigate({ type: 'landing' });
+          go({ type: 'landing' });
         } else if (id === activePage?.id) {
-          onNavigate({ type: 'page', page: activePage.id, isEditing: false });
+          go({ type: 'page', page: activePage.id, isEditing: false });
         }
       },
       actions:

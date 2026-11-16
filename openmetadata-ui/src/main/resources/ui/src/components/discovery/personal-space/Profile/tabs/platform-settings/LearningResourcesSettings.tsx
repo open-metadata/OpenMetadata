@@ -33,7 +33,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { DateTime } from 'luxon';
 import {
   CSSProperties,
   useCallback,
@@ -82,6 +81,8 @@ import {
 } from './LearningResourceSettings.utils';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
+import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const CARD_GRID_STYLE: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
@@ -321,8 +322,8 @@ const LearningResourcesSettings = ({
         return (
           <Typography as="span" className="tw:text-tertiary" size="text-sm">
             {record.updatedAt
-              ? DateTime.fromMillis(record.updatedAt).toFormat('LLL d, yyyy')
-              : '-'}
+              ? formatDateTimeLong(record.updatedAt)
+              : NO_DATA_PLACEHOLDER}
           </Typography>
         );
       default:

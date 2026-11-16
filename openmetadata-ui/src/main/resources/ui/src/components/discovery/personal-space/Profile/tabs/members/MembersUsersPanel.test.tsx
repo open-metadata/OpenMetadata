@@ -113,6 +113,20 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => {
 
 import MembersUsersPanel from './MembersUsersPanel';
 
+const usersPage = (paging: Record<string, unknown>) => ({
+  data: [
+    {
+      id: '1',
+      name: 'user1',
+      displayName: 'User One',
+      fullyQualifiedName: 'user1',
+      teams: [],
+      roles: [],
+    },
+  ],
+  paging,
+});
+
 const renderComponent = (isAdmin = false) =>
   render(
     <MemoryRouter>
@@ -205,22 +219,9 @@ describe('MembersUsersPanel', () => {
   });
 
   it('pages forward with the next cursor from the Next button', async () => {
-    const page = (paging: Record<string, unknown>) => ({
-      data: [
-        {
-          id: '1',
-          name: 'user1',
-          displayName: 'User One',
-          fullyQualifiedName: 'user1',
-          teams: [],
-          roles: [],
-        },
-      ],
-      paging,
-    });
     mockGetUsers
-      .mockResolvedValueOnce(page({ after: 'cursor-2', total: 100 }))
-      .mockResolvedValueOnce(page({ before: 'cursor-1', total: 100 }));
+      .mockResolvedValueOnce(usersPage({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(usersPage({ before: 'cursor-1', total: 100 }));
     renderComponent(true);
 
     const next = await screen.findByTestId('next');
@@ -235,13 +236,40 @@ describe('MembersUsersPanel', () => {
       )
     );
 
-    expect(await screen.findByTestId('page-indicator')).toHaveTextContent(
-      'label.page 2'
-    );
-    expect(screen.getByTestId('previous')).toBeEnabled();
+    await waitFor(() => expect(screen.getByTestId('previous')).toBeEnabled());
+
     // Only the page and size reach the URL; the cursor stays in state.
     expect(mockSetHashPage).toHaveBeenLastCalledWith(
       2,
+      undefined,
+      undefined,
+      15
+    );
+  });
+
+  it('jumps to a page it has not shown by walking the cursors in between', async () => {
+    mockGetUsers
+      .mockResolvedValueOnce(usersPage({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(usersPage({ after: 'cursor-3', total: 100 }))
+      .mockResolvedValueOnce(usersPage({ after: 'cursor-4', total: 100 }));
+    renderComponent();
+
+    await screen.findByTestId('next');
+    fireEvent.click(screen.getByText('3', { selector: 'button' }));
+
+    await waitFor(() =>
+      expect(mockGetUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'cursor-3' })
+      )
+    );
+
+    // Page 2 was fetched only for its cursor, so page 3 shows page 3's rows.
+    expect(mockGetUsers).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ after: 'cursor-2' })
+    );
+    expect(mockSetHashPage).toHaveBeenLastCalledWith(
+      3,
       undefined,
       undefined,
       15

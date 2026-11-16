@@ -36,6 +36,8 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 
 const McpClientsTable = () => {
   const { t } = useTranslation();
@@ -161,11 +163,15 @@ const McpClientsTable = () => {
                   </Table.Cell>
                   <Table.Cell>
                     {client.issuedAt == null
-                      ? '—'
-                      : new Date(client.issuedAt).toLocaleString()}
+                      ? NO_DATA_PLACEHOLDER
+                      : formatDateTimeLong(client.issuedAt)}
                   </Table.Cell>
-                  <Table.Cell>{client.activeAccessTokens ?? '—'}</Table.Cell>
-                  <Table.Cell>{client.activeRefreshTokens ?? '—'}</Table.Cell>
+                  <Table.Cell>
+                    {client.activeAccessTokens ?? NO_DATA_PLACEHOLDER}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {client.activeRefreshTokens ?? NO_DATA_PLACEHOLDER}
+                  </Table.Cell>
                   <Table.Cell>
                     <Box direction="col" gap={2}>
                       <Button

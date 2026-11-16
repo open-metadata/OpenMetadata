@@ -12,7 +12,7 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Box, Button, ConfirmPopover } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, {
@@ -21,17 +21,18 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { useUnsavedExitGuard } from '../../../../../../hooks/useUnsavedExitGuard';
 import {
   getCustomizePageCategories,
   getCustomizePageOptions,
 } from '../../../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { CustomizeEditorActions } from './customize/customizeEditor.types';
 import PersonaAddForm from './PersonaAddForm';
@@ -61,7 +62,6 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash, updateParams } = useSettingsHash();
   const closeSilent = usePersonalSpaceStore((state) => state.closeSilent);
-  const setExitGuard = usePersonalSpaceStore((state) => state.setExitGuard);
 
   const view = useMemo<PersonaView>(
     () => hashSubPathToView(hashState.subPath),
@@ -83,68 +83,20 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const returnToLanding = useCallback(() => setHash(HASH_TAB), [setHash]);
 
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
-  const [pendingExit, setPendingExit] = useState<() => void>();
   const isEditorDirty =
     view.type === 'customize' && Boolean(editorActions?.canSave);
-  const exitAnchorRef = useRef<Element | null>(null);
-
-  // The exit triggers (footer Cancel, breadcrumb, dialog close, settings nav)
-  // live in different components, so the prompt anchors to whichever control
-  // the user last pressed instead of each one passing its element in.
-  // ponytail: last-pressed element as anchor; plumb explicit refs if a guard
-  // ever fires without a user press.
-  useEffect(() => {
-    // Presses inside an open prompt must not move it onto its own buttons.
-    if (!isEditorDirty || pendingExit) {
-      return;
-    }
-    const recordAnchor = (event: Event) => {
-      exitAnchorRef.current = event.target as Element;
-    };
-    document.addEventListener('pointerdown', recordAnchor, true);
-    document.addEventListener('keydown', recordAnchor, true);
-
-    return () => {
-      document.removeEventListener('pointerdown', recordAnchor, true);
-      document.removeEventListener('keydown', recordAnchor, true);
-    };
-  }, [isEditorDirty, pendingExit]);
-
-  // Every way out of a dirty in-modal editor (breadcrumbs, Cancel, the modal's
-  // close button) goes through here so unsaved changes are never dropped silently.
-  const guardExit = useCallback(
-    (exit: () => void) => {
-      if (!isEditorDirty) {
-        return false;
-      }
-      setPendingExit(() => exit);
-
-      return true;
-    },
-    [isEditorDirty]
-  );
+  const {
+    isPromptOpen,
+    anchorRef: exitAnchorRef,
+    runGuarded,
+    confirmExit: handleDiscardExit,
+    cancelExit,
+  } = useUnsavedExitGuard(isEditorDirty);
 
   const navigateGuarded = useCallback(
-    (nextView: PersonaView) => {
-      const exit = () => onNavigate(nextView);
-      if (!guardExit(exit)) {
-        exit();
-      }
-    },
-    [guardExit, onNavigate]
+    (nextView: PersonaView) => runGuarded(() => onNavigate(nextView)),
+    [runGuarded, onNavigate]
   );
-
-  useEffect(() => {
-    setExitGuard(isEditorDirty ? guardExit : null);
-
-    return () => setExitGuard(null);
-  }, [isEditorDirty, guardExit, setExitGuard]);
-
-  const handleDiscardExit = useCallback(() => {
-    const exit = pendingExit;
-    setPendingExit(undefined);
-    exit?.();
-  }, [pendingExit]);
 
   const handleSaveExit = useCallback(async () => {
     await editorActions?.onSave();
@@ -430,24 +382,12 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           onHeaderActionsChange={setCustomizeActions}
           onRename={setResolvedName}
         />
-        <ConfirmPopover
-          actions={[
-            {
-              key: 'discard',
-              label: t('label.discard-and-go'),
-              'data-testid': 'unsaved-changes-popover-discard',
-              onPress: handleDiscardExit,
-            },
-          ]}
-          confirmText={t('label.save-and-go')}
-          data-testid="unsaved-changes-popover"
-          isOpen={Boolean(pendingExit)}
-          showCancel={false}
-          title={t('message.save-changes-first')}
+        <UnsavedChangesPrompt
+          isOpen={isPromptOpen}
           triggerRef={exitAnchorRef}
-          variant="primary"
-          onConfirm={handleSaveExit}
-          onOpenChange={(open) => !open && setPendingExit(undefined)}
+          onCancel={cancelExit}
+          onDiscard={handleDiscardExit}
+          onSave={handleSaveExit}
         />
       </>
     );

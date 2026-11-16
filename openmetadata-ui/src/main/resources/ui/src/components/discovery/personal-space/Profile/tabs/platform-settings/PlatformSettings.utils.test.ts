@@ -16,6 +16,7 @@ import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConf
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 import {
+  isLeavingEditor,
   getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
@@ -211,6 +212,25 @@ describe('PlatformSettings.utils', () => {
           { id: 'item', label: 'Table' },
         ],
       });
+    });
+  });
+
+  describe('isLeavingEditor', () => {
+    const editing = { type: 'page', page: 'lineage', isEditing: true } as const;
+    const viewing = {
+      type: 'page',
+      page: 'lineage',
+      isEditing: false,
+    } as const;
+
+    it('is true only for an editor returning to its own page view', () => {
+      expect(isLeavingEditor(editing, viewing)).toBe(true);
+      expect(isLeavingEditor(viewing, editing)).toBe(false);
+      expect(isLeavingEditor(editing, { ...viewing, page: 'email' })).toBe(
+        false
+      );
+      expect(isLeavingEditor(editing, { type: 'landing' })).toBe(false);
+      expect(isLeavingEditor({ type: 'landing' }, viewing)).toBe(false);
     });
   });
 });

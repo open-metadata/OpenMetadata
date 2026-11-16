@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   ConfirmPopover,
+  PaginationCardWithControls,
   TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
@@ -68,8 +69,6 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
-import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -77,6 +76,10 @@ import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import type { MembersUsersPanelProps } from './Members.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
 
 const USER_FIELDS = [
   TabSpecificField.PROFILE,
@@ -130,18 +133,37 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [isAdminUser, permissions]
   );
 
+  const listParams = useMemo(
+    () => ({
+      fields: USER_FIELDS,
+      limit: pageSize,
+      isAdmin: isAdmin || undefined,
+      isBot: false,
+      include: showDeleted ? Include.Deleted : Include.NonDeleted,
+    }),
+    [pageSize, isAdmin, showDeleted]
+  );
+  const fetchPaging = useCallback(
+    async (after: string) => (await getUsers({ ...listParams, after })).paging,
+    [listParams]
+  );
+  const {
+    cursorFor,
+    remember: rememberPage,
+    reset: resetPages,
+  } = useCursorPageJump(fetchPaging);
+
   const fetchUsers = useCallback(
-    async (params?: { after?: string; before?: string }) => {
+    async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
       try {
-        const response = await getUsers({
-          fields: USER_FIELDS,
-          limit: pageSize,
-          isAdmin: isAdmin || undefined,
-          isBot: false,
-          include: showDeleted ? Include.Deleted : Include.NonDeleted,
-          ...params,
-        });
+        const response = await getUsers({ ...listParams, ...params });
+        // Page 1 is a fresh load (filter, size, restore), so older cursors
+        // may no longer line up.
+        if (page === INITIAL_PAGING_VALUE) {
+          resetPages();
+        }
+        rememberPage(page, response.paging);
         setUsers(response.data);
         setPaging(response.paging);
       } catch (error) {
@@ -154,7 +176,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, showDeleted, setPaging, t]
+    [listParams, rememberPage, resetPages, setPaging, t]
   );
 
   const searchUsers = useCallback(
@@ -218,10 +240,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [resetToFirstPage]
   );
 
-  const handlePageNavigation = ({
-    currentPage: newPage,
-    cursorType,
-  }: PagingHandlerParams) => {
+  const handlePageNavigation = async (newPage: number) => {
     if (searchValue) {
       handlePageChange(newPage);
       void searchUsers(searchValue, newPage);
@@ -229,14 +248,12 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       return;
     }
 
-    const cursor = cursorType && paging[cursorType];
-
-    if (!cursorType || !cursor) {
+    const cursor = await cursorFor(newPage, currentPage);
+    if (!cursor) {
       return;
     }
-
     handlePageChange(newPage);
-    void fetchUsers({ [cursorType]: cursor });
+    void fetchUsers(cursor, newPage);
   };
 
   const handleRestoreUser = useCallback(
@@ -487,16 +504,13 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           />
         </div>
         {showPagination && (
-          <NextPrevious
-            className="tw:py-3"
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchValue)}
+          <PaginationCardWithControls
+            page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
-            paging={paging}
-            pagingHandler={handlePageNavigation}
-            onShowSizeChange={handlePageSizeChange}
+            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
+            onPageChange={handlePageNavigation}
+            onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>

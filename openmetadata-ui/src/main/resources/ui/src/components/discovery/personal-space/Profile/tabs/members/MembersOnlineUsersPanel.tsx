@@ -13,6 +13,7 @@
 
 import {
   Box,
+  PaginationCardWithControls,
   Select,
   TableCard,
   Typography,
@@ -44,8 +45,6 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
-import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -55,6 +54,10 @@ import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
 
 const USER_FIELDS = 'profile,teams,roles,lastLoginTime,lastActivityTime';
 
@@ -89,21 +92,39 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [savePageSize, setHashPage]
   );
 
+  const listParams = useMemo<OnlineUsersQueryParams>(
+    () => ({
+      // 0 means "All time" — a valid server value; `|| undefined` dropped it
+      // and the backend silently fell back to its 5-minute default.
+      timeWindow,
+      fields: USER_FIELDS,
+      limit: pageSize,
+    }),
+    [timeWindow, pageSize]
+  );
+  const fetchPaging = useCallback(
+    async (after: string) =>
+      (await getOnlineUsers({ ...listParams, after })).paging,
+    [listParams]
+  );
+  const {
+    cursorFor,
+    remember: rememberPage,
+    reset: resetPages,
+  } = useCursorPageJump(fetchPaging);
+
   const fetchOnlineUsers = useCallback(
-    async (params?: { after?: string; before?: string }) => {
+    async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
       setLoading(true);
 
       try {
-        const queryParams: OnlineUsersQueryParams = {
-          // 0 means "All time" — a valid server value; `|| undefined` dropped it
-          // and the backend silently fell back to its 5-minute default.
-          timeWindow,
-          fields: USER_FIELDS,
-          limit: pageSize,
-          ...params,
-        };
-
-        const response = await getOnlineUsers(queryParams);
+        const response = await getOnlineUsers({ ...listParams, ...params });
+        // Page 1 is a fresh load (window, size, search cleared), so older
+        // cursors may no longer line up.
+        if (page === INITIAL_PAGING_VALUE) {
+          resetPages();
+        }
+        rememberPage(page, response.paging);
 
         setUsers(response.data);
         setPaging(response.paging);
@@ -114,22 +135,20 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         setLoading(false);
       }
     },
-    [timeWindow, pageSize, setPaging]
+    [listParams, rememberPage, resetPages, setPaging]
   );
 
-  const handlePageNavigation = ({
-    currentPage: newPage,
-    cursorType,
-  }: PagingHandlerParams) => {
-    const cursor = cursorType && paging[cursorType];
-
+  const handlePageNavigation = async (newPage: number) => {
     // Search results are filtered client-side into a single page.
-    if (searchText || !cursorType || !cursor) {
+    if (searchText) {
       return;
     }
-
+    const cursor = await cursorFor(newPage, currentPage);
+    if (!cursor) {
+      return;
+    }
     handlePageChange(newPage);
-    void fetchOnlineUsers({ [cursorType]: cursor });
+    void fetchOnlineUsers(cursor, newPage);
   };
 
   const handleSearch = useCallback(
@@ -344,15 +363,13 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         />
 
         {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={loading}
-            isNumberBased={Boolean(searchText)}
+          <PaginationCardWithControls
+            page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
-            paging={paging}
-            pagingHandler={handlePageNavigation}
-            onShowSizeChange={handlePageSizeChange}
+            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
+            onPageChange={handlePageNavigation}
+            onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>

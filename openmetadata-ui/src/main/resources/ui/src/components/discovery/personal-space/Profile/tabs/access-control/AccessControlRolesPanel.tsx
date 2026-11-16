@@ -60,6 +60,7 @@ import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntity
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const MAX_CURSOR_CACHE_PAGES = 100;
 
@@ -318,7 +319,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     const hasMore = listLength > LIST_CAP;
 
     if (!policies?.length) {
-      return '--';
+      return NO_DATA_PLACEHOLDER;
     }
 
     return (

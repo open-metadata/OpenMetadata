@@ -47,6 +47,7 @@ import {
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import { useSettingsFetch } from './useSettingsFetch';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const DataQualitySettings = ({
   onNavigate,
@@ -125,7 +126,7 @@ const DataQualitySettings = ({
       case 'description':
         return (
           <Typography className="tw:text-secondary" size="text-sm">
-            {dimension.description || '--'}
+            {dimension.description || NO_DATA_PLACEHOLDER}
           </Typography>
         );
       case 'type':

@@ -41,6 +41,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
+import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
 
 interface BotTokenSectionProps {
   botUserData: User;
@@ -74,11 +75,11 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
     const issuedAtMs = getTokenIssuedAtMs(jwtToken);
 
     if (issuedAtMs) {
-      return new Date(issuedAtMs).toLocaleString();
+      return formatDateTimeLong(issuedAtMs);
     }
 
     if (botUserData.updatedAt) {
-      return new Date(botUserData.updatedAt).toLocaleString();
+      return formatDateTimeLong(botUserData.updatedAt);
     }
 
     return '';

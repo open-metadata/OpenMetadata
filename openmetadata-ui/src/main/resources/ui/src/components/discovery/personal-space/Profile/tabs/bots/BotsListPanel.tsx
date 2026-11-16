@@ -70,6 +70,7 @@ import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlac
 import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const BOT_SEARCH_PAGE_SIZE = 100;
 
@@ -448,7 +449,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         return bot.description ? (
           <RichTextEditorPreviewerV1 markdown={bot.description} />
         ) : (
-          <Typography className="tw:text-tertiary">--</Typography>
+          <Typography className="tw:text-tertiary">
+            {NO_DATA_PLACEHOLDER}
+          </Typography>
         );
       }
 

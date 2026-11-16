@@ -58,6 +58,7 @@ import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntity
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { NotificationView } from './Notification.types';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const MAX_CURSOR_CACHE_PAGES = 100;
 
@@ -404,7 +405,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       case 'trigger':
         return (
           <Typography size="text-sm">
-            {alert.filteringRules?.resources?.join(', ') || '--'}
+            {alert.filteringRules?.resources?.join(', ') || NO_DATA_PLACEHOLDER}
           </Typography>
         );
 

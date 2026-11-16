@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  FeaturedIcon,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Customize, Hint } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key, ReactNode } from 'react';
 import React, {
+  FC,
   useCallback,
   useEffect,
   useMemo,
@@ -37,7 +33,7 @@ import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
-import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
+import { ENTITY_ICON_MAPPER } from '../../../../../../constants/Assets.constants';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -295,23 +291,15 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   // so ProfileContentHeader reflects the current subView without this panel
   // needing to render its own header.
   useEffect(() => {
-    const iconNode =
-      subView.type === 'landing' ? (
-        <FeaturedIcon
-          className="tw:rounded-xl"
-          color="brand"
-          icon={Customize}
-          shape="square"
-          size="md"
-          theme="dark"
-        />
-      ) : (
-        getEntityIconWithBg(
-          subView.entityType.fullyQualifiedName ?? '',
-          { className: 'tw:h-10 tw:w-10 tw:rounded-lg' },
-          { size: 25 }
-        )
-      );
+    // Same solid header tile as every other page; an entity view shows its
+    // entity's icon in it.
+    const icon =
+      subView.type === 'landing'
+        ? Customize
+        : ((
+            ENTITY_ICON_MAPPER[subView.entityType.fullyQualifiedName ?? ''] ??
+            ENTITY_ICON_MAPPER.default
+          ).icon as FC<{ className?: string }>);
 
     const isFormView = subView.type === 'add' || subView.type === 'edit';
     const actions = isFormView ? (
@@ -331,7 +319,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       description: pageDescription,
       breadcrumbs: breadcrumbItems,
       onBreadcrumbAction: handleBreadcrumbAction,
-      iconNode,
+      icon,
       actions,
     });
   }, [

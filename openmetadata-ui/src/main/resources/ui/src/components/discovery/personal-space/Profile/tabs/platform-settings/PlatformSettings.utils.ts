@@ -81,6 +81,18 @@ export const viewToSubPath = (
 };
 
 /** Number inputs hold strings; an empty input means "unset", not zero. */
+/** Save or Cancel on an editor returns to that page's view. */
+export const isLeavingEditor = (
+  current: PlatformSettingsView,
+  next: PlatformSettingsView
+): boolean => {
+  if (current.type !== 'page' || next.type !== 'page') {
+    return false;
+  }
+
+  return current.isEditing && !next.isEditing && next.page === current.page;
+};
+
 export const toOptionalNumber = (value: string): number | undefined =>
   value.trim() === '' ? undefined : Number(value);
 
