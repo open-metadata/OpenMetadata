@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Observability, UI team
 - **Guard:** reviewer
-- **Related:** open-metadata/openmetadata-collate#8576, open-metadata/openmetadata-collate#8577
+- **Related:** open-metadata/openmetadata-collate#8576
 
 ## Context
 
@@ -28,11 +28,6 @@ acknowledged or assigned never appeared in it.
   activity.
 - The Open card on the Data Quality dashboard links to the incident list without a status filter.
   The list filters by one status, so a `New` filter would show fewer incidents than the card counts.
-- `IncidentTypeAreaChartWidgetProps` changes shape (`incidentStatusType` becomes
-  `incidentStatusTypes[]`, `description` is required). Collate's classic Incident Manager had its own
-  copy of `IncidentManagerPageWidgets` passing the old prop. open-metadata/openmetadata-collate#8577
-  replaces that copy with the OSS component, which compiles against OSS both before and after this
-  change, so it merges first and this change follows; there is no window where Collate fails to build.
 
 ## Consequences
 
