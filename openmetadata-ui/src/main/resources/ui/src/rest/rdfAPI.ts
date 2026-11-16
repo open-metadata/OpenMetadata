@@ -65,6 +65,7 @@ export interface SavedSparqlQuery {
   format: SparqlPlaygroundFormat;
   inference: SparqlPlaygroundInference;
   savedAt: number;
+  ontologyId?: string;
 }
 
 interface PersistedSparqlQuery {
@@ -74,6 +75,7 @@ interface PersistedSparqlQuery {
   format: string;
   inference: string;
   savedAt: number;
+  ontologyId?: string;
 }
 
 interface SparqlQuerySettingsUpdate {
@@ -129,6 +131,8 @@ const normalizeSavedSparqlQuery = (
   format: normalizeSparqlFormat(savedQuery.format),
   inference: normalizeSparqlInference(savedQuery.inference),
   savedAt: savedQuery.savedAt,
+  // Kept so a whole-library save from any console does not unscope Ontology Studio queries.
+  ontologyId: savedQuery.ontologyId,
 });
 
 export const getSavedSparqlQueries = async (): Promise<SavedSparqlQuery[]> => {

@@ -33,9 +33,9 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG MAVEN_VERSION=3.9.9
 ARG MAVEN_SHA512=a555254d6b53d267965a3404ecb14e53c3827c09c3b94b5678835887ab404556bfaf78dcfe03ba76fa2508649dca8531c74bca4d5846513522404d48e8c4ac8b
-ARG NODE_VERSION=22.23.4
-ARG NODE_SHA256_X64=1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce
-ARG NODE_SHA256_ARM64=6287aa46b6c375d816e63ae66d024fbbfd70404825aabdfdf898a970871d2f4b
+ARG NODE_VERSION=22.23.5
+ARG NODE_SHA256_X64=cdeb8670a0c81f51b4dc4ac61919f9b1ad917b304bf8221eb939570663d240f8
+ARG NODE_SHA256_ARM64=2babb9eb5264860d540849f4b064a6fbdebcdc323657d9d382ce23d313fd5e09
 ARG YARN_VERSION=1.22.22
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -85,7 +85,7 @@ RUN curl -fsSL --retry 3 --retry-all-errors \
     && ln -sf "${MAVEN_HOME}/bin/mvn" /usr/local/bin/mvn \
     && mvn --version
 
-# Node 22.23.4 + yarn 1.22.22 — Node must match `openmetadata-ui/src/main/resources/ui/.nvmrc` (the
+# Node 22.23.5 + yarn 1.22.22 — Node must match `openmetadata-ui/src/main/resources/ui/.nvmrc` (the
 # UI's `engines` floor rejects anything older); pinned here because the tarball is checksum-verified
 # (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin).
 #

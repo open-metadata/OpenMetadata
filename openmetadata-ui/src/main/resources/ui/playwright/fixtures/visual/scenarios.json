@@ -4163,7 +4163,7 @@
       }
     ],
     "initialReady": {
-      "testId": "data-quality-add-button-menu"
+      "testId": "entity-health-pie-chart-widget"
     }
   },
   {
