@@ -58,15 +58,6 @@ export const cardStyles = sortCx({
     stat: {
       root: 'tw:border-1 tw:border-subtle tw:bg-surface',
     },
-    // A well inside a surface (a list or a read-only block): white in light, and the page tone in
-    // dark so it reads as recessed against the gray-800 card around it.
-    inset: {
-      root: 'tw:border-1 tw:border-secondary tw:bg-primary',
-    },
-    // An inline add or edit form: a brand edge with a soft halo, so it reads as the active input.
-    active: {
-      root: 'tw:border-1 tw:border-brand tw:bg-surface tw:outline-4 tw:outline-utility-brand-100',
-    },
   },
   colors: {
     default: { root: '' },
@@ -100,8 +91,6 @@ export const cardStyles = sortCx({
     },
     tile: { root: 'tw:hover:bg-primary_hover' },
     stat: { root: 'tw:hover:border-utility-brand-300 tw:hover:shadow-sm' },
-    inset: { root: 'tw:hover:bg-primary_hover' },
-    active: { root: '' },
   },
   selected: { root: 'tw:border-2 tw:border-brand' },
 });

@@ -102,7 +102,7 @@ export const InspectorList = ({
 }) => (
   <Card
     className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-    variant="inset">
+    variant="muted">
     {children}
   </Card>
 );
@@ -171,9 +171,9 @@ export const InspectorForm = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:gap-3 tw:px-3.5 tw:pt-3 tw:pb-3.5"
-      data-testid={testId}
-      variant="active">
+      // The rules form's brand edge and halo, so an open form reads as the active input.
+      className="tw:flex tw:flex-col tw:gap-3 tw:border-brand tw:outline-4 tw:outline-utility-brand-100 tw:px-3.5 tw:pt-3 tw:pb-3.5"
+      data-testid={testId}>
       <Box align="center" gap={2}>
         <Typography
           className="tw:flex-1 tw:text-secondary"

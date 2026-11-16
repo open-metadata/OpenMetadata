@@ -1060,9 +1060,8 @@ const OntologyDataAssetPicker = ({
 
   return (
     <Card
-      className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3 tw:p-4"
-      data-testid="ontology-data-asset-picker"
-      variant="active">
+      className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3 tw:border-brand tw:outline-4 tw:outline-utility-brand-100 tw:p-4"
+      data-testid="ontology-data-asset-picker">
       <Box align="center" justify="between">
         <Typography as="span" size="text-sm" weight="semibold">
           {t('label.add-entity', {

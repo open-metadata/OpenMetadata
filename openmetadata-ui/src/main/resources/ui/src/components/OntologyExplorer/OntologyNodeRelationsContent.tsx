@@ -367,7 +367,7 @@ export const OntologyNodeRelationsContent: React.FC<
     }
 
     return (
-      <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-3" variant="active">
+      <Card className="tw:flex tw:flex-col tw:gap-3 tw:border-brand tw:outline-4 tw:outline-utility-brand-100 tw:p-3">
         <Select
           aria-label={t('label.mapping-type')}
           items={Object.values(ConceptMappingType).map((type) => ({

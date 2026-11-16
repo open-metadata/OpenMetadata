@@ -132,7 +132,7 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
         'tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -198,7 +198,7 @@ export const styles = sortCx({
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
         'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -224,7 +224,7 @@ export const styles = sortCx({
     },
     'secondary-success': {
       root: [
-        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-success-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
         'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -233,7 +233,7 @@ export const styles = sortCx({
     },
     'secondary-warning': {
       root: [
-        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-warning-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
         'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -244,7 +244,7 @@ export const styles = sortCx({
     // carries the colour, so the button only echoes it in its edge.
     'secondary-warning-outline': {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
         'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -253,7 +253,7 @@ export const styles = sortCx({
     },
     'secondary-brand': {
       root: [
-        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
         'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',

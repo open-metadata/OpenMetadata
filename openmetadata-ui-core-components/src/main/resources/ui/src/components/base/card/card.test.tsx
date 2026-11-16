@@ -59,35 +59,6 @@ describe('Card theme roles', () => {
     );
   });
 
-  it('inset variant recesses into the surface on the page tone', () => {
-    render(
-      <Card data-testid="card" variant="inset">
-        Content
-      </Card>
-    );
-
-    expect(screen.getByTestId('card')).toHaveClass(
-      'tw:border-secondary',
-      'tw:bg-primary'
-    );
-    expect(screen.getByTestId('card')).not.toHaveClass('tw:bg-surface');
-  });
-
-  it('active variant draws the brand edge and halo of an inline form', () => {
-    render(
-      <Card data-testid="card" variant="active">
-        Content
-      </Card>
-    );
-
-    expect(screen.getByTestId('card')).toHaveClass(
-      'tw:border-brand',
-      'tw:bg-surface',
-      'tw:outline-4',
-      'tw:outline-utility-brand-100'
-    );
-  });
-
   it('tile variant sits below the surface in dark and lightens on hover when clickable', () => {
     render(
       <Card isClickable data-testid="card" variant="tile">
