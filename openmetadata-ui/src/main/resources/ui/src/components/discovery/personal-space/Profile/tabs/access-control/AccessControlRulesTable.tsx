@@ -24,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import {
   Effect,
@@ -31,7 +32,6 @@ import {
 } from '../../../../../../generated/api/policies/createPolicy';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 type RuleColumnId =
   | 'name'

@@ -15,7 +15,6 @@ import { Box, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import {
   CustomPropertyChanges,
   updateCustomPropertyByName,
@@ -25,6 +24,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import CustomPropertyEditForm from '../../../../../Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import { CustomPropertiesEditPageProps } from './CustomPropertiesPanel.types';
 
 const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({

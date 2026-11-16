@@ -48,16 +48,16 @@ import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlac
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
-import {
-  PageCursor,
-  useCursorPageJump,
-} from '../../../../../../hooks/paging/useCursorPageJump';
 
 const USER_FIELDS = 'profile,teams,roles,lastLoginTime,lastActivityTime';
 

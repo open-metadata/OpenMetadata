@@ -34,8 +34,8 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
-import { GovernanceView } from './Governance.types';
 import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import { GovernanceView } from './Governance.types';
 
 const INTAKE_FORM_ENTITY = 'label.intake-form';
 const VIEW_INTAKE_LIST = 'intake-list' as const;

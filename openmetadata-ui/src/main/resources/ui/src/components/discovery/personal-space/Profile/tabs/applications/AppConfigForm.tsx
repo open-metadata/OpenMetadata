@@ -26,9 +26,12 @@ import { IChangeEvent } from '@rjsf/core';
 import {
   FieldProps,
   FieldTemplateProps,
+  getDefaultFormState,
   RJSFSchema,
   UiSchema,
 } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
+import { isEqual } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
@@ -40,11 +43,8 @@ import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { AppFooter } from './AppFooter';
-import { getDefaultFormState } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
-import { isEqual } from 'lodash';
 import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {
   appData: App | AppMarketPlaceDefinition;

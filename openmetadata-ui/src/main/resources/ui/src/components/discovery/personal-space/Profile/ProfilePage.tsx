@@ -27,8 +27,8 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import { guardBreadcrumbAction } from '../../../../hooks/useUnsavedExitGuard';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
+import { guardBreadcrumbAction } from '../../../../hooks/useUnsavedExitGuard';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,

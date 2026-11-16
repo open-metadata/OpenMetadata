@@ -43,8 +43,8 @@ import {
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import type { AccessControlView } from './AccessControl.types';
 import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import type { AccessControlView } from './AccessControl.types';
 
 interface FormValues {
   name: string;

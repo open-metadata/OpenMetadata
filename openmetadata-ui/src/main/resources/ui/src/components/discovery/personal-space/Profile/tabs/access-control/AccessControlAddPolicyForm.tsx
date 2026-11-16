@@ -39,10 +39,10 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface FormValues {
   name: string;

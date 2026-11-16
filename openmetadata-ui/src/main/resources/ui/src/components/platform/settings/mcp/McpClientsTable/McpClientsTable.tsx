@@ -25,19 +25,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { OauthClient } from '../../../../../generated/api/mcp/oauthClient';
 import {
   getMcpClients,
   revokeMcpClient,
   revokeMcpClientTokens,
 } from '../../../../../rest/mcpConfigAPI';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
-import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 
 const McpClientsTable = () => {
   const { t } = useTranslation();

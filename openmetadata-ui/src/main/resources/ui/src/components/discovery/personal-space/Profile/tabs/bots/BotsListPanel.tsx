@@ -42,7 +42,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -70,7 +73,6 @@ import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlac
 import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
-import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const BOT_SEARCH_PAGE_SIZE = 100;
 

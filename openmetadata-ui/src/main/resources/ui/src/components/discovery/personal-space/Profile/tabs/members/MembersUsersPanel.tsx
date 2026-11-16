@@ -72,14 +72,14 @@ import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlac
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
-import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
-import type { MembersUsersPanelProps } from './Members.types';
-import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
-import { profileHash } from './profileHash.utils';
 import {
   PageCursor,
   useCursorPageJump,
 } from '../../../../../../hooks/paging/useCursorPageJump';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import type { MembersUsersPanelProps } from './Members.types';
+import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
+import { profileHash } from './profileHash.utils';
 
 const USER_FIELDS = [
   TabSpecificField.PROFILE,

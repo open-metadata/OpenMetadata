@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isEqualWith, isNil } from 'lodash';
 import {
   forwardRef,
   useCallback,
@@ -49,7 +50,6 @@ import {
 } from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
-import { isEqualWith, isNil } from 'lodash';
 
 export interface IntakeFormDesignerBodyHandle {
   submit: () => Promise<void>;

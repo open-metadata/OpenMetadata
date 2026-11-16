@@ -42,6 +42,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import {
   MAX_VISIBLE_CONTEXTS,
   MAX_VISIBLE_TAGS,
@@ -61,6 +62,7 @@ import {
   deleteLearningResource,
   LearningResource,
 } from '../../../../../../rest/learningResourceAPI';
+import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getViewPageSizeOptions } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
@@ -81,8 +83,6 @@ import {
 } from './LearningResourceSettings.utils';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
-import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
-import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const CARD_GRID_STYLE: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',

@@ -30,13 +30,13 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import {
   AddCustomPropertyFormValues,
   CustomPropertiesAddPageProps,
 } from './CustomPropertiesPanel.types';
 import { toCustomPropertyPayload } from './CustomPropertiesPanel.utils';
 import CustomPropertyFormFields from './CustomPropertyFormFields';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
   entityType,

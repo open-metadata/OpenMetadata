@@ -37,9 +37,9 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import type { BotsView } from './BotsPanel.types';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface BotAddFormProps {
   onNavigate: (view: BotsView) => void;

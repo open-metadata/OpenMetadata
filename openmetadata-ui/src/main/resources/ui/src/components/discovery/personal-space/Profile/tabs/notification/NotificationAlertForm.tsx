@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { isUndefined, isEqual } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constants';
@@ -56,12 +56,12 @@ import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
   ALERT_AI_FORM_MODAL_ID,
 } from '../../../../../observability/Alerts/AlertAiFormFields.constants';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from './Notification.types';
 import { NotificationView } from './Notification.types';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface NotificationAlertFormProps {
   fqn?: string;

@@ -13,7 +13,7 @@
 
 import { Box, Button, PasswordInput } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { omit, isEqual } from 'lodash';
+import { isEqual, omit } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RequestType } from '../../../../../generated/auth/changePasswordRequest';

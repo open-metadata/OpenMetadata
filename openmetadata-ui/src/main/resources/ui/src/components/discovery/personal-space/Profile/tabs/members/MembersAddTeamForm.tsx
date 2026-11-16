@@ -52,8 +52,8 @@ import {
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import type { MembersAddTeamFormProps } from './Members.types';
 import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import type { MembersAddTeamFormProps } from './Members.types';
 
 // The teamType SELECT stores the whole option object as its RHF value, so the
 // form type overrides teamType with FormSelectItem and onSubmit unwraps the id.

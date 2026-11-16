@@ -23,6 +23,7 @@ import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
@@ -43,7 +44,6 @@ import {
   getPropertyTypeBadge,
   getPropertyTypeOptions,
 } from './CustomPropertyTable.utils';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 
 const MAX_VISIBLE_CONFIG_VALUES = 3;
 

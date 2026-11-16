@@ -16,10 +16,10 @@ import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConf
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 import {
-  isLeavingEditor,
   getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
+  isLeavingEditor,
   nonNegativeNumberRules,
   toOptionalNumber,
   viewToSubPath,

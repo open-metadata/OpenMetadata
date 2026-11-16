@@ -24,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ENTITY_ICON_MAPPER } from '../../../../../../constants/Assets.constants';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -33,7 +34,6 @@ import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
-import { ENTITY_ICON_MAPPER } from '../../../../../../constants/Assets.constants';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';

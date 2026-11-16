@@ -27,6 +27,7 @@ import {
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { DataQualityDimension } from '../../../../../../generated/tests/dataQualityDimension';
 import { deleteDataQualityDimension } from '../../../../../../rest/dataQualityDimensionAPI';
 import {
@@ -47,7 +48,6 @@ import {
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import { useSettingsFetch } from './useSettingsFetch';
-import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 
 const DataQualitySettings = ({
   onNavigate,

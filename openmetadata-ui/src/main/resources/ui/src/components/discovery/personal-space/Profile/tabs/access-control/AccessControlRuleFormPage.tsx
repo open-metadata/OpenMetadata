@@ -31,10 +31,10 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface AccessControlRuleFormPageProps {
   fqn: string;

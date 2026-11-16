@@ -74,13 +74,13 @@ import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import { CreateUserFormData } from '../../../../../Settings/Users/CreateUser/CreateUser.interface';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import type { MembersCreateUserFormProps, TeamNode } from './Members.types';
 import {
   flattenTeamHierarchy,
   mergeRoleItems,
   withoutId,
 } from './Members.utils';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface FormValues {
   email: string;
