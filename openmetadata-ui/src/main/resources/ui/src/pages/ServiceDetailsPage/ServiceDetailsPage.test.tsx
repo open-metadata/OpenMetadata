@@ -828,7 +828,7 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should navigate to forbidden page when access is denied', async () => {
+    it('should render the permission placeholder when access is denied', async () => {
       const mockNavigate = jest.fn();
       (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
@@ -841,9 +841,16 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
-          replace: true,
-        });
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('no-data-placeholder')
+      ).not.toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
+        replace: true,
       });
     });
   });

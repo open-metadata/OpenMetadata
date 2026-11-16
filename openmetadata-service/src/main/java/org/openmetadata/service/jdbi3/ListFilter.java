@@ -19,6 +19,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -39,6 +40,7 @@ public class ListFilter extends Filter<ListFilter> {
   private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
 
   public static final String NULL_PARAM = "null";
+  public static final String KEEPS_SYSTEM_PROVIDED = "domainKeepsSystemProvided";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
@@ -988,9 +990,15 @@ public class ListFilter extends Filter<ListFilter> {
   // A test case is in the domain it has itself or, as is usual, the one its table has — which the
   // table may in turn inherit from its schema, database or service. Inherited domains are resolved
   // at read time and leave no relationship on the entity that inherits them, and a level inherits
-  // only when it has no domain of its own: the nearest level with one decides.
-  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
-    String inDomain = " AND " + DOMAIN_RELATION_ALIAS + ".fromId = :" + domainParam;
+  // only when it has no domain of its own: the nearest level with one decides. The param holds the
+  // domain and its sub-domains.
+  private String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    String inDomain =
+        " AND "
+            + DOMAIN_RELATION_ALIAS
+            + ".fromId IN ("
+            + buildIndexedBindParams(domainParam, queryParams.get(domainParam))
+            + ")";
     List<UnaryOperator<String>> levels = testCaseDomainLevels(testCaseAlias);
     return IntStream.range(0, levels.size())
         .mapToObj(i -> nearestDomainLevel(levels.subList(0, i), levels.get(i), inDomain))
@@ -1204,13 +1212,26 @@ public class ListFilter extends Filter<ListFilter> {
     String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return domainAccessCondition(entityIdColumn, domainInClause);
+      return orSystemProvided(domainAccessCondition(entityIdColumn, domainInClause), tableName);
     }
 
     return String.format(
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps system-provided rows too when the list asks (e.g. Tier and PII under any pick).
+  private String orSystemProvided(String condition, String tableName) {
+    if (!Boolean.parseBoolean(getQueryParam(KEEPS_SYSTEM_PROVIDED))) {
+      return condition;
+    }
+    String column = nullOrEmpty(tableName) ? "json" : tableName + ".json";
+    String provider =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? String.format("JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider'))", column)
+            : String.format("%s->>'provider'", column);
+    return String.format("(%s OR %s = '%s')", condition, provider, ProviderType.SYSTEM.value());
   }
 
   // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
