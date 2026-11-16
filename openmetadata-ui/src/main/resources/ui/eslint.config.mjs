@@ -354,6 +354,8 @@ export default [
       // A Typography ellipsis tooltip inside a link/button renders a nested
       // <button> (#30779). Report-only, so `eslint --fix` never edits it.
       'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
+      // An undefined fallback on a controlled React Aria prop flips it to uncontrolled (#37771). ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined
+      'openmetadata-ui-patterns/no-undefined-controlled-prop': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',

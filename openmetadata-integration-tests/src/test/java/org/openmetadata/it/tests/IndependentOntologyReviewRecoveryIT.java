@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -186,23 +187,44 @@ public class IndependentOntologyReviewRecoveryIT extends BaseOntologyApprovalIT 
   }
 
   @Test
-  void archivingTheOntologyLeavesItsReleaseReviewRecoverable(TestNamespace ns) {
-    OntologyRelease ontology = capture(createOntology(ns));
-    Task task = submit(ns, Entity.ONTOLOGY_RELEASE, ontology.getFullyQualifiedName());
-    SdkClients.adminClient().ontologies().delete(ontology.getOntology().getId().toString());
+  void archivingTheOntologyWithdrawsItsOpenReview(TestNamespace ns) {
+    OntologyRelease release = capture(createOntology(ns));
+    Task task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+    UUID ontologyId = release.getOntology().getId();
 
-    new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(task.getId());
+    SdkClients.adminClient().ontologies().delete(ontologyId.toString());
+
+    Task closed = SdkClients.adminClient().tasks().get(task.getId().toString());
+    assertEquals(TaskEntityStatus.Cancelled, closed.getStatus());
+    assertEquals("Closed because the ontology was archived", closed.getResolution().getComment());
+    assertEquals(EntityStatus.DRAFT, current(release).getEntityStatus());
+    assertNull(current(release).getReviewTask());
+
+    // Restoring brings the release back as a Draft; the reviewer gets a fresh review to decide.
+    SdkClients.adminClient().ontologies().restore(ontologyId);
+    assertEquals(EntityStatus.DRAFT, current(release).getEntityStatus());
+    Task resubmitted = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+    assertEquals(TaskEntityStatus.Open, resubmitted.getStatus());
+    assertEquals(EntityStatus.IN_REVIEW, current(release).getEntityStatus());
+  }
+
+  @Test
+  void aRefusedArchiveLeavesTheReviewOpen(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    declareClass(ontology, "Customer", URI.create("https://example.org/model/Customer"));
+    OntologyRelease release = capture(ontology);
+    Task task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+
+    // A non-recursive delete of an ontology that still holds concepts is refused.
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().ontologies().delete(ontology.getId().toString()));
 
     assertEquals(
         TaskEntityStatus.Open,
         SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
-    SdkClients.adminClient().ontologies().restore(ontology.getOntology().getId());
-    completeWorkflowOnly(task);
-    new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(task.getId());
-    assertEquals(EntityStatus.APPROVED, current(ontology).getEntityStatus());
-    assertEquals(
-        TaskEntityStatus.Approved,
-        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+    assertEquals(EntityStatus.IN_REVIEW, current(release).getEntityStatus());
+    SdkClients.adminClient().tasks().close(task.getId().toString());
   }
 
   @Test

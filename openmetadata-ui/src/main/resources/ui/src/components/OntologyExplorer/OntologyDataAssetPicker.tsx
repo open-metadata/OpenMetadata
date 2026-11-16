@@ -534,11 +534,12 @@ const OntologyDataAssetPicker = ({
   );
   const suggestedIds = new Set(openSuggestions.map(({ asset }) => asset.id));
   const isFirstPagePending = (loadedPage === 0 && !hasFailed) || isSuggesting;
-  const listed = results.filter((asset) => !suggestedIds.has(asset.id));
-  const selectable = [
-    ...openSuggestions.map(({ asset }) => asset),
-    ...listed,
-  ].filter((asset) => !native?.linkedIds.includes(asset.id));
+  // An asset already linked to the concept has nothing left to pick, so it is not listed.
+  const listed = results.filter(
+    (asset) =>
+      !suggestedIds.has(asset.id) && !native?.linkedIds.includes(asset.id)
+  );
+  const selectable = [...openSuggestions.map(({ asset }) => asset), ...listed];
   const isAllSelected =
     selectable.length > 0 &&
     selectable.every((asset) => selected.has(asset.id));
@@ -693,12 +694,18 @@ const OntologyDataAssetPicker = ({
 
     return (
       <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-        <span className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-blue-50 tw:text-utility-blue-600">
+        {/* Top-aligned per the redline, not centred on the text. */}
+        <span className="tw:mt-0.75 tw:flex tw:size-8 tw:shrink-0 tw:self-start tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-blue-50 tw:text-utility-blue-600">
           <TypeIcon aria-hidden="true" className="tw:size-4" />
         </span>
         <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
           <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
-            <Typography ellipsis as="span" size="text-sm" weight="semibold">
+            <Typography
+              ellipsis
+              as="span"
+              className="tw:mt-px"
+              size="text-sm"
+              weight="medium">
               {asset.displayName ?? asset.name}
             </Typography>
             <Typography
@@ -711,7 +718,7 @@ const OntologyDataAssetPicker = ({
           <Typography
             ellipsis
             as="span"
-            className="tw:text-tertiary"
+            className="tw:pt-0.5 tw:text-tertiary"
             size="text-xs">
             {getAssetPath(asset)}
           </Typography>
@@ -724,8 +731,6 @@ const OntologyDataAssetPicker = ({
   const labelClassName = getLabelClassName(isDialog);
 
   const renderOption = (asset: EntityReference, reason?: SuggestionReason) => {
-    const isLinked = Boolean(native?.linkedIds.includes(asset.id));
-
     return (
       <li
         className={classNames(
@@ -735,30 +740,19 @@ const OntologyDataAssetPicker = ({
         key={asset.id}>
         <Checkbox
           aria-label={asset.displayName ?? asset.name}
+          boxClassName={isDialog ? undefined : 'tw:mt-1.5'}
           className="tw:min-w-0"
           data-testid={`ontology-data-asset-option-${asset.id}`}
-          isDisabled={isLinked}
-          isSelected={isLinked || selected.has(asset.id)}
+          isSelected={selected.has(asset.id)}
           label={
             <span className={labelClassName}>
               {isDialog ? renderDialogLabel(asset) : renderInlineLabel(asset)}
               {/* Under the name, past the 32px type tile and its 12px gap. */}
               <span className="tw:flex tw:min-w-0 tw:flex-col tw:pl-11 tw:empty:hidden">
-                {isLinked ? (
-                  <Typography
-                    as="span"
-                    className="tw:text-tertiary"
-                    data-testid={`ontology-data-asset-linked-${asset.id}`}
-                    size="text-xs">
-                    {t('message.ontology-asset-already-linked', {
-                      concept: native?.concept?.name,
-                    })}
-                  </Typography>
-                ) : null}
                 {reason ? (
                   <Typography
                     as="span"
-                    className="tw:text-brand-secondary"
+                    className="tw:pt-0.5 tw:text-brand-secondary"
                     data-testid={`ontology-data-asset-reason-${asset.id}`}
                     size="text-xs">
                     {t(`message.ontology-suggest-${reason.kind}`, {
@@ -1103,9 +1097,7 @@ const OntologyDataAssetPicker = ({
         <Box
           className={classNames(
             'tw:border-b tw:border-secondary',
-            isAiMode
-              ? 'tw:bg-secondary_alt tw:px-3.5 tw:py-3'
-              : 'tw:bg-secondary tw:px-3 tw:py-2.5'
+            isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:bg-secondary tw:px-3 tw:py-2.5'
           )}>
           {renderSelectAll()}
         </Box>

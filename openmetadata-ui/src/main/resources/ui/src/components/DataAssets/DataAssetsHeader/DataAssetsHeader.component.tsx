@@ -864,8 +864,10 @@ export const DataAssetsHeader = ({
               Activity
             )
           }
+          radius="lg"
+          shape="square"
           size="md"
-          theme="surface"
+          theme="modern"
         />
         {editStylePermission && (
           <ButtonUtility
