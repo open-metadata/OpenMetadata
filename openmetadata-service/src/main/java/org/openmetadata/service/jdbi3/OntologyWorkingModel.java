@@ -111,11 +111,26 @@ final class OntologyWorkingModel {
         .forEach(chunk -> requireDistinctRules(ontologyId, chunk, changedIds));
   }
 
+  /**
+   * The working-model bound applies per subject: a chunk whose subjects together hold more rules is
+   * halved until each part fits, and only a single subject past the bound is refused.
+   */
   private void requireDistinctRules(
       final UUID ontologyId, final List<String> subjectHashes, final Set<UUID> changedIds) {
     final List<String> rules =
         dao.ontologyReferenceDAO().axiomsOfSubjects(ontologyId, subjectHashes, LIMIT + 1);
-    requireBound(rules.size());
+    if (rules.size() > LIMIT && subjectHashes.size() > 1) {
+      final int half = subjectHashes.size() / 2;
+      requireDistinctRules(ontologyId, subjectHashes.subList(0, half), changedIds);
+      requireDistinctRules(
+          ontologyId, subjectHashes.subList(half, subjectHashes.size()), changedIds);
+    } else {
+      requireBound(rules.size());
+      requireNoDuplicate(rules, changedIds);
+    }
+  }
+
+  private static void requireNoDuplicate(final List<String> rules, final Set<UUID> changedIds) {
     final Map<String, OntologyAxiom> bySignature = new HashMap<>();
     for (final String json : rules) {
       final OntologyAxiom rule = JsonUtils.readValue(json, OntologyAxiom.class);
