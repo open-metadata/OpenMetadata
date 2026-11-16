@@ -192,10 +192,6 @@ public final class ChangeApplyService {
   }
 
   /**
-   * Where each change of {@code revision} stands for {@code request}. An Approved request that is
-   * not decided change by change has finished its review, so nothing of it is still pending.
-   */
-  /**
    * How reviewers settled a revision of a change request: the users on each side, and whether the
    * settled selection dropped any change. The requester's own decisions never count.
    */
@@ -225,6 +221,10 @@ public final class ChangeApplyService {
         .toList();
   }
 
+  /**
+   * Where each change of {@code revision} stands for {@code request}. An Approved request that is
+   * not decided change by change has finished its review, so nothing of it is still pending.
+   */
   static ChangeSelection selection(ChangeRequest request, ChangeRevision revision) {
     ChangeSelection selection =
         ChangeSelection.of(
