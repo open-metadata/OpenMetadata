@@ -35,7 +35,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskExecStatus } from '../../../utils/PipelineDetailsUtils';
 import { replaceSpaceWith_ } from '../../../utils/StringUtils';
 import TaskNode from './TaskNode/TaskNode';
-import './tasks-dag-view.style.less';
 
 export interface Props {
   tasks: Task[];
@@ -82,7 +81,6 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       );
 
       return {
-        className: 'leaf-node',
         id: replaceSpaceWith_(task.name),
         type: getNodeType(task),
         data: {
@@ -143,7 +141,9 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       onNodesChange={onNodesChange}>
       <Background gap={12} size={1} />
       <Controls
-        className="task-dag-control-btn"
+        // React Flow exposes no per-button prop; `!` beats its unlayered stylesheet.
+        // `\_\_` keeps Tailwind from reading the BEM underscores as spaces.
+        className="tw:[&_.react-flow\_\_controls-button]:size-6!"
         position="bottom-right"
         showInteractive={false}
       />
