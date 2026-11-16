@@ -63,13 +63,6 @@ const IncidentTypeAreaChartWidget = ({
           <Typography as="p" className="text-sm font-semibold">
             {title}
           </Typography>
-          <Typography
-            as="p"
-            color="secondary"
-            data-testid="widget-description"
-            size="text-xs">
-            {description}
-          </Typography>
         </div>
         <Typography
           as="p"
@@ -85,6 +78,14 @@ const IncidentTypeAreaChartWidget = ({
           height={height}
           name={name}
         />
+        <Typography
+          as="p"
+          className="tw:mt-2"
+          color="secondary"
+          data-testid="widget-description"
+          size="text-xs">
+          {description}
+        </Typography>
       </>
     );
   }, [title, description, chartData, name, height]);
