@@ -10528,7 +10528,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return result;
   }
 
-  /** Records assets added to or removed from an entity as one change event on that entity. */
+  /**
+   * Records assets added to or removed from an entity as one change event on that entity, named for
+   * the request's user and its bot. Without a user, it names the entity's last writer.
+   */
   protected void recordBulkAssetsChange(
       String fromEntity,
       UUID entityId,
@@ -10538,10 +10541,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
     ChangeDescription change =
         addBulkAddRemoveChangeDescription(entityInterface.getVersion(), isAdd, assets, null);
-    String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
     ChangeEvent changeEvent =
-        getChangeEvent(
-            entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+        getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+    if (userName != null) {
+      changeEvent
+          .withUserName(userName)
+          .withImpersonatedBy(ImpersonationContext.getImpersonatedBy());
+    }
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 
@@ -10579,9 +10585,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return change;
   }
 
+  /** A change event naming the entity's writer: the user it records and that user's bot. */
   protected ChangeEvent getChangeEvent(
       EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
-    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy());
+    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy())
+        .withImpersonatedBy(updated.getImpersonatedBy());
   }
 
   protected ChangeEvent getChangeEvent(
@@ -10622,6 +10630,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withEntityId(updated.getId())
             .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
             .withUserName(updated.getUpdatedBy())
+            .withImpersonatedBy(updated.getImpersonatedBy())
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())

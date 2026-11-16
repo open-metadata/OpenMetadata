@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*` and `test_editUndoneInItsSession*` cases), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`
+- **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*` and `test_editUndoneInItsSession*` cases, which read the versions and, for writes that insert their own change event, that event), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`
 - **Related:** #37869, #37892, #37893, open-metadata/ai-platform#2213
 
 ## Context
@@ -15,7 +15,10 @@ rebuild an entity from its stored copy (delete, restore, moves, bulk and bespoke
 `updatedBy`, so they kept the bot of the previous change. Overloads that take no bot recorded
 none, PUT included. CSV import recorded the importer as their own bot. An approved change request
 was published without the bot that staged it. Session consolidation folded edits by the same
-`updatedBy` whatever bot made them, so the stored bot was only the last writer's.
+`updatedBy` whatever bot made them, so the stored bot was only the last writer's. Writes that insert
+their own change event instead of leaving it to the response filter (an approved change, asset and
+port changes, the CSV summary, an async move) recorded the user and no bot, so the audit log named
+no bot for them either.
 
 ## Decision
 
@@ -37,12 +40,17 @@ For every entity type whose schema declares `impersonatedBy`:
   current.
 - In-session consolidation folds only edits with the same `updatedBy` and the same
   `impersonatedBy`.
+- A change event a repository inserts itself names the writer pair of the version it records:
+  `getChangeEvent` without a user and `createAndInsertChangeEvent` take both from the entity. An
+  event named for the request's user (asset changes) carries the request's bot.
 
 ## Consequences
 
-For those types, the version panel, change events and the audit log name the bot behind every
-change a bot made, and only those. A new write path either goes through an overload without a bot
-or through `EntityUtil.recordWriter`; setting `updatedBy` alone on a stored copy is a bug. A user
+For those types, the version panel names the bot behind every version a bot wrote, and only
+those; the change event and audit row of each write a bot made name it too. Pipeline status, usage
+and ontology workflow events, which record no write of the entity, are outside the rule. A new write
+path either goes through an overload without a bot or through `EntityUtil.recordWriter`; setting
+`updatedBy` alone on a stored copy is a bug, and so is an event built with a user and no bot. A user
 who alternates their own edits and edits through a bot within the session window gets one version
 per switch instead of one merged version. The rule relies on `ImpersonationContext` being cleared
 at every request start and after every propagated task; a thread that leaked a bot would attribute

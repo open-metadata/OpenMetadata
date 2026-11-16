@@ -3137,6 +3137,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 .withEntityId(updated.getId())
                 .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
                 .withUserName(updated.getUpdatedBy())
+                .withImpersonatedBy(updated.getImpersonatedBy())
                 .withPreviousVersion(original.getVersion())
                 .withCurrentVersion(updated.getVersion())
                 .withTimestamp(System.currentTimeMillis())

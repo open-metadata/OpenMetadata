@@ -24,6 +24,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.ChangeEventLog;
+import org.openmetadata.it.util.ChangeEventLog.EventAuthor;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreatePersona;
@@ -45,6 +48,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -56,6 +60,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -67,6 +72,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 
 /**
  * Integration tests for the bot impersonation capability.
@@ -1265,6 +1271,7 @@ public class BotImpersonationIT {
     SdkClients.adminClient().tables().create(tableRequest(ns, schema, "csvother"));
     String exported =
         SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    long since = System.currentTimeMillis();
 
     impersonation
         .viaBot()
@@ -1286,6 +1293,11 @@ public class BotImpersonationIT {
         versionAuthors(SdkClients.adminClient().databaseSchemas().getVersionList(schema.getId()))
             .getFirst(),
         "The import's summary version on the schema must name the bot");
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(
+            Entity.DATABASE_SCHEMA, schema.getId(), EntityRepository.BULK_IMPORT, since),
+        "The change event of the import's summary version must name the bot");
   }
 
   @Test
@@ -1341,6 +1353,7 @@ public class BotImpersonationIT {
     Glossary glossary = createGlossary(ns, "impmove");
     GlossaryTerm parent = createTerm(glossary, "parent");
     GlossaryTerm term = createTerm(glossary, "child");
+    long since = System.currentTimeMillis();
 
     impersonation
         .viaBot()
@@ -1367,6 +1380,10 @@ public class BotImpersonationIT {
         impersonation.bot(),
         move.impersonatedBy(),
         "The async move runs off the request thread and must still name the bot");
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(Entity.GLOSSARY_TERM, term.getId(), "parent", since),
+        "The change event of the async move must name the bot");
   }
 
   @Test
@@ -1439,6 +1456,69 @@ public class BotImpersonationIT {
     }
   }
 
+  @Test
+  void test_impersonatedDomainAssetsAdd_namesTheBotOnTheDomainEvent(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "assets", admin);
+    Domain domain = createDomain(ns, "impassets");
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "asset"));
+    long since = System.currentTimeMillis();
+
+    impersonation
+        .viaBot()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/%s/assets/add".formatted(domain.getFullyQualifiedName()),
+            new BulkAssets().withAssets(List.of(table.getEntityReference())),
+            BulkOperationResult.class);
+
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(Entity.DOMAIN, domain.getId(), "assets", since),
+        "The domain's change event for the assets the bot added must name the bot");
+  }
+
+  @Test
+  void test_impersonatedInputPortsAdd_namesTheBot(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "ports", admin);
+    Domain domain = createDomain(ns, "impports");
+    DataProduct dataProduct =
+        SdkClients.adminClient()
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(ns.prefix("impportsdp"))
+                    .withDescription("Written by admin")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "port"));
+    long since = System.currentTimeMillis();
+
+    impersonation
+        .viaBot()
+        .dataProducts()
+        .inputPorts(dataProduct.getFullyQualifiedName())
+        .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    DataProduct written =
+        SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString());
+    assertEquals(ADMIN_USER_NAME, written.getUpdatedBy());
+    assertEquals(
+        impersonation.bot(),
+        written.getImpersonatedBy(),
+        "The data product the bot linked an input port to must name the bot");
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(
+            Entity.DATA_PRODUCT, dataProduct.getId(), "inputPorts", since),
+        "The change event of the input port the bot added must name the bot");
+  }
+
   private record IdentityCall(HttpMethod method, String path, Object body) {}
 
   private record VersionAuthor(double version, String updatedBy, String impersonatedBy) {}
@@ -1474,6 +1554,18 @@ public class BotImpersonationIT {
     return ns.trackRoot(
         Entity.GLOSSARY,
         SdkClients.adminClient().glossaries().create(request.withDescription("Written by admin")));
+  }
+
+  private static Domain createDomain(TestNamespace ns, String name) {
+    return ns.trackRoot(
+        Entity.DOMAIN,
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix(name))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Written by admin")));
   }
 
   private static CreateTable tableRequest(TestNamespace ns, DatabaseSchema schema, String name) {
