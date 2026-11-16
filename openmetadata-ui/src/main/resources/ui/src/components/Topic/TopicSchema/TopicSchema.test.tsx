@@ -20,11 +20,17 @@ import {
   queryByTestId,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Topic } from '../../../generated/entity/data/topic';
+import {
+  getTopicSchemaFieldsByFQN,
+  updateTopicSchemaField,
+} from '../../../rest/topicsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
@@ -111,9 +117,15 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
-    ModalWithMarkdownEditor: jest
-      .fn()
-      .mockReturnValue(<div data-testid="editor-modal">Editor Modal</div>),
+    ModalWithMarkdownEditor: jest.fn().mockImplementation(({ onSave }) => (
+      <div data-testid="editor-modal">
+        <button
+          data-testid="save-description"
+          onClick={() => onSave('updated description')}>
+          Save
+        </button>
+      </div>
+    )),
   })
 );
 
@@ -131,8 +143,22 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
   })
 );
 
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../rest/topicsAPI', () => ({
+  getTopicSchemaFieldsByFQN: jest.fn(),
+  updateTopicSchemaField: jest.fn(),
+}));
+
+const mockGetTopicSchemaFields = getTopicSchemaFieldsByFQN as jest.Mock;
+const mockUpdateTopicSchemaField = updateTopicSchemaField as jest.Mock;
+const SCHEMA_FIELDS = MESSAGE_SCHEMA.schemaFields;
+
 const mockOnUpdate = jest.fn();
 const mockTopicDetails = {
+  fullyQualifiedName: 'sample_kafka.customer_events',
   columns: [],
   displayName: 'test-display-name',
   description: 'test-description',
@@ -182,8 +208,113 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 describe('Topic Schema', () => {
+  beforeEach(() => {
+    mockGetTopicSchemaFields.mockResolvedValue({
+      data: SCHEMA_FIELDS,
+      paging: { total: SCHEMA_FIELDS.length },
+    });
+    mockUpdateTopicSchemaField.mockImplementation((fqn, update) =>
+      Promise.resolve({
+        ...SCHEMA_FIELDS.find((field) => field.fullyQualifiedName === fqn),
+        ...update,
+      })
+    );
+  });
+
   afterEach(() => {
     mockUseGenericContext.mockImplementation(defaultGenericContext);
+    jest.clearAllMocks();
+  });
+
+  it('fetches the first page of schema fields from the server', async () => {
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('first_name')).toBeInTheDocument();
+    expect(mockGetTopicSchemaFields).toHaveBeenCalledWith(
+      'sample_kafka.customer_events',
+      expect.objectContaining({ offset: 0, fields: 'tags', q: undefined })
+    );
+  });
+
+  it('only renders the fields the server returned for the page', async () => {
+    mockGetTopicSchemaFields.mockResolvedValue({
+      data: [SCHEMA_FIELDS[1]],
+      paging: { total: SCHEMA_FIELDS.length },
+    });
+
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('id')).toBeInTheDocument();
+    expect(screen.queryByText('first_name')).toBeNull();
+  });
+
+  it('saves a field description through the schema field API', async () => {
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await screen.findByText('first_name');
+    const rows = screen.getAllByRole('row');
+    const firstNameRow = rows.find((row) =>
+      row.textContent?.includes('first_name')
+    );
+
+    fireEvent.click(
+      await findByTestId(firstNameRow as HTMLElement, 'edit-button')
+    );
+    const saveButton = await screen.findByTestId('save-description');
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    expect(mockUpdateTopicSchemaField).toHaveBeenCalledWith(
+      'sample_kafka.customer_events.first_name',
+      { description: 'updated description' }
+    );
+    expect(mockOnUpdate).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast and an empty table when the fetch fails', async () => {
+    const error = new Error('fetch failed');
+    mockGetTopicSchemaFields.mockRejectedValue(error);
+
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+    expect(screen.queryByText('first_name')).toBeNull();
+  });
+
+  it('does not fetch fields in the version view', async () => {
+    mockUseGenericContext.mockReturnValue({
+      ...defaultGenericContext(),
+      isVersionView: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('topic-schema-fields-table')
+    ).toBeInTheDocument();
+    expect(mockGetTopicSchemaFields).not.toHaveBeenCalled();
   });
 
   it('Should render a large skeleton while the schema editor loads', async () => {
@@ -207,7 +338,8 @@ describe('Topic Schema', () => {
     );
 
     const schemaFields = await screen.findByTestId('topic-schema-fields-table');
-    const rows = await screen.findAllByRole('row');
+    await screen.findByText('first_name');
+    const rows = screen.getAllByRole('row');
 
     const row1 = rows[1];
 
@@ -234,7 +366,8 @@ describe('Topic Schema', () => {
       </MemoryRouter>
     );
 
-    const rows = await screen.findAllByRole('row');
+    await screen.findByText('first_name');
+    const rows = screen.getAllByRole('row');
 
     const nestedRow = rows[1];
     const singleRow = rows[2];
@@ -263,7 +396,8 @@ describe('Topic Schema', () => {
       </MemoryRouter>
     );
 
-    const rows = await screen.findAllByRole('row');
+    await screen.findByText('first_name');
+    const rows = screen.getAllByRole('row');
 
     const row1 = rows[1];
 
@@ -286,7 +420,8 @@ describe('Topic Schema', () => {
       </MemoryRouter>
     );
 
-    const rows = await screen.findAllByRole('row');
+    await screen.findByText('first_name');
+    const rows = screen.getAllByRole('row');
 
     const row1 = rows[1];
 
@@ -362,7 +497,8 @@ describe('Topic Schema', () => {
       </MemoryRouter>
     );
 
-    const rows = await screen.findAllByRole('row');
+    await screen.findByText('first_name');
+    const rows = screen.getAllByRole('row');
     const row1 = rows[1];
 
     expect(queryByTestId(row1, 'edit-button')).toBeNull();

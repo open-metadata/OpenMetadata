@@ -2003,7 +2003,7 @@ export const installVisualData = async (
     // Otherwise a typo such as user/columns looks like a valid empty table.
     const isColumnRead =
       childPath === 'columns' &&
-      ['tables', 'dashboard/datamodels'].includes(collection);
+      ['tables', 'dashboard/datamodels', 'topics'].includes(collection);
     const isSampleRead =
       childPath === 'sampleData' &&
       ['tables', 'topics', 'searchIndexes', 'containers'].includes(collection);
@@ -2185,7 +2185,12 @@ export const installVisualData = async (
       if (childPath === 'columns') {
         await route.fulfill({
           json: pageOf(
-            state === 'empty' ? [] : ((selected.columns ?? []) as unknown[])
+            state === 'empty'
+              ? []
+              : ((selected.columns ??
+                  (selected.messageSchema as { schemaFields?: unknown[] })
+                    ?.schemaFields ??
+                  []) as unknown[])
           ),
         });
 
