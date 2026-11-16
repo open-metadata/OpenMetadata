@@ -645,6 +645,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // A link to a closed task lands on the Closed tab, where its row is listed.
   // Only each link's first load decides: the viewer may then move to any tab.
+  // ADR:2026-11-16-a-link-to-a-closed-inbox-task-opens-the-closed-tab
   const settledLinkedTaskIdRef = useRef<string>();
   const handleTaskLoaded = useCallback(
     (loaded: Task) => {

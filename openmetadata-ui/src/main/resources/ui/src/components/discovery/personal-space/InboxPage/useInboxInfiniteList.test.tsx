@@ -33,13 +33,13 @@ interface Item {
 
 type FetchPage = (after?: string) => Promise<InboxListPage<Item> | undefined>;
 
-let intersect: (() => void) | undefined;
+let intersect: ((isIntersecting?: boolean) => void) | undefined;
 
 class MockIntersectionObserver {
   constructor(private cb: IntersectionObserverCallback) {
-    intersect = () =>
+    intersect = (isIntersecting = true) =>
       this.cb(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
+        [{ isIntersecting } as IntersectionObserverEntry],
         this as unknown as IntersectionObserver
       );
   }
@@ -200,6 +200,39 @@ describe('useInboxInfiniteList', () => {
     expect(api.items).toHaveLength(1);
     expect(api.error).toBeNull();
     expect(api.isLoadMoreError).toBe(true);
+  });
+
+  // A new observer reports the sentinel at once; with it still in view, a
+  // failed page must wait for the sentinel to come back, not loop.
+  it('retries a failed page only once the sentinel comes back into view', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 2 }))
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(page(2, { total: 2 }));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    await act(async () => {
+      intersect?.();
+    });
+    await waitFor(() => expect(api.isLoadMoreError).toBe(true));
+
+    await act(async () => {
+      intersect?.();
+    });
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      intersect?.(false);
+      intersect?.();
+    });
+
+    await waitFor(() => expect(api.items.map((i) => i.id)).toEqual([1, 2]));
+
+    expect(api.isLoadMoreError).toBe(false);
   });
 
   // A filter switch must not blank the list: the old rows stay until the new

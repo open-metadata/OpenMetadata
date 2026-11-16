@@ -303,6 +303,25 @@ describe('fetchInboxActivity', () => {
     expect(result.isCapped).toBe(true);
   });
 
+  // A mention event keeps its own time, so an old event mentioned today would
+  // fall before any cut taken from the conversations.
+  it('leaves Mentions whole when its conversations are capped', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: [{ id: 'mentioned-today', timestamp: 100 }],
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `t${i}`,
+        updatedAt: 400,
+      })),
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.Mentions, 'u1');
+
+    expect(result.activities.map(({ id }) => id)).toEqual(['mentioned-today']);
+    expect(result.isCapped).toBe(true);
+  });
+
   it('cuts the events at the oldest conversation of a capped conversation list', async () => {
     mockGetActivityEvents.mockResolvedValue({
       data: [

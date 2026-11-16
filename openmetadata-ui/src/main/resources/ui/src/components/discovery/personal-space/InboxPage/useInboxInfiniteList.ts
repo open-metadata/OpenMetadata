@@ -174,6 +174,11 @@ export function useInboxInfiniteList<T>(
     }
   }, [hasNextPage, isFetchingNextPage, canLoadMore, items, fetchNextPage]);
 
+  // A new observer reports the sentinel at once, and `loadMore` changes after
+  // every fetch, so a page that failed would be requested again in a loop. After
+  // a failure only the sentinel coming back into view retries it.
+  const isLoadMoreError = query.isFetchNextPageError;
+  const wasIntersectingRef = useRef(false);
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const root = scrollRef.current;
@@ -182,7 +187,10 @@ export function useInboxInfiniteList<T>(
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
+        const isIntersecting = Boolean(entries[0]?.isIntersecting);
+        const hasCrossed = isIntersecting && !wasIntersectingRef.current;
+        wasIntersectingRef.current = isIntersecting;
+        if (isIntersecting && (hasCrossed || !isLoadMoreError)) {
           loadMore();
         }
       },
@@ -191,7 +199,7 @@ export function useInboxInfiniteList<T>(
     observer.observe(sentinel);
 
     return () => observer.disconnect();
-  }, [loadMore]);
+  }, [loadMore, isLoadMoreError]);
 
   return {
     items,
@@ -207,6 +215,6 @@ export function useInboxInfiniteList<T>(
     setItems,
     setTotal,
     loadMore,
-    isLoadMoreError: query.isFetchNextPageError,
+    isLoadMoreError,
   };
 }
