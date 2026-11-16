@@ -2187,6 +2187,9 @@ public class SearchRepository {
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      if (Entity.CONTEXT_MEMORY.equals(entityType)) {
+        invalidateMemoryEmbedding(entity);
+      }
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2315,14 +2318,16 @@ public class SearchRepository {
             false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
-    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())) {
-      refreshMemoryEmbedding(entity);
+    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())
+        && vectorEmbeddingHandler != null
+        && !Boolean.TRUE.equals(entity.getDeleted())) {
+      vectorEmbeddingHandler.updateEmbedding(entity);
     }
   }
 
-  private void refreshMemoryEmbedding(EntityInterface<?> entity) {
+  private void invalidateMemoryEmbedding(EntityInterface<?> entity) {
     if (vectorEmbeddingHandler != null) {
-      vectorEmbeddingHandler.refreshEmbedding(entity);
+      vectorEmbeddingHandler.invalidateStaleEmbedding(entity);
     } else {
       boolean preserveCurrent =
           !Boolean.TRUE.equals(entity.getDeleted()) && Entity.isVectorEmbeddable(entity);

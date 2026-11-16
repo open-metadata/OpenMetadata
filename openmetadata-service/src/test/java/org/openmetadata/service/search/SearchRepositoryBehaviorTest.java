@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -113,6 +114,7 @@ import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -3382,7 +3384,8 @@ class SearchRepositoryBehaviorTest {
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   void aMemoryReferenceRefreshRemovesOldVectorSourceLabels(boolean deleted) throws Exception {
-    SearchRepository search = spy(repository);
+    SearchRepository search =
+        spy(newRepository(Map.of(Entity.CONTEXT_MEMORY, TABLE_MAPPING), "cluster"));
     ContextMemory memory =
         new ContextMemory()
             .withId(UUID.randomUUID())
@@ -3417,7 +3420,8 @@ class SearchRepositoryBehaviorTest {
         .when(vector)
         .updateEntityEmbeddings(any(), anyString());
     setPrivateField(search, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
-    doNothing().when(search).updateEntityIndex(memory);
+    when(searchIndexFactory.buildIndex(Entity.CONTEXT_MEMORY, memory))
+        .thenReturn(new MapBackedSearchIndex(memory, Map.of("answer", memory.getAnswer())));
     doReturn(TABLE_MAPPING).when(search).getIndexMapping(Entity.CONTEXT_MEMORY);
     @SuppressWarnings("unchecked")
     EntityRepository<ContextMemory> memories = mock(EntityRepository.class);
@@ -3430,6 +3434,7 @@ class SearchRepositoryBehaviorTest {
     try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
       entities.when(Entity::getSearchRepository).thenReturn(search);
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(memories);
+      entities.when(() -> Entity.isSearchIndexable(memory)).thenReturn(true);
       entities.when(() -> Entity.isVectorEmbeddable(memory)).thenReturn(true);
       search.updateEntity(memory.getEntityReference(), Include.ALL);
     }
@@ -3439,6 +3444,69 @@ class SearchRepositoryBehaviorTest {
       assertTrue(stored.get("textToLLMContext").toString().contains("Thirty days"));
       assertTrue(stored.get("textToEmbed").toString().contains("Thirty days"));
     }
+  }
+
+  @Test
+  void aNormalMemoryWriteRemovesReplacedVectorTextWithoutEmbedding() throws Exception {
+    SearchRepository search =
+        newRepository(Map.of(Entity.CONTEXT_MEMORY, TABLE_MAPPING), "cluster");
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withFullyQualifiedName("memory")
+            .withQuestion("What is the refund window?")
+            .withAnswer("Thirty days");
+    Map<String, Object> stored =
+        new HashMap<>(
+            Map.of(
+                "answer", "Sixty days",
+                "textToEmbed", "Sixty days",
+                "textToLLMContext", "Sixty days",
+                "embedding", new float[] {1},
+                "fingerprint", "old-fingerprint"));
+    when(searchIndexFactory.buildIndex(Entity.CONTEXT_MEMORY, memory))
+        .thenReturn(new MapBackedSearchIndex(memory, Map.of("answer", memory.getAnswer())));
+    doAnswer(
+            call -> {
+              stored.putAll(call.<Map<String, Object>>getArgument(2));
+              return null;
+            })
+        .when(searchClient)
+        .updateEntity(anyString(), anyString(), any(), anyString());
+    VectorIndexService vector = mock(VectorIndexService.class);
+    AtomicReference<String> chunkText = new AtomicReference<>("Sixty days");
+    doAnswer(call -> chunkText.getAndSet(null)).when(vector).deleteEntityChunks(anyString());
+    doAnswer(
+            call -> {
+              ContextMemoryIndex.VECTOR_FIELDS.forEach(stored::remove);
+              return null;
+            })
+        .when(vector)
+        .clearEntityEmbedding(anyString(), anyString());
+    AtomicInteger providerCalls = new AtomicInteger();
+    doAnswer(call -> providerCalls.incrementAndGet())
+        .when(vector)
+        .updateEntityEmbeddings(any(), anyString());
+    setPrivateField(search, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
+    @SuppressWarnings("unchecked")
+    EntityRepository<ContextMemory> memories = mock(EntityRepository.class);
+    Entity.registerEntity(ContextMemory.class, Entity.CONTEXT_MEMORY, memories);
+    ContextMemoryBodyTextContributor.INSTANCE.register();
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(search);
+      entities.when(() -> Entity.isSearchIndexable(memory)).thenReturn(true);
+      entities.when(() -> Entity.isVectorEmbeddable(memory)).thenReturn(true);
+      search.updateEntityIndex(memory);
+    }
+
+    assertEquals("Thirty days", stored.get("answer"));
+    assertFalse(stored.toString().contains("Sixty days"), stored.toString());
+    assertFalse(stored.containsKey("embedding"), stored.toString());
+    assertNull(chunkText.get(), "old chunks must disappear before embedding is attempted");
+    assertEquals(
+        0, providerCalls.get(), "ordinary indexing must leave provider calls asynchronous");
   }
 
   @Test

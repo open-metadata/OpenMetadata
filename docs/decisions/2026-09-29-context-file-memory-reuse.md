@@ -6,7 +6,8 @@
   supplies the judge; a restricted copy is never named on a memory) ·
   v4 2026-11-10 (§4: archiving, restoring and re-sharing a document move its memories) ·
   v5 2026-11-16 (vector source labels, copy locking and independent archive moves) ·
-  v6 2026-11-16 (preserve current vectors and scope reference refreshes to memories)
+  v6 2026-11-16 (preserve current vectors and scope reference refreshes to memories) ·
+  v7 2026-11-16 (invalidate replaced vector text on every memory index write)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
   `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `AiProviderHolderTest`,
@@ -386,3 +387,17 @@ unconditional removal during ordinary indexing and its refresh of other entity t
   invoke synchronous embedding work. Their normal lifecycle handler owns vector updates.
 
 Guarded by `ContextMemoryIndexTest`, `SearchRepositoryBehaviorTest` and `ContextMemoryExtractionIT`.
+
+v7 (2026-11-16): stale-vector invalidation belongs to the shared memory index-write path,
+including ordinary PATCHes. This amends v6's reference-refresh-only cleanup.
+
+- Every memory index write compares its current fingerprint before retaining vector fields.
+  Changed content invalidates the old entity embedding and, with an initialized handler, its
+  chunks before provider work. A provider outage cannot leave the replaced answer searchable.
+  An unchanged, eligible memory keeps its current vectors.
+- Invalidation makes no provider calls. Ordinary edits continue to regenerate vectors through
+  the asynchronous lifecycle handler; reference-only updates explicitly regenerate after indexing.
+  Other entity types retain their existing behavior.
+
+Guarded by `SearchRepositoryBehaviorTest#aNormalMemoryWriteRemovesReplacedVectorTextWithoutEmbedding`
+and `ContextMemoryExtractionIT#replacingAnAnswerClearsItsOldVectorTextWhenEmbeddingIsUnavailable`.

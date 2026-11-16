@@ -149,7 +149,7 @@ class VectorEmbeddingHandlerTest {
               "table_search_index", entity.getId().toString()))
           .thenReturn(fingerprint);
 
-      handler.refreshEmbedding(entity);
+      handler.invalidateStaleEmbedding(entity);
     }
 
     assertSame(embedding, stored.get("embedding"));

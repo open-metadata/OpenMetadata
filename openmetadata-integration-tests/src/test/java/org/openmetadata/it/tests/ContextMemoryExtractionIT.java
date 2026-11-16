@@ -913,6 +913,74 @@ class ContextMemoryExtractionIT {
 
   private void assertCurrentVector(
       ContextMemory memory, String fingerprint, VectorIndexService vector, String index) {
+    Awaitility.await("the current memory vector remains searchable")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchMemorySource(searchMemoryAsOwner(memory), memory);
+              assertEquals(fingerprint, source.path("fingerprint").asText(), source.toString());
+              assertEquals(1, indexedMemoryVectors(memory, vector, index));
+              assertTrue(source.path("textToEmbed").asText().contains(memory.getAnswer()));
+              assertTrue(source.path("textToLLMContext").asText().contains(memory.getAnswer()));
+            });
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void replacingAnAnswerClearsItsOldVectorTextWhenEmbeddingIsUnavailable(
+      boolean handlerAvailable, TestNamespace ns) throws Exception {
+    ContextFile document = file(ns, "replaced-answer-source", "Refund policy " + ns.shortPrefix());
+    String oldAnswer = "Refunds expire after sixty days. " + ns.shortPrefix();
+    ContextMemory memory =
+        pill(oldAnswer, document.getEntityReference(), ContextMemorySourceType.MANUAL)
+            .withOwners(List.of(SharedEntities.get().USER1_REF));
+    memoryRepository().create(null, memory);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    SearchRepository search = Entity.getSearchRepository();
+    String index =
+        search.getIndexMapping(Entity.CONTEXT_MEMORY).getIndexName(search.getClusterAlias());
+    AtomicInteger requests = new AtomicInteger();
+    AtomicBoolean unavailable = new AtomicBoolean();
+    VectorIndexService vector = vectorService(search, testEmbeddingClient(requests, unavailable));
+    Awaitility.await("the memory is indexed")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> searchMemorySource(searchMemoryAsOwner(memory), memory));
+    vector.updateEntityEmbeddings(memory, index);
+    assertCurrentVector(
+        memory, VectorDocBuilder.computeFingerprintForEntity(memory), vector, index);
+    requests.set(0);
+    unavailable.set(true);
+    VectorEmbeddingHandler testHandler = new VectorEmbeddingHandler(vector);
+    Field handler = SearchRepository.class.getDeclaredField("vectorEmbeddingHandler");
+    handler.setAccessible(true);
+    Object previous = handler.get(search);
+    try {
+      handler.set(search, handlerAvailable ? testHandler : null);
+      ContextMemory updated =
+          editAnswer(memory, "Refunds expire after thirty days. " + ns.shortPrefix());
+      if (handlerAvailable) {
+        testHandler.onEntityUpdated(updated, updated.getChangeDescription(), null);
+        assertTrue(requests.get() > 0, "the replacement embedding provider call failed");
+      }
+      Awaitility.await("a replaced answer is absent from vector search even after embedding fails")
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () -> {
+                String result = searchMemoryAsOwner(updated);
+                JsonNode source = searchMemorySource(result, updated);
+                assertEquals(updated.getAnswer(), source.path("answer").asText(), result);
+                assertFalse(result.contains(oldAnswer), result);
+                assertFalse(source.has("textToEmbed"), result);
+                assertFalse(source.has("textToLLMContext"), result);
+                assertEquals(0, indexedMemoryVectors(updated, vector, index));
+              });
+    } finally {
+      handler.set(search, previous);
+      vector.deleteEntityChunks(memory.getId().toString());
+    }
+  }
+
+  private int indexedMemoryVectors(ContextMemory memory, VectorIndexService vector, String index) {
     String query =
         """
         {"query":{"bool":{"filter":[
@@ -921,19 +989,9 @@ class ContextMemoryExtractionIT {
         ]}}}
         """
             .formatted(memory.getId());
-    Awaitility.await("the current memory vector remains searchable")
-        .atMost(Duration.ofSeconds(60))
-        .untilAsserted(
-            () -> {
-              JsonNode source = searchMemorySource(searchMemoryAsOwner(memory), memory);
-              assertEquals(fingerprint, source.path("fingerprint").asText(), source.toString());
-              JsonNode count =
-                  JsonUtils.readTree(
-                      vector.executeGenericRequest("POST", "/" + index + "/_count", query));
-              assertEquals(1, count.path("count").asInt(), count.toString());
-              assertTrue(source.path("textToEmbed").asText().contains(memory.getAnswer()));
-              assertTrue(source.path("textToLLMContext").asText().contains(memory.getAnswer()));
-            });
+    return JsonUtils.readTree(vector.executeGenericRequest("POST", "/" + index + "/_count", query))
+        .required("count")
+        .intValue();
   }
 
   private EmbeddingClient testEmbeddingClient(AtomicInteger requests, AtomicBoolean unavailable) {

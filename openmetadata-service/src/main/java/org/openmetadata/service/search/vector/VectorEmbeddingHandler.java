@@ -61,14 +61,11 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     deleteChunks(entity);
   }
 
-  /** Removes old disclosure-bearing text before rebuilding from the entity's current content. */
-  public void refreshEmbedding(EntityInterface<?> entity) {
+  /** Invalidates stale stored text without making a provider call on the index-writing thread. */
+  public void invalidateStaleEmbedding(EntityInterface<?> entity) {
     if (!hasCurrentEmbedding(entity)) {
       deleteChunks(entity);
       clearEntityEmbedding(entity);
-    }
-    if (entity != null && !Boolean.TRUE.equals(entity.getDeleted())) {
-      updateEmbedding(entity);
     }
   }
 
@@ -130,7 +127,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     return entityType != null && isSupportedEntityType(entityType);
   }
 
-  private void updateEmbedding(EntityInterface<?> entity) {
+  public void updateEmbedding(EntityInterface<?> entity) {
     if (entity == null) {
       LOG.warn("Received null entity in updateEmbedding");
       return;
