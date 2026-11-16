@@ -21,6 +21,10 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getTestCaseTabPath } from '../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import {
+  OPEN_INCIDENT_STATUS_TYPES,
+  RESOLVED_INCIDENT_STATUS_TYPES,
+} from '../ChartWidgets/ChartWidgets.constants';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -167,12 +171,13 @@ export const DqDashboardSectionContent = ({
           <IncidentTypeAreaChartWidget
             chartFilter={defaultFilters}
             height={60}
-            incidentStatusType={TestCaseResolutionStatusTypes.New}
+            description={t('message.open-incident-card-description')}
+            incidentStatusTypes={OPEN_INCIDENT_STATUS_TYPES}
             name="open-incident"
             redirectPath={{
               pathname: incidentPath,
+              // No status filter: the list filters one status, the card counts three.
               search: QueryString.stringify({
-                testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
                 startTs: defaultFilters.startTs,
                 endTs: defaultFilters.endTs,
               }),
@@ -182,7 +187,8 @@ export const DqDashboardSectionContent = ({
           <IncidentTypeAreaChartWidget
             chartFilter={defaultFilters}
             height={60}
-            incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
+            description={t('message.resolved-incident-card-description')}
+            incidentStatusTypes={RESOLVED_INCIDENT_STATUS_TYPES}
             name="resolved-incident"
             redirectPath={{
               pathname: incidentPath,
