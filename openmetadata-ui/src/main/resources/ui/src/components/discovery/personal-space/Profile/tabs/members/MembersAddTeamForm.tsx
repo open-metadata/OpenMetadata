@@ -111,8 +111,11 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
       isJoinable: true,
     },
   });
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty
+    form.formState.isDirty || hasDescription || selectedDomains.length > 0
   );
   const { handleSubmit } = form;
 
@@ -322,6 +325,9 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
                 data-testid="description"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
           </Box>

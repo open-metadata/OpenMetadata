@@ -127,14 +127,17 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   const [isAdminUser, setIsAdminUser] = useState(Boolean(isAdmin));
   const [isSaveLoading, setIsSaveLoading] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty
-  );
 
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const [showGeneratedPassword, setShowGeneratedPassword] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>([]);
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty || hasDescription || selectedDomains.length > 0
+  );
 
   const [teamItems, setTeamItems] = useState<SelectItemType[]>([]);
   const [roleItems, setRoleItems] = useState<SelectItemType[]>([]);
@@ -445,6 +448,9 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                 data-testid="description"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
 

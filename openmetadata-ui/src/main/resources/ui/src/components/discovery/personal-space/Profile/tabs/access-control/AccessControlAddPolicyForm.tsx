@@ -79,8 +79,11 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
   ];
 
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty || ruleForm.formState.isDirty
+    form.formState.isDirty || ruleForm.formState.isDirty || hasDescription
   );
 
   const handleCreate = async () => {
@@ -158,6 +161,9 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
                 data-testid="policy-description-input"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
 

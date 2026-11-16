@@ -59,8 +59,11 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
   const form = useForm<FormValues>({
     defaultValues: { name: '', displayName: '', users: [] },
   });
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty
+    form.formState.isDirty || hasDescription
   );
   const { handleSubmit } = form;
 
@@ -140,6 +143,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
               data-testid="persona-description-input"
               placeHolder={t('message.write-your-description')}
               ref={descEditorRef}
+              onTextChange={(value) => setHasDescription(Boolean(value.trim()))}
             />
           </Box>
 

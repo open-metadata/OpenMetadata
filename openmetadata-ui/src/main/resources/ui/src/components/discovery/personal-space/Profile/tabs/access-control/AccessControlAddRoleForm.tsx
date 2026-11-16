@@ -83,8 +83,11 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty
+    form.formState.isDirty || hasDescription
   );
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
 
@@ -193,6 +196,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
               data-testid="role-description-input"
               placeHolder={t('message.write-your-description')}
               ref={descEditorRef}
+              onTextChange={(value) => setHasDescription(Boolean(value.trim()))}
             />
           </Box>
 

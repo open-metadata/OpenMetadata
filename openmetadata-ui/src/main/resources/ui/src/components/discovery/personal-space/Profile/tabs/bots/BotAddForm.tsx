@@ -66,8 +66,11 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       allowImpersonation: false,
     },
   });
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
-    form.formState.isDirty
+    form.formState.isDirty || hasDescription
   );
 
   const tokenExpiryOptions = useMemo(
@@ -219,6 +222,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
               data-testid="description-input"
               placeHolder={t('message.write-your-description')}
               ref={descriptionRef}
+              onTextChange={(value) => setHasDescription(Boolean(value.trim()))}
             />
           </Box>
 

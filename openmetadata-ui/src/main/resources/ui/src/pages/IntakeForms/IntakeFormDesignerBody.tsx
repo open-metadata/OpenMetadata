@@ -49,7 +49,7 @@ import {
 } from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
-import { isEmpty } from 'lodash';
+import { isEqualWith, isNil } from 'lodash';
 
 export interface IntakeFormDesignerBodyHandle {
   submit: () => Promise<void>;
@@ -63,6 +63,11 @@ interface IntakeFormDesignerBodyProps {
   /** Reports whether the admin changed anything, so a host can guard leaving. */
   onDirtyChange?: (isDirty: boolean) => void;
 }
+
+// A cleared text field holds '' where it started without a value.
+const isBlank = (value: unknown) => isNil(value) || value === '';
+const emptyEqualsMissing = (a: unknown, b: unknown) =>
+  isBlank(a) && isBlank(b) ? true : undefined;
 
 const IntakeFormDesignerBody = forwardRef<
   IntakeFormDesignerBodyHandle,
@@ -80,20 +85,6 @@ const IntakeFormDesignerBody = forwardRef<
   const [description, setDescription] = useState<string>('');
   const [enabled, setEnabled] = useState<boolean>(true);
   const [loadingProps, setLoadingProps] = useState(true);
-
-  const isDirty = useMemo(() => {
-    const initialDescription = initialValue?.description ?? '';
-    const initialEnabled = initialValue?.enabled ?? true;
-
-    return (
-      !isEmpty(edits) ||
-      description !== initialDescription ||
-      enabled !== initialEnabled
-    );
-  }, [edits, description, enabled, initialValue]);
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     if (!open) {
@@ -135,16 +126,35 @@ const IntakeFormDesignerBody = forwardRef<
     };
   }, [open, entityType]);
 
-  const rows = useMemo(
+  const baseRows = useMemo(
     () =>
       computeFieldRows({
         nativeFields: intakeFormClassBase.getNativeFields(entityType),
         customProperties,
         initialValue,
         t,
-      }).map((row) => ({ ...row, ...edits[row.path] })),
-    [entityType, customProperties, initialValue, t, edits]
+      }),
+    [entityType, customProperties, initialValue, t]
   );
+  const rows = useMemo(
+    () => baseRows.map((row) => ({ ...row, ...edits[row.path] })),
+    [baseRows, edits]
+  );
+
+  // Compares values, not the edit log: a field toggled back reads as unchanged.
+  const isDirty = useMemo(() => {
+    const initialDescription = initialValue?.description ?? '';
+    const initialEnabled = initialValue?.enabled ?? true;
+
+    return (
+      !isEqualWith(rows, baseRows, emptyEqualsMissing) ||
+      description !== initialDescription ||
+      enabled !== initialEnabled
+    );
+  }, [rows, baseRows, description, enabled, initialValue]);
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const updateRow = useCallback(
     (path: string, patch: Partial<IntakeFormFieldRow>) => {
