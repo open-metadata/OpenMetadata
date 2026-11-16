@@ -121,6 +121,7 @@ import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandle
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
@@ -332,6 +333,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Metrics initialization now handled by MicrometerBundle
 
+    // Before any resource starts work, so extraction can tell a server stop from a failure.
+    // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+    ServerStopping.registerShutdownHook();
     AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
     environment.lifecycle().manage(RdfBackgroundScheduler.getInstance());
 

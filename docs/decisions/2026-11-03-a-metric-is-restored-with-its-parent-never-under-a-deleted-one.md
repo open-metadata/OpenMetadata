@@ -1,10 +1,11 @@
 # A metric is restored with its parent, never on its own under a deleted one
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-11 (a bot PUT keeps a live stored parent)
 - **Deciders:** Anujkumar Yadav
 - **Guard:** `MetricResourceIT#restore_childOfDeletedParent_isRejectedUntilTheParentIsRestored`,
-  `MetricResourceIT#put_childOfDeletedParent_withoutParent_restoresItAsARoot`
+  `MetricResourceIT#put_childOfDeletedParent_withoutParent_restoresItAsARoot`,
+  `MetricResourceIT#put_byBotChildOfDeletedParent_restoresItAsARoot`
 - **Related:** `MetricRepository.validateRestore`, `EntityRepository.validateRestore`
 
 ## Context
@@ -39,3 +40,9 @@ delete of the old parent hard-deleted the live child with it.
 - Metrics restored on their own before this rule may still point at a deleted parent (their
   hierarchy and PATCH return 404). Restoring the parent repairs them. Restore the parent before
   permanently deleting it, or the orphaned metric is hard-deleted with it.
+
+## Amendment
+v2 2026-11-11: a bot PUT that names no parent now keeps the stored parent
+(ADR:2026-11-11-a-bot-put-never-removes-a-metric-parent-or-group), but only a live one. When the
+stored parent is deleted, the bot PUT behaves as before and the metric comes back as a root, so the
+rule above still holds on every PUT path. A user PUT is unchanged.
