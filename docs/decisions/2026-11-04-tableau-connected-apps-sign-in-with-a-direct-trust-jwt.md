@@ -27,9 +27,10 @@ credentials that sign in as a chosen user without that user's password. On Table
   `401002` when the token carried only the seven read scopes, and succeeded with the five added. A
   token with no `scp` claim was accepted for reads and writes alike, but Tableau documents a missing
   `scp` as error `10099 SCOPES_MISSING_IN_JWT`, so the claim stays.
-- Each client signs in once, and the session it gets outlives the token. The pipeline client's
-  transport retries a sign-in that Tableau answers with 429 or 5xx, re-sending the same token, which
-  Tableau accepts only until it expires.
+- The session a sign-in gets outlives the token. The pipeline client's transport retries a sign-in
+  that Tableau answers with 429 or 5xx, re-sending the same token, which Tableau accepts only until
+  it expires. When Tableau ends the session, the pipeline client signs in again
+  (ADR:2026-10-30-tableau-pipeline-sign-in-again) with a freshly signed token.
 
 ## Decision
 - A new `authType`, `TableauConnectedAppAuth` (`clientId`, `secretId`, `secretValue`, `username`),
@@ -58,4 +59,4 @@ as they do for a PAT. The host clock must be correct, because Tableau rejects a 
 validity window, and Tableau Cloud caps that window at ten minutes. OAuth 2.0 trust, unified access
 tokens, impersonation, per-site scopes and token refresh are not supported. Revisit the fixed scope
 set if a connector starts calling an endpoint outside it, or if a site must issue tokens with fewer
-scopes. Revisit the lifetime if a client ever signs in again during a run.
+scopes.

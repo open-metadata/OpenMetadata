@@ -42,6 +42,7 @@ from urllib3.util.retry import Retry
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
 )
+from metadata.ingestion.source.dashboard.tableau.connection import build_server_config
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     ExtractTargetType,
     TableauFlowLineage,
@@ -188,7 +189,6 @@ class TableauPipelineClient:
                 config.hostPort,
                 FALLBACK_API_VERSION,
             )
-        self._auth = tableau_server_auth
         self.tableau_server.session.hooks["response"].append(self._sign_in_again)
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
@@ -213,7 +213,8 @@ class TableauPipelineClient:
             "Tableau ended the session: it expired, or the same personal access token signed in elsewhere. "
             "Signing in again."
         )
-        self.tableau_server.auth.sign_in(self._auth)
+        # Fresh credentials: a connected-app JWT expires five minutes after it is signed.
+        self.tableau_server.auth.sign_in(build_server_config(self.config))
         resent = request.copy()
         # Without this hook, a second 401 reaches the caller instead of another sign-in.
         resent.hooks = {"response": []}
