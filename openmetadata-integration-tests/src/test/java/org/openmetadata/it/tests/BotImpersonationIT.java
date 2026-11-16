@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,6 +34,7 @@ import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.it.util.UriTestUtils;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -41,6 +43,8 @@ import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -57,14 +61,19 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -77,6 +86,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 
 /**
@@ -1583,15 +1593,25 @@ public class BotImpersonationIT {
     User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
     Impersonation impersonation = impersonating(ns, "harddel", admin);
     Glossary glossary = createGlossary(ns, "impharddel");
-    // A hard delete's event is stamped with the entity's last update, which is this edit.
-    long since = System.currentTimeMillis();
     patchDescription(SdkClients.adminClient(), glossary, "Written by admin directly");
+    long since = System.currentTimeMillis();
 
-    impersonation
-        .viaBot()
-        .glossaries()
-        .delete(glossary.getId().toString(), Map.of("hardDelete", "true"));
+    JsonNode deleted =
+        JsonUtils.readTree(
+            impersonation
+                .viaBot()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.DELETE,
+                    "/v1/glossaries/%s?hardDelete=true".formatted(glossary.getId()),
+                    null));
 
+    VersionAuthor deleter = author(deleted);
+    assertEquals(ADMIN_USER_NAME, deleter.updatedBy());
+    assertEquals(
+        impersonation.bot(),
+        deleter.impersonatedBy(),
+        "The hard-deleted entity the response carries must name the bot that deleted it");
     assertEquals(
         new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
         ChangeEventLog.awaitHardDeleteAuthor(Entity.GLOSSARY, glossary.getId(), since),
@@ -1603,9 +1623,8 @@ public class BotImpersonationIT {
     User target = createRegularUser(ns, "asyncharddel");
     Impersonation impersonation = impersonating(ns, "asyncharddel", target);
     Glossary glossary = createGlossary(ns, "impasyncharddel");
-    // A hard delete's event is stamped with the entity's last update, which is this edit.
-    long since = System.currentTimeMillis();
     patchDescription(impersonation.viaBot(), glossary, "Written by the bot for the user");
+    long since = System.currentTimeMillis();
 
     SdkClients.adminClient()
         .getHttpClient()
@@ -1618,6 +1637,96 @@ public class BotImpersonationIT {
         new EventAuthor(ADMIN_USER_NAME, null),
         ChangeEventLog.awaitHardDeleteAuthor(Entity.GLOSSARY, glossary.getId(), since),
         "An admin's async hard delete must not be recorded with the bot of the edit before it");
+  }
+
+  @Test
+  void test_editUndoneInItsSession_throughTheColumnEditor_isRecordedAsTheUsers(TestNamespace ns) {
+    User target = createRegularUser(ns, "colundo");
+    Impersonation impersonation = impersonating(ns, "colundo", target);
+    OpenMetadataClient direct = directClient(target);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "colundo"));
+    String column = table.getFullyQualifiedName() + ".id";
+    long since = System.currentTimeMillis();
+
+    putColumnDescription(impersonation.viaBot(), column, "Written by the bot for the user");
+    putColumnDescription(direct, column, "Rewritten by the user");
+    putColumnDescription(direct, column, "Written by the bot for the user");
+
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, target.getName(), impersonation.bot()),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        versionAuthors(SdkClients.adminClient().tables().getVersionList(table.getId())),
+        "Undoing a column edit in its session returns to the version before it, the bot included");
+    assertEquals(
+        Map.of(
+            new EventAuthor(target.getName(), impersonation.bot()), 1L,
+            new EventAuthor(target.getName(), null), 2L),
+        countByAuthor(
+            ChangeEventLog.awaitUpdateAuthors(
+                Entity.TABLE, table.getId(), "columns.id.description", since, 3)),
+        "The user's own undo through the column editor must be recorded as theirs");
+  }
+
+  @Test
+  void test_impersonatedTaskApproval_namesTheBotOnTheChangeItApplies(TestNamespace ns) {
+    User owner = createRegularUser(ns, "task");
+    Impersonation impersonation = impersonating(ns, "task", owner);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                tableRequest(ns, schema, "task").withOwners(List.of(owner.getEntityReference())));
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("impdesc"))
+                    .withDescription("Describe the table")
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout("<#E::table::%s>".formatted(table.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(table.getDescription())
+                            .withNewDescription("Approved by the bot for the owner")));
+    awaitTaskReadyForResolution(task.getId());
+    long since = System.currentTimeMillis();
+
+    impersonation
+        .viaBot()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue("Approved by the bot for the owner"));
+
+    VersionAuthor applied =
+        Awaitility.await("the version the approved task wrote")
+            .atMost(Duration.ofSeconds(60))
+            .pollInterval(Duration.ofMillis(500))
+            .until(
+                () ->
+                    versionChanging(
+                        SdkClients.adminClient().tables().getVersionList(table.getId()),
+                        "description"),
+                Objects::nonNull);
+    assertEquals(owner.getName(), applied.updatedBy());
+    assertEquals(
+        impersonation.bot(),
+        applied.impersonatedBy(),
+        "The change a bot approves for the task's assignee must name the bot");
+    assertEquals(
+        new EventAuthor(owner.getName(), impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(Entity.TABLE, table.getId(), "description", since),
+        "The change event of the approved task must name the bot");
   }
 
   @Test
@@ -1754,10 +1863,41 @@ public class BotImpersonationIT {
   /** How many of the glossary's description change events since {@code since} name each author. */
   private static Map<EventAuthor, Long> descriptionEventAuthors(
       Glossary glossary, long since, int count) {
-    return ChangeEventLog.awaitUpdateAuthors(
-            Entity.GLOSSARY, glossary.getId(), "description", since, count)
-        .stream()
+    return countByAuthor(
+        ChangeEventLog.awaitUpdateAuthors(
+            Entity.GLOSSARY, glossary.getId(), "description", since, count));
+  }
+
+  // Events are recorded off the request thread, so their order is not the requests' order.
+  private static Map<EventAuthor, Long> countByAuthor(List<EventAuthor> authors) {
+    return authors.stream()
         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+  }
+
+  private static void putColumnDescription(
+      OpenMetadataClient client, String columnFqn, String description) {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/columns/name/%s?entityType=%s"
+                .formatted(UriTestUtils.encodeURIComponent(columnFqn), Entity.TABLE),
+            JsonUtils.pojoToJson(Map.of("description", description)));
+  }
+
+  /** Waits for the task's workflow to reach the step a resolution completes. */
+  private static void awaitTaskReadyForResolution(UUID taskId) {
+    Awaitility.await("task " + taskId + " ready for resolution")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(250))
+        .until(
+            () ->
+                WorkflowHandler.getInstance().hasActiveRuntimeTask(taskId)
+                    && !nullOrEmpty(
+                        SdkClients.adminClient()
+                            .tasks()
+                            .get(taskId.toString(), "availableTransitions")
+                            .getAvailableTransitions()));
   }
 
   private static CreateTable tableRequest(TestNamespace ns, DatabaseSchema schema, String name) {

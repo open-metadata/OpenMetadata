@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -93,11 +94,15 @@ public class ChangeEventHandler implements EventHandler {
 
   /**
    * The change event a REST write of {@code entity} records, for a write made outside a request:
-   * the event this filter builds from the response, with the entity masked.
+   * the event this filter builds from the response, with the entity masked. Like that event, it
+   * names {@code userName} and the bot of the request making the write, not the entity's writers.
    */
   public static ChangeEvent entityChangeEvent(
       String userName, EventType eventType, EntityInterface<?> entity) {
-    return withMaskedEntity(createChangeEventForEntity(userName, eventType, entity));
+    ChangeEvent changeEvent =
+        createChangeEventForEntity(userName, eventType, entity)
+            .withImpersonatedBy(ImpersonationContext.getImpersonatedBy());
+    return withMaskedEntity(changeEvent);
   }
 
   private static ChangeEvent withMaskedEntity(ChangeEvent changeEvent) {

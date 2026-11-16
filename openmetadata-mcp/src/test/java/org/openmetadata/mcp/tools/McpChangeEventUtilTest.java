@@ -23,6 +23,7 @@ import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.ImpersonationContext;
 
 /**
  * Unit tests for McpChangeEventUtil.publishChangeEvent().
@@ -142,6 +143,30 @@ class McpChangeEventUtilTest {
 
       verify(changeEvent).setUserName("alice");
     }
+  }
+
+  /** The event names the tool call's bot, whatever bot the entity names. */
+  @Test
+  void publishChangeEvent_namesTheBotOfTheToolCall() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    ArgumentCaptor<String> inserted = ArgumentCaptor.forClass(String.class);
+
+    ImpersonationContext.setImpersonatedBy("mcp-bot");
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      McpChangeEventUtil.publishChangeEvent(
+          GetEntityToolTest.gitSinkWorkflow("botWorkflow"), EventType.ENTITY_UPDATED, "alice");
+    } finally {
+      ImpersonationContext.clear();
+    }
+
+    verify(changeEventDAO).insert(inserted.capture());
+    ChangeEvent event = JsonUtils.readValue(inserted.getValue(), ChangeEvent.class);
+    assertThat(event.getUserName()).isEqualTo("alice");
+    assertThat(event.getImpersonatedBy()).isEqualTo("mcp-bot");
   }
 
   /** The stored change event carries the entity as the REST resource answers it: masked. */

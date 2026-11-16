@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*` and `test_editUndoneInItsSession*` cases, which read the versions and, for writes that insert their own change event, that event), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`
+- **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*`, `test_editUndoneInItsSession*` and `test_botUndoingItsEditInItsSession*` cases, which read the versions and their change events), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`, `SecurityUtilTest#testGetImpersonatingBot*`, `McpChangeEventUtilTest#publishChangeEvent_namesTheBotOfTheToolCall`
 - **Related:** #37869, #37892, #37893, open-metadata/ai-platform#2213,
   ADR:2026-11-13-the-status-badge-says-who-set-the-status-from-version-history (amended for the
   folding rule)
@@ -16,7 +16,8 @@ panel shows both, so the history has to say which changes a bot made. It did not
 rebuild an entity from its stored copy (delete, restore, moves, bulk and bespoke writers) set only
 `updatedBy`, so they kept the bot of the previous change. Overloads that take no bot recorded
 none, PUT included. CSV import recorded the importer as their own bot. An approved change request
-was published without the bot that staged it. Session consolidation folded edits by the same
+was published without the bot that staged it, and a task a bot resolved applied its change with no
+bot. Session consolidation folded edits by the same
 `updatedBy` whatever bot made them, so the stored bot was only the last writer's. Writes that insert
 their own change event instead of leaving it to the response filter (an approved change, asset and
 port changes, the CSV summary, an async move) recorded the user and no bot, so the audit log named
@@ -43,11 +44,13 @@ For every entity type whose schema declares `impersonatedBy`:
 - In-session consolidation folds only edits with the same `updatedBy` and the same
   `impersonatedBy`.
 - The change event of a write names the request that made it. The response filter takes the user
-  and the bot from the request's security context, and an event a repository names for the
-  request's user (asset changes) carries the request's bot. An event a repository records for a
-  version it stores itself, or for another request's change, names that version's writer pair:
-  `getChangeEvent` without a user and `createAndInsertChangeEvent` take both from the entity, and
-  a hard delete stamps its deleter on the entity its response and async event carry.
+  and the bot from the request's security context. A write that records its event itself for the
+  request's user takes the bot from `ImpersonationContext`: `ChangeEventHandler.entityChangeEvent`
+  (column edits, Assets-tab batch edits, approved tasks), the MCP tool events and asset changes.
+  An event a repository records for a version it stores itself, or for another request's change,
+  names that version's writer pair: `getChangeEvent` without a user and
+  `createAndInsertChangeEvent` take both from the entity. A hard delete stamps its deleter and its
+  time on the entity its response and async event carry.
 
 ## Consequences
 

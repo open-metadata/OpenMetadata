@@ -1074,8 +1074,7 @@ public class TaskWorkflowHandler {
       ChangeSource changeSource) {
     JsonPatch patch = JsonUtils.getJsonPatch(before, JsonUtils.pojoToJson(entity));
     if (patch != null && !patch.toJsonArray().isEmpty()) {
-      recordChangeEvent(
-          repository.patch(null, entity.getId(), user, patch, changeSource, null), user);
+      recordChangeEvent(repository.patch(null, entity.getId(), user, patch, changeSource), user);
     }
   }
 
