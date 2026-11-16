@@ -1,9 +1,9 @@
 # Only ontology drafts intercept programmatic navigation
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** OpenMetadata UI maintainers through PR #36738 review
-- **Guard:** useWorkflowNavigationBlock.integration.test.tsx, OntologyDraftProvider.test.tsx, reviewer
+- **Guard:** useWorkflowNavigationBlock.integration.test.tsx, OntologyDraftProvider.test.tsx *(openmetadata-collate)*, reviewer
 - **Related:** #36737, #36738
 
 ## Context
@@ -37,3 +37,7 @@ Ontology sidebar navigation cannot silently discard edits, and existing workflow
 saves retain their navigation behavior. The shared navigator is mutable state with
 a single owner; supporting concurrent interceptors requires a different ownership
 design and lifecycle tests before extending this mechanism to another page.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

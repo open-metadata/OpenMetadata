@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -35,6 +29,9 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import ontologyExplorerClassBase, {
+  OntologyReviewPanelProps,
+} from '../../../../utils/OntologyExplorerClassBase';
 import { TaskTabNew } from './TaskTabNew.component';
 
 jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
@@ -1428,12 +1425,12 @@ describe('TaskTabNew Component', () => {
         );
       });
 
-      if (!assigned) {
-        const panel = await screen.findByTestId('ontology-review-panel');
-        await waitFor(() =>
-          expect(within(panel).queryByRole('status')).not.toBeInTheDocument()
-        );
+      // OpenMetadata has no review panel; the release is reviewed in Collate.
+      expect(
+        screen.queryByTestId('ontology-review-panel')
+      ).not.toBeInTheDocument();
 
+      if (!assigned) {
         expect(
           screen.queryByTestId('workflow-task-action-primary')
         ).not.toBeInTheDocument();
@@ -1460,12 +1457,20 @@ describe('TaskTabNew Component', () => {
     }
   );
 
-  it('disables release approval when the submitted content is unavailable', async () => {
+  it('keeps release approval hidden until a review panel reports the release loaded', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
     const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
-    const { resolveTask } = require('../../../../rest/tasksAPI');
     useAuth.mockReturnValue({ isAdminUser: true });
     isTagsTaskType.mockReturnValue(false);
+    let reportReady: OntologyReviewPanelProps['onReadyChange'] | undefined;
+    const ReviewPanel = ({ onReadyChange }: OntologyReviewPanelProps) => {
+      reportReady = onReadyChange;
+
+      return <div data-testid="ontology-review-panel" />;
+    };
+    const getReviewPanel = jest
+      .spyOn(ontologyExplorerClassBase, 'getReviewPanel')
+      .mockReturnValue(ReviewPanel);
     const task: Task = {
       ...MOCK_TASK,
       type: TaskEntityType.RequestApproval,
@@ -1490,14 +1495,14 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'message.ontology-review-unavailable'
-    );
+    expect(screen.getByTestId('ontology-review-panel')).toBeInTheDocument();
     expect(screen.getByTestId('workflow-task-action-primary')).toBeDisabled();
 
-    fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+    act(() => reportReady?.(true));
 
-    expect(resolveTask).not.toHaveBeenCalled();
+    expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled();
+
+    getReviewPanel.mockRestore();
   });
 
   describe('multi-approver vote', () => {

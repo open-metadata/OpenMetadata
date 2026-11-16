@@ -3,6 +3,41 @@
   "description": "MCP Server app installs an embedded Model Context Protocol(MCP) server within OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.\n \n   1. SSE : http[s]://openmetadata-host/mcp/sse\n \n    - This endpoint can be used by client if Streamable-Http transport is used.\n \n   2. Streamable-Http : http[s]://openmetadata-host/mcp\n \n    - This endpoint can be used by client if Streamable-Http transport is used.",
   "type": "object",
   "properties": {
+    "enabled": {
+      "title": "Enable MCP Server",
+      "description": "Allow MCP clients to connect. Disabling stops new MCP requests and sign-ins without deleting registered clients or their grants. Already-running requests may finish.",
+      "type": "boolean",
+      "default": true
+    },
+    "dynamicClientRegistrationEnabled": {
+      "title": "Allow Dynamic Client Registration",
+      "description": "Allow new clients to register without administrator pre-registration. Disabling this does not revoke existing clients.",
+      "type": "boolean",
+      "default": true
+    },
+    "allowedRedirectHosts": {
+      "title": "Allowed Redirect Hosts",
+      "description": "Exact HTTPS callback host names, without a scheme, path or wildcard. An empty list allows any HTTPS host. Applies to new authorizations; revoke a client to end existing access.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "allowLoopbackRedirects": {
+      "title": "Allow Loopback Redirects",
+      "description": "Allow callbacks to localhost and loopback IP addresses. Desktop clients may require these.",
+      "type": "boolean",
+      "default": true
+    },
+    "allowNativeRedirects": {
+      "title": "Allow Native App Redirects",
+      "description": "Allow private-use callback schemes used by native applications. Disabling may prevent those clients from connecting.",
+      "type": "boolean",
+      "default": true
+    },
     "baseUrl": {
       "title": "Base URL",
       "description": "External-facing base URL advertised in the MCP OAuth metadata (issuer and endpoint URLs). Leave empty to fall back to the OpenMetadata base URL from system settings. Set this explicitly for clustered deployments where the service is reached through a load balancer or ingress.\nExample: `https://openmetadata.example.com`",

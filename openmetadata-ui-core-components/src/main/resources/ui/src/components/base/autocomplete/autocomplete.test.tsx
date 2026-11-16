@@ -152,6 +152,32 @@ const LARGE_OPTIONS: SelectItemType[] = Array.from(
   (_, index) => ({ id: `value-${index}`, label: `Value ${index}` })
 );
 
+describe('Autocomplete – search text after a pick', () => {
+  it('tells the caller the search is empty again once an option is picked', async () => {
+    const onSearchChange = vi.fn();
+    render(
+      <Autocomplete
+        multiple
+        items={OPTIONS}
+        placeholder="Select"
+        selectedItems={[]}
+        onSearchChange={onSearchChange}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.type(screen.getByRole('combobox'), 'PI');
+    await userEvent.click(await screen.findByRole('option', { name: 'PII' }));
+
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(onSearchChange).toHaveBeenLastCalledWith('');
+  });
+});
+
 describe('Autocomplete – large option lists', () => {
   it('filters the full list and inserts a match', async () => {
     const onItemInserted = vi.fn();

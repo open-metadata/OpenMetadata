@@ -111,26 +111,25 @@ const componentsVisibility = {
 /**
  * The three task-count scopes: my own profile counts every task visible to me,
  * another user's profile counts what is assigned to them, and an entity page
- * counts what is about that entity.
+ * counts what is about that entity. The withDomainFilter interceptor applies the pick to the
+ * user scopes only, so each count matches the list it labels.
  */
 const getTaskCountParams = ({
   isUserEntity,
   isCurrentUserProfile,
   fqn,
-  domain,
 }: {
   isUserEntity: boolean;
   isCurrentUserProfile: boolean;
   fqn: string;
-  domain?: string;
 }) => {
   if (!isUserEntity) {
-    return { aboutEntity: fqn, view: 'entity' as const, domain };
+    return { aboutEntity: fqn, view: 'entity' as const };
   }
 
   return isCurrentUserProfile
-    ? { view: 'visible' as const, domain }
-    : { assignee: fqn, domain };
+    ? { view: 'visible' as const }
+    : { assignee: fqn };
 };
 
 /**
@@ -636,7 +635,6 @@ export const ActivityFeedTab = ({
         isUserEntity,
         isCurrentUserProfile,
         fqn,
-        domain,
       });
       const countRequests = startFeedCountRequests({
         isUserEntity,

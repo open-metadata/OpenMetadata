@@ -12,6 +12,7 @@ import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
+import io.modelcontextprotocol.spec.HttpHeaders;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
@@ -209,7 +210,19 @@ public class HttpServletStatelessServerTransport extends HttpServlet
       McpSchema.JSONRPCMessage message =
           McpSchema.deserializeJsonRpcMessage(jsonMapper, new String(body, StandardCharsets.UTF_8));
 
-      if (message instanceof McpSchema.JSONRPCRequest jsonrpcRequest) {
+      if (!supportsProtocolVersion(request.getHeader(HttpHeaders.PROTOCOL_VERSION), message)) {
+        responseError(
+            response,
+            HttpServletResponse.SC_BAD_REQUEST,
+            message instanceof McpSchema.JSONRPCRequest refused ? refused.id() : null,
+            McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+                .message(
+                    "Unsupported "
+                        + HttpHeaders.PROTOCOL_VERSION
+                        + ". Supported: "
+                        + String.join(", ", protocolVersions()))
+                .build());
+      } else if (message instanceof McpSchema.JSONRPCRequest jsonrpcRequest) {
         try {
           McpSchema.JSONRPCResponse jsonrpcResponse =
               this.mcpHandler
@@ -308,6 +321,19 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   static boolean isJsonContentType(String contentType) {
     String mediaType = contentType == null ? "" : contentType.split(";", 2)[0].trim();
     return APPLICATION_JSON.equalsIgnoreCase(mediaType);
+  }
+
+  /**
+   * A message naming a protocol version this transport does not implement is refused, as the
+   * 2025-11-25 transport requires. A missing header passes, since the spec says to assume
+   * 2025-03-26. {@code initialize} passes because its body negotiates the version.
+   * ADR:2026-11-14-mcp-refuses-unsupported-protocol-versions
+   */
+  private boolean supportsProtocolVersion(String version, McpSchema.JSONRPCMessage message) {
+    boolean initialize =
+        message instanceof McpSchema.JSONRPCRequest jsonrpcRequest
+            && McpSchema.METHOD_INITIALIZE.equals(jsonrpcRequest.method());
+    return version == null || initialize || protocolVersions().contains(version);
   }
 
   /**

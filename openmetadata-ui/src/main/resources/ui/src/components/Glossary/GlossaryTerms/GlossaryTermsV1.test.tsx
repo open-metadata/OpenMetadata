@@ -97,12 +97,6 @@ jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
 jest.mock('../../Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
 }));
-jest.mock('../../OntologyExplorer', () => ({
-  OntologyExplorer: jest
-    .fn()
-    .mockImplementation(() => <div>OntologyExplorer</div>),
-}));
-
 const mockProps = {
   isSummaryPanelOpen: false,
   permissions: {

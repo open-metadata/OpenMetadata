@@ -534,11 +534,12 @@ const OntologyDataAssetPicker = ({
   );
   const suggestedIds = new Set(openSuggestions.map(({ asset }) => asset.id));
   const isFirstPagePending = (loadedPage === 0 && !hasFailed) || isSuggesting;
-  const listed = results.filter((asset) => !suggestedIds.has(asset.id));
-  const selectable = [
-    ...openSuggestions.map(({ asset }) => asset),
-    ...listed,
-  ].filter((asset) => !native?.linkedIds.includes(asset.id));
+  // An asset already linked to the concept has nothing left to pick, so it is not listed.
+  const listed = results.filter(
+    (asset) =>
+      !suggestedIds.has(asset.id) && !native?.linkedIds.includes(asset.id)
+  );
+  const selectable = [...openSuggestions.map(({ asset }) => asset), ...listed];
   const isAllSelected =
     selectable.length > 0 &&
     selectable.every((asset) => selected.has(asset.id));
@@ -704,7 +705,7 @@ const OntologyDataAssetPicker = ({
               as="span"
               className="tw:mt-px"
               size="text-sm"
-              weight="semibold">
+              weight="medium">
               {asset.displayName ?? asset.name}
             </Typography>
             <Typography
@@ -717,7 +718,7 @@ const OntologyDataAssetPicker = ({
           <Typography
             ellipsis
             as="span"
-            className="tw:text-tertiary"
+            className="tw:pt-0.5 tw:text-tertiary"
             size="text-xs">
             {getAssetPath(asset)}
           </Typography>
@@ -730,8 +731,6 @@ const OntologyDataAssetPicker = ({
   const labelClassName = getLabelClassName(isDialog);
 
   const renderOption = (asset: EntityReference, reason?: SuggestionReason) => {
-    const isLinked = Boolean(native?.linkedIds.includes(asset.id));
-
     return (
       <li
         className={classNames(
@@ -741,31 +740,19 @@ const OntologyDataAssetPicker = ({
         key={asset.id}>
         <Checkbox
           aria-label={asset.displayName ?? asset.name}
-          boxClassName={isDialog ? undefined : 'tw:mt-1'}
+          boxClassName={isDialog ? undefined : 'tw:mt-1.5'}
           className="tw:min-w-0"
           data-testid={`ontology-data-asset-option-${asset.id}`}
-          isDisabled={isLinked}
-          isSelected={isLinked || selected.has(asset.id)}
+          isSelected={selected.has(asset.id)}
           label={
             <span className={labelClassName}>
               {isDialog ? renderDialogLabel(asset) : renderInlineLabel(asset)}
               {/* Under the name, past the 32px type tile and its 12px gap. */}
               <span className="tw:flex tw:min-w-0 tw:flex-col tw:pl-11 tw:empty:hidden">
-                {isLinked ? (
-                  <Typography
-                    as="span"
-                    className="tw:text-tertiary"
-                    data-testid={`ontology-data-asset-linked-${asset.id}`}
-                    size="text-xs">
-                    {t('message.ontology-asset-already-linked', {
-                      concept: native?.concept?.name,
-                    })}
-                  </Typography>
-                ) : null}
                 {reason ? (
                   <Typography
                     as="span"
-                    className="tw:mt-px tw:text-brand-secondary"
+                    className="tw:pt-0.5 tw:text-brand-secondary"
                     data-testid={`ontology-data-asset-reason-${asset.id}`}
                     size="text-xs">
                     {t(`message.ontology-suggest-${reason.kind}`, {
