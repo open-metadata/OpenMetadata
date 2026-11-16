@@ -36,9 +36,11 @@ credentials that sign in as a chosen user without that user's password. On Table
   (`CONNECTED_APP_SCOPES`, `CONNECTED_APP_JWT_LIFETIME`), not configuration.
 - A connected-app connection gets its own test-connection error pack: a 401 names the app's checks and the
   scopes, and unresolved owners name `tableau:users:read`. Basic and PAT connections keep their hints.
-- The supported floor is Tableau Cloud and Tableau Server 2023.3, per Tableau's documentation:
-  Server 2022.3 to 2023.2 accepts connected app tokens for the REST API but not the Metadata API,
-  so data models and lineage are missing. Server was not tested live.
+- The supported floor is Tableau Cloud and Tableau Server 2025.3, per Tableau's REST API reference:
+  the connected app scopes for Query Views for Workbook (`tableau:content:read`), Query Flows for a
+  Site (`tableau:flows:read`) and Get Flow Runs (`tableau:flow_runs:read`) were added in API 3.27
+  (Tableau Cloud December 2025 / Server 2025.3). On an older Server the dashboard connector cannot
+  read charts and the pipeline connector cannot read flows. Server was not tested live.
 
 ## Consequences
 An administrator can give OpenMetadata a credential that is not a person's password or PAT, but the
