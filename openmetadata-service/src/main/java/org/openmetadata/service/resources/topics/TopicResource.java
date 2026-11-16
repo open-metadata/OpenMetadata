@@ -86,6 +86,12 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   private final TopicMapper mapper = new TopicMapper();
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
+  /**
+   * Keeps schema fields in stored order. See
+   * ADR:2026-11-16-topic-schema-field-search-returns-flat-rows.
+   */
+  static final String SCHEMA_ORDER = "schema";
+
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {
     super.addHref(uriInfo, topic);
@@ -152,11 +158,13 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Sort fields by. Supported values: 'name' (default), 'ordinalPosition'",
+              description =
+                  "Sort fields by. Supported values: 'name' (default), 'ordinalPosition', "
+                      + "'schema' (the order the fields are stored in the message schema)",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"name", "ordinalPosition"}))
+                      allowableValues = {"name", "ordinalPosition", SCHEMA_ORDER}))
           @QueryParam("sortBy")
           @DefaultValue("name")
           String sortBy,
@@ -171,7 +179,14 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           String sortOrder) {
     ResultList<FieldInterface> page =
         getChildFieldPage(
-            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+            securityContext,
+            fqn,
+            limit,
+            offset,
+            fieldsParam,
+            include,
+            schemaFieldSortBy(sortBy),
+            sortOrder);
     TopicSchemaFieldList result = new TopicSchemaFieldList();
     result.setData(page.getData());
     result.setPaging(page.getPaging());
@@ -225,11 +240,12 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Sort matches by. Supported value: 'name'. Omit to keep schema order.",
+              description =
+                  "Sort matches by. Supported values: 'name', 'schema'. Omit to keep schema order.",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"name"}))
+                      allowableValues = {"name", SCHEMA_ORDER}))
           @QueryParam("sortBy")
           String sortBy,
       @Parameter(
@@ -249,7 +265,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         repository.searchSchemaFieldsByFQN(
             fqn,
             new TopicRepository.SchemaFieldSearch(
-                query, limit, offset, fieldsParam, include, sortBy, sortOrder));
+                query, limit, offset, fieldsParam, include, schemaFieldSortBy(sortBy), sortOrder));
     TopicSchemaFieldList result = new TopicSchemaFieldList();
     result.setData(new ArrayList<>(page.getData()));
     result.setPaging(page.getPaging());
@@ -901,5 +917,9 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  private static String schemaFieldSortBy(String sortBy) {
+    return SCHEMA_ORDER.equals(sortBy) ? null : sortBy;
   }
 }

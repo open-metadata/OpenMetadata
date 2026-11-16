@@ -1,9 +1,9 @@
 # Topic schema-field search returns each match as its own childless row
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial)
+- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (explicit `sortBy=schema` for stored order; Name sort kept in the URL)
 - **Deciders:** Rohit Jain
-- **Guard:** `TopicResourceIT.schemaFieldSearch_matchesNestedFieldsAndPages`, `TopicResourceIT.schemaFieldSearch_sortsByNameBeforePaging`
+- **Guard:** `TopicResourceIT.schemaFieldSearch_matchesNestedFieldsAndPages`, `TopicResourceIT.schemaFieldSearch_sortsByNameBeforePaging`, `TopicResourceIT.schemaFieldPage_schemaSortKeepsStoredOrder`
 - **Related:** #30677, #37862
 
 ## Context
@@ -30,3 +30,12 @@ The stored topic is never modified; rows are copies.
   their children.
 - Tag and glossary filters are not part of this endpoint. Adding them means filtering here, before
   paging.
+
+## Amendment
+v2: `/columns` sorts by name by default, and v1 kept stored order by asking for `sortBy=ordinalPosition`.
+That only worked because topic fields have no ordinal position, so every field tied under a
+stable sort. Both topic field endpoints now accept **`sortBy=schema`**, which skips sorting and
+returns fields in stored order. The Schema tab always sends either `sortBy=schema` or
+`sortBy=name`, never relying on a tie. Its Name sort is kept in the URL (`fieldSort=asc|desc`)
+with the page and search, so a reload returns the same rows. The `/columns` default stays `name`
+for existing API clients.
