@@ -267,7 +267,11 @@ public class SamlValidator {
     }
   }
 
-  private FieldError validateSecurityConfiguration(SamlSSOClientConfig samlConfig) {
+  /**
+   * The signing settings' requirements, which need no network: a PUT, which skips the full check,
+   * makes this one too.
+   */
+  public static FieldError validateSecurityConfiguration(SamlSSOClientConfig samlConfig) {
     try {
       if (samlConfig.getSecurity() == null) {
         return null; // Success - No security configuration provided, using defaults
@@ -284,8 +288,11 @@ public class SamlValidator {
         }
       }
 
-      if (Boolean.TRUE.equals(security.getSendSignedAuthRequest())
-          || Boolean.TRUE.equals(security.getSignSpMetadata())) {
+      boolean signs =
+          Boolean.TRUE.equals(security.getSendSignedAuthRequest())
+              || Boolean.TRUE.equals(security.getSignSpMetadata());
+      // Sign-in signs with the keystore's key when it reads one, and with the PEM values otherwise.
+      if (signs && !SamlSettingsHolder.readsSpCredentialsFromKeyStore(security)) {
         if (nullOrEmpty(samlConfig.getSp().getSpX509Certificate())) {
           throw new IllegalArgumentException(
               "SP X509 certificate is required when request signing is enabled");
