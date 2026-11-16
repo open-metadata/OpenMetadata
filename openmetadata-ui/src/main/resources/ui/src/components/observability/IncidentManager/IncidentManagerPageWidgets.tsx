@@ -60,6 +60,7 @@ const IncidentManagerPageWidgets = () => {
         />
         <IncidentTimeChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
+          description={t('message.response-time-card-description')}
           height={60}
           incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
           name="response-time"
@@ -67,6 +68,7 @@ const IncidentManagerPageWidgets = () => {
         />
         <IncidentTimeChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
+          description={t('message.resolution-time-card-description')}
           height={60}
           incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESOLUTION}
           name="resolution-time"

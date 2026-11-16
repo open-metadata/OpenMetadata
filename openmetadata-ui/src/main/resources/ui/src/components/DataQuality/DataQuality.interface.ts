@@ -62,6 +62,7 @@ export interface IncidentTypeAreaChartWidgetProps {
 
 export interface IncidentTimeChartWidgetProps {
   title: string;
+  description: string;
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
