@@ -36,7 +36,9 @@ const getHelpDropdownLabelContentRenderer = (
   return (
     <Grid className="layout-row layout-grid cursor-pointer">
       <Grid.Item className="layout-column" span={4}>
-        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
+        {/* Coloured like the link items' icons, which inherit the anchor colour;
+            an item that runs an action (Tour) has no anchor around it. */}
+        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0 tw:text-brand-secondary" />
       </Grid.Item>
       <Grid.Item className="layout-column flex items-center" span={20}>
         {isVersion ? (

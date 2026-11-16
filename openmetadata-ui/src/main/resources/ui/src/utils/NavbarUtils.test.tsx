@@ -139,6 +139,20 @@ describe('NavbarUtils test', () => {
       expect(apiItem?.label.props.className).toBe('no-underline');
     });
 
+    it('should colour every item icon the same, link or not', () => {
+      getHelpDropdownItems().forEach((item) => {
+        const row =
+          item.key === HELP_ITEMS_ENUM.TOUR
+            ? item.label
+            : item.label.props.children;
+        const icon = row.props.children[0].props.children;
+
+        expect(icon.props.className.split(/\s+/)).toContain(
+          'tw:text-brand-secondary'
+        );
+      });
+    });
+
     it('should give the tour item an action that opens the product tour', () => {
       const tourItem = getHelpDropdownItems().find(
         (item) => item.key === HELP_ITEMS_ENUM.TOUR
