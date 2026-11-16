@@ -121,7 +121,7 @@ export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
         'tw:absolute tw:inset-0 tw:h-full tw:w-full',
         // `!` beats the app's unlayered `.prose-typography a` rule (fonts.less),
         // which pins Typography links to 14px inside 12px placeholder text.
-        'tw:[&_a]:[font-size:inherit]! tw:[&_a]:[line-height:inherit]!',
+        'tw:[&_.prose-typography_a]:[font-size:inherit]! tw:[&_.prose-typography_a]:[line-height:inherit]!',
         className
       )}
       data-testid="empty-placeholder"
