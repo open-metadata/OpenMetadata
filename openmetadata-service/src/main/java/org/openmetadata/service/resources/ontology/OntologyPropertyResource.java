@@ -222,7 +222,10 @@ public class OntologyPropertyResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @Valid final RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return OntologyResourceAccess.restoreOrKeepLive(
+        () -> restoreEntity(uriInfo, securityContext, restore.getId()),
+        repository,
+        restore.getId());
   }
 
   private static String user(final SecurityContext securityContext) {

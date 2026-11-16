@@ -189,6 +189,33 @@ abstract class BaseOntologyIT<T extends OntologyEntityInterface, K> extends Base
   }
 
   @Test
+  void recreatingASoftDeletedNameRestoresTheSameDefinitionWithTheNewValues(TestNamespace ns) {
+    K request = createMinimalRequest(ns);
+    T archived = createEntity(request);
+    String id = archived.getId().toString();
+    deleteRecursively(id);
+    restoreEntity(id);
+    assertEquals(false, getEntity(id).getDeleted());
+    deleteRecursively(id);
+
+    setFieldViaReflection(request, "setDescription", String.class, "Re-created definition");
+    T recreated = createEntity(request);
+
+    assertEquals(archived.getId(), recreated.getId());
+    assertEquals(false, recreated.getDeleted());
+    assertEquals("Re-created definition", getEntity(id).getDescription());
+
+    restoreEntity(id);
+    T afterUndo = getEntity(id);
+    assertEquals(false, afterUndo.getDeleted());
+    assertEquals("Re-created definition", afterUndo.getDescription());
+  }
+
+  private void deleteRecursively(String id) {
+    entityService().delete(id, Map.of("recursive", "true"));
+  }
+
+  @Test
   void semanticIriCannotBeCleared(TestNamespace ns) {
     T entity = createEntity(createMinimalRequest(ns));
     var patch = JsonUtils.getObjectMapper().createArrayNode();
