@@ -389,7 +389,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["lkml"],
         "gitpython>=3.2.1",  # CVE-2026-114145: submodule clone path validation before filesystem writes
         VERSIONS["giturlparse"],
-        "python-liquid",
+        "python-liquid~=2.3",  # 3.x removed Template(source); Looker renders sql_table_name with it
     },
     # >=3.13.0 closes CVE-2026-2635 (default creds) + CVE-2026-8147 (missing authz);
     # retains the CVE-2026-4137 (insecure tmp dir) fix from the prior >=3.11.1 floor.
@@ -588,7 +588,7 @@ test = {
     *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
-    "python-liquid",
+    "python-liquid~=2.3",  # 3.x removed Template(source); Looker renders sql_table_name with it
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
