@@ -132,7 +132,9 @@ const normalizeSavedSparqlQuery = (
   inference: normalizeSparqlInference(savedQuery.inference),
   savedAt: savedQuery.savedAt,
   // Kept so a whole-library save from any console does not unscope Ontology Studio queries.
-  ontologyId: savedQuery.ontologyId,
+  // Added only when set: an `ontologyId: undefined` key makes an untouched bundled template
+  // unequal (lodash isEqual) to its seed, so Ontology Studio stops hiding it.
+  ...(savedQuery.ontologyId && { ontologyId: savedQuery.ontologyId }),
 });
 
 export const getSavedSparqlQueries = async (): Promise<SavedSparqlQuery[]> => {
