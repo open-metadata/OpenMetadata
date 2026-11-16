@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
+import { SuggestionAction } from '../enums/Suggestion.enum';
 import { SuggestionType } from '../types/taskSuggestion';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   approveRejectAllSuggestions,
   getSuggestionsByUserId,
@@ -20,7 +20,7 @@ import {
 } from './suggestionsAPI';
 import { resolveTask, TaskEntityStatus, TaskResolutionType } from './tasksAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));
@@ -137,6 +137,65 @@ describe('suggestionsAPI', () => {
         id: '01146525-1f0b-4318-95e0-e7ab3b83fef4',
         name: 'ingestion-bot',
         type: 'user',
+      });
+    });
+  });
+
+  describe('tagLabels', () => {
+    const TAGS = [{ tagFQN: 'PII.Sensitive', source: 'Classification' }];
+
+    const makeTagTask = (suggestedValue: string, suggestionType = 'Tag') => ({
+      ...makeTask('task-1', 'columns.col_name.tags', suggestionType),
+      payload: {
+        fieldPath: 'columns.col_name.tags',
+        suggestionType,
+        suggestedValue,
+      },
+    });
+
+    it('reads tag suggestions from the JSON in suggestedValue', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: { data: [makeTagTask(JSON.stringify(TAGS))], paging: {} },
+      });
+
+      const result = await getSuggestionsList();
+
+      expect(result.data[0].tagLabels).toEqual(TAGS);
+    });
+
+    it('leaves tagLabels unset for description suggestions and unparsable values', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: {
+          data: [
+            makeTagTask(JSON.stringify(TAGS), 'Description'),
+            makeTagTask('not json'),
+          ],
+          paging: {},
+        },
+      });
+
+      const result = await getSuggestionsList();
+
+      expect(result.data[0].tagLabels).toBeUndefined();
+      expect(result.data[1].tagLabels).toBeUndefined();
+    });
+
+    it('accepts all tag suggestions with the suggested tags as newValue', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: { data: [makeTagTask(JSON.stringify(TAGS))], paging: {} },
+      });
+      (resolveTask as jest.Mock).mockResolvedValue({});
+
+      await approveRejectAllSuggestions(
+        'user-1',
+        'db.schema.my_table',
+        SuggestionType.SuggestTagLabel,
+        SuggestionAction.Accept
+      );
+
+      expect(resolveTask).toHaveBeenCalledWith('task-1', {
+        resolutionType: TaskResolutionType.Approved,
+        newValue: JSON.stringify(TAGS),
       });
     });
   });

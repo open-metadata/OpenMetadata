@@ -40,7 +40,7 @@ icon**, **input**, **trailing slot** (tooltip / invalid icon / shortcut),
 | Group surface | `tw:bg-primary` `tw:shadow-xs` `tw:rounded-lg` |
 | Group border | `tw:outline-1 tw:-outline-offset-1 tw:outline-primary` |
 | Focus border | `tw:outline-2 tw:-outline-offset-2 tw:outline-brand` |
-| Input text / placeholder | `tw:text-primary` / `tw:placeholder:text-tertiary` |
+| Input text / placeholder | `tw:text-primary` / `tw:placeholder:text-placeholder` |
 | Leading icon | `tw:text-fg-quaternary` (disabled `tw:text-fg-disabled`) |
 | Padding (sm / md) | `tw:px-3 tw:py-2` / `tw:px-3.5 tw:py-2.5` |
 | Disabled | `tw:bg-disabled_subtle` `tw:outline-disabled` `tw:text-disabled` |
@@ -56,7 +56,7 @@ icon**, **input**, **trailing slot** (tooltip / invalid icon / shortcut),
 | `size` | `sm` \| `md` (default `sm`) | Control padding |
 | `fontSize` | `xs` \| `sm` \| `md` \| `lg` \| `xl` (default `sm`) | Input text size |
 | `placeholder` | string | Empty-state text |
-| `icon` | `ComponentType` | Leading `@untitledui/icons` glyph |
+| `icon` | `ComponentType` | Leading `@openmetadata/ui-core-components/icons` glyph |
 | `tooltip` | string | Trailing help tooltip |
 | `shortcut` | string \| boolean | Trailing keyboard hint (`⌘K`) |
 | `trailingSlot` | ReactNode | Custom trailing content |
@@ -81,11 +81,11 @@ icon**, **input**, **trailing slot** (tooltip / invalid icon / shortcut),
 
 ```tsx
 import { Input } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 
 <Input
   hint={t('message.name-help')}
-  icon={SearchLg}
+  icon={Search}
   isRequired
   label={t('label.name')}
   placeholder={t('label.search')}

@@ -23,12 +23,11 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import type { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import type { ResourceEntity } from '../../enums/permissions.enum';
 import type { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import type { Chart } from '../../generated/entity/data/chart';
 import type { Container } from '../../generated/entity/data/container';
@@ -125,7 +124,6 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import './EntityVersionPage.less';
 
 export type VersionData =
   | Table
@@ -447,15 +445,16 @@ const EntityVersionPage: FunctionComponent = () => {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: `${getEntityName(currentVersionData)} ${t(
-              'label.version'
-            )}`,
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: `${getEntityName(currentVersionData)} ${t(
+                'label.version'
+              )}`,
+            })}
+          />
+        </div>
       );
     }
 

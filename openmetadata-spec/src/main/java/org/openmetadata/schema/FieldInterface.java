@@ -10,9 +10,18 @@ public interface FieldInterface {
 
   String getDescription();
 
-  String getDataTypeDisplay();
+  /** Absent on Task and MlFeature, which describe no data type. */
+  default String getDataTypeDisplay() {
+    return null;
+  }
 
   String getFullyQualifiedName();
+
+  void setFullyQualifiedName(String fullyQualifiedName);
+
+  void setDescription(String description);
+
+  void setDisplayName(String displayName);
 
   List<TagLabel> getTags();
 
@@ -20,5 +29,8 @@ public interface FieldInterface {
     /* no-op implementation to be overridden */
   }
 
-  List<? extends FieldInterface> getChildren();
+  /** Absent on Task and MlFeature, which hold no nested children. */
+  default List<? extends FieldInterface> getChildren() {
+    return null;
+  }
 }

@@ -65,6 +65,8 @@ const dashboardSchemaLoaders: Partial<
     loadConnectionSchema('connections/dashboard/hexConnection.json'),
   [DashboardServiceType.Ssrs]: () =>
     loadConnectionSchema('connections/dashboard/ssrsConnection.json'),
+  [DashboardServiceType.Rill]: () =>
+    loadConnectionSchema('connections/dashboard/rillConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

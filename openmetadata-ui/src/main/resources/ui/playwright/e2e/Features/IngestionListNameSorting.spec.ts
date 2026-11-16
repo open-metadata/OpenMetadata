@@ -17,6 +17,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -40,6 +41,12 @@ const agents = [
   { name: `pw-agent-z-${token}`, displayName: firstByDisplayName },
 ];
 
+const LIST_PAGE_SIZE = 15;
+const fillerAgents = Array.from({ length: LIST_PAGE_SIZE }, (_, index) => ({
+  name: `pw-agent-filler-${index}-${token}`,
+  displayName: `pw-sort-filler-${index}-${token}`,
+}));
+
 /**
  * The `chromium` lane has no Airflow/Argo container, so the real status endpoint
  * returns non-200 and the Pipelines tab renders "Ingestion Scheduler is unable to
@@ -54,31 +61,29 @@ const stubIngestionSchedulerStatus = (page: Page) =>
     })
   );
 
-// Only the two agents this spec seeded — the tab lists every database agent.
-const seededRowOrder = async (page: Page) => {
-  const renderedNames = await page
-    .getByTestId('pipeline-name')
-    .allTextContents();
+const renderedRowOrder = async (page: Page) =>
+  (await page.getByTestId('pipeline-name').allTextContents()).map((name) =>
+    name.trim()
+  );
 
-  return renderedNames
-    .map((name) => name.trim())
-    .filter((name) => name.endsWith(token));
-};
-
-// The Name column renders `displayName ?? name`, so the listing response is what the cells should
-// show — and in the order the response returned them.
+// The Name column renders `getEntityName` (`displayName || name`), so the listing response is what
+// the cells should show — and in the order the response returned them.
 const renderedNames = (body: {
   data?: { displayName?: string; name: string }[];
 }): string[] =>
-  (body.data ?? []).map((pipeline) => pipeline.displayName ?? pipeline.name);
+  (body.data ?? []).map((pipeline) =>
+    (pipeline.displayName || pipeline.name).trim()
+  );
 
 const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/services/ingestionPipelines?') &&
       response.url().includes('sortField=displayName') &&
-      (!cursored || response.url().includes('after=')) &&
-      response.status() === 200
+      (!cursored || response.url().includes('after=')),
+    200
   );
 
 /**
@@ -87,30 +92,33 @@ const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
  * the click issues a request carrying the sort params, and the rendered rows mirror that response
  * in order. Whether the ordering itself is correct is the endpoint's contract, covered by
  * IngestionPipelineSortIT.
+ *
+ * The whole page is compared, not just the seeded rows: the tab lists every database agent paged
+ * at 15, so on a shared server the seeded agents need not land on the first sorted page.
  */
 const expectSortDelegatedToServer = async (
   page: Page,
   nameHeader: Locator,
   sortOrder: SORT_ORDER
 ) => {
-  const sortedResponse = page.waitForResponse(
+  const sortedResponse = waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/services/ingestionPipelines?') &&
       response.url().includes(`sortField=displayName`) &&
-      response.url().includes(`sortOrder=${sortOrder}`) &&
-      response.status() === 200
+      response.url().includes(`sortOrder=${sortOrder}`),
+    200
   );
 
   await nameHeader.click();
 
-  const serverOrder = renderedNames(await (await sortedResponse).json()).filter(
-    (name) => name.endsWith(token)
-  );
+  const serverOrder = renderedNames(await (await sortedResponse).json());
 
-  expect(serverOrder).toHaveLength(agents.length);
+  expect(serverOrder.length).toBeGreaterThan(0);
 
   await waitForAllLoadersToDisappear(page);
-  await expect.poll(() => seededRowOrder(page)).toEqual(serverOrder);
+  await expect.poll(() => renderedRowOrder(page)).toEqual(serverOrder);
 };
 
 test.describe('Ingestion agent list Name column sorting', () => {
@@ -120,7 +128,7 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await service.create(apiContext);
 
     await Promise.all(
-      agents.map(async (agent) => {
+      [...agents, ...fillerAgents].map(async (agent) => {
         const response = await apiContext.post(
           '/api/v1/services/ingestionPipelines',
           {
@@ -162,17 +170,12 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await stubIngestionSchedulerStatus(page);
 
     await test.step('Open the database agents list', async () => {
-      await page.goto('/settings/services/databases?tab=pipelines');
+      await page.goto('/settings/services/databases?tab=pipelines', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page
-          .getByTestId('pipeline-name')
-          .filter({ hasText: firstByDisplayName })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('pipeline-name').filter({ hasText: lastByDisplayName })
-      ).toBeVisible();
+      await expect(page.getByTestId('pipeline-name')).not.toHaveCount(0);
     });
 
     const nameHeader = page.locator('th:has-text("Name")').first();
@@ -194,8 +197,8 @@ test.describe('Ingestion agent list Name column sorting', () => {
    * outlive the reload too — replaying that cursor down the default `name`-ordered path matches no
    * row and renders an empty page.
    *
-   * `pageSize=1` rather than seeding a full page of agents: the tab lists every database agent, so
-   * the number of rows is not this spec's to control, but the page size is.
+   * The filler agents guarantee a second page: the list only accepts its 15/25/50 page sizes, and
+   * the tab lists every database agent, so no other spec's rows can be relied on to fill one.
    */
   test('should keep a sorted page addressable across a reload', async ({
     page,
@@ -204,7 +207,10 @@ test.describe('Ingestion agent list Name column sorting', () => {
 
     await stubIngestionSchedulerStatus(page);
 
-    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1');
+    await page.goto(
+      `/settings/services/databases?tab=pipelines&pageSize=${LIST_PAGE_SIZE}`,
+      { waitUntil: 'domcontentloaded' }
+    );
     await waitForAllLoadersToDisappear(page);
 
     const sortedFirstPage = waitForSortedListing(page);
@@ -224,12 +230,12 @@ test.describe('Ingestion agent list Name column sorting', () => {
     // bug broke is that the page came back at all.
     const restoredPage = waitForSortedListing(page, { cursored: true });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await restoredPage;
     await waitForAllLoadersToDisappear(page);
 
     // Without the sort order in the URL the reload replayed a (displayNameSort, id) cursor against
     // the name-ordered listing, which matches no row: an empty table under a "page 2" paginator.
-    await expect(page.getByTestId('pipeline-name')).toHaveCount(1);
+    await expect(page.getByTestId('pipeline-name')).not.toHaveCount(0);
   });
 });

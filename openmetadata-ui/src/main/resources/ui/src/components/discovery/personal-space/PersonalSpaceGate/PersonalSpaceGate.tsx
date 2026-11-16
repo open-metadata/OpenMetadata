@@ -15,19 +15,13 @@ import { Box } from '@openmetadata/ui-core-components';
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import './personal-space.less';
 
@@ -61,8 +55,7 @@ const PersonalSpaceGate: React.FC<PropsWithChildren> = ({ children }) => {
   }, [currentUser?.id, getEntityPermission]);
 
   const canView =
-    isAdminUser ||
-    getPrioritizedViewPermission(userPermission, Operation.ViewAll);
+    isAdminUser || getDerivedPermissionFlags(userPermission).canViewAll;
 
   if (isPermissionLoading) {
     return <Loader />;
@@ -70,11 +63,12 @@ const PersonalSpaceGate: React.FC<PropsWithChildren> = ({ children }) => {
 
   if (!canView) {
     return (
-      <ErrorPlaceHolder
-        className="tw:h-full tw:border-none"
-        permissionValue={t('label.view')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view')}
+        />
+      </div>
     );
   }
 

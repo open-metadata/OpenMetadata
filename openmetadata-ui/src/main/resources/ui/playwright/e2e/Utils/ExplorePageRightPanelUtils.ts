@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 
@@ -61,7 +62,7 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
     await waitForAllLoadersToDisappear(page);
   }
 
-  await searchBar.waitFor({ state: 'visible', timeout: 30000 });
+  await searchBar.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT });
   await searchBar.scrollIntoViewIfNeeded();
 
   const searchResponse = page.waitForResponse(
@@ -72,15 +73,36 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  const patchResponse = page.waitForResponse(
-    (r) =>
-      r.url().includes('/api/v1/contextCenter/pages/') &&
-      r.request().method() === 'PATCH'
-  );
-  await page
+  const ownerItem = page
     .locator('[data-testid="owner-option"]')
-    .filter({ hasText: ownerName })
-    .click();
-  await page.getByTestId('selectable-list-update-btn').click();
-  await patchResponse;
+    .filter({ hasText: ownerName });
+  await expect(ownerItem).toBeVisible();
+
+  const isAlreadyActive = await ownerItem.evaluate((el) =>
+    el.classList.contains('active')
+  );
+  if (!isAlreadyActive) {
+    await ownerItem.click();
+  }
+  await expect(ownerItem).toHaveClass(/active/);
+
+  const updateBtn = page.getByTestId('selectable-list-update-btn');
+  await expect(updateBtn).toBeVisible();
+  await expect(updateBtn).toBeEnabled();
+
+  if (!isAlreadyActive) {
+    const patchResponse = page.waitForResponse(
+      (r) =>
+        r.url().includes('/api/v1/contextCenter/pages/') &&
+        r.request().method() === 'PATCH'
+    );
+    await updateBtn.click();
+    const response = await patchResponse;
+    expect(response.status()).toBe(200);
+  } else {
+    await updateBtn.click();
+  }
+
+  await page.getByTestId('select-owner-tabs').waitFor({ state: 'hidden' });
+  await waitForAllLoadersToDisappear(page);
 };

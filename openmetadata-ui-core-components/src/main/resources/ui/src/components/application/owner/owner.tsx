@@ -12,43 +12,114 @@
  */
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { Edit } from '../../../icons/Edit';
-import { Owners } from '../../../icons/Owners';
+import { User01 } from '../../../icons/User01';
+import { Typography } from '../../foundations/typography';
 import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
 import { OwnerChip } from './owner-chip';
-import type { OwnerProps } from './owner.types';
+import { toOwnerRefs } from './owner-utils';
+import type { OwnerLabelVariant, OwnerProps } from './owner.types';
+
+const EMPTY_OWNERS_TEXT = '--';
+
+// `header` is the type of the other page-header values (Domains, Tier,
+// Email…); `cell` is a table row's body size in the subtle tone. Typography's
+// `color` prop has no quaternary or `text-secondary`, so those stay classes.
+const LABEL_VARIANT_STYLES: Record<
+  OwnerLabelVariant,
+  { size: 'text-xs' | 'text-sm'; weight: 'regular' | 'medium'; color: string }
+> = {
+  header: { size: 'text-sm', weight: 'medium', color: 'tw:text-secondary' },
+  cell: { size: 'text-sm', weight: 'regular', color: 'tw:text-quaternary' },
+  subtle: { size: 'text-xs', weight: 'regular', color: 'tw:text-quaternary' },
+};
+
+const OwnerEmptyPlaceholder = ({
+  text,
+  variant,
+}: {
+  text: string;
+  variant: OwnerLabelVariant;
+}) => (
+  <Typography
+    as="span"
+    className={LABEL_VARIANT_STYLES[variant].color}
+    data-testid="owner-empty-placeholder"
+    size={LABEL_VARIANT_STYLES[variant].size}
+    weight={LABEL_VARIANT_STYLES[variant].weight}>
+    {text}
+  </Typography>
+);
+
+const NoOwnerIcon = () => (
+  <User01
+    className="tw:size-4 tw:shrink-0 tw:text-quaternary"
+    data-testid="no-owner-icon"
+  />
+);
 
 /**
  * Unified Owner display and edit component.
  *
- * Display mode: pass `owners` only.
+ * Display mode: pass `owners` only — raw owner refs (e.g. the app's
+ * EntityReference) are accepted and normalised internally; the profile href and
+ * hover card come from the app-registered resolvers (see owner-renderer.ts), so
+ * call sites don't wrap the array.
  * Editable mode: also pass `hasPermission` and `selectorContent` (a pre-configured
  * UserTeamSelectableList from the consuming app that handles data-fetching).
+ *
+ * With no owners it shows `--`, the same empty value as the fields beside it,
+ * unless the caller names the empty state (`placeHolder`, e.g. "No Assignee").
  */
 export const Owner = ({
-  owners = [],
+  owners: ownersInput = [],
   isCompactView = true,
   maxVisibleOwners = 3,
   avatarSize = 24,
   showLabel = true,
   showDashPlaceholder = false,
   placeHolder,
-  placement,
   ownerDisplayName,
-  renderOwnerContent,
+  labelVariant,
   className,
-  ownerLabelClassName,
-  isAssignee = false,
   hasPermission,
   selectorContent,
-  onEditClick,
-  showOverflowHeadings,
   'data-testid': dataTestId = 'owner-label',
 }: OwnerProps) => {
   const { t } = useCoreTranslation();
 
+  // Normalise raw refs (EntityReference-like) to OwnerEntityReference once so every branch
+  // below and the child components receive the library's owner shape.
+  const owners = toOwnerRefs(ownersInput);
+
+  // Inline editable mode: a non-compact owner with an edit selector but no label
+  // (e.g. the Incident Manager assignee cell). The column layout stacks the
+  // selector above the owner; this renders owner + selector on a single row so
+  // the edit control sits beside the owner, matching the pre-unification look.
+  const isInlineWithSelector = !showLabel && Boolean(selectorContent);
+
   if (owners.length === 0) {
+    // A caller-named empty state (e.g. "No Assignee") replaces `--`; the
+    // compact and inline layouts put the user glyph the app asserts on
+    // (data-testid="no-owner-icon") before it.
+    const namedEmptyText = showDashPlaceholder ? undefined : placeHolder;
+    const emptyText = namedEmptyText ?? EMPTY_OWNERS_TEXT;
+
+    if (!isCompactView && isInlineWithSelector) {
+      return (
+        <div
+          className={cx('tw:flex tw:items-center tw:gap-1', className)}
+          data-testid={dataTestId}>
+          {namedEmptyText && <NoOwnerIcon />}
+          <OwnerEmptyPlaceholder
+            text={emptyText}
+            variant={labelVariant ?? 'subtle'}
+          />
+          {selectorContent}
+        </div>
+      );
+    }
+
     // Non-compact: always render the full column layout so the label + edit button are visible
     if (!isCompactView) {
       const hasLabelRow = showLabel || Boolean(selectorContent);
@@ -63,16 +134,22 @@ export const Owner = ({
           {hasLabelRow && (
             <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
               {showLabel && (
-                <span className="tw:text-sm tw:font-medium tw:text-secondary">
+                <Typography
+                  as="span"
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="medium">
                   {placeHolder ?? t('label.owners')}
-                </span>
+                </Typography>
               )}
               {selectorContent}
             </div>
           )}
-          <span className="tw:text-quaternary tw:text-xs">
-            {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
-          </span>
+          {/* Under a label, `placeHolder` is that label, not the empty text. */}
+          <OwnerEmptyPlaceholder
+            text={showLabel ? EMPTY_OWNERS_TEXT : emptyText}
+            variant={labelVariant ?? (selectorContent ? 'header' : 'subtle')}
+          />
         </div>
       );
     }
@@ -87,29 +164,33 @@ export const Owner = ({
       );
     }
 
-    if (showDashPlaceholder) {
-      return (
-        <span
-          className={cx('tw:text-tertiary', className)}
-          data-testid={dataTestId}>
-          —
-        </span>
-      );
-    }
-
     return (
       <div
         className={cx('tw:flex tw:items-center tw:gap-1', className)}
         data-testid={dataTestId}>
-        {/* Matches the legacy NoOwnerFound placeholder: a user glyph the app
-            asserts on (data-testid="no-owner-icon") for the empty compact state. */}
-        <Owners
-          className="tw:size-4 tw:shrink-0 tw:text-quaternary"
-          data-testid="no-owner-icon"
+        {namedEmptyText && <NoOwnerIcon />}
+        <OwnerEmptyPlaceholder
+          text={emptyText}
+          variant={labelVariant ?? 'subtle'}
         />
-        <span className="tw:text-quaternary tw:text-xs">
-          {placeHolder ?? t('label.no-owners')}
-        </span>
+      </div>
+    );
+  }
+
+  // Inline editable mode: owner avatar(s) + name with the edit selector beside
+  // them on a single row (see isInlineWithSelector above).
+  if (!isCompactView && isInlineWithSelector) {
+    return (
+      <div
+        className={cx('tw:flex tw:items-center tw:gap-2', className)}
+        data-testid={dataTestId}>
+        <OwnerAvatarStack
+          avatarSize={avatarSize}
+          maxVisibleOwners={maxVisibleOwners}
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+        />
+        {selectorContent}
       </div>
     );
   }
@@ -123,9 +204,13 @@ export const Owner = ({
         {(showLabel || selectorContent) && (
           <div className="tw:flex tw:items-center tw:mb-2 tw:gap-2">
             {showLabel && (
-              <span className="tw:text-sm tw:font-medium tw:text-secondary">
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
                 {placeHolder ?? t('label.owners')}
-              </span>
+              </Typography>
             )}
             {selectorContent}
           </div>
@@ -133,23 +218,10 @@ export const Owner = ({
         <div className="tw:flex tw:items-center tw:gap-2">
           <OwnerAvatarStack
             avatarSize={avatarSize}
-            className={ownerLabelClassName}
             maxVisibleOwners={maxVisibleOwners}
             ownerDisplayName={ownerDisplayName}
             owners={owners}
-            placement={placement}
-            renderOwnerContent={renderOwnerContent}
-            showOverflowHeadings={showOverflowHeadings}
           />
-          {isAssignee && hasPermission && onEditClick && (
-            <button
-              aria-label={t('label.edit-assignees')}
-              className="tw:flex tw:items-center tw:text-secondary hover:tw:text-primary"
-              type="button"
-              onClick={onEditClick}>
-              <Edit className="tw:size-3.5" />
-            </button>
-          )}
         </div>
       </div>
     );
@@ -171,7 +243,6 @@ export const Owner = ({
           <OwnerChip
             isCompactView
             avatarSize={avatarSize}
-            className={ownerLabelClassName}
             key={owner.id || owner.name || String(i)}
             owner={owner}
             ownerDisplayName={ownerDisplayName}
@@ -180,7 +251,7 @@ export const Owner = ({
         {overflowOwners.length > 0 && (
           <PopoverTrigger>
             <button
-              className="tw:text-xs tw:font-medium tw:text-secondary hover:tw:text-primary tw:tabular-nums"
+              className="tw:text-xs tw:font-medium tw:text-secondary tw:hover:text-primary tw:tabular-nums"
               type="button">
               +{overflowOwners.length}
             </button>

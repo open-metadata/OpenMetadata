@@ -1,0 +1,762 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Badge,
+  Box,
+  Button,
+  ConfirmPopover,
+  Dropdown,
+  Skeleton,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Clock,
+  GridView,
+  LinkExternal01,
+  RefreshCcw01,
+  SlashCircle01,
+  Trash01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
+import { RJSFSchema } from '@rjsf/utils';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty, noop } from 'lodash';
+import {
+  FC,
+  ReactNode,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { Key } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
+import { SEARCH_INDEXING_APPLICATION } from '../../../../../../constants/explore.constants';
+import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
+import {
+  App,
+  ScheduleTimeline,
+} from '../../../../../../generated/entity/applications/app';
+import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
+import { EntityReference } from '../../../../../../generated/entity/type';
+import { Include } from '../../../../../../generated/type/include';
+import { useAuth } from '../../../../../../hooks/authHooks';
+import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import {
+  configureApp,
+  deployApp,
+  getApplicationByName,
+  patchApplication,
+  restoreApp,
+  triggerOnDemandApp,
+  uninstallApp,
+} from '../../../../../../rest/applicationAPI';
+import { isCacheWarmupApplication } from '../../../../../../utils/ApplicationUtils';
+import { getRelativeTime } from '../../../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import AppLiveIndexing from '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component';
+import AppRunsHistory from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.component';
+import type { AppRunRecordWithId } from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.interface';
+import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
+import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
+import { HintToggle } from './AppConfigForm';
+import {
+  SUB_PAGE_EDIT_SCHEDULE,
+  SUB_PAGE_RUN_CONFIG,
+  TAB_CONFIGURATION,
+  TAB_LABEL_KEYS,
+  TAB_LIVE_INDEXING,
+  TAB_RUNS,
+  TAB_SCHEDULE,
+} from './AppDetail.constants';
+import type { ApplicationsViewProps } from './Applications.types';
+import {
+  getConfigTabKind,
+  hasScheduleTab,
+  isAppUnavailable,
+  isRuntimeDisabled,
+} from './Applications.utils';
+import AppScheduleEdit from './AppScheduleEdit';
+import McpConfigForm from './McpConfigForm';
+
+type AppAction = 'restore' | 'disable' | 'uninstall';
+
+/** A page shown in place of the tabs, one level under the app in the breadcrumb. */
+type AppSubPage =
+  | { type: typeof SUB_PAGE_RUN_CONFIG; record: AppRunRecordWithId }
+  | { type: typeof SUB_PAGE_EDIT_SCHEDULE };
+
+interface AppDetailProps extends ApplicationsViewProps {
+  fqn: string;
+}
+
+interface DetailTab {
+  id: string;
+  content: ReactNode;
+}
+
+// As on the legacy page, an installed app's plugin may replace the tabs.
+const getPluginDetails = (plugins: AppPlugin[], app?: App) =>
+  app
+    ? plugins.find((plugin) => plugin.name === app.name)?.getAppDetails?.(app)
+    : undefined;
+
+/** Three-dot menu: Disable or Restore, plus Uninstall for non-system apps. */
+const AppManageMenu: FC<{
+  app: App;
+  triggerRef: RefObject<HTMLButtonElement>;
+  onAction: (action: AppAction) => void;
+}> = ({ app, triggerRef, onAction }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton data-testid="manage-button" ref={triggerRef} />
+      <Dropdown.Popover className="tw:w-min">
+        <Dropdown.Menu
+          aria-label={t('label.manage-entity', {
+            entity: t('label.application'),
+          })}
+          selectionMode="none"
+          onAction={(key) => onAction(key as AppAction)}>
+          {app.deleted ? (
+            <Dropdown.Item
+              data-testid="restore-button"
+              icon={RefreshCcw01}
+              id="restore"
+              label={t('label.restore')}
+            />
+          ) : (
+            <Dropdown.Item
+              data-testid="disable-button"
+              icon={SlashCircle01}
+              id="disable"
+              label={t('label.disable')}
+            />
+          )}
+          {!app.system && (
+            <Dropdown.Item
+              data-testid="uninstall-button"
+              icon={Trash01}
+              id="uninstall"
+              label={t('label.uninstall')}
+            />
+          )}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+/** Confirms a manage-menu action, anchored to the menu's "..." button. */
+const AppActionConfirm: FC<{
+  action: AppAction;
+  app: App;
+  triggerRef: RefObject<HTMLButtonElement>;
+  onConfirm: () => Promise<boolean | undefined>;
+  onClose: () => void;
+}> = ({ action, app, triggerRef, onConfirm, onClose }) => {
+  const { t } = useTranslation();
+  const appName = getEntityName(app);
+
+  const messages: Record<AppAction, string> = {
+    restore: t('message.restore-action-description', { entityType: appName }),
+    disable: t('message.disable-app', { app: appName }),
+    uninstall: t('message.uninstall-app', { app: appName }),
+  };
+  const labels: Record<AppAction, string> = {
+    restore: t('label.restore'),
+    disable: t('label.disable'),
+    uninstall: t('label.uninstall'),
+  };
+
+  return (
+    <ConfirmPopover
+      isOpen
+      confirmText={labels[action]}
+      data-testid="app-action-confirm"
+      description={messages[action]}
+      title={t('message.are-you-sure')}
+      triggerRef={triggerRef}
+      variant={action === 'restore' ? 'primary' : 'destructive'}
+      onConfirm={onConfirm}
+      onOpenChange={(open) => !open && onClose()}
+    />
+  );
+};
+
+/** Tab strip shown in the modal header; the panel renders the active tab's content. */
+const AppDetailTabs: FC<{
+  tabIds: string[];
+  activeTab?: Key;
+  onSelectionChange: (key: Key) => void;
+}> = ({ tabIds, activeTab, onSelectionChange }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tabs
+      data-testid="tabs"
+      selectedKey={activeTab}
+      onSelectionChange={onSelectionChange}>
+      <Tabs.List size="sm" type="underline">
+        {tabIds.map((id) => (
+          <Tabs.Item id={id} key={id}>
+            {t(TAB_LABEL_KEYS[id])}
+          </Tabs.Item>
+        ))}
+      </Tabs.List>
+    </Tabs>
+  );
+};
+
+const MetaItem: FC<{
+  icon: FC<{ size?: number }>;
+  children: ReactNode;
+}> = ({ icon: Icon, children }) => (
+  <Box align="center" className="tw:text-tertiary" direction="row" gap={1}>
+    <Icon size={16} />
+    <Typography size="text-xs">{children}</Typography>
+  </Box>
+);
+
+const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
+  const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
+  const { getResourceLimit } = useLimitStore();
+  const { plugins } = useApplicationsProvider();
+  const [appData, setAppData] = useState<App>();
+  const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [action, setAction] = useState<AppAction>();
+  // The action confirmation anchors to the "..." button in the page header.
+  const manageButtonRef = useRef<HTMLButtonElement>(null);
+  const [selectedTab, setSelectedTab] = useState<Key>();
+  const [showHint, setShowHint] = useState(false);
+  const [subPage, setSubPage] = useState<AppSubPage>();
+  // Bumped by Cancel to remount the configuration form with the saved values.
+  const [configFormKey, setConfigFormKey] = useState(0);
+  const { canEditAll, canDelete, can } = useEntityPermissions(
+    ResourceEntity.APPLICATION,
+    fqn,
+    { deleted: appData?.deleted, enabled: Boolean(appData) }
+  );
+
+  const runtimeDisabled = isRuntimeDisabled(appData);
+  const runtimeDisabledReason =
+    runtimeDisabled && isCacheWarmupApplication(appData?.name)
+      ? t('message.cache-service-not-configured-message')
+      : undefined;
+
+  const setLoadingFor = (key: string, value: boolean) =>
+    setLoading((prev) => ({ ...prev, [key]: value }));
+
+  const fetchAppDetails = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await getApplicationByName(fqn, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINES],
+        include: Include.All,
+      });
+      setAppData(data);
+      try {
+        setJsonSchema(await applicationsClassBase.importSchema(fqn));
+      } catch {
+        // Shown as the empty state when the app ends up with no tabs.
+        setJsonSchema(undefined);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fqn]);
+
+  useEffect(() => {
+    void fetchAppDetails();
+  }, [fetchAppDetails]);
+
+  const patchApp = async (updated: App, entity: string) => {
+    if (!appData) {
+      return;
+    }
+    const response = await patchApplication(
+      appData.id,
+      compare(appData, updated)
+    );
+    setAppData(response);
+    showSuccessToast(t('message.entity-saved-successfully', { entity }));
+  };
+
+  const handleConfigSave = async ({
+    formData,
+    ingestionRunner,
+  }: {
+    formData: Record<string, unknown>;
+    ingestionRunner?: EntityReference;
+  }) => {
+    if (!appData) {
+      return;
+    }
+    setLoadingFor('save', true);
+    try {
+      await patchApp(
+        {
+          ...appData,
+          appConfiguration: formData,
+          ...(ingestionRunner && { ingestionRunner }),
+        },
+        t('label.configuration')
+      );
+      // The configure endpoint pushes the new config to the running app.
+      await configureApp(appData.fullyQualifiedName ?? '', formData);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingFor('save', false);
+    }
+  };
+
+  const handleScheduleSave = async (cron: string) => {
+    if (!appData) {
+      return;
+    }
+    setLoadingFor('schedule', true);
+    try {
+      await patchApp(
+        {
+          ...appData,
+          appSchedule: {
+            scheduleTimeline: isEmpty(cron)
+              ? ScheduleTimeline.None
+              : ScheduleTimeline.Custom,
+            ...(cron ? { cronExpression: cron } : {}),
+          },
+        },
+        t('label.schedule')
+      );
+      setSubPage(undefined);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingFor('schedule', false);
+    }
+  };
+
+  const handleRunNow = async () => {
+    setLoadingFor('run', true);
+    try {
+      await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.triggered-lowercase'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingFor('run', false);
+    }
+  };
+
+  const handleDeploy = async () => {
+    setLoadingFor('deploy', true);
+    try {
+      await deployApp(appData?.fullyQualifiedName ?? '');
+      showSuccessToast(
+        t('message.application-action-successfully', {
+          action: t('label.deploy'),
+        })
+      );
+      void fetchAppDetails();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingFor('deploy', false);
+    }
+  };
+
+  // Resolves false on failure so the confirmation stays open for a retry.
+  const handleConfirmAction = async () => {
+    if (!appData || !action) {
+      return;
+    }
+    try {
+      if (action === 'restore') {
+        await restoreApp(appData.id);
+        showSuccessToast(
+          t('message.entity-enabled-success', {
+            entity: t('label.application'),
+          })
+        );
+      } else {
+        await uninstallApp(
+          appData.fullyQualifiedName ?? '',
+          action === 'uninstall'
+        );
+        showSuccessToast(
+          action === 'disable'
+            ? t('message.app-disabled-successfully')
+            : t('message.app-uninstalled-successfully')
+        );
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    }
+    if (action !== 'restore') {
+      // Best-effort count refresh, kept out of the try: the app is already
+      // gone, so a failure here must not keep the confirmation open and invite
+      // a retry that would uninstall it again.
+      getResourceLimit('app', true, true).catch(noop);
+    }
+    setAction(undefined);
+    onNavigate({ type: 'list' });
+
+    return true;
+  };
+
+  const handleViewRunConfig = (record: AppRunRecordWithId) =>
+    setSubPage({ type: SUB_PAGE_RUN_CONFIG, record });
+
+  const ConfigurationComponent =
+    applicationsClassBase.getModalAppConfigurationComponent();
+
+  // Some apps ship a schema with no properties on purpose; the form would render blank.
+  const emptyConfigPlaceholder = isEmpty(jsonSchema?.properties) ? (
+    <Box className="tw:relative tw:flex-1 tw:min-h-90">
+      <NoDataPlaceholder
+        data-testid="app-config-empty"
+        icon={GridView}
+        title={t('label.no-entity', { entity: t('label.configuration') })}
+      />
+    </Box>
+  ) : undefined;
+
+  const getTabs = (): DetailTab[] => {
+    if (!appData) {
+      return [];
+    }
+    const isAvailable = !isAppUnavailable(appData);
+    const showSchedule = hasScheduleTab(appData);
+    const configKind = getConfigTabKind(
+      appData,
+      Boolean(isAdminUser),
+      Boolean(jsonSchema)
+    );
+
+    const candidates: (DetailTab & { show: boolean })[] = [
+      {
+        id: TAB_SCHEDULE,
+        show: showSchedule,
+        content: (
+          <AppSchedule
+            appData={appData}
+            canDeploy={can(Operation.Deploy)}
+            canEdit={canEditAll}
+            canTrigger={can(Operation.Trigger)}
+            disabled={runtimeDisabled}
+            disabledReason={runtimeDisabledReason}
+            jsonSchema={jsonSchema}
+            loading={{
+              isRunLoading: Boolean(loading.run),
+              isDeployLoading: Boolean(loading.deploy),
+            }}
+            runsHistoryVariant="muted"
+            onDemandTrigger={handleRunNow}
+            onDeployTrigger={handleDeploy}
+            onEditSchedule={() => setSubPage({ type: SUB_PAGE_EDIT_SCHEDULE })}
+            onSave={handleScheduleSave}
+            onViewRunConfig={handleViewRunConfig}
+          />
+        ),
+      },
+      {
+        id: TAB_CONFIGURATION,
+        show: Boolean(configKind),
+        content:
+          emptyConfigPlaceholder ??
+          (configKind === 'mcp' ? (
+            <McpConfigForm
+              appData={appData}
+              jsonSchema={jsonSchema as RJSFSchema}
+              key={configFormKey}
+              showHint={showHint}
+              onCancel={() => setConfigFormKey((key) => key + 1)}
+            />
+          ) : (
+            <ConfigurationComponent
+              appData={appData}
+              isReadOnly={!canEditAll}
+              isSaving={Boolean(loading.save)}
+              jsonSchema={jsonSchema as RJSFSchema}
+              key={configFormKey}
+              showHint={showHint}
+              submitLabel={t('label.save')}
+              onCancel={() => setConfigFormKey((key) => key + 1)}
+              onSave={handleConfigSave}
+            />
+          )),
+      },
+      {
+        id: TAB_RUNS,
+        show: isAvailable && showSchedule,
+        content: (
+          <AppRunsHistory
+            appData={appData}
+            jsonSchema={jsonSchema}
+            variant="muted"
+            onViewRunConfig={handleViewRunConfig}
+          />
+        ),
+      },
+      {
+        id: TAB_LIVE_INDEXING,
+        show: isAvailable && appData.name === SEARCH_INDEXING_APPLICATION,
+        content: <AppLiveIndexing appData={appData} />,
+      },
+    ];
+
+    return candidates.filter((tab) => tab.show);
+  };
+  const tabs = getTabs();
+  const PluginDetails = getPluginDetails(plugins, appData);
+
+  const activeTab = selectedTab ?? tabs[0]?.id;
+  // Joined to a string so the header effect only re-runs when the set of tabs changes.
+  const headerTabIds =
+    PluginDetails || subPage ? '' : tabs.map(({ id }) => id).join(',');
+  const subPageHeader = useMemo(() => {
+    if (!subPage) {
+      return undefined;
+    }
+
+    return {
+      label:
+        subPage.type === SUB_PAGE_RUN_CONFIG
+          ? t('label.entity-configuration', { entity: t('label.run') })
+          : t('label.update-entity', { entity: t('label.schedule') }),
+      onBack: () => setSubPage(undefined),
+    };
+  }, [subPage, t]);
+
+  useEffect(() => {
+    if (!appData) {
+      // Not found: keep the trail pointing at the requested app.
+      if (!isLoading) {
+        onHeaderChange({ crumb: fqn });
+      }
+
+      return;
+    }
+
+    const appName = getEntityName(appData);
+
+    onHeaderChange({
+      title: appName,
+      description: '',
+      icon: applicationsClassBase.getAppIcon(appData.name),
+      crumb: appName,
+      subPage: subPageHeader,
+      titleSuffix:
+        appData.deleted || runtimeDisabled ? (
+          <Badge
+            color="gray"
+            data-testid="runtime-disabled-badge"
+            size="sm"
+            tooltip={runtimeDisabledReason ?? t('label.disabled')}
+            type="pill-color">
+            {t('label.disabled')}
+          </Badge>
+        ) : undefined,
+      meta: (
+        <Box
+          align="center"
+          className="tw:mt-1"
+          data-testid="app-meta"
+          direction="row"
+          gap={4}
+          wrap="wrap">
+          <MetaItem icon={Clock}>
+            {`${t('label.installed')} ${getRelativeTime(appData.updatedAt)}`}
+          </MetaItem>
+          <MetaItem icon={User01}>
+            {t('label.developed-by-developer', {
+              developer: appData.developer,
+            })}
+          </MetaItem>
+          {appData.developerUrl && (
+            <Button
+              noTextPadding
+              className="tw:gap-1"
+              color="link-color"
+              data-testid="developer-website"
+              href={appData.developerUrl}
+              iconLeading={LinkExternal01}
+              rel="noopener noreferrer"
+              size="xs"
+              target="_blank">
+              {t('label.visit-developer-website')}
+            </Button>
+          )}
+        </Box>
+      ),
+      actions: (
+        <Box align="center" direction="row" gap={4}>
+          {activeTab === TAB_CONFIGURATION && (
+            <HintToggle isSelected={showHint} onChange={setShowHint} />
+          )}
+          {canDelete && (
+            <AppManageMenu
+              app={appData}
+              triggerRef={manageButtonRef}
+              onAction={(key) => setAction(key)}
+            />
+          )}
+        </Box>
+      ),
+      tabs: headerTabIds ? (
+        <AppDetailTabs
+          activeTab={activeTab}
+          tabIds={headerTabIds.split(',')}
+          onSelectionChange={setSelectedTab}
+        />
+      ) : undefined,
+    });
+  }, [
+    activeTab,
+    appData,
+    canDelete,
+    fqn,
+    headerTabIds,
+    isLoading,
+    onHeaderChange,
+    subPageHeader,
+    runtimeDisabled,
+    runtimeDisabledReason,
+    showHint,
+    t,
+  ]);
+
+  if (isLoading) {
+    return (
+      <Box className="tw:px-8 tw:pt-4 tw:pb-8" direction="col" gap={4}>
+        <Skeleton height={40} variant="rounded" width="100%" />
+        <Skeleton height={240} variant="rounded" width="100%" />
+      </Box>
+    );
+  }
+
+  if (!appData) {
+    return (
+      <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
+        <NoDataPlaceholder
+          data-testid="app-not-found"
+          description={fqn}
+          icon={GridView}
+          title={t('label.no-entity', { entity: t('label.application') })}
+        />
+      </Box>
+    );
+  }
+
+  const renderContent = () => {
+    // Config is disabled without a schema, so a run-config page always has one.
+    if (subPage?.type === SUB_PAGE_RUN_CONFIG && jsonSchema) {
+      return (
+        emptyConfigPlaceholder ?? (
+          <ConfigurationComponent
+            isReadOnly
+            appData={{ ...appData, appConfiguration: subPage.record.config }}
+            isSaving={false}
+            jsonSchema={jsonSchema}
+            showHint={false}
+            submitLabel={t('label.save')}
+            onSave={noop}
+          />
+        )
+      );
+    }
+    if (subPage?.type === SUB_PAGE_EDIT_SCHEDULE) {
+      return (
+        <AppScheduleEdit
+          appData={appData}
+          isSaving={Boolean(loading.schedule)}
+          onCancel={() => setSubPage(undefined)}
+          onSave={handleScheduleSave}
+        />
+      );
+    }
+
+    if (PluginDetails) {
+      return <PluginDetails />;
+    }
+
+    return (
+      tabs.find(({ id }) => id === activeTab)?.content ?? (
+        <Box className="tw:relative tw:flex-1 tw:min-h-90">
+          <NoDataPlaceholder
+            data-testid="app-detail-empty"
+            description={
+              jsonSchema
+                ? undefined
+                : t('server.no-application-schema-found', {
+                    appName: getEntityName(appData),
+                  })
+            }
+            icon={GridView}
+            title={t('label.no-entity', { entity: t('label.configuration') })}
+          />
+        </Box>
+      )
+    );
+  };
+
+  return (
+    <Box
+      className="tw:flex-1 tw:px-8 tw:pb-8"
+      data-testid="app-detail"
+      direction="col">
+      {renderContent()}
+
+      {/* Mounted only while an action is pending: the label and colour derive
+          from `action`, which would otherwise flip during the exit animation. */}
+      {action && (
+        <AppActionConfirm
+          action={action}
+          app={appData}
+          triggerRef={manageButtonRef}
+          onClose={() => setAction(undefined)}
+          onConfirm={handleConfirmAction}
+        />
+      )}
+    </Box>
+  );
+};
+
+export default AppDetail;

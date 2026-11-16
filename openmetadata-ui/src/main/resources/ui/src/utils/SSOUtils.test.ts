@@ -80,27 +80,9 @@ jest.mock('../constants/SSO.constant', () => ({
       callback: 'http://localhost:8585/callback',
     },
   },
-  PROVIDER_FIELD_MAPPINGS: {
-    ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
-    saml: [
-      'ldapConfiguration',
-      'oidcConfiguration',
-      'tokenValidationAlgorithm',
-      'enableSelfSignup',
-    ],
-    google: [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-      'enableSelfSignup',
-    ],
-    azure: [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-      'enableSelfSignup',
-    ],
-  },
+  // The real mapping, so the cleanup tests fail if it ever drops a field the admin set again.
+  PROVIDER_FIELD_MAPPINGS: jest.requireActual('../constants/SSO.constant')
+    .PROVIDER_FIELD_MAPPINGS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS: ['google', 'auth0', 'basic', 'aws-cognito'],
 }));
 
@@ -435,6 +417,10 @@ describe('SSOUtils', () => {
       expect(result.authenticationConfiguration.oidcConfiguration?.scope).toBe(
         'openid email profile'
       );
+      expect(
+        result.authenticationConfiguration.oidcConfiguration
+          ?.endSessionWithProvider
+      ).toBe(false);
     });
 
     it('should return defaults for Auth0 provider', () => {
@@ -742,7 +728,61 @@ describe('SSOUtils', () => {
       expect(trustStoreConfig?.trustAllConfig).toBeUndefined();
     });
 
-    it('should set default boolean values for enableSelfSignup', () => {
+    it.each([
+      [AuthProvider.Google, ClientType.Confidential],
+      [AuthProvider.Google, ClientType.Public],
+      [AuthProvider.Azure, ClientType.Confidential],
+      [AuthProvider.Okta, ClientType.Confidential],
+      [AuthProvider.Auth0, ClientType.Public],
+      [AuthProvider.AwsCognito, ClientType.Confidential],
+      [AuthProvider.CustomOidc, ClientType.Confidential],
+      [AuthProvider.Saml, ClientType.Public],
+      [AuthProvider.LDAP, ClientType.Public],
+    ])(
+      'should keep enableSelfSignup turned off for %s (%s client)',
+      (provider, clientType) => {
+        const data = getDefaultsForProvider(provider, clientType);
+        data.authenticationConfiguration.enableSelfSignup = false;
+
+        const result = cleanupProviderSpecificFields(data, provider);
+
+        expect(result?.authenticationConfiguration.enableSelfSignup).toBe(
+          false
+        );
+      }
+    );
+
+    it('should keep enableSelfSignup turned on when the admin chose it', () => {
+      const data = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Confidential
+      );
+      data.authenticationConfiguration.enableSelfSignup = true;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Okta);
+
+      expect(result?.authenticationConfiguration.enableSelfSignup).toBe(true);
+    });
+
+    it('should not add enableSelfSignup when the configuration has none', () => {
+      const data = getDefaultsForProvider(
+        AuthProvider.Google,
+        ClientType.Confidential
+      );
+      delete (
+        data.authenticationConfiguration as Partial<
+          FormData['authenticationConfiguration']
+        >
+      ).enableSelfSignup;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Google);
+
+      expect(result?.authenticationConfiguration).not.toHaveProperty(
+        'enableSelfSignup'
+      );
+    });
+
+    it('should keep enableSelfSignup and default the authorizer booleans', () => {
       const data: FormData = {
         authenticationConfiguration: {
           provider: 'google',
@@ -769,9 +809,7 @@ describe('SSOUtils', () => {
 
       const result = cleanupProviderSpecificFields(data, 'google');
 
-      expect(
-        result?.authenticationConfiguration.enableSelfSignup
-      ).toBeDefined();
+      expect(result?.authenticationConfiguration.enableSelfSignup).toBe(true);
       expect(
         result?.authorizerConfiguration.enforcePrincipalDomain
       ).toBeDefined();
@@ -2826,20 +2864,6 @@ describe('SSOUtils', () => {
         expect(mockEvent.preventDefault).toHaveBeenCalled();
         expect(mockEvent.stopPropagation).toHaveBeenCalled();
       });
-
-      it('should prevent default when Enter is pressed in Ant Design input field', () => {
-        const div = document.createElement('div');
-        div.className = 'ant-input';
-        Object.defineProperty(mockEvent, 'target', {
-          value: div,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
     });
 
     describe('should NOT prevent default for special cases', () => {
@@ -2856,11 +2880,25 @@ describe('SSOUtils', () => {
         expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
       });
 
-      it('should NOT prevent default when Enter is pressed in Select tags component', () => {
+      it('should NOT prevent default when Enter is pressed inside a combobox wrapper', () => {
         const input = document.createElement('input');
         const selector = document.createElement('div');
-        selector.className = 'ant-select-selector';
+        selector.setAttribute('role', 'combobox');
         selector.appendChild(input);
+        Object.defineProperty(mockEvent, 'target', {
+          value: input,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
+      it('should NOT prevent default when Enter is pressed in a combobox', () => {
+        const input = document.createElement('input');
+        input.setAttribute('role', 'combobox');
         Object.defineProperty(mockEvent, 'target', {
           value: input,
           writable: true,
@@ -2935,36 +2973,6 @@ describe('SSOUtils', () => {
 
         expect(() => handler(mockEvent as KeyboardEvent)).not.toThrow();
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-      });
-
-      it('should prevent default for nested input inside ant-input div', () => {
-        const input = document.createElement('input');
-        const antInputDiv = document.createElement('div');
-        antInputDiv.className = 'ant-input';
-        antInputDiv.appendChild(input);
-        Object.defineProperty(mockEvent, 'target', {
-          value: antInputDiv,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
-
-      it('should prevent default for input with multiple classes including ant-input', () => {
-        const div = document.createElement('div');
-        div.className = 'custom-class ant-input another-class';
-        Object.defineProperty(mockEvent, 'target', {
-          value: div,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
       });
     });
   });
@@ -3081,6 +3089,43 @@ describe('parseSamlMetadataXml', () => {
 
     expect(result.idpX509Certificate).toMatch(
       /^-----BEGIN CERTIFICATE-----\n.+\n-----END CERTIFICATE-----$/
+    );
+  });
+
+  // The backend parses this certificate as X.509, so the base64 the IdP published has to survive
+  // the round trip byte for byte — only the PEM header and footer may be added. Real IdP metadata
+  // wraps the body across lines and indents it inside the XML, so the joined base64 is what has to
+  // come out: anything that collapsed the newlines to spaces instead of removing them, or that
+  // dropped a segment, would leave a body the backend's CertificateFactory cannot decode.
+  it('should join a line-wrapped certificate into a single base64 body', () => {
+    const wrappedCertMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="http://www.okta.com/exk123456">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>MIIDpDCCAoygAwIBAgIGAXyz4567
+AAAAAAAAAAAAAAAAAAAAAAAAAAAA
+BBBBBBBBBBBBBBBBBBBBBBBBBBBB</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    const result = parseSamlMetadataXml(wrappedCertMetadata);
+
+    expect(result.idpX509Certificate).toBe(
+      `-----BEGIN CERTIFICATE-----\nMIIDpDCCAoygAwIBAgIGAXyz4567AAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBB\n-----END CERTIFICATE-----`
+    );
+  });
+
+  it('should preserve the certificate body exactly as published by the IdP', () => {
+    const result = parseSamlMetadataXml(OKTA_METADATA);
+
+    expect(result.idpX509Certificate).toBe(
+      `-----BEGIN CERTIFICATE-----\nMIIDpDCCAoygAwIBAgIGAXyz4567\n-----END CERTIFICATE-----`
     );
   });
 

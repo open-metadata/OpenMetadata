@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Maximize01, Minimize01 } from '@untitledui/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactFlow, {
@@ -31,10 +26,8 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import DataProductNode from './DataProductNode.component';
 import PortNode from './PortNode.component';
@@ -42,6 +35,8 @@ import './PortsLineageView.style.less';
 import { PortsLineageViewProps } from './PortsLineageView.types';
 
 const DATA_PRODUCT_CENTER_NODE_ID = 'data-product-center';
+
+const PORTS_EDGE_COLOR = 'var(--tw-border-color-primary)';
 
 const getPortHandleId = (port: SourceType): string => {
   return port.fullyQualifiedName ?? port.id ?? '';
@@ -140,10 +135,10 @@ const PortsLineageView = ({
         targetHandle: `${dataProduct.id}-left`,
         type: 'smoothstep',
         animated: false,
-        style: { stroke: '#b1b1b7', strokeWidth: 2 },
+        style: { stroke: PORTS_EDGE_COLOR, strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#b1b1b7',
+          color: PORTS_EDGE_COLOR,
         },
       });
     });
@@ -179,10 +174,10 @@ const PortsLineageView = ({
         targetHandle: handleId,
         type: 'smoothstep',
         animated: false,
-        style: { stroke: '#b1b1b7', strokeWidth: 2 },
+        style: { stroke: PORTS_EDGE_COLOR, strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#b1b1b7',
+          color: PORTS_EDGE_COLOR,
         },
       });
     });
@@ -217,23 +212,15 @@ const PortsLineageView = ({
 
   if (!hasAnyPorts) {
     return (
-      <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-gray-50 tw:rounded-lg tw:border tw:border-gray-200">
-        <ErrorPlaceHolder
-          className="m-t-0"
-          icon={
-            <AddPlaceHolderIcon
-              className="tw:w-16 tw:h-16"
-              data-testid="no-ports-placeholder"
-            />
-          }
-          size={SIZE.SMALL}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="p" className="text-center">
-            {assetCount === 0
-              ? t('message.no-assets-for-ports-lineage')
-              : t('message.no-ports-to-display-lineage')}
-          </Typography>
-        </ErrorPlaceHolder>
+      <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-secondary tw:rounded-lg tw:border tw:border-subtle">
+        <div className="tw:relative tw:h-full tw:w-full tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-ports-placeholder"
+            {...(assetCount === 0
+              ? { description: t('message.no-assets-for-ports-lineage') }
+              : { title: t('message.no-ports-to-display-lineage') })}
+          />
+        </div>
       </div>
     );
   }
@@ -243,33 +230,23 @@ const PortsLineageView = ({
       className={`ports-lineage-view w-full bg-gray-50 ${
         isFullScreen
           ? 'tw:fixed tw:top-0 tw:left-0 tw:right-0 tw:bottom-0 tw:z-1300 tw:rounded-none tw:border-none'
-          : 'tw:relative tw:rounded-lg tw:border tw:border-gray-200'
+          : 'tw:relative tw:rounded-lg tw:border tw:border-secondary'
       }`}
       data-testid="ports-lineage-view"
       style={{ height: containerHeight }}>
       {onToggleFullScreen && (
         <div className="tw:absolute tw:top-2 tw:right-2 tw:z-10">
-          <Tooltip
-            title={
+          <ButtonUtility
+            data-testid="toggle-fullscreen-btn"
+            icon={isFullScreen ? Minimize01 : Maximize01}
+            size="lg"
+            tooltip={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen')
-            }>
-            <TooltipTrigger>
-              <Button
-                color="secondary"
-                data-testid="toggle-fullscreen-btn"
-                iconLeading={
-                  isFullScreen ? (
-                    <Minimize01 fill="#414651" height={18} width={18} />
-                  ) : (
-                    <Maximize01 fill="#414651" height={18} width={18} />
-                  )
-                }
-                onClick={handleToggleFullScreen}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+            }
+            onClick={handleToggleFullScreen}
+          />
         </div>
       )}
 
@@ -284,7 +261,7 @@ const PortsLineageView = ({
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
         onNodesChange={onNodesChange}>
-        <Background color="#e5e7eb" gap={16} size={1} />
+        <Background color="var(--tw-border-color-subtle)" gap={16} size={1} />
         <Controls
           showFitView
           showZoom

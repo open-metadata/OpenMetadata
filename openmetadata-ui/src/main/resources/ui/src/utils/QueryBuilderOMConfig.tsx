@@ -12,6 +12,8 @@
  */
 import type { BasicConfig } from '@react-awesome-query-builder/ui';
 import { BasicConfig as QbBasicConfig } from '@react-awesome-query-builder/ui';
+import { isGlossaryTermQueryField } from './queryBuilderWidgets/glossaryTermQueryField';
+import GlossaryTermQueryWidget from './queryBuilderWidgets/GlossaryTermQueryWidget';
 import OMBooleanWidget from './queryBuilderWidgets/OMBooleanWidget';
 import OMConjs from './queryBuilderWidgets/OMConjs';
 import OMDateWidget from './queryBuilderWidgets/OMDateWidget';
@@ -53,11 +55,38 @@ export const OMConfig: BasicConfig = {
     },
     select: {
       ...QbBasicConfig.widgets.select,
-      factory: (props) => <OMSelectWidget {...props} />,
+      // A glossary field also sets asyncFetch, so decide here, not in the widget.
+      factory: (props) =>
+        isGlossaryTermQueryField(props.fieldDefinition) ? (
+          <GlossaryTermQueryWidget
+            multiple={false}
+            placeholder={props.placeholder}
+            readonly={props.readonly}
+            value={props.value as string | null | undefined}
+            onChange={(next) => props.setValue(next as string)}
+          />
+        ) : (
+          <OMSelectWidget {...props} />
+        ),
     },
     multiselect: {
       ...QbBasicConfig.widgets.multiselect,
-      factory: (props) => <OMMultiSelectWidget {...props} />,
+      factory: (props) =>
+        isGlossaryTermQueryField(props.fieldDefinition) ? (
+          <GlossaryTermQueryWidget
+            multiple
+            placeholder={props.placeholder}
+            readonly={props.readonly}
+            value={props.value as string[] | null | undefined}
+            onChange={(next) =>
+              props.setValue(
+                Array.isArray(next) && next.length > 0 ? next : null
+              )
+            }
+          />
+        ) : (
+          <OMMultiSelectWidget {...props} />
+        ),
     },
     boolean: {
       ...QbBasicConfig.widgets.boolean,

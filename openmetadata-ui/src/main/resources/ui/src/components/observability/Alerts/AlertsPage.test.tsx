@@ -14,7 +14,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../../generated/events/eventSubscription';
 import AlertsPage from './AlertsPage';
 
 const mockNavigate = jest.fn();
@@ -70,7 +73,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: () => null,
 }));
 
@@ -140,20 +143,34 @@ jest.mock('./ObservabilityAlertsAiTable.component', () => ({
   ),
 }));
 
+const mockDeleteObservabilityAlert = jest.fn();
+
+jest.mock('../../../rest/observabilityAPI', () => ({
+  deleteObservabilityAlert: (id: string) => mockDeleteObservabilityAlert(id),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('./AlertEditModal.component', () => ({
   __esModule: true,
   default: ({
+    kind,
     fqn,
     mode,
     onClose,
     onSaved,
   }: {
+    kind?: { alertType: string };
     fqn?: string;
     mode?: 'add' | 'edit';
     onClose: () => void;
     onSaved: (fqn?: string) => Promise<void> | void;
   }) => (
     <div data-testid="alert-edit-modal">
+      <span data-testid="modal-alert-type">{kind?.alertType}</span>
       <span data-testid="modal-mode">{mode}</span>
       <span data-testid="modal-fqn">{fqn}</span>
       <button data-testid="modal-close" onClick={onClose}>
@@ -294,5 +311,65 @@ describe('AlertsPage', () => {
     fireEvent.click(screen.getByTestId('cancel-delete'));
 
     expect(handleSelectAlert).toHaveBeenCalledWith(undefined);
+  });
+
+  it('refreshes the list and the sidebar alert count after delete', async () => {
+    const handleAlertDelete = jest.fn();
+    mockDeleteObservabilityAlert.mockResolvedValue({});
+    queryClient.setQueryData(ALERT_COUNT_QUERY_KEY, 18);
+    mockUseObservabilityAlerts.mockReturnValue(
+      getAlertsState({ handleAlertDelete, selectedAlert: alertRecord })
+    );
+
+    renderAlertsPage();
+
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    await waitFor(() => expect(handleAlertDelete).toHaveBeenCalled());
+
+    expect(mockDeleteObservabilityAlert).toHaveBeenCalledWith('alert-id');
+    expect(
+      queryClient.getQueryState(ALERT_COUNT_QUERY_KEY)?.isInvalidated
+    ).toBe(true);
+  });
+
+  it('keeps serving observability alerts by default', () => {
+    renderAlertsPage();
+
+    expect(mockUseObservabilityAlerts).toHaveBeenCalledWith(
+      expect.objectContaining({ alertType: AlertType.Observability })
+    );
+
+    fireEvent.click(screen.getByText('label.add-entity:label.alert'));
+
+    expect(screen.getByTestId('modal-alert-type')).toHaveTextContent(
+      AlertType.Observability
+    );
+  });
+
+  describe('create button (classic Create || All rule)', () => {
+    it('shows for the All permission alone', () => {
+      mockUseObservabilityAlerts.mockReturnValue(
+        getAlertsState({ alertResourcePermission: { All: true } })
+      );
+
+      renderAlertsPage();
+
+      expect(
+        screen.getByText('label.add-entity:label.alert')
+      ).toBeInTheDocument();
+    });
+
+    it('stays hidden without Create or All', () => {
+      mockUseObservabilityAlerts.mockReturnValue(
+        getAlertsState({ alertResourcePermission: { ViewAll: true } })
+      );
+
+      renderAlertsPage();
+
+      expect(
+        screen.queryByText('label.add-entity:label.alert')
+      ).not.toBeInTheDocument();
+    });
   });
 });

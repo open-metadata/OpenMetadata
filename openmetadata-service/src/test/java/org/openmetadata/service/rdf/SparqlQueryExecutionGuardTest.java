@@ -13,15 +13,21 @@
 
 package org.openmetadata.service.rdf;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +96,112 @@ class SparqlQueryExecutionGuardTest {
   }
 
   @Test
+  void cancellingTheCallerInterruptsTheQuery() throws Exception {
+    final CountDownLatch started = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    final CountDownLatch interrupted = new CountDownLatch(1);
+    try (final ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var guard = new SparqlQueryExecutionGuard(1, 1, 1, 30_000, queryExecutor);
+      final var task =
+          new FutureTask<>(
+              () ->
+                  guard.execute(
+                      "principal",
+                      () -> {
+                        started.countDown();
+                        try {
+                          release.await();
+                        } catch (InterruptedException exception) {
+                          interrupted.countDown();
+                          Thread.currentThread().interrupt();
+                        }
+                        return "finished";
+                      }));
+      final Thread caller = Thread.ofVirtual().start(task);
+      try {
+        assertTrue(started.await(5, TimeUnit.SECONDS));
+        caller.interrupt();
+        final var failure =
+            assertThrows(ExecutionException.class, () -> task.get(5, TimeUnit.SECONDS));
+        assertTrue(failure.getCause() instanceof SparqlQueryExecutionGuard.QueryTimeoutException);
+        assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+      } finally {
+        release.countDown();
+        caller.join(5_000);
+      }
+    }
+  }
+
+  @Test
+  void cancellingAQueuedQueryDoesNotLeakAdmission() throws Exception {
+    final CountDownLatch release = new CountDownLatch(1);
+    try (final var queryExecutor =
+        new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1))) {
+      final CountDownLatch started = new CountDownLatch(1);
+      queryExecutor.submit(() -> awaitRelease(started, release));
+      assertTrue(started.await(5, TimeUnit.SECONDS));
+      final var guard = new SparqlQueryExecutionGuard(1, 1, 1, 30_000, queryExecutor);
+      final var task = new FutureTask<>(() -> guard.execute("principal", () -> "cancelled"));
+      final Thread caller = Thread.ofVirtual().start(task);
+      try {
+        await().atMost(Duration.ofSeconds(5)).until(() -> queryExecutor.getQueue().size() == 1);
+        caller.interrupt();
+        assertThrows(ExecutionException.class, () -> task.get(5, TimeUnit.SECONDS));
+        release.countDown();
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .until(() -> queryExecutor.getCompletedTaskCount() == 2);
+        assertEquals("next", guard.execute("principal", () -> "next"));
+      } finally {
+        release.countDown();
+        caller.join(5_000);
+      }
+    }
+  }
+
+  @Test
+  void cancellationKeepsAdmissionUntilTheRunningQueryFinishes() throws Exception {
+    final CountDownLatch release = new CountDownLatch(1);
+    try (final var queryExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var guard = new SparqlQueryExecutionGuard(1, 1, 1, 30_000, queryExecutor);
+      final CountDownLatch started = new CountDownLatch(1);
+      final CountDownLatch interrupted = new CountDownLatch(1);
+      final var task =
+          new FutureTask<>(
+              () ->
+                  guard.execute(
+                      "principal",
+                      () -> {
+                        started.countDown();
+                        try {
+                          release.await();
+                        } catch (InterruptedException exception) {
+                          return awaitRelease(interrupted, release);
+                        }
+                        return "finished";
+                      }));
+      final Thread caller = Thread.ofVirtual().start(task);
+      try {
+        assertTrue(started.await(5, TimeUnit.SECONDS));
+        caller.interrupt();
+        assertThrows(ExecutionException.class, () -> task.get(5, TimeUnit.SECONDS));
+        assertTrue(interrupted.await(5, TimeUnit.SECONDS));
+        assertThrows(
+            SparqlQueryExecutionGuard.QueryCapacityException.class,
+            () -> guard.execute("principal", () -> "too early"));
+        release.countDown();
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .ignoreExceptionsInstanceOf(SparqlQueryExecutionGuard.QueryCapacityException.class)
+            .untilAsserted(() -> assertEquals("next", guard.execute("principal", () -> "next")));
+      } finally {
+        release.countDown();
+        caller.join(5_000);
+      }
+    }
+  }
+
+  @Test
   void releasesCapacityWhenTheExecutorRejectsSubmission() {
     try (ExecutorService queryExecutor = Executors.newSingleThreadExecutor()) {
       queryExecutor.shutdown();
@@ -100,6 +212,67 @@ class SparqlQueryExecutionGuardTest {
           RejectedExecutionException.class, () -> guard.execute("principal", () -> "first"));
       assertThrows(
           RejectedExecutionException.class, () -> guard.execute("principal", () -> "second"));
+    }
+  }
+
+  @Test
+  void samePrincipalSharesOneQuotaAcrossCallers() throws Exception {
+    try (ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        ExecutorService callerExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      SparqlQueryExecutionGuard guard =
+          new SparqlQueryExecutionGuard(8, 1, 64, 1_000, queryExecutor);
+      CountDownLatch started = new CountDownLatch(1);
+      CountDownLatch release = new CountDownLatch(1);
+      CompletableFuture<String> active =
+          CompletableFuture.supplyAsync(
+              () -> guard.execute("alice", () -> awaitRelease(started, release)), callerExecutor);
+
+      assertTrue(started.await(1, TimeUnit.SECONDS));
+      // A second caller running as the same effective user shares alice's single permit.
+      SparqlQueryExecutionGuard.QueryCapacityException exhausted =
+          assertThrows(
+              SparqlQueryExecutionGuard.QueryCapacityException.class,
+              () -> guard.execute("alice", () -> "second"));
+      assertTrue(exhausted.getMessage().contains("principal"), exhausted.getMessage());
+      release.countDown();
+      assertEquals("finished", active.get(1, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
+  void differentPrincipalsDoNotShareQuota() throws Exception {
+    try (ExecutorService queryExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        ExecutorService callerExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+      SparqlQueryExecutionGuard guard =
+          new SparqlQueryExecutionGuard(8, 1, 64, 1_000, queryExecutor);
+      String bob = userOnAnotherStripeThan("alice", 64);
+      CountDownLatch started = new CountDownLatch(1);
+      CountDownLatch release = new CountDownLatch(1);
+      CompletableFuture<String> active =
+          CompletableFuture.supplyAsync(
+              () -> guard.execute("alice", () -> awaitRelease(started, release)), callerExecutor);
+
+      assertTrue(started.await(1, TimeUnit.SECONDS));
+      // A second user on another stripe is keyed independently of the first: only the
+      // effective-user string enters the quota key, so alice's exhausted permit does not
+      // block bob. (Two different users can still collide on one stripe and share it.)
+      assertEquals("bob", guard.execute(bob, () -> "bob"));
+      release.countDown();
+      assertEquals("finished", active.get(1, TimeUnit.SECONDS));
+    }
+  }
+
+  /**
+   * Mirrors the guard's stripe mapping so the pair is deterministically independent: sharing a
+   * stripe would make the test pass or fail on hash luck.
+   */
+  private static String userOnAnotherStripeThan(final String first, final int stripes) {
+    final int forbidden = Math.floorMod(first.hashCode(), stripes);
+    for (int index = 0; ; index++) {
+      final String candidate = "quota-user-" + index;
+      if (Math.floorMod(candidate.hashCode(), stripes) != forbidden) {
+        return candidate;
+      }
     }
   }
 

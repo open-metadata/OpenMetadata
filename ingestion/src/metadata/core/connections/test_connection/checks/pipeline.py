@@ -31,3 +31,4 @@ class PipelineStep(StepName):
     PipelineDetailsAccess = "PipelineDetailsAccess"
     TaskDetailAccess = "TaskDetailAccess"
     GetPipelines = "GetPipelines"
+    GetLineage = "GetLineage"

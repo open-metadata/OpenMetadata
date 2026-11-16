@@ -58,6 +58,18 @@ $$section
 $$
 
 $$section
+## End Session With Identity Provider $(id="endSessionWithProvider")
+
+- **Definition:** Ends the OpenMetadata session when the provider stops renewing the user's tokens.
+- **Default:** Off
+- **Why it matters:** When on, OpenMetadata renews the provider's tokens on the provider's schedule while the user is active, and signs the user out once the provider rejects its refresh token, for example after the token expires or is revoked, or the user is disabled. When off, a session lasts the configured session expiry whatever happens at the provider.
+- **Note:**
+  - Only applies to confidential clients
+  - On providers that revoke refresh tokens with the provider session, such as Keycloak, signing out there or reaching its idle or maximum session lifetime also signs the user out of OpenMetadata.
+  - While on, OpenMetadata access tokens never outlive the provider's access tokens, so browsers refresh them more often.
+$$
+
+$$section
 ## Public Key / JWK URI $(id="publicKey")
 
 - **Definition:** Public key or JSON Web Key Set URI for token validation.

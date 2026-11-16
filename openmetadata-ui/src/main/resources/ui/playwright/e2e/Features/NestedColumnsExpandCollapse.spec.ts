@@ -27,6 +27,8 @@ import {
   verifyExpandCollapseForSummaryPanel,
   verifyExpandCollapseNoDuplication,
 } from '../../utils/nestedColumnUpdatesUtils';
+import { waitForAggregation } from '../../utils/searchAggregation';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -146,11 +148,13 @@ test.describe('Table Profiler Tab - Nested columns with duplicate names', () => 
     await redirectToHomePage(page);
     await entityData.visitPage(page);
     await page.getByTestId('profiler').click();
-    const columnProfileResponse = page.waitForResponse(
+    const columnProfileResponse = waitForResponseWithStatus(
+      page,
       (response) =>
+        response.request().method() === 'GET' &&
         response.url().includes('/columns') &&
-        response.url().includes('fields=profile') &&
-        response.status() === 200
+        response.url().includes('fields=profile'),
+      200
     );
     await page.getByRole('tab', { name: 'Column Profile' }).click();
     await columnProfileResponse;
@@ -194,9 +198,10 @@ test.describe('API Endpoint Entity Summary Panel - Nested columns with duplicate
     await dataAssestResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const serviceSearchResponse = page.waitForResponse(
-      '**/api/v1/search/aggregate*'
-    );
+    const serviceSearchResponse = waitForAggregation(page, {
+      field: 'service.displayName.keyword',
+      value: apiService.service.name,
+    });
     // Interact with Service dropdown
     await page.getByTestId('search-dropdown-Service').click();
     await page.getByTestId('search-input').fill(apiService.service.name);

@@ -807,6 +807,7 @@ $$section
 - **Use Columns** (ARRAY, Optional) - Specific columns to compare. If not specified, all columns except key columns will be compared
 - **SQL Where Clause** (STRING, Optional) - Condition to filter which rows to include in the comparison (e.g., 'status = "active"')
 - **Case sensitive columns** (BOOLEAN, Optional) - When enabled, column name comparison is case-sensitive (e.g., 'Name' ≠ 'name')
+- **Parallel queries per database** (NUMBER, Optional) - How many queries the comparison may run at once against each database (default is 1). Both databases are always queried at the same time; a higher value compares large tables faster, but adds load to both databases and holds more rows in memory
 
 **Key Features**:
 - Automatically resolves key columns from primary key or unique constraints if not specified

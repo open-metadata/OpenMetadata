@@ -5,7 +5,7 @@
   "description": "This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be between minimum and maximum value. ",
   "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata"],
-  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "TIMESTAMP", "TIMESTAMPZ","DATETIME", "DATE"],
+  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "NUMERIC", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "TIMESTAMP", "TIMESTAMPZ","DATETIME", "DATE"],
   "parameterDefinition": [
     {
       "name": "minValue",
@@ -49,6 +49,13 @@
       "dataType": "STRING",
       "required": false,
       "optionValues": ["OVERALL_ONLY", "ANY_DIMENSION"]
+    },
+    {
+      "name": "minRowsPerDimension",
+      "displayName": "Minimum Rows per Dimension",
+      "description": "Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).",
+      "dataType": "INT",
+      "required": false
     }
   ],
   "supportsRowLevelPassedFailed": true,

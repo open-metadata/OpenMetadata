@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { BarChartProps } from '@openmetadata/ui-core-components/charts';
+import { BarChart } from '@openmetadata/ui-core-components/charts';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -19,22 +21,25 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getAllContractResults } from '../../../rest/contractAPI';
-import {
-  createContractExecutionCustomScale,
-  generateMonthTickPositions,
-  processContractExecutionData,
-} from '../../../utils/DataContract/DataContractUtils';
+import { processContractExecutionData } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractExecutionChart from './ContractExecutionChart.component';
+import { DataContractProcessedResultCharts } from './ContractExecutionChart.interface';
 
-jest.mock('../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
-}));
+type Row = DataContractProcessedResultCharts;
+
+const lastChartProps = () => {
+  const { calls } = (
+    BarChart as unknown as jest.Mock<null, [BarChartProps<Row>]>
+  ).mock;
+
+  return calls[calls.length - 1][0];
+};
 
 jest.mock('../../../rest/contractAPI', () => ({
   getAllContractResults: jest.fn(),
@@ -58,36 +63,27 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
         failed: item.contractExecutionStatus === 'Failed' ? 1 : 0,
         success: item.contractExecutionStatus === 'Success' ? 1 : 0,
         aborted: item.contractExecutionStatus === 'Aborted' ? 1 : 0,
+        running: item.contractExecutionStatus === 'Running' ? 1 : 0,
         data: item,
       })
     )
   ),
-  createContractExecutionCustomScale: jest.fn(() => {
-    interface MockScale {
-      (value: unknown): unknown;
-      domain: jest.Mock;
-      range: jest.Mock;
-      ticks: jest.Mock;
-      tickFormat: jest.Mock;
-      bandwidth: jest.Mock;
-      copy: jest.Mock;
-      nice: jest.Mock;
-      type: string;
-    }
-    const scale = ((value: unknown) => value) as MockScale;
-    scale.domain = jest.fn(() => scale);
-    scale.range = jest.fn(() => scale);
-    scale.ticks = jest.fn(() => []);
-    scale.tickFormat = jest.fn();
-    scale.bandwidth = jest.fn(() => 20);
-    scale.copy = jest.fn(() => scale);
-    scale.nice = jest.fn(() => scale);
-    scale.type = 'band';
+  generateMonthTickPositions: jest.fn(
+    (data: { name: string; displayTimestamp: number }[]) => {
+      const seen = new Set<string>();
 
-    return scale;
-  }),
-  generateMonthTickPositions: jest.fn((data) =>
-    data.length > 0 ? [data[0].name] : []
+      return data
+        .filter((item) => {
+          const month = new Date(item.displayTimestamp)
+            .toISOString()
+            .slice(0, 7);
+          const isNew = !seen.has(month);
+          seen.add(month);
+
+          return isNew;
+        })
+        .map((item) => item.name);
+    }
   ),
   formatContractExecutionTick: jest.fn((value) => {
     const timestamp = value.split('_')[0];
@@ -108,6 +104,9 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 
     return monthNames[new Date(Number(timestamp)).getMonth()];
   }),
+  formatContractExecutionDayTick: jest.fn(
+    (value: string) => `day ${value.split('_')[0]}`
+  ),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
@@ -135,6 +134,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   ),
   getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  formatDateTimeLong: jest.fn((timestamp) => `at ${timestamp}`),
 }));
 
 jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
@@ -160,62 +160,6 @@ jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
   };
 });
 
-jest.mock('../../common/ExpandableCard/ExpandableCard', () => {
-  return function MockExpandableCard({
-    cardProps,
-    children,
-  }: {
-    cardProps?: { className?: string; title?: ReactNode };
-    children?: ReactNode;
-  }) {
-    return (
-      <div className={cardProps?.className} data-testid="expandable-card">
-        <div data-testid="card-title">{cardProps?.title}</div>
-        <div>{children}</div>
-      </div>
-    );
-  };
-});
-
-jest.mock('../../common/Loader/Loader', () => {
-  return function MockLoader() {
-    return <div data-testid="loader">Loading...</div>;
-  };
-});
-
-jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
-  ),
-  BarChart: ({ data, children }: { data?: unknown; children?: ReactNode }) => (
-    <div data-chart-data={JSON.stringify(data)} data-testid="bar-chart">
-      {children}
-    </div>
-  ),
-  Bar: ({
-    dataKey,
-    fill,
-    name,
-  }: {
-    dataKey?: string;
-    fill?: string;
-    name?: ReactNode;
-  }) => (
-    <div data-fill={fill} data-testid={`bar-${dataKey}`}>
-      {name}
-    </div>
-  ),
-  XAxis: ({ dataKey }: { dataKey?: string }) => (
-    <div data-key={dataKey} data-testid="x-axis">
-      XAxis
-    </div>
-  ),
-  CartesianGrid: () => <div data-testid="cartesian-grid">Grid</div>,
-  Tooltip: () => <div data-testid="tooltip">Tooltip</div>,
-  Legend: () => <div data-testid="legend">Legend</div>,
-  Rectangle: () => <div data-testid="rectangle">Rectangle</div>,
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -224,6 +168,9 @@ jest.mock('react-i18next', () => ({
         'label.failed': 'Failed',
         'label.aborted': 'Aborted',
         'label.running': 'Running',
+        'label.partial-success': 'Partial Success',
+        'label.queued': 'Queued',
+        'label.contract-execution-status': 'Contract Execution Status',
       };
 
       return translations[key] || key;
@@ -255,6 +202,16 @@ const mockContractResults: DataContractResult[] = [
   },
 ] as unknown as DataContractResult[];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// `count` successful runs, one a day from 1 Jan 2022.
+const dailyRuns = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `run-${i}`,
+    timestamp: Date.UTC(2022, 0, 1) + i * DAY_MS,
+    contractExecutionStatus: ContractExecutionStatus.Success,
+  }));
+
 describe('ContractExecutionChart', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -264,16 +221,6 @@ describe('ContractExecutionChart', () => {
   });
 
   describe('Basic Rendering', () => {
-    it('should render the component with loading state initially', async () => {
-      (getAllContractResults as jest.Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-    });
-
     it('should render chart after data is loaded', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
@@ -281,8 +228,9 @@ describe('ContractExecutionChart', () => {
         expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-      expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('contract-execution-chart')
+      ).toBeInTheDocument();
     });
   });
 
@@ -296,9 +244,7 @@ describe('ContractExecutionChart', () => {
         limit: 10000,
       });
 
-      await waitFor(() => {
-        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-      });
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
 
     it('should handle API errors gracefully', async () => {
@@ -310,6 +256,24 @@ describe('ContractExecutionChart', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
       });
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+    });
+
+    it('clears the previous range when refetching it fails', async () => {
+      const mockError = new AxiosError('API Error');
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(3));
+
+      (getAllContractResults as jest.Mock).mockRejectedValueOnce(mockError);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('change-date-range'));
+      });
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      expect(lastChartProps().data).toEqual([]);
     });
 
     it('should refetch data when date range changes', async () => {
@@ -331,177 +295,251 @@ describe('ContractExecutionChart', () => {
         endTs: 1640995200000,
         limit: 10000,
       });
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+    });
+  });
+
+  describe('Loading States', () => {
+    it('shows the chart skeleton while fetching', () => {
+      (getAllContractResults as jest.Mock).mockImplementation(
+        () => new Promise(() => undefined)
+      );
+
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      expect(lastChartProps().loading).toBe(true);
+      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+    });
+
+    it('drops the skeleton once data is loaded', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
   });
 
   describe('Chart Data Processing', () => {
-    it('should process contract results into chart data correctly', async () => {
+    it('passes one row per run, in timestamp order', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
-      await waitFor(() => {
-        const barChart = screen.getByTestId('bar-chart');
-        const chartData = JSON.parse(
-          barChart.getAttribute('data-chart-data') || '[]'
-        );
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(3));
 
-        expect(chartData).toHaveLength(3);
-        // Data should now have unique names with timestamp_index format
-        expect(chartData[0]).toEqual({
-          name: '1640995200000_0',
-          displayTimestamp: 1640995200000,
-          value: 1,
-          status: ContractExecutionStatus.Success,
-          failed: 0,
-          success: 1,
-          aborted: 0,
-          data: {
-            contractExecutionStatus: 'Success',
-            id: 'result-1',
-            timestamp: 1640995200000,
-          },
-        });
-        expect(chartData[1]).toEqual({
-          name: '1640995260000_1',
-          displayTimestamp: 1640995260000,
-          value: 1,
-          status: ContractExecutionStatus.Failed,
-          failed: 1,
-          success: 0,
-          aborted: 0,
-          data: {
-            contractExecutionStatus: 'Failed',
-            id: 'result-2',
-            timestamp: 1640995260000,
-          },
-        });
-        expect(chartData[2]).toEqual({
-          name: '1640995320000_2',
-          displayTimestamp: 1640995320000,
-          value: 1,
-          status: ContractExecutionStatus.Aborted,
-          failed: 0,
-          success: 0,
-          aborted: 1,
-          data: {
-            contractExecutionStatus: 'Aborted',
-            id: 'result-3',
-            timestamp: 1640995320000,
-          },
-        });
-      });
+      expect(lastChartProps().data.map((row) => row.name)).toEqual([
+        '1640995200000_0',
+        '1640995260000_1',
+        '1640995320000_2',
+      ]);
+      expect(processContractExecutionData).toHaveBeenCalledWith(
+        mockContractResults
+      );
     });
 
-    it('should handle empty data gracefully', async () => {
+    it('gives runs with the same timestamp their own bar', async () => {
+      (getAllContractResults as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'a',
+            timestamp: 1640995200000,
+            contractExecutionStatus: ContractExecutionStatus.Success,
+          },
+          {
+            id: 'b',
+            timestamp: 1640995200000,
+            contractExecutionStatus: ContractExecutionStatus.Failed,
+          },
+        ],
+      });
+
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() =>
+        expect(lastChartProps().data.map((row) => row.name)).toEqual([
+          '1640995200000_0',
+          '1640995200000_1',
+        ])
+      );
+    });
+
+    it('passes no rows for an empty range, so core shows its empty state', async () => {
       (getAllContractResults as jest.Mock).mockResolvedValue({ data: [] });
 
       render(<ContractExecutionChart contract={mockContract} />);
 
-      await waitFor(() => {
-        const barChart = screen.getByTestId('bar-chart');
-        const chartData = JSON.parse(
-          barChart.getAttribute('data-chart-data') || '[]'
-        );
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
 
-        expect(chartData).toHaveLength(0);
-      });
+      expect(lastChartProps().data).toEqual([]);
     });
   });
 
-  describe('Chart Components', () => {
-    it('should render all chart components', async () => {
+  describe('Chart configuration', () => {
+    const rowWith = (status: string) => ({ status } as unknown as Row);
+
+    it('draws one full-height bar series per run', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+      const props = lastChartProps();
+
+      expect(props.series).toEqual([
+        expect.objectContaining({
+          key: 'value',
+          name: 'Contract Execution Status',
+          seriesOption: { barMaxWidth: 12 },
+        }),
+      ]);
+      expect(props.xKey).toBe('name');
+      expect(props.radius).toBe(6);
+      expect(props.height).toBe(240);
+      expect(props.ariaLabel).toBe('label.execution-history');
+      expect(props.yAxis).toEqual(
+        expect.objectContaining({ max: 1, axisLabel: { show: false } })
+      );
+    });
+
+    it.each([
+      [ContractExecutionStatus.Success, 'success'],
+      [ContractExecutionStatus.Failed, 'failed'],
+      [ContractExecutionStatus.Aborted, 'warning'],
+      [ContractExecutionStatus.PartialSuccess, 'warning'],
+      [ContractExecutionStatus.Running, 'info'],
+      [ContractExecutionStatus.Queued, 'muted'],
+    ])('colours a %s run as %s', async (executionStatus, chartStatus) => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+
+      expect(lastChartProps().getBarStatus?.(rowWith(executionStatus), 0)).toBe(
+        chartStatus
+      );
+    });
+
+    it('draws an unknown status muted, so it reads as no known state', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+
+      expect(lastChartProps().getBarStatus?.(rowWith('SomethingNew'), 0)).toBe(
+        'muted'
+      );
+    });
+
+    it('labels only the first run of each month, across a year boundary', async () => {
+      const dec = Date.UTC(2021, 11, 30);
+      const dec2 = Date.UTC(2021, 11, 31);
+      const jan = Date.UTC(2022, 0, 2);
+      (getAllContractResults as jest.Mock).mockResolvedValue({
+        data: [dec, dec2, jan].map((timestamp, i) => ({
+          id: `r${i}`,
+          timestamp,
+          contractExecutionStatus: ContractExecutionStatus.Success,
+        })),
+      });
+
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(3));
+      const interval = (
+        lastChartProps().xAxis?.axisLabel as {
+          interval: (index: number, value: string) => boolean;
+        }
+      ).interval;
 
       expect(
-        await screen.findByTestId('responsive-container')
-      ).toBeInTheDocument();
-      expect(await screen.findByTestId('bar-chart')).toBeInTheDocument();
-      expect(await screen.findByTestId('cartesian-grid')).toBeInTheDocument();
-      expect(await screen.findByTestId('x-axis')).toBeInTheDocument();
+        lastChartProps().data.map((row, i) => interval(i, row.name))
+      ).toEqual([true, false, true]);
+      // Mid-month, so the mocked month name is the same in every timezone.
+      expect(
+        lastChartProps().xAxis?.formatter?.(`${Date.UTC(2022, 0, 15)}_0`)
+      ).toBe('Jan');
     });
 
-    it('should render bars for each status type without stacking', async () => {
+    it('labels zoomed runs by day above 31 runs, so every window has labels', async () => {
+      (getAllContractResults as jest.Mock).mockResolvedValue({
+        data: dailyRuns(32),
+      });
+
       render(<ContractExecutionChart contract={mockContract} />);
 
-      // Bars should not have stackId anymore - they render individually
-      expect(await screen.findByTestId('bar-success')).toHaveTextContent(
-        'Success'
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(32));
+      const { xAxis } = lastChartProps();
+
+      expect(xAxis?.axisLabel).toEqual(
+        expect.objectContaining({ interval: 'auto' })
       );
-      expect(await screen.findByTestId('bar-failed')).toHaveTextContent(
-        'Failed'
+      expect(xAxis?.formatter?.('1640995200000_0')).toBe('day 1640995200000');
+    });
+
+    it('keeps month-start labels at 31 runs', async () => {
+      (getAllContractResults as jest.Mock).mockResolvedValue({
+        data: dailyRuns(31),
+      });
+
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(31));
+
+      expect(
+        typeof (lastChartProps().xAxis?.axisLabel as { interval: unknown })
+          .interval
+      ).toBe('function');
+    });
+
+    it.each([3, 32])(
+      "hands core zoom 'auto' with a 31-run window for %i runs",
+      async (count) => {
+        (getAllContractResults as jest.Mock).mockResolvedValue({
+          data: dailyRuns(count),
+        });
+
+        render(<ContractExecutionChart contract={mockContract} />);
+
+        await waitFor(() => expect(lastChartProps().data).toHaveLength(count));
+
+        expect(lastChartProps().zoom).toBe('auto');
+        expect(lastChartProps().zoomVisiblePoints).toBe(31);
+      }
+    );
+
+    it('renders the hovered run in the tooltip with its status name and colour', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(3));
+      const props = lastChartProps();
+      const html = renderToStaticMarkup(
+        <>{props.tooltip?.render?.([], props.data[1])}</>
       );
-      expect(await screen.findByTestId('bar-aborted')).toHaveTextContent(
-        'Aborted'
+
+      expect(html).toContain('Contract Execution Status');
+      expect(html).toContain('Failed');
+      // Failed status colour of the mocked core palette.
+      expect(html).toContain('#a00000');
+    });
+
+    it('renders an unknown status in the tooltip by name, with the muted colour', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+      const html = renderToStaticMarkup(
+        <>{lastChartProps().tooltip?.render?.([], rowWith('SomethingNew'))}</>
       );
-      expect(await screen.findByTestId('bar-running')).toHaveTextContent(
-        'Running'
-      );
+
+      expect(html).toContain('SomethingNew');
+      // Muted status colour of the mocked core palette.
+      expect(html).toContain('#909090');
     });
 
-    it('should use correct colors for bars', async () => {
+    it('renders nothing in the tooltip without a hovered run', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('bar-success')).toHaveAttribute(
-          'data-fill',
-          '#039855'
-        );
-        expect(screen.getByTestId('bar-failed')).toHaveAttribute(
-          'data-fill',
-          '#f24822'
-        );
-        expect(screen.getByTestId('bar-aborted')).toHaveAttribute(
-          'data-fill',
-          '#f79009'
-        );
-        expect(screen.getByTestId('bar-running')).toHaveAttribute(
-          'data-fill',
-          '#175cd3'
-        );
-      });
-    });
-  });
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
 
-  describe('Utility Functions Integration', () => {
-    it('should call processContractExecutionData with correct data', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      await waitFor(() => {
-        expect(processContractExecutionData).toHaveBeenCalledWith(
-          mockContractResults
-        );
-      });
-    });
-
-    it('should call createContractExecutionCustomScale with processed data', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      await waitFor(() => {
-        expect(createContractExecutionCustomScale).toHaveBeenCalled();
-      });
-    });
-
-    it('should call generateMonthTickPositions with processed data', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      await waitFor(() => {
-        expect(generateMonthTickPositions).toHaveBeenCalled();
-      });
-    });
-
-    it('should use formatContractExecutionTick for tick formatting', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      await waitFor(() => {
-        const xAxis = screen.getByTestId('x-axis');
-
-        expect(xAxis).toBeInTheDocument();
-        // The formatter function is passed to XAxis
-      });
+      expect(lastChartProps().tooltip?.render?.([], undefined)).toBeNull();
     });
   });
 
   describe('Date Range Handling', () => {
-    it('should initialize with default date range', () => {
+    it('should initialize with default date range', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
@@ -509,6 +547,8 @@ describe('ContractExecutionChart', () => {
         endTs: 1640995200000, // Fixed current time
         limit: 10000,
       });
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
 
     it('should not refetch data if date range is the same', async () => {
@@ -526,28 +566,8 @@ describe('ContractExecutionChart', () => {
       });
 
       expect(getAllContractResults).toHaveBeenCalledTimes(2);
-    });
-  });
 
-  describe('Loading States', () => {
-    it('should show loading state during data fetch', () => {
-      (getAllContractResults as jest.Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
-
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-    });
-
-    it('should hide loading state after data is loaded', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
   });
 
@@ -562,6 +582,8 @@ describe('ContractExecutionChart', () => {
           />
         );
       }).not.toThrow();
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
   });
 });

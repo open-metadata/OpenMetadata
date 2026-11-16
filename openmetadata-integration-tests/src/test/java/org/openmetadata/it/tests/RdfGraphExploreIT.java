@@ -57,7 +57,6 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
-import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +93,8 @@ public class RdfGraphExploreIT {
   private static final String MEDIA_TYPE_JSONLD = "application/ld+json";
   private static final long NON_ADMIN_TOKEN_TTL_SECONDS = 3600L;
 
+  private static boolean enabledServerRdf;
+
   @BeforeAll
   static void enableRdf() {
     assumeTrue(
@@ -107,12 +108,12 @@ public class RdfGraphExploreIT {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword("test-admin");
     rdfConfig.setDataset("openmetadata");
-    RdfUpdater.initialize(rdfConfig);
+    enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
   }
 
   @Test

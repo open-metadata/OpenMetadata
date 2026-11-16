@@ -18,16 +18,17 @@ const renderDropdown = () =>
   );
 
 describe('Dropdown theme roles', () => {
-  it('renders the menu on the raised surface with raised elevation', () => {
+  it('renders the menu on the raised surface, above drawer panels', () => {
     renderDropdown();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
-    const surface = screen.getByRole('menu').closest('.tw\\:bg-raised');
+    const surface = screen.getByRole('menu').closest('.tw\\:bg-floating');
 
     expect(surface).not.toBeNull();
-    expect(surface).toHaveClass('tw:bg-raised', 'tw:shadow-raised');
-    // Menus are raised above surfaces; the page background would erase that.
+    expect(surface).toHaveClass('tw:bg-floating', 'tw:shadow-raised');
+    // Menus sit one step above modal/slideout panels so they stay visible over a drawer.
+    expect(surface).not.toHaveClass('tw:bg-overlay-surface');
     expect(surface).not.toHaveClass('tw:bg-primary');
   });
 

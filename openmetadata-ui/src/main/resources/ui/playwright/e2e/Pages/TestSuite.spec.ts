@@ -18,7 +18,7 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  addTestCaseListFilterByFirstColumn,
+  addTestCaseListFilterByColumn,
   addTestCaseListFilterByStatus,
   addTestCaseListFilterByTable,
   addTestCaseListFilterByTestType,
@@ -27,11 +27,9 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
-  removeSingleSelectDomain,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -40,6 +38,7 @@ import {
   addTestSuitePipeline,
   removeFirstNTestCasesFromLogicalTestSuite,
 } from '../../utils/dataQuality';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   removeOwnersFromList,
@@ -53,6 +52,8 @@ const user2 = new UserClass();
 const domain1 = new Domain();
 const domain2 = new Domain();
 const bundleTestSuite = new BundleTestSuiteClass();
+
+const LIST_PAGE_SIZE = 15;
 
 const createDeferred = () => {
   let resolveDeferred: () => void = () => undefined;
@@ -130,7 +131,9 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
     }
   );
 
-  await page.goto('/data-quality/test-suites/table-suites');
+  await page.goto('/data-quality/test-suites/table-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await tableSuiteRequestReceived.promise;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
@@ -183,6 +186,12 @@ test('Searching the bundle suites list from a later page resets to the first pag
   // The list is sorted by last result, not relevance, so the target must be
   // the only suite the search matches for its row to be on the first page.
   const targetSuite = `pwpagingtarget${uuid()}`;
+  // Seeding a full page beside the target guarantees a page 2 at the
+  // 15-row list size, whatever else the server holds.
+  const seededSuites = [
+    targetSuite,
+    ...Array.from({ length: LIST_PAGE_SIZE }, () => `pwpagingfiller${uuid()}`),
+  ];
   const bundleSuiteListUrl = (query = '') =>
     `/api/v1/dataQuality/testSuites/search/list?testSuiteType=logical&includeEmptyTestSuites=true${query}`;
   const isBundleSuiteList = (url: URL) =>
@@ -190,15 +199,17 @@ test('Searching the bundle suites list from a later page resets to the first pag
     url.searchParams.get('testSuiteType') === 'logical';
 
   try {
-    const createResponse = await apiContext.post(
-      '/api/v1/dataQuality/testSuites',
-      { data: { name: targetSuite } }
+    const createResponses = await Promise.all(
+      seededSuites.map((name) =>
+        apiContext.post('/api/v1/dataQuality/testSuites', { data: { name } })
+      )
     );
 
-    expect(createResponse.status()).toBe(201);
+    expect(createResponses.map((response) => response.status())).toEqual(
+      seededSuites.map(() => 201)
+    );
 
-    // At one suite per page, page 2 only needs a second suite (beforeAll
-    // creates one), so wait until the list has two and the target is indexed.
+    // Wait until the list spans two pages and the target is indexed.
     await expect
       .poll(
         async () => {
@@ -211,7 +222,7 @@ test('Searching the bundle suites list from a later page resets to the first pag
           const targetTotal = (await targetResponse.json())?.paging?.total;
           const listTotal = (await listResponse.json())?.paging?.total;
 
-          return targetTotal > 0 && listTotal > 1;
+          return targetTotal > 0 && listTotal > LIST_PAGE_SIZE;
         },
         { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
       )
@@ -221,7 +232,10 @@ test('Searching the bundle suites list from a later page resets to the first pag
       const listResponse = page.waitForResponse((response) =>
         isBundleSuiteList(new URL(response.url()))
       );
-      await page.goto('/data-quality/test-suites/bundle-suites?pageSize=1');
+      await page.goto(
+        `/data-quality/test-suites/bundle-suites?pageSize=${LIST_PAGE_SIZE}`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await listResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -260,10 +274,14 @@ test('Searching the bundle suites list from a later page resets to the first pag
       await expect(page.getByTestId('page-indicator')).toContainText('1 of');
     });
   } finally {
-    await apiContext.delete(
-      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
-        targetSuite
-      )}?hardDelete=true&recursive=true`
+    await Promise.all(
+      seededSuites.map((name) =>
+        apiContext.delete(
+          `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+            name
+          )}?hardDelete=true&recursive=true`
+        )
+      )
     );
     await afterAction();
   }
@@ -281,7 +299,9 @@ test(
     };
     const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
     const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
-    await page.goto('/data-quality/test-suites/bundle-suites');
+    await page.goto('/data-quality/test-suites/bundle-suites', {
+      waitUntil: 'domcontentloaded',
+    });
 
     const loggedInUserRequest = ownerPage.waitForResponse(
       `/api/v1/users/loggedInUser*`
@@ -330,13 +350,14 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumn(page);
+      await addTestCaseListFilterByColumn(page, table.columnsName[0]);
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFilters(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 
@@ -368,9 +389,9 @@ test(
     });
 
     await test.step('Domain Add, Update and Remove', async () => {
-      await assignSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
-      await removeSingleSelectDomain(page, domain2.responseData, true);
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData);
+      await setDomain(page, domain2.responseData, { verify: 'cleared' });
     });
 
     await test.step('User as Owner assign, update & delete for test suite', async () => {

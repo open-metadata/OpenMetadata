@@ -520,8 +520,7 @@ class PGSpiderLineageUnitTests(TestCase):
     PGSpider lineage test
     """
 
-    def __init__(self, methodName) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self) -> None:
         config = OpenMetadataWorkflowConfig.model_validate(mock_pgspider_config)
         with patch("metadata.ingestion.source.database.postgres.lineage.PostgresLineageSource.test_connection"):
             self.postgres = PostgresLineageSource.create(
@@ -734,3 +733,18 @@ class PGSpiderLineageUnitTests(TestCase):
 
             """Validate number of AddLineageRequest"""
             self.assertEqual(0, len(requests))
+
+
+def test_child_tables_query_binds_table_name():
+    """A crafted multi-tenant table name is bound, never spliced into the SQL"""
+    from metadata.ingestion.source.database.postgres.pgspider.lineage import (
+        _get_child_tables,
+    )
+
+    evil = "x'; DROP TABLE t; --"
+    with patch("metadata.ingestion.source.database.postgres.pgspider.lineage.get_connection") as get_connection:
+        _get_child_tables(None, evil)
+
+    query, params = get_connection.return_value.connect.return_value.__enter__.return_value.execute.call_args.args
+    assert evil not in str(query)
+    assert params == {"multi_tenant_table": evil}

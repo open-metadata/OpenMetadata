@@ -20,16 +20,28 @@
 .ai-personal-space__dialog {
   height: calc(100vh - 96px);
   max-height: calc(100vh - 96px);
+  // Clip content to the capped height so a tall page (e.g. a long team table)
+  // scrolls in its own body instead of spilling out and making the fixed
+  // ModalOverlay scroll the whole dialog.
+  overflow: hidden;
 
-  > div {
+  // Only the Dialog's own wrapper: editors mount their tippy popups (link
+  // popup, suggestions) in the dialog so its focus trap keeps them usable, and
+  // a bare `> div` stretched those to the whole overlay, drawing them off-screen.
+  > div:not([data-tippy-root]) {
     width: 100%;
     max-width: 1600px;
     height: 100%;
+    // Flex items default to min-height:auto and refuse to shrink below their
+    // content, which overrides height:100% and lets the panel grow to the full
+    // page height. min-height:0 makes it honour the cap so the inner
+    // flex-1/min-h-0 body is the scroller.
+    min-height: 0;
     display: flex;
     flex-direction: column;
   }
 
-  > div > div:first-child {
+  > div:not([data-tippy-root]) > div:first-child {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;

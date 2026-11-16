@@ -12,14 +12,13 @@
  */
 import {
   Box,
-  EmptyPlaceholder,
   Owner,
   Skeleton,
   Table,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { ShieldTick } from '@untitledui/icons';
+import { ShieldTick } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -39,11 +38,11 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -131,11 +130,7 @@ const IncidentManagerTable = ({
             record?.testCaseReference?.fullyQualifiedName
           )}
           isCompactView={false}
-          multiple={{
-            user: false,
-            team: false,
-          }}
-          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
+          owners={value?.assignee ? [value.assignee] : []}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),
           })}
@@ -151,6 +146,7 @@ const IncidentManagerTable = ({
               }
             />
           }
+          showLabel={false}
         />
       </div>
     );
@@ -306,11 +302,10 @@ const IncidentManagerTable = ({
               loadingSkeletons
             ) : (
               <Box className="tw:relative tw:min-h-80 tw:w-full">
-                <EmptyPlaceholder
+                <NoDataPlaceholder
                   description={t('message.no-active-incidents-description')}
                   icon={<ShieldTick className="tw:text-fg-brand-primary" />}
                   title={t('message.no-active-incidents')}
-                  variant="blank"
                 />
               </Box>
             )

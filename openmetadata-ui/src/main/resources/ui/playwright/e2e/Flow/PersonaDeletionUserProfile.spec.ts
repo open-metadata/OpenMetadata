@@ -38,7 +38,9 @@ const visitUserProfileDirectly = async (page: Page, userName: string) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto(`/users/${encodeURIComponent(userName)}`);
+  await page.goto(`/users/${encodeURIComponent(userName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   expect((await userDetailsResponse).ok()).toBeTruthy();
   await waitForAllLoadersToDisappear(page);
 };
@@ -118,7 +120,9 @@ test.describe.serial('User profile works after persona deletion', () => {
       expect((await deleteResponse).ok()).toBeTruthy();
       personaDeleted = true;
 
-      await page.waitForURL('**/settings/persona');
+      await page.waitForURL('**/settings/persona', {
+        waitUntil: 'domcontentloaded',
+      });
     });
 
     // Step 4: Go back to user profile and verify it still loads
@@ -150,7 +154,7 @@ test.describe.serial('User profile works after persona deletion', () => {
         }
 
         if (attempt < 3) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
         }
       }

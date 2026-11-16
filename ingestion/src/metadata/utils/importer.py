@@ -17,7 +17,7 @@ import sys
 import traceback
 from collections.abc import Callable
 from enum import Enum  # noqa: TC003
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -25,7 +25,6 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.serviceType import ServiceType  # noqa: TC001
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
@@ -33,6 +32,9 @@ from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import utils_logger
 from metadata.utils.singleton import Singleton
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.services.serviceType import ServiceType
 
 logger = utils_logger()
 

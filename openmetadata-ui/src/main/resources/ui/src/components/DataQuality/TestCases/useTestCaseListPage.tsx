@@ -14,18 +14,19 @@ import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
+import { getTestCaseListFilterParams } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useTestCaseActions } from './useTestCaseActions';
 import { useTestCaseFilterOptions } from './useTestCaseFilterOptions';
-import { useTestCaseFilters } from './useTestCaseFilters';
+import { TestCaseFilterForm, useTestCaseFilters } from './useTestCaseFilters';
 import { useTestCaseList } from './useTestCaseList';
 
 /**
@@ -39,7 +40,10 @@ export type {
   FilterValue as TestCaseFilterValue,
 } from './FilterChip.interface';
 
-export const useTestCaseListPage = () => {
+/** `form` is the classic page's antd filter form; the AI page passes none. */
+export const useTestCaseListPage = ({
+  form,
+}: { form?: TestCaseFilterForm } = {}) => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
     tab: DataQualityPageTabs;
   }>();
@@ -75,7 +79,6 @@ export const useTestCaseListPage = () => {
     searchValue,
     selectedFilter,
     setSelectedFilter,
-    form,
     handleMenuClick,
     handleSearchParam,
     handleFilterChange,
@@ -84,6 +87,7 @@ export const useTestCaseListPage = () => {
     hasActiveFilters,
     clearAll,
   } = useTestCaseFilters({
+    form,
     getInitialOptions,
     isOptionsLoading,
     asyncOptionsByKey,
@@ -93,6 +97,7 @@ export const useTestCaseListPage = () => {
   const {
     testCase,
     setTestCase,
+    entityPermissions,
     isLoading,
     fetchTestCases,
     sortTestCase,
@@ -143,9 +148,11 @@ export const useTestCaseListPage = () => {
         },
         false,
         navigate,
-        showModal
+        showModal,
+        undefined,
+        getTestCaseListFilterParams(params, selectedFilter, searchValue)
       ),
-    [permissions, navigate, showModal]
+    [permissions, navigate, showModal, params, selectedFilter, searchValue]
   );
 
   return {
@@ -155,7 +162,6 @@ export const useTestCaseListPage = () => {
     testCaseSummary,
     isTestCaseSummaryLoading,
     // filter bar (OSS antd form + AI descriptors)
-    form,
     params,
     searchValue,
     selectedFilter,
@@ -179,6 +185,7 @@ export const useTestCaseListPage = () => {
     debounceFetchDataProductOptions,
     // table + paging
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,

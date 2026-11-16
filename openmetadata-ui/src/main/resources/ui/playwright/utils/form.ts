@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export const validateFormNameFieldInput = async ({
   page,
@@ -33,16 +33,16 @@ export const validateFormNameFieldInput = async ({
     await page.fill(fieldSelector, 'test');
     await page.locator(fieldSelector).clear();
 
-    await page.getByText(`${fieldName} is required`).isVisible();
+    await expect(page.getByText(`${fieldName} is required`)).toBeVisible();
   }
 
   if (checkLong) {
     // Check long name field message
     await page.fill(fieldSelector, 'name'.repeat(33));
 
-    await page
-      .getByText(`${fieldName} size must be between 1 and 128`)
-      .isVisible();
+    await expect(
+      page.getByText(`${fieldName} size must be between 1 and 128`)
+    ).toBeVisible();
 
     await page.locator(fieldSelector).clear();
   }

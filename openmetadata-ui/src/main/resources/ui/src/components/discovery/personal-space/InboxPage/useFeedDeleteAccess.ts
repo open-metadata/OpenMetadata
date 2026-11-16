@@ -12,7 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   Access,
   Operation,

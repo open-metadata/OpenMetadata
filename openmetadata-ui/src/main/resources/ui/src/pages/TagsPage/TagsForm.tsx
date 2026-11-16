@@ -23,7 +23,7 @@ import {
   HookForm,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Users01 } from '@untitledui/icons';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import {
   Suspense,
@@ -39,7 +39,7 @@ import { EntityAttachmentProvider } from '../../components/common/EntityDescript
 import {
   AVAILABLE_ICONS,
   DEFAULT_TAG_ICON,
-} from '../../components/common/IconPicker';
+} from '../../components/common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';

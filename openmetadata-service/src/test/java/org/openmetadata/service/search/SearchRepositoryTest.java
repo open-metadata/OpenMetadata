@@ -51,8 +51,11 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
@@ -85,6 +88,9 @@ class SearchRepositoryTest {
         mock(es.co.elastic.clients.transport.ElasticsearchTransport.class);
     lenient().when(mockEsNewClient._transport()).thenReturn(mockEsTransport);
     lenient().when(elasticSearchClient.getNewClient()).thenReturn(mockEsNewClient);
+    lenient()
+        .when(elasticSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(elasticSearchClient.isClientAvailable()).thenReturn(true);
 
     os.org.opensearch.client.opensearch.OpenSearchClient mockOsNewClient =
@@ -93,6 +99,9 @@ class SearchRepositoryTest {
         mock(os.org.opensearch.client.transport.OpenSearchTransport.class);
     lenient().when(mockOsNewClient._transport()).thenReturn(mockOsTransport);
     lenient().when(openSearchClient.getNewClient()).thenReturn(mockOsNewClient);
+    lenient()
+        .when(openSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(openSearchClient.isClientAvailable()).thenReturn(true);
 
     // Enable calling real methods for the methods we want to test
@@ -173,7 +182,7 @@ class SearchRepositoryTest {
     EntityRepository<?> tableRepository = mock(EntityRepository.class);
     Fields fields = mock(Fields.class);
     doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
-    EntityInterface survivor = mock(EntityInterface.class);
+    EntityInterface<?> survivor = mock(EntityInterface.class);
     doReturn(List.of(survivor))
         .when(tableRepository)
         .get(isNull(), eq(List.of(deletedId, survivorId)), eq(fields), eq(NON_DELETED));
@@ -186,7 +195,7 @@ class SearchRepositoryTest {
       verify(tableRepository)
           .get(isNull(), eq(List.of(deletedId, survivorId)), eq(fields), eq(NON_DELETED));
       @SuppressWarnings("unchecked")
-      ArgumentCaptor<List<EntityInterface>> indexed = ArgumentCaptor.forClass(List.class);
+      ArgumentCaptor<List<EntityInterface<?>>> indexed = ArgumentCaptor.forClass(List.class);
       verify(searchRepository).updateEntitiesIndex(indexed.capture());
       assertEquals(
           List.of(survivor),
@@ -220,7 +229,7 @@ class SearchRepositoryTest {
     EntityRepository<?> tableRepository = mock(EntityRepository.class);
     Fields fields = mock(Fields.class);
     doReturn(fields).when(tableRepository).getOnlySupportedFields(anyString());
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     doReturn(List.of(entity))
         .when(tableRepository)
         .get(isNull(), eq(List.of(id)), eq(fields), eq(NON_DELETED));
@@ -232,7 +241,7 @@ class SearchRepositoryTest {
 
       verify(tableRepository, times(1)).get(isNull(), eq(List.of(id)), eq(fields), eq(NON_DELETED));
       @SuppressWarnings("unchecked")
-      ArgumentCaptor<List<EntityInterface>> indexed = ArgumentCaptor.forClass(List.class);
+      ArgumentCaptor<List<EntityInterface<?>>> indexed = ArgumentCaptor.forClass(List.class);
       verify(searchRepository).updateEntitiesIndex(indexed.capture());
       assertEquals(
           List.of(entity),
@@ -304,6 +313,7 @@ class SearchRepositoryTest {
 
     // Create a real SearchRepository instance with mocked dependencies
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
 
     // Setup the mock to call the real method for updateEntitiesBulk
@@ -320,7 +330,7 @@ class SearchRepositoryTest {
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
 
     // Create mixed entity types
-    List<EntityInterface> mixedEntities = new ArrayList<>();
+    List<EntityInterface<?>> mixedEntities = new ArrayList<>();
     mixedEntities.add(new MockEntityWithType("table", "table1"));
     mixedEntities.add(new MockEntityWithType("table", "table2"));
     mixedEntities.add(new MockEntityWithType("databaseSchema", "schema1"));
@@ -331,14 +341,14 @@ class SearchRepositoryTest {
     realSearchRepository.updateEntitiesBulk(mixedEntities);
 
     // Capture the arguments passed to BulkSink.write
-    ArgumentCaptor<List<EntityInterface>> entitiesCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<List<EntityInterface<?>>> entitiesCaptor = ArgumentCaptor.forClass(List.class);
     ArgumentCaptor<Map<String, Object>> contextCaptor = ArgumentCaptor.forClass(Map.class);
 
     // Verify write was called 3 times (once for each entity type)
     verify(mockBulkSink, times(3)).write(entitiesCaptor.capture(), contextCaptor.capture());
 
     // Get all captured values
-    List<List<EntityInterface>> capturedEntities = entitiesCaptor.getAllValues();
+    List<List<EntityInterface<?>>> capturedEntities = entitiesCaptor.getAllValues();
     List<Map<String, Object>> capturedContexts = contextCaptor.getAllValues();
 
     // Verify each call had the correct entityType and entity count
@@ -352,7 +362,7 @@ class SearchRepositoryTest {
 
       // Verify the entityType in context matches the actual entities
       for (Object entity : capturedEntities.get(i)) {
-        EntityInterface e = (EntityInterface) entity;
+        EntityInterface<?> e = (EntityInterface<?>) entity;
         assertEquals(
             entityType,
             e.getEntityReference().getType(),
@@ -385,6 +395,7 @@ class SearchRepositoryTest {
     // Test when all entities are of the same type - should only call write once
 
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
 
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
@@ -398,7 +409,7 @@ class SearchRepositoryTest {
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
 
     // Create entities of single type
-    List<EntityInterface> entities = new ArrayList<>();
+    List<EntityInterface<?>> entities = new ArrayList<>();
     entities.add(new MockEntityWithType("table", "table1"));
     entities.add(new MockEntityWithType("table", "table2"));
     entities.add(new MockEntityWithType("table", "table3"));
@@ -406,7 +417,7 @@ class SearchRepositoryTest {
     realSearchRepository.updateEntitiesBulk(entities);
 
     // Capture the arguments
-    ArgumentCaptor<List<EntityInterface>> entitiesCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<List<EntityInterface<?>>> entitiesCaptor = ArgumentCaptor.forClass(List.class);
     ArgumentCaptor<Map<String, Object>> contextCaptor = ArgumentCaptor.forClass(Map.class);
 
     // Verify write was called only once
@@ -615,6 +626,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkQueuesRetryWhenBulkWriteOutcomeIsUnknown() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesBulk(any());
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
@@ -626,7 +638,7 @@ class SearchRepositoryTest {
     doThrow(bulkFailure).when(mockBulkSink).write(any(), any());
     doNothing().when(mockBulkSink).close();
 
-    List<EntityInterface> entities = List.of(new MockEntityWithType("table", "table1"));
+    List<EntityInterface<?>> entities = List.of(new MockEntityWithType("table", "table1"));
 
     try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
       realSearchRepository.updateEntitiesBulk(entities);
@@ -644,8 +656,65 @@ class SearchRepositoryTest {
   }
 
   @Test
+  void testUpdateEntitiesBulkQueuesRetryWhenFieldsLoadedOnWriteFail() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    when(realSearchRepository.searchIndexFactory.getFieldsLoadedOnWriteFor(Entity.METRIC))
+        .thenReturn(Set.of("childrenCount"));
+    BulkSink mockBulkSink = mock(BulkSink.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesBulk(any());
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenReturn(mockBulkSink);
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    IllegalStateException loadFailure = new IllegalStateException("count query failed");
+    List<EntityInterface<?>> entities = List.of(new MockEntityWithType(Entity.METRIC, "m1"));
+
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      entityStatic.when(() -> Entity.isSearchIndexable(any())).thenReturn(true);
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenThrow(loadFailure);
+
+      realSearchRepository.updateEntitiesBulk(entities);
+
+      verify(mockBulkSink, never()).write(any(), any());
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entities.getFirst(), "updateEntitiesBulk", loadFailure));
+    }
+  }
+
+  @Test
+  void testCreateEntitiesIndexQueuesRetryWhenFieldsLoadedOnWriteFail() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
+    when(realSearchRepository.searchIndexFactory.getFieldsLoadedOnWriteFor(Entity.METRIC))
+        .thenReturn(Set.of("childrenCount"));
+    doCallRealMethod().when(realSearchRepository).createEntitiesIndex(any());
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    IllegalStateException loadFailure = new IllegalStateException("count query failed");
+    List<EntityInterface<?>> entities = List.of(new MockEntityWithType(Entity.METRIC, "m1"));
+
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenThrow(loadFailure);
+
+      realSearchRepository.createEntitiesIndex(entities);
+
+      verify(elasticSearchClient, never()).createEntities(any(), any());
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entities.getFirst(), "createEntitiesIndex", loadFailure));
+    }
+  }
+
+  @Test
   void testUpdateEntitiesBulkFallsBackBeforeAnyBulkWriteIsAttempted() {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
         .thenThrow(new IllegalStateException("sink creation failed"));
@@ -653,7 +722,7 @@ class SearchRepositoryTest {
     when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
     doNothing().when(realSearchRepository).updateEntityIndex(any());
 
-    EntityInterface entity = new MockEntityWithType("table", "table1");
+    EntityInterface<?> entity = new MockEntityWithType("table", "table1");
     realSearchRepository.updateEntitiesIndex(List.of(entity));
 
     verify(realSearchRepository).updateEntityIndex(entity);
@@ -662,6 +731,7 @@ class SearchRepositoryTest {
   @Test
   void testRelationshipUpdateRetainsRevisionInPreWriteFallback() {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any(), any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
         .thenThrow(new IllegalStateException("sink creation failed"));
@@ -669,7 +739,7 @@ class SearchRepositoryTest {
     when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
     doNothing().when(realSearchRepository).updateEntityIndex(any(), anyLong());
 
-    EntityInterface entity = new MockEntityWithType(Entity.TEST_CASE, "testCase1");
+    EntityInterface<?> entity = new MockEntityWithType(Entity.TEST_CASE, "testCase1");
     realSearchRepository.updateEntitiesIndex(List.of(entity), Map.of(entity.getId(), 17L));
 
     verify(realSearchRepository).updateEntityIndex(entity, 17L);
@@ -679,6 +749,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkDoesNotReplayWritesThatCompleteDuringClose() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
@@ -688,7 +759,7 @@ class SearchRepositoryTest {
     when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(false);
     when(mockBulkSink.getActiveBulkRequestCount()).thenReturn(0);
 
-    EntityInterface entity = new MockEntityWithType("table", "table1");
+    EntityInterface<?> entity = new MockEntityWithType("table", "table1");
     realSearchRepository.updateEntitiesIndex(List.of(entity));
 
     verify(mockBulkSink).close();
@@ -698,6 +769,7 @@ class SearchRepositoryTest {
   @Test
   void testUpdateEntitiesBulkDoesNotReplayPartiallyFailedBulk() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
+    realSearchRepository.searchIndexFactory = mock(SearchIndexFactory.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
     when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
@@ -707,15 +779,37 @@ class SearchRepositoryTest {
     when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(true);
     when(mockBulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(1));
 
-    EntityInterface entity = new MockEntityWithType("table", "table1");
+    EntityInterface<?> entity = new MockEntityWithType("table", "table1");
     realSearchRepository.updateEntitiesIndex(List.of(entity));
 
     verify(mockBulkSink).close();
     verify(realSearchRepository, never()).updateEntityIndex(any());
   }
 
+  @Test
+  void customPropertyCleanupAddsIndexesOutsideTheGlobalAlias() {
+    Map<String, IndexMapping> indexes = new HashMap<>();
+    indexes.put("table", mapping("table_search_index", List.of("all", "dataAsset")));
+    indexes.put("user", mapping("user_search_index", List.of()));
+    indexes.put("team", mapping("team_search_index", null));
+    indexes.put("pipelineStatus", mapping("pipeline_status_index", List.of()));
+
+    List<String> selected =
+        SearchRepository.indexesOutsideGlobalAlias(indexes, type -> !type.equals("pipelineStatus"))
+            .stream()
+            .map(IndexMapping::getIndexName)
+            .sorted()
+            .toList();
+
+    assertEquals(List.of("team_search_index", "user_search_index"), selected);
+  }
+
+  private static IndexMapping mapping(String indexName, List<String> parentAliases) {
+    return IndexMapping.builder().indexName(indexName).parentAliases(parentAliases).build();
+  }
+
   /** Mock entity that allows setting a specific entity type for testing */
-  static class MockEntityWithType implements EntityInterface {
+  static class MockEntityWithType implements EntityInterface<EntityStatus> {
     private final UUID id = UUID.randomUUID();
     private final String entityType;
     private final String name;
@@ -834,7 +928,7 @@ class SearchRepositoryTest {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       return (T) this;
     }
   }

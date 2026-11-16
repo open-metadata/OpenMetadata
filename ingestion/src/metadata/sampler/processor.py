@@ -168,6 +168,12 @@ class SamplerProcessor(Processor):
                 )
             )
         except Exception as exc:
+            if self.sampler_class.is_skippable_sampling_error(exc):
+                self.status.warning(
+                    entity_fqn,
+                    f"Skipping sample collection for [{entity_fqn}]: {exc}",
+                )
+                return Either(left=None, right=None)
             return Either(
                 left=StackTraceError(
                     name=entity_fqn,

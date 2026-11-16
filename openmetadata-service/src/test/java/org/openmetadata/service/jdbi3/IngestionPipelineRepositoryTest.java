@@ -9,12 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +42,9 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.BadRequestException;
@@ -63,6 +69,23 @@ class IngestionPipelineRepositoryTest {
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
+  }
+
+  @Test
+  void deleteUndeployedPipelineDoesNotRequireRunner() {
+    // Direct hard delete of an undeployed pipeline: the runner call is
+    // ATTEMPTED (a failed first-deploy can still have left files on the
+    // runner) but a resulting IngestionRunnerUnavailableException is
+    // swallowed rather than thrown — the pipeline may be metadata-only and
+    // never have touched Airflow, so requiring a live runner just to
+    // hard-delete it would leave it stuck. Returns false because no cleanup
+    // was actually "skipped" from a completed deploy — the caller's intent
+    // was metadata-only.
+    IngestionPipeline pipeline = createBasicPipeline().withDeployed(false);
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertFalse(cleanupRepository.deleteDeployedPipeline(pipeline, false));
   }
 
   @Test
@@ -171,6 +194,181 @@ class IngestionPipelineRepositoryTest {
         mock(IngestionPipelineRepository.class, Mockito.CALLS_REAL_METHODS);
     cleanupRepository.setPipelineServiceClient(pipelineServiceClient);
     return cleanupRepository;
+  }
+
+  private static final String DEPLOYED_PIPELINE_FQN = "warehouse.Warehouse Metadata";
+
+  /** A pipeline of another service, named so Airflow would send it to the deployed one's DAG. */
+  private static IngestionPipeline namesakeOfTheDeployedPipeline() {
+    return pipelineWithConfig(new HashMap<>(Map.of("type", "TestSuite")))
+        .withId(UUID.randomUUID())
+        .withName("warehouse_metadata")
+        .withFullyQualifiedName("shop.public.scratch.testSuite.warehouse_metadata");
+  }
+
+  private static PipelineServiceClientInterface runnerAddressingPipelinesByName(boolean byName) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    when(pipelineServiceClient.addressesPipelinesByName()).thenReturn(byName);
+    return pipelineServiceClient;
+  }
+
+  private IngestionPipelineRepository repositoryWithDeployedPipeline(
+      PipelineServiceClientInterface pipelineServiceClient) {
+    IngestionPipelineRepository namesakeRepository = repositoryWithClient(pipelineServiceClient);
+    EntityReference deployed =
+        new EntityReference()
+            .withName("Warehouse Metadata")
+            .withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(List.of(deployed))
+        .when(namesakeRepository)
+        .listOtherDeployedPipelines(any(IngestionPipeline.class));
+    return namesakeRepository;
+  }
+
+  @Test
+  void deployOfANamesakeOfADeployedPipelineNeverReachesTheRunner() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                namesakeRepository.deployIngestionPipeline(
+                    namesakeOfTheDeployedPipeline(), mock(ServiceEntityInterface.class)));
+
+    assertTrue(exception.getMessage().contains("'" + DEPLOYED_PIPELINE_FQN + "'"));
+    verify(airflow, never()).deployPipeline(any(), any());
+  }
+
+  @Test
+  void runOfANamesakeOfADeployedPipelineNeverReachesTheRunner() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            namesakeRepository.runIngestionPipeline(
+                null,
+                namesakeOfTheDeployedPipeline(),
+                mock(ServiceEntityInterface.class),
+                RunOptions.NONE));
+
+    verify(airflow, never()).runPipelineWithOptions(any(), any(), any());
+  }
+
+  @Test
+  void hardDeleteOfANamesakeLeavesTheDeployedPipelineOnTheRunner() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+
+    boolean wasRunnerCleanupSkipped =
+        namesakeRepository.deleteDeployedPipeline(namesakeOfTheDeployedPipeline(), false);
+
+    assertFalse(wasRunnerCleanupSkipped);
+    verify(airflow, never()).deletePipeline(any());
+  }
+
+  @Test
+  void hardDeleteOfADeployedNamesakeRedeploysTheSurvivorOverTheSharedDag() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline survivor =
+        namesakeOfTheDeployedPipeline().withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(survivor)
+        .when(namesakeRepository)
+        .findByNameOrNull(DEPLOYED_PIPELINE_FQN, Include.NON_DELETED);
+    doNothing().when(namesakeRepository).deployPipelineBeforeUpdate(survivor);
+
+    namesakeRepository.deleteDeployedPipeline(
+        namesakeOfTheDeployedPipeline().withDeployed(true), false);
+
+    verify(namesakeRepository).deployPipelineBeforeUpdate(survivor);
+    verify(airflow, never()).deletePipeline(any());
+  }
+
+  @Test
+  void hardDeleteOfADeployedNamesakeSurvivesAFailedRedeploy() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline survivor =
+        namesakeOfTheDeployedPipeline().withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(survivor)
+        .when(namesakeRepository)
+        .findByNameOrNull(DEPLOYED_PIPELINE_FQN, Include.NON_DELETED);
+    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
+        .when(namesakeRepository)
+        .deployPipelineBeforeUpdate(survivor);
+
+    assertDoesNotThrow(
+        () ->
+            namesakeRepository.deleteDeployedPipeline(
+                namesakeOfTheDeployedPipeline().withDeployed(true), false));
+  }
+
+  @Test
+  void deployOfANamesakeReachesARunnerThatTellsPipelinesApart() {
+    PipelineServiceClientInterface argo = runnerAddressingPipelinesByName(false);
+    when(argo.deployPipeline(any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(argo);
+
+    PipelineServiceClientResponse response =
+        namesakeRepository.deployIngestionPipeline(
+            namesakeOfTheDeployedPipeline(), mock(ServiceEntityInterface.class));
+
+    assertEquals(200, response.getCode());
+  }
+
+  @Test
+  void deployOfAnotherNameReachesARunnerThatAddressesPipelinesByName() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    when(airflow.deployPipeline(any(IngestionPipeline.class), any(ServiceEntityInterface.class)))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline otherName = namesakeOfTheDeployedPipeline().withName("warehouse_metadata2");
+
+    PipelineServiceClientResponse response =
+        namesakeRepository.deployIngestionPipeline(otherName, mock(ServiceEntityInterface.class));
+
+    assertEquals(200, response.getCode());
+  }
+
+  @ParameterizedTest(name = "{0} / {1}")
+  @MethodSource("namesARunnerCouldConfuse")
+  void runnerNamesMatchWhenARunnerCouldConfuseTheNames(String name, String namesake) {
+    assertFalse(
+        Collections.disjoint(
+            IngestionPipelineRepository.runnerNames(name),
+            IngestionPipelineRepository.runnerNames(namesake)));
+  }
+
+  private static Stream<Arguments> namesARunnerCouldConfuse() {
+    return Stream.of(
+        Arguments.of("warehouse_metadata", "Warehouse Metadata"),
+        Arguments.of("metadata-ingestion", "metadata_ingestion"),
+        Arguments.of("Metadata.Ingestion", "metadata ingestion"),
+        Arguments.of("_metadata_", "metadata"),
+        Arguments.of("\u0130x", "i-x"),
+        Arguments.of("\u212Aafka", "kafka"));
+  }
+
+  @ParameterizedTest(name = "{0} / {1}")
+  @MethodSource("namesNoRunnerConfuses")
+  void runnerNamesDifferWhenNoRunnerCouldConfuseTheNames(String name, String other) {
+    assertTrue(
+        Collections.disjoint(
+            IngestionPipelineRepository.runnerNames(name),
+            IngestionPipelineRepository.runnerNames(other)));
+  }
+
+  private static Stream<Arguments> namesNoRunnerConfuses() {
+    return Stream.of(
+        Arguments.of("metadata", "metadata2"),
+        Arguments.of("ab", "a_b"),
+        Arguments.of("snowflake_metadata_Ab12", "snowflake_metadata_Cd34"));
   }
 
   @Test
@@ -614,6 +812,7 @@ class IngestionPipelineRepositoryTest {
   private static IngestionPipeline createBasicPipeline() {
     IngestionPipeline pipeline = new IngestionPipeline();
     pipeline.setName("test-pipeline");
+    pipeline.setDeployed(true);
     pipeline.setFullyQualifiedName("test-service.test-pipeline");
 
     EntityReference serviceRef = new EntityReference();

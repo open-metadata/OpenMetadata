@@ -192,7 +192,7 @@ class CommunityComputationTest {
     @DisplayName("Empty graph: returns 0 communities, no SPARQL UPDATE")
     void emptyGraph() {
       RdfRepository repo = mock(RdfRepository.class);
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenReturn("{\"results\":{\"bindings\":[]}}");
       CommunityComputation comp = new CommunityComputation(repo);
       CommunityComputation.Result r = comp.computeAndPersist("table", "lineage");
@@ -221,7 +221,7 @@ class CommunityComputationTest {
               + ","
               + edge("urn:c", "urn:x")
               + "]}}";
-      when(repo.executeSparqlQuery(anyString(), anyString())).thenReturn(body);
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn(body);
 
       CommunityComputation.Result r =
           new CommunityComputation(repo).computeAndPersist("table", "lineage");
@@ -250,7 +250,7 @@ class CommunityComputationTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> new CommunityComputation(repo).computeAndPersist("foo OR 1=1", "lineage"));
-      verify(repo, never()).executeSparqlQuery(anyString(), anyString());
+      verify(repo, never()).executeAssertedSparqlQuery(anyString(), anyString());
     }
 
     @Test
@@ -260,14 +260,14 @@ class CommunityComputationTest {
       assertThrows(
           IllegalArgumentException.class,
           () -> new CommunityComputation(repo).computeAndPersist("table", "weather"));
-      verify(repo, never()).executeSparqlQuery(anyString(), anyString());
+      verify(repo, never()).executeAssertedSparqlQuery(anyString(), anyString());
     }
 
     @Test
     @DisplayName("SPARQL exception during extraction → empty result, no update")
     void sparqlError() {
       RdfRepository repo = mock(RdfRepository.class);
-      when(repo.executeSparqlQuery(anyString(), anyString()))
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString()))
           .thenThrow(new RuntimeException("Fuseki down"));
       CommunityComputation.Result r =
           new CommunityComputation(repo).computeAndPersist("table", "lineage");
@@ -280,7 +280,7 @@ class CommunityComputationTest {
     void tagsTargetsTagGraph() {
       RdfRepository repo = mock(RdfRepository.class);
       String body = "{\"results\":{\"bindings\":[" + edgeWithWeight("urn:a", "urn:b", 3.0) + "]}}";
-      when(repo.executeSparqlQuery(anyString(), anyString())).thenReturn(body);
+      when(repo.executeAssertedSparqlQuery(anyString(), anyString())).thenReturn(body);
 
       new CommunityComputation(repo).computeAndPersist("table", "tagCoOccurrence");
       verify(repo)

@@ -12,6 +12,7 @@
  */
 
 import { Extensions } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import blockEditorExtensionsClassBase, {
   BlockEditorExtensionsClassBase,
@@ -38,7 +39,7 @@ jest.mock('@tiptap/extension-placeholder', () => ({
 
 jest.mock('@tiptap/extension-table', () => ({
   __esModule: true,
-  default: {
+  Table: {
     configure: jest.fn(() => ({ name: 'Table' })),
   },
 }));
@@ -108,7 +109,7 @@ jest.mock('../components/BlockEditor/Extensions/focus', () => ({
   },
 }));
 
-jest.mock('../components/BlockEditor/Extensions/hashtag', () => ({
+jest.mock('../components/BlockEditor/Extensions/hashtag/Hashtag', () => ({
   Hashtag: {
     configure: jest.fn(() => ({ name: 'Hashtag' })),
   },
@@ -129,19 +130,22 @@ jest.mock(
   })
 );
 
-jest.mock('../components/BlockEditor/Extensions/mention', () => ({
+jest.mock('../components/BlockEditor/Extensions/mention/Mention', () => ({
   Mention: {
     configure: jest.fn(() => ({ name: 'Mention' })),
   },
   mentionSuggestion: jest.fn(() => ({ name: 'mentionSuggestion' })),
 }));
 
-jest.mock('../components/BlockEditor/Extensions/slash-command', () => ({
-  __esModule: true,
-  default: {
-    configure: jest.fn(() => ({ name: 'slashCommand' })),
-  },
-}));
+jest.mock(
+  '../components/BlockEditor/Extensions/slash-command/slashCommand',
+  () => ({
+    __esModule: true,
+    default: {
+      configure: jest.fn(() => ({ name: 'slashCommand' })),
+    },
+  })
+);
 
 jest.mock('../components/BlockEditor/Extensions/slash-command/items', () => ({
   getSuggestionItems: jest.fn(),
@@ -199,6 +203,23 @@ describe('BlockEditorExtensionsClassBase', () => {
       expect(starterKit).toBeDefined();
     });
 
+    it('should turn off the StarterKit extensions it registers or keeps off itself', () => {
+      (
+        extensionsClass as unknown as {
+          getCoreExtensions: () => Extensions;
+        }
+      ).getCoreExtensions();
+
+      expect(StarterKit.configure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          link: false,
+          trailingNode: false,
+          underline: false,
+          listKeymap: false,
+        })
+      );
+    });
+
     it('should include Placeholder extension', () => {
       const coreExtensions = (
         extensionsClass as unknown as {
@@ -225,7 +246,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       expect(link).toBeDefined();
     });
 
-    it('should configure links to open on click only in read-only previews', () => {
+    it('should not open links on click while editing', () => {
       (
         extensionsClass as unknown as {
           getCoreExtensions: () => Extensions;
@@ -233,7 +254,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       ).getCoreExtensions();
 
       expect(LinkExtension.configure).toHaveBeenCalledWith(
-        expect.objectContaining({ openOnClick: 'whenNotEditable' })
+        expect.objectContaining({ openOnClick: false })
       );
     });
 

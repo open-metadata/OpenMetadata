@@ -20,13 +20,11 @@ if [[ "${BUILD:-true}" == true ]]; then
 fi
 
 rdf_scale_classpath="openmetadata-integration-tests/target/test-classes:$(cat "$rdf_scale_classpath_file")"
-rdf_scale_image="${RDF_SCALE_FUSEKI_IMAGE:-rdf-catalog-scale:fuseki}"
+# Empty uses the published image pinned in FusekiTestImage.
+rdf_scale_image="${RDF_SCALE_FUSEKI_IMAGE:-}"
 rdf_scale_java="${JAVA_BIN:-java}"
 if [[ -z "${JAVA_BIN:-}" && -n "${JAVA_HOME:-}" ]]; then
   rdf_scale_java="$JAVA_HOME/bin/java"
-fi
-if [[ "${BUILD_IMAGE:-true}" == true ]]; then
-  docker build -t "$rdf_scale_image" docker/rdf-store
 fi
 
 "$rdf_scale_java" -Xms1g "-Xmx${RDF_SCALE_APP_HEAP:-8g}" \
@@ -42,8 +40,7 @@ fi
   "-DrdfLineageEdgeBatchSize=${RDF_SCALE_LINEAGE_EDGE_BATCH_SIZE:-1000}" \
   "-DrdfAppendPayloadBytes=${RDF_SCALE_APPEND_PAYLOAD_BYTES:-16777216}" \
   "-DrdfAppendEntityBatchSize=${RDF_SCALE_APPEND_ENTITY_BATCH_SIZE:-1000}" \
-  "-DrdfScalePartitionSize=${RDF_SCALE_PARTITION_SIZE:-10000}" \
-  "-DrdfScaleProducerThreads=${RDF_SCALE_PRODUCER_THREADS:-2}" \
+  "-DrdfScaleProducerThreads=${RDF_SCALE_PRODUCER_THREADS:-4}" \
   "-DrdfScaleOutput=$rdf_scale_output" \
   "-DrdfScaleCommit=$(git rev-parse HEAD)" \
   "-DrdfContainerImage=$rdf_scale_image" -DrdfContainerTmpfs=false -DrdfContainerStablePort=true \

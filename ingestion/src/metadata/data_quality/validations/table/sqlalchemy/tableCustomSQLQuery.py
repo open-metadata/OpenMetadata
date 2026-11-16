@@ -14,6 +14,7 @@ Validator for table custom SQL Query test case
 """
 
 import traceback
+from decimal import Decimal
 from typing import Any, cast
 
 import sqlparse
@@ -39,6 +40,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
+from metadata.data_quality.validations.thresholds import ThresholdUnit
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.profiler.metrics.registry import Metrics
@@ -286,6 +288,9 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             )
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
+                # Some dialects (e.g. Snowflake) return COUNT(*) as a whole-number Decimal
+                if isinstance(result, Decimal) and result.is_finite() and result == result.to_integral_value():
+                    result = int(result)
                 if not isinstance(result, int):
                     raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
@@ -307,6 +312,20 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+        if self.get_threshold_unit() is ThresholdUnit.PERCENTAGE:
+            # The verdict divides by the table count, so it cannot come from the catalog or from
+            # rewriting the test query: estimates may be stale, while COUNT queries and joins do
+            # not preserve the table's cardinality.
+            stmt = select(func.count()).select_from(self.runner.table)
+            if partition_expression:
+                stmt = stmt.filter(text(partition_expression))
+            try:
+                return self.runner.session.execute(stmt).scalar()
+            except Exception:
+                self.runner.session.rollback()
+                raise
+
         if partition_expression:
             custom_sql = self.get_test_case_param_value(
                 self.test_case.parameterValues,  # type: ignore
@@ -334,7 +353,6 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
                 stmt = select(func.count()).select_from(self.runner.table).filter(text(partition_expression))
                 return self.runner.session.execute(stmt).scalar()
 
-        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(
             dialect,
@@ -347,13 +365,6 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
         if row:
             return row._asdict().get(Metrics.rowCount.name)
         return None
-
-    def _get_strategy(self):
-        return self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "strategy",
-            Strategy,
-        )
 
     def fetch_failed_rows_sample(self):
         cols, rows = self._get_custom_sql_failed_rows()

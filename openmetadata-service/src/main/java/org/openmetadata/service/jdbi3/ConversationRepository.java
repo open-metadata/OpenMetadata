@@ -18,9 +18,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
-import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -31,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -72,6 +71,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 
 /** Repository for bounded conversation roots and normalized replies. */
@@ -109,6 +109,7 @@ public class ConversationRepository {
       SecurityContext securityContext,
       Authorizer authorizer,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -118,12 +119,13 @@ public class ConversationRepository {
       String after,
       int requestedLimit) {
     validateTimeRange(startTs, endTs);
-    authorizeList(securityContext, authorizer);
+    authorizeList(securityContext, authorizer, entityLink);
     int limit = Math.min(requestedLimit, MAX_ROOT_PAGE_SIZE);
     ConversationFilter filter =
         buildFilter(
             securityContext,
             entityLink,
+            includeFields,
             userId,
             filterType,
             resolved,
@@ -441,26 +443,26 @@ public class ConversationRepository {
     Conversation container = activityContainer(context.event(), context.target());
     authorizeConversationCreate(securityContext, authorizer, container);
     ConversationReply reply = newReply(securityContext, activityId, request.getMessage());
+    ensureActivityContainer(container);
+    persistReply(container, reply);
+    return reply;
+  }
+
+  /**
+   * Commits the activity's container on its own, before the reply locks it. On MySQL, {@code INSERT
+   * IGNORE} of an existing row takes a shared lock on it; taking the reply's exclusive lock in the
+   * same transaction would be an upgrade, and two concurrent replies upgrading the same row
+   * deadlock.
+   */
+  private void ensureActivityContainer(Conversation container) {
     inWriteTransaction(
         handle -> {
           CollectionDAO.ConversationDAO dao = handle.attach(CollectionDAO.ConversationDAO.class);
-          int inserted = insertRoot(dao, container, true);
-          if (inserted > 0) {
+          if (insertRoot(dao, container, true) > 0) {
             storeDomains(dao, container);
           }
-          findRootForUpdate(dao, activityId);
-          insertReply(dao, reply);
-          replaceMentions(
-              dao,
-              activityId,
-              REPLY_TARGET,
-              reply.getId(),
-              reply.getMessage(),
-              reply.getCreatedAt());
-          dao.updateReplyCount(activityId.toString(), 1, reply.getCreatedAt());
           return null;
         });
-    return reply;
   }
 
   public int deleteByEntity(String entityType, List<UUID> entityIds) {
@@ -567,6 +569,7 @@ public class ConversationRepository {
   private ConversationFilter buildFilter(
       SecurityContext securityContext,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -585,6 +588,7 @@ public class ConversationRepository {
                 .toList();
     return ConversationFilter.builder()
         .entityLink(entityLink)
+        .includeFields(includeFields)
         .userId(userId)
         .filterType(filterType)
         .resolved(resolved)
@@ -1088,19 +1092,26 @@ public class ConversationRepository {
   private Target resolveTarget(String about, Include include) {
     MessageParser.EntityLink link = MessageParser.EntityLink.parse(about);
     EntityReference reference = EntityUtil.validateEntityLink(link);
-    EntityInterface entity =
-        Entity.getEntity(
-            reference.getType(), reference.getId(), Entity.FIELD_DOMAINS, include, false);
+    EntityInterface<?> entity = getWithDomains(reference.getType(), reference.getId(), include);
     return new Target(entity.getEntityReference(), emptyIfNull(entity.getDomains()));
+  }
+
+  /**
+   * Domain is the one entity type with no {@code domains} field of its own, so asking for it by
+   * name would 400 on every conversation scoped to a domain. Drop the field where it is unsupported
+   * instead.
+   */
+  private EntityInterface<?> getWithDomains(String entityType, UUID id, Include include) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    return repository.get(
+        null, id, repository.getOnlySupportedFields(Entity.FIELD_DOMAINS), include, false);
   }
 
   private ActivityContext resolveActivityContext(UUID activityId) {
     ActivityEvent event = activityStreamRepository.getById(activityId);
     EntityReference eventTarget = event.getEntity();
     try {
-      EntityInterface target =
-          Entity.getEntity(
-              eventTarget.getType(), eventTarget.getId(), Entity.FIELD_DOMAINS, ALL, false);
+      EntityInterface<?> target = getWithDomains(eventTarget.getType(), eventTarget.getId(), ALL);
       return new ActivityContext(
           event, new Target(target.getEntityReference(), emptyIfNull(target.getDomains())), true);
     } catch (EntityNotFoundException exception) {
@@ -1141,11 +1152,36 @@ public class ConversationRepository {
         AuthorizationLogic.ALL);
   }
 
-  private void authorizeList(SecurityContext securityContext, Authorizer authorizer) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(Entity.CONVERSATION, MetadataOperation.VIEW_BASIC),
-        new ConversationResourceContext(null));
+  /**
+   * When the caller scopes the listing to one entity the target is known exactly, so the same
+   * ViewBasic that {@link #authorizeRootCreate} already demands on write is demanded on read —
+   * otherwise conversations about an entity stay readable after a policy denies access to it
+   * (issue #18158). Unscoped listings keep the resource-level check every entity listing uses.
+   *
+   * <p>A link that resolves to no entity has no permissions to honour and no conversations to
+   * hide, so the check is skipped rather than turning a previously empty page into a 404.
+   */
+  private void authorizeList(
+      SecurityContext securityContext, Authorizer authorizer, String entityLink) {
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(
+        request(
+            Entity.CONVERSATION,
+            MetadataOperation.VIEW_BASIC,
+            new ConversationResourceContext(null)));
+    scopedTarget(entityLink).ifPresent(target -> requests.add(targetViewRequest(target)));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ALL);
+  }
+
+  private Optional<EntityReference> scopedTarget(String entityLink) {
+    if (nullOrEmpty(entityLink)) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(resolveTarget(entityLink, ALL).reference());
+    } catch (EntityNotFoundException exception) {
+      return Optional.empty();
+    }
   }
 
   private void authorizeHiddenRead(
@@ -1156,13 +1192,33 @@ public class ConversationRepository {
         && !subject.hasDomains(conversation.getDomains())) {
       throw conversationNotFound(conversation.getId());
     }
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(
+        request(
+            Entity.CONVERSATION,
+            MetadataOperation.VIEW_BASIC,
+            new ConversationResourceContext(conversation)));
+    // A conversation discloses what it is about, so reading it by id needs what reading that
+    // entity needs, as the scoped listing does
+    // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+    liveTarget(conversation).ifPresent(target -> requests.add(targetViewRequest(target)));
     try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.CONVERSATION, MetadataOperation.VIEW_BASIC),
-          new ConversationResourceContext(conversation));
+      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ALL);
     } catch (AuthorizationException exception) {
       throw conversationNotFound(conversation.getId());
+    }
+  }
+
+  /** The entity a conversation is about, while it exists; a deleted one has nothing to honour. */
+  private static Optional<EntityReference> liveTarget(Conversation conversation) {
+    EntityReference target = conversation.getEntityRef();
+    if (target == null || target.getType() == null || target.getId() == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Entity.getEntityReferenceById(target.getType(), target.getId(), ALL));
+    } catch (EntityNotFoundException exception) {
+      return Optional.empty();
     }
   }
 
@@ -1267,11 +1323,10 @@ public class ConversationRepository {
     if (patch == null || patch.toJsonArray().isEmpty()) {
       throw BadRequestException.of("Patch must contain at least one operation");
     }
-    for (JsonValue value : patch.toJsonArray()) {
-      JsonObject operation = value.asJsonObject();
-      String path = operation.getString("path", "");
-      if (!allowedPaths.contains(path)) {
-        throw BadRequestException.of("Patch path is not allowed: " + path);
+    // A move or copy reads its "from" location too, so that has to be allowed as well.
+    for (String location : JsonPatchUtils.touchedLocations(patch)) {
+      if (!allowedPaths.contains(location)) {
+        throw BadRequestException.of("Patch path is not allowed: " + location);
       }
     }
   }

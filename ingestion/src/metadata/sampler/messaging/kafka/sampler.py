@@ -151,7 +151,10 @@ class KafkaSampler(MessagingSampler):
             client = self.get_client()
             schema_registry_client = getattr(client, "schema_registry_client", None) if client else None
             if AvroDeserializer and schema_registry_client:
-                self._avro_deserializer = AvroDeserializer(schema_registry_client)
+                # See common_broker_source: upstream's stacked `import *` in
+                # confluent_kafka.schema_registry.avro hides the real signature from the
+                # type checker; _sync wins at runtime and takes this argument.
+                self._avro_deserializer = AvroDeserializer(schema_registry_client)  # pyright: ignore[reportCallIssue]
         except Exception as exc:
             logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")
         return getattr(self, "_avro_deserializer", None)
@@ -176,14 +179,16 @@ class KafkaSampler(MessagingSampler):
                 elapsed = time.time() - start_time
                 if msg is None:
                     continue
-                if msg.error():
-                    if msg.error().retriable():
-                        logger.debug("Transient Kafka consumer error, retrying: %s", msg.error())
+                error = msg.error()
+                if error is not None:
+                    if error.retriable():
+                        logger.debug("Transient Kafka consumer error, retrying: %s", error)
                         continue
-                    logger.warning("Kafka consumer error: %s", msg.error())
+                    logger.warning("Kafka consumer error: %s", error)
                     break
-                if msg.value():
-                    messages.append(self._try_parse_message(msg.value()))
+                value = msg.value()
+                if value:
+                    messages.append(self._try_parse_message(value))
             if len(messages) < count and elapsed >= FETCH_TIMEOUT_SECONDS:
                 logger.warning(
                     "Kafka message fetch timeout after %s seconds; collected %s of %s messages",

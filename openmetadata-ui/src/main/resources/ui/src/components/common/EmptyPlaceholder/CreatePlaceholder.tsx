@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { CreatePlaceholderProps } from './EmptyPlaceholder.interface';
@@ -33,6 +33,7 @@ const CreatePlaceholder = ({
   title,
   description,
   actions,
+  footer,
   permission,
   heading,
   doc,
@@ -46,11 +47,13 @@ const CreatePlaceholder = ({
   if (permission === false) {
     return (
       <PermissionPlaceholder
-        description={description}
-        icon={icon}
         permissionValue={permissionValue}
-        title={title}
         {...props}
+        // The denied state shows only the no-access message: the caller's create icon, title,
+        // description, `actions` and `footer` describe the create state and never reach it. It
+        // keeps the permission test id whatever the caller passed, so "no access" stays
+        // distinguishable from "nothing here yet".
+        data-testid="permission-error-placeholder"
       />
     );
   }
@@ -62,7 +65,8 @@ const CreatePlaceholder = ({
         onCreate,
         'add',
         t('label.add'),
-        buttonId
+        buttonId,
+        buttonId ?? 'add-placeholder-button'
       )}
       description={
         description ?? (
@@ -90,7 +94,8 @@ const CreatePlaceholder = ({
           </>
         )
       }
-      icon={icon ?? <Plus className="tw:text-secondary" />}
+      footer={footer}
+      icon={icon ?? <Plus />}
       title={title}
       variant="blank"
       {...props}

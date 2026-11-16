@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 
 import { isEmpty } from 'lodash';
@@ -37,7 +38,6 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -54,13 +54,14 @@ import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsU
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -112,11 +113,7 @@ export const DatabaseSchemaTable = ({
   }, [permissions, isVersionPage]);
 
   const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        permissions.databaseSchema,
-        Operation.ViewUsage
-      ),
+    () => getDerivedPermissionFlags(permissions.databaseSchema).canViewUsage,
     [permissions.databaseSchema]
   );
 
@@ -270,7 +267,7 @@ export const DatabaseSchemaTable = ({
         sorter: getColumnSorter<DatabaseSchema, 'name'>('name'),
         render: (_, record: DatabaseSchema) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             hasEditPermission={allowEditDisplayNamePermission}
@@ -284,7 +281,9 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),
@@ -385,15 +384,14 @@ export const DatabaseSchemaTable = ({
       defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
       extraTableFilters={
         <>
-          <span>
-            <Switch
-              checked={showDeletedSchemas}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleShowDeletedSchemas}
+              isSelected={showDeletedSchemas}
+              size="sm"
+              onChange={handleShowDeletedSchemas}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
           {getBulkEditButton(
             getDerivedPermissionFlags(
@@ -409,19 +407,17 @@ export const DatabaseSchemaTable = ({
         emptyText: (
           <div className="tw:relative tw:min-h-70">
             {searchValue ? (
-              <EmptyPlaceholder
+              <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.schema-plural'),
                 })}
-                variant="blank"
               />
             )}
           </div>

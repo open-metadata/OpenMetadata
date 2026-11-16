@@ -59,6 +59,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+      .EmptyPlaceholder,
     Box: ({ children, direction, className }: any) => (
       <div className={className} data-direction={direction} data-testid="box">
         {children}
@@ -85,19 +87,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ChevronDown: () => <span data-testid="chevron-down" />,
   Plus: () => <span data-testid="plus-icon" />,
-  SearchLg: () => <span data-testid="search-icon" />,
-}));
-
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type}>
-      error-placeholder
-    </div>
-  ),
+  Search: () => <span data-testid="search-icon" />,
 }));
 
 jest.mock(
@@ -238,10 +232,9 @@ describe('TestSuites', () => {
 
     render(<TestSuites />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('test-suites-table')).not.toBeInTheDocument();
   });
 

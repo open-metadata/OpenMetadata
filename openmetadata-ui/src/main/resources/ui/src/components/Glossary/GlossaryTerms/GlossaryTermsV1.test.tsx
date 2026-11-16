@@ -20,12 +20,36 @@ import {
   MOCK_ASSETS_DATA,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import * as FeedUtils from '../../../utils/FeedUtilsPure';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+} from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
 const mockPush = jest.fn();
+
+jest.mock('../../../utils/FeedUtilsPure', () => {
+  const actual = jest.requireActual('../../../utils/FeedUtilsPure');
+
+  return {
+    ...actual,
+    fetchEntityTaskCountsInto: jest.fn(actual.fetchEntityTaskCountsInto),
+    fetchEntityActivityCountInto: jest.fn(actual.fetchEntityActivityCountInto),
+  };
+});
+
+const restoreFeedCountFetchers = () => {
+  const actual = jest.requireActual('../../../utils/FeedUtilsPure');
+  (fetchEntityTaskCountsInto as jest.Mock).mockImplementation(
+    actual.fetchEntityTaskCountsInto
+  );
+  (fetchEntityActivityCountInto as jest.Mock).mockImplementation(
+    actual.fetchEntityActivityCountInto
+  );
+};
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -134,6 +158,9 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
   getDetailsTabWithNewLabel: jest.fn().mockImplementation((items) => items),
+  getRenderedActiveTab: jest.requireActual(
+    '../../../utils/CustomizePage/CustomizePageEntityTabUtils'
+  ).getRenderedActiveTab,
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
 }));
 
@@ -219,12 +246,12 @@ describe('Test Glossary-term component', () => {
   });
 
   it('should fetch feed counts on mount when not in version view', async () => {
-    const fetchTaskCountsSpy = jest
-      .spyOn(FeedUtils, 'fetchEntityTaskCountsInto')
-      .mockImplementation(jest.fn());
-    const fetchActivityCountSpy = jest
-      .spyOn(FeedUtils, 'fetchEntityActivityCountInto')
-      .mockImplementation(jest.fn());
+    const fetchTaskCountsSpy = (
+      fetchEntityTaskCountsInto as jest.Mock
+    ).mockImplementation(jest.fn());
+    const fetchActivityCountSpy = (
+      fetchEntityActivityCountInto as jest.Mock
+    ).mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({
       tab: EntityTabs.OVERVIEW,
@@ -238,17 +265,16 @@ describe('Test Glossary-term component', () => {
     expect(fetchTaskCountsSpy).toHaveBeenCalled();
     expect(fetchActivityCountSpy).toHaveBeenCalled();
 
-    fetchTaskCountsSpy.mockRestore();
-    fetchActivityCountSpy.mockRestore();
+    restoreFeedCountFetchers();
   });
 
   it('should not fetch feed counts when in version view', async () => {
-    const fetchTaskCountsSpy = jest
-      .spyOn(FeedUtils, 'fetchEntityTaskCountsInto')
-      .mockImplementation(jest.fn());
-    const fetchActivityCountSpy = jest
-      .spyOn(FeedUtils, 'fetchEntityActivityCountInto')
-      .mockImplementation(jest.fn());
+    const fetchTaskCountsSpy = (
+      fetchEntityTaskCountsInto as jest.Mock
+    ).mockImplementation(jest.fn());
+    const fetchActivityCountSpy = (
+      fetchEntityActivityCountInto as jest.Mock
+    ).mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({
       tab: EntityTabs.OVERVIEW,
@@ -262,7 +288,47 @@ describe('Test Glossary-term component', () => {
     expect(fetchTaskCountsSpy).not.toHaveBeenCalled();
     expect(fetchActivityCountSpy).not.toHaveBeenCalled();
 
-    fetchTaskCountsSpy.mockRestore();
-    fetchActivityCountSpy.mockRestore();
+    restoreFeedCountFetchers();
+  });
+});
+
+describe('GlossaryTermsV1 ViewCustomFields permission', () => {
+  const renderWithPermissions = (permissions: OperationPermission) => {
+    (useGenericContext as jest.Mock).mockReturnValue({ permissions });
+    const tabsSpy = jest.spyOn(
+      glossaryTermClassBase,
+      'getGlossaryTermDetailPageTabs'
+    );
+    render(<GlossaryTerms {...mockProps} />);
+
+    return tabsSpy;
+  };
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    (useGenericContext as jest.Mock).mockReturnValue({
+      permissions: MOCK_PERMISSIONS,
+    });
+  });
+
+  it('should grant custom properties viewing on ViewCustomFields', () => {
+    const tabsSpy = renderWithPermissions({
+      ViewCustomFields: true,
+    } as OperationPermission);
+
+    expect(tabsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ viewCustomPropertiesPermission: true })
+    );
+  });
+
+  it('should let a denied ViewCustomFields beat ViewAll', () => {
+    const tabsSpy = renderWithPermissions({
+      ViewAll: true,
+      ViewCustomFields: false,
+    } as OperationPermission);
+
+    expect(tabsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ viewCustomPropertiesPermission: false })
+    );
   });
 });

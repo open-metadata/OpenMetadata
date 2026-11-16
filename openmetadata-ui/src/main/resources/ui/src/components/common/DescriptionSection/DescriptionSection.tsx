@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
@@ -64,12 +68,14 @@ const DescriptionDisplay: React.FC<DescriptionDisplayProps> = ({
       />
     </div>
     {(shouldShowButton || isExpanded) && (
-      <button
-        className="show-more-button"
+      <Button
+        className="tw:text-xs"
+        color="link-color"
+        size="sm"
         type="button"
         onClick={onToggleExpanded}>
         {isExpanded ? showLessLabel : showMoreLabel}
-      </button>
+      </Button>
     )}
     {metadataBlock}
     {editorModal}
@@ -120,12 +126,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
     setIsEditDescription(true);
-  }, [description]);
+  }, []);
 
   // Callback to handle the cancel button
   const handleCancelEditDescription = useCallback(() => {
     setIsEditDescription(false);
-  }, [description]);
+  }, []);
 
   // Callback to handle the description change from modal
   const handleDescriptionChange = useCallback(
@@ -211,17 +217,16 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const descriptionHeader = (
     <div className="description-header">
       <div className="description-title-row">
-        <span className="description-title">{t('label.description')}</span>
+        <Typography size="text-xs" weight="semibold">
+          {t('label.description')}
+        </Typography>
         {headerBadge}
       </div>
       {canShowEditButton && (
-        <EditIconButton
-          newLook
+        <ButtonUtility
           data-testid="edit-description"
-          disabled={false}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-          size="small"
-          title={t('label.edit-entity', {
+          icon={Edit01}
+          tooltip={t('label.edit-entity', {
             entity: t('label.description'),
           })}
           onClick={handleEditDescription}
@@ -251,11 +256,11 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <div className="description-section">
           {descriptionHeader}
           <div className="description-content">
-            <span className="no-data-placeholder">
+            <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
               {t('label.no-entity-added', {
                 entity: t('label.description-lowercase'),
               })}
-            </span>
+            </Typography>
             {metadataBlock}
             {editorModal}
           </div>

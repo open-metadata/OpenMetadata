@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import type { AvatarSize, OwnerRef } from '../../../types';
+import type { AvatarSize, OwnerEntityReference } from '../../../types';
+import type { OwnerDetails } from './owner-utils';
 
 export type RenderOwnerContent = (
-  owner: OwnerRef,
+  owner: OwnerEntityReference,
   chip: ReactNode
 ) => ReactNode;
 
 export interface OwnerChipProps {
-  owner: OwnerRef;
+  owner: OwnerEntityReference;
   avatarSize?: AvatarSize;
   isCompactView?: boolean;
   ownerDisplayName?: Map<string, ReactNode>;
@@ -27,11 +28,10 @@ export interface OwnerChipProps {
 }
 
 export interface OwnerAvatarStackProps {
-  owners: OwnerRef[];
+  owners: OwnerEntityReference[];
   avatarSize?: AvatarSize;
   maxVisibleOwners?: number;
   ownerDisplayName?: Map<string, ReactNode>;
-  renderOwnerContent?: RenderOwnerContent;
   placement?: 'vertical' | 'horizontal';
   className?: string;
   /** Show the "N Owners" title and per-group labels in the overflow popover
@@ -39,8 +39,15 @@ export interface OwnerAvatarStackProps {
   showOverflowHeadings?: boolean;
 }
 
+export type OwnerLabelVariant = 'subtle' | 'cell' | 'header';
+
 export interface OwnerProps {
-  owners?: OwnerRef[];
+  /**
+   * Owner refs to display. Accepts raw refs (the app's EntityReference shape) —
+   * `Owner` normalises them to `OwnerEntityReference` internally, so call sites pass the
+   * array as-is with no `toOwnerRefs`/`toOwnersWithHref` wrapping.
+   */
+  owners?: OwnerDetails[];
   /**
    * When true, renders owners as a horizontal row of chips (default).
    * When false, renders a column with a header label row and avatar stack.
@@ -50,28 +57,35 @@ export interface OwnerProps {
   avatarSize?: AvatarSize;
   /** Show the "Owners" section label in non-compact view. */
   showLabel?: boolean;
-  /** Render a dash (—) instead of nothing when owners is empty. */
+  /**
+   * Show `--` even when `placeHolder` is set. With no owners the component
+   * already shows `--` unless `placeHolder` names the empty state.
+   */
   showDashPlaceholder?: boolean;
-  /** Label text for the owners section; defaults to no label. */
+  /**
+   * In the non-compact view with `showLabel`, the label text (default
+   * "Owners"), and the empty value stays `--`. Otherwise the empty-state text
+   * shown instead of `--` (e.g. "No Assignee"); the compact and inline
+   * layouts put a user glyph before it.
+   */
   placeHolder?: string;
-  placement?: 'vertical' | 'horizontal';
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
-  renderOwnerContent?: RenderOwnerContent;
+  /**
+   * Style of the label shown when there are no owners (`--`, or the
+   * `placeHolder` empty state), so it matches the values beside it:
+   * - `header`: a page-header field, in the header value type. Default in
+   *   the labelled column layout when `selectorContent` is set.
+   * - `cell`: a table cell, at the row's body size.
+   * - `subtle`: de-emphasised, for cards and panels. Default otherwise.
+   */
+  labelVariant?: OwnerLabelVariant;
   className?: string;
-  ownerLabelClassName?: string;
-  /** When true and hasPermission is true, shows an edit button for assignee flow. */
-  isAssignee?: boolean;
   hasPermission?: boolean;
   /**
    * Pre-configured selector element (e.g. UserTeamSelectableList from the main UI).
    * Rendered as the edit/add trigger when hasPermission is true.
    */
   selectorContent?: ReactNode;
-  /** Called when the assignee edit button is clicked (isAssignee mode only). */
-  onEditClick?: () => void;
-  /** Show the "N Owners" title and per-group labels in the overflow popover
-   * (default true). Set false for a bare list of avatars + names. */
-  showOverflowHeadings?: boolean;
   'data-testid'?: string;
 }

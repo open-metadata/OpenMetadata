@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
+import {
+  Box,
+  ButtonUtility,
+  Skeleton,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -26,21 +32,21 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { PageType } from '../../generated/system/ui/page';
@@ -49,6 +55,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   patchApiCollection,
@@ -62,9 +69,12 @@ import {
   API_COLLECTION_DEFAULT_FIELDS,
 } from '../../rest/queries/apiCollectionQuery';
 import apiCollectionClassBase from '../../utils/APICollection/APICollectionClassBase';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
+  DetailsTabItem,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
@@ -75,6 +85,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -88,6 +99,7 @@ const APICollectionPage: FunctionComponent = () => {
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const queryClient = useQueryClient();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -240,10 +252,17 @@ const APICollectionPage: FunctionComponent = () => {
             decodedAPICollectionFQN,
             apiCollectionPermission,
             apiCollection,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection, navigate]
+    [
+      apiCollectionPermission,
+      decodedAPICollectionFQN,
+      apiCollection,
+      navigate,
+      showModal,
+    ]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -451,8 +470,15 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN, navigate]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.API_SERVICES,
+          getPartialNameFromTableFQN(decodedAPICollectionFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedAPICollectionFQN, navigate]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -498,7 +524,7 @@ const APICollectionPage: FunctionComponent = () => {
     [apiCollection, saveUpdatedAPICollectionData, setAPICollection]
   );
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabsList = apiCollectionClassBase.getAPICollectionDetailPageTabs({
@@ -582,9 +608,11 @@ const APICollectionPage: FunctionComponent = () => {
   const expandButton = useMemo(
     () =>
       isExpandViewSupported && (
-        <AlignRightIconButton
-          className={isTabExpanded ? 'rotate-180' : ''}
-          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+        <ButtonUtility
+          data-testid="tab-expand-button"
+          icon={isTabExpanded ? Collapse : Expand}
+          size="lg"
+          tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
           onClick={toggleTabExpanded}
         />
       ),
@@ -592,45 +620,46 @@ const APICollectionPage: FunctionComponent = () => {
   );
 
   if (isPageLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!viewAPICollectionPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.api-collection'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.api-collection'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isError) {
     return (
-      <ErrorPlaceHolder className="m-0">
-        {getEntityMissingError(
-          EntityType.API_COLLECTION,
-          decodedAPICollectionFQN
-        )}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(
+            EntityType.API_COLLECTION,
+            decodedAPICollectionFQN
+          )}
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(apiCollection)}>
+      <Box direction="col" gap={3}>
+        <div>
           {isCollectionDataFetching || !apiCollection ? (
-            <Skeleton
-              active
-              className="m-b-md"
-              paragraph={{
-                rows: 2,
-                width: ['20%', '80%'],
-              }}
-            />
+            <div className="tw:flex tw:flex-col tw:gap-3 m-b-md">
+              <Skeleton height={16} width="38%" />
+              <Skeleton height={16} width="20%" />
+              <Skeleton height={16} width="80%" />
+            </div>
           ) : (
             <DataAssetsHeader
               isRecursiveDelete
@@ -649,7 +678,7 @@ const APICollectionPage: FunctionComponent = () => {
               onVersionClick={versionHandler}
             />
           )}
-        </Col>
+        </div>
         {apiCollection && (
           <GenericProvider<APICollection>
             customizedPage={customizedPage}
@@ -659,19 +688,33 @@ const APICollectionPage: FunctionComponent = () => {
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
-                activeKey={tab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={expandButton}
-                onChange={activeTabHandler}
-              />
-            </Col>
+                selectedKey={getRenderedActiveTab(tabs, tab)}
+                onSelectionChange={(key) => activeTabHandler(String(key))}>
+                <Tabs.List
+                  actions={expandButton}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
           </GenericProvider>
         )}
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -120,7 +121,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn().mockImplementation(() => mockShowSuccessToast()),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ onSubmit }) => (
@@ -213,7 +214,7 @@ describe('AppDetails component', () => {
 
     // back button
     fireEvent.click(
-      screen.getByRole('button', { name: 'left label.browse-app-plural' })
+      screen.getByRole('button', { name: 'label.browse-app-plural' })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -231,7 +232,8 @@ describe('AppDetails component', () => {
       GlobalSettingOptions.APPLICATIONS
     );
 
-    // disable app
+    // disable app; the menu closes after each action, so reopen it
+    fireEvent.click(screen.getByTestId('manage-button'));
     ConfirmAction('label.disable');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), false);
@@ -250,10 +252,26 @@ describe('AppDetails component', () => {
 
     fireEvent.click(screen.getByTestId('manage-button'));
 
-    // enable app
-    ConfirmAction('label.restore');
+    expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
 
-    expect(mockRestoreApp).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.restore' }));
+
+    expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
+
+    // Drive the confirm click inside `act` so the awaited `handleRestore`
+    // chain (restore -> toast -> navigate) and the subsequent `setLoadingState`
+    // in `onConfirmAction`'s finally all flush before we assert.
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Confirm Confirmation Modal' })
+      );
+    });
+
+    expect(mockRestoreApp).toHaveBeenCalledTimes(1);
+    expect(mockShowSuccessToast).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
   });
 
   it('Schedule and Recent Runs tab should not be visible for NoScheduleApps', async () => {
@@ -339,13 +357,52 @@ describe('AppDetails component', () => {
 
     await renderAppDetails();
 
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
     expect(
-      within(screen.getByTestId('tabs')).queryByRole('tab', {
-        name: 'label.configuration',
-      })
-    ).not.toBeInTheDocument();
+      screen.getByText('message.app-no-settings-to-manage')
+    ).toBeInTheDocument();
     expect(
       screen.queryByText('MockMcpApplicationConfiguration')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show an empty state instead of an empty tab card when the app has no tabs', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'AIChatApplication',
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+
+    await renderAppDetails();
+
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.app-no-settings-to-manage')
+    ).toBeInTheDocument();
+  });
+
+  it('should report a schema load failure instead of the no-settings empty state', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'AIChatApplication',
+      scheduleType: 'NoSchedule',
+      allowConfiguration: false,
+    });
+    mockImportSchema.mockImplementationOnce(() => {
+      throw new Error('schema missing');
+    });
+
+    await renderAppDetails();
+
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText('server.no-application-schema-found').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText('message.app-no-settings-to-manage')
     ).not.toBeInTheDocument();
   });
 });

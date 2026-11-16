@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Alert, Card, Space, Typography } from 'antd';
+import { Alert, Button, Card } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
@@ -35,7 +34,7 @@ const AccountActivationConfirmation = () => {
     [location.search]
   );
 
-  const confirmUserRegistration = async () => {
+  const confirmUserRegistration = useCallback(async () => {
     try {
       const res = await confirmRegistration(searchParam.get('token') as string);
       if (!isEmpty(res)) {
@@ -46,54 +45,52 @@ const AccountActivationConfirmation = () => {
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
-  };
+  }, [navigate, searchParam, t]);
 
   const handleBackToLogin = () => navigate(ROUTES.SIGNIN);
 
   useEffect(() => {
     confirmUserRegistration();
-  }, []);
+  }, [confirmUserRegistration]);
 
   return (
-    <Card>
+    <div
+      className="tw:flex tw:min-h-screen tw:w-full tw:items-center tw:justify-center tw:bg-primary tw:p-6"
+      data-testid="account-activation-container">
       <DocumentTitle title={t('label.sign-up')} />
-      {isAccountVerified ? (
-        <div className="mt-12 w-16">
-          <Space align="center" direction="vertical">
-            <Alert
-              showIcon
-              message={t('message.user-verified-successfully')}
-              type="success"
-            />
-            <div
-              className="mt-12"
-              role="button"
-              tabIndex={0}
-              onClick={handleBackToLogin}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  handleBackToLogin();
-                }
-              }}>
-              <Typography.Link underline>
+      <Card
+        className="tw:w-full tw:max-w-[480px] tw:shadow-xl"
+        variant="elevated">
+        <Card.Content className="tw:flex tw:flex-col tw:items-center tw:gap-6 tw:p-8">
+          {isAccountVerified ? (
+            <>
+              <Alert
+                title={t('message.user-verified-successfully')}
+                variant="success"
+              />
+              <Button
+                color="link-color"
+                data-testid="back-to-login"
+                size="sm"
+                onPress={handleBackToLogin}>
                 {t('label.back-to-login-lowercase')}
-              </Typography.Link>
-            </div>
-          </Space>
-        </div>
-      ) : (
-        <div className="mt-12 w-16">
-          <Space align="center" direction="vertical">
-            <Alert showIcon message={t('label.token-expired')} type="error" />
-            <div className="mt-12">
-              <Typography.Link underline>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Alert title={t('label.token-expired')} variant="error" />
+              <Button
+                color="link-color"
+                data-testid="regenerate-token"
+                size="sm"
+                onPress={handleBackToLogin}>
                 {t('label.regenerate-registration-token')}
-              </Typography.Link>
-            </div>
-          </Space>
-        </div>
-      )}
-    </Card>
+              </Button>
+            </>
+          )}
+        </Card.Content>
+      </Card>
+    </div>
   );
 };
 

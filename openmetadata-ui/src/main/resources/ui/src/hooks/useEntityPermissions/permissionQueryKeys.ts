@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 
 export const permissionQueryKeys = {
   all: ['permissions'] as const,
@@ -21,6 +21,9 @@ export const permissionQueryKeys = {
     [...permissionQueryKeys.all, 'entityById', resource, id] as const,
   resource: (resource: ResourceEntity) =>
     [...permissionQueryKeys.all, 'resource', resource] as const,
+  /** `query` resource access as read by the table Queries tab (see permissionPolicy.ts). */
+  tableQueriesTab: () =>
+    [...permissionQueryKeys.all, 'tableQueriesTab'] as const,
 };
 
 /**

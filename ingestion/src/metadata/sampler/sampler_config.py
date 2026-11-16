@@ -19,9 +19,6 @@ base class or into storage/messaging samplers.
 from dataclasses import dataclass, field
 from typing import Any
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
 from metadata.sampler.models import SampleConfig
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
@@ -32,9 +29,6 @@ class SamplerConfig:
 
     sample_config: SampleConfig = field(default_factory=SampleConfig)
     sample_data_count: int | None = SAMPLE_DATA_DEFAULT_COUNT
-    # Config for uploading sample data to external blob storage (optional, all types).
-    # Named "upload" to distinguish it from the sampler's own service connection.
-    upload_sample_storage_config: DataStorageConfig | None = None
 
 
 @dataclass

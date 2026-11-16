@@ -13,10 +13,8 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Chart, ChartType } from '../../../generated/entity/data/chart';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -160,6 +158,9 @@ jest.mock('../../../utils/ChartDetailsClassBase', () => ({
 
 jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
+  getRenderedActiveTab: jest.requireActual(
+    '../../../utils/CustomizePage/CustomizePageEntityTabUtils'
+  ).getRenderedActiveTab,
   getDetailsTabWithNewLabel: jest.fn().mockReturnValue([]),
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
 }));

@@ -101,13 +101,13 @@ public class MigrationUtil {
         return;
       }
 
-      EntityInterface fromEntity =
+      EntityInterface<?> fromEntity =
           Entity.getEntity(
               record.getFromEntity(), UUID.fromString(record.getFromId()), "service", Include.ALL);
-      EntityInterface toEntity =
+      EntityInterface<?> toEntity =
           Entity.getEntity(
               record.getToEntity(), UUID.fromString(record.getToId()), "service", Include.ALL);
-      EntityInterface pipelineEntity =
+      EntityInterface<?> pipelineEntity =
           Entity.getEntity(pipelineRef.getType(), pipelineRef.getId(), "service", Include.ALL);
 
       EntityReference fromService = fromEntity.getService();

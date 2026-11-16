@@ -39,7 +39,6 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -92,10 +91,8 @@ class DbtServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_dbt_tags",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DataModelLink,
@@ -135,6 +132,11 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_domain",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_data_products",
                 nullable=True,
             ),
         ],
@@ -196,7 +198,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     topology = DbtServiceTopology()
-    context = TopologyContextManager(topology)
     source_config: DbtPipeline
 
     @property
@@ -398,6 +399,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_domain(self, data_model_link: DataModelLink):
         """
         Method to process DBT domain using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Method to attach the table to its dbt-declared Data Products
         """
 
     @abstractmethod

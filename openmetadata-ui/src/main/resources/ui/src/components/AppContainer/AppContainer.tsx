@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Layout } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useCallback, useEffect } from 'react';
@@ -31,8 +32,6 @@ import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
 
-const { Content } = Layout;
-
 const AppContainer = () => {
   const location = useCustomLocation();
   const analytics = useAnalytics();
@@ -43,7 +42,7 @@ const AppContainer = () => {
   const { isAuthenticated } = useApplicationStore();
 
   const { setConfig, bannerDetails } = useLimitStore();
-  const { setLineageConfig } = useLineageStore();
+  const { setSavedLineageConfig } = useLineageStore();
 
   const renderNavBar = () => {
     if (isNewLayoutRoute(location.pathname)) {
@@ -62,7 +61,7 @@ const AppContainer = () => {
 
       const defaultLineageConfig = lineageConfig as LineageSettings;
 
-      setLineageConfig({
+      setSavedLineageConfig({
         upstreamDepth: defaultLineageConfig.upstreamDepth,
         downstreamDepth: defaultLineageConfig.downstreamDepth,
         pipelineViewMode: defaultLineageConfig.pipelineViewMode,
@@ -95,18 +94,18 @@ const AppContainer = () => {
   }, [location.pathname, analytics]);
 
   return (
-    <Layout>
+    <Box className="tw:min-h-0 tw:min-w-0 tw:flex-1" direction="col">
       <LimitBanner />
-      <Layout
-        hasSider
+      <Box
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
-        })}>
+        })}
+        direction="row">
         {/* Render left side navigation */}
         <AppSidebar />
 
         {/* Render main content */}
-        <Layout>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
           {/* Render Appbar */}
           {applicationRoutesClass.isProtectedRoute(location.pathname) &&
           isAuthenticated
@@ -114,13 +113,15 @@ const AppContainer = () => {
             : null}
 
           {/* Render main content */}
-          <Content>
+          <main
+            className="tw:min-h-0 tw:flex-1 tw:[html[data-product-tour-pending]_&]:invisible"
+            data-tour-page="">
             <AuthenticatedRouter />
             {ApplicationExtras && <ApplicationExtras />}
-          </Content>
-        </Layout>
-      </Layout>
-    </Layout>
+          </main>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

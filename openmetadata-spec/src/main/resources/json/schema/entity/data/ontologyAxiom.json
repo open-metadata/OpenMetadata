@@ -1,12 +1,15 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/ontologyAxiom.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyAxiom",
   "description": "A governed OWL axiom whose relational representation remains authoritative when RDF is disabled.",
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.OntologyAxiom",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.OntologyDefinition"
+  ],
   "definitions": {
     "axiomType": {
       "javaType": "org.openmetadata.schema.type.OntologyAxiomType",
@@ -37,15 +40,14 @@
     "description": {
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "glossary": {
+    "ontology": {
       "$ref": "../../type/entityReference.json"
     },
     "axiomType": {
       "$ref": "#/definitions/axiomType"
     },
     "subjectIri": {
-      "type": "string",
-      "format": "uri"
+      "$ref": "../../type/ontologyIri.json"
     },
     "expressions": {
       "description": "Class expressions participating in the axiom, ordered from left to right.",
@@ -56,12 +58,10 @@
       "default": []
     },
     "propertyIri": {
-      "type": "string",
-      "format": "uri"
+      "$ref": "../../type/ontologyIri.json"
     },
     "targetIri": {
-      "type": "string",
-      "format": "uri"
+      "$ref": "../../type/ontologyIri.json"
     },
     "literal": {
       "$ref": "../../type/ontologyExpression.json#/definitions/literal"
@@ -69,13 +69,7 @@
     "provenance": {
       "$ref": "../../type/termRelation.json#/definitions/provenance"
     },
-    "entityStatus": {
-      "$ref": "../../type/status.json"
-    },
     "owners": {
-      "$ref": "../../type/entityReferenceList.json"
-    },
-    "reviewers": {
       "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
@@ -86,6 +80,10 @@
     },
     "updatedBy": {
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "$ref": "../../type/basic.json#/definitions/href"
@@ -110,12 +108,11 @@
     "displayName",
     "fullyQualifiedName",
     "description",
-    "glossary",
+    "ontology",
     "axiomType",
     "subjectIri",
     "expressions",
-    "provenance",
-    "entityStatus"
+    "provenance"
   ],
   "additionalProperties": false
 }

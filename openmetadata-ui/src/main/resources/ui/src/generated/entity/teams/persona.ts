@@ -76,6 +76,11 @@ export interface Persona {
      */
     updatedBy?: string;
     /**
+     * Distinct active users assigned this persona directly, through a team, or as their default
+     * persona. Derived when requested; does not change direct assignments.
+     */
+    userCount?: number;
+    /**
      * Users that are assigned a persona.
      */
     users?: EntityReference[];
@@ -182,6 +187,12 @@ export interface PersonaContextDefinition {
      * Read-only timestamp of the most recent successful compilation.
      */
     lastGeneratedAt?: number;
+    /**
+     * Instructions for the AI assistant serving this persona, such as who its users are, what
+     * they understand and what they are responsible for. Sent to the assistant as instructions
+     * while the context is enabled; never rendered into the context document.
+     */
+    prompt?: string;
     /**
      * Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered
      * under the first rule only.

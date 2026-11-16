@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactElement } from 'react';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
-import { EntityType } from '../enums/entity.enum';
-import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import {
+  EntityStatus,
+  GlossaryTerm,
+  ProviderType,
+} from '../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -23,16 +27,17 @@ import {
 } from '../mocks/Glossary.mock';
 import {
   buildTree,
-  filterTreeNodeOptions,
   findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  isAiGeneratedDraft,
   permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryPureUtils';
+import { getReviewTab } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -286,69 +291,16 @@ describe('Glossary Utils', () => {
     expect(expandableKeys).toEqual(['example1', 'example2']);
   });
 
-  it('Should return same Glossary when no filterOption is provided', () => {
-    const glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [
-          {
-            fullyQualifiedName: 'child1',
-          },
-        ],
-      },
-      {
-        fullyQualifiedName: 'example2',
-        childrenCount: 2,
-      },
-      {
-        fullyQualifiedName: 'example3',
-      },
-    ];
-
-    const filteredOptions = filterTreeNodeOptions(glossary as Glossary[], []);
-
-    expect(filteredOptions).toEqual(glossary);
-  });
-
-  it('Should return filtered Glossary when filterOption is provided', () => {
-    const glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [
-          {
-            fullyQualifiedName: 'child1',
-          },
-        ],
-      },
-      {
-        fullyQualifiedName: 'example3',
-      },
-    ];
-
-    const expected_glossary = [
-      {
-        fullyQualifiedName: 'example1',
-        children: [],
-      },
-      {
-        fullyQualifiedName: 'example3',
-        children: [],
-      },
-    ];
-
-    const filteredOptions = filterTreeNodeOptions(glossary as Glossary[], [
-      'child1',
-    ]);
-
-    expect(filteredOptions).toEqual(expected_glossary);
-  });
-
   it('should allow glossary review actions for task assignees even when reviewers are not hydrated', () => {
     const result = permissionForApproveOrReject(
       {
+        id: 'term-id',
+        name: 'Term',
+        description: 'Term description',
+        glossary: { id: 'glossary-id', type: 'glossary' },
         fullyQualifiedName: '"Glossary"."Term"',
         reviewers: [],
-      } as ModifiedGlossaryTerm,
+      },
       { id: 'user-1' } as never,
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [
@@ -526,7 +478,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      descriptionMax: 600,
+      descriptionMax: 480,
       descriptionMin: 420,
       name: 250,
       owners: 220,
@@ -580,5 +532,67 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     it('should resolve for empty string', async () => {
       await expect(referenceURLValidator({}, '')).resolves.toBeUndefined();
     });
+  });
+});
+
+describe('AI-generated glossary drafts', () => {
+  const draft = (overrides: Partial<GlossaryTerm> = {}): GlossaryTerm =>
+    ({
+      id: 'term-id',
+      name: 'churn',
+      description: 'Customers who cancel',
+      glossary: { id: 'glossary-id', type: EntityType.GLOSSARY },
+      provider: ProviderType.Automation,
+      entityStatus: EntityStatus.Draft,
+      ...overrides,
+    } as GlossaryTerm);
+
+  it('marks an automation term until it is approved', () => {
+    expect(isAiGeneratedDraft(draft())).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.InReview }))
+    ).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.Approved }))
+    ).toBe(false);
+    expect(isAiGeneratedDraft(draft({ entityStatus: undefined }))).toBe(false);
+    expect(isAiGeneratedDraft(draft({ provider: ProviderType.User }))).toBe(
+      false
+    );
+  });
+});
+
+describe('getReviewTab', () => {
+  it('lists the tasks about the glossary in the Review tab, counting the open ones', () => {
+    const onTasksChange = jest.fn();
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      openTaskCount: 6,
+      onTasksChange,
+    }) as unknown as {
+      label: ReactElement<{ children: ReactElement }>;
+      children: ReactElement<{ children: ReactElement }>;
+    };
+
+    expect(reviewTab.label.props).toEqual(
+      expect.objectContaining({
+        count: 6,
+        id: EntityTabs.REVIEW,
+        name: 'label.review',
+      })
+    );
+    expect(reviewTab.children.props.children.props).toEqual({
+      aboutEntity: 'Banking Core',
+      onCountChange: onTasksChange,
+    });
+  });
+
+  it('names the Review tab as a persona renamed it', () => {
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      name: 'Approvals',
+    }) as unknown as { label: ReactElement<{ name: string }> };
+
+    expect(reviewTab.label.props.name).toBe('Approvals');
   });
 });

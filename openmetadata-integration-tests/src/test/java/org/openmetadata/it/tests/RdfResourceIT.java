@@ -19,6 +19,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -28,14 +32,20 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.schema.api.rdf.SparqlRdfDirection;
+import org.openmetadata.schema.api.rdf.SparqlRdfTerm;
+import org.openmetadata.schema.api.rdf.SparqlRdfTermType;
+import org.openmetadata.schema.api.rdf.SparqlResponse;
+import org.openmetadata.schema.api.rdf.SparqlTripleTerm;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
-import org.openmetadata.service.rdf.RdfUpdater;
 
 /**
  * Integration tests for RDF resource operations.
@@ -56,8 +66,16 @@ public class RdfResourceIT {
   private static final String BASE_URI = "https://open-metadata.org/";
   private static final String OM_NS = BASE_URI + "ontology/";
   private static final String SPARQL_JSON = "application/sparql-results+json";
+  private static final String TRIPLE_TERM_CONSTRUCT =
+      """
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      CONSTRUCT { <urn:rdf12:reifier> rdf:reifies <<( <urn:rdf12:s> <urn:rdf12:p> "cat"@ar--rtl )>> }
+      WHERE {}
+      """;
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+
+  private static boolean enabledServerRdf;
 
   @BeforeAll
   static void enableRdf() {
@@ -72,12 +90,12 @@ public class RdfResourceIT {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword("test-admin");
     rdfConfig.setDataset("openmetadata");
-    RdfUpdater.initialize(rdfConfig);
+    enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
   }
 
   @Test
@@ -373,6 +391,128 @@ public class RdfResourceIT {
     assertEquals(200, response.statusCode());
     assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith(SPARQL_JSON));
     assertTrue(response.body().contains("\"head\""));
+  }
+
+  @Test
+  void testSparqlEndpointReturnsRdf12TripleTermsAsTypedTerms() throws Exception {
+    HttpResponse<String> response =
+        postSparql(
+            """
+            VERSION \"1.2\"
+            SELECT (TRIPLE(<https://example.com/subject>, <https://example.com/predicate>,
+                           \"cat\"@ar--rtl) AS ?statement)
+            WHERE {}
+            """,
+            "json",
+            SparqlQuery.Inference.NONE);
+
+    assertEquals(200, response.statusCode());
+    SparqlResponse parsed = JsonUtils.readValue(response.body(), SparqlResponse.class);
+    SparqlRdfTerm statement =
+        parsed.getResults().getBindings().getFirst().getAdditionalProperties().get("statement");
+    SparqlTripleTerm triple =
+        JsonUtils.getObjectMapper().convertValue(statement.getValue(), SparqlTripleTerm.class);
+
+    assertEquals(SparqlRdfTermType.TRIPLE, statement.getType());
+    assertEquals("https://example.com/subject", triple.getSubject().getValue());
+    assertEquals("ar", triple.getObject().getXmlLang());
+    assertEquals(SparqlRdfDirection.RTL, triple.getObject().getItsDir());
+  }
+
+  /**
+   * Inference runs through a separate repository path that wraps its failures as server errors, so
+   * the rejection is exercised with and without it. CUSTOM is the only level the server can answer;
+   * the suite enables materialized inference.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Inference.class,
+      names = {"NONE", "CUSTOM"})
+  void testSparqlEndpointRejectsJsonLdForATripleTermGraph(SparqlQuery.Inference inference)
+      throws Exception {
+    HttpResponse<String> turtle = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle", inference);
+    HttpResponse<String> jsonLd = postSparql(TRIPLE_TERM_CONSTRUCT, "jsonld", inference);
+
+    assertEquals(200, turtle.statusCode());
+    assertTrue(turtle.body().contains("<<("), "Turtle must carry the triple term");
+    assertEquals(
+        400,
+        jsonLd.statusCode(),
+        "JSON-LD cannot carry a triple term and must not 500: " + jsonLd.body());
+    assertTrue(
+        jsonLd.body().contains("turtle"),
+        "The rejection must name a serialization that works: " + jsonLd.body());
+  }
+
+  /** OpenMetadata no longer runs reasoners in its own process, so these levels are refused. */
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Inference.class,
+      names = {"RDFS", "OWL"})
+  void testSparqlEndpointReportsReasonerLevelsAsUnavailable(SparqlQuery.Inference inference)
+      throws Exception {
+    HttpResponse<String> response = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle", inference);
+
+    assertEquals(503, response.statusCode(), response.body());
+    assertTrue(response.body().contains("not available"), response.body());
+  }
+
+  /**
+   * EXISTS carries a whole graph pattern inside an expression, and Fuseki evaluates a SERVICE in it
+   * like any other SERVICE. The federation policy has to refuse it before the query is forwarded,
+   * or Fuseki sends the request — here to its own ping endpoint, which it can always reach.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT (EXISTS { SERVICE <%s> { ?s ?p ?o } } AS ?reachable) WHERE { }",
+        "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } } LIMIT 1",
+        "SELECT * WHERE { ?s ?p ?o NOT EXISTS { SERVICE <%s> { ?a ?b ?c } } } LIMIT 1",
+        "SELECT ?s WHERE { ?s ?p ?o } ORDER BY (EXISTS { SERVICE <%s> { ?a ?b ?c } }) LIMIT 2"
+      })
+  void testSparqlEndpointRefusesServiceHiddenInsideExists(String template) throws Exception {
+    HttpResponse<String> response =
+        postSparql(
+            template.formatted(FusekiTestImage.SELF_PING_URL), "json", SparqlQuery.Inference.NONE);
+
+    assertEquals(403, response.statusCode(), response.body());
+    assertTrue(response.body().contains(FusekiTestImage.SELF_PING_URL), response.body());
+  }
+
+  @Test
+  void testSparqlUpdateEndpointRefusesServiceHiddenInsideExists() throws Exception {
+    String update =
+        "INSERT { GRAPH <urn:om:it:federation> { <urn:om:it:probe> <urn:om:it:reached> ?x } } "
+            + "WHERE { BIND(EXISTS { SERVICE <"
+            + FusekiTestImage.SELF_PING_URL
+            + "> { ?s ?p ?o } } AS ?x) }";
+
+    HttpResponse<String> response =
+        postAsAdmin("/v1/rdf/sparql/update", new SparqlQuery().withQuery(update));
+
+    assertEquals(403, response.statusCode(), response.body());
+    assertTrue(response.body().contains(FusekiTestImage.SELF_PING_URL), response.body());
+  }
+
+  private static HttpResponse<String> postSparql(
+      String query, String format, SparqlQuery.Inference inference) throws Exception {
+    return postAsAdmin(
+        "/v1/rdf/sparql",
+        new SparqlQuery()
+            .withQuery(query)
+            .withFormat(SparqlQuery.Format.fromValue(format))
+            .withInference(inference));
+  }
+
+  private static HttpResponse<String> postAsAdmin(String path, SparqlQuery body) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(body)))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   @Test

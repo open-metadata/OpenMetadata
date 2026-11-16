@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -61,10 +62,6 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await page.getByRole('tab', { name: 'Dashboards' }).click();
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
-
     await expect(page.getByTestId('pagination')).toBeVisible();
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(
@@ -80,10 +77,6 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
     await childrenResponse;
-
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
@@ -143,7 +136,7 @@ test.describe(
         BIG_ENTITY_DELETE_TIMEOUT
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       // Retry mechanism for checking deleted badge
       let deletedBadge = page.locator('[data-testid="deleted-badge"]');
@@ -158,7 +151,7 @@ test.describe(
 
         attempts++;
         if (attempts < maxAttempts) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           deletedBadge = page.locator('[data-testid="deleted-badge"]');
         }
@@ -176,7 +169,7 @@ test.describe(
       ).not.toBeVisible();
 
       await restoreEntity(page);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -196,8 +189,14 @@ test.describe('Data Model', () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {
+    // A page of rich-text column descriptions mounts at once on this page; on a
+    // busy CI runner that stalls the browser long enough to outlast the default
+    // tag-picker open retry and the 60s budget for two tag round-trips.
+    test.slow();
+
     await page.goto(
-      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
+      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -206,15 +205,16 @@ test.describe('Data Model', () => {
       page,
       tag: 'PersonalData.Personal',
       rowId:
-        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
+        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0001',
       entityEndpoint: 'dashboard/datamodels',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
 
     // Should not show expand icon for non-nested columns
     await expect(
       page
         .locator(
-          '[data-row-key="sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031"]'
+          '[data-row-key="sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0001"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -223,8 +223,9 @@ test.describe('Data Model', () => {
       page,
       tags: ['PersonalData.Personal'],
       rowId:
-        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
+        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0001',
       entityEndpoint: 'dashboard/datamodels',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
   });
 });
@@ -311,14 +312,11 @@ test.describe(
       await page.goto(
         `/service/dashboardServices/${encodeURIComponent(
           serviceNameWithDot
-        )}/data-model`
+        )}/data-model`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await waitForAllLoadersToDisappear(page);
-
-      await page.locator('.ant-spin').waitFor({
-        state: 'detached',
-      });
 
       const dataModelLink = page.getByTestId(
         `data-model-${dataModelResponseData.name}`

@@ -1,15 +1,18 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.context.center.MemoryExtractionState.NEVER_EXTRACTED;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import jakarta.ws.rs.core.UriInfo;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -30,7 +33,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.context.center.MemoryExtractionState;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -39,11 +44,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-@Repository
+@Repository(name = "ContextFileRepository")
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
+  private static final String ARCHIVED_FILE_NAME_MESSAGE =
+      "A file named '%s' is in the Archive. Restore it, or permanently delete it from the Archive, "
+          + "before adding a file with this name.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
@@ -62,6 +70,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     this.assetRepository = new AssetRepository(dao.assetDAO());
     this.contentRepository = new ContextFileContentRepository(jdbi);
     this.contextFileDAO = (CollectionDAO.ContextFileDAO) getDao();
+    fieldFetchers.put(NEVER_EXTRACTED, this::fetchAndSetNeverExtracted);
   }
 
   public AssetRepository getAssetRepository() {
@@ -70,6 +79,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   public ContextFileContentRepository getContentRepository() {
     return contentRepository;
+  }
+
+  /** Reads the stored asset through the provider that owns its bytes, including on recovery. */
+  public CompletableFuture<InputStream> readAsset(Asset asset) {
+    return AssetServiceFactory.getService().read(asset);
   }
 
   @Override
@@ -85,6 +99,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
                   Entity.CONTEXT_MEMORY)
               .size());
     }
+    fetchAndSetNeverExtracted(List.of(file), fields);
   }
 
   @Override
@@ -93,6 +108,26 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (!fields.contains("memoryCount")) {
       file.setMemoryCount(null);
     }
+    if (!fields.contains(NEVER_EXTRACTED)) {
+      file.setNeverExtracted(null);
+    }
+  }
+
+  private void fetchAndSetNeverExtracted(List<ContextFile> files, EntityUtil.Fields fields) {
+    if (fields.contains(NEVER_EXTRACTED)) {
+      files.forEach(file -> file.setNeverExtracted(MemoryExtractionState.neverExtracted(file)));
+    }
+  }
+
+  /** neverExtracted is derived from the file's own state on every read that asks for it. */
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(NEVER_EXTRACTED);
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(NEVER_EXTRACTED);
   }
 
   @Override
@@ -136,6 +171,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       Folder folder = Entity.getEntity(file.getFolder(), "", Include.NON_DELETED);
       file.setFolder(folder.getEntityReference());
     }
+    // Enforce name uniqueness at the create chokepoint so every create path (REST create, upload,
+    // import) gets the actionable error rather than a raw DB unique-constraint 409. Skipped on
+    // update: a same-name PUT resolves to the existing row (restore), and move validates itself.
+    if (!update) {
+      validateNoDuplicateFileName(file.getName(), file.getFolder(), null);
+    }
   }
 
   @Override
@@ -154,6 +195,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       store(file, update, expectedVersion);
     } finally {
       file.withFolder(folder);
+    }
+  }
+
+  @Override
+  protected void storeEntityWithVersion(
+      ContextFile file, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    if (expectedUpdatedAt == null) {
+      storeEntityWithVersion(file, update, expectedVersion);
+    } else {
+      EntityReference folder = file.getFolder();
+      file.withFolder(null);
+      try {
+        int updatedRows =
+            contextFileDAO.updateWithVersionAndTimestamp(
+                file.getId().toString(),
+                file.getFullyQualifiedName(),
+                serializeForStorage(file),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+        if (updatedRows == 0) {
+          throw new PreconditionFailedException(
+              "The entity has been modified by another user. Please refresh and retry.");
+        }
+        invalidate(file);
+      } finally {
+        file.withFolder(folder);
+      }
     }
   }
 
@@ -203,6 +271,17 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   private EntityReference getFolder(ContextFile file) {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
+  }
+
+  @Override
+  protected List<EntityReference> getCountingParents(ContextFile file) {
+    EntityReference folder = folderOf(file);
+    return folder == null ? List.of() : List.of(folder);
+  }
+
+  // The folder is kept out of the stored JSON, so a file loaded without it looks it up.
+  private EntityReference folderOf(ContextFile file) {
+    return file.getFolder() != null ? file.getFolder() : getFolder(file);
   }
 
   public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
@@ -255,6 +334,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
+      keepStoredContent(original, updated);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
+    }
+
+    private static void keepStoredContent(ContextFile original, ContextFile updated) {
+      updated.setAssetId(original.getAssetId());
+      updated.setHeadContentId(original.getHeadContentId());
     }
 
     @Override
@@ -267,6 +356,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
       updateFolder();
     }
 
@@ -297,6 +387,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   @Override
   protected void entitySpecificCleanup(ContextFile entityInterface) {
+    // Cleanup removes the edge to the folder before postDelete refreshes the folder's count. A
+    // hard-delete cascade skips that refresh, so it skips the lookup too.
+    if (!isInHardDeleteCascade()) {
+      entityInterface.setFolder(folderOf(entityInterface));
+    }
     List<ContextFileContent> contents =
         new ArrayList<>(contentRepository.listByContextFileId(entityInterface.getId()));
     if (contents.isEmpty()) {
@@ -329,6 +424,31 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return contentId == null ? null : contentRepository.getById(contentId);
   }
 
+  /**
+   * Whether any live document is a view of this stored asset. A file can reach the Context Center
+   * from somewhere that has its own copy of the blob — a chat attachment — and that owner needs to
+   * know whether deleting its copy would take a document's content with it.
+   */
+  public boolean existsForAsset(String assetId) {
+    return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
+  }
+
+  /** The live documents that are views of this stored asset. */
+  public List<ContextFile> findByAsset(String assetId) {
+    if (assetId == null) {
+      return List.of();
+    }
+    return contextFileDAO.findByAssetId(assetId).stream()
+        .map(json -> JsonUtils.readValue(json, ContextFile.class))
+        .toList();
+  }
+
+  public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {
+    return JsonUtils.readObjects(
+        contextFileDAO.listByExtractedSourceHash(sourceHash, excludeId.toString()),
+        ContextFile.class);
+  }
+
   public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
     if (fileName == null || fileName.isBlank()) {
       return;
@@ -340,6 +460,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
             fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
     if (count > 0) {
       throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+    // A soft-deleted (archived) file keeps its name reserved so it can still be restored, so a
+    // same-name create would otherwise fail the DB unique constraint with a generic "Entity already
+    // exists". Detect it here and tell the user where to resolve it instead.
+    int archivedCount =
+        contextFileDAO.countArchivedByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (archivedCount > 0) {
+      throw new BadRequestException(String.format(ARCHIVED_FILE_NAME_MESSAGE, fileName.trim()));
     }
   }
 
@@ -474,14 +603,24 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   private void deleteAsset(String assetId) {
-    AssetService assetService = AssetServiceFactory.getService();
     Asset asset = null;
     try {
       asset = assetRepository.getById(assetId);
     } catch (Exception ignored) {
       // If the asset metadata is already gone, continue deleting any remaining references.
     }
-    if (asset != null && assetService != null) {
+    if (asset != null) {
+      deleteAsset(asset);
+    } else {
+      assetRepository.delete(assetId);
+    }
+  }
+
+  /** Collate overrides this to retain shared chat assets and select their original store. */
+  public void deleteAsset(Asset asset) {
+    AssetService assetService = AssetServiceFactory.getService();
+    String assetId = asset.getId();
+    if (assetService != null) {
       try {
         assetService
             .delete(asset)

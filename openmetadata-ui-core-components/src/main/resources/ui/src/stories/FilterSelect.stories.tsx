@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import { Database01, User01 } from '@untitledui/icons';
+import { Database01, User01 } from '../icons';
 import { useState } from 'react';
 import { FilterSelect } from '../components/application/filter-select/filter-select';
 import type { FilterSelectProps } from '../components/application/filter-select/filter-select.types';
@@ -230,13 +230,6 @@ export const InputForms: Story = {
         label="Glossary Terms"
         options={GLOSSARY_OPTIONS}
         triggerDisplay="chips"
-        triggerVariant="input"
-      />
-      <ControlledFilter
-        className="tw:w-full"
-        initialSelected={['snowflake', 'mssql']}
-        label="Services"
-        placeholder="Choose services"
         triggerVariant="input"
       />
     </div>

@@ -56,13 +56,16 @@ jest.mock('./InlineEditCard', () => ({
     view,
     renderEdit,
     canEdit,
+    isSaveDisabled,
   }: {
     view?: ReactNode;
     renderEdit: (ctx: { cancel: () => void; save: () => void }) => ReactNode;
     canEdit?: boolean;
+    isSaveDisabled?: boolean;
   }) => (
     <div>
       <span data-testid="can-edit">{String(canEdit)}</span>
+      <span data-testid="save-disabled">{String(isSaveDisabled)}</span>
       {view}
       {renderEdit({ cancel: jest.fn(), save: jest.fn() })}
     </div>
@@ -98,6 +101,7 @@ describe('DefaultPersonaRow', () => {
       'Onboarding'
     );
     expect(screen.getByTestId('default-persona-select')).toBeInTheDocument();
+    expect(screen.getByTestId('save-disabled')).toHaveTextContent('true');
   });
 
   it('lets the user edit their own default persona', async () => {

@@ -60,3 +60,14 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * Landing-page widgets each own a card and render their own error state, so a
+ * failed fetch should surface immediately rather than stall the card through
+ * two silent retries. They also carry their own `staleTime` and are revalidated
+ * explicitly on route activation, so focus refetching would only duplicate work.
+ */
+queryClient.setQueryDefaults(['landingPage'], {
+  refetchOnWindowFocus: false,
+  retry: false,
+});

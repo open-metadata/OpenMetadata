@@ -25,6 +25,7 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
+import { DEFAULT_ENTITY_PERMISSION } from '../PermissionsUtils';
 import type { MetricDetailPageTabProps } from './MetricDetailsClassBase';
 
 const TabsLabel = withSuspenseFallback(
@@ -55,9 +56,19 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const MetricExpression = withSuspenseFallback(
+const MetricHierarchyCard = withSuspenseFallback(
   lazy(
-    () => import('../../components/Metric/MetricExpression/MetricExpression')
+    () =>
+      import('../../components/Metric/MetricHierarchyCard/MetricHierarchyCard')
+  )
+);
+
+const MetricDefinitionCard = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Metric/MetricDefinitionCard/MetricDefinitionCard'
+      )
   )
 );
 
@@ -65,14 +76,12 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
-const MetricDimensions = withSuspenseFallback(
-  lazy(
-    () => import('../../components/Metric/MetricDimensions/MetricDimensions')
+const MetricAssetsTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Metric/MetricAssetsTab/MetricAssetsTab').then(
+      (module) => ({ default: module.MetricAssetsTab })
+    )
   )
-);
-
-const MetricMeasures = withSuspenseFallback(
-  lazy(() => import('../../components/Metric/MetricMeasures/MetricMeasures'))
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -102,6 +111,11 @@ export const getMetricDetailsPageTabs = ({
   metricDetails,
   handleFeedCount,
   labelMap,
+  metricPermissions,
+  assetIds,
+  isAssetsLoading = false,
+  onAddAsset,
+  onAssetsUpdate,
 }: MetricDetailPageTabProps) => {
   return [
     {
@@ -117,15 +131,41 @@ export const getMetricDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          id={EntityTabs.EXPRESSION}
-          name={labelMap[EntityTabs.EXPRESSION] ?? i18n.t('label.expression')}
+          id={EntityTabs.LINEAGE}
+          name={labelMap[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
         />
       ),
-      key: EntityTabs.EXPRESSION,
+      key: EntityTabs.LINEAGE,
       children: (
-        <div className="p-t-sm m-x-lg">
-          <MetricExpression />
-        </div>
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(metricDetails?.deleted)}
+            entity={metricDetails as SourceType}
+            entityType={EntityType.METRIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
+      ),
+    },
+    {
+      label: (
+        <TabsLabel
+          count={assetIds?.length ?? 0}
+          id={EntityTabs.ASSETS}
+          isActive={activeTab === EntityTabs.ASSETS}
+          name={labelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
+        />
+      ),
+      key: EntityTabs.ASSETS,
+      children: (
+        <MetricAssetsTab
+          assetIds={assetIds}
+          isLoading={isAssetsLoading}
+          metric={metricDetails}
+          permissions={metricPermissions ?? DEFAULT_ENTITY_PERMISSION}
+          onAddAsset={() => onAddAsset?.()}
+          onRemoveAsset={() => onAssetsUpdate?.()}
+        />
       ),
     },
     {
@@ -152,26 +192,6 @@ export const getMetricDetailsPageTabs = ({
           onUpdateEntityDetails={fetchMetricDetails}
           onUpdateFeedCount={handleFeedCount}
         />
-      ),
-    },
-
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.LINEAGE}
-          name={labelMap[EntityTabs.LINEAGE] ?? i18n.t('label.lineage')}
-        />
-      ),
-      key: EntityTabs.LINEAGE,
-      children: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(metricDetails?.deleted)}
-            entity={metricDetails as SourceType}
-            entityType={EntityType.METRIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
       ),
     },
     {
@@ -201,12 +221,12 @@ export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     return <RelatedMetrics />;
   }
 
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DIMENSIONS)) {
-    return <MetricDimensions />;
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_HIERARCHY)) {
+    return <MetricHierarchyCard />;
   }
 
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_MEASURES)) {
-    return <MetricMeasures />;
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DEFINITION)) {
+    return <MetricDefinitionCard />;
   }
 
   return (

@@ -107,9 +107,12 @@ jest.mock('../ContractDetailFormTab/ContractDetailFormTab', () => ({
 jest.mock('../ContractQualityFormTab/ContractQualityFormTab', () => ({
   ContractQualityFormTab: jest
     .fn()
-    .mockImplementation(({ onChange, onNext }) => (
+    .mockImplementation(({ onChange, onNext, initialValues }) => (
       <div>
         <h2>Contract Quality</h2>
+        <div data-testid="quality-initial-values">
+          {JSON.stringify(initialValues?.qualityExpectations ?? [])}
+        </div>
         <button onClick={() => onChange({ qualityExpectations: [] })}>
           Change
         </button>
@@ -248,9 +251,9 @@ describe('AddDataContract', () => {
     it('should start with first tab active', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
-      const tabs = document.querySelector('.ant-tabs-tab-active');
-
-      expect(tabs).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: 'label.contract-detail-plural' })
+      ).toHaveAttribute('aria-selected', 'true');
     });
 
     it('should change tabs when clicked', async () => {
@@ -262,9 +265,7 @@ describe('AddDataContract', () => {
         fireEvent.click(schemaTab);
       });
 
-      expect(schemaTab.closest('.ant-tabs-tab')).toHaveClass(
-        'ant-tabs-tab-active'
-      );
+      expect(schemaTab).toHaveAttribute('aria-selected', 'true');
     });
 
     it('should navigate to next tab when onNext is called', async () => {
@@ -277,10 +278,30 @@ describe('AddDataContract', () => {
       });
 
       expect(
-        screen
-          .getByRole('tab', { name: 'label.terms-of-service' })
-          .closest('.ant-tabs-tab')
-      ).toHaveClass('ant-tabs-tab-active');
+        screen.getByRole('tab', { name: 'label.terms-of-service' })
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('should keep visited tabs mounted so their form state survives a tab switch', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('tab', { name: 'label.schema' }));
+      });
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: 'label.contract-detail-plural' })
+        );
+      });
+
+      expect(
+        screen.getByText('Contract Details').closest('[data-inert]')
+      ).toBeNull();
+      expect(
+        screen.getByText('Contract Schema').closest('[data-inert]')
+      ).toHaveAttribute('data-inert', 'true');
+      expect(screen.queryByText('Contract Quality')).not.toBeInTheDocument();
     });
   });
 
@@ -713,8 +734,7 @@ describe('AddDataContract', () => {
         fireEvent.click(saveButton);
       });
 
-      // Should show loading state (Ant Design Button shows loading via classes)
-      expect(saveButton).toHaveClass('ant-btn-loading');
+      expect(saveButton).toHaveAttribute('data-loading');
     });
   });
 
@@ -761,6 +781,52 @@ describe('AddDataContract', () => {
 
       expect(saveButton).toBeInTheDocument();
       expect(cancelButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Quality Tab initialValues Propagation', () => {
+    it('should pass initialValues with qualityExpectations to ContractQualityFormTab', async () => {
+      const contractWithQuality: DataContract = {
+        ...mockContract,
+        qualityExpectations: [
+          {
+            id: 'on-page-test',
+            name: 'On Page Test',
+            type: EntityType.TEST_CASE,
+          } as EntityReference,
+          {
+            id: 'off-page-test',
+            name: 'Off Page Test',
+            type: EntityType.TEST_CASE,
+          } as EntityReference,
+        ],
+      };
+
+      render(
+        <AddDataContract
+          contract={contractWithQuality}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      // Navigate to the Quality tab so its content mounts
+      const qualityTab = screen.getByRole('tab', { name: 'label.quality' });
+
+      await act(async () => {
+        fireEvent.click(qualityTab);
+      });
+
+      const initialValuesEl = screen.getByTestId('quality-initial-values');
+      const parsed = JSON.parse(initialValuesEl.textContent ?? '[]') as {
+        id: string;
+        name: string;
+      }[];
+
+      const ids = parsed.map((q) => q.id);
+
+      expect(ids).toContain('on-page-test');
+      expect(ids).toContain('off-page-test');
     });
   });
 });

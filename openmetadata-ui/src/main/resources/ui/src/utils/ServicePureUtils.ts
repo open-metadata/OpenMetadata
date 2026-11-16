@@ -12,17 +12,17 @@
  */
 
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
+  SERVICE_CATEGORY_TITLE_KEYS,
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
 } from '../constants/Services.constant';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -237,9 +237,8 @@ export const getServiceCategoryFromEntityType = (
   SERVICE_CATEGORY_BY_ENTITY_TYPE_MAP[entityType] ??
   ServiceCategory.DATABASE_SERVICES;
 
-const ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP: Partial<
-  Record<ServiceCategory, EntityType>
-> = {
+const ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP = {
+  [ServiceCategory.DATABASE_SERVICES]: EntityType.DATABASE_SERVICE,
   [ServiceCategory.DASHBOARD_SERVICES]: EntityType.DASHBOARD_SERVICE,
   [ServiceCategory.MESSAGING_SERVICES]: EntityType.MESSAGING_SERVICE,
   [ServiceCategory.PIPELINE_SERVICES]: EntityType.PIPELINE_SERVICE,
@@ -250,13 +249,22 @@ const ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP: Partial<
   [ServiceCategory.API_SERVICES]: EntityType.API_SERVICE,
   [ServiceCategory.DRIVE_SERVICES]: EntityType.DRIVE_SERVICE,
   [ServiceCategory.SECURITY_SERVICES]: EntityType.SECURITY_SERVICE,
-};
+} as const satisfies Record<ServiceCategory, EntityType>;
 
 export const getEntityTypeFromServiceCategory = (
   serviceCategory: ServiceTypes
 ) =>
   ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP[serviceCategory as ServiceCategory] ??
   EntityType.DATABASE_SERVICE;
+
+// Categories outside the map (e.g. llm/mcp services arriving via a route param) keep their
+// derived name rather than rendering blank.
+export const getServiceCategoryLabel = (serviceCategory: string): string => {
+  const titleKey =
+    SERVICE_CATEGORY_TITLE_KEYS[serviceCategory as ServiceCategory];
+
+  return titleKey ? t(titleKey) : startCase(serviceCategory);
+};
 
 export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
   query: {

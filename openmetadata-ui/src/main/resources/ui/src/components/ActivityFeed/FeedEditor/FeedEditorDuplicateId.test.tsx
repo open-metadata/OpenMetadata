@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedEditor } from './FeedEditor';
@@ -35,8 +35,9 @@ interface MockQuillProps {
 interface MockEditorRef {
   focus: () => void;
   getEditor: () => {
-    getFormat: () => Record<string, unknown>;
+    getFormat: (...range: number[]) => Record<string, unknown>;
     format: () => void;
+    formatLine: () => void;
   };
 }
 
@@ -51,9 +52,20 @@ jest.mock('react-quill-new', () => {
   ) as typeof import('react');
 
   const noop = () => undefined;
+  // Like Quill, a read or format without an explicit range takes the selection
+  // with focus, pulling focus into the editor.
+  const focusEditor = () =>
+    document.querySelector<HTMLElement>('[data-testid="react-quill"]')?.focus();
   const mockEditorApi = {
-    getFormat: () => ({}),
-    format: noop,
+    getFormat: (...range: number[]) => {
+      if (range.length === 0) {
+        focusEditor();
+      }
+
+      return {};
+    },
+    format: focusEditor,
+    formatLine: noop,
   };
   const mockEditorHandle: MockEditorRef = {
     focus: noop,
@@ -190,4 +202,25 @@ describe('FeedEditor multi-instance isolation (duplicate-id bug)', () => {
     expect(roots[0].getAttribute('data-dir')).toBe('rtl');
     expect(roots[1].getAttribute('data-dir')).toBe('rtl');
   });
+});
+
+describe('FeedEditor focus', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  // The inbox mounts a composer whenever the selected task changes, e.g. while
+  // the user types in the queue search; the mount must not take their focus.
+  it.each(['ltr', 'rtl'] as const)(
+    'leaves focus where it was when mounted (%s)',
+    (dir) => {
+      setDir(dir);
+      render(<input aria-label="search" />);
+      screen.getByLabelText('search').focus();
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      expect(screen.getByLabelText('search')).toHaveFocus();
+    }
+  );
 });

@@ -48,6 +48,13 @@ const mockTranslations: Record<string, string> = {
   'message.natural-language-search-active': 'Natural language search active',
 };
 
+jest.mock(
+  '../../../common/DomainFilterChip/DomainFilterChip.component',
+  () => ({
+    DomainFilterChip: () => null,
+  })
+);
+
 jest.mock('react-router-dom', () => ({
   useLocation: () => mockLocation,
   useNavigate: () => mockNavigate,
@@ -230,11 +237,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-plus" {...props} />
   ),
-  SearchMd: (props: React.SVGProps<SVGSVGElement>) => (
+  Search: (props: React.SVGProps<SVGSVGElement>) => (
     <svg data-testid="icon-search" {...props} />
   ),
 }));
@@ -315,7 +322,7 @@ describe('ExploreSearchCard', () => {
     );
   });
 
-  it('centers the search and filters in a constrained column beside the Explore information', () => {
+  it('centers the search and filters in a column that grows with the header row', () => {
     render(<ExploreSearchCard />);
 
     const headerLayout = screen.getByTestId('explore-header-layout');
@@ -339,7 +346,7 @@ describe('ExploreSearchCard', () => {
       'tw:w-full',
       'tw:min-w-0',
       'tw:flex-1',
-      'tw:max-w-4xl',
+      'tw:max-w-[max(56rem,55%)]',
       'tw:mx-auto',
       'tw:px-12'
     );

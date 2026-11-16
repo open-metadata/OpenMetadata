@@ -11,11 +11,66 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import loginClassBase from '../../constants/LoginClassBase';
 import LoginCarousel from './LoginCarousel';
 
 describe('Test LoginCarousel component', () => {
+  let playSpy: jest.SpyInstance;
+  let videoSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    playSpy = jest
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockResolvedValue(undefined);
+    videoSpy = jest
+      .spyOn(loginClassBase, 'getLoginVideo')
+      .mockReturnValue('test-video.mp4');
+  });
+
+  afterEach(() => {
+    playSpy.mockRestore();
+    videoSpy.mockRestore();
+    jest.restoreAllMocks();
+  });
+
+  it('does not autoplay or preload the video from markup', () => {
+    render(<LoginCarousel />);
+
+    const video = screen.getByTestId('login-video');
+
+    expect(video.hasAttribute('autoplay')).toBe(false);
+    expect(video.getAttribute('preload')).toBe('none');
+  });
+
+  it('starts playback right away when the page has already loaded', () => {
+    render(<LoginCarousel />);
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for the window load event before starting playback', () => {
+    jest.spyOn(document, 'readyState', 'get').mockReturnValue('loading');
+
+    render(<LoginCarousel />);
+
+    expect(playSpy).not.toHaveBeenCalled();
+
+    fireEvent.load(window);
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not play when the user prefers reduced motion', () => {
+    jest.spyOn(window, 'matchMedia').mockReturnValue({
+      matches: true,
+    } as MediaQueryList);
+
+    render(<LoginCarousel />);
+
+    expect(playSpy).not.toHaveBeenCalled();
+  });
+
   it('renders the login video when a video is configured', () => {
     const videoSpy = jest
       .spyOn(loginClassBase, 'getLoginVideo')

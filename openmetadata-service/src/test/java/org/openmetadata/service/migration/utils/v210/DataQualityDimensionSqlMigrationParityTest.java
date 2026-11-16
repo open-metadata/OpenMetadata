@@ -34,9 +34,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  * {@code fqnHash} and {@code json} — the {@code id} column has to be generated from the json
  * document or every insert fails ("Field 'id' doesn't have a default value" on MySQL, "null value
  * in column id" on PostgreSQL). This guards that the 2.1.0 migration creates the table that way on
- * both dialects. The {@code bootstrap/sql/schema} dumps are deliberately not checked: nothing runs
- * them — a fresh install is bootstrapped by the Flyway baseline and then the native migrations —
- * so the table only has to exist in the migration.
+ * both dialects. A fresh install is bootstrapped by the Flyway baseline and then the native
+ * migrations, so the table only has to exist in the migration.
  */
 class DataQualityDimensionSqlMigrationParityTest {
   private static final String TABLE = "data_quality_dimension";

@@ -31,6 +31,9 @@ class OpenSearchBulkSinkStatsTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(searchClient.getNewClient()).thenReturn(restClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
@@ -105,32 +108,6 @@ class OpenSearchBulkSinkStatsTest {
       assertFalse(invokeIsPayloadTooLargeError(processor, new RuntimeException("Index not found")));
     }
 
-    @Test
-    @DisplayName("Should identify various retryable errors")
-    void testRetryableErrors() throws Exception {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
-
-      OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
-
-      assertTrue(invokeShouldRetry(processor, 0, new RuntimeException("timeout")));
-      assertTrue(
-          invokeShouldRetry(processor, 0, new RuntimeException("rejected_execution_exception")));
-      assertTrue(invokeShouldRetry(processor, 0, new RuntimeException("Request entity too large")));
-      assertTrue(
-          invokeShouldRetry(processor, 0, new RuntimeException("circuit_breaking_exception")));
-      assertTrue(invokeShouldRetry(processor, 0, new RuntimeException("too_many_requests")));
-    }
-
-    @Test
-    @DisplayName("Should not retry when max retries exceeded")
-    void testMaxRetriesExceeded() throws Exception {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
-
-      OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
-
-      assertFalse(invokeShouldRetry(processor, 10, new RuntimeException("timeout")));
-    }
-
     private OpenSearchBulkSink.CustomBulkProcessor getCustomBulkProcessor(OpenSearchBulkSink sink)
         throws Exception {
       java.lang.reflect.Field field = OpenSearchBulkSink.class.getDeclaredField("bulkProcessor");
@@ -145,16 +122,6 @@ class OpenSearchBulkSinkStatsTest {
               "isPayloadTooLargeError", Throwable.class);
       method.setAccessible(true);
       return (boolean) method.invoke(processor, error);
-    }
-
-    private boolean invokeShouldRetry(
-        OpenSearchBulkSink.CustomBulkProcessor processor, int attemptNumber, Throwable error)
-        throws Exception {
-      Method method =
-          OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "shouldRetry", int.class, Throwable.class);
-      method.setAccessible(true);
-      return (boolean) method.invoke(processor, attemptNumber, error);
     }
   }
 }

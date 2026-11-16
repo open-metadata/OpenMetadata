@@ -31,7 +31,7 @@ public final class StoredProcedureShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new StoredProcedure()
         .withId(ctx.id())
         .withName("proc")
@@ -47,7 +47,7 @@ public final class StoredProcedureShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface code(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> code(final EntityInterface<?> entity, final Rung rung) {
     final StoredProcedure proc = (StoredProcedure) entity;
     proc.setStoredProcedureCode(new StoredProcedureCode().withCode("x".repeat(rung.magnitude())));
     return proc;

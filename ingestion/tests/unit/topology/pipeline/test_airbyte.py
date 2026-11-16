@@ -209,19 +209,19 @@ MOCK_SOURCE_TABLE_FQN = "mock_source_service.mock_source_db.mock_source_schema.m
 MOCK_DESTINATION_TABLE_FQN = "mock_destination_service.mock_destination_db.mock_destination_schema.mock_table_name"
 
 
-# Configure mock for _get_table_fqn to return FQNs for source and destination tables
-def mock_get_table_fqn(self, table_details):  # pylint: disable=unused-argument
+# Stand in for the per-service catalog lookup, keyed on whichever level the connector reported.
+def mock_resolve_table(self, table_details):  # pylint: disable=unused-argument
     if table_details.name != "mock_table_name":
         return None
 
-    if table_details.schema == "mock_source_schema":
-        return MOCK_SOURCE_TABLE_FQN
-    if table_details.schema == "mock_destination_schema":
-        return MOCK_DESTINATION_TABLE_FQN
-    if table_details.schema == "mock_source_db":
-        return MOCK_SOURCE_TABLE_FQN
-    if table_details.schema == "mock_destination_db":
-        return MOCK_DESTINATION_TABLE_FQN
+    source_levels = {"mock_source_schema", "mock_source_db"}
+    destination_levels = {"mock_destination_schema", "mock_destination_db"}
+    reported = {table_details.schema, table_details.database}
+
+    if reported & source_levels:
+        return MOCK_POSTGRES_SOURCE_TABLE
+    if reported & destination_levels:
+        return MOCK_POSTGRES_DESTINATION_TABLE
 
     return None
 
@@ -243,8 +243,7 @@ class AirbyteUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.connection.AirbyteConnection._get_client")
-    def __init__(self, methodName, airbyte_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, airbyte_client, test_connection) -> None:
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_config)
         self.airbyte = AirbyteSource.create(
@@ -264,10 +263,6 @@ class AirbyteUnitTest(TestCase):
         self.airbyte.airbyte_cloud = False
         # Self-hosted internal API: jobs carry nested `attempts`.
         self.airbyte.use_public_api = False
-
-    def setUp(self):
-        self.airbyte.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.airbyte.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_pipeline_list(self):
         assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_AIRBYTE_DETAILS  # noqa: RUF015
@@ -354,7 +349,7 @@ class AirbyteUnitTest(TestCase):
         self.client.list_jobs.return_value = []
         assert list(self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)) == []
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details(self):
         """Test the Airbyte lineage generation functionality."""
         # Mock the client methods needed for lineage with supported source and destination types
@@ -415,7 +410,7 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details_public_api(self):
         """Lineage must also work with the public-API response shape.
 
@@ -472,7 +467,7 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details_public_api_configurations_streams(self):
         """End-to-end: a public-API connection carries streams under `configurations.streams`
         (no `syncCatalog`). `resolved_streams` must surface them so the lineage loop runs and
@@ -511,7 +506,7 @@ class AirbyteUnitTest(TestCase):
         assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
         assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details_snowflake_destination(self):
         """Snowflake destination lineage (issue #26993).
 
@@ -574,13 +569,14 @@ class AirbyteUnitTest(TestCase):
         assert postgres.database == "pg_db"
         assert postgres.schema == "mock_namespace"
 
-        # MySQL: no database concept -> config database becomes the schema
+        # MySQL: reported as Airbyte names it; table_fqn_candidates moves it to the
+        # schema slot once the target service is known to be single-database.
         mysql = get_source_table_details(
             stream,
             AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mysql_db"}),
         )
-        assert mysql.database is None
-        assert mysql.schema == "mysql_db"
+        assert mysql.database == "mysql_db"
+        assert mysql.schema == "mock_namespace"
 
         # MSSQL: database from config, schema from the stream namespace
         mssql = get_source_table_details(
@@ -615,7 +611,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_source_table_details(
                 stream,
-                AirbyteSourceResponse(sourceType="bigquery", configuration={"database": "x"}),
+                AirbyteSourceResponse(sourceType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -635,13 +631,14 @@ class AirbyteUnitTest(TestCase):
         assert postgres.database == "pg_db"
         assert postgres.schema == "pg_schema"
 
-        # MySQL: no database concept -> config database becomes the schema
+        # MySQL: reported as Airbyte names it; the destination declares no schema, so
+        # table_fqn_candidates is what moves the value into the schema slot.
         mysql = get_destination_table_details(
             stream,
             AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mysql_db"}),
         )
-        assert mysql.database is None
-        assert mysql.schema == "mysql_db"
+        assert mysql.database == "mysql_db"
+        assert mysql.schema is None
 
         # MSSQL: database and schema both taken from config
         mssql = get_destination_table_details(
@@ -660,7 +657,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_destination_table_details(
                 stream,
-                AirbyteDestinationResponse(destinationType="bigquery", configuration={"database": "x"}),
+                AirbyteDestinationResponse(destinationType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -785,8 +782,7 @@ class AirbyteCloudUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("metadata.ingestion.source.pipeline.airbyte.connection.AirbyteConnection._get_client")
-    def __init__(self, methodName, airbyte_cloud_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, airbyte_cloud_client, test_connection) -> None:
         test_connection.return_value = False
 
         from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
@@ -811,10 +807,6 @@ class AirbyteCloudUnitTest(TestCase):
         self.airbyte.use_public_api = True
         self.airbyte.source_url_prefix = "https://cloud.airbyte.com"
 
-    def setUp(self):
-        self.airbyte.context.get().__dict__["pipeline"] = MOCK_CLOUD_PIPELINE.name.root
-        self.airbyte.context.get().__dict__["pipeline_service"] = MOCK_CLOUD_PIPELINE_SERVICE.name.root
-
     def test_pipeline_list(self):
         assert list(self.airbyte.get_pipelines_list())[0] == EXPECTED_CLOUD_AIRBYTE_DETAILS  # noqa: RUF015
 
@@ -838,11 +830,11 @@ def _stream(name="mock_table_name", namespace="mock_source_schema"):
 
 def test_get_source_table_details_public_slugs():
     """Public-API slugs must resolve for every supported source connector type."""
-    # MySQL: schema is taken from the database, database is dropped
+    # MySQL: levels as Airbyte reports them (the single-database remap is a candidate concern)
     mysql = get_source_table_details(
         _stream(), AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mydb"})
     )
-    assert (mysql.schema, mysql.database) == ("mydb", None)
+    assert (mysql.schema, mysql.database) == ("mock_source_schema", "mydb")
 
     # MSSQL: schema from the stream namespace, database from config
     mssql = get_source_table_details(
@@ -868,15 +860,16 @@ def test_get_source_table_details_mongodb_null_database_config():
 
 
 def test_get_source_table_details_unsupported():
-    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
-    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="bigquery")) is None
+    # dynamodb has no OM entity kind: not a table, not an object store. bigquery/snowflake
+    # are now mapped (see TestResolverRegistry), so they no longer belong in this case.
+    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="dynamodb")) is None
 
 
 def test_get_source_table_details_snowflake():
     """Snowflake source (issue #26993): database from config, schema from the stream namespace.
 
-    Unlike the destination, the source schema comes from the per-stream namespace,
-    not the config `schema`, so a config schema is deliberately ignored here.
+    Unlike the destination, the source schema comes from the per-stream namespace, not the
+    config `schema` — only connectors in TABLE_KEY_ALIASES read a schema off the config.
     """
     td = get_source_table_details(
         _stream(),
@@ -886,11 +879,11 @@ def test_get_source_table_details_snowflake():
 
 
 def test_get_destination_table_details_public_slugs():
-    # MySQL: schema from database, database dropped
+    # MySQL: levels as Airbyte reports them (the single-database remap is a candidate concern)
     mysql = get_destination_table_details(
         _stream(), AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mydb"})
     )
-    assert (mysql.schema, mysql.database) == ("mydb", None)
+    assert (mysql.schema, mysql.database) == (None, "mydb")
 
     # MSSQL/Postgres-style: schema + database straight from config
     mssql = get_destination_table_details(
@@ -903,8 +896,9 @@ def test_get_destination_table_details_public_slugs():
 
 
 def test_get_destination_table_details_unsupported():
-    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
-    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="bigquery")) is None
+    # dynamodb has no OM entity kind: not a table, not an object store. bigquery/snowflake
+    # are now mapped (see TestResolverRegistry), so they no longer belong in this case.
+    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="dynamodb")) is None
 
 
 def test_get_destination_table_details_snowflake():

@@ -76,7 +76,7 @@ public final class FrameworkCoverageComputer {
   static FrameworkCoverageResponse compute(
       AIGovernanceFramework framework,
       List<AIFrameworkControl> controls,
-      List<EntityInterface> assets) {
+      List<EntityInterface<?>> assets) {
     FrameworkCoverageResponse response = new FrameworkCoverageResponse();
     response.setFrameworkId(framework.getId());
     response.setFrameworkName(framework.getName());
@@ -170,7 +170,7 @@ public final class FrameworkCoverageComputer {
     return nonCompliant + partial;
   }
 
-  private static AssetCompliance assetCompliance(EntityInterface asset, String frameworkName) {
+  private static AssetCompliance assetCompliance(EntityInterface<?> asset, String frameworkName) {
     GovernanceSnapshot governance = governance(asset);
     return new AssetCompliance(
         findComplianceRecord(governance.aiCompliance(), frameworkName),
@@ -178,7 +178,7 @@ public final class FrameworkCoverageComputer {
   }
 
   private static ComplianceRecordSnapshot findComplianceRecord(
-      EntityInterface asset, String frameworkName) {
+      EntityInterface<?> asset, String frameworkName) {
     return findComplianceRecord(governance(asset).aiCompliance(), frameworkName);
   }
 
@@ -228,13 +228,13 @@ public final class FrameworkCoverageComputer {
     return recordFramework != null && recordFramework.value().equalsIgnoreCase(frameworkName);
   }
 
-  private static List<EntityInterface> collectInScopeAssets(AIGovernanceFramework framework) {
+  private static List<EntityInterface<?>> collectInScopeAssets(AIGovernanceFramework framework) {
     FrameworkAutoApplyRules rules = framework.getAutoApply();
     String frameworkName = framework.getName();
-    List<EntityInterface> result = new ArrayList<>();
+    List<EntityInterface<?>> result = new ArrayList<>();
     List<String> assetTypes = autoApplyAssetTypes(rules);
     for (String entityType : assetTypes) {
-      for (EntityInterface entity : listEntities(entityType)) {
+      for (EntityInterface<?> entity : listEntities(entityType)) {
         // In-scope when the asset matches the auto-apply rules OR already carries
         // a compliance record for this framework (an explicit assessment always
         // counts, even if the asset hasn't declared the matching region/stage).
@@ -266,13 +266,13 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static List<? extends EntityInterface> listEntities(String entityType) {
-    List<EntityInterface> result = new ArrayList<>();
+  private static List<? extends EntityInterface<?>> listEntities(String entityType) {
+    List<EntityInterface<?>> result = new ArrayList<>();
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
       String after = null;
       do {
-        ResultList<? extends EntityInterface> page = listEntityPage(entityType, filter, after);
+        ResultList<? extends EntityInterface<?>> page = listEntityPage(entityType, filter, after);
         result.addAll(page.getData());
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
       } while (after != null);
@@ -283,7 +283,7 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static ResultList<? extends EntityInterface> listEntityPage(
+  private static ResultList<? extends EntityInterface<?>> listEntityPage(
       String entityType, ListFilter filter, String after) {
     if (Entity.AI_APPLICATION.equals(entityType)) {
       AIApplicationRepository repo =
@@ -301,7 +301,7 @@ public final class FrameworkCoverageComputer {
     return new ResultList<>(List.of(), null, null, 0);
   }
 
-  private static boolean matchesScope(EntityInterface entity, FrameworkAutoApplyRules rules) {
+  private static boolean matchesScope(EntityInterface<?> entity, FrameworkAutoApplyRules rules) {
     boolean result;
     if (rules == null) {
       result = true;
@@ -389,7 +389,7 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static GovernanceSnapshot governance(EntityInterface asset) {
+  private static GovernanceSnapshot governance(EntityInterface<?> asset) {
     GovernanceSnapshot result = GovernanceSnapshot.EMPTY;
     if (asset instanceof AIApplication app) {
       result = governance(app.getGovernanceMetadata(), enumValue(app.getDevelopmentStage()));

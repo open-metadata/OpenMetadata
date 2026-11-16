@@ -13,6 +13,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import KnowledgePageListComponent from './KnowledgePageListComponent';
 
 // KnowledgePageListComponent.tsx had ZERO existing test coverage before this conversion (Task
@@ -96,12 +98,21 @@ describe('KnowledgePageListComponent permissions', () => {
     });
   });
 
-  it('renders the empty-state add button when view and create access are both granted', async () => {
+  it('keeps the empty-state title, documentation description and permitted add button', async () => {
     renderComponent({ ViewAll: true, Create: true });
 
     await waitFor(() => {
       expect(screen.getByTestId('add-knowledge-page-btn')).toBeInTheDocument();
     });
+
+    expect(
+      screen
+        .getByText(/message.adding-new-entity-is-easy-just-give-it-a-spin/)
+        .closest('.prose-typography')
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
+    expect(
+      screen.getByText(/message.refer-to-our-doc/).closest('.prose-typography')
+    ).toHaveClass('tw:text-xs');
   });
 
   it('hides the empty-state add button when create access is denied', async () => {
@@ -118,5 +129,96 @@ describe('KnowledgePageListComponent permissions', () => {
     expect(
       screen.queryByTestId('add-knowledge-page-btn')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('KnowledgePageListComponent data path', () => {
+  const mockGetList = getListKnowledgePages as jest.Mock;
+  const mockSearch = fetchSearchResults as jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetList.mockResolvedValue({ data: [], paging: { total: 0 } });
+    mockSearch.mockResolvedValue({
+      hits: { hits: [], total: { value: 0 } },
+    });
+  });
+
+  it('uses the REST list path with the given sort when no filter is active', async () => {
+    render(
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        restSortField="displayName"
+        sortField="displayName.keyword"
+        sortOrder="asc"
+        onPageChange={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockGetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sortBy: 'displayName',
+          sortOrder: 'asc',
+        })
+      );
+    });
+
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it('routes through the search path with the queryFilter when a filter is active', async () => {
+    const quickFilterQuery = {
+      query: { bool: { must: [{ bool: { should: [{ term: {} }] } }] } },
+    };
+
+    render(
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        quickFilterQuery={quickFilterQuery}
+        sortField="updatedAt"
+        sortOrder="desc"
+        onPageChange={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryFilter: quickFilterQuery,
+          searchIndex: 'page',
+          sortField: 'updatedAt',
+          sortOrder: 'desc',
+        })
+      );
+    });
+
+    expect(mockGetList).not.toHaveBeenCalled();
+  });
+
+  it('uses the search path for an ES-only sort even without a filter', async () => {
+    render(
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        sortField="page.publicationDate"
+        sortOrder="desc"
+        onPageChange={jest.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await waitFor(() => {
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchIndex: 'page',
+          sortField: 'page.publicationDate',
+          sortOrder: 'desc',
+        })
+      );
+    });
+
+    expect(mockGetList).not.toHaveBeenCalled();
   });
 });

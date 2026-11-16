@@ -25,10 +25,6 @@ export interface RDFIndexingAppConfig {
      */
     blueGreenRebuild?: boolean;
     /**
-     * Number of consumer threads to use for non-distributed RDF reindexing
-     */
-    consumerThreads?: number;
-    /**
      * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: Entity[];
@@ -39,18 +35,10 @@ export interface RDFIndexingAppConfig {
      */
     minSuccessRatio?: number;
     /**
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
-     */
-    partitionSize?: number;
-    /**
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
-    /**
-     * Queue size to use internally for non-distributed RDF reindexing.
-     */
-    queueSize?: number;
     /**
      * Recreate the RDF store before indexing.
      */
@@ -66,11 +54,6 @@ export interface RDFIndexingAppConfig {
      * Application Type
      */
     type?: RDFIndexingType;
-    /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
-     */
-    useDistributedIndexing?: boolean;
 }
 
 export enum Entity {

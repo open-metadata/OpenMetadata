@@ -14,7 +14,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';
 import { useAgentPermissions } from './useAgentPermissions';

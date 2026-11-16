@@ -55,6 +55,15 @@ public final class RdfSparqlService {
         : inferredQuery(query.sparql(), format, inference.externalName);
   }
 
+  /**
+   * Runs an already-validated SELECT as SPARQL JSON over asserted data only, leaving out triples
+   * that materialized inference rules derived.
+   */
+  public String selectJsonWithoutInference(final String sparql) {
+    return SparqlQueryLimits.requireBoundedOutput(
+        repository.executeAssertedSparqlQuery(sparql, ResultFormat.JSON.mediaType));
+  }
+
   public void update(final String sparql) {
     requireQuery(sparql, "SPARQL update body is required");
     SparqlQueryLimits.requireBoundedText(sparql);
@@ -67,7 +76,12 @@ public final class RdfSparqlService {
     }
     federationGuard.enforceUpdate(request);
     requireSingleWhereBearingOperation(request);
-    repository.executeSparqlUpdate(sparql);
+    try {
+      repository.executeSparqlUpdate(sparql);
+    } finally {
+      // A failure can arrive after Fuseki applied the update, such as a timeout on the response.
+      RdfUpdater.recordUntrackedWrite();
+    }
   }
 
   private static void requireSingleWhereBearingOperation(UpdateRequest request) {
@@ -97,7 +111,7 @@ public final class RdfSparqlService {
   private QueryResult directQuery(String sparql, ResultFormat format) {
     return new QueryResult(
         SparqlQueryLimits.requireBoundedOutput(
-            repository.executeSparqlQuery(sparql, format.mediaType)),
+            repository.executeAssertedSparqlQuery(sparql, format.mediaType)),
         format.externalName,
         format.mediaType,
         null);

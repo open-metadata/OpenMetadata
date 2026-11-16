@@ -10,28 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import {
+  Button,
+  ButtonUtility,
+  MetricTag,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import './related-metrics.less';
-import { RelatedMetricsForm } from './RelatedMetricsForm';
+import { RelatedMetricOption, RelatedMetricsForm } from './RelatedMetricsForm';
 
 // Extracted so the boolean short-circuits live in their own complexity scope
 // instead of RelatedMetrics's render body.
@@ -68,7 +66,7 @@ const RelatedMetrics: FC = () => {
   } = useMemo(() => {
     const relatedMetrics = metricDetails['relatedMetrics'] ?? [];
 
-    const initialOptions: DataAssetOption[] = relatedMetrics.map((item) => {
+    const initialOptions: RelatedMetricOption[] = relatedMetrics.map((item) => {
       return {
         displayName: getEntityName(item),
         reference: item,
@@ -92,56 +90,35 @@ const RelatedMetrics: FC = () => {
 
   const showMoreLessElement = useMemo(() => {
     return (
-      <Typography.Text
-        className="cursor-pointer text-xs text-primary underline"
+      <Button
+        color="link-color"
         data-testid={`show-${isShowMore ? 'less' : 'more'}`}
-        onClick={() => setIsShowMore(!isShowMore)}>
+        size="sm"
+        onPress={() => setIsShowMore(!isShowMore)}>
         {isShowMore ? t('label.show-less') : t('label.show-more')}
-      </Typography.Text>
+      </Button>
     );
   }, [isShowMore, hiddenRelatedMetrics]);
 
   const getRelatedMetricListing = useCallback(
-    (relatedMetrics: EntityReference[]) => {
-      return relatedMetrics.map((item) => {
-        return (
-          <div
-            className="right-panel-list-item flex items-center justify-between"
-            data-testid={getEntityName(item)}
-            key={item.id}>
-            <div className="flex items-center">
-              <Link
-                className="font-medium"
-                to={entityUtilClassBase.getEntityLink(
-                  item.type,
-                  item.fullyQualifiedName ?? ''
-                )}>
-                <Button
-                  className="metric-entity-button flex-center p-0 m--ml-1"
-                  icon={
-                    <div className="entity-button-icon m-r-xs">
-                      {getEntityIcon(item.type)}
-                    </div>
-                  }
-                  title={getEntityName(item)}
-                  type="text">
-                  <Typography.Text
-                    className="w-72 text-left text-xs"
-                    ellipsis={{ tooltip: true }}>
-                    {getEntityName(item)}
-                  </Typography.Text>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        );
-      });
-    },
+    (relatedMetrics: EntityReference[]) =>
+      relatedMetrics.map((item) => (
+        <MetricTag
+          data-testid={getEntityName(item)}
+          href={entityUtilClassBase.getEntityLink(
+            item.type,
+            item.fullyQualifiedName ?? ''
+          )}
+          key={item.id}
+          label={getEntityName(item)}
+          tooltip={getEntityName(item)}
+        />
+      )),
     []
   );
 
   const handleRelatedMetricUpdate = useCallback(
-    async (updatedAssets: DataAssetOption[]) => {
+    async (updatedAssets: RelatedMetricOption[]) => {
       try {
         const updatedRelatedMetrics = updatedAssets.map(
           (item) => item.reference
@@ -177,9 +154,10 @@ const RelatedMetrics: FC = () => {
 
     if (isEmpty(relatedMetrics)) {
       return (
-        <WidgetPlusButton
+        <ButtonUtility
           data-testid="add-related-metrics-container"
-          title={t('label.add-entity', {
+          icon={Plus}
+          tooltip={t('label.add-entity', {
             entity: t('label.related-metric-plural'),
           })}
           onClick={() => setIsEdit(true)}
@@ -188,9 +166,10 @@ const RelatedMetrics: FC = () => {
     }
 
     return (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-related-metrics"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.related-metric-plural'),
         })}
         onClick={() => setIsEdit(true)}
@@ -217,7 +196,7 @@ const RelatedMetrics: FC = () => {
 
     return (
       <div
-        className="metric-entity-list-body"
+        className="metric-entity-list-body tw:flex tw:flex-wrap tw:items-center tw:gap-2"
         data-testid="metric-entity-list-body">
         {getRelatedMetricListing(visibleRelatedMetrics)}
         {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}

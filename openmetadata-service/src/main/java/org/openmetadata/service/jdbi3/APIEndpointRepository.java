@@ -25,7 +25,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apis.APIEndpointResource;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -62,6 +63,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       Set.of("requestSchema.schemaFields.description", "responseSchema.schemaFields.description");
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.API_ENDPOINT_DEFAULT_FIELDS;
+  // A PUT loads the stored endpoint with these fields, and the bulk loader reads schema field tags
+  // only with the schemas. Without them, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "requestSchema,responseSchema";
 
   public APIEndpointRepository() {
     super(
@@ -70,7 +74,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         APIEndpoint.class,
         Entity.getCollectionDAO().apiEndpointDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the API service / API collection delete cascade: search docs by service.id
@@ -290,7 +294,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public EntityRepository<APIEndpoint>.EntityUpdater getUpdater(
       APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
-    return new APIEndpointUpdater(original, updated, operation);
+    return new APIEndpointUpdater(original, updated, operation, changeSource);
   }
 
   private void setDefaultFields(APIEndpoint apiEndpoint) {
@@ -325,7 +329,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     for (Field field : fields) {
       validateTags(field.getTags());
       field.setTags(addDerivedTags(field.getTags()));
-      checkMutuallyExclusive(field.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
       }
@@ -365,13 +369,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   @Override
-  public EntityInterface getParentEntity(APIEndpoint entity, String fields) {
+  public EntityInterface<?> getParentEntity(APIEndpoint entity, String fields) {
     return Entity.getEntity(entity.getApiCollection(), fields, Include.ALL);
   }
 
@@ -524,7 +529,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     APIEndpoint apiEndpoint = (APIEndpoint) entity;
     EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
@@ -536,20 +541,22 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         apiEndpoint.getResponseSchema() != null
             ? apiEndpoint.getResponseSchema().getSchemaFields()
             : null;
-    for (Field schemaField : listOrEmpty(responseSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
-    for (Field schemaField : listOrEmpty(requestSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, responseSchemaFields);
+    EntityUtil.mergeFieldTags(allTags, requestSchemaFields);
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,requestSchema,responseSchema");
   }
 
   public class APIEndpointUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public APIEndpointUpdater(APIEndpoint original, APIEndpoint updated, Operation operation) {
-      super(original, updated, operation);
+    public APIEndpointUpdater(
+        APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -649,16 +656,16 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           continue;
         }
 
-        String schemaFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String schemaFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSchemaFields(

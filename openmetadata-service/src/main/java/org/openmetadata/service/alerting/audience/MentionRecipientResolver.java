@@ -1,0 +1,150 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.alerting.audience;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.SubscriptionAction;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.feed.Announcement;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.matching.AlertsRuleEvaluator;
+import org.openmetadata.service.resources.feeds.MessageParser;
+
+/**
+ * Resolves the users and teams mentioned in a conversation's latest message, an announcement's
+ * description, or a task's latest comment. A mentioned user or team that cannot be found is
+ * skipped, and the others are still mentioned.
+ */
+@Slf4j
+public class MentionRecipientResolver implements RecipientResolutionStrategy {
+  private static final String PRINCIPAL_FIELDS = "id,profile,email";
+
+  @Override
+  public Recipients resolve(
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    String what = "the " + event.getEntityType() + " of event " + event.getId();
+    return switch (typeOf(event.getEntityType())) {
+      case Entity.CONVERSATION -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getConversation(event)),
+          conversation -> inConversation(conversation, directory));
+      case Entity.ANNOUNCEMENT -> Recipients.from(
+          Lookup.of(what, () -> (Announcement) AlertsRuleEvaluator.getEntity(event)),
+          announcement -> inText(announcement.getDescription(), directory));
+      case Entity.TASK -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getTask(event)),
+          task -> inTask(task, directory));
+      default -> unsupported(event.getEntityType());
+    };
+  }
+
+  @Override
+  public Recipients resolve(
+      UUID entityId,
+      String entityType,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    String what = entityType + " " + entityId;
+    return switch (typeOf(entityType)) {
+      case Entity.CONVERSATION -> Recipients.from(
+          Lookup.of(what, () -> Entity.getConversationRepository().getEventPayload(entityId)),
+          conversation -> inConversation(conversation, directory));
+      case Entity.ANNOUNCEMENT -> Recipients.from(
+          Lookup.of(
+              what,
+              () ->
+                  Entity.<Announcement>getEntity(
+                      Entity.ANNOUNCEMENT, entityId, "description", Include.NON_DELETED)),
+          announcement -> inText(announcement.getDescription(), directory));
+      case Entity.TASK -> Recipients.from(
+          Lookup.of(
+              what,
+              () -> Entity.<Task>getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED)),
+          task -> inTask(task, directory));
+      default -> unsupported(entityType);
+    };
+  }
+
+  private static Recipients inConversation(Conversation conversation, AddressDirectory directory) {
+    String latest =
+        nullOrEmpty(conversation.getReplies())
+            ? conversation.getMessage()
+            : conversation.getReplies().getLast().getMessage();
+    return inText(latest, directory);
+  }
+
+  // The same mentions the filter matches (AlertsRuleEvaluator.getTaskMentions): the latest
+  // comment's only, so earlier comments are not notified again on every new one.
+  private static Recipients inTask(Task task, AddressDirectory directory) {
+    return ofLinks(AlertsRuleEvaluator.getTaskMentions(task), directory);
+  }
+
+  private static Recipients inText(String text, AddressDirectory directory) {
+    return text == null
+        ? Recipients.none()
+        : ofLinks(MessageParser.getEntityLinks(text), directory);
+  }
+
+  private static Recipients ofLinks(
+      List<MessageParser.EntityLink> links, AddressDirectory directory) {
+    return links.stream().map(link -> ofLink(link, directory)).collect(Recipients.combined());
+  }
+
+  private static Recipients ofLink(MessageParser.EntityLink link, AddressDirectory directory) {
+    String what = "mentioned " + link.getEntityType() + " " + link.getEntityFQN();
+    Lookup<Recipient> mentioned =
+        switch (typeOf(link.getEntityType())) {
+          case Entity.USER -> Lookup.of(
+              what,
+              () ->
+                  directory.ofUser(
+                      Entity.<User>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED)));
+          case Entity.TEAM -> Lookup.of(
+              what,
+              () ->
+                  directory.ofTeam(
+                      Entity.<Team>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED)));
+          default -> new Lookup.Absent<>();
+        };
+    return Recipients.from(mentioned, Recipients::of);
+  }
+
+  private static String typeOf(String entityType) {
+    return entityType == null ? "" : entityType.toLowerCase(Locale.ROOT);
+  }
+
+  private static Recipients unsupported(String entityType) {
+    LOG.warn("Mentions asked for an entity that has none: {}", entityType);
+    return Recipients.none();
+  }
+
+  @Override
+  public SubscriptionDestination.SubscriptionCategory getCategory() {
+    return SubscriptionDestination.SubscriptionCategory.MENTIONS;
+  }
+}

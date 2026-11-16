@@ -78,6 +78,42 @@ def test_passing_report_passes_both_gates(tmp_path: Path) -> None:
     assert result["statuses"][0]["sha256"]
 
 
+def test_raw_first_attempt_counts_do_not_hide_retries_or_count_skips_as_passes(
+    tmp_path,
+):
+    payload = report("expected", [{"status": "passed"}])
+    spec = payload["suites"][0]["specs"][0]
+    spec["tests"] = [
+        {"status": "expected", "results": [{"status": "passed"}]},
+        {"status": "flaky", "results": [{"status": "timedOut"}, {"status": "passed"}]},
+        {
+            "status": "skipped",
+            "expectedStatus": "skipped",
+            "results": [{"status": "skipped"}],
+        },
+        {
+            "status": "unexpected",
+            "expectedStatus": "failed",
+            "results": [{"status": "passed"}],
+        },
+    ]
+    report_file = write_json(
+        tmp_path / "playwright-results-json-1" / "results.json", payload
+    )
+    status_file = write_json(
+        tmp_path / "playwright-results-json-1" / "ci-status.json", status("1")
+    )
+    result = CLASSIFIER.classify_playwright_outcome(
+        [report_file], [status_file], "failure", ["1"], True
+    )
+    assert result["measurement"] == {
+        "firstAttemptPassed": 1,
+        "firstAttemptFailed": 2,
+        "retriedTests": 1,
+        "skippedTests": 1,
+    }
+
+
 def test_retry_pass_has_stable_signature_and_only_fails_shadow_gate(
     tmp_path: Path,
 ) -> None:

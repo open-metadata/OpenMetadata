@@ -12,10 +12,22 @@
  */
 
 import { BasicConfig, Utils as QbUtils } from '@react-awesome-query-builder/ui';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { buildQueryBuilderConfig } from './queryBuilder/config';
+import { isQueryTreeComplete } from './queryBuilder/formatters';
 import {
   elasticSearchFormat,
+  ES_6_SYNTAX,
+  hasBlankRule,
   hasUnfinishedRule,
 } from './QueryBuilderElasticsearchFormatUtils';
+
+// setupTests.js globally stubs `getQbConfigs` to `{}`; the stale-operator suite needs the real one.
+jest.mock('./AdvancedSearchClassBase', () =>
+  jest.requireActual('./AdvancedSearchClassBase')
+);
 
 // Minimal Immutable-compatible tree stub.
 // elasticSearchFormat only calls .get() on the tree and its properties map.
@@ -233,19 +245,15 @@ describe('hasUnfinishedRule', () => {
     ).toBe(true);
   });
 
-  // The query builder creates and keeps blank rows on its own (shouldCreateEmptyGroup, and
-  // removeEmptyRulesOnLoad is off), and "Add condition" leaves one behind. They add no constraint
-  // and always have been dropped, so flagging them would block saves that have always worked.
-  it('should accept a row with no field picked at all', () => {
-    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(
-      false
-    );
+  // A fieldless row only appears when the sanitizer nulls one, so the save guard should fire.
+  it('should report a row with no field picked at all', () => {
+    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(true);
   });
 
-  it('should accept a group holding an entered rule beside a blank row', () => {
+  it('should report a group holding an entered rule beside a blank row', () => {
     const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
 
-    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(true);
   });
 
   it('should report a multiselect rule with no option picked', () => {
@@ -289,6 +297,40 @@ describe('hasUnfinishedRule', () => {
   });
 });
 
+describe('hasBlankRule', () => {
+  it('should report a rule with no field', () => {
+    expect(hasBlankRule(makeBlankRule())).toBe(true);
+  });
+
+  it('should accept a rule that has a field', () => {
+    expect(hasBlankRule(makeTree('equal', [7]))).toBe(false);
+  });
+
+  it('should accept a rule whose value is unentered but whose field is set', () => {
+    expect(hasBlankRule(makeTree('equal', [undefined]))).toBe(false);
+  });
+
+  it('should find a blank rule nested inside a group', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
+
+    expect(hasBlankRule(group)).toBe(true);
+  });
+
+  it('should accept a group whose rules all have fields', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
+
+    expect(hasBlankRule(group)).toBe(false);
+  });
+
+  it('should accept a group with no conditions at all', () => {
+    expect(hasBlankRule(makeGroup([]))).toBe(false);
+  });
+
+  it('should accept an undefined tree', () => {
+    expect(hasBlankRule(undefined)).toBe(false);
+  });
+});
+
 // The cases above all use `extension.*` fields, which return from buildEsRule through
 // buildExtensionQuery before the widget is ever resolved. A plain field goes the other way and
 // needs the config the widget lookup expects, so it is the one that exposes issue #31564.
@@ -308,7 +350,12 @@ const selectFieldConfig = {
   },
 };
 
-const loadSelectTree = (operator, value, valueType) =>
+const loadSelectTree = (
+  operator,
+  value,
+  valueType,
+  config = selectFieldConfig
+) =>
   QbUtils.checkTree(
     QbUtils.loadTree({
       id: 'aaaaaaaa-1111-4111-8111-111111111111',
@@ -328,7 +375,7 @@ const loadSelectTree = (operator, value, valueType) =>
         },
       },
     }),
-    selectFieldConfig
+    config
   );
 
 const firstRuleOf = (tree) => tree.get('children1').valueSeq().toArray()[0];
@@ -343,6 +390,80 @@ describe('elasticSearchFormat – rule node reached directly (Issue #31564)', ()
     ).toStrictEqual(clause);
     expect(elasticSearchFormat(tree, selectFieldConfig)).toStrictEqual({
       bool: { must: [clause] },
+    });
+  });
+});
+
+// `Not in [a, b]` means "holds neither", so the per-value `must_not` clauses are
+// AND-ed. OR-ing them asked for "does not hold all of them", which matched every
+// asset carrying exactly one of the values — the filter let through the rows it
+// was written to exclude.
+describe('elasticSearchFormat – multi-value negated select', () => {
+  const OTHER_VALUE = 'retail-snowflake';
+
+  const multiSelectConfig = {
+    ...selectFieldConfig,
+    fields: {
+      [SELECT_FIELD]: {
+        ...selectFieldConfig.fields[SELECT_FIELD],
+        fieldSettings: {
+          listValues: {
+            [SELECT_VALUE]: SELECT_VALUE,
+            [OTHER_VALUE]: OTHER_VALUE,
+          },
+        },
+      },
+    },
+  };
+
+  const formatSelect = (operator) =>
+    elasticSearchFormat(
+      loadSelectTree(
+        operator,
+        [[SELECT_VALUE, OTHER_VALUE]],
+        'multiselect',
+        multiSelectConfig
+      ),
+      multiSelectConfig
+    );
+
+  it('should AND the negated clauses of a Not in rule', () => {
+    expect(formatSelect('select_not_any_in')).toStrictEqual({
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    must_not: { term: { [SELECT_FIELD]: SELECT_VALUE } },
+                  },
+                },
+                {
+                  bool: { must_not: { term: { [SELECT_FIELD]: OTHER_VALUE } } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('should still OR the clauses of an Any in rule', () => {
+    expect(formatSelect('select_any_in')).toStrictEqual({
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                { term: { [SELECT_FIELD]: SELECT_VALUE } },
+                { term: { [SELECT_FIELD]: OTHER_VALUE } },
+              ],
+            },
+          },
+        ],
+      },
     });
   });
 });
@@ -570,5 +691,86 @@ describe('elasticSearchFormat – entityReference custom properties', () => {
 
     expect(json).not.toContain('"customPropertiesTyped.name":"displayName"');
     expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
+  });
+});
+
+// checkTree keeps an operator the field no longer allows but strips its value.
+describe('a saved rule whose operator is no longer valid for its field', () => {
+  const config = buildQueryBuilderConfig({
+    outputType: SearchOutputType.ElasticSearch,
+    searchIndex: SearchIndex.TABLE,
+    entityType: EntityType.TABLE,
+    groupMode: 'flat',
+    conjunctionMode: 'editable',
+    readonly: false,
+  });
+
+  // `description` allows match_phrase, not like, so checkTree strips the value.
+  const load = (operator) =>
+    QbUtils.checkTree(
+      QbUtils.loadTree({
+        id: 'root',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          r1: {
+            type: 'rule',
+            id: 'r1',
+            properties: {
+              field: 'description',
+              operator,
+              value: ['sales'],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      }),
+      config
+    );
+
+  it('should emit no clause rather than a wildcard on the string "undefined"', () => {
+    expect(
+      elasticSearchFormat(load('like'), config, ES_6_SYNTAX)
+    ).toBeUndefined();
+  });
+
+  it('should block the save instead of persisting a filter that matches nothing', () => {
+    expect(isQueryTreeComplete(load('like'), config)).toBe(false);
+  });
+
+  // is_null needs no value, so it must survive the guard.
+  it('should leave an is_null rule alone', () => {
+    const tree = QbUtils.checkTree(
+      QbUtils.loadTree({
+        id: 'root',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          r1: {
+            type: 'rule',
+            id: 'r1',
+            properties: {
+              field: 'description',
+              operator: 'is_null',
+              value: [],
+              valueSrc: [],
+            },
+          },
+        },
+      }),
+      config
+    );
+
+    expect(elasticSearchFormat(tree, config, ES_6_SYNTAX)).toBeDefined();
+    expect(isQueryTreeComplete(tree, config)).toBe(true);
+  });
+
+  it('should leave a rule whose operator is still valid alone', () => {
+    const tree = load('match_phrase');
+
+    expect(elasticSearchFormat(tree, config, ES_6_SYNTAX)).toEqual({
+      bool: { must: [{ match_phrase: { description: 'sales' } }] },
+    });
+    expect(isQueryTreeComplete(tree, config)).toBe(true);
   });
 });

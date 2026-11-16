@@ -28,39 +28,28 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { DriveServiceClass } from './service/DriveServiceClass';
+import type { SpreadsheetClass } from './SpreadsheetClass';
+
+/**
+ * Without a parent the worksheet sits in the shard's shared drive service →
+ * spreadsheet chain. Pass the deepest parent the test needs to own:
+ *   - `service` — own service page, unique service name or service-level
+ *     cascade;
+ *   - `spreadsheet` — mutates the spreadsheet or asserts on its worksheet
+ *     listing.
+ * Levels below the one passed are created fresh and deleted with the worksheet.
+ */
+export type WorksheetClassOptions = {
+  name?: string;
+  service?: DriveServiceClass;
+  spreadsheet?: SpreadsheetClass;
+  sharedInfraKey?: string;
+};
 
 export class WorksheetClass extends EntityClass {
-  private readonly spreadsheetName = `pw-spreadsheet-${uuid()}`;
-  private readonly worksheetName = `pw-worksheet-${uuid()}`;
-  private readonly serviceName = `pw-worksheet-service-${uuid()}`;
-
-  service = {
-    name: this.serviceName,
-    serviceType: 'GoogleDrive',
-    connection: {
-      config: {
-        type: 'GoogleDrive',
-        driveId: '0APBVnJtQ-NLCUk9PVA',
-        credentials: {
-          gcpConfig: {
-            type: 'service_account',
-            authUri: 'https://accounts.google.com/o/oauth2/auth',
-            clientId: '123456789',
-            tokenUri: 'https://oauth2.googleapis.com/token',
-            projectId: 'sample-project-id',
-            privateKey: '1234567890',
-            clientEmail: 'sample-sa@sample-project.iam.gserviceaccount.com',
-            privateKeyId: 'sample-private-key-id',
-            clientX509CertUrl:
-              'https://www.googleapis.com/robot/v1/metadata/x509/sample-sa%40sample-project.iam.gserviceaccount.com',
-            authProviderX509CertUrl:
-              'https://www.googleapis.com/oauth2/v1/certs',
-          },
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
-  };
+  service: DriveServiceClass['entity'];
 
   children: Column[];
   entity: {
@@ -75,12 +64,25 @@ export class WorksheetClass extends EntityClass {
   entityResponseData: Worksheet = {} as Worksheet;
   spreadsheetResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string) {
+  private readonly parentOverrides: Pick<
+    WorksheetClassOptions,
+    'service' | 'spreadsheet'
+  >;
+
+  constructor(options: WorksheetClassOptions = {}) {
     super(EntityTypeEndpoint.Worksheet);
-    this.service.name = name ?? this.service.name;
     this.type = 'Worksheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
+    this.sharedInfraKey = options.sharedInfraKey;
+    this.parentOverrides = {
+      service: options.service,
+      spreadsheet: options.spreadsheet,
+    };
+    // Placeholder parent names until create() binds the resolved chain.
+    this.service = options.service?.entity ?? new DriveServiceClass().entity;
+    const spreadsheetName = `pw-spreadsheet-${uuid()}`;
+    const worksheetName = options.name ?? `pw-worksheet-${uuid()}`;
 
     this.children = [
       {
@@ -121,10 +123,10 @@ export class WorksheetClass extends EntityClass {
       },
     ];
 
-    this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}.${this.worksheetName}.${this.children[0].name}`;
+    this.childrenSelectorId = `${this.service.name}.${spreadsheetName}.${worksheetName}.${this.children[0].name}`;
     this.entity = {
-      name: this.worksheetName,
-      displayName: this.worksheetName,
+      name: worksheetName,
+      displayName: worksheetName,
       service: this.service.name,
       description: 'description',
       columns: this.children,
@@ -134,23 +136,18 @@ export class WorksheetClass extends EntityClass {
   // createOrFetch, not a bare POST — see FileClass.create for why: the names are
   // fixed at construction, so a retried beforeAll re-creates them and 409s.
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'WorksheetClass.create service',
-      createPath: '/api/v1/services/driveServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
-
-    // Create spreadsheet
-    this.spreadsheetResponseData = await createOrFetch(apiContext, {
-      label: 'WorksheetClass.create spreadsheet',
-      createPath: `/api/v1/${EntityTypeEndpoint.Spreadsheet}`,
-      fqnSegments: [this.service.name, this.spreadsheetName],
-      data: {
-        name: this.spreadsheetName,
-        service: this.serviceResponseData.fullyQualifiedName,
-      },
-    });
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'driveSpreadsheet',
+      this.parentOverrides,
+      this.sharedInfraKey
+    );
+    const service = parents.service as ResponseDataType;
+    const spreadsheet = parents.spreadsheet as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.bindServiceName(service.name);
+    this.serviceResponseData = service;
+    this.spreadsheetResponseData = spreadsheet;
 
     // Create worksheet in spreadsheet. `columns` is in WorksheetResource.FIELDS,
     // so a by-name lookup omits it unless asked — and childrenSelectorId below
@@ -158,15 +155,11 @@ export class WorksheetClass extends EntityClass {
     this.entityResponseData = await createOrFetch<Worksheet>(apiContext, {
       label: 'WorksheetClass.create worksheet',
       createPath: `/api/v1/${EntityTypeEndpoint.Worksheet}`,
-      fqnSegments: [
-        this.service.name,
-        this.spreadsheetName,
-        this.worksheetName,
-      ],
+      fqnSegments: [service.name, spreadsheet.name, this.entity.name],
       fields: 'columns',
       data: {
         ...this.entity,
-        spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
+        spreadsheet: spreadsheet.fullyQualifiedName,
       },
     });
 
@@ -178,6 +171,11 @@ export class WorksheetClass extends EntityClass {
       entity: this.entityResponseData,
       spreadsheet: this.spreadsheetResponseData,
     };
+  }
+
+  private bindServiceName(serviceName: string) {
+    this.service = { ...this.service, name: serviceName };
+    this.entity.service = serviceName;
   }
 
   async patch({
@@ -211,6 +209,7 @@ export class WorksheetClass extends EntityClass {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
       spreadsheet: this.spreadsheetResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
@@ -218,10 +217,14 @@ export class WorksheetClass extends EntityClass {
     entity: Worksheet;
     service: ResponseDataType;
     spreadsheet: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
     this.spreadsheetResponseData = data.spreadsheet;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.bindServiceName(data.service.name);
   }
 
   async visitEntityPage(page: Page) {
@@ -233,14 +236,11 @@ export class WorksheetClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/driveServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+    await this.deleteOwnedOrLeaf(
+      apiContext,
+      `/api/v1/${EntityTypeEndpoint.Worksheet}/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-    };
+    return { entity: this.entityResponseData };
   }
 }

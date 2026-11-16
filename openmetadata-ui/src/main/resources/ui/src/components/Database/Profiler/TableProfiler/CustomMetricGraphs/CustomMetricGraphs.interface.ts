@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { CustomMetric } from '../../../../../generated/tests/customMetric';
+import { ProfileExecutionSourceProps } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 
-export interface CustomMetricGraphsProps {
+export interface CustomMetricGraphsProps
+  extends Pick<ProfileExecutionSourceProps, 'profiles' | 'isSharded'> {
   customMetricsGraphData?: Record<string, MetricChartType['data']>;
   customMetrics?: CustomMetric[];
   isLoading: boolean;

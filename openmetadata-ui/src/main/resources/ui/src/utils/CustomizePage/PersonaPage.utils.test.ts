@@ -14,8 +14,16 @@
 import { Document } from '../../generated/entity/docStore/document';
 import { Page, PageType } from '../../generated/system/ui/page';
 import {
+  AppMode,
+  PageViewMode,
+  PersonaPreferences,
+} from '../../generated/type/personaPreferences';
+import {
   getPersonaPage,
   normalizePersonaDocument,
+  resolvePersonaLandingPage,
+  resolvePersonaViewMode,
+  updatePersonaAppLayout,
   updatePersonaDocumentPage,
 } from './PersonaPage.utils';
 
@@ -35,6 +43,20 @@ const createDocument = (pages: unknown[]): Document => ({
   fullyQualifiedName: 'persona.test',
   name: 'test',
 });
+
+const createPreferencesDocument = (
+  preferences: Partial<PersonaPreferences>
+): Document => ({
+  ...createDocument([]),
+  data: {
+    personaPreferences: [
+      { personaId: 'persona-1', personaName: 'analytics', ...preferences },
+    ],
+  },
+});
+
+const createLandingPageDocument = (defaultLandingPage?: string) =>
+  createPreferencesDocument({ defaultLandingPage });
 
 describe('PersonaPage utilities', () => {
   it('finds a valid page after invalid legacy entries', () => {
@@ -97,5 +119,139 @@ describe('PersonaPage utilities', () => {
     expect(withDashboard.data.pages).toEqual([tablePage, dashboardPage]);
     expect(withReplacement.data.pages).toEqual([tablePage, replacement]);
     expect(withoutTable.data.pages).toEqual([replacement]);
+  });
+});
+
+describe('updatePersonaAppLayout', () => {
+  const persona = { id: 'persona-1', name: 'analytics' };
+  const otherEntry: PersonaPreferences = {
+    personaId: 'persona-2',
+    personaName: 'engineering',
+    appMode: AppMode.AI,
+  };
+
+  it('adds an entry when the persona has none', () => {
+    expect(
+      updatePersonaAppLayout([otherEntry], persona, {
+        appMode: AppMode.AI,
+        defaultLandingPage: '/explore',
+      })
+    ).toEqual([
+      otherEntry,
+      {
+        personaId: 'persona-1',
+        personaName: 'analytics',
+        appMode: AppMode.AI,
+        defaultLandingPage: '/explore',
+      },
+    ]);
+  });
+
+  it('updates only the matching persona and keeps its other preferences', () => {
+    const entry: PersonaPreferences = {
+      personaId: 'persona-1',
+      personaName: 'analytics',
+      appMode: AppMode.Classic,
+      landingPageSettings: { headerColor: '#fff' },
+    };
+
+    expect(
+      updatePersonaAppLayout([entry, otherEntry], persona, {
+        appMode: AppMode.AI,
+        defaultLandingPage: '/glossary',
+      })
+    ).toEqual([
+      { ...entry, appMode: AppMode.AI, defaultLandingPage: '/glossary' },
+      otherEntry,
+    ]);
+  });
+
+  it('removes cleared fields but keeps the entry', () => {
+    const entry: PersonaPreferences = {
+      personaId: 'persona-1',
+      personaName: 'analytics',
+      appMode: AppMode.AI,
+      defaultLandingPage: '/explore',
+      landingPageSettings: { headerColor: '#fff' },
+    };
+
+    const [updated] = updatePersonaAppLayout([entry], persona, {});
+
+    expect(updated).toEqual({
+      personaId: 'persona-1',
+      personaName: 'analytics',
+      landingPageSettings: { headerColor: '#fff' },
+    });
+  });
+
+  it('returns the same array when clearing a persona that has no entry', () => {
+    const preferences = [otherEntry];
+
+    expect(updatePersonaAppLayout(preferences, persona, {})).toBe(preferences);
+  });
+});
+
+describe('resolvePersonaLandingPage', () => {
+  it('returns the persona landing page when it is a known option', () => {
+    expect(
+      resolvePersonaLandingPage(
+        createLandingPageDocument('/glossary'),
+        'persona-1'
+      )
+    ).toBe('/glossary');
+  });
+
+  it.each([
+    ['unset', undefined],
+    ['not a curated option', '/settings'],
+    ['an external URL', '//example.com'],
+  ])('falls back to Home when the value is %s', (_, path) => {
+    expect(
+      resolvePersonaLandingPage(createLandingPageDocument(path), 'persona-1')
+    ).toBe('/my-data');
+  });
+
+  it('falls back to Home without a document or persona', () => {
+    expect(resolvePersonaLandingPage(undefined, 'persona-1')).toBe('/my-data');
+    expect(
+      resolvePersonaLandingPage(
+        createLandingPageDocument('/glossary'),
+        undefined
+      )
+    ).toBe('/my-data');
+  });
+});
+
+describe('resolvePersonaViewMode', () => {
+  const document = createPreferencesDocument({
+    defaultViewModes: {
+      domains: PageViewMode.Tree,
+      dataProducts: PageViewMode.Card,
+      subDomains: PageViewMode.Tree,
+    },
+  });
+
+  it('returns the view saved for the page', () => {
+    expect(resolvePersonaViewMode(document, 'persona-1', 'domains')).toBe(
+      PageViewMode.Tree
+    );
+    expect(resolvePersonaViewMode(document, 'persona-1', 'dataProducts')).toBe(
+      PageViewMode.Card
+    );
+  });
+
+  it('falls back to Table when the page does not offer the saved view', () => {
+    expect(resolvePersonaViewMode(document, 'persona-1', 'subDomains')).toBe(
+      PageViewMode.Table
+    );
+  });
+
+  it('falls back to Table when nothing is saved for the page', () => {
+    expect(
+      resolvePersonaViewMode(document, 'persona-1', 'learningResources')
+    ).toBe(PageViewMode.Table);
+    expect(resolvePersonaViewMode(undefined, 'persona-1', 'domains')).toBe(
+      PageViewMode.Table
+    );
   });
 });

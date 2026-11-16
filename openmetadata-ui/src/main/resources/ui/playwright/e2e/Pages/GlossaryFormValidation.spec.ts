@@ -13,15 +13,15 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { selectActiveGlossary } from '../../utils/glossary';
 import {
-  fillDescriptionBox,
-  getApiContext,
-  redirectToHomePage,
-} from '../../utils/common';
-import {
-  openAddGlossaryTermModal,
-  selectActiveGlossary,
-} from '../../utils/glossary';
+  fillGlossaryForm,
+  fillGlossaryTermForm,
+  openAddGlossaryForm,
+  openAddGlossaryTermForm,
+  saveGlossaryFormExpectingError,
+} from '../../utils/glossaryForm';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({
@@ -36,17 +36,11 @@ test.describe('Glossary Form Validation', () => {
   test('should show error when glossary name is empty', async ({ page }) => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    await page.click('[data-testid="add-glossary"]');
-    await page.getByTestId('form-heading').waitFor();
+    const form = await openAddGlossaryForm(page);
 
-    // Fill description but leave name empty
-    await fillDescriptionBox(page, 'Test description');
+    await fillGlossaryForm(page, form, { description: 'Test description' });
 
-    // Try to save
-    await page.click('[data-testid="save-glossary"]');
-
-    // Verify error message appears
-    await expect(page.locator('.ant-form-item-explain-error')).toBeVisible();
+    await saveGlossaryFormExpectingError(page, 'glossary', 'Name is required');
   });
 
   test('should show error when glossary description is empty', async ({
@@ -54,19 +48,15 @@ test.describe('Glossary Form Validation', () => {
   }) => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    await page.click('[data-testid="add-glossary"]');
-    await page.getByTestId('form-heading').waitFor();
+    const form = await openAddGlossaryForm(page);
 
-    // Fill name but leave description empty
-    await page.fill('[data-testid="name"]', 'TestGlossary');
+    await fillGlossaryForm(page, form, { name: 'TestGlossary' });
 
-    // Try to save
-    await page.click('[data-testid="save-glossary"]');
+    await saveGlossaryFormExpectingError(page, 'glossary');
 
-    // Verify error message appears for description
-    await expect(
-      page.locator('.ant-form-item-explain-error').first()
-    ).toBeVisible();
+    await expect(form.getByTestId('description')).toContainText(
+      'Description is required'
+    );
   });
 
   test('should show error when creating glossary with duplicate name', async ({
@@ -80,20 +70,19 @@ test.describe('Glossary Form Validation', () => {
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      await page.click('[data-testid="add-glossary"]');
-      await page.getByTestId('form-heading').waitFor();
+      const form = await openAddGlossaryForm(page);
 
-      // Use the same name as existing glossary
-      await page.fill('[data-testid="name"]', glossary.data.name);
-      await fillDescriptionBox(page, 'Test description');
+      await fillGlossaryForm(page, form, {
+        name: glossary.data.name,
+        description: 'Test description',
+      });
 
-      // Try to save
-      await page.click('[data-testid="save-glossary"]');
+      await saveGlossaryFormExpectingError(page, 'glossary');
 
-      // Verify error toast or inline error appears
-      await expect(
-        page.getByText(/already exists|duplicate/i).first()
-      ).toBeVisible({ timeout: 10000 });
+      // A duplicate name is surfaced inline on the name field
+      await expect(form.getByText(/already exists/i)).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
@@ -110,16 +99,17 @@ test.describe('Glossary Form Validation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
+      const form = await openAddGlossaryTermForm(page);
 
-      // Fill description but leave name empty
-      await fillDescriptionBox(page, 'Test term description');
+      await fillGlossaryTermForm(page, form, {
+        description: 'Test term description',
+      });
 
-      // Try to save
-      await page.click('[data-testid="save-glossary-term"]');
-
-      // Verify error message appears
-      await expect(page.locator('.ant-form-item-explain-error')).toBeVisible();
+      await saveGlossaryFormExpectingError(
+        page,
+        'glossaryTerm',
+        'Name is required'
+      );
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
@@ -136,18 +126,15 @@ test.describe('Glossary Form Validation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
+      const form = await openAddGlossaryTermForm(page);
 
-      // Fill name but leave description empty
-      await page.fill('[data-testid="name"]', 'TestTerm');
+      await fillGlossaryTermForm(page, form, { name: 'TestTerm' });
 
-      // Try to save
-      await page.click('[data-testid="save-glossary-term"]');
+      await saveGlossaryFormExpectingError(page, 'glossaryTerm');
 
-      // Verify error message appears
-      await expect(
-        page.locator('.ant-form-item-explain-error').first()
-      ).toBeVisible();
+      await expect(form.getByTestId('description')).toContainText(
+        'Description is required'
+      );
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

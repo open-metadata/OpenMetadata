@@ -64,10 +64,13 @@ async function performRename(
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
+  // A rename re-indexes the subtree in-line (update-by-query, refresh=true), which
+  // has taken ~60s on a loaded search cluster — the nightly AUT's default wait.
   const patchResponse = page.waitForResponse(
     (response) =>
       response.url().includes(apiEndpoint) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH',
+    { timeout: 120_000 }
   );
   await page.getByTestId('save-button').click();
   await patchResponse;
@@ -347,7 +350,11 @@ test.describe(
 
         // Navigate to classification
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -410,7 +417,11 @@ test.describe(
         await redirectToHomePage(page);
 
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -474,7 +485,11 @@ test.describe(
 
         // Navigate to tag
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })
@@ -528,7 +543,11 @@ test.describe(
         await redirectToHomePage(page);
 
         await sidebarClick(page, SidebarItem.TAGS);
-        await page.getByTestId('side-panel-classification').first().waitFor();
+        await expect(
+          page
+            .getByTestId('side-panel-classification')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page
           .locator('[data-testid="side-panel-classification"]')
           .filter({ hasText: classification.data.displayName })

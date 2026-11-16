@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
 import { noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TrashIcon } from '../../../../assets/svg/ic-delete-token.svg';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
@@ -70,16 +71,16 @@ const AccessTokenRevokeModal = ({
           <div className="scim-token-delete-modal">
             <div className="scim-modal-header  mb-4">
               <span className="scim-modal-icon">
-                <TrashIcon height={22} />
+                <Trash01 size={22} />
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <Typography.Text className="scim-modal-delete-title text-md">
+              <Typography className="scim-modal-delete-title text-md">
                 {t('message.delete-scim-token')}
-              </Typography.Text>
-              <Typography.Text className="scim-modal-delete-desc text-sm">
+              </Typography>
+              <Typography className="scim-modal-delete-desc text-sm">
                 {t('message.are-you-sure-to-delete-scim-token')}
-              </Typography.Text>
+              </Typography>
             </div>
           </div>
         ) : (
@@ -328,16 +329,18 @@ const AccessTokenCard: FC<MockProps> = ({
         isSCIMBot && 'scim-token-card'
       )}
       data-testid="center-panel">
-      {!isDataLoaded ? <Loader /> : renderAuthComponent()}
-      <AccessTokenRevokeModal
-        confirmMessage={confirmMessage}
-        disabled={disabled}
-        isModalOpen={isModalOpen}
-        isSCIMBot={isSCIMBot}
-        isTokenRemoving={isTokenRemoving}
-        onCancel={() => setIsModalOpen(false)}
-        onConfirm={handleTokenRevoke}
-      />
+      <Card.Content>
+        {!isDataLoaded ? <Loader /> : renderAuthComponent()}
+        <AccessTokenRevokeModal
+          confirmMessage={confirmMessage}
+          disabled={disabled}
+          isModalOpen={isModalOpen}
+          isSCIMBot={isSCIMBot}
+          isTokenRemoving={isTokenRemoving}
+          onCancel={() => setIsModalOpen(false)}
+          onConfirm={handleTokenRevoke}
+        />
+      </Card.Content>
     </Card>
   );
 
@@ -346,7 +349,15 @@ const AccessTokenCard: FC<MockProps> = ({
   }
 
   if (disabled) {
-    return <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>;
+    return (
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title="Upgrade to use this feature"
+        triggerClassName="tw:inline-flex">
+        {tokenCard}
+      </Tooltip>
+    );
   }
 
   return tokenCard;

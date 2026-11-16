@@ -36,6 +36,7 @@ import type {
 import type { MetadataService } from '../generated/entity/services/metadataService';
 import type { EntityReference } from '../generated/entity/type';
 import type { TestCaseParameterValue } from '../generated/tests/testCase';
+import { Status as EntityStatus } from '../generated/type/status';
 import type { TagLabel } from '../generated/type/tagLabel';
 import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
@@ -49,6 +50,7 @@ import {
   getDiffByFieldName,
   hasVersionDiffStringProperty,
   isEndsWithField,
+  isTagLabelDiff,
   parseVersionDiffArray,
   parseVersionDiffObject,
 } from './EntityDiffPureUtils';
@@ -110,11 +112,11 @@ export const getEntityVersionTags = (
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
   const oldTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityOldValue(tagsDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
   const newTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityNewValue(tagsDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<TagLabelWithStatus> = [];
@@ -133,12 +135,19 @@ export const getEntityVersionTags = (
 };
 
 export const summaryFormatter = (fieldChange: FieldChange) => {
-  const value = fieldChange.newValue ?? fieldChange.oldValue;
+  // A deleted field arrives with an empty newValue, so fall back to oldValue.
+  const parseWithFallback = <T>(isValid: (item: unknown) => boolean) => {
+    const fromNew = parseVersionDiffArray<T>(fieldChange.newValue, isValid);
+
+    return fromNew.length
+      ? fromNew
+      : parseVersionDiffArray<T>(fieldChange.oldValue, isValid);
+  };
 
   if (fieldChange.name === EntityField.COLUMNS) {
     return `${t(
       'label.column-lowercase-plural'
-    )} ${parseVersionDiffArray<TableColumn>(value, (item) =>
+    )} ${parseWithFallback<TableColumn>((item) =>
       hasVersionDiffStringProperty(item, 'name')
     )
       .map((val) => val.name)
@@ -147,15 +156,18 @@ export const summaryFormatter = (fieldChange: FieldChange) => {
     fieldChange.name === 'tags' ||
     fieldChange.name?.endsWith('tags')
   ) {
-    return `${t(
-      'label.tag-lowercase-plural'
-    )} ${parseVersionDiffArray<TagLabel>(value, (item) =>
-      hasVersionDiffStringProperty(item, 'tagFQN')
+    return `${t('label.tag-lowercase-plural')} ${parseWithFallback<TagLabel>(
+      isTagLabelDiff
     )
       .map((val) => val.tagFQN)
       .join(', ')}`;
   } else if (fieldChange.name === 'owner') {
-    const owner = parseVersionDiffObject<EntityReference>(value);
+    const newOwner = parseVersionDiffObject<EntityReference>(
+      fieldChange.newValue
+    );
+    const owner = isEmpty(newOwner)
+      ? parseVersionDiffObject<EntityReference>(fieldChange.oldValue)
+      : newOwner;
     const ownerName = getEntityName(owner);
 
     return ownerName ? `${fieldChange.name} ${ownerName}` : fieldChange.name;
@@ -185,6 +197,31 @@ export const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
   return approvalText;
 };
 
+const ENTITY_STATUS_FIELD = 'entityStatus';
+
+const ENTITY_STATUS_LABEL_KEYS: Record<EntityStatus, string> = {
+  [EntityStatus.Approved]: 'label.approved',
+  [EntityStatus.Archived]: 'label.archived',
+  [EntityStatus.Deprecated]: 'label.deprecated',
+  [EntityStatus.Draft]: 'label.draft',
+  [EntityStatus.InReview]: 'label.in-review',
+  [EntityStatus.Rejected]: 'label.rejected',
+  [EntityStatus.Unprocessed]: 'label.unprocessed',
+};
+
+/** A lifecycle status change, read as the status the asset moved to rather than the field's name. */
+export const getEntityStatusChangeText = (fieldsChanged: FieldChange[]) => {
+  const change = fieldsChanged.find(
+    (field) => field.name === ENTITY_STATUS_FIELD
+  );
+  const labelKey =
+    ENTITY_STATUS_LABEL_KEYS[change?.newValue as EntityStatus] ?? '';
+
+  return labelKey
+    ? t('message.status-changed-to', { status: t(labelKey) })
+    : '';
+};
+
 export const getSummaryText = ({
   isPrefix,
   fieldsChanged,
@@ -199,9 +236,12 @@ export const getSummaryText = ({
   isGlossaryTerm?: boolean;
 }) => {
   const prefix = isPrefix ? `+ ${actionType}` : '';
-  const filteredFieldsChanged = isGlossaryTerm
-    ? fieldsChanged.filter((field) => field.name !== 'status')
-    : fieldsChanged;
+  const entityStatusText = getEntityStatusChangeText(fieldsChanged);
+  const filteredFieldsChanged = fieldsChanged.filter(
+    (field) =>
+      !(isGlossaryTerm && field.name === 'status') &&
+      !(entityStatusText && field.name === ENTITY_STATUS_FIELD)
+  );
 
   let summaryText = '';
 
@@ -224,7 +264,7 @@ export const getSummaryText = ({
     ? getGlossaryTermApprovalText(fieldsChanged)
     : '';
 
-  return `${glossaryTermApprovalText} ${summaryText}`;
+  return `${glossaryTermApprovalText}${entityStatusText} ${summaryText}`;
 };
 
 export const isMajorVersion = (version1: string, version2: string) => {
@@ -306,11 +346,11 @@ export function getEntityTagDiff<A extends EntityColumn>(
 ) {
   const oldTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityOldValue(entityDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
   const newTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityNewValue(entityDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
 
   const formatColumnData = (arr: Array<A>) => {
@@ -339,44 +379,6 @@ export function getEntityTagDiff<A extends EntityColumn>(
 
   return entityList ?? [];
 }
-
-export const getEntityReferenceDiffFromFieldName = (
-  fieldName: string,
-  changeDescription: ChangeDescription,
-  entity?: EntityReference
-) => {
-  const entityDiff = getDiffByFieldName(fieldName, changeDescription, true);
-
-  const oldEntity = parseVersionDiffObject<EntityReference>(
-    getChangedEntityOldValue(entityDiff)
-  );
-  const newEntity = parseVersionDiffObject<EntityReference>(
-    getChangedEntityNewValue(entityDiff)
-  );
-  const entityPlaceholder = getEntityName(entity);
-
-  let entityRef = entity;
-  let entityDisplayName: ReactNode = getEntityName(entity);
-
-  if (
-    !isUndefined(entityDiff.added) ||
-    !isUndefined(entityDiff.deleted) ||
-    !isUndefined(entityDiff.updated)
-  ) {
-    entityRef = isEmpty(newEntity) ? oldEntity : newEntity;
-    entityDisplayName = getDiffValue(
-      getEntityName(oldEntity),
-      getEntityName(newEntity)
-    );
-  } else if (entity) {
-    entityDisplayName = entityPlaceholder;
-  }
-
-  return {
-    entityRef,
-    entityDisplayName,
-  };
-};
 
 const getOwnerLabelName = (
   reviewer: EntityReference,
@@ -491,6 +493,10 @@ export const getDomainDiff = (
   };
 };
 
+// Same label the entity header shows: a custom tier's FQN segment is a slug (`pw-tier-…`).
+const getTierLabel = (tier?: Pick<TagLabel, 'tagFQN' | 'displayName'>) =>
+  tier?.displayName || (tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '');
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owners?: EntityReference[],
@@ -510,23 +516,23 @@ export const getCommonExtraInfoForVersionDetails = (
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
   const newTier = parseVersionDiffArray<TagLabel>(
     getChangedEntityNewValue(tagsDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   ).find((t) => t.tagFQN?.startsWith('Tier'));
 
   const oldTier = parseVersionDiffArray<TagLabel>(
     getChangedEntityOldValue(tagsDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   ).find((t) => t.tagFQN?.startsWith('Tier'));
 
   let tierDisplayName: ReactNode = '';
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
     tierDisplayName = getDiffValue(
-      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '',
-      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? ''
+      getTierLabel(oldTier),
+      getTierLabel(newTier)
     );
   } else if (tier?.tagFQN) {
-    tierDisplayName = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
+    tierDisplayName = getTierLabel(tier);
   }
 
   const extraInfo = {
@@ -732,33 +738,6 @@ export const getConstraintChanges = (
   ];
 
   return { addedConstraintDiffs, deletedConstraintDiffs };
-};
-
-export const getMutuallyExclusiveDiffLabel = (value: boolean) => {
-  if (value) {
-    return t('label.yes');
-  } else {
-    return t('label.no');
-  }
-};
-
-export const getMutuallyExclusiveDiff = (
-  changeDescription: ChangeDescription,
-  field: string,
-  fallbackText?: string
-) => {
-  const fieldDiff = getDiffByFieldName(field, changeDescription, true);
-  const oldField = getChangedEntityOldValue(fieldDiff);
-  const newField = getChangedEntityNewValue(fieldDiff);
-
-  const oldDisplayField = getMutuallyExclusiveDiffLabel(oldField);
-  const newDisplayField = getMutuallyExclusiveDiffLabel(newField);
-
-  return getTextDiff(
-    toString(oldDisplayField) ?? '',
-    toString(newDisplayField),
-    toString(fallbackText)
-  );
 };
 
 export const getBasicEntityInfoFromVersionData = (

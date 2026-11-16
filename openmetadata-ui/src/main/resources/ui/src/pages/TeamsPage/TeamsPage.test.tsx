@@ -12,8 +12,8 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TeamType } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
@@ -42,31 +42,30 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
 const mockOnShowDeletedTeamChange = jest.fn();
 
 jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
-  return jest.fn().mockImplementation(({ onShowDeletedTeamChange }) => {
-    mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
+  return jest
+    .fn()
+    .mockImplementation(
+      ({ onShowDeletedTeamChange, currentTeam, childTeams }) => {
+        mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
 
-    return <p>TeamDetailsV1</p>;
-  });
+        return (
+          <>
+            <p>TeamDetailsV1</p>
+            {currentTeam?.users?.map((user: { id: string; name: string }) => (
+              <span key={user.id}>{user.name}</span>
+            ))}
+            {childTeams?.map((team: { id: string; name: string }) => (
+              <span key={team.id}>{team.name}</span>
+            ))}
+          </>
+        );
+      }
+    );
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>Loader</p>);
 });
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <p>
-          {type === ERROR_PLACEHOLDER_TYPE.PERMISSION
-            ? 'Permission_Error_Placeholder'
-            : 'No_Data_Error_Placeholder'}
-        </p>
-      ));
-  }
-);
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -177,7 +176,7 @@ describe('Test Teams Page', () => {
     });
 
     expect(
-      screen.getByText('Permission_Error_Placeholder')
+      screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -193,10 +192,13 @@ describe('Test Teams Page', () => {
     expect(mockGetTeamByName.mock.calls[0]).toEqual([
       'test',
       {
-        fields: ['userCount', 'parents', 'profile', 'owners'],
+        fields: ['userCount', 'parents', 'profile', 'owners', 'extension'],
         include: 'all',
       },
     ]);
+    // `extension` is load-bearing, not cosmetic: the Custom Properties tab rebuilds the
+    // whole extension object from what it was handed, so fetching without it makes editing
+    // one property wipe every other stored value.
     expect(mockGetTeamByName.mock.calls[1]).toEqual([
       'test',
       {
@@ -209,10 +211,38 @@ describe('Test Teams Page', () => {
           'childrenCount',
           'descendantTeams',
           'domains',
+          'extension',
         ],
         include: 'all',
       },
     ]);
+  });
+
+  it('should keep the team users when the basic-details response is slower than the advanced one', async () => {
+    setMockPermissions({ ViewBasic: true });
+    const users = [{ id: 'user-id', name: 'team-member', type: 'user' }];
+    let resolveBasic: (team: unknown) => void = jest.fn();
+    (getTeamByName as jest.Mock).mockImplementation(
+      (_name: string, { fields }: { fields: string[] }) =>
+        fields.includes('users')
+          ? Promise.resolve({ ...MOCK_CURRENT_TEAM, users })
+          : new Promise((resolve) => {
+              resolveBasic = resolve;
+            })
+    );
+
+    await act(async () => {
+      render(<TeamsPage />);
+    });
+    await act(async () => {
+      resolveBasic({ ...MOCK_CURRENT_TEAM, users: undefined });
+    });
+
+    expect(screen.getByText('team-member')).toBeInTheDocument();
+
+    (getTeamByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_CURRENT_TEAM)
+    );
   });
 
   it('should render component data', async () => {
@@ -234,7 +264,7 @@ describe('Test Teams Page', () => {
       render(<TeamsPage />);
     });
 
-    expect(screen.getByText('No_Data_Error_Placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
 
     (getTeamByName as jest.Mock).mockReset();
   });
@@ -371,6 +401,81 @@ describe('Test Teams Page', () => {
           include: Include.NonDeleted,
         })
       );
+    });
+
+    it('should not request owned assets, since the asset column reads /teams/assets/counts', async () => {
+      setMockPermissions({ ViewBasic: true });
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      const advancedFetches = (getTeams as jest.Mock).mock.calls.filter(
+        ([params]) => params?.fields
+      );
+
+      expect(advancedFetches.length).toBeGreaterThan(0);
+
+      advancedFetches.forEach(([params]) =>
+        expect(params.fields).not.toContain(TabSpecificField.OWNS)
+      );
+    });
+
+    it('should drop a stale advanced-fetch response that resolves after a newer one', async () => {
+      setMockPermissions({ ViewBasic: true });
+
+      // Basic (no fields) list fetches resolve instantly; the advanced (fields) fetches stay pending
+      // so we can resolve the two overlapping full refreshes out of order.
+      const advancedResolvers: Array<(value: unknown) => void> = [];
+      (getTeams as jest.Mock).mockImplementation(
+        ({ fields }: { fields?: string[] }) =>
+          fields
+            ? new Promise((resolve) => {
+                advancedResolvers.push(resolve);
+              })
+            : Promise.resolve({ data: [] })
+      );
+
+      // Mount fires full refresh #1 (advancedResolvers[0]).
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      // Toggling showDeletedTeam fires full refresh #2 (advancedResolvers[1]) while #1 is still
+      // in flight — #2 is now the latest.
+      await act(async () => {
+        mockOnShowDeletedTeamChange();
+      });
+
+      expect(advancedResolvers).toHaveLength(2);
+
+      // Resolve the newer request first, then the older (stale) one.
+      await act(async () => {
+        advancedResolvers[1]({
+          data: [
+            {
+              id: 'latest',
+              name: 'latest-team',
+              fullyQualifiedName: 'latest-team',
+            },
+          ],
+        });
+      });
+      await act(async () => {
+        advancedResolvers[0]({
+          data: [
+            {
+              id: 'stale',
+              name: 'stale-team',
+              fullyQualifiedName: 'stale-team',
+            },
+          ],
+        });
+      });
+
+      // The stale response must not overwrite the list produced by the newer request.
+      expect(screen.getByText('latest-team')).toBeInTheDocument();
+      expect(screen.queryByText('stale-team')).not.toBeInTheDocument();
     });
   });
 });

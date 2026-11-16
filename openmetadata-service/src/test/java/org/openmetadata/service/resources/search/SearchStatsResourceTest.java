@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.api.search.SearchStatsResponse;
 import org.openmetadata.schema.api.search.SearchStatsResponse$IndexStats;
 import org.openmetadata.schema.api.search.SearchStatsResponse$OrphanIndex;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
@@ -87,6 +89,11 @@ class SearchStatsResourceTest {
   }
 
   private SearchStatsResponse invokeGetSearchStats() throws Exception {
+    return invokeGetSearchStats(Map.of());
+  }
+
+  private SearchStatsResponse invokeGetSearchStats(Map<String, IndexMapping> indexMap)
+      throws Exception {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       // SearchResource constructor reads Entity.getSearchRepository(); keep them aligned so the
       // resource holds the same mock repository used for stubbing below.
@@ -96,7 +103,7 @@ class SearchStatsResourceTest {
       SearchResource resource = new SearchResource(mockAuthorizer);
 
       when(mockSearchRepository.getSearchClient()).thenReturn(mockSearchClient);
-      when(mockSearchRepository.getEntityIndexMap()).thenReturn(java.util.Map.of());
+      when(mockSearchRepository.getEntityIndexMap()).thenReturn(indexMap);
 
       when(mockSearchClient.getAllIndexStats())
           .thenReturn(
@@ -282,6 +289,21 @@ class SearchStatsResourceTest {
     assertTrue(response.getMissingIndexes().isEmpty());
     // No quartz/distributed indexing job is running in this mocked environment.
     assertFalse(response.getIsSearchIndexingRunning());
+  }
+
+  @Test
+  void getSearchStatsLeavesATurnedOffColumnIndexOutOfExpectedAndMissing() throws Exception {
+    IndexMapping tableMapping = mock(IndexMapping.class);
+    IndexMapping columnMapping = mock(IndexMapping.class);
+    when(mockSearchRepository.indexExists(tableMapping)).thenReturn(true);
+    when(mockSearchRepository.indexExists(columnMapping)).thenReturn(false);
+    when(mockSearchRepository.isIndexDisabled("tableColumn")).thenReturn(true);
+
+    SearchStatsResponse response =
+        invokeGetSearchStats(Map.of("table", tableMapping, "tableColumn", columnMapping));
+
+    assertEquals(Integer.valueOf(1), response.getExpectedIndexCount());
+    assertTrue(response.getMissingIndexes().isEmpty());
   }
 
   private static SearchStatsResponse$IndexStats byName(

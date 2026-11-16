@@ -1,6 +1,6 @@
 {
     "$id": "https://open-metadata.org/schema/entity/services/connections/database/cassandraConnection.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "CassandraConnection",
     "description": "Cassandra Connection Config",
     "type": "object",
@@ -64,7 +64,11 @@
         "schemaFilterPattern":{
             "title": "Default Schema Filter Pattern",
             "description": "Regex to only include/exclude schemas that matches the pattern.",
-            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+            "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+            "default": {
+              "includes": [],
+              "excludes": ["^system$", "^system_auth$", "^system_schema$", "^system_distributed$", "^system_traces$", "^system_views$", "^system_virtual_schema$"]
+            }
         },
         "tableFilterPattern": {
             "title": "Default Table Filter Pattern",

@@ -22,6 +22,7 @@ import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.StartEvent;
 import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -47,6 +48,7 @@ public class NoOpTrigger implements TriggerInterface {
           WorkflowStartVariables.TASK_UPDATED_BY,
           WorkflowStartVariables.TASK_REVIEWERS,
           WorkflowStartVariables.TASK_ASSIGNEES,
+          WorkflowStartVariables.APPROVAL_MODE,
           WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION,
           WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
@@ -132,7 +134,9 @@ public class NoOpTrigger implements TriggerInterface {
     outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
 
     workflowTrigger.setInParameters(inputParameters);
-    workflowTrigger.setOutParameters(List.of(outputParameter));
+    workflowTrigger.setOutParameters(
+        List.of(outputParameter, SubWorkflowFailureListener.outParameter()));
+    workflowTrigger.getExecutionListeners().add(SubWorkflowFailureListener.endListener());
 
     return workflowTrigger;
   }

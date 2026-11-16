@@ -12,9 +12,20 @@
 import json
 
 import docker
+from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.oracle import OracleDbContainer
 
 from .database_test_container import DataBaseTestContainer  # noqa: TID252
+
+ORACLE_READY_LOG = "DATABASE IS READY TO USE!"
+ORACLE_STARTUP_TIMEOUT_SECONDS = 600
+
+
+class _LogReadyOracleDbContainer(OracleDbContainer):
+    """Readiness is the image's ready banner, not the default SQLAlchemy connect probe."""
+
+    def _connect(self) -> None:
+        wait_for_logs(self, ORACLE_READY_LOG, timeout=ORACLE_STARTUP_TIMEOUT_SECONDS)
 
 
 class OracleTestContainer(DataBaseTestContainer):
@@ -28,7 +39,7 @@ class OracleTestContainer(DataBaseTestContainer):
 
         self.image = "gvenzl/oracle-free:23-slim-faststart"
 
-        self.oracle_container = OracleDbContainer(
+        self.oracle_container = _LogReadyOracleDbContainer(
             image=self.image,
             oracle_password=self.password,
             username=self.username,
@@ -78,6 +89,22 @@ class OracleTestContainer(DataBaseTestContainer):
 
         return oracledb.connect(
             user=self.username,
+            password=self.password,
+            host=self.host,
+            port=self.exposed_port,
+            service_name=self.dbname,
+        )
+
+    def admin_connection(self):
+        """Get direct oracledb connection as the SYSTEM admin user.
+
+        gvenzl/oracle-free seeds a SYSTEM user with the password supplied via
+        oracle_password — used here for grants the test user can't perform.
+        """
+        import oracledb
+
+        return oracledb.connect(
+            user="system",
             password=self.password,
             host=self.host,
             port=self.exposed_port,

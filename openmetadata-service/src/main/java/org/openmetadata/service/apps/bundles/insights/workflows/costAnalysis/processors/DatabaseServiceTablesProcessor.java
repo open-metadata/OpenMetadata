@@ -28,7 +28,8 @@ import org.openmetadata.service.workflows.interfaces.Processor;
 @Slf4j
 public class DatabaseServiceTablesProcessor
     implements Processor<
-        List<CostAnalysisWorkflow.CostAnalysisTableData>, ResultList<? extends EntityInterface>> {
+        List<CostAnalysisWorkflow.CostAnalysisTableData>,
+        ResultList<? extends EntityInterface<?>>> {
   private final StepStats stats = new StepStats();
 
   public DatabaseServiceTablesProcessor(int total) {
@@ -37,11 +38,11 @@ public class DatabaseServiceTablesProcessor
 
   @Override
   public List<CostAnalysisWorkflow.CostAnalysisTableData> process(
-      ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
+      ResultList<? extends EntityInterface<?>> input, Map<String, Object> contextData)
       throws SearchIndexException {
     List<CostAnalysisWorkflow.CostAnalysisTableData> costAnalysisTableDataList = new ArrayList<>();
     try {
-      for (EntityInterface entity : input.getData()) {
+      for (EntityInterface<?> entity : input.getData()) {
         Table table = (Table) entity;
         Optional<LifeCycle> oTableLifeCycle = Optional.empty();
         Optional<Double> oSize = Optional.empty();

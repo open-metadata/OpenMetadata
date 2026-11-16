@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
@@ -36,7 +37,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -50,13 +50,14 @@ import org.quartz.SchedulerException;
 @Getter
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
-  protected Set<String> getFieldsToEncryptDecrypt() {
-    return Set.of();
-  }
-
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+
+  // Set on the freshly built instance by ApplicationHandler rather than passed to triggerOnDemand:
+  // apps such as AutoPilotApp override the single-argument triggerOnDemand, so adding an argument
+  // would silently route them to the base implementation instead of their override.
+  @Setter private String triggeredBy;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -122,7 +123,7 @@ public class AbstractNativeApplication implements NativeApplication {
         appConfig.putAll(config);
       }
       validateConfig(appConfig);
-      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
+      AppScheduler.getInstance().triggerOnDemandApplication(app, config, triggeredBy);
     } else {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
@@ -208,21 +209,6 @@ public class AbstractNativeApplication implements NativeApplication {
       result = schedule.getCronExpression();
     }
     return result;
-  }
-
-  protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
-    if (configMap == null || configMap.isEmpty()) {
-      return;
-    }
-    Fernet instance = Fernet.getInstance();
-    Set<String> fieldsToProcess = getFieldsToEncryptDecrypt();
-    for (Map.Entry<String, Object> entry : configMap.entrySet()) {
-      if (fieldsToProcess.contains(entry.getKey()) && entry.getValue() instanceof String value) {
-        String updatedValue =
-            encrypt ? instance.encryptIfApplies(value) : instance.decryptIfApplies(value);
-        configMap.put(entry.getKey(), updatedValue);
-      }
-    }
   }
 
   private void updateAppConfig(

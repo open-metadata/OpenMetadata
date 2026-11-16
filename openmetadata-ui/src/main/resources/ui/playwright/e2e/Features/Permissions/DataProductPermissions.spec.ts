@@ -42,7 +42,7 @@ const test = base.extend<{
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
     try {
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -51,7 +51,7 @@ const test = base.extend<{
   testUserPage: async ({ browser }, use) => {
     const userPage = await browser.newPage();
     try {
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await use(userPage);
     } finally {
       await userPage.close();
@@ -228,7 +228,7 @@ test.describe('Data Product Permissions', () => {
       );
 
       const expertPage = await browser.newPage();
-      await expertUser.login(expertPage);
+      await expertUser.signIn(expertPage);
       await redirectToHomePage(expertPage);
       await sidebarClick(expertPage, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(expertPage, expertDataProduct.responseData);

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins  # noqa: TC003
+import json
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import (
@@ -14,6 +15,7 @@ from typing import (
 )
 
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName  # noqa: TC001
+from metadata.generated.schema.type.bulkCreateResult import BulkCreateResult, ConflictPolicy
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.types import JsonDict, OMetaClient, UuidLike
@@ -187,6 +189,22 @@ class BaseEntity(Generic[TEntity, TCreate]):
         client = cls._get_client()
         response = client.create_or_update(request)
         return cls._coerce_entity(response)
+
+    @classmethod
+    def _create_many(cls, requests: Sequence[TCreate], on_conflict: ConflictPolicy) -> BulkCreateResult:
+        client = cls._get_client()
+        endpoint = cls._get_endpoint_path(client)
+        # REST drops empty json lists; data preserves an empty batch as [].
+        payload = json.dumps(
+            [request.model_dump(mode="json", by_alias=True, exclude_none=True) for request in requests]
+        )
+        # A gateway error may follow a commit; replaying would lose the original created outcomes.
+        response = cls._get_rest_client(client).post(
+            f"{endpoint}/createMany?onConflict={on_conflict.value}", data=payload, retries=0
+        )
+        if response is None:
+            raise RuntimeError(f"No response from {endpoint}/createMany; creation may have completed")
+        return BulkCreateResult.model_validate(response)
 
     @classmethod
     def retrieve(

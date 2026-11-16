@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -42,7 +43,6 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 @ExtendWith(TestNamespaceExtension.class)
 public class AppOperationPermissionsIT {
 
-  private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String APP_NAME = "SearchIndexingApplication";
 
   // dataConsumer JWT tests hit SubjectCache.getUserContext during authorization; if that user
@@ -63,7 +63,7 @@ public class AppOperationPermissionsIT {
             .POST(HttpRequest.BodyPublishers.ofString("{}"))
             .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     assertEquals(401, response.statusCode(), "Request without auth should return 401");
   }
@@ -86,7 +86,7 @@ public class AppOperationPermissionsIT {
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     assertEquals(401, response.statusCode(), "Request without auth should return 401");
   }
@@ -109,7 +109,7 @@ public class AppOperationPermissionsIT {
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     assertEquals(401, response.statusCode(), "Request without auth should return 401");
   }
@@ -132,7 +132,7 @@ public class AppOperationPermissionsIT {
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     assertEquals(401, response.statusCode(), "Request without auth should return 401");
   }
@@ -155,7 +155,7 @@ public class AppOperationPermissionsIT {
             .POST(HttpRequest.BodyPublishers.noBody())
             .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     assertEquals(401, response.statusCode(), "Request without auth should return 401");
   }
@@ -242,7 +242,7 @@ public class AppOperationPermissionsIT {
             .GET()
             .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     assertEquals(401, response.statusCode(), "Request without auth should return 401");
   }
@@ -287,7 +287,7 @@ public class AppOperationPermissionsIT {
             .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
             .build();
 
-    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    return send(request);
   }
 
   private HttpResponse<String> getWithToken(String path, String token) throws Exception {
@@ -298,7 +298,7 @@ public class AppOperationPermissionsIT {
             .GET()
             .build();
 
-    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    return send(request);
   }
 
   private static String getDataConsumerToken() {
@@ -323,6 +323,18 @@ public class AppOperationPermissionsIT {
       builder.POST(HttpRequest.BodyPublishers.noBody());
     }
 
-    return HTTP_CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    return send(builder.build());
+  }
+
+  /**
+   * Each request gets its own connection. A shared client hands the next test a pooled kept-alive
+   * connection, and when the server has already closed it the request fails before any response
+   * arrives; the JDK retries that only for GET and HEAD, so one of these POSTs fails outright.
+   */
+  private static HttpResponse<String> send(HttpRequest request)
+      throws IOException, InterruptedException {
+    try (HttpClient client = HttpClient.newHttpClient()) {
+      return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
   }
 }

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { FormInstance } from 'antd';
 import { act } from 'react';
 import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -49,7 +48,7 @@ const buildProps = (
   selectedFilter: [...DEFAULT_SELECTED_FILTERS],
   setSelectedFilter: jest.fn(),
   searchValue: '',
-  form: { setFieldsValue: jest.fn() } as unknown as FormInstance,
+  form: { setFieldsValue: jest.fn(), resetFields: jest.fn() },
   getInitialOptions: jest.fn(),
   tab: DataQualityPageTabs.TEST_CASES,
   testCasePermission: {
@@ -212,7 +211,7 @@ describe('useTestCaseList', () => {
       ...DEFAULT_SELECTED_FILTERS,
       TEST_CASE_FILTERS.service,
     ]);
-    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+    expect(props.form?.setFieldsValue).toHaveBeenCalledWith({
       serviceName: 'sample_data',
     });
   });
@@ -224,7 +223,7 @@ describe('useTestCaseList', () => {
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+    expect(props.form?.setFieldsValue).toHaveBeenCalledWith({
       testCaseStatus: [TestCaseStatus.Failed],
     });
   });

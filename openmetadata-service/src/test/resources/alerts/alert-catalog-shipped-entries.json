@@ -1,0 +1,1376 @@
+[
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByEntityId"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "all",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "chart",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "conversation",
+    "kind": "filter",
+    "name": "filterByMentionedName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboard",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardDataModel",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dashboardService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "dataProduct",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "database",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseSchema",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "databaseService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "domain",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "domain",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "domain",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "domain",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "domain",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "domain",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossary",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "glossaryTerm",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "location",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "messagingService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "metadataService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodel",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "mlmodelService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "pipelineService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "storageService",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tag",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "tagCategory",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "task",
+    "kind": "filter",
+    "name": "filterByMentionedName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByGeneralMetadataEvents"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByOwnerName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Notification",
+    "source": "user",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Notification",
+    "source": "user",
+    "kind": "filter",
+    "name": "filterByEventType"
+  },
+  {
+    "alertType": "Notification",
+    "source": "user",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Notification",
+    "source": "user",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Notification",
+    "source": "user",
+    "kind": "filter",
+    "name": "filterByUpdaterName"
+  },
+  {
+    "alertType": "Observability",
+    "source": "container",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "container",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "container",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "container",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "container",
+    "kind": "trigger",
+    "name": "GetContainerSchemaChanges"
+  },
+  {
+    "alertType": "Observability",
+    "source": "dataContract",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "dataContract",
+    "kind": "filter",
+    "name": "filterByEntityName"
+  },
+  {
+    "alertType": "Observability",
+    "source": "dataContract",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "dataContract",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "dataContract",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "dataContract",
+    "kind": "trigger",
+    "name": "GetDataContractStatusUpdates"
+  },
+  {
+    "alertType": "Observability",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "ingestionPipeline",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "ingestionPipeline",
+    "kind": "trigger",
+    "name": "GetIngestionPipelineStatusUpdates"
+  },
+  {
+    "alertType": "Observability",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "pipeline",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "pipeline",
+    "kind": "trigger",
+    "name": "GetPipelineStatusUpdates"
+  },
+  {
+    "alertType": "Observability",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "table",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "table",
+    "kind": "trigger",
+    "name": "GetTableMetricsUpdates"
+  },
+  {
+    "alertType": "Observability",
+    "source": "table",
+    "kind": "trigger",
+    "name": "GetTableSchemaChanges"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "filter",
+    "name": "filterByTableNameTestCaseBelongsTo"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "trigger",
+    "name": "GetTestCaseSchemaChanges"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "trigger",
+    "name": "GetTestCaseStatusUpdates"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testCase",
+    "kind": "trigger",
+    "name": "GetTestCaseStatusUpdatesUnderSuite"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "trigger",
+    "name": "GetTestCaseStatusUpdatesUnderSuite"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "trigger",
+    "name": "GetTestSuiteSchemaChanges"
+  },
+  {
+    "alertType": "Observability",
+    "source": "testSuite",
+    "kind": "trigger",
+    "name": "GetTestSuiteStatusUpdates"
+  },
+  {
+    "alertType": "Observability",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByDomain"
+  },
+  {
+    "alertType": "Observability",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByFqn"
+  },
+  {
+    "alertType": "Observability",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByOwner"
+  },
+  {
+    "alertType": "Observability",
+    "source": "topic",
+    "kind": "filter",
+    "name": "filterByUpdaterIsBot"
+  },
+  {
+    "alertType": "Observability",
+    "source": "topic",
+    "kind": "trigger",
+    "name": "GetTopicSchemaChanges"
+  }
+]

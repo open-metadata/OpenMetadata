@@ -10,8 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import React from 'react';
-import { DataQualityProgressSegmentProps } from './DataQualitySection.interface';
+import {
+  DataQualityProgressSegmentProps,
+  DataQualityType,
+} from './DataQualitySection.interface';
+
+const FILL_CLASS: Record<DataQualityType, string> = {
+  success: 'tw:bg-utility-success-500',
+  aborted: 'tw:bg-utility-warning-500',
+  failed: 'tw:bg-utility-error-500',
+};
 
 export const DataQualityProgressSegment: React.FC<
   DataQualityProgressSegmentProps
@@ -22,7 +32,12 @@ export const DataQualityProgressSegment: React.FC<
 
   return (
     <div
-      className={`progress-segment ${type}`}
+      className={classNames(
+        `progress-segment ${type}`,
+        'tw:h-full tw:transition-all tw:duration-300',
+        FILL_CLASS[type],
+        type === 'aborted' && 'tw:mx-px'
+      )}
       style={{ width: `${percent}%` }}
     />
   );

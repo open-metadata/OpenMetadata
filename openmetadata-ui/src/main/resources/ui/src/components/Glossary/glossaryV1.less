@@ -16,16 +16,6 @@
 @box-shadow-color: var(--om-legacy-color-0-0-0-0-06);
 @left-panel-border-color: var(--om-color-gray-neutral-200);
 
-.display-name {
-  .ant-typography {
-    margin-bottom: 0;
-  }
-
-  .ant-btn {
-    padding: 0;
-  }
-}
-
 .input-width {
   width: 100%;
 }
@@ -41,35 +31,9 @@
 }
 
 .manage-button {
-  .ant-space-item:first-child {
+  .layout-space-item:first-child {
     width: 40px;
     align-self: baseline;
-  }
-}
-
-.glossary-manage-dropdown-list-container {
-  .ant-dropdown-menu {
-    padding: var(--om-space-8) 0;
-    background: var(--tw-color-bg-primary);
-    border: 1px solid var(--om-legacy-color-dde3ea);
-    box-shadow: 1px 1px 3px var(--om-legacy-color-0-0-0-0-12);
-    border-radius: var(--om-radius-sm);
-
-    .ant-dropdown-menu-item {
-      padding: var(--om-space-5) var(--om-space-16);
-    }
-  }
-}
-
-.glossary-tree-container {
-  .ant-tree-node-content-wrapper {
-    overflow: hidden;
-    white-space: nowrap;
-    gap: var(--om-space-4);
-  }
-
-  .ant-tree-title {
-    width: calc(100% - 8px);
   }
 }
 
@@ -78,108 +42,18 @@
   min-width: 300px;
 }
 
-.custom-glossary-dropdown-menu {
-  .ant-dropdown-menu {
-    background-color: var(--tw-color-bg-primary);
-    border-color: @grey-4;
-  }
-
-  .ant-dropdown-menu-item {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  .ant-dropdown-menu-item:hover {
-    background-color: var(--tw-color-bg-primary);
-    color: inherit;
-  }
-}
-
-.glossary-col-sel-checkbox-group {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  background-color: var(--tw-color-bg-primary);
-  border-color: @grey-3;
-}
-
-.status-dropdown {
-  .ant-dropdown-menu-item {
-    padding-left: @padding-sm;
-    padding-right: @padding-xs;
-  }
-
-  .ant-checkbox-wrapper {
-    height: 33px;
-  }
-}
-
-.custom-status-dropdown-btn {
-  background-color: var(--tw-color-bg-primary);
-  outline: 1px solid @grey-2;
-  color: @black;
-}
-
-.custom-glossary-dropdown-action-btn {
-  height: 26px;
-  width: 75px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.glossary-details.ant-row {
-  height: 100%;
-  flex-direction: column;
-  flex-wrap: nowrap;
-
-  > .ant-col {
-    flex: 0 0 auto;
-    max-width: 100%;
-    margin-bottom: 0;
-
-    &.glossary-page-tabs {
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-  }
-}
-
 .glossary-page-tabs {
   display: flex;
   flex-direction: column;
   min-height: 0;
 
-  .tabs-new,
-  .tabs-new > .ant-tabs-content-holder,
-  .tabs-new > .ant-tabs-content-holder > .ant-tabs-content {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
+  .activity-feed-tab {
+    height: 100%;
 
-  .ant-tabs-tabpane {
-    height: @glossary-page-height;
-    flex: 1 1 auto;
-    min-height: @glossary-page-height;
-    display: flex;
-    flex-direction: column;
-    // Inner columns own the scroll (internal scroll for tables), not the pane.
-    overflow: hidden;
-
-    .activity-feed-tab {
+    .right-container,
+    .center-container {
       height: 100%;
-
-      .right-container,
-      .center-container {
-        height: 100%;
-      }
     }
-  }
-
-  .ant-tabs-tabpane-hidden {
-    display: none;
   }
 
   .grid-container {
@@ -189,28 +63,12 @@
     margin-bottom: 0;
   }
 
-  .ant-tabs.ant-tabs-top.tabs-new .grid-container > #KnowledgePanel\.LeftPanel {
-    height: 100% !important;
-
-    > .dynamic-height-widget {
-      height: 100% !important;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .left-panel-content {
-      height: 100%;
-      min-height: 0;
-    }
-  }
-
-  .left-panel-content > .ant-col:last-child > .ant-row {
+  .left-panel-content > .layout-column:last-child > .layout-row {
     flex: 1 1 auto;
     min-height: 0;
     flex-flow: column nowrap;
 
-    > .ant-col {
+    > .layout-column {
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
@@ -223,31 +81,9 @@
     min-height: 0;
     overflow-y: auto;
   }
-
-  .glossary-terms-table {
-    .ant-table-body {
-      max-height: none !important;
-    }
-
-    .ant-table-header {
-      position: sticky;
-      top: 0;
-      z-index: var(--om-z-2);
-    }
-  }
 }
 
 .glossary-term-page-tabs {
-  .ant-tabs-tabpane {
-    height: @glossary-term-page-height;
-    overflow-y: auto;
-  }
-
-  .ant-tabs-tabpane:has(.glossary-terms-empty-container) {
-    display: flex;
-    flex-direction: column;
-  }
-
   .activity-feed-tab {
     height: 100%;
 
@@ -265,21 +101,12 @@
   }
 }
 
-.warning-icon {
-  background-color: @alert-warning-icon-bg-1;
-  border: 6px solid @alert-warning-icon-bg-2;
-  font-size: var(--om-font-size-xl);
-  border-radius: 50%;
-  padding: var(--om-space-8);
-  color: var(--om-color-warning-600);
-}
-
-.glossary-page-tabs .left-panel-content.ant-row {
+.glossary-page-tabs .left-panel-content.layout-row {
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: stretch;
 
-  > .ant-col {
+  > .layout-column {
     flex: 0 0 auto;
     max-width: 100%;
 
@@ -340,6 +167,53 @@
 
   tbody > tr.glossary-nested-row:hover > td {
     background-color: @grey-100;
+  }
+
+  // Cell backgrounds, like the antd hover, paint over a row's, so an AI draft
+  // tints its cells to stay purple when hovered or nested. Clamped descriptions
+  // fade into the same tint.
+  tbody > tr.glossary-ai-draft-row {
+    --markdown-clamp-fade-color: var(--tw-color-utility-purple-50);
+
+    > td {
+      background-color: var(--tw-color-utility-purple-50);
+    }
+
+    &:hover {
+      --markdown-clamp-fade-color: var(--tw-color-utility-purple-100);
+
+      > td {
+        background-color: var(--tw-color-utility-purple-100);
+      }
+    }
+  }
+
+  // A person's proposal awaiting review, tinted the same way in its own colour.
+  tbody > tr.glossary-person-proposal-row {
+    --markdown-clamp-fade-color: var(--tw-color-utility-warning-50);
+
+    > td {
+      background-color: var(--tw-color-utility-warning-50);
+    }
+
+    &:hover {
+      --markdown-clamp-fade-color: var(--tw-color-utility-warning-100);
+
+      > td {
+        background-color: var(--tw-color-utility-warning-100);
+      }
+    }
+  }
+
+  // The proposal open in the review panel.
+  tbody > tr.glossary-proposal-row-selected > td:first-child {
+    box-shadow: inset 3px 0 0 var(--tw-color-utility-purple-500);
+  }
+
+  tbody
+    > tr.glossary-person-proposal-row.glossary-proposal-row-selected
+    > td:first-child {
+    box-shadow: inset 3px 0 0 var(--tw-color-utility-warning-500);
   }
 
   table {

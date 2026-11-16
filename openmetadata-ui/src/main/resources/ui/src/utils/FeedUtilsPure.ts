@@ -438,6 +438,7 @@ export const getFeedCounts = async (
     const [conversations, activityRes, taskCounts] = await Promise.all([
       listConversations({
         entityLink: getEntityFeedLink(entityType, entityFQN),
+        includeFields: true,
         limit: 1,
       }),
       getEntityActivityByFqn(entityType, entityFQN, {
@@ -520,6 +521,7 @@ export const fetchEntityActivityCountInto = async (
       }),
       listConversations({
         entityLink: getEntityFeedLink(entityType, entityFqn),
+        includeFields: true,
         limit: 1,
       }),
     ]);
@@ -543,3 +545,31 @@ export const fetchEntityActivityCountInto = async (
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
   }
 };
+
+/**
+ * The activity feed's authorship test: match on id when the post carries one,
+ * otherwise on name.
+ */
+export const isFeedPostAuthor = (
+  currentUser: { id?: string; name?: string } | undefined,
+  author:
+    | { id?: string; name?: string; fullyQualifiedName?: string }
+    | undefined
+): boolean => {
+  const authorName = author?.name ?? author?.fullyQualifiedName;
+
+  return author?.id
+    ? author.id === currentUser?.id
+    : authorName === currentUser?.name;
+};
+
+/**
+ * Who may edit or delete a conversation or its reply: the author or an admin.
+ * ActivityFeedActions falls back to this rule, and a card that has to know
+ * beforehand whether that menu renders asks it too, so the two cannot drift.
+ */
+export const canManageFeedPost = (
+  currentUser: { id?: string; name?: string; isAdmin?: boolean } | undefined,
+  author: Parameters<typeof isFeedPostAuthor>[1]
+): boolean =>
+  isFeedPostAuthor(currentUser, author) || Boolean(currentUser?.isAdmin);

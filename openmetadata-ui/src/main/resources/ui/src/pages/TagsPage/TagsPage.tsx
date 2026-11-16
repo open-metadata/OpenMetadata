@@ -15,23 +15,27 @@ import {
   Badge,
   Box,
   Button,
-  EmptyPlaceholder,
+  NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
+import {
+  Grid01,
+  Plus,
+  Star01,
+  Tag01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -39,8 +43,8 @@ import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
 import { ProviderType } from '../../generated/entity/bot';
@@ -59,7 +63,6 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
@@ -244,6 +247,9 @@ const TagsPage = () => {
           })
         );
       }
+
+      // Rethrow so the form drawer stays open with the user's input.
+      throw error;
     }
   };
 
@@ -319,7 +325,9 @@ const TagsPage = () => {
     }
   }, [deleteTags.data?.id, handleDeleteTag]);
 
-  const handleUpdateClassification = useCallback(
+  // Rejects on failure so the edit drawer can stay open; inline edits use the
+  // non-throwing handleUpdateClassification below.
+  const updateClassification = useCallback(
     async (updatedClassification: Classification) => {
       if (!isUndefined(currentClassification)) {
         const patchData = compare(currentClassification, updatedClassification);
@@ -372,10 +380,23 @@ const TagsPage = () => {
               })
             );
           }
+
+          throw error;
         }
       }
     },
-    [currentClassification, history]
+    [currentClassification, navigate]
+  );
+
+  const handleUpdateClassification = useCallback(
+    async (updatedClassification: Classification) => {
+      try {
+        await updateClassification(updatedClassification);
+      } catch {
+        // Error toast already shown by updateClassification.
+      }
+    },
+    [updateClassification]
   );
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
@@ -420,6 +441,8 @@ const TagsPage = () => {
           })
         );
       }
+
+      throw error;
     }
   };
 
@@ -448,6 +471,8 @@ const TagsPage = () => {
             })
           );
         }
+
+        throw error;
       }
     }
   };
@@ -506,10 +531,6 @@ const TagsPage = () => {
      */
     fetchClassifications(!tagCategoryName);
   }, []);
-
-  const onClickClassifications = (category: Classification) => {
-    navigate(getTagPath(category.fullyQualifiedName));
-  };
 
   const handleAddTagSubmit = useCallback(
     async (data: CreateTag | Tag) => {
@@ -673,7 +694,7 @@ const TagsPage = () => {
       setIsClassificationFormLoading(true);
       try {
         if (editClassification) {
-          await handleUpdateClassification({
+          await updateClassification({
             ...editClassification,
             ...formData,
           } as Classification);
@@ -687,7 +708,7 @@ const TagsPage = () => {
     },
     [
       editClassification,
-      handleUpdateClassification,
+      updateClassification,
       handleCreateClassification,
       handleClassificationDrawerClose,
     ]
@@ -707,6 +728,32 @@ const TagsPage = () => {
     handleTagDrawerOpen();
   }, [handleTagDrawerOpen, tagForm]);
 
+  const classificationNavItems = useMemo(
+    () =>
+      classifications.map((category: Classification) => ({
+        label: getEntityName(category),
+        href: getTagPath(category.fullyQualifiedName),
+        dataTestId: 'side-panel-classification',
+        badge: (
+          <Box align="center" className="tw:ml-2 tw:shrink-0" gap={1}>
+            {category.disabled && (
+              <Badge
+                color="gray"
+                data-testid="disabled"
+                size="sm"
+                type="pill-color">
+                {t('label.disabled')}
+              </Badge>
+            )}
+            <Badge color="gray" size="sm" type="pill-color">
+              <span data-testid="filter-count">{category.termCount ?? 0}</span>
+            </Badge>
+          </Box>
+        ),
+      })),
+    [classifications, t]
+  );
+
   const leftPanelLayout = useMemo(
     () => (
       <div className="h-full" data-testid="tags-left-panel">
@@ -717,72 +764,45 @@ const TagsPage = () => {
             <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
-                  className="tw:w-full"
+                  className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                   color="secondary"
                   data-testid="add-classification"
-                  iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={() => {
                     classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
-                  <span className="tw:text-brand-600 tw:font-normal">
+                  <Typography
+                    className="tw:text-brand-tertiary"
+                    weight="regular">
                     {t('label.add-entity', {
                       entity: t('label.classification'),
                     })}
-                  </span>
+                  </Typography>
                 </Button>
               )}
             </div>
 
-            {classifications.map((category: Classification) => (
-              <button
-                className={classNames(
-                  'align-center cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
-                  {
-                    activeCategory:
-                      currentClassification?.name === category.name,
-                  }
+            <nav
+              aria-label={t('label.classification-plural')}
+              data-testid="classification-nav">
+              <NavList
+                activeUrl={getTagPath(
+                  currentClassification?.fullyQualifiedName
                 )}
-                data-testid="side-panel-classification"
-                key={category.name}
-                onClick={() => onClickClassifications(category)}>
-                <Typography
-                  ellipsis
-                  as="p"
-                  className={classNames('tw:truncate', {
-                    'tw:font-bold tw:text-brand-600':
-                      currentClassification?.name === category.name,
-                  })}
-                  data-testid="tag-name"
-                  title={getEntityName(category)}>
-                  {getEntityName(category)}
-                  {category.disabled && (
-                    <Badge
-                      color="gray"
-                      data-testid="disabled"
-                      size="sm"
-                      type="pill-color">
-                      {t('label.disabled')}
-                    </Badge>
-                  )}
-                </Typography>
-
-                {getCountBadge(
-                  category.termCount,
-                  'self-center m-l-auto',
-                  currentClassification?.fullyQualifiedName ===
-                    category.fullyQualifiedName
-                )}
-              </button>
-            ))}
+                className="tw:mt-0 tw:px-2 tw:lg:px-2"
+                items={classificationNavItems}
+                size="sm"
+              />
+            </nav>
           </div>
         </TagsLeftPanelSkeleton>
       </div>
     ),
     [
       isLoading,
-      classifications,
+      classificationNavItems,
       currentClassification,
       createClassificationPermission,
       handleClassificationDrawerOpen,
@@ -793,7 +813,7 @@ const TagsPage = () => {
 
   const classificationEmptyState = (
     <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           createClassificationPermission
             ? [
@@ -829,7 +849,6 @@ const TagsPage = () => {
           },
         ]}
         title={t('message.classification-empty-state-title')}
-        variant="features"
       />
     </Box>
   );
@@ -839,11 +858,9 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="tw:text-center tw:m-auto">
-          {error}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" title={error} />
+      </div>
     );
   }
 
@@ -857,6 +874,7 @@ const TagsPage = () => {
           className="content-height-with-resizable-panel"
           firstPanel={{
             className: 'content-resizable-panel-container',
+            cardClassName: 'tw:dark:bg-surface',
             minWidth: 280,
             flex: 0.13,
             children: leftPanelLayout,

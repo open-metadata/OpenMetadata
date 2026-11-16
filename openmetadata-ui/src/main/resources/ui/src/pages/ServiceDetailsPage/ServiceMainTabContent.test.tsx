@@ -13,6 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import { ComponentProps, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import Table from '../../components/common/Table/TableV2';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -70,10 +72,6 @@ jest.mock('../../utils/ToastUtils', () => ({
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest
@@ -324,5 +322,49 @@ describe('ServiceMainTabContent permission wiring', () => {
       expect.any(Function),
       undefined
     );
+  });
+
+  describe('card framing', () => {
+    const lastProps = (component: unknown) =>
+      (component as jest.Mock).mock.calls.at(-1)[0];
+
+    it('frames the list in a card by default, as on the classic page', () => {
+      renderComponent({ servicePermission: FULL_PERMISSION });
+
+      expect(lastProps(ResizablePanels).firstPanel.wrapInCard).toBe(true);
+      expect(lastProps(Table).containerClassName).toBeUndefined();
+    });
+
+    it('lets a host that frames the tab itself drop the card, rounding the table instead', () => {
+      renderComponent({
+        servicePermission: FULL_PERMISSION,
+        wrapInCard: false,
+      });
+
+      expect(lastProps(ResizablePanels).firstPanel.wrapInCard).toBe(false);
+      expect(lastProps(Table).containerClassName).toBe(
+        'tw:rounded-xl tw:border-secondary'
+      );
+    });
+  });
+
+  describe('right panel', () => {
+    const lastProps = () => (ResizablePanels as jest.Mock).mock.calls.at(-1)[0];
+
+    it('shows the right panel by default, as on the classic page', () => {
+      renderComponent({ servicePermission: FULL_PERMISSION });
+
+      expect(lastProps().hideSecondPanel).toBe(false);
+    });
+
+    // A host with its own right panel would otherwise mount a hidden second one, with its fetches.
+    it('lets a host that renders its own right panel drop this one', () => {
+      renderComponent({
+        servicePermission: FULL_PERMISSION,
+        hideRightPanel: true,
+      });
+
+      expect(lastProps().hideSecondPanel).toBe(true);
+    });
   });
 });

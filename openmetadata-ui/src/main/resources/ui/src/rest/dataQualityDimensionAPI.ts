@@ -16,7 +16,7 @@ import { CreateDataQualityDimension } from '../generated/api/tests/createDataQua
 import { DataQualityDimension } from '../generated/tests/dataQualityDimension';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const dimensionUrl = '/dataQuality/dimensions';
 

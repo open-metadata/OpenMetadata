@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/ontologyAssetCluster.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyAssetCluster",
   "description": "A glossary term and its bounded asset preview for an ontology data graph.",
   "type": "object",

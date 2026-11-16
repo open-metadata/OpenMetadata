@@ -12,7 +12,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '../../../icons';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 
 export interface FormItemLabelProps {
@@ -26,13 +26,13 @@ export const FormItemLabel = ({
   tooltip,
   required = false,
 }: FormItemLabelProps) => (
-  <span className="tw:inline-flex tw:items-center tw:gap-1">
+  <span className="tw:inline-flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium tw:text-secondary">
     <span data-testid="form-item-label">{label}</span>
     {required && <span className="tw:text-error-primary">*</span>}
     {tooltip && (
       <Tooltip
         title={tooltip}
-        triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+        triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-utility-gray-500 tw:transition tw:duration-200 tw:hover:text-utility-gray-600 tw:focus:text-utility-gray-600"
         triggerIsDisabled={false}>
         <HelpCircle className="tw:size-4" />
       </Tooltip>

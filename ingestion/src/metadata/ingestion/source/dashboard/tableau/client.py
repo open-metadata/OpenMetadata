@@ -14,9 +14,10 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 import validators
+from cachetools import LRUCache
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
@@ -27,6 +28,7 @@ from tableauserverclient import (
     ViewItem,
 )
 
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.dashboard.tableau.models import (
     CustomSQLTablesResponse,
     DataSource,
@@ -41,10 +43,17 @@ from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_DATASOURCES_QUERY,
     TALEAU_GET_CUSTOM_SQL_QUERY,
 )
+from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ometa_logger
 from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
+
+# Safety cap on the number of projects cached to resolve project hierarchies.
+# A ProjectItem is small, so this is set high enough to never truncate real
+# hierarchies even on very large sites, while still bounding memory against
+# a pathological/corrupted response.
+MAX_CACHED_PROJECTS = 200_000
 
 # GetSourceTables samples a few workbooks rather than reading the whole site. Every test
 # connection step shares one timeout, so the sample is capped. Breadth matters more than
@@ -52,6 +61,12 @@ logger = ometa_logger()
 # readable even when every database asset is withheld.
 SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
 MAX_SAMPLED_WORKBOOKS = 3
+
+# Tableau attaches this warning to Metadata API responses while it (re)builds the store
+# behind the API: after the API is enabled and after upgrades, for up to a week. The data
+# next to it may be missing whole workbooks and data sources.
+# https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_errors.html
+BACKFILL_RUNNING = "BACKFILL_RUNNING"
 
 
 class TableauWorkBookException(Exception):  # noqa: N818
@@ -110,8 +125,9 @@ class TableauClient:
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: dict[str, list[str]] = {}
         self.owner_cache: dict[str, TableauOwner] = {}
-        self.all_projects: list[ProjectItem] = []
+        self.all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
         self.ssl_manager = ssl_manager
+        self.metadata_api_backfill_running = False
 
     def server_info(self):
         return self.tableau_server.server_info.get()
@@ -179,14 +195,21 @@ class TableauClient:
         """
         try:
             logger.debug("Getting all projects from the tableau server")
-            all_projects: list[ProjectItem] = []
+            all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
             for project in Pager(self.tableau_server.projects):
-                all_projects.append(project)  # noqa: PERF402
+                if project.id:
+                    all_projects[project.id] = project
+            if len(all_projects) >= MAX_CACHED_PROJECTS:
+                logger.warning(
+                    "Tableau site has at least %s projects; the project cache is full and "
+                    "project hierarchy names may be incomplete for some workbooks.",
+                    MAX_CACHED_PROJECTS,
+                )
             self.all_projects = all_projects
         except Exception as e:
             logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
 
-    def get_project_parents_by_id(self, project_id: str) -> str | None:
+    def get_project_parents_by_id(self, project_id: str | None) -> str | None:
         """
         Get the parents of a project by id
         """
@@ -196,10 +219,7 @@ class TableauClient:
 
             while current_project_id:
                 # Find project with current ID
-                project = next(
-                    (proj for proj in self.all_projects if str(proj.id) == str(current_project_id)),
-                    None,
-                )
+                project = self.all_projects.get(current_project_id)
 
                 if not project:
                     break
@@ -223,14 +243,37 @@ class TableauClient:
         _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
         return pagination_item.total_available
 
-    def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
+    def get_workbooks(
+        self,
+        include_owners: bool = True,
+        dashboard_filter_pattern: FilterPattern | None = None,
+        project_filter_pattern: FilterPattern | None = None,
+        on_filtered: Callable[[str, str], None] | None = None,
+    ) -> Iterable[TableauDashboard]:
         """
-        Fetch all tableau workbooks
+        Fetch all tableau workbooks.
+
+        Applies the dashboard/project filter patterns against the data already present
+        on the workbook listing *before* calling populate_views/get_datasources, so a
+        workbook that will be filtered out never pays for those expensive per-workbook
+        API calls.
         """
         self.get_all_projects()
         self.cache_custom_sql_tables()
         for workbook in Pager(self.tableau_server.workbooks):
             try:
+                workbook_name = workbook.name or ""
+                if filter_by_dashboard(dashboard_filter_pattern, workbook_name):
+                    if on_filtered:
+                        on_filtered(workbook_name, "Dashboard Filtered Out")
+                    continue
+
+                project_name = self.get_project_parents_by_id(workbook.project_id) or workbook.project_name or ""
+                if filter_by_project(project_filter_pattern, project_name):
+                    if on_filtered:
+                        on_filtered(project_name, "Project / Workspace Filtered Out")
+                    continue
+
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
                 charts, user_views = self.get_workbook_charts_and_user_count(workbook.views, include_owners)
                 workbook = TableauDashboard(  # noqa: PLW2901
@@ -378,13 +421,30 @@ class TableauClient:
             )
         return True
 
+    def _query_metadata_api(self, query: str) -> dict | None:
+        """
+        Run a Metadata API query. Tableau returns its warnings in `errors`, next to the data,
+        and the Tableau client only raises on them when asked to, so they are read here.
+        """
+        result = self.tableau_server.metadata.query(query=query)
+        errors = (result or {}).get("errors") or []
+        if not self.metadata_api_backfill_running and any(
+            (error.get("extensions") or {}).get("code") == BACKFILL_RUNNING for error in errors
+        ):
+            self.metadata_api_backfill_running = True
+            logger.warning(
+                "Tableau Metadata API is still building its store (%s), so its results may be incomplete",
+                BACKFILL_RUNNING,
+            )
+        return result
+
     def _query_datasources(self, dashboard_id: str, entities_per_page: int, offset: int) -> TableauDatasources | None:
         """
         Method to query the graphql endpoint to get data sources
         """
         try:
-            datasources_graphql_result = self.tableau_server.metadata.query(
-                query=TABLEAU_DATASOURCES_QUERY.format(workbook_id=dashboard_id, first=entities_per_page, offset=offset)
+            datasources_graphql_result = self._query_metadata_api(
+                TABLEAU_DATASOURCES_QUERY.format(workbook_id=dashboard_id, first=entities_per_page, offset=offset)
             )
             if datasources_graphql_result and datasources_graphql_result.get("data"):
                 if datasources_graphql_result["data"].get("workbooks"):
@@ -453,7 +513,7 @@ class TableauClient:
         Fetch all custom SQL tables and cache their queries by workbook ID
         """
         try:
-            result = self.tableau_server.metadata.query(query=TALEAU_GET_CUSTOM_SQL_QUERY)
+            result = self._query_metadata_api(TALEAU_GET_CUSTOM_SQL_QUERY)
             if not result:
                 logger.debug("No result returned from GraphQL query")
                 return

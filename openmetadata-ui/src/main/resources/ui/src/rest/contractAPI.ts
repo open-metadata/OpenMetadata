@@ -13,10 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import {
-  ContractAllResult,
-  ContractResultFilter,
-} from '../components/DataContract/ContractDetailTab/contract.interface';
+import { ODCSExportVersion } from '../constants/DataContract.constants';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import {
@@ -26,7 +23,12 @@ import {
 import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import {
+  ContractAllResult,
+  ContractResultFilter,
+} from '../interface/data-contract/contract.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
 const APPLICATION_YAML_CONTENT_TYPE = 'application/yaml';
@@ -70,7 +72,7 @@ export const searchContracts = async (
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/dataContracts/name/${fqn}`
+    `/dataContracts/name/${getEncodedFqn(fqn)}`
   );
 
   return response.data;
@@ -203,7 +205,7 @@ export interface ODCSDataContract {
   quality?: ODCSQualityRule[];
   support?: ODCSSupportChannel[];
   price?: ODCSPricing;
-  team?: ODCSTeamMember[];
+  team?: ODCSTeam;
   roles?: ODCSRole[];
   slaProperties?: ODCSSlaProperty[];
   servers?: ODCSServer[];
@@ -290,18 +292,22 @@ export interface ODCSTeamMember {
   dateOut?: string;
 }
 
+export interface ODCSTeam {
+  members?: ODCSTeamMember[];
+}
+
 export interface ODCSRole {
   role: string;
   description?: string;
   access?: string;
-  firstLevelApprovers?: string[];
-  secondLevelApprovers?: string[];
+  firstLevelApprovers?: string;
+  secondLevelApprovers?: string;
 }
 
 export interface ODCSSlaProperty {
   property: string;
-  value: string;
-  valueExt?: string;
+  value?: unknown;
+  valueExt?: unknown;
   unit?: string;
   element?: string;
   driver?: string;
@@ -320,7 +326,7 @@ export interface ODCSServer {
 
 export interface ODCSCustomProperty {
   property?: string;
-  value?: string;
+  value?: unknown;
 }
 
 /**
@@ -339,16 +345,17 @@ export const exportContractToODCS = async (
 };
 
 /**
- * Export a data contract to ODCS v3.1.0 YAML format
+ * Export YAML for the selected ODCS version, or the server default when omitted.
  */
 export const exportContractToODCSYaml = async (
   contractId: string,
-  fields?: string
+  fields?: string,
+  odcsVersion?: ODCSExportVersion
 ): Promise<string> => {
   const response = await APIClient.get<string>(
     `${BASE_URL}/${contractId}/odcs/yaml`,
     {
-      params: { fields },
+      params: { fields, odcsVersion },
       headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }
@@ -428,13 +435,14 @@ export const importContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<DataContract> => {
   const response = await APIClient.post<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, objectName },
+      params: { entityId, entityType, objectName, createTestCases },
       headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
@@ -473,20 +481,23 @@ export interface SchemaValidation {
 /**
  * Validate ODCS YAML against an entity without importing
  * Returns comprehensive validation results including entity errors, constraint errors,
- * and schema field mismatches
+ * and schema field mismatches, plus the import report: what the import keeps, changes and
+ * leaves out, and what each quality rule becomes
  * @param objectName Schema object name to validate (for multi-object ODCS contracts)
+ * @param createTestCases Whether the import would create test cases from the quality rules
  */
 export const validateODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<ContractValidation> => {
   const response = await APIClient.post<ContractValidation>(
     `${BASE_URL}/odcs/validate/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, objectName },
+      params: { entityId, entityType, objectName, createTestCases },
       headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );
@@ -533,19 +544,21 @@ export const validateContractYaml = async (
  * Create or update a data contract from ODCS v3.1.0 YAML format
  * @param mode 'merge' preserves existing fields, 'replace' overwrites all fields but preserves ID and history
  * @param objectName Schema object name to import (for multi-object ODCS contracts)
+ * @param createTestCases Whether the contract's ODCS quality rules become test cases
  */
 export const createOrUpdateContractFromODCSYaml = async (
   yamlContent: string,
   entityId: string,
   entityType: string,
   mode: 'merge' | 'replace' = 'merge',
-  objectName?: string
+  objectName?: string,
+  createTestCases = true
 ): Promise<DataContract> => {
   const response = await APIClient.put<DataContract>(
     `${BASE_URL}/odcs/yaml`,
     yamlContent,
     {
-      params: { entityId, entityType, mode, objectName },
+      params: { entityId, entityType, mode, objectName, createTestCases },
       headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
     }
   );

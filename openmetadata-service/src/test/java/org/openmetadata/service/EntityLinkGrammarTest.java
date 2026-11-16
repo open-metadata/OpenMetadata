@@ -75,6 +75,8 @@ class EntityLinkGrammarTest {
           Entity.WORKFLOW_INSTANCE,
           Entity.WORKFLOW_INSTANCE_STATE,
           Entity.AUDIT_LOG,
+          // Policy resource for the RDF query surface, not a linkable entity
+          Entity.RDF,
           Entity.QUERY_COST_RECORD,
           Entity.AGENT_EXECUTION,
           Entity.DATA_CONTRACT_RESULT,
@@ -86,8 +88,6 @@ class EntityLinkGrammarTest {
           Entity.SUGGESTION,
           // Standalone UUID-addressed resource; its about field links to the target entity instead
           Entity.CONVERSATION,
-          // Feed entity derived from scheduling windows, not addressed via EntityLinks
-          Entity.ANNOUNCEMENT,
           // Admin-only task form configuration entity, not a content entity link target
           Entity.TASK_FORM_SCHEMA,
           // Column entity types - sub-entity types for custom properties, not top-level

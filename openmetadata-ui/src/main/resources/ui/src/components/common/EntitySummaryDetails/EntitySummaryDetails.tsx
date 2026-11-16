@@ -11,27 +11,26 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space } from 'antd';
-import Tooltip from 'antd/lib/tooltip';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Globe01,
+  InfoCircle,
+  LinkExternal01,
+  Teams,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/TeamUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import './entity-summary-details.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
@@ -43,12 +42,13 @@ export interface GetInfoElementsProps {
 }
 
 const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
-  <Tooltip title={content}>
-    <Icon
-      alt="info-secondary"
-      component={IconInfoSecondary}
-      style={{ fontSize: '12px' }}
-    />
+  <Tooltip excludeTriggerFromTabOrder title={content}>
+    <span
+      aria-label="info-secondary"
+      className="tw:inline-flex tw:items-center tw:align-[-0.125em] tw:leading-none"
+      role="img">
+      <InfoCircle className="tw:text-utility-gray-500" size={12} />
+    </span>
   </Tooltip>
 );
 
@@ -72,7 +72,7 @@ function OwnerRetVal({
   if (!displayVal || displayVal === '--') {
     return (
       <span className="d-flex gap-1 items-center" data-testid="owner-link">
-        {t('label.no-entity', { entity: t('label.owner-plural') })}
+        {NO_DATA_PLACEHOLDER}
       </span>
     );
   }
@@ -97,7 +97,7 @@ function OwnerRetVal({
         </>
       )}
       {isTeamOwner ? (
-        <IconTeamsGrey className="align-middle" height={18} width={18} />
+        <Teams className="align-middle tw:text-utility-gray-500" size={18} />
       ) : (
         <ProfilePicture
           displayName={displayVal}
@@ -137,12 +137,10 @@ function DomainRetVal({ displayVal }: { displayVal: ExtraInfo['value'] }) {
   }
 
   return (
-    <DomainIcon
-      className="d-flex"
-      color={DE_ACTIVE_COLOR}
-      height={16}
+    <Globe01
+      className="d-flex tw:text-utility-gray-500"
       name="folder"
-      width={16}
+      size={16}
     />
   );
 }
@@ -268,7 +266,11 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
           {data.openInNewTab && (
             <>
               &nbsp;
-              <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+              <span
+                className="tw:inline-flex tw:items-center tw:align-[-0.125em] tw:leading-none"
+                role="img">
+                <LinkExternal01 size={14} />
+              </span>
             </>
           )}
         </a>
@@ -297,18 +299,21 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
 
     if (isTier) {
       return (
-        <Space
-          className={classNames(
-            'd-inline-block truncate link-text align-middle',
-            {
-              'w-52': (displayVal as string).length > 32,
-            }
-          )}
-          data-testid="tier-name"
-          direction="horizontal"
-          title={displayVal as string}>
-          <span data-testid="Tier">{displayVal}</span>
-        </Space>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          title={displayVal as string}
+          triggerClassName="tw:inline-flex tw:min-w-0">
+          <div
+            className={classNames(
+              'd-inline-block truncate link-text align-middle',
+              {
+                'w-52': (displayVal as string).length > 32,
+              }
+            )}
+            data-testid="tier-name">
+            <span data-testid="Tier">{displayVal}</span>
+          </div>
+        </Tooltip>
       );
     }
 
@@ -320,13 +325,12 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   }
 
   return (
-    <Space
-      className="entity-summary-details"
-      data-testid="entity-summary-details"
-      direction="horizontal">
+    <div
+      className="entity-summary-details tw:inline-flex tw:items-center tw:gap-2 tw:*:relative"
+      data-testid="entity-summary-details">
       {retVal}
       {displayVal && renderDisplayValue()}
-    </Space>
+    </div>
   );
 };
 

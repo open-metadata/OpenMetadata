@@ -14,6 +14,7 @@ import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import { getSettingsHashForHref } from '../../utils/SettingsModalLinkUtils';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
@@ -22,8 +23,18 @@ import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
 
+// In the AI shell a settings-modal link (a user or team mention) is left to the
+// click that follows, which opens it over the current page.
+const openMentionLink = (target: HTMLElement) => {
+  const href = target.getAttribute('href');
+  const linkTarget = target.getAttribute('target');
+  if (href && linkTarget && !getSettingsHashForHref(href)) {
+    window.open(href, linkTarget);
+  }
+};
+
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
-  ({ editor, menuType }, ref) => {
+  ({ editable = true, editor, menuType }, ref) => {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
     const handleLinkToggle = () => {
@@ -108,11 +119,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       let hasPopup = !isEmpty(popup);
 
       if (['mention', 'hashtag'].includes(dataType ?? '')) {
-        const href = target.getAttribute('href');
-        const linkTarget = target.getAttribute('target');
-        if (href && linkTarget) {
-          window.open(href, linkTarget);
-        }
+        openMentionLink(target);
 
         return;
       }
@@ -163,7 +170,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
      * render the bubble menu only if the editor is available
      * and the menu type is bubble
      */
-    const menus = !isNil(editor) && menuType === 'bubble' && (
+    const menus = !isNil(editor) && editable && menuType === 'bubble' && (
       <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
     );
 
@@ -193,7 +200,9 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           />
         )}
         {menus}
-        {!isNil(editor) && (
+        {/* Read-only previews never use these menus. Their react-aria buttons
+            would also capture the trigger of any tooltip they render inside. */}
+        {!isNil(editor) && editable && (
           <>
             <BlockMenu editor={editor} />
             <TableMenu editor={editor} />

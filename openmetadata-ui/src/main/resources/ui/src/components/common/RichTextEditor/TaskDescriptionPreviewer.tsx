@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ import {
   formatClientContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -57,16 +58,18 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
   };
 
   if (isDescriptionContentEmpty(markdown)) {
-    return <span className="text-grey-muted">{t('label.no-description')}</span>;
+    return (
+      <Typography color="secondary">{t('label.no-description')}</Typography>
+    );
   }
 
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
-        'text-right': i18n.dir() === 'rtl',
+        'text-right': getLanguageDirection(i18n) === 'rtl',
       })}
       data-testid="viewer-container"
-      dir={i18n.dir()}>
+      dir={getLanguageDirection(i18n)}>
       <div
         className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser"
@@ -87,10 +90,8 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
       </div>
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
         <Button
-          className="text-xs text-right"
+          color="link-color"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          style={{ fontSize: '14px', color: '#175CD3 !important' }}
-          type="link"
           onClick={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>

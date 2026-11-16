@@ -1,0 +1,313 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/metricObservability.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetricObservability",
+  "description": "Server-computed health rollup for a Metric, derived from the data quality of the assets the metric is computed on.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.MetricObservability",
+  "definitions": {
+    "metricAssetDirection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricAssetDirection",
+      "description": "A data asset linked to a metric, annotated with where it sits relative to the metric in the lineage graph.",
+      "properties": {
+        "asset": {
+          "description": "The linked data asset.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "direction": {
+          "description": "Where the asset sits relative to the metric. `upstream` assets feed the metric and drive its health, `downstream` assets consume it, and `unrelated` assets are linked but have no lineage edge to the metric.",
+          "type": "string",
+          "enum": ["upstream", "downstream", "unrelated"],
+          "default": "unrelated"
+        },
+        "affectsHealth": {
+          "description": "True only for a direct upstream Table, the sources included in Metric health.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["asset", "direction"],
+      "additionalProperties": false
+    },
+    "health": {
+      "javaType": "org.openmetadata.schema.type.MetricHealth",
+      "description": "Overall health band for a metric.",
+      "type": "string",
+      "enum": ["Healthy", "AtRisk", "Degraded", "Unknown"]
+    },
+    "dimensionRollup": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricDimensionRollup",
+      "description": "Data quality test results for one quality dimension, aggregated across the metric's upstream assets.",
+      "properties": {
+        "dimension": {
+          "description": "Name of the data quality dimension, for example Completeness or Accuracy.",
+          "type": "string"
+        },
+        "total": {
+          "description": "Number of tests evaluated in this dimension.",
+          "type": "integer"
+        },
+        "passed": {
+          "description": "Number of tests that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of tests with a Failed terminal result.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of terminal tests that aborted.",
+          "type": "integer"
+        },
+        "score": {
+          "description": "Pass rate for this dimension as a percentage.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": ["dimension", "total", "passed", "failed", "score"],
+      "additionalProperties": false
+    },
+    "assetRollup": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricAssetRollup",
+      "description": "Health contribution of a single upstream asset.",
+      "properties": {
+        "asset": {
+          "description": "The upstream data asset.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "score": {
+          "description": "Pass rate for this asset as a percentage. Absent when the asset has no data quality tests.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "health": {
+          "description": "Health band for this asset.",
+          "$ref": "#/definitions/health"
+        },
+        "total": {
+          "description": "Number of tests evaluated on this asset.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of tests with a Failed terminal result on this asset.",
+          "type": "integer"
+        },
+        "passed": {
+          "description": "Number of successful terminal tests on this asset.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of aborted terminal tests on this asset.",
+          "type": "integer"
+        },
+        "latestRunTime": {
+          "description": "Most recent included terminal result on this asset.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "redacted": {
+          "description": "True when the caller can see the aggregate contribution but not this source's identity or details.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["asset", "health"],
+      "additionalProperties": false
+    },
+    "testResult": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricTestResult",
+      "description": "A single data quality test contributing to the rollup.",
+      "properties": {
+        "testCase": {
+          "description": "The test case.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "asset": {
+          "description": "The asset the test runs against.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "dimension": {
+          "description": "Data quality dimension the test belongs to.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Result of the most recent run.",
+          "type": "string"
+        },
+        "timestamp": {
+          "description": "When the most recent run completed.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["testCase"],
+      "additionalProperties": false
+    },
+    "incident": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricIncident",
+      "description": "An unresolved data quality incident on one of the metric's upstream assets.",
+      "properties": {
+        "id": {
+          "description": "Identifier of the incident.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "testCase": {
+          "description": "The test case that raised the incident.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "asset": {
+          "description": "The asset the incident is on.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "severity": {
+          "description": "Severity assigned to the incident.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Current resolution status.",
+          "type": "string"
+        },
+        "timestamp": {
+          "description": "When the incident was raised.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["testCase"],
+      "additionalProperties": false
+    },
+    "statusCounts": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricTestStatusCounts",
+      "description": "Global latest-result counts used to compute the Metric score.",
+      "properties": {
+        "passed": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "aborted": { "type": "integer" },
+        "queued": { "type": "integer" },
+        "missing": { "type": "integer" },
+        "terminal": { "type": "integer" }
+      },
+      "required": ["passed", "failed", "aborted", "queued", "missing", "terminal"],
+      "additionalProperties": false
+    },
+    "sourceCoverage": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.MetricSourceCoverage",
+      "description": "Coverage and redaction information for direct upstream tables.",
+      "properties": {
+        "upstreamTables": { "type": "integer" },
+        "testedTables": { "type": "integer" },
+        "visibleTables": { "type": "integer" },
+        "restrictedTables": { "type": "integer" },
+        "coveragePercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "partial": { "type": "boolean", "default": false }
+      },
+      "required": ["upstreamTables", "testedTables", "visibleTables", "restrictedTables", "coveragePercent", "partial"],
+      "additionalProperties": false
+    },
+    "reasonCode": {
+      "javaType": "org.openmetadata.schema.api.data.MetricObservabilityReasonCode",
+      "description": "Stable code localized by API clients.",
+      "type": "string",
+      "enum": ["NoLinkedAssets", "NoUpstreamTables", "NoTerminalResults", "Healthy", "AtRisk", "Degraded", "Unavailable", "PartialDetails"]
+    }
+  },
+  "properties": {
+    "metric": {
+      "description": "The metric this rollup describes.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "health": {
+      "description": "Overall health band. Unknown when no upstream asset carries a data quality test.",
+      "$ref": "#/definitions/health"
+    },
+    "score": {
+      "description": "Overall score as a percentage. Absent when health is Unknown.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "rollupReason": {
+      "description": "Backward-compatible server explanation. Clients should localize reasonCode.",
+      "type": "string"
+    },
+    "reasonCode": {
+      "$ref": "#/definitions/reasonCode"
+    },
+    "statusCounts": {
+      "$ref": "#/definitions/statusCounts"
+    },
+    "sourceCoverage": {
+      "$ref": "#/definitions/sourceCoverage"
+    },
+    "latestRunTime": {
+      "description": "Most recent included terminal result across all direct upstream tables.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "partial": {
+      "description": "True when detail rows are redacted for one or more sources while global aggregates remain complete.",
+      "type": "boolean",
+      "default": false
+    },
+    "dimensions": {
+      "description": "Per-dimension breakdown of the contributing tests.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dimensionRollup"
+      },
+      "default": []
+    },
+    "assets": {
+      "description": "Per-asset breakdown of the contributing upstream assets.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/assetRollup"
+      },
+      "default": []
+    },
+    "linkedAssets": {
+      "description": "Every asset linked to the metric, annotated with its lineage direction. Only the upstream ones contribute to the score, so this is what explains an asset's absence from `assets`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/metricAssetDirection"
+      },
+      "default": []
+    },
+    "tests": {
+      "description": "The individual test results behind the rollup.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testResult"
+      },
+      "default": []
+    },
+    "incidents": {
+      "description": "Unresolved incidents on the metric's upstream assets.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/incident"
+      },
+      "default": []
+    },
+    "upstreamAssetCount": {
+      "description": "Number of upstream assets linked to the metric.",
+      "type": "integer"
+    },
+    "evaluatedAssetCount": {
+      "description": "Number of upstream assets that carried at least one data quality test and therefore contributed to the score.",
+      "type": "integer"
+    },
+    "evaluatedAt": {
+      "description": "When this rollup was computed.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["health"],
+  "additionalProperties": false
+}

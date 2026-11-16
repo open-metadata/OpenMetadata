@@ -255,8 +255,6 @@ class EnrichmentPipelineTest {
             null,
             new HashMap<>(),
             Map.of(),
-            0L,
-            0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
     StepFailure failure = pipeline.run(target).get(0);
@@ -312,14 +310,12 @@ class EnrichmentPipelineTest {
   }
 
   private static EnrichmentTarget newTargetWithFqn(String fqn) {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getFullyQualifiedName()).thenReturn(fqn);
     return new EnrichmentTarget(
         entity,
         new HashMap<>(),
         Map.of(),
-        0L,
-        86_400_000L,
         new EnrichmentContext("table", List.of(), 0L, 86_400_000L),
         VersionShape.LATEST_HYDRATED);
   }

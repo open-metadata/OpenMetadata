@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/postgresConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PostgresConnection",
   "description": "Postgres Database Connection Config",
   "type": "object",
@@ -145,6 +145,10 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "$ref": "../connectionBasicType.json#/definitions/supportsAutoPartitionDetection"
+    },
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
@@ -152,10 +156,6 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",

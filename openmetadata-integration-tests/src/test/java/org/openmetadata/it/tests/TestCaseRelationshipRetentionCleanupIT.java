@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
@@ -141,20 +140,15 @@ public class TestCaseRelationshipRetentionCleanupIT {
 
   private TestCase createTestCase(Table table, String name) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
     return client
         .testCases()
         .create(
             new CreateTestCase()
                 .withName(name)
                 .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
-                .withTestDefinition(testDefFqn));
+                .withTestDefinition("columnValuesToBeNotNull"));
   }
 
   private void seedResult(String testCaseFqn) {

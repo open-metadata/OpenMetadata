@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import axiosClient from '.';
 import { MCPConfiguration } from '../generated/configuration/mcpConfiguration';
+import axiosClient from './axiosClient';
 
 /**
  * The MCP server reads its configuration from the `mcpConfiguration` system setting, not from the
@@ -24,6 +24,12 @@ export const getMcpConfig = async () => {
   const response = await axiosClient.get<MCPConfiguration>(
     '/system/mcp/config'
   );
+
+  return response.data;
+};
+
+export const getMcpTools = async () => {
+  const response = await axiosClient.get<string[]>('/system/mcp/tools');
 
   return response.data;
 };

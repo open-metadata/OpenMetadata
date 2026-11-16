@@ -11,12 +11,24 @@
  *  limitations under the License.
  */
 
+import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { Task } from '../rest/tasksAPI';
 import observabilityRouterClassBase, {
   ObservabilityRouterClassBase,
 } from './ObservabilityRouterClassBase';
+
+const mockAppModeState = { currentMode: 'default' };
+const mockIsAppModeSessionActive = jest.fn().mockReturnValue(false);
+
+jest.mock('../hooks/useAppMode', () => ({
+  useAppModeStore: { getState: () => mockAppModeState },
+}));
+
+jest.mock('./appModeSession', () => ({
+  isAppModeSessionActive: () => mockIsAppModeSessionActive(),
+}));
 
 jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: (tab?: string, subTab?: string) => {
@@ -63,6 +75,8 @@ describe('ObservabilityRouterClassBase', () => {
   let router: ObservabilityRouterClassBase;
 
   beforeEach(() => {
+    mockAppModeState.currentMode = DEFAULT_APP_MODE;
+    mockIsAppModeSessionActive.mockReturnValue(false);
     router = new ObservabilityRouterClassBase();
   });
 
@@ -73,8 +87,131 @@ describe('ObservabilityRouterClassBase', () => {
       expect(router.isEmbeddedMode()).toBe(false);
     });
 
-    it('isEmbeddedMode should always return false', () => {
+    it('isEmbeddedMode should return false in classic mode', () => {
       expect(router.isEmbeddedMode()).toBe(false);
+    });
+
+    it('isEmbeddedMode should return true when the AI app mode is active', () => {
+      mockAppModeState.currentMode = AI_APP_MODE;
+
+      expect(router.isEmbeddedMode()).toBe(true);
+    });
+
+    it('isEmbeddedMode should return true while an app-mode session is active', () => {
+      mockIsAppModeSessionActive.mockReturnValue(true);
+
+      expect(router.isEmbeddedMode()).toBe(true);
+    });
+  });
+
+  describe('AI app mode', () => {
+    beforeEach(() => {
+      mockAppModeState.currentMode = AI_APP_MODE;
+    });
+
+    it.each([
+      ['data quality', () => router.getDataQualityPagePath(), '/data-quality'],
+      [
+        'data quality tab',
+        () => router.getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+        '/data-quality/test-cases',
+      ],
+      [
+        'data quality sub tab',
+        () =>
+          router.getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES,
+            'table-suites'
+          ),
+        '/data-quality/test-suites/table-suites',
+      ],
+      [
+        'incident manager',
+        () => router.getIncidentManagerPath(),
+        '/incident-manager',
+      ],
+      [
+        'test suite',
+        () => router.getTestSuitePath('finance.suites.daily'),
+        '/test-suites/finance.suites.daily',
+      ],
+      [
+        'test case',
+        () => router.getTestCaseDetailPagePath('table.col'),
+        '/test-case/table.col/test-case-results',
+      ],
+      [
+        'test case version',
+        () => router.getTestCaseVersionPath('table.col', '0.2'),
+        '/test-case/table.col/versions/0.2',
+      ],
+      [
+        'test case version tab',
+        () => router.getTestCaseVersionPath('table.col', '0.2', 'incidents'),
+        '/test-case/table.col/versions/0.2/incidents',
+      ],
+      [
+        'test case dimension',
+        () => router.getTestCaseDimensionsDetailPagePath('table.col', 'region'),
+        '/test-case/table.col/dimensions/region/test-case-results',
+      ],
+    ])(
+      'should prefix the %s path with /observability',
+      (_, getPath, classicPath) => {
+        expect(getPath()).toBe(`/observability${classicPath}`);
+      }
+    );
+
+    it('should prefix the test case incident task path', () => {
+      expect(
+        router.getIncidentTaskPath(
+          { id: 'task-uuid', taskId: 6 } as unknown as Task,
+          'table.col'
+        )
+      ).toBe('/observability/test-case/table.col/issues');
+    });
+
+    it('should leave alert paths unchanged since they already live under /observability', () => {
+      expect(router.getObservabilityAlertsListPath()).toBe(
+        '/observability/alerts'
+      );
+      expect(router.getObservabilityAlertDetailsPath('my-alert')).toBe(
+        '/observability/alert/my-alert/configuration'
+      );
+      expect(router.getAddObservabilityAlertsPath()).toBe(
+        '/observability/alerts/add'
+      );
+      expect(router.getObservabilityAlertsEditPath('my-alert')).toBe(
+        '/observability/alerts/edit/my-alert'
+      );
+    });
+
+    it('should prefix while an app-mode session is active in classic mode', () => {
+      mockAppModeState.currentMode = DEFAULT_APP_MODE;
+      mockIsAppModeSessionActive.mockReturnValue(true);
+
+      expect(router.getTestCaseDetailPagePath('table.col')).toBe(
+        '/observability/test-case/table.col/test-case-results'
+      );
+    });
+
+    it('should not double-prefix when a subclass override prefixes on top of super', () => {
+      class PrefixingRouter extends ObservabilityRouterClassBase {
+        public getTestCaseDetailPagePath(
+          fqn: string,
+          tab?: TestCasePageTabs
+        ): string {
+          return `/observability${super.getTestCaseDetailPagePath(fqn, tab)}`;
+        }
+      }
+      const subclassRouter = new PrefixingRouter();
+
+      expect(subclassRouter.getTestCaseDetailPagePath('table.col')).toBe(
+        '/observability/test-case/table.col/test-case-results'
+      );
+      expect(subclassRouter.getTestSuitePath('finance.suites.daily')).toBe(
+        '/observability/test-suites/finance.suites.daily'
+      );
     });
   });
 

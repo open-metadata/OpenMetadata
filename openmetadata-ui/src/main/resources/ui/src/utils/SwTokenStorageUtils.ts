@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import jwtDecode from 'jwt-decode';
+import { ServiceTokenEnum } from '../generated/auth/serviceTokenEnum';
 import { swTokenStorage } from './SwTokenStorage';
 
 // Internal keys for the AppState JSON - obscured for security
@@ -185,11 +187,64 @@ const clearAppState = async (): Promise<void> => {
   }
 };
 
+/**
+ * Bot tokens (including bot impersonation tokens) and personal access tokens
+ * are meant for API clients; only tokens from a user login flow may drive the UI.
+ * ADR:2026-10-27-ui-runs-only-on-user-login-tokens
+ */
+export const isApiOnlyToken = (token: string) => {
+  try {
+    const { isBot, tokenType } = jwtDecode<{
+      isBot?: boolean;
+      tokenType?: ServiceTokenEnum;
+    }>(token);
+
+    return (
+      isBot === true ||
+      tokenType === ServiceTokenEnum.Bot ||
+      tokenType === ServiceTokenEnum.PersonalAccess
+    );
+  } catch {
+    return false;
+  }
+};
+
+// AuthProvider registers here to sign the user out when a token is rejected;
+// kept as a callback so this boot-path module stays free of UI imports.
+let apiOnlyTokenListener: (() => void) | undefined;
+
+export const setApiOnlyTokenListener = (listener?: () => void) => {
+  apiOnlyTokenListener = listener;
+};
+
+// Concurrent reads of the same rejected token share one clear and one sign-out.
+let apiOnlyTokenRejection: Promise<void> | null = null;
+
+const rejectApiOnlyToken = () => {
+  if (!apiOnlyTokenRejection) {
+    apiOnlyTokenRejection = clearAppState().finally(() => {
+      apiOnlyTokenRejection = null;
+    });
+    apiOnlyTokenListener?.();
+  }
+
+  return apiOnlyTokenRejection;
+};
+
+// Every consumer (axios interceptor, AuthCoordinator, streams) reads the token
+// here, so the check covers both a cold load and an active session.
 export const getOidcToken = async (): Promise<string> => {
   try {
     const state = await getAppState();
+    const token = state[OIDC_TOKEN_KEY] || '';
 
-    return state[OIDC_TOKEN_KEY] || '';
+    if (token && isApiOnlyToken(token)) {
+      await rejectApiOnlyToken();
+
+      return '';
+    }
+
+    return token;
   } catch {
     return '';
   }
@@ -204,6 +259,80 @@ export const setOidcToken = async (token: string): Promise<void> => {
     // Storage failures are intentionally ignored to prevent auth flows from breaking.
     // Token persistence is treated as "best effort" - if storage fails, the user
     // may need to re-authenticate, but core functionality continues working.
+  }
+};
+
+// Strict variant that surfaces storage failures instead of swallowing them.
+// Used by AuthCoordinator's leader-path `publish` hook, where a silently
+// failed write would otherwise let the leader broadcast `done` with a
+// payload no sibling tab can trust across a reload — followers accept it
+// in-memory, but the next cold-load reads stale storage and re-triggers
+// refresh (or bounces to sign-in if the refresh path also happens to be
+// unhealthy at that point). Propagating the error lets the CrossTabLock's
+// `try/catch` in `runExclusive` broadcast `failed` instead, so followers
+// retry through the lock rather than trusting an unpersisted token.
+// Other callers (OidcAuthenticator.renewIdToken, Auth0Authenticator.
+// renewIdToken) still use the fail-silent `setOidcToken` — they own their
+// own recovery paths and don't participate in the leader/follower broadcast.
+//
+// Deliberately bypasses `setAppState` — that helper has an outer catch-all
+// and an in-memory fallback (`inMemoryState`) that would let this function
+// resolve on any storage failure, defeating the whole point. "Strict" means:
+// if a sibling tab reloading right now would read stale storage, throw.
+export const setOidcTokenStrict = async (token: string): Promise<void> => {
+  const state = await getAppState();
+  state[OIDC_TOKEN_KEY] = token;
+  const stateStr = JSON.stringify(state);
+
+  if (isServiceWorkerAvailable() && !swStorageBroken) {
+    try {
+      await swTokenStorage.setItem(APP_STATE_KEY, stateStr);
+    } catch (error) {
+      // Mark broken so other callers stop paying the controller-wait
+      // timeout. Also seed `inMemoryState` with the fresh token so this
+      // tab's own `getOidcToken` still returns it — the throw only signals
+      // to callers (and the CrossTabLock broadcast) that the write is
+      // NOT durable across reload; there is no reason for the current tab
+      // to lose an in-hand valid token because a sibling tab won't be
+      // able to see it after F5. Greptile P1 (r4039793087).
+      markSwStorageBroken(error);
+      inMemoryState = { ...state };
+
+      throw error;
+    }
+
+    return;
+  }
+
+  if (swStorageBroken) {
+    // Same rationale as above: keep the token in memory so the current tab
+    // stays authenticated for its lifetime, and let the caller distinguish
+    // "not durably persisted" from "lost".
+    inMemoryState = { ...state };
+
+    throw new Error(
+      'Token storage service worker is unreachable — token cannot be persisted for cross-tab reload'
+    );
+  }
+
+  // Browsers without SW/IndexedDB fall back to localStorage; a quota /
+  // security-mode throw here is a real persistence failure — propagate it.
+  // Also stage the fresh token in memory and flip `swStorageBroken` so
+  // subsequent `getOidcToken()` reads see the token via the in-memory
+  // fallback rather than the same throwing localStorage. Without both
+  // steps the coordinator's "renewer succeeded, publish threw →
+  // applyRefreshed locally" branch returns the token but downstream
+  // reads still miss it, leaving auth state inconsistent. Greptile
+  // (r4053121387). The `swStorageBroken` flag is per-tab-lifetime by
+  // design; a persistent-storage failure on this path is functionally
+  // the same as the SW-unreachable case that flag already gates.
+  try {
+    localStorage.setItem(APP_STATE_KEY, stateStr);
+  } catch (error) {
+    markSwStorageBroken(error);
+    inMemoryState = { ...state };
+
+    throw error;
   }
 };
 

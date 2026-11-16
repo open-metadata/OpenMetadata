@@ -13,14 +13,35 @@
 package org.openmetadata.service.util.jdbi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import io.dropwizard.db.ManagedDataSource;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 
 class JdbiUtilsTest {
+
+  @Test
+  void opsJdbiRunsStatementsWithoutTheRequestTimeout() {
+    HikariCPDataSourceFactory factory = mock(HikariCPDataSourceFactory.class);
+    when(factory.getUrl()).thenReturn("jdbc:mysql://localhost:3306/openmetadata_db");
+    when(factory.getDriverClass()).thenReturn("com.mysql.cj.jdbc.Driver");
+    when(factory.getQueryTimeoutSeconds()).thenReturn(42);
+    when(factory.build(any(), anyString())).thenReturn(mock(ManagedDataSource.class));
+
+    Jdbi jdbi = JdbiUtils.createAndSetupJDBI(factory);
+
+    SqlStatements statements = jdbi.getConfig(SqlStatements.class);
+    assertNull(statements.getQueryTimeout());
+    assertTrue(statements.isUnusedBindingAllowed());
+  }
 
   @Test
   void appliesTheConfiguredStatementTimeout() {

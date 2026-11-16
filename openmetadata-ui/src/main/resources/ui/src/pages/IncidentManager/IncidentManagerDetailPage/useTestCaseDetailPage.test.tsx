@@ -14,10 +14,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Include } from '../../../generated/type/include';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE_DATA } from '../../../mocks/TestCase.mock';
@@ -42,6 +40,8 @@ const mockTestCaseFqn =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
 
 const mockUseTestCase: UseTestCaseStoreInterface = {
+  selectedRunTimestamp: undefined,
+  setSelectedRunTimestamp: jest.fn(),
   testCase: MOCK_TEST_CASE_DATA,
   setTestCase: jest.fn(),
   isLoading: false,
@@ -299,6 +299,53 @@ describe('useTestCaseDetailPage', () => {
     expect(tabKeys).not.toContain(TestCasePageTabs.ISSUES);
   });
 
+  it('should resolve a URL tab the version page does not render to the rendered results tab', async () => {
+    mockParams = {
+      fqn: mockTestCaseFqn,
+      tab: TestCasePageTabs.ISSUES,
+      version: '0.2',
+    };
+
+    const { result } = renderDetailPageHook(true);
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isExpandViewSupported).toBe(true);
+    expect(result.current.activeTab).toBe(TestCasePageTabs.TEST_CASE_RESULTS);
+
+    act(() => {
+      result.current.handleTabChange(TestCasePageTabs.TEST_CASE_RESULTS);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.versionHandler('0.3');
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining(`/${TestCasePageTabs.ISSUES}`),
+      { state: mockNavigationState }
+    );
+  });
+
+  it('should resolve a URL tab hidden on the details page to the rendered results tab', async () => {
+    mockParams = {
+      fqn: mockTestCaseFqn,
+      tab: TestCasePageTabs.DIMENSIONALITY,
+    };
+
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.tabs.map((tab) => tab.key)).not.toContain(
+      TestCasePageTabs.DIMENSIONALITY
+    );
+    expect(result.current.isExpandViewSupported).toBe(true);
+    expect(result.current.activeTab).toBe(TestCasePageTabs.TEST_CASE_RESULTS);
+  });
+
   it('handleTabChange should not navigate for the active tab', async () => {
     const { result } = renderDetailPageHook();
 
@@ -472,6 +519,34 @@ describe('useTestCaseDetailPage', () => {
 
     expect(restoreTestCase).toHaveBeenCalledWith(MOCK_TEST_CASE_DATA.id);
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('should keep the last run result when the restore response omits it', async () => {
+    const { testCaseResult, ...restoreResponse } = MOCK_TEST_CASE_DATA;
+    const restoredAt = 1_800_000_000_000;
+    (restoreTestCase as jest.Mock).mockResolvedValueOnce({
+      ...restoreResponse,
+      deleted: false,
+      updatedAt: restoredAt,
+    });
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleRestore();
+    });
+
+    await waitFor(() =>
+      expect(mockUseTestCase.setTestCase).toHaveBeenCalledWith(
+        expect.objectContaining({ updatedAt: restoredAt })
+      )
+    );
+
+    expect(mockUseTestCase.setTestCase).toHaveBeenLastCalledWith(
+      expect.objectContaining({ testCaseResult, updatedAt: restoredAt })
+    );
   });
 
   it('should report restore failures without showing a success toast', async () => {

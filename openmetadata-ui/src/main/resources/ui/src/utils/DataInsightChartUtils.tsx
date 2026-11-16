@@ -11,212 +11,100 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
-import { isEmpty, startCase, uniqBy } from 'lodash';
 import {
-  CartesianGrid,
-  LegendProps,
-  Line,
-  LineChart,
-  Surface,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+  chartColor,
+  type ChartPalette,
+  type ChartSeries,
+  type ChartTooltipRenderProps,
+} from '@openmetadata/ui-core-components/charts';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAYED_OUT_COLOR,
   HOVER_CHART_OPACITY,
 } from '../constants/constants';
-import { BAR_CHART_MARGIN } from '../constants/DataInsight.constants';
-import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
-import { axisTickFormatter } from './ChartUtils';
-import { entityChartColor } from './ColorUtils';
-import './DataInsightChartUtils.style.less';
+import { DataInsightValueFormatter } from '../interface/data-insight.interface';
 import {
-  getEntryFormattedValue,
-  getRandomHexColor,
-} from './DataInsightPureUtils';
-import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
+  chartTooltipRows,
+  DQTooltipContent,
+} from './DataQuality/CustomDQTooltip.component';
+import { formatDate } from './date-time/DateTimeUtils';
 
-export const renderLegend = (
-  legendData: LegendProps,
-  activeKeys = [] as string[],
-  valueFormatter?: (value: string) => string,
-  inactiveColor = GRAYED_OUT_COLOR
-) => {
-  const { payload = [] } = legendData;
+// The chart title already names the card and the side panel is the legend, so
+// the built-in one stays off.
+export const HIDDEN_CHART_LEGEND = { show: false } as const;
 
-  return (
-    <ul className="custom-data-insight-legend">
-      {payload.map((entry, index) => {
-        const isActive =
-          activeKeys.length === 0 || activeKeys.includes(entry.value);
+export const dataInsightColor = (
+  palette: ChartPalette,
+  keys: string[],
+  key: string
+) => chartColor(palette, Math.max(keys.indexOf(key), 0));
 
-        return (
-          <li
-            className="recharts-legend-item custom-data-insight-legend-item"
-            key={`item-${entry.value}`}
-            role="presentation"
-            onClick={(e) =>
-              legendData.onClick && legendData.onClick(entry, index, e)
-            }
-            onMouseEnter={(e) =>
-              legendData.onMouseEnter &&
-              legendData.onMouseEnter(entry, index, e)
-            }
-            onMouseLeave={(e) =>
-              legendData.onMouseLeave &&
-              legendData.onMouseLeave(entry, index, e)
-            }>
-            <Surface className="m-r-xss" height={14} version="1.1" width={14}>
-              <rect
-                fill={isActive ? entry.color : inactiveColor}
-                height="14"
-                rx="2"
-                width="14"
-              />
-            </Surface>
-            <span style={{ color: isActive ? 'inherit' : inactiveColor }}>
-              {valueFormatter ? valueFormatter(entry.value) : entry.value}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+export interface DataInsightLineSeriesInput {
+  /** Every series, in colour order (rank). Colours follow this order. */
+  keys: string[];
+  palette: ChartPalette;
+  /** Toggled in the side panel; empty shows every key. */
+  activeKeys?: string[];
+  /** Hovered in the side panel; '' or undefined highlights none. */
+  hoverKey?: string;
+  /** Keys left after a search; undefined keeps all. Does not change colours. */
+  visibleKeys?: string[];
+}
+
+// With keys toggled, only those (and the hovered one) are drawn.
+const isShown = (key: string, activeKeys: string[], hoverKey: string) =>
+  activeKeys.length === 0 || key === hoverKey || activeKeys.includes(key);
+
+export const getDataInsightLineSeries = ({
+  keys,
+  palette,
+  activeKeys = [],
+  hoverKey = '',
+  visibleKeys,
+}: DataInsightLineSeriesInput): ChartSeries[] =>
+  keys.flatMap((key, index) =>
+    isShown(key, activeKeys, hoverKey) &&
+    (visibleKeys === undefined || visibleKeys.includes(key))
+      ? [
+          {
+            key,
+            name: key,
+            color: chartColor(palette, index),
+            // Always sent: ECharts deep-merges a series that keeps its id, so an
+            // omitted opacity would leave the previous dimmed value in place.
+            seriesOption: {
+              lineStyle: {
+                opacity:
+                  hoverKey && key !== hoverKey
+                    ? HOVER_CHART_OPACITY
+                    : DEFAULT_CHART_OPACITY,
+              },
+            },
+          },
+        ]
+      : []
   );
-};
 
-export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const {
-    active,
-    cardStyles,
-    customValueKey,
-    dateTimeFormatter = formatDate,
-    isPercentage,
-    labelStyles,
-    listContainerStyles,
-    payload = [],
-    timeStampKey = 'timestampValue',
-    titleStyles,
-    transformLabel = true,
-    valueFormatter,
-    valueStyles,
-  } = props;
+export interface DataInsightTooltipOptions<T> {
+  /** Field of the row holding the epoch millis shown as the header. */
+  timeKey: keyof T & string;
+  isPercentage?: boolean;
+  valueFormatter?: DataInsightValueFormatter;
+  className?: string;
+}
 
-  if (active && payload && payload.length) {
-    const timestamp =
-      timeStampKey === 'term'
-        ? payload[0].payload[timeStampKey]
-        : dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
-    const payloadValue = uniqBy(payload, 'dataKey');
-
-    return (
-      <Card
-        className="custom-data-insight-tooltip"
-        style={cardStyles}
-        title={
-          <Typography.Title
-            className="custom-data-insight-tooltip-title"
-            level={5}
-            style={titleStyles}>
-            {timestamp}
-          </Typography.Title>
-        }>
-        <ul
-          className="custom-data-insight-tooltip-container"
-          style={listContainerStyles}>
-          {payloadValue.map((entry) => {
-            const value = customValueKey
-              ? entry.payload[customValueKey]
-              : entry.value;
-
-            return (
-              <li
-                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                key={`item-${entry.name ?? entry.dataKey}`}>
-                <span className="flex items-center text-grey-muted">
-                  <Surface
-                    className="mr-2"
-                    height={12}
-                    version="1.1"
-                    width={12}>
-                    <rect fill={entry.color} height="14" rx="2" width="14" />
-                  </Surface>
-                  <span style={labelStyles}>
-                    {transformLabel
-                      ? startCase(entry.name ?? (entry.dataKey as string))
-                      : entry.name ?? (entry.dataKey as string)}
-                  </span>
-                </span>
-                <span className="font-medium" style={valueStyles}>
-                  {valueFormatter
-                    ? valueFormatter(value, entry.name ?? entry.dataKey)
-                    : getEntryFormattedValue(value, isPercentage)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
-    );
-  }
-
-  return null;
-};
-
-export const renderDataInsightLineChart = (
-  graphData: Array<Record<string, number>>,
-  labels: string[],
-  activeKeys: string[],
-  activeMouseHoverKey: string,
-  isPercentage: boolean,
-  colors: { axis: string; grid: string }
-) => {
-  return (
-    <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-      <CartesianGrid stroke={colors.grid} vertical={false} />
-      <Tooltip
-        content={
-          <CustomTooltip isPercentage={isPercentage} timeStampKey="day" />
-        }
-        wrapperStyle={{ pointerEvents: 'auto' }}
-      />
-      <XAxis
-        allowDuplicatedCategory={false}
-        dataKey="day"
-        tick={{ fill: colors.axis }}
-        tickFormatter={(value: number) => customFormatDateTime(value, 'MMM dd')}
-        type="category"
-      />
-      <YAxis
-        tick={{ fill: colors.axis }}
-        tickFormatter={
-          isPercentage
-            ? (value: number) => axisTickFormatter(value, '%')
-            : undefined
-        }
-      />
-
-      {labels.map((s, i) => (
-        <Line
-          dataKey={s}
-          hide={
-            activeKeys.length && s !== activeMouseHoverKey
-              ? !activeKeys.includes(s)
-              : false
-          }
-          key={s}
-          name={s}
-          stroke={entityChartColor(i) ?? getRandomHexColor()}
-          strokeOpacity={
-            isEmpty(activeMouseHoverKey) || s === activeMouseHoverKey
-              ? DEFAULT_CHART_OPACITY
-              : HOVER_CHART_OPACITY
-          }
-          type="monotone"
-        />
-      ))}
-    </LineChart>
-  );
-};
+export const getDataInsightTooltip = <T extends object>({
+  timeKey,
+  isPercentage,
+  valueFormatter,
+  className,
+}: DataInsightTooltipOptions<T>): ChartTooltipRenderProps<T> => ({
+  render: (items, row) => (
+    <DQTooltipContent
+      className={className}
+      header={formatDate(Number(row?.[timeKey] ?? 0))}
+      isPercentage={isPercentage}
+      rows={chartTooltipRows(items)}
+      valueFormatter={valueFormatter}
+    />
+  ),
+});

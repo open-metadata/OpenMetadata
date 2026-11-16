@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
@@ -36,26 +37,45 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
           + "Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and "
-          + "how-to guidance. Return ONLY the JSON array, no prose.";
+          + "how-to guidance. When the document gives different values for the same fact, "
+          + "return one element per value, each answer stating only its own value, with the "
+          + "section it comes from named in the summary, never in the question or the answer; "
+          + "never merge them or choose one, even when a section says it is newer. "
+          + "Never extract personal data (names, email addresses, phone numbers or other "
+          + "contact details of a person), nor credentials, tokens, keys or connection "
+          + "strings: describe the role or team instead. Return ONLY the JSON array, no prose.";
 
   private final LLMCompletionClient llmClient;
+  private final ContextMemoryStatus initialStatus;
 
   public ContextMemoryExtractor(LLMCompletionClient llmClient) {
+    this(llmClient, ContextMemoryStatus.APPROVED);
+  }
+
+  /**
+   * A provider that reviews extracted memories before they ground answers starts them Unprocessed.
+   * ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values
+   */
+  public ContextMemoryExtractor(LLMCompletionClient llmClient, ContextMemoryStatus initialStatus) {
     this.llmClient = llmClient;
+    this.initialStatus = initialStatus;
   }
 
   /**
    * Derives memories from {@code text} without persisting anything. Long documents are processed in
-   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks. Chunk
-   * failures are tolerated as long as at least one chunk succeeds — the stats in the result expose
-   * partial coverage; if every chunk fails the run fails. Kept side-effect free so callers can
-   * reconcile the source's previous pills only after the LLM pass succeeded. Each derived memory is
-   * linked to {@code sourceRef} and tagged {@code sourceType}.
+   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks. The
+   * whole derivation fails if any chunk fails or the document exceeds the configured chunk budget;
+   * otherwise reconciliation could retire good pills and stamp an incomplete run as successful.
+   * Each derived memory is linked to {@code sourceRef} and tagged {@code sourceType}.
    */
   @Override
   public DeriveResult derive(
       String text, EntityReference sourceRef, ContextMemorySourceType sourceType) {
     ChunkPlan plan = chunkText(text, sourceRef);
+    if (plan.totalChunks() > plan.chunks().size()) {
+      throw new LLMCompletionException(
+          "Knowledge pill extraction exceeds the " + MAX_CHUNKS + " chunk limit");
+    }
     List<KnowledgePill> collected = new ArrayList<>();
     int processed = 0;
     RuntimeException firstFailure = null;
@@ -72,9 +92,14 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         firstFailure = firstFailure == null ? e : firstFailure;
       }
     }
-    if (processed == 0 && firstFailure != null) {
+    if (firstFailure != null) {
       throw new LLMCompletionException(
-          "All " + plan.chunks().size() + " chunks failed knowledge pill extraction", firstFailure);
+          "Knowledge pill extraction failed for "
+              + (plan.chunks().size() - processed)
+              + " of "
+              + plan.chunks().size()
+              + " chunks",
+          firstFailure);
     }
     List<ContextMemory> memories = new ArrayList<>();
     for (KnowledgePill pill : dedupe(collected)) {
@@ -143,14 +168,31 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     return result;
   }
 
+  /**
+   * One pill per question, except that an answer whose numbers conflict with every kept answer to
+   * that question is a second value the document gives, kept for review; any other is a rewording.
+   */
   private List<KnowledgePill> dedupe(List<KnowledgePill> pills) {
-    Map<String, KnowledgePill> byQuestion = new LinkedHashMap<>();
+    Map<String, List<KnowledgePill>> byQuestion = new LinkedHashMap<>();
     for (KnowledgePill pill : pills) {
       if (isValid(pill)) {
-        byQuestion.putIfAbsent(pill.question().trim().toLowerCase(Locale.ROOT), pill);
+        List<KnowledgePill> kept =
+            byQuestion.computeIfAbsent(normalize(pill.question()), ignored -> new ArrayList<>());
+        boolean newValue =
+            kept.stream()
+                .allMatch(
+                    other ->
+                        MemoryTextSimilarity.hasConflictingNumbers(other.answer(), pill.answer()));
+        if (newValue) {
+          kept.add(pill);
+        }
       }
     }
-    return new ArrayList<>(byQuestion.values());
+    return byQuestion.values().stream().flatMap(List::stream).toList();
+  }
+
+  private static String normalize(String text) {
+    return text.trim().toLowerCase(Locale.ROOT);
   }
 
   private boolean isValid(KnowledgePill pill) {
@@ -173,10 +215,12 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withAnswer(pill.answer())
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
+        .withEntityStatus(initialStatus)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
-        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED))
+        .withPrimaryEntity(sourceRef)
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
         .withUpdatedBy(Entity.ADMIN_USER_NAME)
         .withUpdatedAt(System.currentTimeMillis());
   }

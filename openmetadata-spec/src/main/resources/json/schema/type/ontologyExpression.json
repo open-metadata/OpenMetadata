@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/ontologyExpression.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyExpression",
   "description": "A recursive OWL class expression represented without untyped maps.",
   "type": "object",
@@ -10,13 +10,26 @@
       "description": "Kind of recursive class expression.",
       "javaType": "org.openmetadata.schema.type.OntologyExpressionKind",
       "type": "string",
-      "enum": ["NAMED_CLASS", "INTERSECTION", "UNION", "ONE_OF", "RESTRICTION"]
+      "enum": [
+        "NAMED_CLASS",
+        "INTERSECTION",
+        "UNION",
+        "ONE_OF",
+        "RESTRICTION"
+      ]
     },
     "restrictionKind": {
       "description": "Supported OWL restriction operator.",
       "javaType": "org.openmetadata.schema.type.OntologyRestrictionKind",
       "type": "string",
-      "enum": ["SOME", "ONLY", "VALUE", "MIN", "MAX", "EXACT"]
+      "enum": [
+        "SOME",
+        "ONLY",
+        "VALUE",
+        "MIN",
+        "MAX",
+        "EXACT"
+      ]
     },
     "literal": {
       "description": "A typed OWL literal.",
@@ -27,11 +40,12 @@
           "type": "string"
         },
         "datatypeIri": {
-          "type": "string",
-          "format": "uri"
+          "$ref": "ontologyIri.json"
         }
       },
-      "required": ["value"],
+      "required": [
+        "value"
+      ],
       "additionalProperties": false
     }
   },
@@ -41,8 +55,7 @@
     },
     "classIri": {
       "description": "Class IRI when kind is NAMED_CLASS.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "operands": {
       "description": "Nested expressions for intersection and union expressions. Minimum operand counts are enforced per expression kind by the OWL profile guard.",
@@ -55,15 +68,14 @@
       "description": "Named individuals used by an enumeration expression. Presence is enforced per expression kind by the OWL profile guard.",
       "type": "array",
       "items": {
-        "type": "string",
-        "format": "uri"
+        "$ref": "ontologyIri.json"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "existingJavaType": "java.util.List<java.net.URI>"
     },
     "propertyIri": {
       "description": "Property constrained by a restriction.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "restrictionKind": {
       "$ref": "#/definitions/restrictionKind"
@@ -79,14 +91,15 @@
     },
     "individualIri": {
       "description": "Individual value for an object has-value restriction.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "literal": {
       "description": "Literal value for a data has-value restriction.",
       "$ref": "#/definitions/literal"
     }
   },
-  "required": ["kind"],
+  "required": [
+    "kind"
+  ],
   "additionalProperties": false
 }

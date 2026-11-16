@@ -15,21 +15,7 @@ import { LoadingState } from 'Models';
 import { ReactNode } from 'react';
 import type { Edge as FlowEdge, Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { LineageSettings } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
-
-export interface Edge {
-  edge: {
-    fromEntity: {
-      id: string;
-      type: string;
-    };
-    toEntity: {
-      id: string;
-      type: string;
-    };
-  };
-}
 
 export interface EdgeData {
   fromEntity: string;
@@ -60,13 +46,35 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
-  nodesPerLayer: number;
+import type { Edge, LineageConfig } from '../../../interface/lineage.interface';
+
+export type { LineageConfig };
+
+export type LineageConfigDepthField =
+  | 'upstreamDepth'
+  | 'downstreamDepth'
+  | 'nodesPerLayer';
+
+export type LineageConfigFormValues = Record<
+  LineageConfigDepthField,
+  string
+> & {
+  showTempTables: boolean;
+};
+
+export interface LineageConfigField {
+  name: LineageConfigDepthField;
+  label: string;
+  tooltip: string;
+  testId: string;
+  min: number;
 }
 
 export interface LineageConfigModalProps {
   visible: boolean;
   config: LineageConfig;
+  /** Only the entity Lineage canvas draws temp tables, so only it offers the switch. */
+  showTempTablesToggle?: boolean;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
 }
@@ -74,12 +82,11 @@ export interface LineageConfigModalProps {
 export interface NodeHandlesProps {
   nodeType: string;
   id: string;
-  isConnectable: boolean;
+  showEdgeHandles: boolean;
   expandCollapseHandles: ReactNode;
 }
 
 export interface ExpandCollapseHandlesProps {
-  isEditMode: boolean;
   hasOutgoers: boolean;
   hasIncomers: boolean;
   isDownstreamNode: boolean;

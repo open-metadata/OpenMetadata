@@ -184,6 +184,6 @@ mvn clean package -DonlyBackend -pl '!openmetadata-ui' # backend only
 mvn test                                               # unit tests
 mvn verify                                             # integration tests
 mvn spotless:apply                                     # format
-mvn test -pl openmetadata-integration-tests -Dtest=TaskResourceIT   # one IT
-mvn test -pl openmetadata-integration-tests            # all ITs
+make java_affected      # unit tests + ITs this diff impacts, with exact per-lane commands (one IT: copy its line)
+make java_affected_run  # run them before every PR: PR CI runs no ITs (merge queue only) — skill java-affected-tests
 ```

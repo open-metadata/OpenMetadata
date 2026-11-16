@@ -535,6 +535,9 @@ description:
   purpose: This is a draft contract under review.
 `;
 
+// ODCS v3.1.0 SLA properties allow no timezone key; an availability time carries its timezone in valueExt.
+export const ODCS_SLA_TIMEZONE = 'GMT-05:00 (America/New York)';
+
 export const ODCS_VALID_WITH_TIMESTAMPS_YAML = `apiVersion: v3.1.0
 kind: DataContract
 id: timestamp-contract
@@ -547,14 +550,12 @@ slaProperties:
   - property: freshness
     value: "6"
     unit: hour
-    timezone: GMT+00:00 UTC
   - property: latency
     value: "15"
     unit: minute
-  - property: availability
-    value: "99.9"
-    unit: percent
-    timezone: GMT-05:00 America/New_York
+  - property: availabilityTime
+    value: "09:00"
+    valueExt: "${ODCS_SLA_TIMEZONE}"
 `;
 
 export const ODCS_VALID_QUALITY_RULES_YAML = `apiVersion: v3.1.0
@@ -931,4 +932,34 @@ description:
     > Note: This data is subject to GDPR compliance requirements.
 
     For more details, see the [documentation](https://example.com/docs).
+`;
+
+// Rules that run as test cases on the given column and table, one that cannot run, and a
+// field OpenMetadata does not import, so the import report has something in every section.
+export const getODCSWithRunnableQualityRules = (
+  column: string
+) => `apiVersion: v3.1.0
+kind: DataContract
+id: quality-report-contract
+name: ODCS Contract with Runnable Quality Rules
+version: "1.0.0"
+status: active
+schema:
+  - name: table
+    logicalType: object
+    quality:
+      - name: Table is not empty
+        metric: rowCount
+        mustBeGreaterThan: 0
+    properties:
+      - name: ${column}
+        businessName: Shop
+        logicalType: integer
+        quality:
+          - name: Id is set
+            metric: nullValues
+            mustBe: 0
+quality:
+  - name: Steward review
+    type: text
 `;

@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Owner } from '@openmetadata/ui-core-components';
+import { FilterFunnel01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy } from 'react';
-import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import {
   ColumnsType,
@@ -27,7 +26,6 @@ import { AssetCertification } from '../generated/entity/data/database';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagLabel } from '../generated/type/tagLabel';
 import i18n from './i18next/LocalUtil';
-import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import {
   getCertificationTag,
   getTagsWithoutCertification,
@@ -63,12 +61,12 @@ const TagsViewer = withSuspenseFallback(
 );
 
 export const columnFilterIcon = (filtered: boolean) => (
-  <Icon
-    className={classNames('filter-icon', {
+  <FilterFunnel01
+    className={classNames('filter-icon tw:shrink-0', {
       'filter-icon-active': filtered,
     })}
-    component={FilterIcon}
     data-testid="filter-icon"
+    size={14}
   />
 );
 
@@ -84,8 +82,9 @@ export const ownerTableObject = <
     render: (owners: EntityReference[]) => (
       <Owner
         isCompactView={false}
+        labelVariant="cell"
         maxVisibleOwners={4}
-        owners={toOwnerRefs(owners ?? [])}
+        owners={owners ?? []}
         showLabel={false}
       />
     ),

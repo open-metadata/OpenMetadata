@@ -8,6 +8,7 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.slf4j.Logger;
@@ -93,8 +94,8 @@ public final class ReindexHelpers {
    * Waits for the previous run to reach a terminal status, then triggers a fresh run with
    * the given inline config — retrying the trigger until the server accepts it. OM's
    * internal app-execution lock can linger briefly after {@code AppRunRecord} flips to
-   * {@code success}; a naive immediate trigger races with that release and gets
-   * "Job is already running" errors.
+   * {@code success}; a naive immediate trigger races with that release and gets a 409
+   * "Job is already running".
    */
   public static void triggerSearchIndexWithConfigWhenIdle(
       final ServerHandle server,
@@ -104,7 +105,7 @@ public final class ReindexHelpers {
     Awaitility.await("trigger SearchIndexApp with config")
         .atMost(acceptanceTimeout)
         .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               triggerAppWithConfig(server, SEARCH_INDEX_APP, config);
@@ -177,7 +178,7 @@ public final class ReindexHelpers {
    * Fires the plain trigger, retrying until the server accepts it. OM's app-execution lock can
    * linger briefly after the previous run flips to terminal (notably the {@code beforeEach}
    * recreate at class transitions in the serial search-it suite), so a one-shot trigger races
-   * the release and gets a 500 "Job is already running". The first accepting call starts exactly
+   * the release and gets a 409 "Job is already running". The first accepting call starts exactly
    * one run, so the retry never double-triggers.
    */
   private static void triggerWhenAccepted(
@@ -185,7 +186,7 @@ public final class ReindexHelpers {
     Awaitility.await("trigger SearchIndexApp")
         .atMost(acceptanceTimeout)
         .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               triggerApp(server, SEARCH_INDEX_APP);

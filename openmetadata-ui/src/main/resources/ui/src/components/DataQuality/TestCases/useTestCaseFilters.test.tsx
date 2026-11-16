@@ -65,6 +65,7 @@ const renderFilters = (overrides: Partial<UseTestCaseFiltersProps> = {}) =>
   );
 
 const DEFAULT_SELECTED_FILTERS = [
+  TEST_CASE_FILTERS.lastRun,
   TEST_CASE_FILTERS.status,
   TEST_CASE_FILTERS.type,
   TEST_CASE_FILTERS.table,
@@ -85,7 +86,6 @@ describe('useTestCaseFilters', () => {
     expect(typeof result.current.searchValue).toBe('string');
     expect(result.current.selectedFilter).toEqual(DEFAULT_SELECTED_FILTERS);
     expect(typeof result.current.setSelectedFilter).toBe('function');
-    expect(typeof result.current.form).toBe('object');
     expect(typeof result.current.handleMenuClick).toBe('function');
     expect(typeof result.current.handleSearchParam).toBe('function');
     expect(typeof result.current.handleFilterChange).toBe('function');
@@ -146,10 +146,9 @@ describe('useTestCaseFilters', () => {
     const { result } = renderFilters();
 
     act(() => {
-      result.current.handleFilterChange?.(
-        { testCaseStatus: TestCaseStatus.Failed },
-        {}
-      );
+      result.current.handleFilterChange({
+        testCaseStatus: TestCaseStatus.Failed,
+      });
     });
 
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -175,10 +174,9 @@ describe('useTestCaseFilters', () => {
     const { result } = renderFilters();
 
     act(() => {
-      result.current.handleFilterChange?.(
-        { testCaseStatus: TestCaseStatus.Failed },
-        {}
-      );
+      result.current.handleFilterChange({
+        testCaseStatus: TestCaseStatus.Failed,
+      });
     });
 
     expect(mockNavigate).toHaveBeenCalledWith({
@@ -199,11 +197,8 @@ describe('useTestCaseFilters', () => {
   });
 
   it('should remove an active filter and reset its form field when its menu item is clicked again', () => {
-    const { result } = renderFilters();
-
-    const setFieldsSpy = jest
-      .spyOn(result.current.form, 'setFieldsValue')
-      .mockImplementation(() => undefined);
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderFilters({ form });
 
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.status });
@@ -212,11 +207,9 @@ describe('useTestCaseFilters', () => {
     expect(result.current.selectedFilter).not.toContain(
       TEST_CASE_FILTERS.status
     );
-    expect(setFieldsSpy).toHaveBeenCalledWith({
+    expect(form.setFieldsValue).toHaveBeenCalledWith({
       [TEST_CASE_FILTERS.status]: undefined,
     });
-
-    setFieldsSpy.mockRestore();
   });
 
   it('should build the filterMenu from every TEST_CASE_FILTERS entry', () => {
@@ -230,10 +223,11 @@ describe('useTestCaseFilters', () => {
     ).toEqual(Object.values(TEST_CASE_FILTERS));
   });
 
-  it('should build descriptors that track the selected filters in the canonical order with the injected loading flag', () => {
+  it('should build descriptors that track the selected filters in the canonical order, Last Run first, with the injected loading flag', () => {
     const { result } = renderFilters({ isOptionsLoading: true });
 
     expect(result.current.filters.map((descriptor) => descriptor.key)).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
@@ -304,25 +298,45 @@ describe('useTestCaseFilters', () => {
     ]);
   });
 
-  it('should surface the date control for lastRun and the multiselect control for platform when selected', () => {
+  it('should surface the lastRun date control by default with no value, and the multiselect control for platform when selected', () => {
     const { result } = renderFilters();
-
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.lastRun });
-    });
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
-    });
 
     const lastRunDescriptor = result.current.filters.find(
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.lastRun
     );
+
+    expect(lastRunDescriptor?.controlType).toBe('date');
+    expect(lastRunDescriptor?.value).toBeUndefined();
+
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
+    });
+
     const platformDescriptor = result.current.filters.find(
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.platform
     );
 
-    expect(lastRunDescriptor?.controlType).toBe('date');
     expect(platformDescriptor?.controlType).toBe('multiselect');
+  });
+
+  it('should mark tier and dimension searchable without a server search', () => {
+    const { result } = renderFilters();
+
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.tier });
+    });
+    act(() => {
+      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.dimension });
+    });
+
+    [TEST_CASE_FILTERS.tier, TEST_CASE_FILTERS.dimension].forEach((key) => {
+      const descriptor = result.current.filters.find(
+        (filter) => filter.key === key
+      );
+
+      expect(descriptor?.searchable).toBe(true);
+      expect(descriptor?.onSearch).toBeUndefined();
+    });
   });
 
   it('should reflect the URL filter value on the matching descriptor', () => {
@@ -389,18 +403,15 @@ describe('useTestCaseFilters', () => {
   it('should reset the selected filters and form and navigate preserving only the searchValue on clearAll', () => {
     mockLocation.search = 'searchValue=orders&tableFqn=svc.db.tbl';
 
-    const { result } = renderFilters();
-
-    const resetFieldsSpy = jest
-      .spyOn(result.current.form, 'resetFields')
-      .mockImplementation(() => undefined);
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderFilters({ form });
 
     act(() => {
       result.current.clearAll();
     });
 
     expect(result.current.selectedFilter).toEqual(DEFAULT_SELECTED_FILTERS);
-    expect(resetFieldsSpy).toHaveBeenCalled();
+    expect(form.resetFields).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenLastCalledWith({
       search: 'searchValue=orders',
     });
@@ -408,7 +419,5 @@ describe('useTestCaseFilters', () => {
     const lastSearch = mockNavigate.mock.calls.at(-1)?.[0]?.search;
 
     expect(lastSearch).not.toContain('tableFqn');
-
-    resetFieldsSpy.mockRestore();
   });
 });

@@ -54,9 +54,9 @@ interface MockTypographyProps {
   children?: ReactNode;
 }
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Settings01: () => <span>Settings01</span>,
-  X: () => <span>X</span>,
+  XClose: () => <span>X</span>,
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {

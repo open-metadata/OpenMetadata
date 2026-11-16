@@ -99,4 +99,16 @@ describe('Test Description Tabs Component', () => {
 
     expect(await screen.findByTestId('richTextEditor')).toBeInTheDocument();
   });
+
+  it('Should keep the New tab editor mounted while another tab is selected', async () => {
+    render(<DescriptionTabs {...mockProps} />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Current' }));
+
+    expect(screen.getByTestId('richTextEditorPreviewer')).toBeInTheDocument();
+    expect(screen.getByTestId('richTextEditor').parentElement).toHaveAttribute(
+      'data-inert',
+      'true'
+    );
+  });
 });

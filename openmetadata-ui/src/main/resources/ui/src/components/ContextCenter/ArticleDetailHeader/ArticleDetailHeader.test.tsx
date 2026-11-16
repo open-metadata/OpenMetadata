@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
@@ -133,6 +133,19 @@ jest.mock(
   () => ({
     EntityStatusBadge: jest.fn(() => (
       <span data-testid="entity-status-badge" />
+    )),
+  })
+);
+
+// Boundary-mock the domain picker: it renders the ui-core TreeSelect, which
+// this suite's partial ui-core mock does not provide. Rendering the children
+// keeps the edit-domain trigger assertion intact.
+jest.mock(
+  '../../common/DomainSelectableList/DomainSelectableList.component',
+  () => ({
+    __esModule: true,
+    default: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <div data-testid="domain-selectable-list">{children}</div>
     )),
   })
 );

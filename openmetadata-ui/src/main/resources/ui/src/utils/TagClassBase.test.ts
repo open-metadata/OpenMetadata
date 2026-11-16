@@ -44,8 +44,8 @@ jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
   CommonWidgets: 'CommonWidgets',
 }));
 
-jest.mock('../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: 'DomainLabelV2',
+jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: 'DomainLabel',
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -336,7 +336,7 @@ describe('TagClassBase', () => {
       expect(React.isValidElement(element)).toBe(true);
     });
 
-    it('passes editDomainPermission to DomainLabelV2', () => {
+    it('passes editDomainPermission to DomainLabel', () => {
       const element = tagClassBase.getRightPanelForOverviewTab({
         editOwnerPermission: false,
         editDomainPermission: true,

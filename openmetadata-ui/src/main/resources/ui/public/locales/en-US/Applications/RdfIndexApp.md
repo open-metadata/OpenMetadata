@@ -24,37 +24,9 @@ Maximum number of entities processed in a batch.
 $$
 
 $$section
-### Producer Threads $(id="producerThreads")
+### Number of Reader Threads $(id="producerThreads")
 
-Number of producer threads to use for non-distributed RDF indexing.
-
-$$
-
-$$section
-### Consumer Threads $(id="consumerThreads")
-
-Number of consumer threads to use for non-distributed RDF indexing.
-
-$$
-
-$$section
-### Queue Size $(id="queueSize")
-
-Internal queue size for non-distributed RDF indexing.
-
-$$
-
-$$section
-### Use Distributed Indexing $(id="useDistributedIndexing")
-
-Enable distributed RDF indexing with partition coordination and recovery.
-
-$$
-
-$$section
-### Partition Size $(id="partitionSize")
-
-Number of entities per partition for distributed RDF indexing.
+Number of threads loading entities to index. Writes always go through one writer, because Fuseki accepts one write transaction at a time.
 
 $$
 

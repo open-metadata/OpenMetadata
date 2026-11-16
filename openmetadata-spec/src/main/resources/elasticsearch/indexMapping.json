@@ -250,7 +250,8 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
     "parentAliases": ["testSuite", "all", "dataAssetEmbeddings"],
-    "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
+    "childAliases": ["testCaseResolutionStatus", "testCaseResult"],
+    "dataInsightAliases": ["di-data-assets-testcase"]
   },
   "testCaseResult": {
     "indexName": "test_case_result_search_index",
@@ -284,7 +285,8 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all", "marketplace"],
+    "parentAliases": ["all", "dataAssetEmbeddings",
+      "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -295,6 +297,15 @@
       "all",
       "dataAsset",
       "dataAssetEmbeddings"
+    ],
+    "childAliases": []
+  },
+  "metricGroup": {
+    "indexName": "metric_group_search_index",
+    "indexMappingFile": "/elasticsearch/%s/metric_group_index_mapping.json",
+    "alias": "metricGroup",
+    "parentAliases": [
+      "all"
     ],
     "childAliases": []
   },
@@ -608,6 +619,13 @@
     "parentAliases": [
       "all"
     ],
+    "childAliases": []
+  },
+  "dataContract": {
+    "indexName": "data_contract_search_index",
+    "indexMappingFile": "/elasticsearch/%s/data_contract_index_mapping.json",
+    "alias": "dataContract",
+    "parentAliases": [],
     "childAliases": []
   },
   "mcpServer": {

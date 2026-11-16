@@ -297,3 +297,19 @@ export const toTagSelectOptions = (
 
     return { title: tag.displayName || tag.name || value, value };
   });
+
+// Tag-like options carry the FQN as their value and the display name as their
+// title, and both are things a user types — the chip shows `Tier1` while a
+// copied filter says `Tier.Tier1`. Matching the title alone finds neither.
+export const matchesTagSelectOption = (
+  option: { title?: string; value?: string | number },
+  search: string
+): boolean => {
+  const query = search.toLowerCase();
+
+  return [option.title, option.value].some((candidate) =>
+    String(candidate ?? '')
+      .toLowerCase()
+      .includes(query)
+  );
+};

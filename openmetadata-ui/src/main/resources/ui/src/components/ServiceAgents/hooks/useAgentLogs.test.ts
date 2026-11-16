@@ -14,14 +14,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
+import { useLogStream, UseLogStreamResult } from '../../../hooks/useLogStream';
 import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
-import {
-  useLogStream,
-  UseLogStreamResult,
-} from '../../common/LogViewerModal/useLogStream';
 import { useAgentLogs } from './useAgentLogs';
 
-jest.mock('../../common/LogViewerModal/useLogStream', () => ({
+jest.mock('../../../hooks/useLogStream', () => ({
   useLogStream: jest.fn(),
   getIngestionLogStreamUrl: (fqn: string, runId: string) =>
     `/stream/${fqn}/${runId}`,
@@ -65,6 +62,30 @@ describe('useAgentLogs', () => {
     });
   });
 
+  it('reads the pinned run log instead of the latest one', async () => {
+    renderHook(() =>
+      useAgentLogs(FQN, PipelineType.Metadata, true, false, RUN_ID, 'old-run')
+    );
+
+    await waitFor(() =>
+      expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, 'old-run')
+    );
+  });
+
+  it('never streams a pinned run even when told it is active', async () => {
+    renderHook(() =>
+      useAgentLogs(FQN, PipelineType.Metadata, true, true, RUN_ID, 'old-run')
+    );
+
+    await waitFor(() =>
+      expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, 'old-run')
+    );
+
+    expect(mockUseLogStream).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
+  });
+
   it('tails a live run over the stream and never polls the log endpoint', async () => {
     mockUseLogStream.mockReturnValue({
       ...IDLE_STREAM,
@@ -92,7 +113,7 @@ describe('useAgentLogs', () => {
     await waitFor(() => expect(result.current.rawText).toBe('polled line'));
 
     expect(result.current.isStreaming).toBe(false);
-    expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined);
+    expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, undefined);
     expect(mockUseLogStream).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: false })
     );

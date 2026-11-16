@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ import {
   getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -239,7 +239,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     ]
   );
 
-  const versionTableColumns: ColumnsType<T> = useMemo(
+  const versionTableColumns = useMemo<ColumnsType<T>>(
     () => [
       {
         title: t('label.name'),
@@ -257,12 +257,15 @@ function VersionTable<T extends Column | SearchIndexField>({
         render: (dataTypeDisplay: T['dataTypeDisplay']) => {
           return dataTypeDisplay ? (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               title={
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               <div className="cursor-pointer">
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
@@ -363,7 +366,11 @@ function VersionTable<T extends Column | SearchIndexField>({
       }}
       loading={isLoading}
       locale={{
-        emptyText: <FilterTablePlaceHolder />,
+        emptyText: (
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="fullyQualifiedName"

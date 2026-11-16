@@ -14,14 +14,21 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -36,9 +43,13 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -55,6 +66,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -88,6 +100,7 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.DataAccessPermission;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.DataAccessType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -101,11 +114,13 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TierUpdatePayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -121,12 +136,16 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
+  private static final String SORT_ORDER_ASC = "asc";
+
+  private static final String REQUESTED_DESCRIPTION = "Description requested by the creator";
 
   private static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
   }
 
   public TaskResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = true;
     supportsDomains = false;
@@ -576,6 +595,48 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     assertEquals(TaskEntityStatus.Rejected, resolvedTask.getStatus());
     assertEquals(TaskResolutionType.Rejected, resolvedTask.getResolution().getType());
+  }
+
+  /**
+   * A non-DAR task (here DescriptionUpdate on a table) whose reject transition declares {@code
+   * requiresComment=true} must still be rejectable without a comment — the flag is a UI hint, and
+   * backend comment enforcement is scoped to DataAccessRequest (TaskResource) + metric approvals.
+   * #30896 added a global guard that 400'd every non-metric commentless reject (tables, dashboards,
+   * incidents, suggestions); this test locks the commentless reject open.
+   */
+  @Test
+  void testResolveDescriptionUpdateRejectWithoutCommentSucceeds(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withCurrentDescription(table.getDescription())
+            .withNewDescription("Description rejected without a comment");
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("resolve-reject-no-comment"))
+                .withDescription("Non-DAR reject must not require a comment")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.DescriptionUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    ResolveTask resolveRequest = new ResolveTask().withResolutionType(TaskResolutionType.Rejected);
+
+    // Load-bearing: a commentless reject on a non-DAR task must NOT 400.
+    SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    Awaitility.await("DescriptionUpdate reject without a comment reaches Rejected")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    TaskEntityStatus.Rejected,
+                    SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus()));
   }
 
   @Test
@@ -2270,6 +2331,837 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testVisibleEndpointSearchMatchesTextAsTyped(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Table table =
+        createTableWithDomainAndOwners(
+            ns, createDomain(ns, "visible-search-domain").getEntityReference(), List.of());
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "visible-search", table)
+                    .withDisplayName("Review the customer's order " + ns.prefix("search"))
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+
+    // `q` is a bound LIKE value: an apostrophe must match as typed, not doubled.
+    assertTrue(
+        searchVisibleTaskIds("customer's order " + ns.prefix("search")).contains(task.getId()),
+        "An apostrophe in the search text should match as typed");
+    // `%` and `_` are escaped, so they cannot act as wildcards.
+    assertFalse(
+        searchVisibleTaskIds("%").contains(task.getId()), "A bare % should not match every task");
+    assertFalse(
+        searchVisibleTaskIds("no-such-task-" + ns.prefix("search")).contains(task.getId()),
+        "Unrelated text should not match");
+  }
+
+  @Test
+  void testListEndpointSearchesWithinEntity(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    Table otherTable = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String text = "Backfill refunds " + ns.prefix("search");
+    Task match = createTaskWithDisplayName(ns, "list-search-match", table, text);
+    Task noMatch = createTaskWithDisplayName(ns, "list-search-other", table, "Unrelated work");
+    Task otherEntity = createTaskWithDisplayName(ns, "list-search-elsewhere", otherTable, text);
+
+    List<UUID> found = searchTaskIdsAbout(table.getFullyQualifiedName(), text);
+
+    assertTrue(found.contains(match.getId()), "A matching task on the entity is returned");
+    assertFalse(found.contains(noMatch.getId()), "A task on the entity that does not match is not");
+    assertFalse(
+        found.contains(otherEntity.getId()), "A matching task on another entity is not returned");
+    assertTrue(
+        searchTaskIdsAbout(table.getFullyQualifiedName(), null)
+            .containsAll(List.of(match.getId(), noMatch.getId())),
+        "Without q the entity's tasks are all listed");
+  }
+
+  @Test
+  void testListEndpointSearchPagesBothWays(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-paging-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String about = table.getFullyQualifiedName();
+    String text = "Reconcile ledgers " + ns.prefix("paging");
+    List<UUID> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-page-" + i, table, text).getId());
+    }
+    createTaskWithDisplayName(ns, "list-search-page-other", table, "Unrelated work");
+
+    JsonNode first = searchPage(about, text, "after", null);
+    JsonNode second = searchPage(about, text, "after", first.path("paging").path("after").asText());
+    JsonNode third = searchPage(about, text, "after", second.path("paging").path("after").asText());
+    List<UUID> forward = new ArrayList<>(pageIds(first));
+    forward.addAll(pageIds(second));
+    forward.addAll(pageIds(third));
+
+    assertEquals(3, forward.size(), "Each page holds one match");
+    assertTrue(forward.containsAll(matching), "Paging forward visits every match once");
+    assertEquals(
+        pageIds(second),
+        pageIds(searchPage(about, text, "before", third.path("paging").path("before").asText())),
+        "Paging back returns the previous page");
+  }
+
+  @Test
+  void testListPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "list-order-domain");
+    final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    final List<Task> created = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      created.add(createTaskWithDisplayName(ns, "list-order-" + i, table, "Order check " + i));
+    }
+
+    assertCreationOrderPaging(table.getFullyQualifiedName(), null, created);
+  }
+
+  @Test
+  void testListSearchPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "list-search-order-domain");
+    final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    final String text = "Rotate credentials " + ns.prefix("order");
+    final List<Task> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-order-" + i, table, text));
+    }
+    createTaskWithDisplayName(ns, "list-search-order-other", table, "Unrelated work");
+
+    assertCreationOrderPaging(table.getFullyQualifiedName(), text, matching);
+  }
+
+  @Test
+  void testScopedListsReturnNewestFirst(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "scoped-order-domain");
+    final ScopedOrderTasks tasks = createScopedOrderTasks(ns, domain);
+    final String domainFqn = domain.getFullyQualifiedName();
+
+    assertScopedListNewestFirst("/assigned", domainFqn, tasks.assigned());
+    assertScopedListNewestFirst("/created", domainFqn, tasks.created());
+    assertScopedListNewestFirst("/owned", domainFqn, tasks.all());
+    assertScopedListNewestFirst("/visible", domainFqn, tasks.all());
+  }
+
+  @Test
+  void testListRejectsNameCursorAndUnknownSortOrder(TestNamespace ns) {
+    final NameCursor cursor = new NameCursor("TASK-00001", UUID.randomUUID().toString());
+    final String nameCursor =
+        Base64.getUrlEncoder()
+            .encodeToString(JsonUtils.pojoToJson(cursor).getBytes(StandardCharsets.UTF_8));
+
+    assertListRejects(
+        "after", nameCursor, "A name cursor issued before creation-time paging is rejected");
+    assertListRejects("sortOrder", "sideways", "An unknown sortOrder is rejected");
+  }
+
+  /** The cursor shape issued before task lists paged by creation time. */
+  private record NameCursor(String name, String id) {}
+
+  /**
+   * Admin-filed tasks assigned to user1 reach /assigned and user1's own tasks reach /created. All
+   * of them are about a user1-owned table, so /owned and /visible hold every one.
+   */
+  private record ScopedOrderTasks(List<Task> assigned, List<Task> created) {
+    List<Task> all() {
+      final List<Task> all = new ArrayList<>(assigned);
+      all.addAll(created);
+      return all;
+    }
+  }
+
+  private ScopedOrderTasks createScopedOrderTasks(TestNamespace ns, Domain domain) {
+    final Table ownedTable =
+        createTableWithDomainAndOwners(
+            ns, domain.getEntityReference(), List.of(SharedEntities.get().USER1_REF));
+    final List<Task> assigned = new ArrayList<>();
+    final List<Task> created = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      assigned.add(createTaskAssignedToUser1(ns, "scoped-order-assigned-" + i, ownedTable));
+      created.add(createTaskAsUser1(ns, "scoped-order-created-" + i, ownedTable));
+    }
+    return new ScopedOrderTasks(assigned, created);
+  }
+
+  @Test
+  void testDescriptionTaskAboutAnotherUserNeedsEditAllOnThatUser(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    String userName = "profileowner_" + UUID.randomUUID().toString().substring(0, 8);
+    User profileOwner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.om.org")
+                    .withDescription("Original profile text"));
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("user-profile-description"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(entityLink("user", profileOwner.getFullyQualifiedName()))
+                    .withAssignees(List.of(shared.USER2.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(profileOwner.getDescription())
+                            .withNewDescription("Profile text from a task")));
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .tasks()
+                .resolve(
+                    task.getId().toString(),
+                    new ResolveTask()
+                        .withResolutionType(TaskResolutionType.Approved)
+                        .withNewValue("Profile text from a task")));
+
+    assertEquals(
+        TaskEntityStatus.Open,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+    assertEquals(
+        "Original profile text",
+        SdkClients.adminClient().users().get(profileOwner.getId().toString()).getDescription());
+  }
+
+  @Test
+  void testResolvePayloadNamingDifferentAssigneesNeedsReassignTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String newDescription = "Description from a two-assignee task - " + ns.shortPrefix();
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "payload-assignees", table)
+                    .withAssignees(
+                        List.of(
+                            shared.USER2.getFullyQualifiedName(),
+                            shared.USER3.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(table.getDescription())
+                            .withNewDescription(newDescription)));
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .tasks()
+                .resolve(
+                    task.getId().toString(),
+                    approvalWithAssignees(newDescription, List.of(shared.USER2))));
+
+    Task unchanged = SdkClients.adminClient().tasks().get(task.getId().toString(), "assignees");
+    assertEquals(TaskEntityStatus.Open, unchanged.getStatus());
+    assertEquals(2, unchanged.getAssignees().size());
+
+    Task resolved =
+        SdkClients.user2Client()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                approvalWithAssignees(newDescription, List.of(shared.USER3, shared.USER2)));
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+  }
+
+  @Test
+  void testTaskTypeIsRefusedAndWorkflowBindingIsKeptOnPatch(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task =
+        SdkClients.user1Client()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "binding-fields", table)
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withNewDescription("First proposal")));
+
+    for (String patch :
+        List.of(
+            "[{\"op\":\"replace\",\"path\":\"/type\",\"value\":\"TagUpdate\"}]",
+            "[{\"op\":\"replace\",\"path\":\"/category\",\"value\":\"Approval\"}]")) {
+      InvalidRequestException refused =
+          assertThrows(InvalidRequestException.class, () -> patchTaskAsUser1(task, patch), patch);
+      assertTrue(
+          refused.getMessage().contains("cannot be changed via PATCH"), refused.getMessage());
+    }
+
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    UUID workflowInstanceId =
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getWorkflowInstanceId();
+    patchTaskAsUser1(
+        task,
+        ("[{\"op\":\"add\",\"path\":\"/payload/changeRequestId\",\"value\":\"%s\"},"
+                + "{\"op\":\"remove\",\"path\":\"/workflowInstanceId\"},"
+                + "{\"op\":\"replace\",\"path\":\"/payload/newDescription\",\"value\":\"Second proposal\"}]")
+            .formatted(UUID.randomUUID()));
+
+    Task stored = SdkClients.adminClient().tasks().get(task.getId().toString(), "payload");
+    JsonNode storedPayload = JsonUtils.valueToTree(stored.getPayload());
+    assertEquals(TaskEntityType.DescriptionUpdate, stored.getType());
+    assertEquals(workflowInstanceId, stored.getWorkflowInstanceId());
+    assertTrue(storedPayload.path("changeRequestId").isMissingNode(), storedPayload.toString());
+    assertEquals("Second proposal", storedPayload.path("newDescription").asText());
+  }
+
+  @Test
+  void testFilingAnApprovalTaskAboutAnEntityNeedsEditAllOnIt(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    // The owner holds EditAll on the table through the organization's owner rule.
+    Table table = createTableWithDomainAndOwners(ns, null, List.of(shared.USER3_REF));
+    String user1 = shared.USER1.getFullyQualifiedName();
+
+    for (TaskEntityType type :
+        List.of(TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval)) {
+      CreateTask request =
+          new CreateTask()
+              .withName(ns.prefix("approval-filing-" + type.value()))
+              .withCategory(TaskCategory.Approval)
+              .withType(type)
+              .withAbout(entityLink("table", table.getFullyQualifiedName()))
+              .withAssignees(List.of(user1));
+
+      assertThrows(
+          ForbiddenException.class,
+          () -> SdkClients.user2Client().tasks().create(request),
+          type.value());
+      assertNotNull(SdkClients.user3Client().tasks().create(request).getId(), type.value());
+    }
+  }
+
+  @Test
+  void testTagTaskFieldMustBeATaggedFieldOfItsEntity(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+
+    InvalidRequestException unknownField =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .create(
+                        tagTaskRequest(ns, "unknown-field", table, "columns.no_such_column.tags")));
+    assertTrue(unknownField.getMessage().contains("names no field"), unknownField.getMessage());
+
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(tagTaskRequest(ns, "removed-field", table, "columns.created_at.tags"));
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    SdkClients.adminClient()
+        .tables()
+        .patch(
+            table.getId().toString(),
+            JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/columns/2\"}]"));
+
+    InvalidRequestException removedField =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .resolve(
+                        task.getId().toString(),
+                        new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
+    assertTrue(removedField.getMessage().contains("names no field"), removedField.getMessage());
+    assertEquals(
+        TaskEntityStatus.Open,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+
+    Task rejected =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Rejected)
+                    .withComment("The column is gone"));
+    assertEquals(TaskEntityStatus.Rejected, rejected.getStatus());
+  }
+
+  /**
+   * The UI approves a TagUpdate with newValue set to the previewed final list (currentTags minus
+   * tagsToRemove plus tagsToAdd). A Replace inside a mutually exclusive classification must leave
+   * only the new tag on the column.
+   */
+  @Test
+  void testApproveColumnTagReplaceWithNewValueLeavesOnlyTheNewTag(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "replace-me", true, "a", "b");
+    TagLabel original = tags.get(0);
+    TagLabel replacement = tags.get(1);
+    Table table = createTableWithFirstColumnTags(ns, List.of(original));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Map<String, Object> payload =
+        tagUpdatePayload(
+            fieldPath, "Replace", List.of(original), List.of(replacement), List.of(original));
+    Task resolved = approveTagUpdateAsTheUiDoes(ns, "tag-replace", table, payload, replacement);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        List.of(replacement.getTagFQN()),
+        firstColumnTagFqns(table),
+        "Replace must swap the tag, not add next to it");
+  }
+
+  /**
+   * The column's tag was swapped for another tag of the same mutually exclusive classification
+   * after the task was filed. Approving the task applies the reviewer's tag in its place instead of
+   * failing on the conflict.
+   */
+  @Test
+  void testApproveColumnTagReplaceAfterAConcurrentSwapAppliesTheApprovedTag(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "swap-me", true, "a", "b", "c");
+    TagLabel original = tags.get(0);
+    TagLabel replacement = tags.get(1);
+    TagLabel swappedIn = tags.get(2);
+    Table table = createTableWithFirstColumnTags(ns, List.of(original));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Map<String, Object> payload =
+        tagUpdatePayload(
+            fieldPath, "Replace", List.of(original), List.of(replacement), List.of(original));
+    Task task = createTagUpdateTask(ns, "tag-swap", table, payload);
+    setFirstColumnTags(table, List.of(swappedIn));
+    Task resolved = resolveAsTheUiDoes(task, payload, replacement);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(List.of(replacement.getTagFQN()), firstColumnTagFqns(table));
+  }
+
+  /**
+   * A Remove approved from the UI must drop the removed tag, and a tag added to the column after
+   * the task was filed is not the reviewer's to drop.
+   */
+  @Test
+  void testApproveColumnTagRemoveWithNewValueDropsOnlyTheRemovedTag(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "remove", false, "kept", "dropped", "later");
+    TagLabel kept = tags.get(0);
+    TagLabel dropped = tags.get(1);
+    TagLabel addedLater = tags.get(2);
+    Table table = createTableWithFirstColumnTags(ns, List.of(kept, dropped));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Map<String, Object> payload =
+        tagUpdatePayload(fieldPath, "Remove", List.of(kept, dropped), List.of(), List.of(dropped));
+    Task task = createTagUpdateTask(ns, "tag-remove", table, payload);
+    setFirstColumnTags(table, List.of(kept, dropped, addedLater));
+    Task resolved = resolveAsTheUiDoes(task, payload, kept);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        List.of(kept.getTagFQN(), addedLater.getTagFQN()),
+        firstColumnTagFqns(table),
+        "Remove must drop the removed tag and keep the tag added after the task");
+  }
+
+  /**
+   * A task filed through the API without a currentTags snapshot records nothing the reviewer saw,
+   * so resolving it with newValue adds the approved tags and leaves the column's other tags alone.
+   */
+  @Test
+  void testApproveColumnTagAddWithoutSnapshotKeepsTheColumnsOtherTags(TestNamespace ns) {
+    List<TagLabel> tags = createClassificationTags(ns, "no-snapshot", false, "x", "y", "z");
+    Table table = createTableWithFirstColumnTags(ns, List.of(tags.get(0), tags.get(1)));
+    String fieldPath = "columns.%s.tags".formatted(table.getColumns().get(0).getName());
+
+    Task task =
+        createTagUpdateTask(
+            ns,
+            "tag-no-snapshot",
+            table,
+            Map.of("fieldPath", fieldPath, "operation", "Add", "tagsToAdd", List.of(tags.get(2))));
+    Task resolved =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tags.get(2)))));
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        tags.stream().map(TagLabel::getTagFQN).sorted().toList(), firstColumnTagFqns(table));
+  }
+
+  private static List<TagLabel> createClassificationTags(
+      TestNamespace ns, String name, boolean mutuallyExclusive, String... tagNames) {
+    Classification classification =
+        SdkClients.adminClient()
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix(name))
+                    .withDescription("TagUpdate resolution test classification")
+                    .withMutuallyExclusive(mutuallyExclusive));
+    return Arrays.stream(tagNames)
+        .map(
+            tagName ->
+                SdkClients.adminClient()
+                    .tags()
+                    .create(
+                        new CreateTag()
+                            .withName(tagName)
+                            .withDescription("TagUpdate resolution test tag")
+                            .withClassification(classification.getName())))
+        .map(
+            tag ->
+                new TagLabel()
+                    .withTagFQN(tag.getFullyQualifiedName())
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)
+                    .withLabelType(TagLabel.LabelType.MANUAL)
+                    .withState(TagLabel.State.CONFIRMED))
+        .toList();
+  }
+
+  private static Table createTableWithFirstColumnTags(TestNamespace ns, List<TagLabel> tags) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+    setFirstColumnTags(table, tags);
+    return table;
+  }
+
+  private static void setFirstColumnTags(Table table, List<TagLabel> tags) {
+    String patch =
+        "[{\"op\":\"add\",\"path\":\"/columns/0/tags\",\"value\":%s}]"
+            .formatted(JsonUtils.pojoToJson(tags));
+    SdkClients.adminClient().tables().patch(table.getId().toString(), JsonUtils.readTree(patch));
+  }
+
+  private static Map<String, Object> tagUpdatePayload(
+      String fieldPath,
+      String operation,
+      List<TagLabel> currentTags,
+      List<TagLabel> tagsToAdd,
+      List<TagLabel> tagsToRemove) {
+    return Map.of(
+        "fieldPath", fieldPath,
+        "operation", operation,
+        "currentTags", currentTags,
+        "tagsToAdd", tagsToAdd,
+        "tagsToRemove", tagsToRemove);
+  }
+
+  private static Task createTagUpdateTask(
+      TestNamespace ns, String name, Table table, Map<String, Object> payload) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix(name))
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.TagUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
+  }
+
+  private static Task approveTagUpdateAsTheUiDoes(
+      TestNamespace ns,
+      String name,
+      Table table,
+      Map<String, Object> payload,
+      TagLabel... finalTags) {
+    return resolveAsTheUiDoes(createTagUpdateTask(ns, name, table, payload), payload, finalTags);
+  }
+
+  // The UI resolves with the payload and newValue = the previewed final list
+  // (TaskFormSchemaUtils.mergeResolutionTags).
+  private static Task resolveAsTheUiDoes(
+      Task task, Map<String, Object> payload, TagLabel... finalTags) {
+    return SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(JsonUtils.pojoToJson(List.of(finalTags)))
+                .withPayload(JsonUtils.convertValue(payload, Payload.class)));
+  }
+
+  private static List<String> firstColumnTagFqns(Table table) {
+    Table updated =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    return listOrEmpty(updated.getColumns().get(0).getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .sorted()
+        .toList();
+  }
+
+  private static CreateTask tagTaskRequest(
+      TestNamespace ns, String name, Table table, String fieldPath) {
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    return new CreateTask()
+        .withName(ns.prefix(name))
+        .withCategory(TaskCategory.MetadataUpdate)
+        .withType(TaskEntityType.TagUpdate)
+        .withAbout(entityLink("table", table.getFullyQualifiedName()))
+        .withPayload(
+            Map.of(
+                "fieldPath",
+                fieldPath,
+                "tagsToAdd",
+                List.of(tag),
+                "tagsToRemove",
+                List.of(),
+                "currentTags",
+                List.of(),
+                "operation",
+                "Add"));
+  }
+
+  private static ResolveTask approvalWithAssignees(String newValue, List<User> assignees) {
+    List<Map<String, String>> references =
+        assignees.stream()
+            .map(
+                user ->
+                    Map.of("id", user.getId().toString(), "type", "user", "name", user.getName()))
+            .toList();
+    return new ResolveTask()
+        .withResolutionType(TaskResolutionType.Approved)
+        .withNewValue(newValue)
+        .withPayload(JsonUtils.convertValue(Map.of("assignees", references), Payload.class));
+  }
+
+  private static void patchTaskAsUser1(Task task, String patch) {
+    SdkClients.user1Client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/tasks/" + task.getId(),
+            patch,
+            org.openmetadata.sdk.network.RequestOptions.builder()
+                .header("Content-Type", "application/json-patch+json")
+                .build());
+  }
+
+  private Task createTaskAssignedToUser1(TestNamespace ns, String name, Table table) {
+    final String user1 = SharedEntities.get().USER1.getFullyQualifiedName();
+    return SdkClients.adminClient()
+        .tasks()
+        .create(createTaskRequestAboutTable(ns, name, table).withAssignees(List.of(user1)));
+  }
+
+  private Task createTaskAsUser1(TestNamespace ns, String name, Table table) {
+    return SdkClients.user1Client().tasks().create(createTaskRequestAboutTable(ns, name, table));
+  }
+
+  /**
+   * Lists one of user1's scoped endpoints within the test's own domain, so tasks other concurrent
+   * tests file for user1 cannot satisfy or break the check, and requires every expected task on
+   * the page in non-increasing createdAt order.
+   */
+  private static void assertScopedListNewestFirst(
+      String path, String domainFqn, List<Task> expected) throws Exception {
+    final JsonNode page = listAsUser1InDomain(path, domainFqn);
+
+    assertTrue(
+        pageIds(page).containsAll(expected.stream().map(Task::getId).toList()),
+        "%s lists every task filed for this test".formatted(path));
+    assertNewestFirst(createdAtsOf(page), "%s lists the newest task first".formatted(path));
+  }
+
+  private static JsonNode listAsUser1InDomain(String path, String domainFqn) throws Exception {
+    final RequestOptions options =
+        RequestOptions.builder().queryParam("domain", domainFqn).queryParam("limit", "100").build();
+    final String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks" + path, null, options);
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<Long> createdAtsOf(JsonNode page) {
+    final List<Long> createdAts = new ArrayList<>();
+    page.path("data").forEach(node -> createdAts.add(node.path("createdAt").asLong()));
+    return createdAts;
+  }
+
+  private static void assertNewestFirst(List<Long> createdAts, String message) {
+    assertEquals(
+        createdAts.stream().sorted(Comparator.reverseOrder()).toList(), createdAts, message);
+  }
+
+  private static void assertListRejects(String param, String value, String message) {
+    final RequestOptions options = RequestOptions.builder().queryParam(param, value).build();
+    assertThrows(InvalidRequestException.class, () -> taskListPage("/v1/tasks", options), message);
+  }
+
+  /**
+   * Walks the tasks about one entity a row at a time in both orders and checks each walk, and a
+   * step back from its last page, against the creation times of {@code expected}.
+   */
+  private void assertCreationOrderPaging(String aboutEntity, String query, List<Task> expected)
+      throws Exception {
+    final List<JsonNode> descPages = walkTaskPages(aboutEntity, query, null);
+    final List<JsonNode> ascPages = walkTaskPages(aboutEntity, query, SORT_ORDER_ASC);
+    final List<UUID> newestFirst = idsOf(descPages);
+
+    assertVisitsNewestFirst(expected, newestFirst);
+    assertEquals(newestFirst.reversed(), idsOf(ascPages), "sortOrder=asc lists the oldest first");
+    assertPagesBackTo(aboutEntity, query, null, descPages);
+    assertPagesBackTo(aboutEntity, query, SORT_ORDER_ASC, ascPages);
+  }
+
+  /**
+   * Rows created in the same millisecond are ordered by id under the database's collation, so the
+   * walk is checked on createdAt rather than against a Java id sort.
+   */
+  private static void assertVisitsNewestFirst(List<Task> expected, List<UUID> visited) {
+    final Map<UUID, Long> createdAtById =
+        expected.stream().collect(Collectors.toMap(Task::getId, Task::getCreatedAt));
+
+    assertEquals(expected.size(), visited.size(), "Paging visits every task exactly once");
+    assertEquals(createdAtById.keySet(), Set.copyOf(visited), "Paging visits every task once");
+    assertNewestFirst(
+        visited.stream().map(createdAtById::get).toList(),
+        "Default order lists the newest task first");
+  }
+
+  private void assertPagesBackTo(
+      String aboutEntity, String query, String sortOrder, List<JsonNode> pages) throws Exception {
+    final RequestOptions.Builder options = orderedPageOptions(aboutEntity, query, sortOrder);
+    options.queryParam("before", pages.getLast().path("paging").path("before").asText());
+    assertEquals(
+        pageIds(pages.get(pages.size() - 2)),
+        pageIds(taskListPage("/v1/tasks", options.build())),
+        "Paging back from the last page returns the one before it");
+  }
+
+  private List<JsonNode> walkTaskPages(String aboutEntity, String query, String sortOrder)
+      throws Exception {
+    final List<JsonNode> pages = new ArrayList<>();
+    String after = null;
+    do {
+      final RequestOptions.Builder options = orderedPageOptions(aboutEntity, query, sortOrder);
+      if (after != null) {
+        options.queryParam("after", after);
+      }
+      final JsonNode page = taskListPage("/v1/tasks", options.build());
+      pages.add(page);
+      after = page.path("paging").path("after").asText(null);
+    } while (after != null && pages.size() < 10);
+    return pages;
+  }
+
+  private static RequestOptions.Builder orderedPageOptions(
+      String aboutEntity, String query, String sortOrder) {
+    final RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "1");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    if (sortOrder != null) {
+      options.queryParam("sortOrder", sortOrder);
+    }
+    return options;
+  }
+
+  private static List<UUID> idsOf(List<JsonNode> pages) {
+    return pages.stream().flatMap(page -> pageIds(page).stream()).toList();
+  }
+
+  private static JsonNode taskListPage(String path, RequestOptions options) throws Exception {
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null, options);
+    return JsonUtils.readTree(response);
+  }
+
+  private JsonNode searchPage(String aboutEntity, String query, String cursorParam, String cursor)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("aboutEntity", aboutEntity)
+            .queryParam("q", query)
+            .queryParam("limit", "1");
+    if (cursor != null) {
+      options.queryParam(cursorParam, cursor);
+    }
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, options.build());
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<UUID> pageIds(JsonNode page) {
+    List<UUID> ids = new ArrayList<>();
+    page.path("data").forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  private Task createTaskWithDisplayName(
+      TestNamespace ns, String name, Table table, String displayName) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(createTaskRequestAboutTable(ns, name, table).withDisplayName(displayName));
+  }
+
+  private static RequestOptions searchOptions(String aboutEntity, String query) {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "100");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    return options.build();
+  }
+
+  private List<UUID> searchTaskIdsAbout(String aboutEntity, String query) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, searchOptions(aboutEntity, query));
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  private List<UUID> searchVisibleTaskIds(String query) throws Exception {
+    String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tasks/visible",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("statusGroup", "open")
+                    .queryParam("limit", "100")
+                    .build());
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  @Test
   void testScopedTaskEndpointsHonorTimeRange(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     Domain domain = createDomain(ns, "time-range-domain");
@@ -2288,26 +3180,36 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
 
     // assignedTask is visible to user1 both via /visible and /owned (about a
-    // user1-owned table); createdTask exercises /created (createdBy user1).
+    // user1-owned table); createdTask exercises /created (createdBy user1). Scoped to this
+    // test's domain so tasks other concurrent tests give user1 cannot move total vs page.
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+                .listVisible(
+                    null,
+                    null,
+                    domain.getFullyQualifiedName(),
+                    "assignees,about",
+                    1000,
+                    startTs,
+                    endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+                .listOwned(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+                .listCreated(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         createdTask.getId(),
         createdTask.getCreatedAt());
 
@@ -2508,36 +3410,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         SdkClients.adminClient().tables().getVersionList(updatedTable.getId()).getVersions().size(),
         "Version history must contain both 0.1 (baseline) and the post-TagUpdate bump");
 
-    JsonNode events;
-    try {
-      String eventsJson =
-          SdkClients.adminClient()
-              .getHttpClient()
-              .executeForString(
-                  HttpMethod.GET,
-                  "/v1/events",
-                  null,
-                  RequestOptions.builder()
-                      .queryParam("entityUpdated", "table")
-                      .queryParam("timestamp", Long.toString(resolveStartTs))
-                      .queryParam("limit", "1000")
-                      .build());
-      events = JsonUtils.readTree(eventsJson);
-    } catch (Exception e) {
-      throw new AssertionError("Failed to fetch /v1/events", e);
-    }
-    boolean entityUpdatedEmitted = false;
-    for (JsonNode event : events.path("data")) {
-      if (table.getFullyQualifiedName().equals(event.path("entityFullyQualifiedName").asText())
-          && "entityUpdated".equals(event.path("eventType").asText())) {
-        entityUpdatedEmitted = true;
-        break;
-      }
-    }
-    assertTrue(
-        entityUpdatedEmitted,
-        "Column-level TagUpdate must emit an entityUpdated change event for the parent table; got: "
-            + events.path("data"));
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolveStartTs);
 
     // Search by id (single UUID term) instead of fullyQualifiedName phrase — long dotted FQNs
     // can inflate the boolean-clause count under parallel test load and trip the shard-level
@@ -2609,6 +3482,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withNewValue(newDescription)
             .withComment("Approved - apply description");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -2620,6 +3494,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         newDescription,
         updatedTable.getDescription(),
         "Table description should be updated after task resolution");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
+    awaitOneAuditedUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -2633,7 +3509,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("columns::" + columnName + "::description")
+            .withFieldPath("columns." + columnName + ".description")
             .withCurrentDescription(table.getColumns().get(0).getDescription())
             .withNewDescription(newDescription);
 
@@ -2655,6 +3531,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withNewValue(newDescription)
             .withComment("Approved - apply column description");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -2674,6 +3551,40 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         newDescription,
         updatedColumnDesc,
         "Column description should be updated after task resolution");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
+  }
+
+  @Test
+  void testResolveDescriptionUpdateTaskOnATopicRecordsTheTopicsChange(TestNamespace ns) {
+    Topic topic = TopicTestFactory.createSimple(ns);
+    String newDescription = "Topic description from task resolution - " + ns.shortPrefix();
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("topic-desc-update"))
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("topic", topic.getFullyQualifiedName()))
+            .withPayload(
+                new org.openmetadata.schema.type.DescriptionUpdatePayload()
+                    .withFieldPath("description")
+                    .withCurrentDescription(topic.getDescription())
+                    .withNewDescription(newDescription));
+    Task task = SdkClients.adminClient().tasks().create(request);
+
+    long resolvedAt = System.currentTimeMillis();
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(newDescription));
+
+    assertEquals(
+        newDescription,
+        SdkClients.adminClient().topics().get(topic.getId().toString()).getDescription());
+    assertOneUpdateBy("admin", "topic", topic.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -2916,6 +3827,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withResolutionType(TaskResolutionType.Approved)
             .withComment("Approved - transfer ownership");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -2928,6 +3840,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertTrue(
         updatedTable.getOwners().stream().anyMatch(o -> o.getName().equals(shared.USER2.getName())),
         "Table should have USER2 as owner after ownership update");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -2980,11 +3893,17 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   // ==================== TierUpdate Task Tests ====================
 
   @Test
-  void testResolveTierUpdateTaskAppliesTier(TestNamespace ns) {
+  void testResolveTierUpdateTaskReplacesTierAndRecordsChange(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
+    TagLabel currentTier =
+        new TagLabel()
+            .withTagFQN("Tier.Tier3")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED)
+            .withName("Tier3");
     TagLabel newTier =
         new TagLabel()
             .withTagFQN("Tier.Tier1")
@@ -2993,9 +3912,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withState(TagLabel.State.CONFIRMED)
             .withName("Tier1");
 
-    org.openmetadata.schema.type.TierUpdatePayload payload =
-        new org.openmetadata.schema.type.TierUpdatePayload()
-            .withCurrentTier(null)
+    Table table =
+        Tables.create()
+            .name(ns.prefix("tier_update_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+            .withTags(List.of(currentTier))
+            .execute();
+    Double initialVersion = table.getVersion();
+
+    TierUpdatePayload payload =
+        new TierUpdatePayload()
+            .withCurrentTier(currentTier)
             .withNewTier(newTier)
             .withReason("Promoting table to Tier1 for critical business data");
 
@@ -3023,12 +3951,35 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
 
     Table updatedTable =
-        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "tags");
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tags,changeDescription");
 
-    assertNotNull(updatedTable.getTags(), "Table should have tags (including tier) after update");
+    List<String> tierFqns =
+        updatedTable.getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .filter(tagFqn -> tagFqn.startsWith("Tier."))
+            .toList();
+    assertEquals(List.of("Tier.Tier1"), tierFqns, "Approval must replace the existing tier");
     assertTrue(
-        updatedTable.getTags().stream().anyMatch(t -> t.getTagFQN().startsWith("Tier.")),
-        "Table should have tier tag after tier update");
+        updatedTable.getVersion() > initialVersion,
+        "TierUpdate approval must bump the entity version");
+    assertNotNull(
+        updatedTable.getChangeDescription(), "TierUpdate approval must populate changeDescription");
+    assertTrue(
+        updatedTable.getChangeDescription().getFieldsAdded().stream()
+            .anyMatch(field -> "tags".equals(field.getName())),
+        "changeDescription must record the new tier");
+    assertTrue(
+        updatedTable.getChangeDescription().getFieldsDeleted().stream()
+            .anyMatch(field -> "tags".equals(field.getName())),
+        "changeDescription must record the removed tier");
+
+    String updatedDescription = "Description update after approved tier change";
+    updatedTable.setDescription(updatedDescription);
+    Table descriptionUpdated =
+        SdkClients.adminClient().tables().update(updatedTable.getId().toString(), updatedTable);
+    assertEquals(updatedDescription, descriptionUpdated.getDescription());
   }
 
   // ==================== DomainUpdate Task Tests ====================
@@ -3069,6 +4020,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withResolutionType(TaskResolutionType.Approved)
             .withComment("Approved - assign to domain");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -3083,6 +4035,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         updatedTable.getDomains().stream()
             .anyMatch(d -> d.getFullyQualifiedName().equals(shared.DOMAIN.getFullyQualifiedName())),
         "Table domains should include the assigned domain");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -3224,7 +4177,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("messageSchema::user_id::description")
+            .withFieldPath("messageSchema.schemaFields.user_id.description")
             .withCurrentDescription("Original user ID description")
             .withNewDescription(newDescription);
 
@@ -3302,7 +4255,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("columns::address.street::description")
+            .withFieldPath("columns.address.street.description")
             .withCurrentDescription("Original street description")
             .withNewDescription(newDescription);
 
@@ -3349,6 +4302,91 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .orElse(null);
 
     assertEquals(newDescription, updatedChildDesc);
+    assertEquals("Address struct", addressCol.getDescription(), "the parent column is untouched");
+  }
+
+  // ==================== Field Path Format ====================
+
+  @Test
+  void testTaskWhosePathIsNotAFieldOfTheEntity_isRefusedWhenFiled(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Column street = new Column().withName("street").withDataType(ColumnDataType.VARCHAR);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(street.withDataLength(255)));
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("field_path_format_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT), address))
+            .execute();
+
+    for (String fieldPath :
+        List.of(
+            "columns::id::description",
+            "columns.address.street",
+            "columns.street.description",
+            "columns.id.tags",
+            "columns.missing.description")) {
+      CreateTask request =
+          new CreateTask()
+              .withName(ns.prefix("field-path-format"))
+              .withCategory(TaskCategory.MetadataUpdate)
+              .withType(TaskEntityType.DescriptionUpdate)
+              .withAbout(entityLink("table", table.getFullyQualifiedName()))
+              .withPayload(
+                  new org.openmetadata.schema.type.DescriptionUpdatePayload()
+                      .withFieldPath(fieldPath)
+                      .withNewDescription("x"));
+
+      InvalidRequestException refused =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> SdkClients.adminClient().tasks().create(request),
+              fieldPath);
+      assertTrue(refused.getMessage().contains(fieldPath), refused.getMessage());
+    }
+  }
+
+  @Test
+  void testEditingATaskPathToOneThatIsNotAFieldOfTheEntity_isRefused(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+    String columnPath = "columns." + table.getColumns().get(0).getName() + ".description";
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("field-path-edit"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                    .withPayload(
+                        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+                            .withFieldPath(columnPath)
+                            .withNewDescription("x")));
+
+    InvalidRequestException refused =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tasks/" + task.getId(),
+                        "[{\"op\":\"replace\",\"path\":\"/payload/fieldPath\","
+                            + "\"value\":\"columns.missing.description\"}]",
+                        org.openmetadata.sdk.network.RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+    assertTrue(refused.getMessage().contains("columns.missing.description"), refused.getMessage());
   }
 
   // ==================== Multiple Columns Same Task ====================
@@ -3367,7 +4405,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload1 =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("columns::" + col1Name + "::description")
+            .withFieldPath("columns." + col1Name + ".description")
             .withNewDescription(newDesc1);
 
     CreateTask request1 =
@@ -3380,7 +4418,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload2 =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("columns::" + col2Name + "::description")
+            .withFieldPath("columns." + col2Name + ".description")
             .withNewDescription(newDesc2);
 
     CreateTask request2 =
@@ -3608,7 +4646,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("tasks::extract_data::description")
+            .withFieldPath("tasks.extract_data.description")
             .withCurrentDescription("Original extract task description")
             .withNewDescription(newDescription);
 
@@ -3733,7 +4771,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.DescriptionUpdatePayload payload =
         new org.openmetadata.schema.type.DescriptionUpdatePayload()
-            .withFieldPath("dataModel::customer_id::description")
+            .withFieldPath("dataModel.columns.customer_id.description")
             .withCurrentDescription("Original customer ID description")
             .withNewDescription(newDescription);
 
@@ -3932,7 +4970,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     org.openmetadata.schema.type.TagUpdatePayload payload =
         new org.openmetadata.schema.type.TagUpdatePayload()
-            .withFieldPath("requestSchema.schemaFields.default.name.last_name")
+            .withFieldPath("requestSchema.schemaFields.default.name.last_name.tags")
             .withCurrentTags(List.of())
             .withTagsToAdd(tagsToAdd)
             .withTagsToRemove(List.of());
@@ -4129,6 +5167,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "payload", rawSuggestionPayload),
                 Task.class);
 
+    long appliedAt = System.currentTimeMillis();
     Task appliedTask =
         SdkClients.adminClient()
             .getHttpClient()
@@ -4143,6 +5182,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Table updatedTable =
         SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "description");
     assertEquals(suggestedDescription, updatedTable.getDescription());
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), appliedAt);
   }
 
   @Test
@@ -4153,14 +5193,14 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Map<String, Object> taskOnePayload =
         Map.of(
             "suggestionType", "Description",
-            "fieldPath", "columns::id::description",
+            "fieldPath", "columns.id.description",
             "suggestedValue", "Column id description",
             "source", "Agent",
             "confidence", 90.0);
     Map<String, Object> taskTwoPayload =
         Map.of(
             "suggestionType", "Description",
-            "fieldPath", "columns::name::description",
+            "fieldPath", "columns.name.description",
             "suggestedValue", "Column name description",
             "source", "Agent",
             "confidence", 88.0);
@@ -4422,6 +5462,112 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testSoftDeletingCreatorKeepsTheirTasks(TestNamespace ns) {
+    CreatorWithTasks creator = createUserWithMetadataTasks(ns, "soft_delete_creator");
+    String creatorId = creator.user().getId().toString();
+
+    SdkClients.adminClient().users().delete(creatorId);
+    assertTasksKeptWithCreator(creator);
+
+    SdkClients.adminClient().users().restore(creatorId);
+    assertTasksKeptWithCreator(creator);
+  }
+
+  @Test
+  void testHardDeletingCreatorRemovesOnlyTheirSuggestions(TestNamespace ns) {
+    CreatorWithTasks creator = createUserWithMetadataTasks(ns, "hard_delete_creator");
+
+    SdkClients.adminClient()
+        .users()
+        .delete(
+            creator.user().getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (Task suggestion : List.of(creator.openSuggestion(), creator.closedSuggestion())) {
+      ApiException notFound =
+          assertThrows(
+              ApiException.class,
+              () -> SdkClients.adminClient().tasks().get(suggestion.getId().toString()));
+      assertEquals(
+          404,
+          notFound.getStatusCode(),
+          "The deleted creator's suggestion " + suggestion.getName() + " should be removed");
+    }
+    Task resolvedRequest =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                creator.descriptionRequest().getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withNewValue(REQUESTED_DESCRIPTION));
+    assertEquals(TaskEntityStatus.Approved, resolvedRequest.getStatus());
+  }
+
+  private record CreatorWithTasks(
+      User user, Task descriptionRequest, Task openSuggestion, Task closedSuggestion) {
+    List<Task> tasks() {
+      return List.of(descriptionRequest, openSuggestion, closedSuggestion);
+    }
+  }
+
+  private CreatorWithTasks createUserWithMetadataTasks(TestNamespace ns, String baseName) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String about = entityLink("table", table.getFullyQualifiedName());
+    User user = UserTestFactory.createUser(ns, baseName);
+    OpenMetadataClient creatorClient =
+        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+    DescriptionUpdatePayload request =
+        new DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withNewDescription(REQUESTED_DESCRIPTION);
+    Task descriptionRequest =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.DescriptionUpdate, request);
+    Task openSuggestion =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.Suggestion, suggestion());
+    Task closedSuggestion =
+        createMetadataTask(creatorClient, ns, about, TaskEntityType.Suggestion, suggestion());
+    SdkClients.adminClient().tasks().close(closedSuggestion.getId().toString());
+    return new CreatorWithTasks(user, descriptionRequest, openSuggestion, closedSuggestion);
+  }
+
+  private Task createMetadataTask(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      String about,
+      TaskEntityType type,
+      Object payload) {
+    return client
+        .tasks()
+        .create(
+            new CreateTask()
+                .withName(ns.prefix(type.value() + "-" + UUID.randomUUID()))
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(type)
+                .withAbout(about)
+                .withPayload(payload));
+  }
+
+  private static Map<String, Object> suggestion() {
+    return Map.of(
+        "suggestionType", "Description",
+        "fieldPath", "description",
+        "suggestedValue", "Description suggested by the creator",
+        "source", "User");
+  }
+
+  private void assertTasksKeptWithCreator(CreatorWithTasks creator) {
+    for (Task task : creator.tasks()) {
+      Task stored = SdkClients.adminClient().tasks().get(task.getId().toString(), "createdBy");
+      assertEquals(
+          creator.user().getId(),
+          stored.getCreatedBy().getId(),
+          "Soft-deleting the creator should keep the task " + task.getName());
+    }
+  }
+
+  @Test
   void testCreateTask_perEntityCreateTaskDenied_403(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -4454,8 +5600,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     CreateTask request =
         new CreateTask()
             .withName(ns.prefix("per-entity-allowed-task"))
-            .withCategory(TaskCategory.Approval)
-            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
             .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
 
@@ -4529,6 +5675,61 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     admin.users().create(createUser);
 
     return SdkClients.createClient(userEmail, userEmail, new String[] {});
+  }
+
+  // An approved task's change is the changed entity's own change event, recorded once and by the
+  // user who approved it, as a direct edit by that user would be.
+  private static void assertOneUpdateBy(
+      String user, String entityType, String entityFqn, long since) {
+    String eventsJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/events",
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityUpdated", entityType)
+                    .queryParam("timestamp", Long.toString(since))
+                    .queryParam("limit", "1000")
+                    .build());
+    List<JsonNode> updates = new ArrayList<>();
+    for (JsonNode event : JsonUtils.readTree(eventsJson).path("data")) {
+      if (user.equals(event.path("userName").asText())
+          && entityFqn.equals(event.path("entityFullyQualifiedName").asText())
+          && "entityUpdated".equals(event.path("eventType").asText())) {
+        updates.add(event);
+      }
+    }
+    assertEquals(1, updates.size(), "entityUpdated events of " + entityFqn + ": " + updates);
+  }
+
+  // The audit log is written from the change events in the background, so wait for the approver's
+  // entry, then check it is the only one.
+  private static void awaitOneAuditedUpdateBy(
+      String user, String entityType, String entityFqn, long since) {
+    RequestOptions query =
+        RequestOptions.builder()
+            .queryParam("userName", user)
+            .queryParam("entityType", entityType)
+            .queryParam("entityFQN", entityFqn)
+            .queryParam("eventType", "entityUpdated")
+            .queryParam("startTs", Long.toString(since))
+            .queryParam("limit", "10")
+            .build();
+    JsonNode entries =
+        Awaitility.await("audit log entry for the update of " + entityFqn)
+            .atMost(Duration.ofSeconds(60))
+            .pollInterval(Duration.ofSeconds(1))
+            .until(
+                () ->
+                    JsonUtils.readTree(
+                            SdkClients.adminClient()
+                                .getHttpClient()
+                                .executeForString(HttpMethod.GET, "/v1/audit/logs", null, query))
+                        .path("data"),
+                data -> data.size() > 0);
+    assertEquals(1, entries.size(), "audit log entries of " + entityFqn + ": " + entries);
   }
 
   private void awaitTaskReadyForWorkflowResolution(UUID taskId) {

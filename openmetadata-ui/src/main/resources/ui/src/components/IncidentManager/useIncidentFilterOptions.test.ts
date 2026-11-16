@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { useIncidentFilterOptions } from './useIncidentFilterOptions';
@@ -51,14 +51,11 @@ describe('useIncidentFilterOptions', () => {
     );
 
     expect(result.current.users).toEqual({ options: [] });
-    expect(result.current.testCaseFilterOptions).toEqual([]);
-    expect(result.current.isTestCaseOptionsLoading).toBe(false);
     expect(result.current.assigneeOptionsWithSelected).toEqual([]);
     expect(result.current.selectedAssignees).toEqual([]);
     expect(typeof result.current.setUsers).toBe('function');
     expect(typeof result.current.fetchUserFilterOptions).toBe('function');
     expect(typeof result.current.searchTestCases).toBe('function');
-    expect(typeof result.current.fetchTestCaseFilterOptions).toBe('function');
   });
 
   it('should synthesize a selected assignee option when it is not already loaded', () => {
@@ -217,55 +214,5 @@ describe('useIncidentFilterOptions', () => {
     });
 
     expect(options).toEqual([]);
-  });
-
-  it('should toggle the loading flag and store only fqn-backed test-case options', async () => {
-    let resolveSearch: (value: unknown) => void = (_value) => undefined;
-    mockSearchQuery.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveSearch = resolve;
-        })
-    );
-    const { result } = renderHook(() =>
-      useIncidentFilterOptions({ filters: {} })
-    );
-
-    act(() => {
-      void result.current.fetchTestCaseFilterOptions();
-    });
-
-    expect(result.current.isTestCaseOptionsLoading).toBe(true);
-
-    await act(async () => {
-      resolveSearch({
-        hits: {
-          hits: [
-            {
-              _source: {
-                fullyQualifiedName: 'svc.db.tc',
-                name: 'tc',
-                displayName: 'TC',
-              },
-            },
-            {
-              _source: {
-                fullyQualifiedName: undefined,
-                name: 'nofqn',
-                displayName: 'NoFQN',
-              },
-            },
-          ],
-        },
-      });
-    });
-
-    await waitFor(() =>
-      expect(result.current.isTestCaseOptionsLoading).toBe(false)
-    );
-
-    expect(result.current.testCaseFilterOptions).toEqual([
-      { value: 'svc.db.tc', label: 'TC' },
-    ]);
   });
 });

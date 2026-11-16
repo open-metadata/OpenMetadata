@@ -76,7 +76,7 @@ public class ReindexingUtil {
   public static void populateDocBuildContext(
       Map<String, Object> contextData,
       String entityType,
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
     Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
     Map<UUID, Long> prefetchedRelationshipRevisions = null;
@@ -91,7 +91,7 @@ public class ReindexingUtil {
                         Entity.TEST_CASE.equals(entityType)
                             || entity instanceof TestSuite testSuite
                                 && Boolean.FALSE.equals(testSuite.getBasic()))
-                .map(EntityInterface::getId)
+                .map(EntityInterface<?>::getId)
                 .filter(Objects::nonNull)
                 .toList();
         @SuppressWarnings("unchecked")
@@ -134,7 +134,7 @@ public class ReindexingUtil {
                   prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0),
               prefetchedRelationshipRevisions != null ? prefetchedRelationshipRevisions.size() : 0);
       Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         UUID entityId = entity.getId();
         if (entityId == null) {
           continue;

@@ -1,6 +1,10 @@
 package org.openmetadata.sdk.fluent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
@@ -8,6 +12,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.request.BulkCreateRequest;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -72,6 +77,12 @@ public final class TestCases {
 
   public static TestCase create(TestCase request) {
     return getClient().testCases().create(request);
+  }
+
+  public static BulkCreateRequest createMany(final List<CreateTestCase> requests) {
+    final OpenMetadataClient client = getClient();
+    final List<CreateTestCase> batch = List.copyOf(requests);
+    return new BulkCreateRequest(policy -> client.testCases().createMany(batch, policy));
   }
 
   // ==================== Finding/Retrieval ====================

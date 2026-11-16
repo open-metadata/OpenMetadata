@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, Grid } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,15 +24,15 @@ import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { getCountLabel } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({
@@ -39,6 +40,7 @@ function ServiceVersionMainTabContent({
   data,
   isServiceLoading,
   paging,
+  pageSize,
   pagingHandler,
   currentPage,
   serviceDetails,
@@ -64,29 +66,46 @@ function ServiceVersionMainTabContent({
   );
 
   return (
-    <Row className="h-full" gutter={[0, 16]} wrap={false}>
-      <Col className="p-t-sm m-x-lg" flex="auto">
-        <Row gutter={[16, 16]}>
-          <Col data-testid="description-container" span={24}>
+    <Box
+      className="layout-row h-full"
+      style={{ ...getLayoutGutter(0, 16) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block p-t-sm m-x-lg"
+        style={{ flex: 'auto' }}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(16, 16) }}>
+          <Grid.Item
+            className="layout-column"
+            data-testid="description-container"
+            span={24}>
             <Description
               description={description}
               entityName={serviceName}
               entityType={entityType}
               showActions={false}
             />
-          </Col>
+          </Grid.Item>
 
-          <Col data-testid="table-container" span={24}>
-            <Space className="w-full m-b-md" direction="vertical" size="middle">
+          <Grid.Item
+            className="layout-column"
+            data-testid="table-container"
+            span={24}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full m-b-md"
+              direction="col"
+              gap={4}
+              itemClassName="layout-space-item">
               <Table
                 columns={tableColumn}
                 customPaginationProps={{
                   currentPage,
                   isLoading: isServiceLoading,
-                  showPagination:
-                    Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                    !isEmpty(data),
-                  pageSize: PAGE_SIZE,
+                  showPagination: shouldShowPager(data),
+                  pageSize,
                   paging,
                   pagingHandler,
                 }}
@@ -97,12 +116,11 @@ function ServiceVersionMainTabContent({
                 locale={{
                   emptyText: (
                     <div className="tw:relative tw:min-h-42">
-                      <EmptyPlaceholder
-                        icon={<Assets className="tw:text-utility-gray-600" />}
+                      <NoDataPlaceholder
+                        icon={<Assets />}
                         title={t('message.no-entity-data-available', {
                           entity: getCountLabel(serviceCategory),
                         })}
-                        variant="blank"
                       />
                     </div>
                   ),
@@ -112,15 +130,21 @@ function ServiceVersionMainTabContent({
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col
-        className="entity-tag-right-panel-container"
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Box>
+      <Box
+        className="layout-column tw:block entity-tag-right-panel-container"
         data-testid="entity-right-panel"
-        flex="220px">
-        <Space className="w-full" direction="vertical" size="large">
+        style={{ flex: '0 0 220px' }}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space w-full"
+          direction="col"
+          gap={6}
+          itemClassName="layout-space-item">
           {Object.keys(TagSource).map((tagType) => (
             <TagsContainerV2
               newLook
@@ -134,9 +158,9 @@ function ServiceVersionMainTabContent({
               tagType={TagSource[tagType as TagSource]}
             />
           ))}
-        </Space>
-      </Col>
-    </Row>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

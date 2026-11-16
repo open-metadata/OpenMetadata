@@ -51,10 +51,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.rdf.RdfEntityLiveness;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
@@ -79,6 +81,9 @@ import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 @DisplayName("RdfBatchProcessor.processEntities branching tests")
 class RdfBatchProcessorTest {
 
+  // Fixture entities are live regardless of repositories registered by other test classes.
+  private static final RdfEntityLiveness LIVE_ENTITIES = (type, ids) -> Set.copyOf(ids);
+
   @Mock private CollectionDAO collectionDAO;
   @Mock private EntityRelationshipDAO relationshipDAO;
   @Mock private RdfRepository rdfRepository;
@@ -97,13 +102,19 @@ class RdfBatchProcessorTest {
     lenient()
         .when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
         .thenReturn(List.of());
-    processor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    processor =
+        new RdfBatchProcessor(
+            collectionDAO,
+            rdfRepository,
+            RdfIndexingRunContext.reconcileDefaults(),
+            System::nanoTime,
+            LIVE_ENTITIES);
   }
 
   @Test
   void preTranslatedAttemptConsumesTheOriginalBudget() {
     final AtomicLong now = new AtomicLong();
-    final List<EntityInterface> entities =
+    final List<EntityInterface<?>> entities =
         List.of(new Table().withId(UUID.randomUUID()), new Table().withId(UUID.randomUUID()));
     final var requests =
         entities.stream()
@@ -120,7 +131,11 @@ class RdfBatchProcessorTest {
         .bulkStorePreTranslated(requests, RdfWriteMode.RECONCILE);
     final RdfBatchProcessor timed =
         new RdfBatchProcessor(
-            collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults(), now::get);
+            collectionDAO,
+            rdfRepository,
+            RdfIndexingRunContext.reconcileDefaults(),
+            now::get,
+            LIVE_ENTITIES);
 
     final var result = timed.processEntitiesPreTranslated("table", entities, requests, null);
 
@@ -133,7 +148,7 @@ class RdfBatchProcessorTest {
   @Test
   void successfulLeftHalfCannotStartARightHalfAfterTheDeadline() {
     final AtomicLong now = new AtomicLong();
-    final List<EntityInterface> entities =
+    final List<EntityInterface<?>> entities =
         List.of(new Table().withId(UUID.randomUUID()), new Table().withId(UUID.randomUUID()));
     when(rdfRepository.batchWriteBudgetMs()).thenReturn(1L);
     doThrow(new IllegalArgumentException("split"))
@@ -148,7 +163,11 @@ class RdfBatchProcessorTest {
         .bulkCreateOrUpdate(entities.subList(0, 1), RdfWriteMode.RECONCILE);
     final RdfBatchProcessor timed =
         new RdfBatchProcessor(
-            collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults(), now::get);
+            collectionDAO,
+            rdfRepository,
+            RdfIndexingRunContext.reconcileDefaults(),
+            now::get,
+            LIVE_ENTITIES);
 
     final var result = timed.processEntities("table", entities, null);
 
@@ -160,7 +179,7 @@ class RdfBatchProcessorTest {
 
   @Test
   void uncertainWriteOutcomeStopsBisection() {
-    final List<EntityInterface> entities =
+    final List<EntityInterface<?>> entities =
         List.of(new Table().withId(UUID.randomUUID()), new Table().withId(UUID.randomUUID()));
     doThrow(
             new RdfWriteOutcomeUnknownException(
@@ -175,8 +194,8 @@ class RdfBatchProcessorTest {
     verify(rdfRepository, times(1)).bulkCreateOrUpdate(anyList(), any());
   }
 
-  private EntityInterface mockEntity() {
-    EntityInterface e = mock(EntityInterface.class);
+  private EntityInterface<?> mockEntity() {
+    EntityInterface<?> e = mock(EntityInterface.class);
     lenient().when(e.getId()).thenReturn(UUID.randomUUID());
     return e;
   }
@@ -184,7 +203,7 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("happy path: bulk write succeeds; all entities counted as success, no fallback")
   void bulkSuccessReportsAllSuccess() {
-    List<EntityInterface> entities = List.of(mockEntity(), mockEntity(), mockEntity());
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity(), mockEntity());
 
     RdfBatchProcessor.BatchProcessingResult result =
         processor.processEntities("table", entities, null);
@@ -199,8 +218,8 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("pre-translation failures remain visible when the writable entities succeed")
   void preTranslationFailureIsNotOverwrittenByWriteSuccess() {
-    EntityInterface translated = mockEntity();
-    EntityInterface untranslated = mockEntity();
+    EntityInterface<?> translated = mockEntity();
+    EntityInterface<?> untranslated = mockEntity();
     RdfStorageInterface.EntityWriteRequest request =
         new RdfStorageInterface.EntityWriteRequest("table", translated.getId(), null);
 
@@ -217,10 +236,10 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("bulk failure (non-breaker): bisect isolates the bad row, others succeed")
   void bulkFailureBisectIsolatesBadRow() {
-    EntityInterface a = mockEntity();
-    EntityInterface b = mockEntity();
-    EntityInterface c = mockEntity();
-    List<EntityInterface> entities = List.of(a, b, c);
+    EntityInterface<?> a = mockEntity();
+    EntityInterface<?> b = mockEntity();
+    EntityInterface<?> c = mockEntity();
+    List<EntityInterface<?>> entities = List.of(a, b, c);
 
     // Any sub-batch containing the poison entity b fails (a real payload-shape
     // failure, NOT the circuit breaker); sub-batches without b succeed. Bisect
@@ -228,7 +247,7 @@ class RdfBatchProcessorTest {
     doThrow(new RuntimeException("payload broken on b"))
         .when(rdfRepository)
         .bulkCreateOrUpdate(
-            argThat((List<? extends EntityInterface> list) -> list != null && list.contains(b)),
+            argThat((List<? extends EntityInterface<?>> list) -> list != null && list.contains(b)),
             eq(RdfWriteMode.RECONCILE));
 
     RdfBatchProcessor.BatchProcessingResult result =
@@ -257,8 +276,10 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2));
-    List<EntityInterface> entities =
+            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2),
+            System::nanoTime,
+            LIVE_ENTITIES);
+    List<EntityInterface<?>> entities =
         List.of(mockEntity(), mockEntity(), mockEntity(), mockEntity(), mockEntity());
 
     // The bulk relationship write fails, and so does every per-source retry: the
@@ -283,8 +304,10 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2));
-    List<EntityInterface> entities =
+            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2),
+            System::nanoTime,
+            LIVE_ENTITIES);
+    List<EntityInterface<?>> entities =
         List.of(mockEntity(), mockEntity(), mockEntity(), mockEntity(), mockEntity());
 
     // Only the initial bulk write fails; every per-source retry succeeds, so the
@@ -315,11 +338,11 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("breaker opening mid-bisect stops all further attempts, remainder marked failed")
   void breakerOpeningMidBisectStopsFurtherAttempts() {
-    EntityInterface a = mockEntity();
-    EntityInterface b = mockEntity();
-    EntityInterface c = mockEntity();
-    EntityInterface d = mockEntity();
-    List<EntityInterface> entities = List.of(a, b, c, d);
+    EntityInterface<?> a = mockEntity();
+    EntityInterface<?> b = mockEntity();
+    EntityInterface<?> c = mockEntity();
+    EntityInterface<?> d = mockEntity();
+    List<EntityInterface<?>> entities = List.of(a, b, c, d);
 
     doThrow(new RuntimeException("bad model"))
         .when(rdfRepository)
@@ -341,7 +364,7 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("write budget exhaustion stops bisecting; remainder marked failed after one attempt")
   void writeBudgetExhaustionStopsBisecting() {
-    List<EntityInterface> entities = List.of(mockEntity(), mockEntity(), mockEntity());
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity(), mockEntity());
     when(rdfRepository.batchWriteBudgetMs()).thenReturn(1L);
 
     // Burn past the 1 ms budget inside the first (and only) bulk attempt so
@@ -372,7 +395,7 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("bulk failure + circuit breaker open: fallback SKIPPED, batch marked failed once")
   void bulkFailureWithBreakerOpenSkipsFallback() {
-    List<EntityInterface> entities = List.of(mockEntity(), mockEntity(), mockEntity());
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity(), mockEntity());
 
     // The storage layer fast-fails with the typed breaker exception. The
     // bulk-fallback path MUST detect this and not retry per-entity (every
@@ -394,9 +417,26 @@ class RdfBatchProcessorTest {
   }
 
   @Test
+  @DisplayName(
+      "bulk failure the store refused for low disk: not bisected, batch marked failed once")
+  void bulkFailureRefusedForLowDiskIsNotBisected() {
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity(), mockEntity());
+    doThrow(new RdfStorageLowDiskException("bulkStoreEntities"))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+
+    RdfBatchProcessor.BatchProcessingResult result =
+        processor.processEntities("table", entities, null);
+
+    assertEquals(0, result.successCount());
+    assertEquals(3, result.failedCount(), "whole batch should be marked failed");
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+  }
+
+  @Test
   @DisplayName("breaker exception wrapped in RuntimeException is still detected via cause chain")
   void wrappedBreakerExceptionDetectedViaCauseChain() {
-    List<EntityInterface> entities = List.of(mockEntity(), mockEntity());
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity());
 
     // RdfRepository.bulkCreateOrUpdate catches and re-throws as a generic
     // RuntimeException("Failed to bulk create/update entities in RDF", e)
@@ -418,7 +458,7 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("stop signal raised BEFORE the bulk call skips writing entirely")
   void preBatchStopSignalSkipsBulkWrite() {
-    List<EntityInterface> entities = List.of(mockEntity(), mockEntity());
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity());
 
     // Stop signal is hot before the loop checks it.
     RdfBatchProcessor.BatchProcessingResult result =
@@ -443,10 +483,10 @@ class RdfBatchProcessorTest {
   @DisplayName(
       "bulk failure + stop signal raised mid-fallback: remaining per-entity attempts skipped")
   void stopSignalMidFallbackHonored() {
-    EntityInterface a = mockEntity();
-    EntityInterface b = mockEntity();
-    EntityInterface c = mockEntity();
-    List<EntityInterface> entities = List.of(a, b, c);
+    EntityInterface<?> a = mockEntity();
+    EntityInterface<?> b = mockEntity();
+    EntityInterface<?> c = mockEntity();
+    List<EntityInterface<?>> entities = List.of(a, b, c);
 
     doThrow(new RuntimeException("bad model"))
         .when(rdfRepository)
@@ -478,7 +518,7 @@ class RdfBatchProcessorTest {
   @Test
   @DisplayName("relationships whose endpoint is an excluded entity type (aiChart) are filtered out")
   void relationshipsToExcludedEntityTypesAreSkipped() {
-    EntityInterface dashboard = mockEntity();
+    EntityInterface<?> dashboard = mockEntity();
 
     EntityRelationshipObject aiChartEdge =
         EntityRelationshipObject.builder()
@@ -518,8 +558,10 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
-    List<EntityInterface> entities = List.of(mockEntity());
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")),
+            System::nanoTime,
+            LIVE_ENTITIES);
+    List<EntityInterface<?>> entities = List.of(mockEntity());
 
     processor.processEntities("table", entities, null);
 
@@ -534,10 +576,12 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
-    EntityInterface a = mockEntity();
-    EntityInterface b = mockEntity();
-    List<EntityInterface> entities = List.of(a, b);
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")),
+            System::nanoTime,
+            LIVE_ENTITIES);
+    EntityInterface<?> a = mockEntity();
+    EntityInterface<?> b = mockEntity();
+    List<EntityInterface<?>> entities = List.of(a, b);
     doThrow(new RuntimeException("bulk payload rejected"))
         .when(rdfRepository)
         .bulkCreateOrUpdate(entities, RdfWriteMode.INSERT_ONLY);
@@ -561,11 +605,13 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")),
+            System::nanoTime,
+            LIVE_ENTITIES);
     UUID fromId = UUID.randomUUID();
     UUID toId = UUID.randomUUID();
-    EntityInterface from = mock(EntityInterface.class);
-    EntityInterface to = mock(EntityInterface.class);
+    EntityInterface<?> from = mock(EntityInterface.class);
+    EntityInterface<?> to = mock(EntityInterface.class);
     when(from.getId()).thenReturn(fromId);
     when(to.getId()).thenReturn(toId);
     EntityRelationshipObject lineage = lineage(fromId, toId);
@@ -590,7 +636,7 @@ class RdfBatchProcessorTest {
   void legacyContextProcessesIncomingLineage() {
     UUID fromId = UUID.randomUUID();
     UUID toId = UUID.randomUUID();
-    EntityInterface to = mock(EntityInterface.class);
+    EntityInterface<?> to = mock(EntityInterface.class);
     when(to.getId()).thenReturn(toId);
     when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
         .thenReturn(List.of());
@@ -612,7 +658,7 @@ class RdfBatchProcessorTest {
     UUID fromId = UUID.randomUUID();
     UUID goodTargetId = UUID.randomUUID();
     UUID badTargetId = UUID.randomUUID();
-    EntityInterface source = mock(EntityInterface.class);
+    EntityInterface<?> source = mock(EntityInterface.class);
     when(source.getId()).thenReturn(fromId);
     when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
         .thenReturn(List.of(lineage(fromId, goodTargetId), lineage(fromId, badTargetId)));
@@ -644,7 +690,7 @@ class RdfBatchProcessorTest {
     UUID fromId = UUID.randomUUID();
     UUID firstTargetId = UUID.randomUUID();
     UUID secondTargetId = UUID.randomUUID();
-    EntityInterface source = mock(EntityInterface.class);
+    EntityInterface<?> source = mock(EntityInterface.class);
     when(source.getId()).thenReturn(fromId);
     when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
         .thenReturn(List.of(lineage(fromId, firstTargetId), lineage(fromId, secondTargetId)));

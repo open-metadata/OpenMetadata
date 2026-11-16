@@ -30,6 +30,7 @@ import {
   followEntity,
   validateFollowedEntityToWidget,
 } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 
 const entities = [
   TableClass,
@@ -43,14 +44,14 @@ const entities = [
   DashboardDataModelClass,
   StoredProcedureClass,
   MetricClass,
-] as const;
+];
 
 const adminUser = new UserClass();
 
 const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -69,7 +70,7 @@ base.afterAll('Delete admin user', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {

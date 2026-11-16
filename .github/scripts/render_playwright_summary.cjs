@@ -42,30 +42,19 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const fixtureRestoreResult = process.env.FIXTURE_RESTORE_RESULT;
   const fixtureResult = process.env.FIXTURE_RESULT;
   const upstreamResult = process.env.PLAYWRIGHT_RESULT;
-  const eventAction = context.payload.action;
-  const labelName = context.payload.label?.name ?? '';
   const isDraft = context.payload.pull_request?.draft === true;
-  const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
-  // `pull_request_target` must be listed here. Fork PRs enter the pipeline
-  // under this event (same-repo PRs use `pull_request`), and their shard
-  // matrix runs the same reusable — so the summary has to gate on shard
-  // results the same way. Omitting it dropped the summary into the
-  // `!testsRequired` early-return below, printing "not required for this
-  // PR" and reporting green regardless of PLAYWRIGHT_RESULT (real failures
-  // observed on PR #32857, run 34121906853: chromium-01 shard hard-failed,
-  // playwright-summary reported success).
+  // Every event that runs the shard matrix must be listed here. A missing one
+  // drops the summary into the `!testsRequired` early-return below, printing
+  // "not required for this PR" and reporting green regardless of
+  // PLAYWRIGHT_RESULT (PR #32857, run 34121906853: a hard-failed shard behind a
+  // green playwright-summary).
   const testsRequired = context.eventName === 'pull_request' ||
-    context.eventName === 'pull_request_target' ||
     context.eventName === 'merge_group' ||
     context.eventName === 'schedule' ||
     context.eventName === 'workflow_dispatch';
 
   if (isDraft) {
     console.log('Playwright E2E tests are not required while the PR is a draft.');
-    return;
-  }
-  if (isNonTestLabelEvent) {
-    console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
     return;
   }
   if (checkChangesResult === 'success' && !testsRequired) {
@@ -309,26 +298,56 @@ async function renderPlaywrightSummary({ github, context, core }) {
     }
   }
 
+  // Parse a shard-artifact directory name into { shardId, isRetry, runAttempt }.
+  // Directory names have the shape:
+  //   playwright-results-json-<shardId>[-a<runAttempt>][-retry]
+  // The `-a<runAttempt>` suffix (added after run 35650435023) scopes each
+  // upload to the workflow attempt that produced it. Legacy directories
+  // without the suffix (e.g. the single-artifact flat-file migration above,
+  // or artifacts from before this fix) parse with runAttempt = 0 so a
+  // current-attempt copy always outranks them.
+  const parseShardDirName = dir => {
+    if (!dir.startsWith('playwright-results-json-')) return null;
+    let suffix = dir.slice('playwright-results-json-'.length);
+    let isRetry = false;
+    if (suffix.endsWith('-retry')) {
+      isRetry = true;
+      suffix = suffix.slice(0, -'-retry'.length);
+    }
+    let runAttempt = 0;
+    const attemptMatch = suffix.match(/-a(\d+)$/);
+    if (attemptMatch) {
+      runAttempt = Number(attemptMatch[1]);
+      suffix = suffix.slice(0, -attemptMatch[0].length);
+    }
+    return { shardId: suffix, isRetry, runAttempt };
+  };
+
   // The shard-side upload step has a fallback that re-uploads under
   // `<baseName>-retry` so a first-attempt FinalizeArtifact 403 (leaving a
   // ghost reservation that would 409 a same-name retry) can still land the
   // results. Collapse each shardId's primary + retry back to a single
-  // shardId here, preferring the `-retry` copy when both are present (a
-  // successful retry means the primary was incomplete or its finalize
-  // failed).
+  // shardId here — prefer the copy from the highest run attempt (a workflow
+  // re-run's uploads outrank a prior attempt's), then prefer the `-retry`
+  // copy within the same attempt (a successful retry means the primary was
+  // incomplete or its finalize failed).
   if (fs.existsSync(resultsDir)) {
     const dirsByShard = new Map();
     for (const dir of fs.readdirSync(resultsDir).sort()) {
-      if (!dir.startsWith('playwright-results-json-')) continue;
+      const parsed = parseShardDirName(dir);
+      if (!parsed) continue;
       const jsonPath = path.join(resultsDir, dir, 'results.json');
       if (!fs.existsSync(jsonPath)) continue;
-      const suffix = dir.replace('playwright-results-json-', '');
-      const isRetry = suffix.endsWith('-retry');
-      const shardNum = isRetry ? suffix.slice(0, -'-retry'.length) : suffix;
+      const { shardId: shardNum, isRetry, runAttempt } = parsed;
       const existing = dirsByShard.get(shardNum);
-      // Retry beats primary; otherwise first-writer wins for stable ordering.
-      if (!existing || (isRetry && !existing.isRetry)) {
-        dirsByShard.set(shardNum, { dir, isRetry });
+      // Higher attempt wins; within the same attempt, retry beats primary;
+      // otherwise first-writer wins for stable ordering.
+      if (
+        !existing ||
+        runAttempt > existing.runAttempt ||
+        (runAttempt === existing.runAttempt && isRetry && !existing.isRetry)
+      ) {
+        dirsByShard.set(shardNum, { dir, isRetry, runAttempt });
       }
     }
     for (const [shardNum, { dir }] of Array.from(dirsByShard.entries()).sort(
@@ -427,25 +446,34 @@ async function renderPlaywrightSummary({ github, context, core }) {
   }
 
   // ci-status.json is bundled into the same artifact as results.json, so the
-  // primary + retry collapse rule above applies here too — pick the retry
-  // when both are present.
+  // attempt + retry collapse rule above applies here too — prefer the copy
+  // from the highest run attempt, then the retry copy within that attempt.
   const statusByShard = new Map();
   const statusIsRetryByShard = new Map();
+  const statusRunAttemptByShard = new Map();
   if (fs.existsSync(resultsDir)) {
     for (const dir of fs.readdirSync(resultsDir).sort()) {
-      if (!dir.startsWith('playwright-results-json-')) continue;
+      const parsed = parseShardDirName(dir);
+      if (!parsed) continue;
       const statusPath = path.join(resultsDir, dir, 'ci-status.json');
       if (!fs.existsSync(statusPath)) continue;
-      const suffix = dir.replace('playwright-results-json-', '');
-      const isRetry = suffix.endsWith('-retry');
-      const shardNum = isRetry ? suffix.slice(0, -'-retry'.length) : suffix;
-      if (statusByShard.has(shardNum) && !isRetry && statusIsRetryByShard.get(shardNum)) {
-        continue;
+      const { shardId: shardNum, isRetry, runAttempt } = parsed;
+      const existingAttempt = statusRunAttemptByShard.get(shardNum);
+      if (statusByShard.has(shardNum)) {
+        if (runAttempt < existingAttempt) continue;
+        if (
+          runAttempt === existingAttempt &&
+          !isRetry &&
+          statusIsRetryByShard.get(shardNum)
+        ) {
+          continue;
+        }
       }
       try {
         const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
         statusByShard.set(shardNum, status);
         statusIsRetryByShard.set(shardNum, isRetry);
+        statusRunAttemptByShard.set(shardNum, runAttempt);
       } catch (error) {
         addInfrastructureIssue(`Shard ${shardNum} uploaded invalid execution status JSON: ${error.message}`);
       }

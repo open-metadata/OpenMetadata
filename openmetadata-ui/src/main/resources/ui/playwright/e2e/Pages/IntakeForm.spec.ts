@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Request } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -18,7 +19,17 @@ import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
 import { clickDrawerSave } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { openAddGlossaryTermModal } from '../../utils/glossary';
+import {
+  expectGlossaryFormError,
+  fillGlossaryTermForm,
+  getFormNameInput,
+  getGlossaryTermDrawer,
+  openAddGlossaryTermForm,
+  openEditGlossaryTermForm,
+  pressGlossaryFormSave,
+  saveGlossaryTermForm,
+} from '../../utils/glossaryForm';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 const INTAKE_FORMS_URL = '/settings/governance/intake-forms';
@@ -191,16 +202,20 @@ const selectExtensionReference = async ({
   optionText: string;
   optionTestId?: string;
 }) => {
-  const searchResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url());
+  const searchResponse = waitForResponseWithStatus(
+    page,
+    (response) => {
+      if (response.request().method() !== 'GET') return false;
+      const url = new URL(response.url());
 
-    return (
-      url.pathname.endsWith('/api/v1/search/query') &&
-      url.searchParams.get('index') === 'glossaryTerm' &&
-      (url.searchParams.get('q') ?? '').includes(query) &&
-      response.status() === 200
-    );
-  });
+      return (
+        url.pathname.endsWith('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'glossaryTerm' &&
+        (url.searchParams.get('q') ?? '').includes(query)
+      );
+    },
+    200
+  );
   const input = page
     .locator(
       `[data-testid="${testId}"] input[role="combobox"], [data-testid="${testId}"][role="combobox"]`
@@ -319,7 +334,7 @@ test.describe(
 
     test('admin can open the Intake Forms settings page', async ({ page }) => {
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -335,7 +350,7 @@ test.describe(
         test.slow();
 
         await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
+        await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         await test.step('Open designer via the dropdown', async () => {
@@ -363,11 +378,12 @@ test.describe(
             .getByTestId(`require-extension.${scenario.customPropertyNames[0]}`)
             .click();
 
-          const createResponse = page.waitForResponse(
+          const createResponse = waitForResponseWithStatus(
+            page,
             (response) =>
               response.url().endsWith('/api/v1/governance/intakeForms') &&
-              response.request().method() === 'POST' &&
-              response.status() === 201
+              response.request().method() === 'POST',
+            201
           );
           await page.getByTestId('intake-form-submit').click();
           const response = await createResponse;
@@ -390,7 +406,11 @@ test.describe(
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label).first()).toBeVisible();
+          // The label text also appears in the page sub-heading, so address the
+          // listing row by the entity type it is keyed on.
+          await expect(
+            page.getByTestId(`row-${scenario.entityType}`)
+          ).toBeVisible();
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)
@@ -430,10 +450,10 @@ test.describe(
         await afterAction();
 
         await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
+        await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await expect(
           page.getByTestId(`edit-${scenario.entityType}`)
-        ).toBeVisible({ timeout: 30000 });
+        ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
         const openDesigner = async () => {
           await page.getByTestId(`edit-${scenario.entityType}`).click();
@@ -444,11 +464,12 @@ test.describe(
           ).toBeVisible();
         };
         const submitUpdate = async () => {
-          const responsePromise = page.waitForResponse(
+          const responsePromise = waitForResponseWithStatus(
+            page,
             (response) =>
               response.url().endsWith('/api/v1/governance/intakeForms') &&
-              response.request().method() === 'PUT' &&
-              response.status() === 200
+              response.request().method() === 'PUT',
+            200
           );
           await page.getByTestId('intake-form-submit').click();
           const response = await responsePromise;
@@ -538,7 +559,7 @@ test.describe(
       });
 
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('add-intake-form').click();
@@ -623,29 +644,27 @@ test.describe(
           .first()
           .fill('Playwright product without a Type — client-side should block');
 
-        // Save should not fire a POST because Antd form validation fails on
-        // the required `dataProductType` field. We verify by racing a POST
-        // listener against a short grace window via page.waitForResponse
-        // with a timeout — no POST within the window = client blocked.
         let postFired = false;
-        const postListener = (r: import('@playwright/test').Response) => {
+        const postListener = (r: import('@playwright/test').Request) => {
           if (
             r.url().endsWith('/api/v1/dataProducts') &&
-            r.request().method() === 'POST'
+            r.method() === 'POST'
           ) {
             postFired = true;
           }
         };
-        page.on('response', postListener);
-        await clickDrawerSave(page);
-
-        // Poll for up to 3s and confirm no POST ever fires. We intentionally
-        // avoid `page.waitForTimeout` (linted as flaky) and instead use
-        // toPass, which re-runs until it succeeds or times out.
-        await expect(async () => {
+        page.on('request', postListener);
+        try {
+          await clickDrawerSave(page);
+          // A negative assertion alone passes before asynchronous validation
+          // runs. The field error proves that this submission was evaluated.
+          await expect(
+            page.getByText('Data Product Type is required', { exact: true })
+          ).toBeVisible();
           expect(postFired).toBe(false);
-        }).toPass({ timeout: 3000, intervals: [300] });
-        page.off('response', postListener);
+        } finally {
+          page.off('request', postListener);
+        }
       });
 
       await test.step('Backend also rejects with 400 when called directly', async () => {
@@ -702,19 +721,20 @@ test.describe(
           r.url().includes('/api/v1/governance/intakeForms') &&
           r.request().method() === 'GET'
       );
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await listResponse;
 
       const toggle = page.getByTestId('toggle-dataProduct');
-      await expect(toggle).toBeVisible({ timeout: 30000 });
+      await expect(toggle).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       // UI now PATCHes just `/enabled` (see IntakeFormsPage#handleToggleEnabled)
       // to avoid clobbering server-managed fields like owners via a PUT round-trip.
-      const updateResponse = page.waitForResponse(
+      const updateResponse = waitForResponseWithStatus(
+        page,
         (r) =>
           r.url().includes('/api/v1/governance/intakeForms/') &&
-          r.request().method() === 'PATCH' &&
-          r.status() === 200
+          r.request().method() === 'PATCH',
+        200
       );
       await toggle.click();
       const response = await updateResponse;
@@ -786,7 +806,7 @@ test.describe(
       });
 
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('delete-dataProduct').click();
@@ -831,12 +851,12 @@ test.describe(
       });
 
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
 
       // Wait for the seeded row instead of a generic loader — the listing
       // loader sometimes lingers when the page is navigated to repeatedly.
       const deleteButton = page.getByTestId('delete-dataProduct');
-      await expect(deleteButton).toBeVisible({ timeout: 30000 });
+      await expect(deleteButton).toBeVisible({ timeout: ACTION_TIMEOUT });
       await deleteButton.click();
       const confirmDialog = page.getByRole('dialog');
       const cancel = confirmDialog.getByRole('button', { name: 'Cancel' });
@@ -864,7 +884,7 @@ test.describe(
 
     test('designer does not list schema-required fields', async ({ page }) => {
       await redirectToHomePage(page);
-      await page.goto(INTAKE_FORMS_URL);
+      await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await page.getByTestId('add-intake-form').click();
@@ -947,10 +967,10 @@ test.describe(
         await afterAction();
 
         await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
+        await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await expect(
           page.getByTestId(`row-${scenario.entityType}`)
-        ).toBeVisible({ timeout: 30000 });
+        ).toBeVisible({ timeout: ACTION_TIMEOUT });
         await expect(
           page.getByText(`extension.${deletedProperty}`)
         ).toHaveCount(0);
@@ -1061,11 +1081,13 @@ test.describe(
         await stewardInput.fill('admin');
 
         const listbox = page.getByRole('listbox');
-        await expect(listbox).toBeVisible({ timeout: 30000 });
+        await expect(listbox).toBeVisible({ timeout: ACTION_TIMEOUT });
         const adminOption = listbox
           .getByRole('option')
           .filter({ hasText: /admin/i });
-        await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
+        await expect(adminOption.filter({ visible: true })).not.toHaveCount(0, {
+          timeout: 15000,
+        });
         await adminOption.first().click();
 
         // Selecting the option collapses the Steward picker's input into a
@@ -1573,10 +1595,10 @@ test.describe(
             .includes('/api/v1/governance/intakeForms/entityType/') &&
           response.request().method() === 'GET'
       );
-      await openAddGlossaryTermModal(page);
+      const termForm = await openAddGlossaryTermForm(page);
       await intakeFetch;
 
-      const modal = page.locator('[role="dialog"].edit-glossary-modal');
+      const modal = getGlossaryTermDrawer(page);
       const stringFieldId = `extension-${properties.string}`;
       const hyperlinkUrlId = `extension-${properties.hyperlink}-url`;
       const hyperlinkDisplayTextId = `extension-${properties.hyperlink}-displayText`;
@@ -1600,10 +1622,10 @@ test.describe(
       ).toBeVisible();
 
       const termName = `intake-term-${uuid()}`;
-      await modal.getByTestId('name').fill(termName);
-      await modal
-        .locator(descriptionBox)
-        .fill('Glossary Term intake-form regression');
+      await fillGlossaryTermForm(page, termForm, {
+        name: termName,
+        description: 'Glossary Term intake-form regression',
+      });
 
       let createRequestCount = 0;
       const trackCreateRequest = (request: Request) => {
@@ -1615,8 +1637,12 @@ test.describe(
         }
       };
       page.on('request', trackCreateRequest);
-      await modal.getByTestId('save-glossary-term').click();
-      await expect(modal.getByText(`${stringLabel} is required`)).toBeVisible();
+      await pressGlossaryFormSave(page, 'glossaryTerm');
+      await expectGlossaryFormError(
+        page,
+        'glossaryTerm',
+        `${stringLabel} is required`
+      );
       expect(createRequestCount).toBe(0);
 
       await extensionInput(page, stringFieldId).fill('governed term');
@@ -1627,10 +1653,12 @@ test.describe(
       await extensionInput(page, hyperlinkUrlId).fill(
         'ftp://example.com/glossary-term'
       );
-      await modal.getByTestId('save-glossary-term').click();
-      await expect(
-        modal.getByText('URL must use http or https protocol')
-      ).toBeVisible();
+      await pressGlossaryFormSave(page, 'glossaryTerm');
+      await expectGlossaryFormError(
+        page,
+        'glossaryTerm',
+        'URL must use http or https protocol'
+      );
       expect(createRequestCount).toBe(0);
       page.off('request', trackCreateRequest);
 
@@ -1638,23 +1666,10 @@ test.describe(
         'https://example.com/glossary-term'
       );
 
-      const createRequest = page.waitForRequest(
-        (request) =>
-          request.url().endsWith('/api/v1/glossaryTerms') &&
-          request.method() === 'POST'
-      );
-      const createResponse = page.waitForResponse(
-        (response) =>
-          response.url().endsWith('/api/v1/glossaryTerms') &&
-          response.request().method() === 'POST'
-      );
-      await modal.getByTestId('save-glossary-term').click();
-
-      const request = await createRequest;
-      const response = await createResponse;
+      const response = await saveGlossaryTermForm(page, 'create');
       expect(response.status()).toBe(201);
 
-      const payload = request.postDataJSON() as {
+      const payload = response.request().postDataJSON() as {
         extension: Record<string, unknown>;
         name: string;
       };
@@ -1665,13 +1680,13 @@ test.describe(
         url: 'https://example.com/glossary-term',
       });
 
-      await expect(modal).not.toBeVisible();
+      const { fullyQualifiedName: termFqn } = (await response.json()) as {
+        fullyQualifiedName: string;
+      };
       const termRow = page.locator(`[data-row-key*="${termName}"]`);
-      await expect(termRow).toBeVisible({ timeout: 30000 });
-      await termRow.hover();
-      await termRow.getByTestId('edit-button').click();
-      await expect(modal).toBeVisible();
-      await expect(modal.getByTestId('name')).toHaveValue(termName);
+      await expect(termRow).toBeVisible({ timeout: ACTION_TIMEOUT });
+      const editForm = await openEditGlossaryTermForm(page, termFqn);
+      await expect(getFormNameInput(editForm)).toHaveValue(termName);
       await expect(page.getByTestId(stringFieldId)).toHaveCount(0);
       await expect(page.getByTestId(hyperlinkUrlId)).toHaveCount(0);
     });

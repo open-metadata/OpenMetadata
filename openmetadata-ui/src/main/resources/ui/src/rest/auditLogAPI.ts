@@ -18,7 +18,7 @@ import {
   AuditLogListParams,
   AuditLogListResponse,
 } from '../types/auditLogs.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/audit/logs';
 

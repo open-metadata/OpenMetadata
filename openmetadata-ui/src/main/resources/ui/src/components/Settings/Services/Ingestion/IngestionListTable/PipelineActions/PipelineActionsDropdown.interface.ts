@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ButtonProps } from 'antd';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SelectedRowDetails } from '../../ingestion.interface';
@@ -27,5 +26,9 @@ export interface PipelineActionsDropdownProps {
   handleDeleteSelection?: (row: SelectedRowDetails) => void;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
-  moreActionButtonProps?: ButtonProps;
+  /**
+   * Only `disabled` reaches the core trigger; narrowed from antd `ButtonProps`
+   * so unsupported props fail to compile instead of being silently dropped.
+   */
+  moreActionButtonProps?: { disabled?: boolean };
 }

@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.ontology.LlmOntologyAiCompletionGateway;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyAiService;
 import org.openmetadata.service.ontology.OpenMetadataOntologyAiCatalog;
 import org.openmetadata.service.rdf.OntologySparqlQueryValidator;
@@ -147,8 +148,7 @@ public final class OntologyAiResource {
       @Valid final OntologyDomainDraftRequest request) {
     final OntologyAiService ontologyAiService = service();
     ontologyAiService.requireAvailable();
-    authorizeGlossary(
-        securityContext, request.getGlossary(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeGlossary(securityContext, request.getGlossary(), MetadataOperation.EDIT_ALL);
     return ontologyAiService.generateDomainDraft(request);
   }
 
@@ -158,7 +158,8 @@ public final class OntologyAiResource {
       final MetadataOperation operation) {
     final GlossaryRepository repository = glossaryRepository();
     final Glossary glossary =
-        repository.getByName(null, fullyQualifiedName, repository.getFields(""));
+        repository.getByName(
+            null, fullyQualifiedName, ResourceContext.authorizationFields(repository));
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY, operation),
@@ -174,8 +175,6 @@ public final class OntologyAiResource {
   }
 
   private static boolean isEnabled(final OpenMetadataApplicationConfig config) {
-    return config.getRdfConfiguration() != null
-        && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
-        && LLMClientHolder.isEnabled();
+    return OntologyAiAvailability.isEnabled(config.getRdfConfiguration());
   }
 }

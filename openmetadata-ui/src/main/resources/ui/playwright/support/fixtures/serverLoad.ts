@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Request, Route } from '@playwright/test';
+import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 
 /**
  * Reduces the server load a Playwright shard generates.
@@ -22,13 +23,20 @@ import { BrowserContext, Request, Route } from '@playwright/test';
  * execution budget, and that spread is the contention behind the timeout
  * failures — the server does more work than the tests have time for.
  *
- * Everything here is per-worker and read-through: the first request still hits
- * the real server, so a cached response can never drift from it the way a
- * hand-written stub body would.
+ * Everything here is per-worker and read-through. Correctness also depends on
+ * excluding server-driven values and invalidating overlapping reads and writes.
  */
 
 /** Analytics collection is a write, and no test asserts on the stored events. */
 const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
+
+/**
+ * The tracking pixel in `index.html` is a document subresource, so the `load`
+ * event — what `page.goto`/`reload` wait for by default — waits on an internet
+ * host. When it stalls, a fully rendered page times out its navigation (seen in
+ * OntologyReview.spec.ts: Studio on screen, `page.goto` timed out on "load").
+ */
+const SCARF_PIXEL = 'https://static.scarf.sh/**';
 
 /**
  * Boot endpoints safe to serve from the per-worker cache.
@@ -60,8 +68,10 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   dataConsumer, dataSteward and owner), so caching it would serve the first
  *   identity's profile to the rest. The failure mode is a permission test
  *   quietly seeing the admin profile and passing, which is worse than the test
- *   not existing. The identity-keyed cache below makes this safe in principle,
- *   but nothing about a false pass is worth 497 requests a shard.
+ *   not existing. The cache below is keyed on URL alone (see cacheKey), so
+ *   caching it would serve the first identity's profile to every later one
+ *   outright — the exclusion is what keeps that from happening, and it is why
+ *   nothing identity-scoped may ever join this list.
  * - `services/ingestionPipelines/status` — flagged in review, and the reason it
  *   is unsafe is the third condition rather than a missed writer. It reports
  *   whether the pipeline service client is reachable, which moves on its own as
@@ -73,6 +83,10 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
  *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
  *   only purpose is to see a *newer* answer than the one already held.
+ * - `system/settings/lineageSettings`, `system/settings/appConfiguration`,
+ *   `system/config/customUiThemePreference` — specs write them, and a write
+ *   invalidates only the writing worker's cache. Every other worker keeps
+ *   whatever it read for the rest of its life.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -82,11 +96,6 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/rdf',
   '/api/v1/system/search/nlq',
   '/api/v1/limits/config',
-  // No API writer; the specs that change these do it through the UI, so the
-  // browser PUT invalidates the `/api/v1/system/` family.
-  '/api/v1/system/config/customUiThemePreference',
-  '/api/v1/system/settings/lineageSettings',
-  '/api/v1/system/settings/appConfiguration',
 ];
 
 type CachedResponse = {
@@ -106,13 +115,14 @@ type CacheEntry = {
   response: CachedResponse;
 };
 
-// One entry per (identity + path + query). Ten paths, but the identity half is
-// unbounded — every fresh user that boots the app adds a set — so the cap is
-// load-bearing rather than belt-and-braces, and eviction is LRU (see the hit
-// path in serveBootConfig) so identity churn cannot evict the admin entries
-// that account for most boots.
+// One entry per (path + query). The key is the URL alone (see cacheKey), so the
+// space is the cacheable paths plus any query variants — bounded and small.
+// The cap stays as a guard against an unforeseen query-string explosion; at its
+// steady state of one entry per path it never trips, so eviction (LRU, see serveBootConfig)
+// is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
+let writeGeneration = 0;
 
 const remember = (key: string, value: CacheEntry) => {
   if (bootCache.size >= MAX_CACHED_RESPONSES) {
@@ -145,6 +155,7 @@ const familyPrefix = (pathname: string) => {
  * which is why CACHEABLE_BOOT_PATHS excludes anything with an API writer.
  */
 const invalidateFamily = (pathname: string) => {
+  writeGeneration++;
   const prefix = familyPrefix(pathname);
 
   if (!prefix) {
@@ -193,10 +204,11 @@ const escapeRegExp = (value: string) =>
  * One predicate handler sets `all`, and the whole context then intercepts
  * every request. Measured on merge_group runs of #32594, that cost the suite
  * ~7% wall-clock and +15.6 GB of asset traffic: ~29k requests a shard
- * round-tripped through the Node driver instead of ~8.5k, and intercepted
- * requests miss the browser's HTTP cache (`static:304` 4,151 -> 2,239 while
- * `static:200` rose 22.3k). A RegExp is forwarded as `regexSource`, so the
- * browser pauses only these paths.
+ * round-tripped through the Node driver instead of ~8.5k. A RegExp is forwarded
+ * as `regexSource`, so the browser pauses only these paths. Routing still
+ * disables the context's native HTTP cache, including for unmatched assets:
+ * https://playwright.dev/docs/api/class-browsercontext#browser-context-route
+ * Measure API savings and static traffic separately when changing this cache.
  *
  * Matched against the full URL, since that is what `urlMatches` tests a RegExp
  * against. `[^?#]*` cannot cross a `?`, so a path that appears inside a query
@@ -208,14 +220,23 @@ const CACHEABLE_BOOT_PATTERN = new RegExp(
 );
 
 /**
- * The cache is per worker and a worker runs many identities, so the caller's
- * credentials are part of the key. Every path in CACHEABLE_BOOT_PATHS is
- * global today, which makes this redundant — it is here so that adding an
- * identity-scoped path later degrades into a cache miss rather than into one
- * user being served another user's response.
+ * Every path in CACHEABLE_BOOT_PATHS is global — its response does not depend on
+ * the caller's identity — so the key is the URL alone.
+ *
+ * This once folded the `Authorization` header in, defensively. That keyed every
+ * fresh JWT as a distinct entry, so each re-login missed and refetched a value
+ * that had not changed: measured at ~35 avoidable server hits a shard on the
+ * post-login paths (`system/version` 88 hits against the empty-auth
+ * `config/auth` floor of 53, over 406 boots). Dropping the header collapses the
+ * post-login paths to that same per-worker floor.
+ *
+ * The trade is real: with a URL-only key, an identity-scoped path added to
+ * CACHEABLE_BOOT_PATHS would serve the first caller's response to every later
+ * one. So the list must stay global-only — which was always its contract (see
+ * the `users/loggedInUser` exclusion above). The key does not enforce it; the
+ * list's own review does.
  */
-const cacheKey = (request: Request) =>
-  `${request.headers()['authorization'] ?? ''}::${request.url()}`;
+const cacheKey = (request: Request) => request.url();
 
 /**
  * Playwright hands back the *decoded* body, so replaying the original
@@ -231,6 +252,27 @@ const replayableHeaders = (headers: Record<string, string>) =>
     )
   );
 
+const fetchRouteResponse = async (route: Route) => {
+  try {
+    return await route.fetch();
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/^route\.fetch: (?:socket hang up|(?:read )?ECONNRESET)\b/.test(
+        error.message
+      )
+    ) {
+      throw error;
+    }
+
+    // route.fetch uses a separate HTTP client. Preserve a reset as a failed
+    // browser request instead of an unhandled fixture exception or a retry.
+    await route.abort('connectionreset');
+
+    return undefined;
+  }
+};
+
 const serveBootConfig = async (route: Route) => {
   const request = route.request();
 
@@ -244,12 +286,10 @@ const serveBootConfig = async (route: Route) => {
   const cached = bootCache.get(key);
 
   if (cached) {
-    // Re-inserting on a hit makes eviction LRU rather than FIFO, which matters
-    // now that the Authorization header is part of the key: the key space is
-    // unbounded in identities (106 call sites build their own context, and
-    // performUserLogin mints a fresh user), while the cap is 6.4 identities'
-    // worth of entries. Under FIFO a burst of short-lived users would evict the
-    // admin entries that account for most boots, and they would all refetch.
+    // Re-insert on a hit so eviction is LRU rather than FIFO. With the URL-only
+    // key the working set is ~9 entries and the cap never trips, so this no
+    // longer changes behaviour; kept so it stays correct if a query-string
+    // variant ever pushes the set past the cap.
     bootCache.delete(key);
     bootCache.set(key, cached);
 
@@ -258,7 +298,13 @@ const serveBootConfig = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const generation = writeGeneration;
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const payload: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -272,7 +318,7 @@ const serveBootConfig = async (route: Route) => {
   // handler fails the test just as readily and consistency is one line.
   const pathname = pathnameOf(request.url());
 
-  if (response.ok() && pathname) {
+  if (response.ok() && pathname && generation === writeGeneration) {
     remember(key, { pathname, response: payload });
   }
 
@@ -312,7 +358,12 @@ const serveStaticAsset = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const entry: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -329,19 +380,63 @@ const serveStaticAsset = async (route: Route) => {
 };
 
 /**
+ * `BrowserContext.close()` disposes `context.request` — which runs every
+ * `route.fetch()` and owns its response — as its first step, before a single
+ * page is closed, so `page.isClosed()` is still false when the in-flight fetch
+ * ("Request context disposed") or body read ("Response has been disposed")
+ * fails. That check alone let a `beforeAll` that closes its own
+ * `browser.newPage()` fail the first test of the describe. A disposal only
+ * counts as teardown once the context's `close` event proves it; on a live
+ * context it is still an error.
+ */
+const CONTEXT_CLOSE_TIMEOUT_MS = 30_000;
+
+const isContextClosing = async (route: Route) => {
+  const page = route.request().frame().page();
+
+  return (
+    page.isClosed() ||
+    page
+      .context()
+      .waitForEvent('close', { timeout: CONTEXT_CLOSE_TIMEOUT_MS })
+      .then(
+        () => true,
+        () => false
+      )
+  );
+};
+
+/**
  * Playwright rethrows out of a route handler (`RouteHandler._handleImpl`) and
  * `BrowserContext._onRoute` does not catch it, so a handler that throws fails
  * whichever test owns the route. Losing the target mid-flight is routine here
  * rather than exceptional: boot config is fetched on every navigation, so any
  * test that navigates away or ends while one is in flight would otherwise fail
- * on a request nothing asserts on. Anything else still propagates — a cache
- * that is broken for a real reason must not be silent.
+ * on a request nothing asserts on. Closing the context also disposes the
+ * `route.fetch()` response it owns, so a `body()` read racing teardown fails
+ * with "Response has been disposed" rather than "has been closed". The same
+ * race can also land after Playwright already resolved the route for the closing
+ * page, so `fulfill` reports "Route is already handled!". Anything else still
+ * propagates — a cache that is broken for a real reason must not be
+ * silent.
  */
-const ignoreClosedTarget = async (serve: () => Promise<void>) => {
+export const ignoreClosedTarget = async (
+  route: Route,
+  serve: () => Promise<void>
+) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed/.test(String(error))) {
+    if (/has been closed|Route is already handled/.test(String(error))) {
+      return;
+    }
+
+    const disposedByClose =
+      /Response has been disposed|Request context disposed/.test(
+        String(error)
+      ) && (await isContextClosing(route));
+
+    if (!disposedByClose) {
       throw error;
     }
   }
@@ -364,27 +459,35 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
 
   installed.add(context);
 
+  // Every context entry point already funnels through here, so this is the one
+  // place the lost-storageState-token guard reaches all of them.
+  guardStorageStateBoot(context);
+
   // Guarded like the two below: analytics beacons are fired on navigation and
   // unload, so a `fulfill` here is more likely than either of them to land on a
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
-    ignoreClosedTarget(() => route.fulfill({ status: 200, body: '' }))
+    ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
+  );
+
+  await context.route(SCARF_PIXEL, (route) =>
+    ignoreClosedTarget(route, () => route.fulfill({ status: 204 }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>
-    ignoreClosedTarget(() => serveBootConfig(route))
+    ignoreClosedTarget(route, () => serveBootConfig(route))
   );
 
   if (cacheStaticAssets) {
     await context.route(STATIC_ASSET, (route) =>
-      ignoreClosedTarget(() => serveStaticAsset(route))
+      ignoreClosedTarget(route, () => serveStaticAsset(route))
     );
   }
 
   // Passive listener rather than another route, so observing writes costs
   // nothing on the request path.
-  context.on('request', (request) => {
-    if (request.method() === 'GET') {
+  const invalidateWrite = (request: Request) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
       return;
     }
 
@@ -393,7 +496,13 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
     if (pathname?.startsWith('/api/v1/')) {
       invalidateFamily(pathname);
     }
-  });
+  };
+  context.on('request', invalidateWrite);
+  // A GET during an outstanding write can still read the pre-commit value.
+  // Clear it when the write completes; generation checks also prevent an older
+  // in-flight GET from repopulating the cache after either invalidation.
+  context.on('response', (response) => invalidateWrite(response.request()));
+  context.on('requestfailed', invalidateWrite);
 };
 
 /**

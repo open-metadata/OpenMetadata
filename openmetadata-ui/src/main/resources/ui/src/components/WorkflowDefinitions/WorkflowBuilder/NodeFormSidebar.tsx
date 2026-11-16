@@ -24,7 +24,8 @@ import { NodeSubType } from '../../../generated/governance/workflows/elements/no
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { WorkflowMetadata } from '../../../interface/workflow-builder-components.interface';
-import { TaskNodeFormRenderer } from './forms';
+import { WorkflowTriggerFieldsConfig } from '../../../rest/metadataTypeAPI';
+import { TaskNodeFormRenderer } from './forms/TaskNodeFormRenderer';
 import { NodeConfigSidebar } from './NodeConfigSidebar';
 
 interface NodeFormSidebarProps {
@@ -38,6 +39,9 @@ interface NodeFormSidebarProps {
   onWorkflowMetadataUpdate?: (metadata: WorkflowMetadata) => void;
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
+  triggerFieldsConfig: WorkflowTriggerFieldsConfig;
+  isEnforceMode?: boolean;
+  hasGitSinkNode?: boolean;
   currentWorkflowConfig?: {
     dataAssets?: string[];
     triggerType?: string;
@@ -130,6 +134,9 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   onWorkflowMetadataUpdate,
   setNodes,
   setEdges,
+  triggerFieldsConfig,
+  isEnforceMode,
+  hasGitSinkNode,
   currentWorkflowConfig,
 }) => {
   const { t } = useTranslation();
@@ -178,10 +185,12 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   if (isStartNode(node)) {
     return (
       <NodeConfigSidebar
+        hasGitSinkNode={hasGitSinkNode}
         isOpen={isOpen}
         node={node}
         setEdges={setEdges}
         setNodes={setNodes}
+        triggerFieldsConfig={triggerFieldsConfig}
         workflowDefinition={workflowDefinition || null}
         workflowMetadata={workflowMetadata}
         onClose={onClose}
@@ -221,6 +230,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
             <Divider orientation="horizontal" />
             <TaskNodeFormRenderer
               entityTypes={entityTypes}
+              isEnforceMode={isEnforceMode}
               node={node}
               onClose={close}
               onDelete={setNodes && setEdges ? handleDeleteNode : undefined}

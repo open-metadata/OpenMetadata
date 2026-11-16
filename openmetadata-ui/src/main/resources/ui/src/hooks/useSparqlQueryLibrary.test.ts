@@ -274,3 +274,55 @@ describe('useSparqlQueryLibrary', () => {
     expect(result.current.queryTemplates).toEqual([TEMPLATE]);
   });
 });
+
+describe('query library load status', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.localStorage.clear();
+    mockReplaceSaved.mockImplementation(async (queries) => queries);
+    mockReplaceTemplates.mockImplementation(async (queries) => queries);
+  });
+
+  it('reports ready only after both reads and personal migration complete', async () => {
+    let resolveMigration!: (queries: SavedSparqlQuery[]) => void;
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify([LEGACY_QUERY]));
+    mockGetSaved.mockResolvedValue([SERVER_QUERY]);
+    mockGetTemplates.mockResolvedValue([TEMPLATE]);
+    mockReplaceSaved.mockReturnValue(
+      new Promise((resolve) => {
+        resolveMigration = resolve;
+      })
+    );
+    const { result } = renderHook(() => useSparqlQueryLibrary());
+
+    expect(result.current.loadStatus).toBe('loading');
+
+    await waitFor(() => expect(mockReplaceSaved).toHaveBeenCalled());
+
+    expect(result.current.loadStatus).toBe('loading');
+
+    await act(async () => resolveMigration([SERVER_QUERY, LEGACY_QUERY]));
+    await waitFor(() => expect(result.current.loadStatus).toBe('ready'));
+
+    expect(result.current.savedQueries).toEqual([SERVER_QUERY, LEGACY_QUERY]);
+    expect(result.current.queryTemplates).toEqual([TEMPLATE]);
+  });
+
+  it('distinguishes an empty successful load from an error', async () => {
+    mockGetSaved.mockResolvedValue([]);
+    mockGetTemplates.mockResolvedValue([]);
+    const success = renderHook(() => useSparqlQueryLibrary());
+    await waitFor(() =>
+      expect(success.result.current.loadStatus).toBe('ready')
+    );
+    success.unmount();
+    mockGetTemplates.mockRejectedValue(new Error('offline'));
+    const failure = renderHook(() => useSparqlQueryLibrary());
+    await waitFor(() =>
+      expect(failure.result.current.loadStatus).toBe('error')
+    );
+
+    expect(failure.result.current.isLoading).toBe(false);
+    expect(showErrorToast).toHaveBeenCalled();
+  });
+});

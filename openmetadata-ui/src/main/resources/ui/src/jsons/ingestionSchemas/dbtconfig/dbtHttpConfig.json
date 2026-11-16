@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DBT HTTP Config",
   "description": "DBT Catalog, Manifest and Run Results HTTP path configuration.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig",
@@ -38,7 +37,8 @@
       "description": "Custom HTTP headers to include in every request when fetching dbt artifacts (e.g. Authorization for private GitLab/GitHub repos).",
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "format": "password"
       }
     },
     "dbtVerifySSL": {
@@ -60,7 +60,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

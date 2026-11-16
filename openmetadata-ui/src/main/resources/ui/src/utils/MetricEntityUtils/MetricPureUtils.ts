@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
 import {
   Language,
   MetricGranularity,
@@ -63,3 +64,30 @@ export const getMetricExpressionLanguageName = (language?: Language) => {
 
   return language.toLowerCase() as CSMode;
 };
+
+// Linked assets live in the metric's relationship table rather than on the assets' search
+// documents, so the Assets tab targets them by document id (the entity id) instead of a field.
+export const getMetricAssetsQueryFilter = (assetIds: string[]) => ({
+  query: {
+    bool: {
+      must: [{ ids: { values: assetIds } }],
+    },
+  },
+});
+
+export const getMetricAssetSelectionQueryFilter = (
+  linkedAssetIds: string[]
+) => ({
+  query: {
+    bool: {
+      must_not: [
+        { ids: { values: linkedAssetIds } },
+        { term: { entityType: EntityType.METRIC } },
+        { term: { entityType: EntityType.GLOSSARY_TERM } },
+        { term: { entityType: EntityType.TAG } },
+        { term: { entityType: EntityType.DATA_PRODUCT } },
+        { term: { entityType: EntityType.TABLE_COLUMN } },
+      ],
+    },
+  },
+});

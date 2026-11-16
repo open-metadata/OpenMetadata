@@ -19,20 +19,20 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PageLoader } from '../../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Metric } from '../../../generated/entity/data/metric';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import {
   addMetricFollower,
   patchMetric,
@@ -186,32 +186,39 @@ const MetricDetailsPage = () => {
     try {
       const res = await saveUpdatedMetricData(updatedData);
 
-      if (key === 'unitOfMeasurement') {
-        setMetricDetails((previous) => {
-          if (!previous) {
-            return previous;
-          }
+      setMetricDetails((previous) => {
+        if (!previous) {
+          return previous;
+        }
 
+        if (key) {
           return {
             ...previous,
             version: res.version,
-            unitOfMeasurement: res.unitOfMeasurement,
-            customUnitOfMeasurement: res.customUnitOfMeasurement,
+            [key]: res[key],
+            ...(key === 'unitOfMeasurement'
+              ? { customUnitOfMeasurement: res.customUnitOfMeasurement }
+              : {}),
           };
-        });
-      } else {
-        setMetricDetails((previous) => {
-          if (!previous) {
-            return previous;
-          }
+        }
 
-          return {
-            ...previous,
-            version: res.version,
-            ...(key ? { [key]: res[key] } : res),
-          };
-        });
-      }
+        // The definition scalars are restated even though `...res` already
+        // spread them: clearing one drops the key from the response entirely,
+        // and a missing key cannot overwrite the stale value carried in
+        // `previous`. Naming them forces the response's `undefined` through.
+        // Relationship fields (owners, tags, domains) stay on plain merge —
+        // they are absent because `patchMetric` never requests them, not
+        // because they were cleared.
+        return {
+          ...previous,
+          ...res,
+          metricType: res.metricType,
+          granularity: res.granularity,
+          unitOfMeasurement: res.unitOfMeasurement,
+          customUnitOfMeasurement: res.customUnitOfMeasurement,
+          version: res.version,
+        };
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -332,28 +339,32 @@ const MetricDetailsPage = () => {
   );
 
   if (isPermissionsLoading || metricLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(EntityType.METRIC, metricFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(EntityType.METRIC, metricFqn)}
+        />
+      </div>
     );
   }
   if (!hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.metric'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.metric'),
+          })}
+        />
+      </div>
     );
   }
   if (!metricDetails) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

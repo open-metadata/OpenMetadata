@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AppLayout as AppLayoutIcon } from '@openmetadata/ui-core-components/icons';
 import { map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
-import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification-colored-new.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
@@ -50,8 +50,8 @@ export type CustomizeIconKeys =
   | 'govern'
   | 'dataAssets'
   | 'navigation'
-  | 'app-mode'
-  | 'askCollateSidebar';
+  | 'askCollateSidebar'
+  | 'app-layout';
 
 const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Table]: TableIcon,
@@ -72,8 +72,8 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   ['dataAssets']: DataAssetsIcon,
   [PageType.LandingPage]: HomepageIcon,
   ['navigation']: NavigationIcon,
-  ['app-mode']: AppModeIcon,
   ['askCollateSidebar']: NavigationIcon,
+  ['app-layout']: AppLayoutIcon,
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
@@ -105,11 +105,11 @@ class PersonaClassBase {
         icon: entityIcons['navigation'],
       },
       {
-        key: 'app-mode',
-        label: i18n.t('label.app-mode'),
+        key: 'app-layout',
+        label: i18n.t('label.app-layout'),
         isBeta: false,
-        description: i18n.t('message.app-mode-description'),
-        icon: entityIcons['app-mode'],
+        description: i18n.t('message.persona-app-layout-description'),
+        icon: entityIcons['app-layout'],
       },
       {
         key: 'askCollateSidebar',

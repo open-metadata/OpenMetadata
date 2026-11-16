@@ -53,16 +53,21 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.fill('[data-testid="name"]', roleName);
     await fillDescriptionBox(page, `description for ${roleName}`);
 
-    await page.click('[data-testid="policies"]');
-    await page.click('[title="Data Consumer Policy"]');
-    await page.click('[title="Data Steward Policy"]');
+    const policiesInput = page.getByTestId('policies').getByRole('combobox');
+    for (const policy of ['Data Consumer Policy', 'Data Steward Policy']) {
+      await policiesInput.fill('Data');
+      await page.getByRole('option', { name: policy, exact: true }).click();
+    }
+    await policiesInput.press('Escape');
 
     const policyResponse = page.waitForResponse(`/api/v1/roles`);
 
     await page.click('[data-testid="submit-btn"]');
     await policyResponse;
 
-    await page.waitForURL(`**/settings/access/roles/${roleName}`);
+    await page.waitForURL(`**/settings/access/roles/${roleName}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     await page.getByTestId('inactive-link').waitFor();
 
@@ -92,16 +97,16 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click('[data-testid="password-generator"]');
     await generatePasswordResponse;
 
-    await expect(page.locator('#generatedPassword')).toHaveValue(/\S+/);
+    await expect(page.getByTestId('generated-password')).toHaveValue(/\S+/);
 
-    await page.click('[data-testid="roles-dropdown"]');
-    await page.locator('.ant-select-dropdown').waitFor({
-      state: 'visible',
-    });
+    const rolesCombobox = page
+      .getByTestId('roles-dropdown')
+      .getByRole('combobox');
+    await rolesCombobox.click();
     const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
-    await page.fill('#roles', roleName);
+    await rolesCombobox.fill(roleName);
     await rolesSearchResponse;
-    await page.click(`[title="${roleName}"]`);
+    await page.getByRole('option', { name: roleName, exact: true }).click();
 
     await page.keyboard.press('Escape');
 

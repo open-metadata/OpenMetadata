@@ -17,12 +17,10 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 
 import { act } from 'react';
 import { ROUTES } from '../../constants/constants';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { File } from '../../generated/entity/data/file';
 import { DriveServiceType } from '../../generated/entity/services/driveService';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -206,28 +204,6 @@ jest.mock('../../components/DriveService/File/FileDetails', () =>
     )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        permissionValue,
-        type,
-      }: {
-        children?: React.ReactNode;
-        permissionValue?: string;
-        type?: string;
-      }) => (
-        <div data-testid="error-placeholder">
-          <div data-testid="error-type">{type}</div>
-          <div data-testid="error-permission">{permissionValue}</div>
-          {children}
-        </div>
-      )
-    )
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -341,7 +317,11 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
@@ -374,10 +354,16 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('error-type')).toHaveTextContent('PERMISSION');
+      expect(
+        screen.getByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
     });
   });
 

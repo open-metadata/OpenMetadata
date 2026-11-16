@@ -16,8 +16,9 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { debounce } from 'lodash';
+import { debounce, noop } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import {
   ServiceHealth,
   ServiceSummary,
@@ -30,7 +31,6 @@ import {
   ConnectionsServiceCategory,
   CONNECTIONS_ENTITY_TYPES,
   ENTITY_TYPE_TO_CATEGORY,
-  LIST_PAGE_SIZE_OPTIONS,
   SERVICES_ESTATE_LIMIT,
 } from './ConnectionsPage.constants';
 import {
@@ -173,12 +173,14 @@ export const useConnectionsData = ({
 }: UseConnectionsDataArgs) => {
   /* eslint-enable sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity */
   const queryClient = useQueryClient();
+  // Options go to usePaging too: a size left in the shared URL param or preference by a page on
+  // another scale must not become the size here, where the picker has no option for it.
   const {
     currentPage: page,
     pageSize,
     handlePageChange,
     handlePageSizeChange,
-  } = usePaging(pageSizeOptions[0]);
+  } = usePaging(undefined, pageSizeOptions);
   const [sortOrder, setSortOrder] = useState<ConnectionsSortOrder>('asc');
 
   // Any change to what is being queried invalidates the current page number. usePaging restores
@@ -187,6 +189,7 @@ export const useConnectionsData = ({
   // non-zero count, and server mode asks for an offset the narrowed result set no longer has.
   // Sort order is deliberately absent — reordering does not change which rows match.
   const queryKey = [
+    pageSizeOptions.join(','),
     category,
     String(showDeleted),
     searchTerm.trim(),
@@ -383,9 +386,9 @@ export const useConnectionsData = ({
 
       return;
     }
-    void queryClient.prefetchQuery(
-      getServicesOverviewQueryOptions({ ...ESTATE_PARAMS, include })
-    );
+    queryClient
+      .query(getServicesOverviewQueryOptions({ ...ESTATE_PARAMS, include }))
+      .catch(noop);
   });
 
   const toggleSortOrder = () => {

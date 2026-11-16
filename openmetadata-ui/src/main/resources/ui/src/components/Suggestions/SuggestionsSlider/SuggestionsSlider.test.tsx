@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
-import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import SuggestionsSlider from './SuggestionsSlider';
 
 const mockAcceptRejectAllSuggestions = jest.fn();

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
+import { Box } from '../components/base/box/box';
 import {
   RadioButton,
   RadioGroup,
@@ -88,5 +89,42 @@ export const WithDisabled: StoryObj = {
       <RadioButton isDisabled label="Disabled option" value="disabled" />
       <RadioButton label="Another option" value="another" />
     </RadioGroup>
+  ),
+};
+
+export const Cards: StoryObj = {
+  render: () => (
+    <Box gap={6} wrap="wrap">
+      {['light', 'dark-mode'].map((theme) => (
+        <div className={theme} key={theme}>
+          <div className="tw:w-80 tw:bg-surface tw:p-4">
+            <RadioGroup defaultValue="rdfxml" label="Export format">
+              <RadioButton
+                hint="XML serialization of the ontology"
+                label="RDF/XML"
+                trailing=".rdf"
+                value="rdfxml"
+                variant="card"
+              />
+              <RadioButton
+                hint="Readable RDF serialization with compact prefixes"
+                label="Turtle"
+                trailing=".ttl"
+                value="turtle"
+                variant="card"
+              />
+              <RadioButton
+                isDisabled
+                hint="This format is unavailable"
+                label="A longer format name that wraps within the card"
+                trailing=".nt"
+                value="ntriples"
+                variant="card"
+              />
+            </RadioGroup>
+          </div>
+        </div>
+      ))}
+    </Box>
   ),
 };

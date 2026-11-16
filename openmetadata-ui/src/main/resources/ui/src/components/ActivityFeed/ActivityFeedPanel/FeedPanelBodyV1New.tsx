@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
-import classNames from 'classnames';
+import { Card } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { FC, useCallback } from 'react';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
+import {
+  CARD_CONTAINER_CLASS_NAME,
+  handleCardContainerKeyDown,
+} from '../ActivityFeedCardNew/ActivityFeedcardNew.utils';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 
@@ -31,6 +34,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isOpenInDrawer = false,
   isFeedWidget = false,
   isFullSizeWidget = false,
+  isThreadPanel,
 }) => {
   const isActivityEvent = !isUndefined(activity);
 
@@ -48,12 +52,14 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
   if (isActivityEvent) {
     return (
-      <Button
-        block
-        className={classNames('activity-feed-card-container')}
+      <Card
+        className={`activity-feed-card-container tw:cursor-pointer ${CARD_CONTAINER_CLASS_NAME}`}
         data-testid="message-container"
-        type="text"
-        onClick={handleActivityClick}>
+        role="button"
+        tabIndex={0}
+        variant="ghost"
+        onClick={handleActivityClick}
+        onKeyDown={handleCardContainerKeyDown(handleActivityClick)}>
         <ActivityFeedCardNew
           activity={activity}
           isActive={isActive}
@@ -66,7 +72,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           showThread={showThread}
           onActivityClick={onActivityClick}
         />
-      </Button>
+      </Card>
     );
   }
 
@@ -74,13 +80,35 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     return null;
   }
 
+  // In the thread panel only Reply opens the conversation; the card itself is
+  // not a button.
+  if (isThreadPanel) {
+    return (
+      <Card
+        className={`activity-feed-card-container ${CARD_CONTAINER_CLASS_NAME}`}
+        data-testid="message-container"
+        variant="ghost">
+        <ActivityFeedCardNew
+          isThreadPanel
+          feed={feed}
+          isActive={isActive}
+          isPost={false}
+          showThread={showThread}
+          onReplyPress={handleFeedClick}
+        />
+      </Card>
+    );
+  }
+
   return (
-    <Button
-      block
-      className={classNames('activity-feed-card-container')}
+    <Card
+      className={`activity-feed-card-container tw:cursor-pointer ${CARD_CONTAINER_CLASS_NAME}`}
       data-testid="message-container"
-      type="text"
-      onClick={handleFeedClick}>
+      role="button"
+      tabIndex={0}
+      variant="ghost"
+      onClick={handleFeedClick}
+      onKeyDown={handleCardContainerKeyDown(handleFeedClick)}>
       <ActivityFeedCardNew
         feed={feed}
         isActive={isActive}
@@ -91,7 +119,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         showActivityFeedEditor={showActivityFeedEditor}
         showThread={showThread}
       />
-    </Button>
+    </Card>
   );
 };
 

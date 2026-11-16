@@ -170,17 +170,20 @@ jobs:
       # it buys nothing. The resolver reports its own outcome onto this PR.
       - name: Hand the backport to the resolver
         id: dispatch
-        uses: benc-uk/workflow-dispatch@v1.3.2
-        with:
-          # By filename, not display name. This was `Resolve an OpenMetadata
-          # backport conflict` and broke the moment that workflow was renamed —
-          # a dispatch by display name is a cross-repo reference with nothing
-          # checking it. The filename is stable across renames.
-          workflow: oss-backport-resolve.yaml
-          repo: open-metadata/openmetadata-collate
-          ref: main
-          token: ${{ secrets.COLLATE_PAT }}
-          inputs: ${{ steps.rinputs.outputs.json }}
+        env:
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
+          INPUTS: ${{ steps.rinputs.outputs.json }}
+        # By filename, not display name. This was `Resolve an OpenMetadata
+        # backport conflict` and broke the moment that workflow was renamed —
+        # a dispatch by display name is a cross-repo reference with nothing
+        # checking it. The filename is stable across renames. It goes straight
+        # to the REST endpoint because benc-uk/workflow-dispatch resolves even a
+        # filename by paging through the list of every Collate workflow, and
+        # GitHub serves those pages in an order unstable enough to skip it.
+        run: |
+          set -uo pipefail
+          jq -n --argjson inputs "$INPUTS" '{ref: "main", inputs: $inputs}' |
+            gh api -X POST repos/open-metadata/openmetadata-collate/actions/workflows/oss-backport-resolve.yaml/dispatches --input -
 
       - name: Comment on the source PR
         if: always()

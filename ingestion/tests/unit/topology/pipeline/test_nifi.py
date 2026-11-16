@@ -263,8 +263,7 @@ class NifiUnitTest(TestCase):
         "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
         new_callable=PropertyMock,
     )
-    def __init__(self, methodName, nifi_token_prop, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, nifi_token_prop, test_connection) -> None:
         test_connection.return_value = False
 
         nifi_token_prop.return_value.token.return_value = "token"

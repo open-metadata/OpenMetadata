@@ -47,10 +47,10 @@ import { SearchService } from '../../../generated/entity/services/searchService'
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/schema';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export type DataAssetsType =
   | Table
@@ -139,10 +139,16 @@ export type DataAssetsHeaderProps = {
   allowRename?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
+  softDeleteMessagePostFix?: string;
+  hardDeleteMessagePostFix?: string;
   isDqAlertSupported?: boolean;
   badge?: React.ReactNode;
+  /** Entity-specific primary actions, rendered ahead of the manage menu. */
+  headerActions?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  /** Called when an async delete job reports failure, to undo optimistic UI. */
+  onDeleteFailure?: () => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   onVersionClick?: () => void;

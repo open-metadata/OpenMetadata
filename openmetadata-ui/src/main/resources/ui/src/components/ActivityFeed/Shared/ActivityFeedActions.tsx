@@ -10,23 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space } from 'antd';
+import { Dropdown } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as ResolveIcon } from '../../../assets/svg/ic-check-circle.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import {
   Conversation,
   ConversationReply,
 } from '../../../generated/entity/feed/conversation';
-
-import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { canManageFeedPost } from '../../../utils/FeedUtilsPure';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import './activity-feed-actions.less';
 
 const ConfirmationModal = withSuspenseFallback(
   lazy(
@@ -37,132 +33,164 @@ const ConfirmationModal = withSuspenseFallback(
 
 interface ActivityFeedActionsProps {
   conversation?: Conversation;
-  conversationId: string;
+  conversationId?: string;
   reply?: ConversationReply;
   isReply: boolean;
+  /**
+   * Whether this user may edit / delete. Default to the feed's own
+   * author-or-admin rule so existing call sites are unaffected; a caller whose
+   * backend applies a different rule per action - task comments, where the
+   * author edits but the author *or* an admin deletes - passes them
+   * explicitly.
+   */
+  canEdit?: boolean;
+  canDelete?: boolean;
   onEditPost?: () => void;
+  /**
+   * Replaces the provider-backed delete. Required by callers outside the
+   * activity feed, which have no conversation to delete a post from.
+   */
+  onDelete?: () => void | Promise<void>;
+  /** Places the menu trigger within the owning card. */
+  className?: string;
 }
 
-const getIsAuthor = (
-  isReply: boolean,
-  currentUser: { id?: string; name?: string } | undefined,
-  conversation?: Conversation,
-  reply?: ConversationReply
-): boolean => {
-  const author = isReply
-    ? reply?.author.name ?? reply?.author.fullyQualifiedName
-    : conversation?.createdBy?.name ??
-      conversation?.createdBy?.fullyQualifiedName;
-  const authorId = isReply ? reply?.author.id : conversation?.createdBy?.id;
-
-  return authorId ? authorId === currentUser?.id : author === currentUser?.name;
-};
+/**
+ * Fall back to the feed's own author-or-admin rule for whichever action the
+ * caller did not state a permission for.
+ *
+ * This default is the *conversation* rule, not the task-comment one. A
+ * conversation reply is authorized through RBAC
+ * (ConversationRepository#patchReply / #deleteReply ask the authorizer for
+ * EDIT_ALL / DELETE), which an admin passes for both. A task comment is not:
+ * TaskRepository#editComment takes no `isAdmin` at all and permits the author
+ * only, while #deleteComment takes one and permits author-or-admin. The two
+ * rules are deliberately different - do not collapse them. Callers rendering
+ * task comments pass `canEdit`/`canDelete` explicitly, derived from
+ * `resolveCommentPermissions` in utils/TaskCommentUtils.
+ */
+const resolveActionVisibility = (
+  canManage: boolean,
+  canEdit?: boolean,
+  canDelete?: boolean
+) => ({
+  showEdit: canEdit ?? canManage,
+  showDelete: canDelete ?? canManage,
+});
 
 const ActivityFeedActions = ({
   conversation,
   conversationId,
   reply,
   isReply,
+  canEdit,
+  canDelete,
   onEditPost,
+  onDelete,
+  className,
 }: ActivityFeedActionsProps) => {
-  const { t, i18n } = useTranslation();
-  const dir = i18n.dir();
+  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const isAuthor = getIsAuthor(isReply, currentUser, conversation, reply);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus, updateFeed } =
-    useActivityFeedProvider();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { deleteFeed, hideDrawer } = useActivityFeedProvider();
 
-  const onReply = () => {
-    if (!conversation) {
+  const handleDelete = async () => {
+    if (onDelete) {
+      // The confirmation stays open for the length of the request, so without
+      // this the button remains clickable and a second click fires a
+      // concurrent delete - the first succeeds, the second 404s, and the user
+      // is shown a failure for a delete that actually worked.
+      if (isDeleting) {
+        return;
+      }
+
+      setIsDeleting(true);
+      try {
+        await onDelete();
+        setShowDeleteDialog(false);
+      } catch {
+        // Leave the confirmation open so the delete can be retried. The caller
+        // owns reporting the failure.
+      } finally {
+        setIsDeleting(false);
+      }
+
       return;
     }
-    showDrawer(conversation);
 
-    updateEditorFocus(true);
-  };
-
-  const handleDelete = () => {
-    const targetId = reply?.id ?? conversationId;
-    deleteFeed(conversationId, targetId, !isReply).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
     setShowDeleteDialog(false);
+
+    if (!conversationId) {
+      return;
+    }
+
+    deleteFeed(conversationId, reply?.id ?? conversationId, !isReply).catch(
+      () => {
+        // ignore since error is displayed in toast in the parent promise.
+      }
+    );
+
     if (!isReply) {
       hideDrawer();
     }
   };
 
-  const canManage = isAuthor || Boolean(currentUser?.isAdmin);
+  const { showEdit, showDelete } = resolveActionVisibility(
+    canManageFeedPost(
+      currentUser,
+      isReply ? reply?.author : conversation?.createdBy
+    ),
+    canEdit,
+    canDelete
+  );
 
-  const handleResolvedChange = () => {
-    if (!conversation || isReply) {
-      return;
-    }
-    updateFeed(conversationId, conversationId, true, [
-      {
-        op: 'replace',
-        path: '/resolved',
-        value: !conversation.resolved,
-      },
-    ]);
-  };
+  if (!showEdit && !showDelete) {
+    return null;
+  }
 
   return (
     <>
-      <Space
-        className="feed-actions"
-        data-testid="feed-actions"
-        dir={dir}
-        size={12}>
-        {!isReply && conversation && (
-          <Icon
-            className="toolbar-button"
-            component={IconReply}
-            data-testid="add-reply"
-            style={{ fontSize: '16px' }}
-            onClick={onReply}
-          />
-        )}
-
-        {!isReply && conversation && canManage && (
-          <Icon
-            aria-label={
-              conversation.resolved ? t('label.open') : t('label.resolve')
-            }
-            className="toolbar-button"
-            component={ResolveIcon}
-            data-testid="toggle-resolved"
-            style={{ fontSize: '16px' }}
-            onClick={handleResolvedChange}
-          />
-        )}
-
-        {canManage && (
-          <Icon
-            className="toolbar-button"
-            component={IconEdit}
-            data-testid="edit-message"
-            style={{ fontSize: '16px' }}
-            onClick={onEditPost}
-          />
-        )}
-
-        {canManage && (
-          <Icon
-            className="toolbar-button"
-            component={DeleteIcon}
-            data-testid="delete-message"
-            style={{ fontSize: '16px' }}
-            onClick={() => setShowDeleteDialog(true)}
-          />
-        )}
-      </Space>
+      <Dropdown.Root>
+        {/* sm: a 24px target around the glyph, which a long name beside it
+            must not shrink. The ring shows only on keyboard focus. */}
+        <Dropdown.DotsButton
+          className={classNames('tw:shrink-0', className)}
+          data-testid="conversation-actions"
+          size="sm"
+        />
+        <Dropdown.Popover className="tw:w-min">
+          <Dropdown.Menu
+            aria-label={t('label.action-plural')}
+            selectionMode="none"
+            onAction={(key) =>
+              key === 'delete' ? setShowDeleteDialog(true) : onEditPost?.()
+            }>
+            {showEdit ? (
+              <Dropdown.Item
+                data-testid="edit-message"
+                icon={Edit01}
+                id="edit"
+                label={t('label.edit')}
+              />
+            ) : null}
+            {showDelete ? (
+              <Dropdown.Item
+                data-testid="delete-message"
+                icon={Trash01}
+                id="delete"
+                label={t('label.delete')}
+              />
+            ) : null}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       <ConfirmationModal
         bodyText={t('message.confirm-delete-message')}
         cancelText={t('label.cancel')}
         confirmText={t('label.delete')}
         header={t('message.delete-message-question-mark')}
+        isLoading={isDeleting}
         visible={showDeleteDialog}
         onCancel={() => setShowDeleteDialog(false)}
         onConfirm={handleDelete}

@@ -26,17 +26,19 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
@@ -44,6 +46,7 @@ import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TeamGraphFixture;
 
 @Execution(ExecutionMode.CONCURRENT)
 class ElasticSearchRBACConditionEvaluatorTest {
@@ -56,6 +59,26 @@ class ElasticSearchRBACConditionEvaluatorTest {
   private User mockUser;
   private SubjectContext mockSubjectContext;
   private List<SubjectContext.PolicyContext> policies;
+
+  /**
+   * TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+   * Team per node, so tests that exercise hasAnyRole() or inAnyTeam() register the graph here.
+   * Installed once because this class runs its tests concurrently and each of them uses fresh ids.
+   */
+  @BeforeAll
+  static void installTeamGraph() {
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+  }
+
+  private static EntityReference reference(String entityType, String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(entityType).withName(name);
+  }
 
   @BeforeEach
   public void setUp() {
@@ -225,6 +248,25 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void aTagConditionMatchesADocumentsOwnLabelsOrItsPolicyTags() {
+    setupMockPolicies("matchAnyTag('PII.Sensitive') && matchAllTags('Tier.Tier1')", "DENY");
+
+    DocumentContext jsonContext =
+        JsonPath.parse(
+            serializeQueryToJson(
+                ((ElasticQueryBuilder) evaluator.evaluateConditions(mockSubjectContext)).build()));
+
+    for (String path :
+        List.of(
+            "$..bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
+            "$..bool.should[?(@.term['policyTags'].value=='PII.Sensitive')]",
+            "$..bool.should[?(@.term['tier.tagFQN'].value=='Tier.Tier1')]",
+            "$..bool.should[?(@.term['policyTags'].value=='Tier.Tier1')]")) {
+      assertFieldExists(jsonContext, path, path);
+    }
+  }
+
+  @Test
   void testComplexCondition() {
     setupMockPolicies(
         "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
@@ -259,17 +301,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[0].bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
+        "$.bool.must[0].bool.should[*].bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
         "PII.Sensitive tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[0].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test1')]",
+        "$.bool.must[0].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Test.Test1')]",
         "Test.Test1 tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[0].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test2')]",
+        "$.bool.must[0].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Test.Test2')]",
         "Test.Test2 tag");
 
     assertFieldExists(
@@ -286,8 +328,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     JsonNode rootNode = objectMapper.readTree(generatedQuery);
     AtomicInteger boolQueryCount = new AtomicInteger(0);
     countBoolQueries(rootNode, boolQueryCount);
-    assertEquals(
-        6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
+    // Each of the three tags adds one should over its own labels and policyTags.
+    assertEquals(9, boolQueryCount.get(), "Unexpected number of 'bool' clauses in the query.");
   }
 
   @Test
@@ -454,7 +496,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "tags.tagFQN 'Sensitive'");
 
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
@@ -640,11 +682,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.must_not[0].bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive");
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.must_not[0].bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal");
     assertFieldExists(
         jsonContext,
@@ -800,17 +842,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
     // matchAllTags('Confidential', 'Internal')
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
+        "$.bool.must[1].bool.should[*].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
         "Finance tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must[1].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.must[1].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal tag");
 
     // Ensure no must_not for inAnyTeam('Data') since the user is in 'Engineering'
@@ -851,16 +893,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.must_not[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive");
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Classified')]",
+        "$.bool.must_not[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Classified')]",
         "Classified");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must_not[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential");
 
     // Ownership (isOwner condition) should be in `should`
@@ -914,7 +956,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
         "Index filtering for 'Table' resource");
     assertFieldExists(
-        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext,
+        "$.bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "Sensitive tag");
   }
 
   @Test
@@ -943,7 +987,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "Index filtering for 'Table' resource");
 
     assertFieldExists(
-        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext,
+        "$.bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "Sensitive tag");
     assertFieldExists(
         jsonContext,
         "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
@@ -985,7 +1031,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive tag");
 
     assertFieldExists(
@@ -998,11 +1044,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "match_all for inAnyTeam 'Engineering'");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal tag");
   }
 
@@ -1043,7 +1089,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Public')]",
+        "$.bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Public')]",
         "Public tag");
   }
 
@@ -1091,7 +1137,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Critical')]",
+        "$.bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Critical')]",
         "Critical tag");
   }
 
@@ -1403,35 +1449,18 @@ class ElasticSearchRBACConditionEvaluatorTest {
     teamRef.setName("EngineeringTeam");
     when(mockUser.getTeams()).thenReturn(List.of(teamRef));
 
-    Team mockTeam = mock(Team.class);
-    EntityReference inheritedRole = new EntityReference();
-    inheritedRole.setName("DataSteward");
-    when(mockTeam.getDefaultRoles()).thenReturn(List.of(inheritedRole));
-    when(mockTeam.getParents()).thenReturn(List.of());
+    TeamGraphFixture.registerTeam(
+        teamRef, List.of(), List.of(reference(Entity.ROLE, "DataSteward")), List.of());
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () -> Entity.getEntity(eq(Entity.TEAM), eq(teamId), anyString(), any(Include.class)))
-          .thenReturn(mockTeam);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
-      SearchRepository mockSearchRepository = mock(SearchRepository.class);
-      when(mockSearchRepository.getIndexOrAliasName(anyString()))
-          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
-      when(mockSearchRepository.getChildIndexAliases(anyString()))
-          .thenReturn(Collections.emptyList());
-      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-      String generatedQuery = serializeQueryToJson(elasticQuery);
-
-      assertTrue(
-          generatedQuery.contains("match_all"),
-          "Query should contain match_all since user inherits DataSteward role from team");
-      assertTrue(generatedQuery.contains("Sensitive"), "Query should contain tag condition");
-      assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
-    }
+    assertTrue(
+        generatedQuery.contains("match_all"),
+        "Query should contain match_all since user inherits DataSteward role from team");
+    assertTrue(generatedQuery.contains("Sensitive"), "Query should contain tag condition");
+    assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
   }
 
   @Test
@@ -1444,49 +1473,19 @@ class ElasticSearchRBACConditionEvaluatorTest {
     childTeamRef.setName("ChildTeam");
     when(mockUser.getTeams()).thenReturn(List.of(childTeamRef));
 
-    UUID parentTeamId = UUID.randomUUID();
-    Team mockChildTeam = mock(Team.class);
-    when(mockChildTeam.getName()).thenReturn("ChildTeam");
-    EntityReference parentTeamRef = new EntityReference();
-    parentTeamRef.setId(parentTeamId);
-    parentTeamRef.setName("ParentTeam");
-    when(mockChildTeam.getParents()).thenReturn(List.of(parentTeamRef));
+    EntityReference parentTeamRef = reference(Entity.TEAM, "ParentTeam");
+    TeamGraphFixture.registerTeam(parentTeamRef, List.of(), List.of(), List.of());
+    TeamGraphFixture.registerTeam(childTeamRef, List.of(parentTeamRef), List.of(), List.of());
 
-    Team mockParentTeam = mock(Team.class);
-    when(mockParentTeam.getName()).thenReturn("ParentTeam");
-    when(mockParentTeam.getParents()).thenReturn(List.of());
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TEAM), eq(childTeamId), anyString(), any(Include.class)))
-          .thenReturn(mockChildTeam);
-      entityMock
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TEAM), eq(parentTeamId), anyString(), any(Include.class)))
-          .thenReturn(mockParentTeam);
-
-      SearchRepository mockSearchRepository = mock(SearchRepository.class);
-      when(mockSearchRepository.getIndexOrAliasName(anyString()))
-          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
-      when(mockSearchRepository.getChildIndexAliases(anyString()))
-          .thenReturn(Collections.emptyList());
-      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-      String generatedQuery = serializeQueryToJson(elasticQuery);
-
-      assertTrue(
-          generatedQuery.contains("match_all"),
-          "Query should contain match_all since user's team is child of ParentTeam");
-      assertTrue(generatedQuery.contains("Confidential"), "Query should contain tag condition");
-      assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
-    }
+    assertTrue(
+        generatedQuery.contains("match_all"),
+        "Query should contain match_all since user's team is child of ParentTeam");
+    assertTrue(generatedQuery.contains("Confidential"), "Query should contain tag condition");
+    assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
   }
 
   @Test
@@ -1501,33 +1500,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
     teamRef.setName("RegularTeam");
     when(mockUser.getTeams()).thenReturn(List.of(teamRef));
 
-    Team mockTeam = mock(Team.class);
-    EntityReference nonMatchingRole = new EntityReference();
-    nonMatchingRole.setName("Viewer");
-    when(mockTeam.getDefaultRoles()).thenReturn(List.of(nonMatchingRole));
-    when(mockTeam.getParents()).thenReturn(List.of());
+    TeamGraphFixture.registerTeam(
+        teamRef, List.of(), List.of(reference(Entity.ROLE, "Viewer")), List.of());
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () -> Entity.getEntity(eq(Entity.TEAM), eq(teamId), anyString(), any(Include.class)))
-          .thenReturn(mockTeam);
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
-      SearchRepository mockSearchRepository = mock(SearchRepository.class);
-      when(mockSearchRepository.getIndexOrAliasName(anyString()))
-          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
-      when(mockSearchRepository.getChildIndexAliases(anyString()))
-          .thenReturn(Collections.emptyList());
-      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-      String generatedQuery = serializeQueryToJson(elasticQuery);
-
-      assertTrue(
-          generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
-          "Query should result in match_nothing since user doesn't have Admin role");
-    }
+    assertTrue(
+        generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
+        "Query should result in match_nothing since user doesn't have Admin role");
   }
 
   @Test

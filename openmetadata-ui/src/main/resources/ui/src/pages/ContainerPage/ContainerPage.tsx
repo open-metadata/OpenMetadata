@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Col, Row, Tabs } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
@@ -19,27 +21,27 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { ContainerChildrenCountContext } from '../../components/Container/ContainerChildren/ContainerChildrenCountContext';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { Column } from '../../generated/entity/data/table';
@@ -49,6 +51,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   containerQueryFn,
@@ -64,10 +67,12 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
@@ -78,6 +83,7 @@ import {
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
 import Fqn from '../../utils/Fqn';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { flattenColumns } from '../../utils/TablePureUtils';
@@ -520,8 +526,15 @@ const ContainerPage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.STORAGE_SERVICES,
+          getPartialNameFromTableFQN(decodedEntityFqn, [FqnPart.Service])
+        )
+      ),
+    [decodedEntityFqn]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -798,46 +811,56 @@ const ContainerPage = () => {
   );
   // Rendering
   if (isPermissionsLoading || containerLoading || loading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (hasError || isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), decodedEntityFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(t('label.container'), decodedEntityFqn)}
+        />
+      </div>
     );
   }
 
   if (!viewBasicPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.container'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.container'),
+          })}
+        />
+      </div>
     );
   }
 
   if (!containerData) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   const renderTabBarExtraContent = () =>
     isExpandViewSupported && (
-      <AlignRightIconButton
-        className={isTabExpanded ? 'rotate-180' : ''}
-        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      <ButtonUtility
+        data-testid="tab-expand-button"
+        icon={isTabExpanded ? Collapse : Expand}
+        size="lg"
+        tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
         onClick={toggleTabExpanded}
       />
     );
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(containerData)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(containerData)}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -856,7 +879,7 @@ const ContainerPage = () => {
             onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Container>
           columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
@@ -866,23 +889,37 @@ const ContainerPage = () => {
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
           <ContainerChildrenCountContext.Provider value={setChildrenCount}>
-            <Col className="entity-details-page-tabs" span={24}>
+            <div className="entity-details-page-tabs">
               <Tabs
-                activeKey={tab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={renderTabBarExtraContent()}
-                onChange={handleTabChange}
-              />
-            </Col>
+                selectedKey={getRenderedActiveTab(tabs, tab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List
+                  actions={renderTabBarExtraContent()}
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
+            </div>
           </ContainerChildrenCountContext.Provider>
         </GenericProvider>
 
         <LimitWrapper resource="container">
           <></>
         </LimitWrapper>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };

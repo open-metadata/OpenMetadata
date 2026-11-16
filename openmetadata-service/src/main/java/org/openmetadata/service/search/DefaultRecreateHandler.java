@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +68,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       return context;
     }
 
-    for (String entityType : entities) {
+    for (String entityType : indexesToRecreate(entities, searchRepository)) {
       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
       if (indexMapping == null) {
         LOG.warn(
@@ -78,16 +79,23 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       recreateIndexFromMapping(context, indexMapping, entityType);
     }
 
-    // When recreating the table index, also recreate the column index since columns
-    // are indexed as part of table processing (columns are not standalone entities)
-    if (entities.contains(Entity.TABLE)) {
-      IndexMapping columnIndexMapping = searchRepository.getIndexMapping(Entity.TABLE_COLUMN);
-      if (columnIndexMapping != null && !entities.contains(Entity.TABLE_COLUMN)) {
-        recreateIndexFromMapping(context, columnIndexMapping, Entity.TABLE_COLUMN);
-      }
-    }
-
     return context;
+  }
+
+  /**
+   * Columns are indexed while processing tables, not as standalone entities, so recreating the
+   * table index also recreates the column index. While column indexing is turned off the column
+   * index is not recreated at all.
+   */
+  private static Set<String> indexesToRecreate(
+      Set<String> entities, SearchRepository searchRepository) {
+    Set<String> indexes = new LinkedHashSet<>(entities);
+    if (!searchRepository.isColumnIndexingEnabled()) {
+      indexes.remove(Entity.TABLE_COLUMN);
+    } else if (indexes.contains(Entity.TABLE)) {
+      indexes.add(Entity.TABLE_COLUMN);
+    }
+    return indexes;
   }
 
   @Override
@@ -111,9 +119,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     // Always-promote: partial data is better than no data. When reindex failed but the staged
-    // index has documents, promote it. Only delete if truly empty.
+    // index has documents, promote it. Only delete if truly empty. The exception is a column index
+    // whose indexing was turned off while this reindex ran: promoting it would bring it back.
     boolean shouldPromote =
-        shouldPromoteStagedIndex(searchClient, stagedIndex, entityType, reindexSuccess);
+        !isDisabledColumnIndex(searchRepository, entityType)
+            && shouldPromoteStagedIndex(searchClient, stagedIndex, entityType, reindexSuccess);
 
     if (shouldPromote) {
       // Restore live serving settings on the staged index before alias swap. The bulk-build
@@ -210,8 +220,9 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
     } else {
-      // Nothing to promote (reindex failed and the staged index received zero documents). This is
-      // an intentional terminal state, not a retryable promotion failure, so report success.
+      // Nothing to promote (reindex failed and the staged index received zero documents, or column
+      // indexing is off). This is an intentional terminal state, not a retryable promotion
+      // failure, so report success.
       promoted = true;
       try {
         if (searchClient.indexExists(stagedIndex)) {
@@ -232,6 +243,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
     }
     return promoted;
+  }
+
+  private static boolean isDisabledColumnIndex(
+      SearchRepository searchRepository, String entityType) {
+    return Entity.TABLE_COLUMN.equals(entityType) && !searchRepository.isColumnIndexingEnabled();
   }
 
   /**

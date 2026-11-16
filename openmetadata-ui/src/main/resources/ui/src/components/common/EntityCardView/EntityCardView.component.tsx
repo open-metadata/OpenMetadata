@@ -42,7 +42,8 @@ const EntityCardView = <T extends { id: string }>({
   return (
     <div
       className={cx(
-        'tw:grid tw:gap-4 tw:p-6',
+        // auto-rows-max: `auto` lets a definite-height grid squash rows and clip cards.
+        'tw:grid tw:auto-rows-max tw:gap-4 tw:p-6',
         className ?? DEFAULT_GRID_COLUMNS
       )}
       data-testid="card-view-container">
@@ -51,7 +52,7 @@ const EntityCardView = <T extends { id: string }>({
           data-testid="entity-card"
           isClickable={Boolean(onEntityClick)}
           key={entity.id}
-          variant="default"
+          variant="tile"
           onClick={onEntityClick ? () => onEntityClick(entity) : undefined}>
           <Card.Content>{renderCard(entity)}</Card.Content>
         </Card>

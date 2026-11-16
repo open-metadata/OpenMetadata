@@ -15,6 +15,7 @@ import { APIRequestContext } from '@playwright/test';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage, getApiContext } from '../../../utils/common';
+import { signInThroughForm } from '../../../utils/formSignIn';
 import { withAppConfigLock } from '../../Utils/appConfigMutex';
 
 /**
@@ -47,7 +48,7 @@ test.beforeAll(
 
     const contextA = await browser.newContext();
     const pageA = await contextA.newPage();
-    await userA.login(pageA);
+    await signInThroughForm(pageA, userA);
     const resultA = await getApiContext(pageA);
     userAApiContext = resultA.apiContext;
     disposeUserAContext = async () => {
@@ -57,7 +58,7 @@ test.beforeAll(
 
     const contextB = await browser.newContext();
     const pageB = await contextB.newPage();
-    await userB.login(pageB);
+    await signInThroughForm(pageB, userB);
     const resultB = await getApiContext(pageB);
     userBApiContext = resultB.apiContext;
     disposeUserBContext = async () => {

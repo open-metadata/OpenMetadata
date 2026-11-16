@@ -122,9 +122,7 @@ class OntologyBulkExecutionServiceTest {
         new OntologyBulkPlanner(
             glossary -> terms,
             new OntologyBulkCsvPlanner(
-                new OntologyBulkCsvParser(),
-                new OntologyIriMinter(),
-                OntologyBulkTestFixtures.clock()),
+                new OntologyBulkCsvParser(), OntologyBulkTestFixtures.clock()),
             new OntologyFindReplacePlanner(),
             new OntologyRelationshipRetypePlanner(relationshipTypes));
     final OntologyBulkDraftFactory draftFactory =

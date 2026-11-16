@@ -12,10 +12,8 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import PipelineDetailsPage from './PipelineDetailsPage.component';
@@ -44,13 +42,6 @@ jest.mock(
   '../../components/Pipeline/PipelineDetails/PipelineDetails.component',
   () => {
     return jest.fn().mockReturnValue(<div>PipelineDetails.component</div>);
-  }
-);
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
   }
 );
 
@@ -113,7 +104,7 @@ describe('Test PipelineDetailsPage component', () => {
     renderWithQueryClient(<PipelineDetailsPage />);
 
     expect(
-      await screen.findByText(/ErrorPlaceHolder.component/i)
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 });

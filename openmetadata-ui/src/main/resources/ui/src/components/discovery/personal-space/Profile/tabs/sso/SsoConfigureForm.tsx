@@ -1,0 +1,544 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  FieldDocPopover,
+  FieldDocProvider,
+  FileUpload,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ArrowLeft } from '@openmetadata/ui-core-components/icons';
+import {
+  RegistryFieldsType,
+  RegistryWidgetsType,
+  WidgetProps,
+} from '@rjsf/utils';
+import classNames from 'classnames';
+import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
+import { AuthProvider } from '../../../../../../generated/settings/settings';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
+import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
+import { FormHintDoc } from '../../../../../common/atoms/drawer/formHint/FormHintDoc';
+import { FormHintHeader } from '../../../../../common/atoms/drawer/formHint/FormHintHeader';
+import LdapRoleMappingWidget from '../../../../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
+import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
+import type { SecurityManagedPaths } from '../../../../../SettingsSso/SSOConfigurationForm/SSOConfigurationForm.interface';
+import SsoRolesSelectField from '../../../../../SettingsSso/SSOConfigurationForm/SsoRolesSelectField';
+import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
+import { SsoTestLoginContent } from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
+import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
+import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
+import { getFieldDocsByName, toCoreUiSchema } from './SsoConfigureForm.utils';
+
+const FORM_BODY_TEST_ID = 'sso-configure-form-body';
+
+// Actions live in the sticky footer; RJSF's own submit button is never shown.
+const SUBMIT_BUTTON_OPTIONS = { norender: true, submitText: '' };
+
+// The mapping editor has no label of its own; the classic page's field template drew it.
+// It is a set of inputs rather than one control, so the label names the group.
+const SsoLdapRoleMappingWidget = (props: WidgetProps) => {
+  const labelId = `${props.id}-label`;
+
+  return (
+    <Box aria-labelledby={labelId} direction="col" gap={2} role="group">
+      <Typography
+        className="tw:text-secondary"
+        id={labelId}
+        size="text-sm"
+        weight="medium">
+        {props.label}
+      </Typography>
+      <LdapRoleMappingWidget {...props} />
+    </Box>
+  );
+};
+
+// The LDAP renderers the classic SSO uiSchema names.
+const SSO_WIDGETS: RegistryWidgetsType = {
+  LdapRoleMappingWidget: SsoLdapRoleMappingWidget,
+};
+const SSO_FIELDS: RegistryFieldsType = {
+  RolesSelectField: SsoRolesSelectField,
+};
+
+export interface SsoSubPage {
+  label: string;
+  onBack: () => void;
+}
+
+export interface SsoConfigureFormProps {
+  /** Saved configuration to edit; omit when setting up `selectedProvider`. */
+  securityConfig?: SecurityConfiguration;
+  /** Provider for a new configuration. */
+  selectedProvider?: string;
+  showHint: boolean;
+  managedPaths?: SecurityManagedPaths;
+  /** The deployment owns every field, so the form only displays the configuration. */
+  isReadOnly?: boolean;
+  /** Leaves a new setup (cancel/discard) — back to the provider grid. */
+  onChangeProvider: () => void;
+  /** Test Login opens as a page of its own; the panel shows it in the breadcrumb. */
+  onSubPageChange?: (subPage?: SsoSubPage) => void;
+}
+
+interface UnsavedChangesDialogProps {
+  isOpen: boolean;
+  isSaving: boolean;
+  onCancel: () => void;
+  onDiscard: () => void;
+  onSave: () => void;
+}
+
+const UnsavedChangesDialog = ({
+  isOpen,
+  isSaving,
+  onCancel,
+  onDiscard,
+  onSave,
+}: UnsavedChangesDialogProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <ModalOverlay
+      isDismissable={!isSaving}
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && !isSaving && onCancel()}>
+      <Modal>
+        <Dialog
+          data-testid="sso-unsaved-changes-dialog"
+          dividers="scroll"
+          showCloseButton={!isSaving}
+          title={t('message.unsaved-changes')}
+          width={480}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {t('message.unsaved-changes-description')}
+            </Typography>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
+              <Button
+                color="secondary"
+                data-testid="sso-unsaved-changes-discard"
+                isDisabled={isSaving}
+                size="sm"
+                onPress={onDiscard}>
+                {t('label.discard')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="sso-unsaved-changes-save"
+                isLoading={isSaving}
+                size="sm"
+                onPress={onSave}>
+                {t('label.save-changes')}
+              </Button>
+            </div>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
+
+interface SsoSaveAlertsProps {
+  isNewConfig: boolean;
+  isGated: boolean;
+  isSaving: boolean;
+  gateMessage: string;
+  onSaveAnyway: () => void;
+}
+
+/** The lock-out warnings shown above the footer, as on the classic page. */
+const SsoSaveAlerts = ({
+  isNewConfig,
+  isGated,
+  isSaving,
+  gateMessage,
+  onSaveAnyway,
+}: SsoSaveAlertsProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {isNewConfig && (
+        <Alert
+          data-testid="sso-new-config-warning"
+          title={t('label.warning')}
+          variant="warning">
+          {t('message.sso-new-config-save-warning')}
+        </Alert>
+      )}
+      {isGated && (
+        <Alert
+          data-testid="sso-test-login-required"
+          rightContent={
+            <Button
+              color="secondary"
+              data-testid="save-anyway-sso-configuration"
+              isDisabled={isSaving}
+              size="sm"
+              onPress={onSaveAnyway}>
+              {t('label.save-anyway')}
+            </Button>
+          }
+          title={t('label.test-login')}
+          variant="warning">
+          {gateMessage}
+        </Alert>
+      )}
+    </>
+  );
+};
+
+interface SsoConfigureFooterProps {
+  canTestLogin: boolean;
+  isHidden: boolean;
+  isReadOnly: boolean;
+  isSaveGated: boolean;
+  isSaving: boolean;
+  isTestingLogin: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+  onTestLogin: () => void;
+}
+
+/** Sticky footer actions; a configuration the deployment owns offers only Cancel. */
+const SsoConfigureFooter = ({
+  canTestLogin,
+  isHidden,
+  isReadOnly,
+  isSaveGated,
+  isSaving,
+  isTestingLogin,
+  onCancel,
+  onSave,
+  onTestLogin,
+}: SsoConfigureFooterProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className={classNames(
+        'tw:sticky tw:bottom-0 tw:z-10 tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4',
+        { 'tw:hidden': isHidden }
+      )}
+      data-testid="sso-configure-footer"
+      direction="row"
+      gap={3}
+      justify="end">
+      <Button
+        color="tertiary"
+        data-testid="cancel-sso-configuration"
+        isDisabled={isSaving}
+        onPress={onCancel}>
+        {t('label.cancel')}
+      </Button>
+      {!isReadOnly && (
+        <>
+          {canTestLogin && (
+            <Button
+              color="secondary"
+              data-testid="test-login-sso-configuration"
+              isDisabled={isSaving || isTestingLogin}
+              isLoading={isTestingLogin}
+              onPress={onTestLogin}>
+              {t('label.test-login')}
+            </Button>
+          )}
+          <Button
+            color="primary"
+            data-testid="save-sso-configuration"
+            isDisabled={isSaveGated}
+            isLoading={isSaving}
+            onPress={onSave}>
+            {t('label.save')}
+          </Button>
+        </>
+      )}
+    </Box>
+  );
+};
+
+const renderFieldDoc = (markdown: string) => (
+  <FormHintDoc markdown={markdown} />
+);
+
+/**
+ * The SSO configuration form for the profile settings modal: core-ui RJSF
+ * (FormBuilderV1) over the same schema, save flow and Test Login gate as the
+ * classic settings page (`useSsoConfiguration`).
+ */
+const SsoConfigureForm = ({
+  securityConfig,
+  selectedProvider,
+  showHint,
+  managedPaths,
+  isReadOnly = false,
+  onChangeProvider,
+  onSubPageChange,
+}: SsoConfigureFormProps) => {
+  const { t } = useTranslation();
+  const {
+    isLoading,
+    isInitializing,
+    internalData,
+    currentProvider,
+    hasExistingConfig,
+    showCancelModal,
+    modalSaveLoading,
+    errorClearTrigger,
+    metadataUploadStatus,
+    setMetadataUploadStatus,
+    metadataUploadFileName,
+    showTestLoginModal,
+    isTestingLogin,
+    isAwaitingTestLoginCredentials,
+    testLoginConfigurationCheck,
+    testLoginResult,
+    testLoginError,
+    submitTestLoginCredentials,
+    fieldErrorsRef,
+    schema,
+    uiSchema,
+    customValidate,
+    canTestLogin,
+    canUploadSamlMetadata,
+    isSaveGatedOnTestLogin,
+    testLoginGateMessage,
+    handleClearFieldError,
+    handleMetadataFileUpload,
+    handleOnChange,
+    handleTestLogin,
+    handleTestLoginModalClose,
+    handleSave,
+    handleCancelConfirm,
+    handleCancelModalClose,
+    handleCancelClick,
+    handleSaveAndExit,
+  } = useSsoConfiguration({
+    forceEditMode: true,
+    isReadOnly,
+    managedPaths,
+    securityConfig,
+    selectedProvider,
+    onChangeProvider,
+    // The whole SSO panel scrolls, so the banner and tabs move with the form.
+    scrollContainer: '[data-testid="sso-panel"]',
+    errorSelector: `[data-testid="${FORM_BODY_TEST_ID}"] [aria-invalid="true"]`,
+  });
+
+  const closeTestLoginRef = useRef(handleTestLoginModalClose);
+  closeTestLoginRef.current = handleTestLoginModalClose;
+
+  useEffect(() => {
+    if (!onSubPageChange) {
+      return;
+    }
+    onSubPageChange(
+      showTestLoginModal
+        ? {
+            label: t('label.test-login'),
+            onBack: () => closeTestLoginRef.current(),
+          }
+        : undefined
+    );
+
+    return () => onSubPageChange(undefined);
+  }, [onSubPageChange, showTestLoginModal, t]);
+
+  const docsBySection = useFormFieldDocs(
+    PROVIDER_FILE_MAP[currentProvider ?? ''] ?? PROVIDER_FILE_MAP.general,
+    'SSO'
+  );
+
+  const fieldDocs = useMemo(
+    () => getFieldDocsByName(docsBySection),
+    [docsBySection]
+  );
+  const formContext = useMemo(
+    () => ({
+      clearFieldError: handleClearFieldError,
+      currentProvider,
+      // Several deprecated SSO fields aren't flagged in the schema itself.
+      deprecatedFields: DEPRECATED_SSO_PROPERTIES,
+      // Plain sections: no tinted background behind each field group.
+      flatPropertyLayout: true,
+    }),
+    [handleClearFieldError, currentProvider]
+  );
+
+  const formUiSchema = useMemo(
+    () =>
+      toCoreUiSchema(schema, {
+        ...uiSchema,
+        'ui:submitButtonOptions': SUBMIT_BUTTON_OPTIONS,
+      }),
+    [schema, uiSchema]
+  );
+
+  // IdP metadata XML: a drop zone until a file is parsed, then its result.
+  const renderSamlUpload = () =>
+    metadataUploadStatus === null ? (
+      <FileUpload.DropZone
+        accept=".xml,application/xml,text/xml"
+        allowsMultiple={false}
+        clickToUploadLabel={t('label.click-to-upload')}
+        data-testid="sso-saml-metadata-upload"
+        hint={t('message.upload-saml-metadata-xml-description')}
+        input-data-testid="sso-saml-metadata-input"
+        orDragAndDropLabel={t('label.or-drag-and-drop-an-xml-file-here')}
+        onDropFiles={handleMetadataFileUpload}
+      />
+    ) : (
+      <Alert
+        data-testid="sso-saml-metadata-status"
+        rightContent={
+          <Button
+            color="link-color"
+            data-testid="change-metadata-xml-btn"
+            size="sm"
+            onPress={() => setMetadataUploadStatus(null)}>
+            {t('label.change-entity', { entity: t('label.file') })}
+          </Button>
+        }
+        title={t(
+          metadataUploadStatus === 'success'
+            ? 'message.metadata-xml-file-parsed-success'
+            : 'message.metadata-xml-file-parsed-error',
+          { fileName: metadataUploadFileName }
+        )}
+        variant={metadataUploadStatus}
+      />
+    );
+
+  if (isInitializing) {
+    return (
+      <div className="tw:px-8">
+        <SettingsSkeleton rows={8} />
+      </div>
+    );
+  }
+
+  return (
+    <Box className="tw:flex-1" data-testid="sso-configure-form" direction="col">
+      {showTestLoginModal && (
+        <Box
+          className="tw:mx-auto tw:w-full tw:max-w-[50%] tw:flex-1 tw:px-8 tw:pb-6"
+          data-testid="sso-test-login-page"
+          direction="col"
+          gap={4}>
+          <Button
+            className="tw:self-start"
+            color="link-gray"
+            data-testid="sso-test-login-back"
+            iconLeading={ArrowLeft}
+            size="sm"
+            onPress={handleTestLoginModalClose}>
+            {t('label.back')}
+          </Button>
+          <SsoTestLoginContent
+            configurationCheck={testLoginConfigurationCheck}
+            error={testLoginError}
+            isAwaitingCredentials={isAwaitingTestLoginCredentials}
+            isTesting={isTestingLogin}
+            result={testLoginResult}
+            onSubmitCredentials={submitTestLoginCredentials}
+          />
+        </Box>
+      )}
+      {/* Hidden rather than unmounted, so unsaved values and field errors survive the test. */}
+      <div
+        className={classNames('tw:flex-1 tw:px-8 tw:pb-6', {
+          'tw:hidden': showTestLoginModal,
+        })}
+        data-testid={FORM_BODY_TEST_ID}>
+        <Box
+          className="tw:w-full tw:max-w-[50%] tw:mx-auto"
+          direction="col"
+          gap={5}>
+          {currentProvider === AuthProvider.Saml &&
+            canUploadSamlMetadata &&
+            renderSamlUpload()}
+
+          <FieldDocProvider enabled={showHint}>
+            <FormBuilderV1
+              hideFooter
+              customValidate={customValidate}
+              disabled={isReadOnly}
+              fieldDocs={fieldDocs}
+              fields={SSO_FIELDS}
+              formContext={formContext}
+              formData={internalData}
+              liveValidate={
+                Object.keys(fieldErrorsRef.current).length > 0 ||
+                errorClearTrigger > 0
+              }
+              schema={schema}
+              uiSchema={formUiSchema}
+              widgets={SSO_WIDGETS}
+              onChange={handleOnChange}
+            />
+            {showHint && (
+              <FieldDocPopover
+                header={<FormHintHeader />}
+                renderDoc={renderFieldDoc}
+                variant="muted"
+              />
+            )}
+          </FieldDocProvider>
+
+          <SsoSaveAlerts
+            gateMessage={testLoginGateMessage}
+            isGated={isSaveGatedOnTestLogin}
+            isNewConfig={!hasExistingConfig}
+            isSaving={isLoading}
+            onSaveAnyway={handleSave}
+          />
+        </Box>
+      </div>
+
+      <SsoConfigureFooter
+        canTestLogin={canTestLogin}
+        isHidden={showTestLoginModal}
+        isReadOnly={isReadOnly}
+        isSaveGated={isSaveGatedOnTestLogin}
+        isSaving={isLoading}
+        isTestingLogin={isTestingLogin}
+        onCancel={handleCancelClick}
+        onSave={handleSave}
+        onTestLogin={handleTestLogin}
+      />
+
+      <UnsavedChangesDialog
+        isOpen={showCancelModal}
+        isSaving={modalSaveLoading}
+        onCancel={handleCancelModalClose}
+        onDiscard={handleCancelConfirm}
+        onSave={handleSaveAndExit}
+      />
+    </Box>
+  );
+};
+
+export default SsoConfigureForm;

@@ -441,21 +441,23 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Owners').click();
 
     await expect(
-      page
-        .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.user1.responseData.name)
+      page.getByTestId('drop-down-menu').getByRole('menuitemcheckbox', {
+        name: EntityDataClass.user1.responseData.name,
+      })
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.user1.responseData.name)
+      .getByRole('menuitemcheckbox', {
+        name: EntityDataClass.user1.responseData.name,
+      })
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -473,21 +475,23 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Domains').click();
 
     await expect(
-      page
-        .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.domain1.responseData.displayName)
+      page.getByTestId('drop-down-menu').getByRole('menuitemcheckbox', {
+        name: EntityDataClass.domain1.responseData.displayName,
+      })
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.domain1.responseData.displayName)
+      .getByRole('menuitemcheckbox', {
+        name: EntityDataClass.domain1.responseData.displayName,
+      })
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -525,7 +529,7 @@ test.describe('Impact Analysis', () => {
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -912,7 +916,7 @@ test.describe('Impact Analysis', () => {
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
         response.request().method() === 'GET'
     );
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -957,7 +961,7 @@ test.describe('Impact Analysis', () => {
       direction: 'Downstream',
       columnFilterIncludes: 'tag:',
     });
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -995,7 +999,7 @@ test.describe('Impact Analysis', () => {
     const rowsWithColumn = page.locator(
       `[data-row-key*="${columnName}"], tbody tr:has-text("${columnName}")`
     );
-    await expect(rowsWithColumn.first()).toBeVisible();
+    await expect(rowsWithColumn.filter({ visible: true })).not.toHaveCount(0);
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
@@ -1014,7 +1018,7 @@ test.describe('Impact Analysis', () => {
       )
       .click();
 
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.locator('[data-row-key]')).toHaveCount(1);
@@ -1034,7 +1038,8 @@ test.describe('Impact Analysis', () => {
     const tableLineageResponse = page.waitForResponse(
       `/api/v1/lineage/getLineageByEntityCount?**`
     );
-    await page.getByText('Asset level').click();
+    // Exact: the lineage Layers trigger reads "Data Asset Level" too.
+    await page.getByText('Asset Level', { exact: true }).click();
     await tableLineageResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -1059,6 +1064,58 @@ test.describe('Impact Analysis', () => {
     expect(depthText).toMatch(/^\d+$/);
   });
 
+  test('Verify selected node depth persists across URL updates and reload', async ({
+    page,
+  }) => {
+    const nodeDepthButton = page.getByRole('button', { name: /Node Depth:/ });
+
+    await test.step('Open filters, which writes fullscreen to the URL', async () => {
+      await page.getByTestId('filters-button').click();
+
+      await expect(page).toHaveURL(/fullscreen=true/);
+      await expect(nodeDepthButton).toHaveText(/Node Depth:\s*\d+/);
+      await expect(nodeDepthButton).not.toHaveText(/Node Depth:\s*1$/);
+    });
+
+    await test.step('Select node depth 1', async () => {
+      const lineageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
+          new URL(response.url()).searchParams.get('nodeDepth') === '1'
+      );
+      await nodeDepthButton.click();
+      await page.getByRole('menuitemradio', { name: '1', exact: true }).click();
+      await lineageResponse;
+
+      await expect(page).toHaveURL(/depth=1/);
+      await expect(nodeDepthButton).toHaveText(/Node Depth:\s*1$/);
+    });
+
+    await test.step('Exit full screen keeps the selected depth', async () => {
+      await page
+        .getByTestId('lineage-card-table')
+        .getByLabel('Exit Full Screen')
+        .click();
+
+      await expect(page).toHaveURL(/fullscreen=false/);
+      await expect(page).toHaveURL(/depth=1/);
+      await expect(nodeDepthButton).toHaveText(/Node Depth:\s*1$/);
+    });
+
+    await test.step('Reload keeps the depth from the URL', async () => {
+      const lineageResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
+          new URL(response.url()).searchParams.get('nodeDepth') === '1'
+      );
+      await page.reload();
+      await lineageResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page).toHaveURL(/depth=1/);
+    });
+  });
+
   test('Verify glossary term filter for column level impact analysis', async ({
     page,
   }) => {
@@ -1074,7 +1131,7 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Glossary Terms').click();
     const glossaryOptions = page
       .getByTestId('drop-down-menu')
-      .getByRole('menuitem');
+      .getByRole('menuitemcheckbox');
     await expect(glossaryOptions).toHaveCount(1);
     await glossaryOptions.first().click();
 
@@ -1089,7 +1146,7 @@ test.describe('Impact Analysis', () => {
         url.searchParams.get('column_filter')?.includes('glossary:') ?? false
       );
     });
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('update-btn').click();
     await filterResponse;
     await waitForAllLoadersToDisappear(page);
 

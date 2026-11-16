@@ -27,6 +27,11 @@ export interface SemanticsValidation {
      */
     passed?: number;
     /**
+     * Number of semantics rules not evaluated because they are disabled or do not apply to the
+     * entity's type.
+     */
+    skipped?: number;
+    /**
      * Total number of semantics rules.
      */
     total?: number;

@@ -12,11 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { getPolicyByName } from '../../../rest/rolesAPIV1';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { POLICY_DATA } from '../PoliciesData.mock';
@@ -72,11 +70,6 @@ jest.mock('../../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
-);
-
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => jest.fn().mockReturnValue(<div>ErrorPlaceholder</div>)
 );
 
 jest.mock(

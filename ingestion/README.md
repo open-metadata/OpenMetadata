@@ -2,16 +2,25 @@
 This guide will help you setup the Ingestion framework and connectors
 ---
 
-![Python version 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)
+![Python version 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 
 OpenMetadata Ingestion is a simple framework to build connectors and ingest metadata of various systems through OpenMetadata APIs. It could be used in an orchestration framework(e.g. Apache Airflow) to ingest metadata.
 **Prerequisites**
 
-- Python &gt;= 3.9.x
+- Python &gt;= 3.10
+
+### Developing from this checkout
+
+Use the [locked local Python environment guide](https://github.com/open-metadata/OpenMetadata/blob/main/DEVELOPER.md#locked-local-python-environments)
+for setup, profile selection and test commands. The local profiles are validated on Python
+3.10, 3.11 and 3.12. From the repository root, `make install_dev_env` prepares the full test
+environment in `env/`; `make py_format_check` and `make generate ARGS=--python-only` prepare
+their own tool environments. Native build prerequisites and ANTLR are still required;
+`scripts/dev_setup.sh` prepares the development toolchain.
 
 ### Docs
 
-Please refer to the documentation here https://docs.open-metadata.org/connectors
+Please refer to the documentation here: [docs.open-metadata.org/connectors](https://docs.open-metadata.org/connectors)
 
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=c1a30c7c-6dc7-4928-95bf-6ee08ca6aa6a" />
 
@@ -23,8 +32,8 @@ The flow is depicted in the images below.
 
 **TopologyRunner Standard Flow**
 
-![image](https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/v1.9/features/ingestion/workflows/metadata/multithreading/single-thread-flow.png)
+![image](https://raw.githubusercontent.com/open-metadata/docs-v1/e0db5bf1224977bc0cea968fbb8fda53ce81fb46/public/images/v1.12/features/ingestion/workflows/metadata/multithreading/single-thread-flow.png)
 
 **TopologyRunner Multithread Flow**
 
-![image](https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/v1.9/features/ingestion/workflows/metadata/multithreading/multi-thread-flow.png)
+![image](https://raw.githubusercontent.com/open-metadata/docs-v1/e0db5bf1224977bc0cea968fbb8fda53ce81fb46/public/images/v1.12/features/ingestion/workflows/metadata/multithreading/multi-thread-flow.png)

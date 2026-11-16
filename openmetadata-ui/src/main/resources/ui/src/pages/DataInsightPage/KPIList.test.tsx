@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
+import { getListKPIs } from '../../rest/KpiAPI';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
@@ -48,12 +49,6 @@ jest.mock(
           RichTextEditorPreviewerNew
         </div>
       )
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="errorPlaceHolder">ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../hooks/authHooks', () => ({
@@ -90,6 +85,41 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 describe('KPI list component', () => {
+  it('asks for the saved page size and shows the pager when the server has more KPIs', async () => {
+    (getListKPIs as jest.Mock).mockResolvedValueOnce({
+      data: KPI_DATA,
+      paging: { after: 'next-page', total: 20 },
+    });
+
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    // The fetched page never holds more rows than the page size, so only the cursor can say a
+    // second page exists.
+    expect(await screen.findByTestId('next')).toBeInTheDocument();
+    expect(getListKPIs).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 15 })
+    );
+  });
+
+  it('shows the pager when every KPI fits on one page', async () => {
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    expect(await screen.findByText('Description KPI')).toBeInTheDocument();
+    expect(screen.getByTestId('next')).toBeInTheDocument();
+  });
+
+  it('hides the pager when there are no KPIs', async () => {
+    (getListKPIs as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 0 },
+    });
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => expect(getListKPIs).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('next')).not.toBeInTheDocument();
+  });
+
   it('Should render the kpi list', async () => {
     render(<KPIList />, { wrapper: MemoryRouter });
 
@@ -101,6 +131,14 @@ describe('KPI list component', () => {
 
     expect(descriptionKPI).toBeInTheDocument();
     expect(ownerKPI).toBeInTheDocument();
+  });
+
+  it('sizes the KPI columns to their content instead of fixed equal widths', async () => {
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    await screen.findByText('Description KPI');
+
+    expect(screen.getByRole('grid')).not.toHaveClass('tw:table-fixed');
   });
 
   it('Action button should work', async () => {

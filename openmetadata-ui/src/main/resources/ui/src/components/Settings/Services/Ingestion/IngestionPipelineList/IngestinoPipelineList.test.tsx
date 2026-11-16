@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
+import { DISABLED } from '../../../../../constants/constants';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
@@ -26,9 +27,15 @@ import { IngestionPipelineList } from './IngestionPipelineList.component';
 jest.mock('../../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
   jest
     .fn()
-    .mockImplementation(({ unreachableFallbackMessage }) => (
-      <p data-fallback={unreachableFallbackMessage}>AirflowMessageBanner</p>
-    ))
+    .mockImplementation(
+      ({ unreachableFallbackMessage, disabledFallbackMessage }) => (
+        <p
+          data-disabled-fallback={disabledFallbackMessage}
+          data-fallback={unreachableFallbackMessage}>
+          AirflowMessageBanner
+        </p>
+      )
+    )
 );
 
 jest.mock(
@@ -150,6 +157,28 @@ describe('IngestionPipelineList', () => {
     expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
       'data-fallback',
       'message.pipeline-service-unreachable-agent-actions'
+    );
+  });
+
+  it('should disable the bulk re-deploy button when the pipeline client is disabled', async () => {
+    // A client switched off in the configuration answers the status call with a healthy 200, so it
+    // reads as *available* — the only thing separating it from a working one is the platform. Left
+    // ungated, re-deploy stays clickable, every deploy call answers 200 without deploying, and the
+    // list reports the no-op as a success.
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: DISABLED,
+    }));
+
+    await renderList();
+
+    fireEvent.click(screen.getByText('rowSelection'));
+
+    expect(screen.getByTestId('bulk-re-deploy-button')).toBeDisabled();
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-disabled-fallback',
+      'message.pipeline-service-disabled-agent-actions'
     );
   });
 

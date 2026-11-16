@@ -10,36 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isUndefined } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import type { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import type { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
-import type { Glossary } from '../generated/entity/data/glossary';
 import {
   EntityStatus,
+  ProviderType,
   type GlossaryTerm,
 } from '../generated/entity/data/glossaryTerm';
-import type { Domain } from '../generated/entity/domains/domain';
 import type { Task } from '../generated/entity/tasks/task';
 import type { User } from '../generated/entity/teams/user';
-import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getGlossaryPath } from './RouterUtils';
-
-export interface TreeNodeLike {
-  id?: string;
-  value?: string | number;
-  name?: string;
-  title?: string;
-  checkable?: boolean;
-  isLeaf?: boolean;
-  selectable?: boolean;
-  children?: TreeNodeLike[];
-  [key: string]: unknown;
-}
 
 export const buildTree = (
   data: GlossaryTerm[],
@@ -217,40 +202,6 @@ export const updateGlossaryTermByFqn = (
   }) as ModifiedGlossary[];
 };
 
-export const findItemByFqn = (
-  list: ModifiedGlossaryTerm[] | Domain[],
-  fullyQualifiedName: string,
-  withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
-  for (const item of list) {
-    if (
-      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
-      fullyQualifiedName
-    ) {
-      return withReference
-        ? item
-        : {
-            ...item,
-            fullyQualifiedName:
-              item.fullyQualifiedName ??
-              (item as ModifiedGlossaryTerm).data?.tagFQN,
-            ...((item as ModifiedGlossaryTerm).data ?? {}),
-          };
-    }
-    if (item.children) {
-      const found = findItemByFqn(
-        item.children as ModifiedGlossaryTerm[],
-        fullyQualifiedName
-      );
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
 export const findExpandableKeys = (
   glossaryTerm?: ModifiedGlossaryTerm
 ): string[] => {
@@ -286,43 +237,6 @@ export const findExpandableKeysForArray = (
   });
 
   return expandableKeys;
-};
-
-export const filterTreeNodeOptions = (
-  options: Glossary[],
-  filterOptions: string[]
-): Glossary[] => {
-  if (isEmpty(filterOptions)) {
-    return options;
-  }
-
-  const filterNodes = (
-    nodes: ModifiedGlossaryTerm[]
-  ): ModifiedGlossaryTerm[] => {
-    return nodes.reduce(
-      (acc: ModifiedGlossaryTerm[], node: ModifiedGlossaryTerm) => {
-        const isMatching = filterOptions.includes(
-          node.fullyQualifiedName ?? ''
-        );
-
-        const filteredChildren = !isUndefined(node.children)
-          ? filterNodes(node.children as unknown as ModifiedGlossaryTerm[])
-          : [];
-
-        if (!isMatching) {
-          acc.push({
-            ...node,
-            children: filteredChildren,
-          });
-        }
-
-        return acc;
-      },
-      []
-    );
-  };
-
-  return filterNodes(options as ModifiedGlossaryTerm[]);
 };
 
 export const findAndUpdateNested = (
@@ -366,13 +280,43 @@ export const glossaryTermTableColumnsWidth = () => {
     // Ceiling for the same cell: under auto table layout an unbounded cell
     // would take its longest line's width and keep widening the column —
     // the two-line clamp only clamps against a bounded box.
-    descriptionMax: 600,
+    descriptionMax: 480,
     reviewers: 200,
     synonyms: 200,
     owners: 220,
     status: 150,
   };
 };
+
+interface TermStatusNode {
+  fullyQualifiedName?: string;
+  entityStatus?: EntityStatus;
+  children?: unknown[];
+}
+
+/** The term tree with one term's status replaced, wherever it sits. */
+export const updateGlossaryTermStatus = <T extends TermStatusNode>(
+  terms: T[],
+  targetFqn: string,
+  newStatus: EntityStatus
+): T[] =>
+  terms.map((term) => {
+    if (term.fullyQualifiedName === targetFqn) {
+      return { ...term, entityStatus: newStatus };
+    }
+    if (term.children?.length) {
+      return {
+        ...term,
+        children: updateGlossaryTermStatus(
+          term.children as T[],
+          targetFqn,
+          newStatus
+        ),
+      };
+    }
+
+    return term;
+  });
 
 export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
   `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
@@ -425,64 +369,14 @@ export const referenceURLValidator = (
   );
 };
 
-export const findTreeNode = (
-  nodes: TreeNodeLike[],
-  targetValue: string
-): TreeNodeLike | null => {
-  for (const node of nodes) {
-    if (node.value === targetValue) {
-      return node;
-    }
-    if (node.children) {
-      const found = findTreeNode(node.children, targetValue);
-      if (found) {
-        return found;
-      }
-    }
-  }
+const AWAITING_DECISION = new Set<EntityStatus>([
+  EntityStatus.Draft,
+  EntityStatus.InReview,
+]);
 
-  return null;
-};
-
-export const injectMissingInitialOptions = (
-  tree: TreeNodeLike[],
-  options: {
-    value: string;
-    label: string;
-    data?: { name?: string; displayName?: string };
-  }[]
-) => {
-  for (const option of options) {
-    if (findTreeNode(tree, option.value)) {
-      continue;
-    }
-
-    const segments = Fqn.split(option.value);
-    if (segments.length < 2) {
-      continue;
-    }
-
-    const leafName = segments[segments.length - 1];
-    const parentFqn = Fqn.build(...segments.slice(0, -1));
-    const parentNode = findTreeNode(tree, parentFqn);
-
-    if (parentNode) {
-      const displayName = option.data ? getEntityName(option.data) : leafName;
-
-      const syntheticChild: TreeNodeLike = {
-        id: `initial-${option.value}`,
-        value: option.value,
-        name: leafName,
-        title: displayName,
-        checkable: true,
-        isLeaf: true,
-        selectable: true,
-      };
-
-      if (!parentNode.children) {
-        parentNode.children = [];
-      }
-      parentNode.children.push(syntheticChild);
-    }
-  }
-};
+/** A term an automation (an AI agent) created that no one has approved yet. */
+export const isAiGeneratedDraft = (
+  term: Pick<GlossaryTerm, 'entityStatus' | 'provider'>
+): boolean =>
+  term.provider === ProviderType.Automation &&
+  AWAITING_DECISION.has(term.entityStatus ?? EntityStatus.Approved);

@@ -26,9 +26,12 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -134,7 +137,7 @@ class TestCaseIndexTest {
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
 
-    assertNull(result.get("dataQualityDimension"));
+    assertNull(result.get(TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
   }
 
   @Test
@@ -143,7 +146,45 @@ class TestCaseIndexTest {
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
 
-    assertEquals("Timeliness", result.get("dataQualityDimension"));
+    assertEquals("Timeliness", result.get(TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
+  }
+
+  @Test
+  void testDataQualityDimensionReferenceIsNotIndexed() {
+    // The name goes into its own field and the EntityReference is dropped: a document carrying a
+    // bare name under `dataQualityDimension` makes a search hit fail to deserialize back into a
+    // TestCase, whose field is an EntityReference.
+    TestCase tc = createTestCaseWithDimensions("Accuracy", "Timeliness");
+    Map<String, Object> doc = new HashMap<>();
+    doc.put(Entity.DATA_QUALITY_DIMENSION, JsonUtils.getMap(tc.getDataQualityDimension()));
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(doc);
+
+    assertFalse(result.containsKey(Entity.DATA_QUALITY_DIMENSION));
+    assertEquals("Timeliness", result.get(TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
+  }
+
+  @Test
+  void testDataQualityDimensionIsIndexedWithoutATestDefinition() {
+    // The dimension lives on the test case, so it must be denormalized even when the test
+    // definition cannot be resolved -- otherwise the reference would survive in the document.
+    TestCase tc =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withName("tc")
+            .withEntityLink("<#E::table::svc.db.schema.table>")
+            .withDataQualityDimension(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.DATA_QUALITY_DIMENSION)
+                    .withName("Validity"));
+    Map<String, Object> doc = new HashMap<>();
+    doc.put(Entity.DATA_QUALITY_DIMENSION, JsonUtils.getMap(tc.getDataQualityDimension()));
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(doc);
+
+    assertFalse(result.containsKey(Entity.DATA_QUALITY_DIMENSION));
+    assertEquals("Validity", result.get(TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD));
   }
 
   @Test
@@ -204,6 +245,32 @@ class TestCaseIndexTest {
 
     // Entity-specific
     assertNotNull(result.get("originEntityFQN"));
+  }
+
+  @Test
+  void testTestCaseWithoutALoadedResultLeavesTheIndexedResultAlone() {
+    // Most test case updates never load the latest result. Sending it as null would remove the
+    // indexed result and status that the data quality filters and dashboards read.
+    TestCase tc = createTestCaseWithDefinition().withTestCaseStatus(TestCaseStatus.Failed);
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
+
+    assertFalse(result.containsKey("testCaseResult"));
+    assertEquals(TestCaseStatus.Failed.value(), String.valueOf(result.get("testCaseStatus")));
+  }
+
+  @Test
+  void testTestCaseWithResultKeepsItsStatus() {
+    TestCase tc =
+        createTestCaseWithDefinition()
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTestCaseResult(
+                new TestCaseResult().withTimestamp(1L).withTestCaseStatus(TestCaseStatus.Failed));
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
+
+    assertNotNull(result.get("testCaseResult"));
+    assertEquals(TestCaseStatus.Failed.value(), String.valueOf(result.get("testCaseStatus")));
   }
 
   @Test

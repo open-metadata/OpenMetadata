@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactRenderer } from '@tiptap/react';
 import { SuggestionProps } from '@tiptap/suggestion';
 import tippy, { Instance, Props } from 'tippy.js';
 import { mentionSuggestion } from './mentionSuggestions';
@@ -90,7 +91,7 @@ describe('mentionSuggestion getReferenceClientRect null safety', () => {
       handler.onStart(makeSuggestionProps(() => null) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
-      const result = options.getReferenceClientRect?.();
+      const result = options?.getReferenceClientRect?.();
 
       expect(result).toBeInstanceOf(DOMRect);
     });
@@ -102,7 +103,7 @@ describe('mentionSuggestion getReferenceClientRect null safety', () => {
       handler.onStart(makeSuggestionProps(() => rect) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
-      const result = options.getReferenceClientRect?.();
+      const result = options?.getReferenceClientRect?.();
 
       expect(result).toBe(rect);
     });
@@ -114,7 +115,8 @@ describe('mentionSuggestion getReferenceClientRect null safety', () => {
 
       const [, options] = mockTippy.mock.calls[0];
 
-      expect(() => options.getReferenceClientRect?.()).not.toThrow();
+      expect(options?.getReferenceClientRect).toEqual(expect.any(Function));
+      expect(() => options?.getReferenceClientRect?.()).not.toThrow();
     });
   });
 
@@ -138,8 +140,7 @@ describe('mentionSuggestion getReferenceClientRect null safety', () => {
 
       handler.onUpdate(makeSuggestionProps(() => null) as SuggestionProps);
 
-      const { getReferenceClientRect } =
-        mockTippyInstance.setProps.mock.calls[0][0];
+      const { getReferenceClientRect } = mockSetProps.mock.calls[0][0];
       const result = getReferenceClientRect();
 
       expect(result).toBeInstanceOf(DOMRect);
@@ -154,10 +155,29 @@ describe('mentionSuggestion getReferenceClientRect null safety', () => {
 
       handler.onUpdate(makeSuggestionProps(() => rect) as SuggestionProps);
 
-      const { getReferenceClientRect } =
-        mockTippyInstance.setProps.mock.calls[0][0];
+      const { getReferenceClientRect } = mockSetProps.mock.calls[0][0];
 
       expect(getReferenceClientRect()).toBe(rect);
     });
+  });
+
+  // Suggestion awaits async items before onStart, so a faster later query can
+  // deliver onUpdate first.
+  it('should render the newest props when onUpdate arrives before onStart', () => {
+    const handler = mentionSuggestion().render();
+    const earlier = makeSuggestionProps(() => new DOMRect()) as SuggestionProps;
+    const later = {
+      ...makeSuggestionProps(() => new DOMRect()),
+      query: 'later',
+    } as SuggestionProps;
+
+    expect(() => handler.onUpdate(later)).not.toThrow();
+
+    handler.onStart(earlier);
+
+    expect(ReactRenderer).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ props: later })
+    );
   });
 });

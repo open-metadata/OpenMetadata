@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -19,8 +20,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../components/common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -31,13 +32,12 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { ChangeDescription } from '../../generated/entity/type';
@@ -56,6 +56,7 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
@@ -129,17 +130,22 @@ const APICollectionVersionPage = () => {
       [currentVersionData]
     );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData?.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData?.changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData?.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData?.changeDescription, owners, tier, domains]
+  );
 
   // Permission fetching now lives in useEntityPermissions (above). This keeps the same
   // "only fetch the collection once view access is known" gate the old imperative `init()`
@@ -282,23 +288,28 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" span={24}>
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg">
               <Description
                 description={description}
                 entityType={EntityType.API_COLLECTION}
                 isDescriptionExpanded={isEmpty(apiEndpoints)}
                 showActions={false}
               />
-            </Col>
-            <Col className="p-t-sm m-x-lg" flex="auto">
+            </div>
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
               <APIEndpointsTab isVersionView />
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
-              <Space className="w-full" direction="vertical" size="large">
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -317,9 +328,9 @@ const APICollectionVersionPage = () => {
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
-            </Col>
-          </Row>
+              </Box>
+            </div>
+          </Box>
         ),
       },
 
@@ -362,13 +373,14 @@ const APICollectionVersionPage = () => {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.api-collection'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.api-collection'),
+            })}
+          />
+        </div>
       );
     }
 
@@ -378,14 +390,15 @@ const APICollectionVersionPage = () => {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={EntityType.API_COLLECTION}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -393,7 +406,7 @@ const APICollectionVersionPage = () => {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -401,17 +414,28 @@ const APICollectionVersionPage = () => {
                 permissions={collectionPermissions}
                 type={EntityType.API_COLLECTION}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
-                    className="tabs-new"
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
-                </Col>
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Tabs.List size="sm" type="underline" variant="card">
+                      {tabs.map(({ key, label }) => (
+                        <Tabs.Item id={key} key={key}>
+                          {label}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 

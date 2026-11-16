@@ -125,4 +125,29 @@ class DeadlockRetryTest {
     assertFalse(DeadlockRetry.isDeadlock(new IllegalStateException("unrelated")), "not a deadlock");
     assertFalse(DeadlockRetry.isDeadlock(null), "null is not a deadlock");
   }
+
+  @Test
+  void onlyAStatementWhoseOwnErrorRolledBackTheTransactionCounts() {
+    SQLException postgresDeadlock = new SQLException("deadlock detected", "40P01");
+    SQLException lockWaitTimeout = new SQLException("Lock wait timeout exceeded", "40001", 1205);
+    SQLException rejectedAfterDeadlock =
+        new SQLException("current transaction is aborted", "25P02", postgresDeadlock);
+
+    assertTrue(
+        DeadlockRetry.rollsBackTransaction((SQLException) deadlock().getCause()),
+        "MySQL deadlock, errno 1213");
+    assertTrue(DeadlockRetry.rollsBackTransaction(postgresDeadlock), "Postgres deadlock");
+    assertTrue(
+        DeadlockRetry.rollsBackTransaction(new SQLException("could not serialize", "40001")),
+        "Postgres serialization failure");
+    assertFalse(
+        DeadlockRetry.rollsBackTransaction(lockWaitTimeout),
+        "a MySQL lock wait timeout rolls back only its statement, although Connector/J reports"
+            + " it as 40001");
+    assertFalse(
+        DeadlockRetry.rollsBackTransaction(rejectedAfterDeadlock),
+        "the Postgres driver chains the deadlock into every statement it rejects afterwards");
+    assertTrue(DeadlockRetry.isLockWaitTimeout(lockWaitTimeout), "MySQL errno 1205");
+    assertFalse(DeadlockRetry.isLockWaitTimeout(postgresDeadlock), "not a lock wait timeout");
+  }
 }

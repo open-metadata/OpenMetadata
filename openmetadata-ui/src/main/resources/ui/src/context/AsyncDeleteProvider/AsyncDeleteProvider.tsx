@@ -14,14 +14,16 @@ import { AxiosError } from 'axios';
 import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
+import {
+  AsyncDeleteJob,
+  AsyncDeleteWebsocketResponse,
+} from '../../interface/entity/asyncDelete.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
 import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   AsyncDeleteContextType,
-  AsyncDeleteJob,
   AsyncDeleteProviderProps,
-  AsyncDeleteWebsocketResponse,
   DeleteWidgetAsyncFormFields,
 } from './AsyncDeleteProvider.interface';
 
@@ -57,7 +59,12 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
 
       // In case of recursive delete if false and the deleting entity has data.
       // sometime socket throw the error before the API response
-      if (asyncDeleteJobRef.current?.status === 'FAILED') {
+      // Only this job's own early failure counts; a FAILED left by an earlier job must not
+      // report this one as failed.
+      if (
+        asyncDeleteJobRef.current?.jobId === response.jobId &&
+        asyncDeleteJobRef.current?.status === 'FAILED'
+      ) {
         showErrorToast(
           asyncDeleteJobRef.current.error ??
             t('server.delete-entity-error', {
@@ -93,9 +100,10 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
   const handleDeleteEntityWebsocketResponse = (
     response: AsyncDeleteWebsocketResponse
   ) => {
+    // The websocket message is newer than the stored job, so its jobId and status must win.
     const updatedAsyncDeleteJob: Partial<AsyncDeleteJob> = {
-      ...response,
       ...asyncDeleteJob,
+      ...response,
     };
     setAsyncDeleteJob(updatedAsyncDeleteJob);
     asyncDeleteJobRef.current = updatedAsyncDeleteJob;

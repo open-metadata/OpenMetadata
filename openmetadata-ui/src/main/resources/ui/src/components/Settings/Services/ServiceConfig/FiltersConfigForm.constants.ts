@@ -17,7 +17,7 @@ import {
   FolderCode,
   LayersThree01,
   Table,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { ServiceConnectionFilterPatternFields } from '../../../../enums/ServiceConnection.enum';
 import { FilterOperator, IconComponent } from './FiltersConfigForm.types';
 

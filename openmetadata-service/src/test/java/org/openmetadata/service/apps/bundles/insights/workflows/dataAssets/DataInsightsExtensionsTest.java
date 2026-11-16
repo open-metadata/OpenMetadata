@@ -26,7 +26,7 @@ class DataInsightsExtensionsTest {
             new Session() {
               @Override
               public void beforeBatch(
-                  List<? extends org.openmetadata.schema.EntityInterface> entities) {
+                  List<? extends org.openmetadata.schema.EntityInterface<?>> entities) {
                 calls.add("batch");
               }
 

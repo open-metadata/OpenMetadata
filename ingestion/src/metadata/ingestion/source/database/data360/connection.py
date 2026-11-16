@@ -87,7 +87,6 @@ class Data360Connection(BaseConnection[Data360ConnectionConfig, Salesforce]):
                 client=client,
                 entity_type=entity_type,
                 dataspace_name=dataspace_name,
-                pagination_limit=PROBE_LIMIT,
                 log_warning=logger.warning,
             )
 

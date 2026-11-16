@@ -69,7 +69,12 @@ const IncidentTypeAreaChartWidget = ({
           weight="semibold">
           {latestValue}
         </Typography>
-        <CustomAreaChart data={chartData} height={height} name={name} />
+        <CustomAreaChart
+          ariaLabel={title}
+          data={chartData}
+          height={height}
+          name={name}
+        />
       </>
     );
   }, [title, chartData, name, height]);

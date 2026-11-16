@@ -34,7 +34,9 @@ final class RdfBody {
    * bounding bytes bounds the serialized length too; the headroom {@link
    * ResponseBudget#DEFAULT_BUDGET_FACTOR} reserves covers JSON escaping and the envelope.
    */
-  static final int MAX_BYTES = (int) ResponseBudget.defaultBudgetChars();
+  static int maxBytes() {
+    return (int) ResponseBudget.defaultBudgetChars();
+  }
 
   static final int MIN_BYTES = 1024;
 

@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { Alert, TreeSelect } from 'antd';
+import {
+  Alert,
+  TreeSelect,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -37,10 +42,15 @@ const TeamsSelectable = ({
   maxValueCount,
 }: TeamsSelectableProps) => {
   const [noTeam, setNoTeam] = useState<boolean>(false);
-  const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { t } = useTranslation();
-  const onChange = (newValue: { label: string; value: string }[]) => {
+  const onChange = (value: TreeSelectNode | TreeSelectNode[] | null) => {
+    const newValue: TreeSelectNode[] = [];
+    if (Array.isArray(value)) {
+      newValue.push(...value);
+    } else if (value) {
+      newValue.push(value);
+    }
     onSelectionChange &&
       onSelectionChange(
         newValue.map(
@@ -54,38 +64,65 @@ const TeamsSelectable = ({
       );
   };
 
-  const loadOptions = async () => {
-    try {
-      setIsLoading(true);
-      const { data } = await getTeamsHierarchy(filterJoinable);
-      const sortedData = [...data].sort((a, b) => {
-        const nameA = a.fullyQualifiedName ?? '';
-        const nameB = b.fullyQualifiedName ?? '';
+  // TreeSelect fetches once when it first opens; awaiting the shared request
+  // keeps an early open (e.g. a popover opened straight away) from caching an empty tree.
+  const teamsRequest = useRef<{
+    filterJoinable?: boolean;
+    promise: Promise<TeamHierarchy[]>;
+  }>();
+  const notifiedError = useRef<unknown>();
 
-        return nameA.localeCompare(nameB);
-      });
-      setTeams(sortedData);
-      showTeamsAlert && setNoTeam(isEmpty(data));
-    } catch (error) {
+  const notifyError = useCallback((error: unknown) => {
+    // The mount load and the picker share one request; toast its failure once.
+    if (error !== notifiedError.current) {
+      notifiedError.current = error;
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadOptions();
   }, []);
 
-  const showLeafIcon = false;
+  const loadTeams = useCallback(() => {
+    if (
+      !teamsRequest.current ||
+      teamsRequest.current.filterJoinable !== filterJoinable
+    ) {
+      const promise = getTeamsHierarchy(filterJoinable)
+        .then(({ data }) =>
+          [...data].sort((a, b) =>
+            (a.fullyQualifiedName ?? '').localeCompare(
+              b.fullyQualifiedName ?? ''
+            )
+          )
+        )
+        .catch((error) => {
+          // Forget the failed request so the next open retries.
+          teamsRequest.current = undefined;
 
-  const teamsTree = useMemo(
-    () => buildTeamsSelectableTree(teams, filterJoinable),
-    [teams, filterJoinable]
+          throw error;
+        });
+      teamsRequest.current = { filterJoinable, promise };
+    }
+
+    return teamsRequest.current?.promise ?? Promise.resolve([]);
+  }, [filterJoinable]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    loadTeams()
+      .then((data) => showTeamsAlert && setNoTeam(isEmpty(data)))
+      .catch(notifyError)
+      .finally(() => setIsLoading(false));
+  }, [loadTeams, notifyError, showTeamsAlert]);
+
+  const fetchData = useCallback(
+    async () => ({
+      nodes: buildTeamsSelectableTree(await loadTeams(), filterJoinable),
+    }),
+    [loadTeams, filterJoinable]
   );
 
   const selectedTeamsInternal = useMemo(() => {
     return selectedTeams?.map((selectedTeam) => ({
+      id: selectedTeam.id,
       label: getEntityName(selectedTeam),
       value: selectedTeam.id,
     }));
@@ -94,33 +131,27 @@ const TeamsSelectable = ({
   return (
     <>
       <TreeSelect
-        allowClear
-        labelInValue
         multiple
-        showSearch
-        treeDefaultExpandAll
+        searchable
         data-testid="team-select"
-        dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        loading={isLoading}
-        maxTagCount={maxValueCount}
+        fetchData={fetchData}
+        isLoading={isLoading}
+        maxVisibleItems={maxValueCount}
         placeholder={placeholder}
-        showCheckedStrategy={TreeSelect.SHOW_CHILD}
-        style={{ width: '100%' }}
-        treeData={teamsTree}
-        treeLine={{ showLeafIcon }}
-        treeNodeFilterProp="title"
+        showCheckbox={false}
+        showIcon={false}
         value={selectedTeamsInternal}
         onChange={onChange}
+        onFetchError={notifyError}
       />
       {noTeam && (
         <Alert
           showIcon
           className="m-t-md"
-          message={t('message.no-entity-data-available', {
+          title={t('message.no-entity-data-available', {
             entity: t('label.team-plural'),
           })}
-          type="info"
+          variant="brand"
         />
       )}
     </>

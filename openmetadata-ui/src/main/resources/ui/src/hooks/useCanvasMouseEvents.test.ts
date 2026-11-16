@@ -13,7 +13,7 @@
 import { renderHook } from '@testing-library/react';
 import { MutableRefObject, RefObject } from 'react';
 import { Edge } from 'reactflow';
-import { CanvasButton } from '../utils/CanvasButtonUtils';
+import { CanvasButton, ECanvasButtonType } from '../utils/CanvasButtonUtils';
 import { useCanvasMouseEvents } from './useCanvasMouseEvents';
 
 describe('useCanvasMouseEvents', () => {
@@ -58,7 +58,7 @@ describe('useCanvasMouseEvents', () => {
     width: 36,
     height: 36,
     edgeId: 'edge-1',
-    type: 'pipeline',
+    type: ECanvasButtonType.Pipeline,
   };
 
   beforeEach(() => {
@@ -168,6 +168,39 @@ describe('useCanvasMouseEvents', () => {
       expect.any(Object)
     );
     expect(mockOnEdgeClick).toHaveBeenCalledWith(mockEdge, mockMouseEvent);
+  });
+
+  it('keeps an edge click from reaching the pane click handler', () => {
+    const { result } = renderHook(() =>
+      useCanvasMouseEvents({
+        containerRef,
+        getEdgeAtPointRef,
+        getButtonAtPointRef,
+        setHoveredButtonRef,
+        onEdgeClickRef,
+        onEdgeHoverRef,
+        hoverTimeoutRef,
+        isOverPopoverRef,
+      })
+    );
+    const flowRoot = document.createElement('div');
+    const pane = document.createElement('div');
+    const onPaneClick = jest.fn();
+    flowRoot.appendChild(pane);
+    flowRoot.addEventListener('click', onPaneClick);
+    pane.addEventListener('click', result.current.handleClick);
+
+    mockGetButtonAtPoint.mockReturnValue(null);
+    mockGetEdgeAtPoint.mockReturnValue(mockEdge);
+    pane.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(mockOnEdgeClick).toHaveBeenCalledTimes(1);
+    expect(onPaneClick).not.toHaveBeenCalled();
+
+    mockGetEdgeAtPoint.mockReturnValue(null);
+    pane.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(onPaneClick).toHaveBeenCalledTimes(1);
   });
 
   it('does not call click handlers when container is not available', () => {

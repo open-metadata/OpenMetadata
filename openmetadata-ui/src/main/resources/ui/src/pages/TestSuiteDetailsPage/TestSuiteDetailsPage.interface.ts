@@ -48,6 +48,7 @@ export interface UseTestSuiteDetailsPageResult {
   pagingData: NextPreviousProps;
   showPagination: boolean;
   ingestionPipelineCount: number;
+  handlePipelinesChange: (total: number) => void;
   canAddMultipleDomains: boolean;
   canAddMultipleUserOwners: boolean;
   canAddMultipleTeamOwner: boolean;
@@ -59,6 +60,7 @@ export interface UseTestSuiteDetailsPageResult {
     includeIds: string[];
     excludeIds: string[];
   }) => Promise<void>;
+  handleTestCasesRemoved: () => Promise<void>;
   onUpdateOwner: (updatedOwners: TestSuite['owners']) => Promise<void>;
   handleDomainUpdate: (
     updateDomain?: EntityReference | EntityReference[]

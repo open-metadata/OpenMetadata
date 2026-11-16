@@ -175,71 +175,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
           {children}
         </div>
       ) : null,
-    Tabs: (() => {
-      const TabsRoot = ({
-        children,
-        onSelectionChange,
-        selectedKey: _selectedKey,
-        ...props
-      }: {
-        children: React.ReactNode;
-        onSelectionChange?: (key: React.Key) => void;
-        selectedKey?: React.Key;
-        [key: string]: unknown;
-      }) => (
-        <div data-testid={props['data-testid'] as string}>
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child, {
-                  onSelectionChange,
-                } as Record<string, unknown>)
-              : child
-          )}
-        </div>
-      );
-      const TabsList = ({
-        children,
-        onSelectionChange,
-      }: {
-        children: React.ReactNode;
-        onSelectionChange?: (key: React.Key) => void;
-        [key: string]: unknown;
-      }) => (
-        <div data-testid="tabs-list" role="tablist">
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child, {
-                  onSelectionChange,
-                } as Record<string, unknown>)
-              : child
-          )}
-        </div>
-      );
-      const TabsItem = ({
-        id,
-        label,
-        badge,
-        onSelectionChange,
-        ...itemProps
-      }: {
-        id: string;
-        label: React.ReactNode;
-        badge?: string;
-        onSelectionChange?: (key: React.Key) => void;
-        [key: string]: unknown;
-      }) => (
-        <button
-          data-testid={itemProps['data-testid'] as string}
-          role="tab"
-          type="button"
-          onClick={() => onSelectionChange?.(id)}>
-          {label}
-          {badge}
-        </button>
-      );
-
-      return Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
-    })(),
     Owner: jest.fn().mockImplementation(
       ({
         selectorContent,
@@ -309,14 +244,6 @@ jest.mock(
     return jest
       .fn()
       .mockImplementation(() => <div>HeaderBreadcrumb.component</div>);
-  }
-);
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
   }
 );
 jest.mock(
@@ -715,7 +642,9 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(
-        await screen.findByText('ErrorPlaceHolder.component')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
 
@@ -1154,7 +1083,9 @@ describe('TestSuiteDetailsPage component', () => {
       // When the suite fetch resolves to no data, the page should fall back to
       // the error placeholder rather than rendering a degraded empty header.
       expect(
-        await screen.findByText('ErrorPlaceHolder.component')
+        await screen.findByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
       ).toBeInTheDocument();
     });
 
@@ -1191,6 +1122,34 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(await screen.findByTestId('pipeline')).toBeInTheDocument();
+    });
+
+    it('should tell the pipeline tab a deleted suite is deleted', async () => {
+      const TestSuitePipelineTab = jest.requireMock(
+        '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component'
+      ).default;
+      mockGetTestSuiteByName.mockResolvedValue({
+        ...mockTestSuite,
+        deleted: true,
+      });
+
+      await act(async () => {
+        renderWithQueryClient(<TestSuiteDetailsPage />);
+      });
+
+      const pipelineTab = await screen.findByTestId('pipeline');
+
+      await act(async () => {
+        fireEvent.click(pipelineTab);
+      });
+
+      expect(
+        await screen.findByTestId('test-suite-pipeline-tab')
+      ).toBeInTheDocument();
+      expect(TestSuitePipelineTab).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deleted: true }),
+        expect.anything()
+      );
     });
 
     it('should navigate after delete action', async () => {

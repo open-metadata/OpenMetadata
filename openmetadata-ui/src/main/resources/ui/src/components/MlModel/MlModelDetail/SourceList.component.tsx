@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, RightOutlined } from '@ant-design/icons';
-import { Col, Row, Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
+
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -32,7 +36,12 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
 
   return (
     <div className="m-t-sm">
-      <Space className="m-b-xs">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-b-xs"
+        gap={2}
+        itemClassName="layout-space-item">
         <span
           aria-label={isActive ? t('label.collapse') : t('label.expand')}
           role="button"
@@ -42,48 +51,66 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             setIsActive((prev) => !prev)
           )}>
           {isActive ? (
-            <DownOutlined className="text-xs text-primary cursor-pointer" />
+            <ChevronDown
+              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
+              size={14}
+            />
           ) : (
-            <RightOutlined className="text-xs text-primary cursor-pointer" />
+            <ChevronRight
+              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
+              size={14}
+            />
           )}
         </span>
-        <Typography.Text className="font-medium m-y-0">
+        <Typography className="font-medium m-y-0">
           {t('label.source-plural')}
-        </Typography.Text>
-      </Space>
+        </Typography>
+      </Box>
       {showFeatureSources &&
         feature.featureSources?.map((source, i) => (
-          <Row
-            className="feature-source-info"
+          <Box
+            className="layout-row feature-source-info"
             key={source.fullyQualifiedName}
-            wrap={false}>
-            <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
-            <Col span={6}>
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.name')}:`}
-              </Typography.Text>
-              <Typography.Text className="m-l-xs">
-                {source.name}
-              </Typography.Text>
-            </Col>
-            <Col span={6}>
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.type')}:`}
-              </Typography.Text>
-              <Typography.Text className="m-l-xs">
-                {source.dataType}
-              </Typography.Text>
-            </Col>
-            <Col span={11}>
-              <Row>
-                <Col flex="100px">
-                  <Typography.Text className="text-grey-muted">
+            wrap="nowrap">
+            <Box
+              className="layout-column tw:block"
+              style={{
+                maxWidth: '4.166666666666666%',
+                flex: '0 0 4.166666666666666%',
+              }}>
+              {String(i + 1).padStart(2, '0')}
+            </Box>
+            <Box
+              className="layout-column tw:block"
+              style={{ maxWidth: '25%', flex: '0 0 25%' }}>
+              <Typography color="secondary">{`${t('label.name')}:`}</Typography>
+              <Typography className="m-l-xs">{source.name}</Typography>
+            </Box>
+            <Box
+              className="layout-column tw:block"
+              style={{ maxWidth: '25%', flex: '0 0 25%' }}>
+              <Typography color="secondary">{`${t('label.type')}:`}</Typography>
+              <Typography className="m-l-xs">{source.dataType}</Typography>
+            </Box>
+            <Box
+              className="layout-column tw:block"
+              style={{
+                maxWidth: '45.83333333333333%',
+                flex: '0 0 45.83333333333333%',
+              }}>
+              <Box className="layout-row" wrap="wrap">
+                <Box
+                  className="layout-column tw:block"
+                  style={{ flex: '0 0 100px' }}>
+                  <Typography color="secondary">
                     {`${t('label.data-entity', {
                       entity: t('label.source'),
                     })}:`}
-                  </Typography.Text>
-                </Col>
-                <Col flex="auto">
+                  </Typography>
+                </Box>
+                <Box
+                  className="layout-column tw:block"
+                  style={{ flex: 'auto' }}>
                   <Link
                     to={entityUtilClassBase.getEntityLink(
                       EntityType.TABLE,
@@ -93,10 +120,10 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
                     )}>
                     {source.dataSource?.fullyQualifiedName}
                   </Link>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
         ))}
     </div>
   );

@@ -23,9 +23,9 @@ export interface OdcsDataContract {
      */
     authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
     /**
-     * ISO 8601 UTC creation timestamp.
+     * ISO 8601 UTC creation timestamp, e.g. 2026-09-15T10:21:14.936Z.
      */
-    contractCreatedTs?: Date;
+    contractCreatedTs?: string;
     /**
      * Non-standard key-value pairs.
      */
@@ -95,9 +95,10 @@ export interface OdcsDataContract {
      */
     tags?: string[];
     /**
-     * Team members.
+     * Team of the contract. ODCS v3.0.2 wrote a bare array of members; that deprecated form is
+     * normalized into the object form on import.
      */
-    team?: OdcsTeamMember[];
+    team?: OdcsTeam;
     /**
      * Primary property association.
      */
@@ -122,6 +123,7 @@ export enum OdcsAPIVersion {
     V301 = "v3.0.1",
     V302 = "v3.0.2",
     V310 = "v3.1.0",
+    V320 = "v3.2.0",
 }
 
 /**
@@ -152,9 +154,9 @@ export interface OdcsCustomProperty {
      */
     property?: string;
     /**
-     * Property value.
+     * Property value. ODCS allows any JSON value.
      */
-    value?: string;
+    value?: any;
     [property: string]: any;
 }
 
@@ -212,6 +214,11 @@ export interface OdcsPricing {
  */
 export interface OdcsQualityRule {
     /**
+     * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+     * `invalidValues` check.
+     */
+    arguments?: OdcsQualityRuleArguments;
+    /**
      * External rule documentation.
      */
     authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
@@ -224,9 +231,9 @@ export interface OdcsQualityRule {
      */
     column?: string;
     /**
-     * Additional execution properties.
+     * Additional execution properties, each as a {property, value} pair.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Rule documentation.
      */
@@ -239,6 +246,12 @@ export interface OdcsQualityRule {
      * Vendor name (soda, greatExpectations, etc.).
      */
     engine?: string;
+    /**
+     * Stable identifier of the rule (ODCS 3.1.0). When the rule is turned into an OpenMetadata
+     * test case, the id becomes the test case name, so re-importing the same rule updates that
+     * test case instead of creating another one.
+     */
+    id?: string;
     /**
      * Vendor-specific configuration.
      */
@@ -323,6 +336,34 @@ export interface OdcsQualityRule {
 }
 
 /**
+ * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+ * `invalidValues` check.
+ *
+ * Arguments of an ODCS 3.1.0 library metric. Open, because each metric defines its own
+ * arguments.
+ */
+export interface OdcsQualityRuleArguments {
+    /**
+     * Values that count as missing on top of null (`missingValues` metric).
+     */
+    missingValues?: string[];
+    /**
+     * Regex a property must match (`invalidValues` metric).
+     */
+    pattern?: string;
+    /**
+     * Properties a table-level check applies to, e.g. the columns of a composite
+     * `duplicateValues` check.
+     */
+    properties?: string[];
+    /**
+     * Values a property may take (`invalidValues` metric).
+     */
+    validValues?: string[];
+    [property: string]: any;
+}
+
+/**
  * KPI classification.
  */
 export enum Dimension {
@@ -378,9 +419,9 @@ export interface OdcsRole {
      */
     access?: Access;
     /**
-     * Additional role attributes.
+     * Additional role attributes, each as a {property, value} pair.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Permissions summary.
      */
@@ -388,7 +429,7 @@ export interface OdcsRole {
     /**
      * Initial approval authority.
      */
-    firstLevelApprovers?: string[];
+    firstLevelApprovers?: string;
     /**
      * IAM role name (required).
      */
@@ -396,7 +437,7 @@ export interface OdcsRole {
     /**
      * Secondary approval authority.
      */
-    secondLevelApprovers?: string[];
+    secondLevelApprovers?: string;
     [property: string]: any;
 }
 
@@ -433,9 +474,9 @@ export interface OdcsSchemaElement {
      */
     criticalDataElement?: boolean;
     /**
-     * Non-standard attributes.
+     * Non-standard attributes, each as a {property, value} pair.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Aggregation level details (for objects).
      */
@@ -635,9 +676,9 @@ export interface OdcsServer {
      */
     catalog?: string;
     /**
-     * Non-standard attributes.
+     * Non-standard attributes, each as a {property, value} pair.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Database name.
      */
@@ -744,13 +785,13 @@ export interface OdcsSlaProperty {
      */
     unit?: string;
     /**
-     * Agreement specification (required).
+     * Agreement specification (required). ODCS allows any JSON value.
      */
-    value: string;
+    value: any;
     /**
-     * Extended value.
+     * Extended value. ODCS allows any JSON value.
      */
-    valueExt?: string;
+    valueExt?: any;
     [property: string]: any;
 }
 
@@ -826,6 +867,21 @@ export enum Tool {
     Slack = "slack",
     Teams = "teams",
     Ticket = "ticket",
+}
+
+/**
+ * Team of the contract. ODCS v3.0.2 wrote a bare array of members; that deprecated form is
+ * normalized into the object form on import.
+ *
+ * Team of the contract, as an object with its members. The deprecated ODCS v3.0.2 bare
+ * array of members is normalized into this object on import.
+ */
+export interface OdcsTeam {
+    /**
+     * Team members.
+     */
+    members?: OdcsTeamMember[];
+    [property: string]: any;
 }
 
 /**

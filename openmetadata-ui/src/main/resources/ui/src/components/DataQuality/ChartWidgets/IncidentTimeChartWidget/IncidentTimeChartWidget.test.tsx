@@ -12,12 +12,10 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { act, screen, waitFor } from '@testing-library/react';
+import { IncidentTimeMetricsType } from '../../../../enums/DataQuality.enum';
 import { fetchIncidentTimeMetrics } from '../../../../rest/dataQualityDashboardAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
-import {
-  IncidentTimeChartWidgetProps,
-  IncidentTimeMetricsType,
-} from '../../DataQuality.interface';
+import { IncidentTimeChartWidgetProps } from '../../DataQuality.interface';
 import IncidentTimeChartWidget from './IncidentTimeChartWidget.component';
 
 jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({

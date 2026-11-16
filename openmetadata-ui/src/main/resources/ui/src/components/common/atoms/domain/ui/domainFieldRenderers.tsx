@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { OwnerRef } from '@openmetadata/ui-core-components';
 import {
   Avatar,
   Box,
@@ -110,14 +109,6 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
     <Typography size="text-sm">{NO_DATA}</Typography>
   );
 
-type OwnerRenderers = {
-  toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[];
-  renderOwnerContent: (
-    owner: { name?: string; type?: string },
-    chip: ReactNode
-  ) => ReactNode;
-};
-
 // Owner links and tag chips navigate to their own entity, while the row or card underneath
 // navigates to the domain. The guard withholds only what an inner control will handle - a blanket
 // stopPropagation would also swallow clicks on the cell's padding and its "--" placeholder.
@@ -129,16 +120,13 @@ const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
 
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
-  toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
-  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
   options?: { showDashPlaceholder?: boolean }
 ): ReactNode =>
   withNestedLinkGuard(
     <Owner
       isCompactView={false}
       maxVisibleOwners={4}
-      owners={toOwnersWithHref(entity.owners)}
-      renderOwnerContent={renderOwnerContent}
+      owners={entity.owners}
       showDashPlaceholder={options?.showDashPlaceholder}
       showLabel={false}
     />
@@ -146,16 +134,8 @@ export const renderDomainOwnersCell = (
 
 export const renderDomainExpertsCell = (
   entity: { experts?: EntityReference[] },
-  toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
-  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
   options?: { showDashPlaceholder?: boolean }
-): ReactNode =>
-  renderDomainOwnersCell(
-    { owners: entity.experts },
-    toOwnersWithHref,
-    renderOwnerContent,
-    options
-  );
+): ReactNode => renderDomainOwnersCell({ owners: entity.experts }, options);
 
 export const renderDomainGlossaryTagsCell = (entity: TaggedEntity): ReactNode =>
   withNestedLinkGuard(

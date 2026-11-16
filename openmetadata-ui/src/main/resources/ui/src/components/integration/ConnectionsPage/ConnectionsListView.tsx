@@ -13,11 +13,12 @@
 
 import {
   Button,
-  EmptyPlaceholder,
+  FeaturedIcon,
   Owner,
   PaginationCardWithControls,
   Table,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import React, {
@@ -29,6 +30,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { SERVICE_EMPTY_STATE_ICON_CLASS } from '../../../constants/ServiceEmptyState.constant';
 import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -41,8 +46,10 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import ConnectionsFilterButton from './ConnectionsFilterButton';
@@ -51,9 +58,7 @@ import {
   DELETED_PARAM,
   ENTITY_TYPE_TO_CATEGORY,
   getConnectionsEmptyState,
-  GRID_PAGE_SIZE_OPTIONS,
   HEALTH_PARAM,
-  LIST_PAGE_SIZE_OPTIONS,
   SERVICE_TYPE_PARAM,
 } from './ConnectionsPage.constants';
 import ConnectionsPageSkeleton from './ConnectionsPageSkeleton';
@@ -336,15 +341,21 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
   const activeCategoryConfig = CATEGORY_CONFIGS.find(
     (config) => config.key === category
   );
-  const title =
-    category === 'all'
-      ? t('label.all-connections')
-      : t(activeCategoryConfig?.titleKey ?? 'label.connection-plural');
+  const getTitle = () => {
+    if (category === 'all') {
+      return t('label.all-connections');
+    }
+
+    return activeCategoryConfig
+      ? getServiceCategoryLabel(activeCategoryConfig.key)
+      : t('label.connection-plural');
+  };
+  const title = getTitle();
   const getCategorySubtitle = (config: (typeof CATEGORY_CONFIGS)[number]) =>
     config.descriptionKey
       ? t(config.descriptionKey)
       : t('message.connections-service-type-description', {
-          serviceType: t(config.titleKey),
+          serviceType: getServiceCategoryLabel(config.key),
         });
   const subtitle = activeCategoryConfig
     ? getCategorySubtitle(activeCategoryConfig)
@@ -369,9 +380,6 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       service.serviceType as string
     );
     const serviceCategory = ENTITY_TYPE_TO_CATEGORY[service.entityType];
-    const categoryTitleKey = CATEGORY_CONFIGS.find(
-      (config) => config.key === serviceCategory
-    )?.titleKey;
 
     return (
       <Table.Row
@@ -382,25 +390,36 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         onAction={() => openService(service)}>
         <Table.Cell>
           <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-            {/* Neutral rather than brand: the connector logos carry their own colours, and a
-                brand-tinted tile behind them reads as a selected state. */}
-            <div className="tw:flex tw:size-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-tertiary">
-              {serviceLogo && (
-                <img
-                  alt={service.serviceType as string}
-                  className="tw:size-[22px] tw:object-contain"
-                  src={serviceLogo}
-                />
-              )}
-            </div>
-            {/* Native `title` rather than a core Tooltip: this renders once per row on every page,
-                and a react-aria Tooltip per row is real overhead for a name that is usually not
-                even truncated. The cards, which are fewer and larger, use the core Tooltip. */}
-            <span
-              className="tw:min-w-0 tw:truncate tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary"
-              title={getEntityName(service)}>
-              {getEntityName(service)}
-            </span>
+            <FeaturedIcon
+              color="gray"
+              icon={
+                serviceLogo ? (
+                  <img
+                    alt={service.serviceType as string}
+                    className="tw:size-[22px] tw:object-contain"
+                    src={serviceLogo}
+                  />
+                ) : undefined
+              }
+              radius="lg"
+              shape="square"
+              size="md"
+              theme="modern"
+            />
+            {/* The name truncates hard, so the full value has to be reachable. The
+                Tooltip trigger is a react-aria button that consumes the press, so it
+                navigates the row itself via onTriggerPress to stay clickable. */}
+            <Tooltip
+              title={getEntityName(service)}
+              triggerClassName="tw:min-w-0 tw:text-left"
+              onTriggerPress={() => openService(service)}>
+              <Typography
+                ellipsis
+                className="tw:text-sm tw:leading-5 tw:text-primary"
+                weight="semibold">
+                {getEntityName(service)}
+              </Typography>
+            </Tooltip>
           </div>
         </Table.Cell>
         <Table.Cell>
@@ -411,7 +430,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         {isAllTab && (
           <Table.Cell>
             <Typography className="tw:text-secondary">
-              {categoryTitleKey ? t(categoryTitleKey) : t('label.service')}
+              {serviceCategory
+                ? getServiceCategoryLabel(serviceCategory)
+                : t('label.service')}
             </Typography>
           </Table.Cell>
         )}
@@ -425,8 +446,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
             <Owner
               isCompactView
               showDashPlaceholder
+              labelVariant="cell"
               maxVisibleOwners={1}
-              owners={toOwnerRefs(service.owners ?? [])}
+              owners={service.owners ?? []}
             />
           </div>
         </Table.Cell>
@@ -498,10 +520,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         <div
           className="tw:relative tw:min-h-[400px]"
           data-testid="connections-list-error-wrapper">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="connections-list-error"
             title={t('message.something-went-wrong')}
-            variant="blank"
           />
         </div>
       );
@@ -511,7 +532,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       <div
         className="tw:relative tw:min-h-[400px]"
         data-testid="connections-list-empty-wrapper">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="connections-list-empty-first-run"
           description={!isNarrowed && t(emptyState.descriptionKey)}
           // `footer` rather than `actions` so the button keeps the LimitWrapper the header button
@@ -535,13 +556,12 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               ? t('message.no-data-available-for-selected-filter')
               : t(emptyState.titleKey)
           }
-          variant="blank"
         />
       </div>
     ) : (
       <div
         aria-busy={isRefreshing}
-        className={`tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs tw:transition-opacity ${
+        className={`tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-xs tw:transition-opacity ${
           isRefreshing ? 'tw:opacity-60' : ''
         }`}
         data-testid="connections-results">
@@ -682,7 +702,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         />
       )}
 
-      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
+      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:pl-4">
         {!isOnboardingActive && (
           <>
             <div className="tw:mb-[18px]">
@@ -696,7 +716,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 {isCountReady ? `${title} (${totalRows})` : title}
               </Typography>
               <Typography
-                className="tw:mt-1 tw:text-tertiary"
+                className="tw:mt-1 tw:text-tertiary tw:ml-2"
                 data-testid="connections-page-subtitle"
                 size="text-sm">
                 {subtitle}
@@ -711,6 +731,15 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 searchable
                 label={t('label.all-service-types')}
                 options={serviceTypeOptions}
+                renderItemIcon={(serviceType) => (
+                  <img
+                    alt={serviceType}
+                    className={`tw:size-4 tw:object-contain ${getServiceLogoThemeClass(
+                      serviceType
+                    )}`}
+                    src={serviceUtilClassBase.getServiceLogo(serviceType)}
+                  />
+                )}
                 testId="connections-service-type-filter"
                 value={selectedServiceTypes}
                 onChange={(values) => setCsvParam(SERVICE_TYPE_PARAM, values)}

@@ -13,6 +13,8 @@
 Validator for column values to not match regex test case
 """
 
+from typing import cast
+
 from sqlalchemy import Column
 from sqlalchemy.exc import CompileError, SQLAlchemyError
 
@@ -36,6 +38,7 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -62,6 +65,28 @@ class ColumnValuesToNotMatchRegexValidator(
             logger.warning(f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`")
             return self.run_query_results(self.runner, Metrics.notLikeCount, column, **kwargs)
 
+    def _run_results_and_row_count(self, metric: Metrics, column: Column, **kwargs) -> dict:
+        """Compute the violation count and its row count denominator in a single query
+
+        The `LIKE` fallback reports under the metric the test case asked for, the same way
+        `_run_results` does, so the evaluation reads one key whichever query ran.
+
+        Args:
+            metric: metric
+            column: column
+        """
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+
+        try:
+            return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
+        except (CompileError, SQLAlchemyError) as err:
+            logger.warning("Could not use `REGEXP` due to - %s. Falling back to `LIKE`", err)
+            results = self.run_query_results_with_row_count(self.runner, Metrics.notLikeCount, column, **kwargs)
+            return {
+                metric.name: results[Metrics.notLikeCount.name],
+                Metrics.rowCount.name: results[Metrics.rowCount.name],
+            }
+
     def _execute_dimensional_validation(
         self,
         column: Column,
@@ -84,37 +109,26 @@ class ColumnValuesToNotMatchRegexValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-        dimension_results = []
+        forbidden_regex = test_params[BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX]
 
-        try:
-            forbidden_regex = test_params[BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX]
+        metric_expressions = {
+            Metrics.notRegexCount.name: add_props(expression=forbidden_regex)(Metrics.notRegexCount.value)(column).fn(),
+            Metrics.rowCount.name: Metrics.rowCount().fn(),
+            DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
+        }
 
-            metric_expressions = {
-                Metrics.notRegexCount.name: add_props(expression=forbidden_regex)(Metrics.notRegexCount.value)(
-                    column
-                ).fn(),
-                Metrics.rowCount.name: Metrics.rowCount().fn(),
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
-            }
+        metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.notRegexCount.name]
 
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = metric_expressions[Metrics.notRegexCount.name]
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
     def compute_row_count(self, column: Column):
         """Compute row count for the given column

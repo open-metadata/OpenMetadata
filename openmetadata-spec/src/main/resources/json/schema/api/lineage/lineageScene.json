@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/lineage/lineageScene.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LineageScene",
   "description": "Semantic lineage scene response for map-style lineage navigation.",
   "javaType": "org.openmetadata.schema.api.lineage.LineageScene",

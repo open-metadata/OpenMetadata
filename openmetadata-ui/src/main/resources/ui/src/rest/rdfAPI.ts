@@ -30,7 +30,7 @@ import {
   SparqlQuerySettings,
 } from '../generated/configuration/sparqlQuerySettings';
 import { SettingType } from '../generated/settings/settings';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   EntityGraphExportFormat,
   EntityGraphParams,
@@ -242,6 +242,21 @@ export const runGlossarySparqlQuery = (
   params: SparqlPlaygroundParams
 ): Promise<SparqlPlaygroundResult> =>
   executeSparqlQuery(`/glossaries/${glossaryId}/sparql`, params);
+
+/** `release` reads the active release; `draft` reads the working copy and needs edit rights. */
+export type OntologySparqlScope = 'release' | 'draft';
+
+export const runOntologySparqlQuery = (
+  ontologyId: string,
+  params: SparqlPlaygroundParams,
+  options: { scope?: OntologySparqlScope } = {}
+): Promise<SparqlPlaygroundResult> =>
+  executeSparqlQuery(
+    `/ontologies/${encodeURIComponent(ontologyId)}/sparql${
+      options.scope === 'draft' ? '?scope=draft' : ''
+    }`,
+    params
+  );
 
 export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
   jsonld: MIME_APPLICATION_LD_JSON,

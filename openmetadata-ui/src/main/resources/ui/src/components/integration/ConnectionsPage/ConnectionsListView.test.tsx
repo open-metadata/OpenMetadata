@@ -13,6 +13,10 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
@@ -20,10 +24,6 @@ import ConnectionsListView, {
   NAME_COLUMN_WIDTH,
   SECONDARY_COLUMN_WIDTH,
 } from './ConnectionsListView';
-import {
-  GRID_PAGE_SIZE_OPTIONS,
-  LIST_PAGE_SIZE_OPTIONS,
-} from './ConnectionsPage.constants';
 import { ConnectionsCategory } from './useConnectionsData';
 
 const mockNavigate = jest.fn();
@@ -56,7 +56,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('@untitledui/icons', () => {
+jest.mock('@openmetadata/ui-core-components/icons', () => {
   const Icon = () => <svg />;
 
   // A Proxy rather than a fixed list: the nav rail and the empty-state config each pull their own
@@ -268,7 +268,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Skeleton: () => (
       <span className="tw:animate-pulse" data-testid="count-skeleton" />
     ),
+    FeaturedIcon: ({ icon }: { icon?: React.ReactNode }) => <>{icon}</>,
     Table,
+    // Renders only its children (the wrapped name), not the `title`, so the name
+    // appears once — the row itself carries navigation via onAction.
+    Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     // Forwards data-testid: the page title and subtitle are Typography, and dropping it let
     // assertions naming them pass without ever finding an element.
     Typography: ({
@@ -383,6 +387,8 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 // `canCreateAnyServiceCategory` mirrors the real implementation (any category is enough) so the
 // All-tab permission cases exercise the same rule through the mocked checkPermission.
 jest.mock('../../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: jest.requireActual('../../../utils/ServicePureUtils')
+    .getServiceCategoryLabel,
   getResourceEntityFromServiceCategory: (category: string) => category,
   canCreateAnyServiceCategory: (permissions: unknown) =>
     Object.values(
@@ -444,7 +450,7 @@ const defaultData = {
   serviceTypeOptions: [{ count: 24, value: 'Mysql' }],
   serviceTypesInTab: ['Mysql'],
   page: 1,
-  pageSize: 10,
+  pageSize: LIST_PAGE_SIZE_OPTIONS[0],
   rows: [row],
   setPage: mockSetPage,
   setPageSize: mockSetPageSize,
@@ -597,7 +603,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (24)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (24)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');
@@ -838,7 +844,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (3)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (3)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');
@@ -1266,7 +1272,7 @@ describe('ConnectionsListView', () => {
     );
   });
 
-  it('uses twelve cards per grid page and ten rows per list page', () => {
+  it('uses the grid scale for cards and the list scale for rows', () => {
     renderView('grid');
 
     expect(mockUseConnectionsData).toHaveBeenLastCalledWith(

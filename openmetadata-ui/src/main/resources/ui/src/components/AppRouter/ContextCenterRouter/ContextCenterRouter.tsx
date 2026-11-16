@@ -145,6 +145,7 @@ const ContextCenterRouter = () => {
         element={<ContextCenterArchivePage />}
         path={ROUTES.CONTEXT_CENTER_ARCHIVE.replace(ROUTES.CONTEXT_CENTER, '')}
       />
+      <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
   );
 };

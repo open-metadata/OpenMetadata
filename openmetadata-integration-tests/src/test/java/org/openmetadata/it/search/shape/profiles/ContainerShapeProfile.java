@@ -34,7 +34,7 @@ public final class ContainerShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Container()
         .withId(ctx.id())
         .withName("container")
@@ -49,7 +49,7 @@ public final class ContainerShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface dataModelColumns(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> dataModelColumns(final EntityInterface<?> entity, final Rung rung) {
     final Container container = (Container) entity;
     final List<Column> columns = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

@@ -29,6 +29,10 @@ const defaultProps = {
 };
 
 describe('GlossaryTermReferencesModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders correctly', () => {
     render(<GlossaryTermReferencesModal {...defaultProps} />);
 
@@ -39,34 +43,60 @@ describe('GlossaryTermReferencesModal', () => {
   });
 
   it('clicking Save button calls onSave with updated references', async () => {
-    const { getAllByPlaceholderText, getByTestId } = render(
+    const { getAllByPlaceholderText, getByTestId, findAllByText } = render(
       <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
     );
 
-    const nameInputs = getAllByPlaceholderText('label.name');
-    const endpointInputs = getAllByPlaceholderText('label.endpoint');
     await act(async () => {
       fireEvent.click(getByTestId('save-btn'));
+    });
 
-      expect(mockOnSave).toHaveBeenCalledTimes(0);
+    expect(await findAllByText('label.field-required')).toHaveLength(2);
+    expect(mockOnSave).not.toHaveBeenCalled();
 
+    const nameInputs = getAllByPlaceholderText('label.name');
+    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+
+    await act(async () => {
       fireEvent.change(nameInputs[0], { target: { value: 'google' } });
       fireEvent.change(endpointInputs[0], {
         target: { value: 'https://www.google.com' },
       });
+    });
 
+    await act(async () => {
       fireEvent.click(getByTestId('save-btn'));
     });
 
     expect(nameInputs[0]).toHaveValue('google');
     expect(endpointInputs[0]).toHaveValue('https://www.google.com');
-    expect(getByTestId('save-btn')).toBeInTheDocument();
-
     expect(mockOnSave).toHaveBeenCalledTimes(1);
-
-    expect(mockOnSave.mock.calls).toEqual([
-      [[{ name: 'google', endpoint: 'https://www.google.com' }]],
+    expect(mockOnSave).toHaveBeenCalledWith([
+      { name: 'google', endpoint: 'https://www.google.com' },
     ]);
+  });
+
+  it('adds and removes reference rows', async () => {
+    const { getAllByPlaceholderText, getAllByTestId, getByTestId } = render(
+      <GlossaryTermReferencesModal {...defaultProps} />
+    );
+
+    expect(getAllByPlaceholderText('label.name')).toHaveLength(2);
+
+    await act(async () => {
+      fireEvent.click(getByTestId('add-references-button'));
+    });
+
+    expect(getAllByPlaceholderText('label.name')).toHaveLength(3);
+
+    await act(async () => {
+      fireEvent.click(getAllByTestId('delete-ref-btn')[0]);
+    });
+
+    const nameInputs = getAllByPlaceholderText('label.name');
+
+    expect(nameInputs).toHaveLength(2);
+    expect(nameInputs[0]).toHaveValue('Reference 2');
   });
 
   it('should reject URLs without http:// or https:// prefix', async () => {
@@ -93,6 +123,49 @@ describe('GlossaryTermReferencesModal', () => {
     expect(errorMessage).toBeInTheDocument();
     expect(mockOnSave).not.toHaveBeenCalled();
   });
+
+  it('trims whitespace from references before saving', async () => {
+    const { getAllByPlaceholderText, getByTestId } = render(
+      <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+    );
+
+    await act(async () => {
+      fireEvent.change(getAllByPlaceholderText('label.name')[0], {
+        target: { value: '  BBC  ' },
+      });
+      fireEvent.change(getAllByPlaceholderText('label.endpoint')[0], {
+        target: { value: '  http://www.bbc.co.uk  ' },
+      });
+
+      fireEvent.click(getByTestId('save-btn'));
+    });
+
+    expect(mockOnSave).toHaveBeenCalledWith([
+      { name: 'BBC', endpoint: 'http://www.bbc.co.uk' },
+    ]);
+  });
+
+  it.each(['javascript:alert(1)', ' javascript:alert(1)', '   '])(
+    'rejects the %p endpoint on save',
+    async (endpoint) => {
+      const { getAllByPlaceholderText, getByTestId } = render(
+        <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+      );
+
+      await act(async () => {
+        fireEvent.change(getAllByPlaceholderText('label.name')[0], {
+          target: { value: 'XSS' },
+        });
+        fireEvent.change(getAllByPlaceholderText('label.endpoint')[0], {
+          target: { value: endpoint },
+        });
+
+        fireEvent.click(getByTestId('save-btn'));
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+    }
+  );
 
   it('should accept URLs with http:// prefix', async () => {
     const { getAllByPlaceholderText, getByTestId } = render(

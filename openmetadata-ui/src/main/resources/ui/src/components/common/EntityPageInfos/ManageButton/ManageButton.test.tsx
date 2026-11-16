@@ -12,7 +12,9 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
 import ManageButton from './ManageButton';
 
@@ -200,10 +202,46 @@ describe('Test manage button component', () => {
 
     expect(modalBody).toBeInTheDocument();
 
-    const modalRestoreButton = await screen.findAllByText('label.restore');
-    fireEvent.click(modalRestoreButton[1]);
+    // The menu closes on selection, so the modal's OK is the only Restore button.
+    const modalRestoreButton = await screen.findByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(modalRestoreButton);
 
     expect(mockOnRestoreEntity).toHaveBeenCalled();
+  });
+
+  it('should title the restore modal with the readable entity type', async () => {
+    const translation = (useTranslation as jest.Mock)();
+    (useTranslation as jest.Mock).mockReturnValue({
+      ...translation,
+      t: (key: string, options?: { entity?: string }) =>
+        options?.entity ? `${key}:${options.entity}` : key,
+    });
+    render(
+      <ManageButton
+        {...mockProps}
+        canRestore
+        deleted
+        entityType={EntityType.TEST_CASE}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    expect(
+      await screen.findByText(
+        `label.restore-entity:${entityUtilClassBase.getFormattedEntityType(
+          EntityType.TEST_CASE
+        )}`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(`label.restore-entity:${EntityType.TEST_CASE}`)
+    ).not.toBeInTheDocument();
+
+    (useTranslation as jest.Mock).mockReturnValue(translation);
   });
 
   it('should keep the restore modal open when the callback reports failure', async () => {
@@ -212,8 +250,11 @@ describe('Test manage button component', () => {
 
     fireEvent.click(await screen.findByTestId('manage-button'));
     fireEvent.click(await screen.findByTestId('restore-button'));
-    const modalRestoreButton = await screen.findAllByText('label.restore');
-    fireEvent.click(modalRestoreButton[1]);
+    // The menu closes on selection, so the modal's OK is the only Restore button.
+    const modalRestoreButton = await screen.findByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(modalRestoreButton);
 
     await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
 
@@ -226,8 +267,11 @@ describe('Test manage button component', () => {
 
     fireEvent.click(await screen.findByTestId('manage-button'));
     fireEvent.click(await screen.findByTestId('restore-button'));
-    const modalRestoreButton = await screen.findAllByText('label.restore');
-    fireEvent.click(modalRestoreButton[1]);
+    // The menu closes on selection, so the modal's OK is the only Restore button.
+    const modalRestoreButton = await screen.findByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(modalRestoreButton);
 
     await waitFor(() => expect(mockOnRestoreEntity).toHaveBeenCalled());
 

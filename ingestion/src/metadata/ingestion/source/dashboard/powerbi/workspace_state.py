@@ -24,6 +24,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBIDashboard,
     PowerBIReport,
+    ReportPage,
 )
 
 # A workspace's "dashboards" list from the admin scan can contain either
@@ -40,7 +41,9 @@ class WorkspaceState:
     Per-workspace caches released on `exit`. Cross-workspace report-id
     registry persists for the whole run (tile-pinned lineage needs it
     to verify that a tile's referenced report exists somewhere in the
-    tenant; only the id is required, not the report payload).
+    tenant; only the id is required, not the report payload), and so do
+    the reports whose charts could not be read, which the stale-chart
+    pass at the end of the run consults.
     """
 
     def __init__(self) -> None:
@@ -51,6 +54,8 @@ class WorkspaceState:
         self._filtered_dashboards: list[DashboardLike] = []
         self._filtered_datamodels: list[DataModelLike] | None = None
         self._dashboard_charts: dict[str, list[str]] = {}
+        self._report_pages: dict[str, list[ReportPage] | None] = {}
+        self._reports_with_unknown_charts: set[str] = set()
 
     def enter(self, workspace: Group) -> None:
         """Activate `workspace` and build its per-workspace caches.
@@ -68,6 +73,7 @@ class WorkspaceState:
         self._filtered_dashboards = []
         self._filtered_datamodels = None
         self._dashboard_charts = {}
+        self._report_pages = {}
         for report in workspace.reports or []:
             self._known_report_ids.add(report.id)
 
@@ -81,6 +87,7 @@ class WorkspaceState:
         self._filtered_dashboards = []
         self._filtered_datamodels = None
         self._dashboard_charts = {}
+        self._report_pages = {}
 
     @property
     def current(self) -> Group:
@@ -136,3 +143,32 @@ class WorkspaceState:
     def pop_dashboard_chart_ids(self, dashboard_id: str) -> list[str]:
         """Consume the chart ids for a dashboard; empty list if absent or already consumed."""
         return self._dashboard_charts.pop(dashboard_id, [])
+
+    # --- Report pages: write-once per report, read by the chart and dashboard stages ---
+
+    def cache_report_pages(self, report_id: str, pages: list[ReportPage] | None) -> None:
+        """Memoise a report's pages, `None` when they could not be read, so the workspace reads them once."""
+        self._report_pages[report_id] = pages
+
+    def has_cached_report_pages(self, report_id: str) -> bool:
+        """Whether the current workspace already read the report's pages, successfully or not."""
+        return report_id in self._report_pages
+
+    def get_report_pages(self, report_id: str) -> list[ReportPage] | None:
+        """Pages cached for a report in the current workspace; `None` when the read failed or never ran."""
+        return self._report_pages.get(report_id)
+
+    # --- Reports whose charts are unknown: run-wide, read by the stale-chart pass ---
+
+    def mark_report_charts_unknown(self, report_id: str) -> None:
+        """Record a report whose charts could be read neither from Power BI nor from the server."""
+        self._reports_with_unknown_charts.add(report_id)
+
+    def are_report_charts_unknown(self, report_id: str) -> bool:
+        """Whether this run could not tell which charts belong to the report."""
+        return report_id in self._reports_with_unknown_charts
+
+    @property
+    def any_report_charts_unknown(self) -> bool:
+        """Whether some report's charts were unknown this run, so stale charts cannot be told apart."""
+        return bool(self._reports_with_unknown_charts)

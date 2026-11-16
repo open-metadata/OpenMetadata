@@ -3,11 +3,25 @@ Manage SSL test cases
 """
 
 import os
+import ssl
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import certifi
+import pytest
 from pydantic import SecretStr
+from pymysql.connections import Connection as PyMySQLConnection
 
+from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+    DorisConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarRocksConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -20,7 +34,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.metadata import CassandraSource
 from metadata.ingestion.source.messaging.kafka.metadata import KafkaSource
-from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 
 class SSLManagerTest(TestCase):
@@ -128,13 +142,13 @@ class KafkaSourceSSLTest(TestCase):
             "sslCertificateData",
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.ca.location"),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.model_extra.get("ssl.ca.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.key.location"),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.model_extra.get("ssl.key.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.certificate.location"),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.model_extra.get("ssl.certificate.location"),
         )
 
 
@@ -482,6 +496,108 @@ class MssqlSSLManagerTest(TestCase):
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertDictEqual(updated_connection.connectionArguments.root, {})
+
+        ssl_manager.cleanup_temp_files()
+
+    def _pytds_connection(self, **kwargs):
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+
+        return MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pytds,
+            **kwargs,
+        )
+
+    def test_setup_ssl_pytds_trust_server_certificate_drops_host_validation(self):
+        """pytds always verifies the chain against the CA it is given, so host
+        validation is the only check trustServerCertificate can drop."""
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(
+            trustServerCertificate=True,
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIs(updated_connection.connectionArguments.root["validate_host"], False)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_keeps_host_validation_by_default(self):
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(sslConfig={"caCertificate": "caCertificateData"})
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertNotIn("validate_host", updated_connection.connectionArguments.root)
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_encrypt_without_a_ca_certificate_warns(self):
+        """pytds enables TLS only when a CA certificate is supplied. Encrypt on its
+        own cannot be honoured, and the connection must not claim otherwise."""
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(encrypt=True)
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertNotIn("cafile", updated_connection.connectionArguments.root)
+        mock_logger.warning.assert_called_once()
+        self.assertIn("will NOT be encrypted", mock_logger.warning.call_args.args[0])
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pytds_encrypt_with_a_ca_certificate_is_silent(self):
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = self._pytds_connection(encrypt=True, sslConfig={"caCertificate": "caCertificateData"})
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertIsNotNone(updated_connection.connectionArguments.root["cafile"])
+        mock_logger.warning.assert_not_called()
+
+        ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_pymssql_warns_that_tls_settings_are_inert(self):
+        """pymssql takes no TLS parameters: FreeTDS configuration decides."""
+        from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+            MssqlConnection,
+            MssqlScheme,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MssqlConnection(
+            hostPort="localhost:1433",
+            database="testdb",
+            username="sa",
+            password="password",
+            scheme=MssqlScheme.mssql_pymssql,
+            encrypt=True,
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        with patch("metadata.utils.ssl_manager.logger") as mock_logger:
+            updated_connection = ssl_manager.setup_ssl(connection)
+
+        self.assertDictEqual(updated_connection.connectionArguments.root, {})
+        mock_logger.warning.assert_called_once()
+        self.assertIn("mssql+pymssql", mock_logger.warning.call_args.args[0])
 
         ssl_manager.cleanup_temp_files()
 
@@ -914,3 +1030,43 @@ class HiveSSLManagerTest(TestCase):
         self.assertIsNone(args.get("ssl_certfile"))
         self.assertIsNone(args.get("ssl_keyfile"))
         ssl_manager.cleanup_temp_files()
+
+
+MYSQL_FAMILY = [MysqlConnection, DorisConnection, StarRocksConnection]
+
+
+def _pymysql_ssl_args(connection) -> dict:
+    ssl_manager = check_ssl_and_init(connection)
+    try:
+        return dict(ssl_manager.setup_ssl(connection).connectionArguments.root["ssl"])
+    finally:
+        ssl_manager.cleanup_temp_files()
+
+
+@pytest.mark.parametrize("connection_cls", MYSQL_FAMILY)
+def test_ca_certificate_makes_pymysql_verify_the_server(connection_cls):
+    connection = connection_cls(
+        hostPort="db:3306",
+        username="user",
+        sslConfig={"caCertificate": Path(certifi.where()).read_text()},
+    )
+    ssl_manager = check_ssl_and_init(connection)
+    try:
+        ssl_args = ssl_manager.setup_ssl(connection).connectionArguments.root["ssl"]
+        ctx = PyMySQLConnection._create_ssl_ctx(None, ssl_args)
+    finally:
+        ssl_manager.cleanup_temp_files()
+
+    assert ctx.verify_mode == ssl.CERT_REQUIRED
+    assert ctx.check_hostname is True
+
+
+@pytest.mark.parametrize("connection_cls", MYSQL_FAMILY)
+def test_client_certificate_and_key_use_pymysql_ssl_keys(connection_cls):
+    connection = connection_cls(
+        hostPort="db:3306",
+        username="user",
+        sslConfig={"caCertificate": "ca", "sslCertificate": "cert", "sslKey": "key"},
+    )
+
+    assert set(_pymysql_ssl_args(connection)) == {"ca", "cert", "key"}

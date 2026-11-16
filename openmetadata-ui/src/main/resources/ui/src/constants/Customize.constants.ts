@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TFunctionKeys } from 'i18next';
+import { ParseKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
 export enum PersonaCustomizePageFqn {
   Navigation = 'navigation',
-  AppMode = 'app-mode',
+  AppLayout = 'app-layout',
   Homepage = 'homepage',
 }
 
@@ -27,6 +27,7 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.ACTIVITY_FEED]: 'label.activity-feed-and-task-plural',
   [EntityTabs.CUSTOM_PROPERTIES]: 'label.custom-property-plural',
   [EntityTabs.TERMS]: 'label.term-plural',
+  [EntityTabs.REVIEW]: 'label.review',
   [EntityTabs.SCHEMA]: 'label.schema',
   [EntityTabs.SAMPLE_DATA]: 'label.sample-data',
   [EntityTabs.TABLE_QUERIES]: 'label.query-plural',
@@ -49,7 +50,7 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.TABLE]: 'label.table-plural',
   [EntityTabs.TEST_CASES]: 'label.test-case-plural',
   [EntityTabs.PIPELINE]: 'label.pipeline',
-  [EntityTabs.DATA_Model]: 'label.data-model',
+  [EntityTabs.DATA_Model]: 'label.data-model-plural',
   [EntityTabs.AGENTS]: 'label.agent-plural',
   [EntityTabs.CONNECTION]: 'label.connection',
   [EntityTabs.SQL]: 'label.sql',
@@ -72,7 +73,8 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.INPUT_OUTPUT_PORTS]: 'label.input-output-port-plural',
   [EntityTabs.RELATIONS_GRAPH]: 'label.relations-graph',
   [EntityTabs.DATA_OBSERVABILITY]: 'label.data-observability',
-} as Record<EntityTabs, TFunctionKeys>;
+  [EntityTabs.APPROVAL]: 'label.approval',
+} satisfies Partial<Record<EntityTabs, ParseKeys>>;
 
 export type CustomizeEntityType =
   | EntityType.TABLE

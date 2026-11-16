@@ -12,12 +12,11 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,
@@ -144,7 +143,8 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
     .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
-jest.mock('../../../utils/StringUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  ...jest.requireActual('../../../utils/RichTextStringUtils'),
   stripMarkdown: jest.fn().mockImplementation((text: string) => text),
 }));
 
@@ -264,9 +264,15 @@ describe('Knowledge Card', () => {
   it('should render owner name via UserPopOverCard', () => {
     render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    // component passes getEntityName(owners[0]) which returns displayName ?? name
     expect(screen.getByTestId('owner-name')).toHaveTextContent(
       KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0]?.name as string
+    );
+    // Only a real display name is passed, so UserPopOverCard can resolve the rest.
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0]?.displayName,
+      }),
+      expect.anything()
     );
   });
 
@@ -320,7 +326,7 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByTestId('owner-name')).toBeInTheDocument();
+    expect(screen.getByTestId('owner-name')).toHaveTextContent(/^--$/);
   });
 
   it('should render the footer row', () => {
@@ -396,6 +402,36 @@ describe('Knowledge Card', () => {
     expect(screen.getByTestId('knowledge-link')).toHaveAttribute(
       'target',
       '_blank'
+    );
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', () => {
+    const maliciousQuickLink: KnowledgePage = {
+      ...QUICK_LINK_MOCK_DATA,
+      page: { url: 'javascript:alert(document.domain)' },
+    } as KnowledgePage;
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={maliciousQuickLink} />,
+      { wrapper: MemoryRouter }
+    );
+
+    const link = screen.getByTestId('knowledge-link');
+
+    // getSafeHttpUrl rejects the javascript: scheme, so the '#' fallback is
+    // used — React Router renders that as href="/", never the script url.
+    expect(link.getAttribute('href')).not.toContain('javascript:');
+    expect(link).toHaveAttribute('href', '/');
+  });
+
+  it('should render a safe http(s) quick link url unchanged', () => {
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('knowledge-link')).toHaveAttribute(
+      'href',
+      'https://open-metadata.org'
     );
   });
 

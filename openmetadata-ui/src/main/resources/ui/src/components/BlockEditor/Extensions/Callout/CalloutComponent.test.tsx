@@ -61,7 +61,7 @@ describe('CalloutComponent', () => {
 
     fireEvent.click(calloutButton);
 
-    const popover = screen.getByRole('tooltip');
+    const popover = screen.getByRole('dialog');
 
     expect(popover).toBeInTheDocument();
 
@@ -91,7 +91,7 @@ describe('CalloutComponent', () => {
       userEvent.click(calloutButton);
     });
 
-    const popover = screen.queryByRole('tooltip');
+    const popover = screen.queryByRole('dialog');
 
     expect(popover).not.toBeInTheDocument();
   });

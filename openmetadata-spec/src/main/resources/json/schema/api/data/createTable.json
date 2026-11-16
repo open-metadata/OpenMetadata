@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/data/createTable.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateTableRequest",
   "description": "Schema corresponding to a table that belongs to a database",
   "type": "object",
@@ -8,6 +8,9 @@
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
+    "tableSharding": {
+      "$ref": "../../type/tableSharding.json"
+    },
     "name": {
       "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
       "$ref": "../../type/basic.json#/definitions/entityName"

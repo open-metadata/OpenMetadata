@@ -23,11 +23,19 @@ import {
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
+import { CUSTOM_PROPERTY_COLUMN_KEY_PREFIX } from '../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
-import type { MlFeature } from '../generated/entity/data/mlmodel';
-import type { Task } from '../generated/entity/data/pipeline';
-import type { SearchIndexField } from '../generated/entity/data/searchIndex';
+import type {
+  Column as DataModelColumn,
+  DashboardDataModel,
+} from '../generated/entity/data/dashboardDataModel';
+import type { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import type { Pipeline, Task } from '../generated/entity/data/pipeline';
+import type {
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import type {
   Column,
   ConstraintType,
@@ -46,16 +54,12 @@ import {
 } from '../generated/type/tagLabel';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointFieldUtils';
 import { extractContainerColumns } from './ContainerDetailPureUtils';
-import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
-import { extractMlModelFeatures } from './MlModelDetailsUtils';
-import { extractPipelineTasks } from './PipelineDetailsUtils';
-import { extractSearchIndexFields } from './SearchIndexUtils';
 import { ordinalize } from './StringUtils';
 import type { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
@@ -168,12 +172,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   searchIndex: Array<T>,
   searchText: string
 ): Array<T> => {
+  const searchLowerCase = lowerCase(searchText);
   const searchedValue: Array<T> = searchIndex.reduce(
     (searchedFields, field) => {
       const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
+        lowerCase(field.name).includes(searchLowerCase) ||
+        lowerCase(field.description).includes(searchLowerCase) ||
+        lowerCase(getDataTypeString(field.dataType)).includes(searchLowerCase);
 
       if (isContainData) {
         return [...searchedFields, field];
@@ -204,7 +209,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
 export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
   const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
     ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
+    // The server computes a derived label -- implied by a glossary term, or inherited from the
+    // parent entity -- and ignores it on write. Sent back as Manual it would be stored as the
+    // field's own label and outlive its source.
+    labelType:
+      tag.labelType === LabelType.Derived
+        ? LabelType.Derived
+        : LabelType.Manual,
     state: State.Confirmed,
     source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,
@@ -320,7 +331,7 @@ export const getJoinsFromTableJoins = (
 };
 
 export const createTableConstraintObject = (
-  constraints: string[],
+  constraints: string[] | undefined,
   type: ConstraintType
 ) =>
   isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];
@@ -749,6 +760,52 @@ export const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
   );
 };
 
+export const extractDataModelColumns = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): DataModelColumn[] => {
+  const dataModel = data as Partial<DashboardDataModel>;
+
+  return (dataModel.columns ?? []).map(
+    (column) =>
+      ({
+        ...column,
+        tags: column.tags ?? [],
+      } as DataModelColumn)
+  );
+};
+
+export const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): MlFeature[] => {
+  const mlModel = data as Partial<Mlmodel>;
+
+  return mlModel.mlFeatures ?? [];
+};
+
+export const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): Task[] => {
+  const pipeline = data as Partial<Pipeline>;
+
+  return (pipeline.tasks ?? []).map(
+    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
+  );
+};
+
+export const extractSearchIndexFields = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): SearchIndexField[] => {
+  const searchIndex = data as Partial<SearchIndexEntity>;
+
+  return (searchIndex.fields ?? []).map(
+    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
+  );
+};
+
 export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
   data: T,
   entityType: EntityType
@@ -789,6 +846,9 @@ export const getHighlightedRowClassName = <
 
   return '';
 };
+
+export const getCustomPropertyColumnKey = (propertyName: string): string =>
+  `${CUSTOM_PROPERTY_COLUMN_KEY_PREFIX}${propertyName}`;
 
 export const getNestedSectionTitle = (
   entityType: EntityType | undefined

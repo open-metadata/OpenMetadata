@@ -49,7 +49,7 @@ For example, to include only those tables whose name starts with the word `demo`
 
 For example, to exclude all tables with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
-Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#table-filter-pattern" target="_blank">this</a> document for further examples on table filter patterns.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/table#table-filter-patterns" target="_blank">this</a> document for further examples on table filter patterns.
 $$
 
 
@@ -74,7 +74,7 @@ Set this flag when you want to apply the filters on Fully Qualified Names (e.g `
 
 This Flag is useful in scenarios when you have different schemas with same name in multiple databases, or tables with same name in different schemas, and you want to filter out only one of them. 
 
-Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#table-filter-pattern" target="_blank">this</a> document for further examples on how to use this field.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/table#table-filter-patterns" target="_blank">this</a> document for further examples on how to use this field.
 
 $$
 
@@ -158,6 +158,28 @@ $$section
 ### View Definition Parsing Timeout Limit $(id="viewParsingTimeoutLimit")
 
 Specify the timeout limit for parsing the view definition sql queries to perform the lineage analysis.
+$$
+
+$$section
+### Max Schema Inference Depth $(id="maxSchemaInferenceDepth")
+
+Maximum nesting depth of the column children that ingestion infers from sampled JSON values. The direct children of a column are depth 1.
+
+Deeper children are not ingested. A column at the limit keeps its data type (such as `JSON` or `ARRAY`) without children. `0` keeps no inferred children at all. Leave the field empty for no limit.
+
+Applies to JSON objects sampled from Datalake files (JSON, JSON Lines, and CSV or TSV cells that hold JSON objects), to NoSQL documents (MongoDB, Couchbase, DynamoDB, Bigtable), and to JSON columns read with `Extract JSON Schema`, where the stored JSON schema is bounded the same way. Declared schemas (JSON Schema files, Avro, Parquet, Iceberg or Delta metadata) are never limited.
+
+When the limit removes children, the run reports one warning per table that names the affected columns.
+$$
+
+$$section
+### Max Children Per Column $(id="maxChildrenPerColumn")
+
+Maximum number of direct children kept for any column inferred from sampled JSON values, applied at every nesting level.
+
+When a column has more children, the ones whose names come first in code point order are kept, in their original order. The selection does not depend on the order of the sampled records, so repeated runs keep the same children and do not create new entity versions. `0` keeps no inferred children at all. Leave the field empty for no limit.
+
+Together with `Max Schema Inference Depth`, it caps every inferred tree at this many children per column and that many levels. It applies to the same sources and reports its warnings the same way.
 $$
 
 $$section

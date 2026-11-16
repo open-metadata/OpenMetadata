@@ -13,10 +13,10 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { VotingDataProps } from '../interface/entity/vote.interface';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -25,7 +25,7 @@ import {
   PageHierarchy,
   PageType,
 } from '../interface/knowledge-center.interface';
-import APIClient from '../rest/index';
+import APIClient from './axiosClient';
 
 const CONTEXT_CENTER_PAGES_PATH = '/contextCenter/pages';
 
@@ -119,6 +119,41 @@ export const patchKnowledgePage = async (id: string, data: Operation[]) => {
     Operation[],
     AxiosResponse<KnowledgePage>
   >(`/contextCenter/pages/${id}`, data, configOptions);
+
+  return response.data;
+};
+
+export const addKnowledgePageUsage = async (
+  id: string,
+  entities: EntityReference[]
+) => {
+  const response = await APIClient.put<
+    EntityReference[],
+    AxiosResponse<KnowledgePage>
+  >(`${CONTEXT_CENTER_PAGES_PATH}/${id}/usage`, entities);
+
+  return response.data;
+};
+
+export const removeKnowledgePageUsage = async (
+  id: string,
+  entities: EntityReference[]
+) => {
+  const response = await APIClient.delete<KnowledgePage>(
+    `${CONTEXT_CENTER_PAGES_PATH}/${id}/usage`,
+    { data: entities }
+  );
+
+  return response.data;
+};
+
+/** Extracts or retries an article's memories; the article it returns reads Queued. */
+export const extractPageMemories = async (
+  id: string
+): Promise<KnowledgePage> => {
+  const response = await APIClient.post<KnowledgePage>(
+    `${CONTEXT_CENTER_PAGES_PATH}/${id}/extract`
+  );
 
   return response.data;
 };

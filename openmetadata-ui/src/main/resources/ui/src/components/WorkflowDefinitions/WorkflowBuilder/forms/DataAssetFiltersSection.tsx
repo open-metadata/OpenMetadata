@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus, XClose } from '@untitledui/icons';
+import {
+  Button,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Plus,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { upperFirst } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,12 +91,12 @@ export const DataAssetFiltersSection: React.FC<
                     weight="semibold">
                     {upperFirst(dataAssetFilter.dataAsset)}
                   </Typography>
-                  <Button
-                    color="tertiary"
-                    iconLeading={XClose}
+                  <ButtonUtility
+                    icon={XClose}
                     isDisabled={isDisabled}
                     size="sm"
-                    onPress={() => onRemoveDataAssetFilter(dataAssetFilter.id)}
+                    tooltip={t('label.remove')}
+                    onClick={() => onRemoveDataAssetFilter(dataAssetFilter.id)}
                   />
                 </div>
 

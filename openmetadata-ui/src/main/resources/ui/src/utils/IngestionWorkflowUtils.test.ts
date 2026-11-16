@@ -10,6 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  createErrorHandler,
+  toErrorList,
+  unwrapErrorHandler,
+} from '@rjsf/utils';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
@@ -20,6 +25,7 @@ import {
   cleanWorkFlowData,
   getMetadataSchemaByServiceCategory,
   getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
 } from './IngestionWorkflowUtils';
 
 const MOCK_WORKFLOW_DATA = {
@@ -138,5 +144,57 @@ describe('Ingestion Workflow tests', () => {
     const cleanedData = cleanWorkFlowData(MOCK_WORKFLOW_DATA);
 
     expect(cleanedData).toStrictEqual(MOCK_CLEANED_WORKFLOW_DATA);
+  });
+});
+
+describe('validateOwnerConfigMaps', () => {
+  const validate = (formData: Record<string, unknown>) =>
+    toErrorList(
+      unwrapErrorHandler(
+        validateOwnerConfigMaps(formData, createErrorHandler(formData))
+      )
+    );
+
+  it('flags a named ownerConfig map row left without an owner', () => {
+    const errors = validate({
+      ownerConfig: {
+        database: { sales_db: {} },
+        databaseSchema: { public: [] },
+        table: { orders: 'order-team' },
+      },
+    });
+
+    expect(errors.map(({ property }) => property)).toEqual([
+      '.ownerConfig.database',
+      '.ownerConfig.database.sales_db',
+      '.ownerConfig.databaseSchema',
+      '.ownerConfig.databaseSchema.public',
+    ]);
+    expect(
+      errors.every(
+        ({ message }) => message === 'message.field-text-is-required'
+      )
+    ).toBe(true);
+  });
+
+  it('leaves untouched newKey rows to the submit cleanup', () => {
+    expect(
+      validate({ ownerConfig: { database: { newKey: {}, 'newKey-1': [] } } })
+    ).toEqual([]);
+  });
+
+  it('accepts filled rows and the single-owner string form', () => {
+    expect(
+      validate({
+        ownerConfig: {
+          database: 'database-admins',
+          table: { orders: ['alice', 'bob'] },
+        },
+      })
+    ).toEqual([]);
+  });
+
+  it('ignores forms without ownerConfig', () => {
+    expect(validate({ type: 'DashboardMetadata' })).toEqual([]);
   });
 });

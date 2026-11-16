@@ -13,10 +13,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import {
   getClassificationByName,
@@ -48,13 +46,6 @@ jest.mock(
         <div data-testid="classification-owner-name">Owner</div>
       </div>
     ));
-  }
-);
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>testErrorPlaceHolder</div>);
   }
 );
 
@@ -171,7 +162,9 @@ describe('ClassificationVersionPage component', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await screen.findByText('testErrorPlaceHolder');
+    const errorPlaceholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });

@@ -1,0 +1,370 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Box, Button, ConfirmPopover } from '@openmetadata/ui-core-components';
+import { Plus, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  GlobalSettings,
+  SearchSettings,
+  TermBoost,
+} from '../../../../../../../generated/configuration/searchSettings';
+import {
+  Settings,
+  SettingType,
+} from '../../../../../../../generated/settings/settings';
+import { useAuth } from '../../../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../../../hooks/useApplicationStore';
+import {
+  getSettingsByType,
+  restoreSettingsConfig,
+  updateSettingsConfig,
+} from '../../../../../../../rest/settingConfigAPI';
+import searchSettingsClassBase from '../../../../../../../utils/SearchSettingsClassBase';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../../utils/ToastUtils';
+import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
+import { SettingsSkeleton } from '../SettingsFormLayout';
+import FieldValueBoostTable from './FieldValueBoostTable';
+import GlobalSearchSettings from './GlobalSearchSettings';
+import HybridWeightsSection from './HybridWeightsSection';
+import SearchEntityCards from './SearchEntityCards';
+import SearchSection from './SearchSection';
+import {
+  complementWeight,
+  getReturningSearchState,
+  SearchSavedState,
+  toFieldValueBoostItemId,
+  upsertTermBoost,
+} from './SearchSettings.utils';
+import TermBoostCard from './TermBoostCard';
+
+/** The global search settings, saved change by change as on the classic page. */
+const SearchSettingsView = ({
+  onNavigate,
+  onSetHeaderActions,
+  savedState,
+  onSaveState,
+}: PlatformSettingsPageProps) => {
+  const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
+  const setAppPreferences = useApplicationStore(
+    (state) => state.setAppPreferences
+  );
+  const [config, setConfig] = useState<SearchSettings>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [termBoosts, setTermBoosts] = useState<TermBoost[]>([]);
+  const [termBoostsChanged, setTermBoostsChanged] = useState(false);
+  const [showNewTermBoost, setShowNewTermBoost] = useState(false);
+
+  const applyConfig = useCallback(
+    (next: SearchSettings, keepTermBoostDraft = false) => {
+      setConfig(next);
+      if (!keepTermBoostDraft) {
+        setTermBoosts(next.globalSettings?.termBoosts ?? []);
+        setTermBoostsChanged(false);
+      }
+      setAppPreferences({ searchConfig: next });
+    },
+    [setAppPreferences]
+  );
+
+  /** Resolves to whether the settings loaded; failures are already toasted. */
+  const fetchConfig = useCallback(async (): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      applyConfig(
+        (await getSettingsByType(SettingType.SearchSettings)) as SearchSettings
+      );
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [applyConfig]);
+
+  // Once per mount: under StrictMode a second response would wipe unsaved term boosts.
+  const hasLoadedRef = useRef(false);
+  // A load that resolves after the page is left (e.g. back into the boost form)
+  // must not clear the draft the form is now using.
+  const isMountedRef = useRef(false);
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      return;
+    }
+    hasLoadedRef.current = true;
+    // Back from the field value boost form: resume the unsaved term boosts.
+    // Any other saved draft (e.g. an entity's, left by a breadcrumb) is dropped.
+    const resumed = getReturningSearchState(savedState);
+    if (!resumed) {
+      if (savedState) {
+        onSaveState?.(undefined);
+      }
+      void fetchConfig();
+    } else {
+      // Kept until restored, so a failed load does not lose the draft.
+      void fetchConfig().then((loaded) => {
+        if (loaded && isMountedRef.current && 'termBoosts' in resumed) {
+          setTermBoosts(resumed.termBoosts);
+          setTermBoostsChanged(true);
+          onSaveState?.(undefined);
+        }
+      });
+    }
+    // Load once per mount; the saved state is read on arrival only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchConfig]);
+
+  /** Resolves to whether the save succeeded, so editors close only on success. */
+  const updateGlobalSettings = async (
+    update: Partial<GlobalSettings>,
+    successMessage?: string
+  ): Promise<boolean> => {
+    if (!config) {
+      return false;
+    }
+    setIsUpdating(true);
+    try {
+      const { data } = await updateSettingsConfig({
+        config_type: SettingType.SearchSettings,
+        config_value: {
+          ...config,
+          globalSettings: { ...config.globalSettings, ...update },
+        },
+      } as Settings);
+      // Unsaved term boost edits survive saves of other settings; they are
+      // still saved only with their own Save button.
+      applyConfig(
+        data.config_value as SearchSettings,
+        termBoostsChanged && !('termBoosts' in update)
+      );
+      showSuccessToast(
+        successMessage ??
+          t('server.update-entity-success', {
+            entity: t('label.search-setting-plural'),
+          })
+      );
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  /** Resolves `false` when the restore failed, keeping the confirmation open. */
+  const handleReset = useCallback(async (): Promise<boolean> => {
+    setIsUpdating(true);
+    try {
+      await restoreSettingsConfig(SettingType.SearchSettings);
+      if (await fetchConfig()) {
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.search-setting-plural'),
+          })
+        );
+      }
+
+      return true;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [fetchConfig, t]);
+
+  useEffect(() => {
+    if (!isAdminUser) {
+      return undefined;
+    }
+    onSetHeaderActions(
+      <ConfirmPopover
+        confirmText={t('label.reset')}
+        data-testid="reset-search-settings-popover"
+        description={t('message.reset-search-settings-confirmation')}
+        title={t('label.reset')}
+        variant="primary"
+        onConfirm={handleReset}>
+        <Button
+          color="secondary"
+          data-testid="reset-search-settings-btn"
+          iconLeading={RefreshCcw01}
+          isDisabled={isUpdating}
+          size="xs">
+          {t('label.reset')}
+        </Button>
+      </ConfirmPopover>
+    );
+
+    return () => onSetHeaderActions(undefined);
+  }, [handleReset, isAdminUser, isUpdating, onSetHeaderActions, t]);
+
+  // A new boost joins the list once it has both a tag and a boost.
+  const handleTermBoostChange = (boost: TermBoost) => {
+    if (!boost.value || !boost.boost) {
+      return;
+    }
+    setTermBoosts((prev) => upsertTermBoost(prev, boost));
+    setTermBoostsChanged(true);
+    setShowNewTermBoost(false);
+  };
+
+  // Deleting a saved boost saves straight away, as the classic page did.
+  const handleTermBoostDelete = (value: string) => {
+    if (!termBoosts.some((boost) => boost.value === value)) {
+      setShowNewTermBoost(false);
+
+      return;
+    }
+    void updateGlobalSettings({
+      termBoosts: termBoosts.filter((boost) => boost.value !== value),
+    });
+  };
+
+  const openFieldValueBoostForm = (field?: string) => {
+    const state: SearchSavedState | undefined = termBoostsChanged
+      ? { termBoosts }
+      : undefined;
+    onSaveState?.(state);
+    onNavigate({
+      type: 'page',
+      page: 'search',
+      isEditing: true,
+      itemId: toFieldValueBoostItemId(undefined, field),
+    });
+  };
+
+  if (isLoading || !config) {
+    return <SettingsSkeleton rows={6} />;
+  }
+
+  const global = config.globalSettings ?? {};
+  const fieldValueBoosts = global.fieldValueBoosts ?? [];
+
+  return (
+    <Box data-testid="search-settings" direction="col" gap={8}>
+      <GlobalSearchSettings
+        globalSettings={global}
+        isDisabled={isUpdating}
+        onUpdate={updateGlobalSettings}
+      />
+
+      {searchSettingsClassBase.showHybridSearchWeights() && (
+        <HybridWeightsSection
+          isDisabled={isUpdating}
+          savedWeight={global.semanticWeight}
+          onSave={(semanticWeight) =>
+            updateGlobalSettings({
+              semanticWeight,
+              keywordWeight: complementWeight(semanticWeight),
+            })
+          }
+        />
+      )}
+
+      <SearchSection
+        actions={
+          <>
+            <Button
+              color="secondary"
+              data-testid="term-boost-save-btn"
+              isDisabled={!termBoostsChanged || isUpdating}
+              size="sm"
+              onPress={() => updateGlobalSettings({ termBoosts })}>
+              {t('label.save')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="term-boost-add-btn"
+              iconLeading={Plus}
+              isDisabled={isUpdating || showNewTermBoost}
+              size="sm"
+              onPress={() => setShowNewTermBoost(true)}>
+              {t('label.add')}
+            </Button>
+          </>
+        }
+        count={termBoosts.length}
+        testId="term-boosts"
+        title={t('label.term-boost')}>
+        <Box direction="row" gap={3} wrap="wrap">
+          {termBoosts.map((boost) => (
+            <TermBoostCard
+              key={boost.value}
+              termBoost={boost}
+              onChange={handleTermBoostChange}
+              onDelete={handleTermBoostDelete}
+            />
+          ))}
+          {showNewTermBoost && (
+            <TermBoostCard
+              onChange={handleTermBoostChange}
+              onDelete={handleTermBoostDelete}
+            />
+          )}
+        </Box>
+      </SearchSection>
+
+      <Box data-testid="field-value-boosts" direction="col">
+        <FieldValueBoostTable
+          boosts={fieldValueBoosts}
+          headerActions={
+            <Button
+              color="primary"
+              data-testid="add-field-value-boost-btn"
+              iconLeading={Plus}
+              isDisabled={isUpdating}
+              size="sm"
+              onPress={() => openFieldValueBoostForm()}>
+              {t('label.add')}
+            </Button>
+          }
+          testId="field-value-boost-table"
+          onDelete={(field) =>
+            updateGlobalSettings({
+              fieldValueBoosts: fieldValueBoosts.filter(
+                (boost) => boost.field !== field
+              ),
+            })
+          }
+          onEdit={(boost) => openFieldValueBoostForm(boost.field)}
+        />
+      </Box>
+
+      <SearchEntityCards onNavigate={onNavigate} />
+    </Box>
+  );
+};
+
+export default SearchSettingsView;

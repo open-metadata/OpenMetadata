@@ -58,4 +58,14 @@ public class OAuthRecords {
       String pac4jNonce,
       String pac4jCodeVerifier,
       long expiresAt) {}
+
+  /** One SSO Test Login as stored. {@code pendingState} is encrypted, and null once completed. */
+  public record SsoTestLoginSession(
+      String testSessionId,
+      String adminPrincipal,
+      String protocol,
+      String status,
+      String pendingState,
+      String result,
+      long expiresAt) {}
 }

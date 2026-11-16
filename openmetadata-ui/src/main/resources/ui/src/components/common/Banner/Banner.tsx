@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Spin } from 'antd';
+import {
+  Alert02,
+  CheckCircle,
+  InfoCircle,
+  Loading01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
-import { ReactComponent as ErrorIcon } from '../../../assets/svg/banner/ic-banner-error.svg';
-import { ReactComponent as SuccessIcon } from '../../../assets/svg/banner/ic-banner-success.svg';
 import './banner.less';
 
 export interface BannerProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -27,13 +29,13 @@ export interface BannerProps extends React.HTMLAttributes<HTMLDivElement> {
 const getIcon = (type: BannerProps['type']) => {
   switch (type) {
     case 'success':
-      return <SuccessIcon />;
+      return <CheckCircle className="tw:text-utility-success-700" size={25} />;
     case 'error':
-      return <ErrorIcon />;
+      return <Alert02 className="tw:text-utility-error-500" />;
     case 'info':
-      return <InfoCircleOutlined className="info-icon" />;
+      return <InfoCircle aria-hidden className="info-icon" size={16} />;
     default:
-      return <SuccessIcon />;
+      return <CheckCircle className="tw:text-utility-success-700" size={25} />;
   }
 };
 
@@ -43,10 +45,10 @@ const Banner: FC<BannerProps> = ({ type, message, className, isLoading }) => {
   return (
     <div className={classNames('message-banner-wrapper', type, className)}>
       {isLoading ? (
-        <Spin
-          className={`loading-spinner-${type}`}
-          indicator={<LoadingOutlined spin />}
-          size="small"
+        <Loading01
+          aria-hidden
+          className={`loading-spinner-${type} tw:animate-spin`}
+          size={14}
         />
       ) : (
         icon

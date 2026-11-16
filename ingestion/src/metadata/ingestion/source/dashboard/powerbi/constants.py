@@ -49,3 +49,7 @@ RDL_REPORTS_PREFIX = "rdlreports"
 MAX_PROJECT_FILTER_SIZE = 10
 
 SQL_LINE_COMMENT_PATTERN = r"//[^\n]*"
+
+# A Power Query M text literal (group 1) or an M comment. Literals are matched first, so comment
+# markers inside one, such as in the SQL text of a native query, are not taken for comments.
+M_TEXT_LITERAL_OR_COMMENT_PATTERN = r'("(?:[^"]|"")*")|/\*.*?\*/|//[^\n]*'

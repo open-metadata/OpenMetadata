@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -80,6 +81,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
   // Disable tests that don't apply to TestSuite
   {
+    supportsEntityStatus = false;
     supportsFollowers = false; // TestSuite doesn't support followers
     supportsDataProducts = false; // TestSuite doesn't support dataProducts
     supportsListHistoryByTimestamp = true;
@@ -298,6 +300,45 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite restored = getEntity(testSuite.getId().toString());
     assertNotNull(restored);
     assertFalse(restored.getDeleted());
+  }
+
+  @Test
+  void test_restoreLogicalTestSuiteKeepsDeletedTestCasesDeleted(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Table table = createTableForBasicTestSuite(ns, "logical_restore_table");
+    final TestCase liveTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("live_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final TestCase deletedTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("deleted_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final TestSuite suite = createEntity(createMinimalRequest(ns));
+    addTestCasesToLogicalTestSuite(suite.getId(), List.of(liveTest.getId(), deletedTest.getId()));
+
+    client.testCases().delete(deletedTest.getId().toString());
+    deleteEntity(suite.getId().toString());
+    restoreEntity(suite.getId().toString());
+
+    final TestSuite restoredSuite = client.testSuites().get(suite.getId().toString(), "tests");
+    assertFalse(restoredSuite.getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted(),
+        "Logical suites group tests without owning their deletion state");
+    assertFalse(client.testCases().get(liveTest.getId().toString()).getDeleted());
+    assertEquals(
+        List.of(liveTest.getId()),
+        restoredSuite.getTests().stream().map(EntityReference::getId).toList());
   }
 
   @Test
@@ -613,6 +654,25 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void list_basicSuiteInheritsTableOwner(TestNamespace ns) {
+    TestSuite testSuite = createBasicTestSuiteForOwnedTable(ns, "list_owner_table");
+
+    assertInheritedTableOwner(findInBasicSuiteList(testSuite));
+  }
+
+  @Test
+  void searchList_basicSuiteInheritsTableOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestSuite testSuite = createBasicTestSuiteForOwnedTable(ns, "search_list_owner_table");
+
+    Awaitility.await("search list returns the basic suite with its table's owner")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertInheritedTableOwner(searchBasicTestSuiteWithOwners(client, testSuite)));
+  }
+
+  @Test
   void test_inheritDomainFromTable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -706,17 +766,31 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     TestSuite testSuite = createBasicTestSuite(createTestSuite);
 
+    final TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("basic_restore_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
     // Delete the basic test suite
     deleteBasicTestSuite(testSuite.getId());
 
     // Verify it's soft deleted
     TestSuite deletedSuite = getEntityIncludeDeleted(testSuite.getId().toString());
     assertTrue(deletedSuite.getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(testCase.getId().toString(), null, Include.ALL.value())
+            .getDeleted());
 
     // Restore it
     restoreEntity(testSuite.getId().toString());
     TestSuite restoredSuite = getEntity(testSuite.getId().toString());
     assertFalse(restoredSuite.getDeleted());
+    assertFalse(client.testCases().get(testCase.getId().toString()).getDeleted());
 
     // Hard delete
     hardDeleteBasicTestSuite(testSuite.getId());
@@ -973,6 +1047,51 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
                 assertTrue(esBody.contains("lastResultTimestamp"));
               });
     }
+  }
+
+  /**
+   * An update to a logical suite whose search doc is missing (e.g. dropped by an earlier reindex)
+   * creates the doc from the update's upsert. That upsert used to serialize every field as {@code
+   * {}}, and the relationship-preserving script kept {@code tests: {}}, so search/list failed with
+   * a 400 deserializing {@code TestSuite["tests"]} (#33492).
+   */
+  @Test
+  void test_updateLogicalSuiteWithMissingSearchDocKeepsTestsList(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableForBasicTestSuite(ns, "missing_doc");
+    UUID testCaseId = createTestCases(client, ns, table, 1).getFirst().getId();
+    TestSuite logicalSuite =
+        createEntity(new CreateTestSuite().withName(ns.prefix("logical_missing_doc")));
+    addTestCasesToLogicalTestSuite(logicalSuite.getId(), List.of(testCaseId));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("logical suite indexed with its test case")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      queryTestSuiteSearchIndex(searchClient, logicalSuite.getId())
+                          .contains(testCaseId.toString())));
+      deleteTestSuiteSearchDoc(searchClient, logicalSuite.getId());
+
+      TestSuite toPatch = getEntity(logicalSuite.getId().toString());
+      toPatch.setDescription("edited while its search doc is missing");
+      patchEntity(logicalSuite.getId().toString(), toPatch);
+
+      Awaitility.await("search doc recreated with tests as a list")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode tests =
+                    testSuiteSearchSource(searchClient, logicalSuite.getId()).path("tests");
+                assertTrue(tests.isArray(), "tests must be indexed as a list, was: " + tests);
+                assertEquals(testCaseId.toString(), tests.path(0).path("id").asText());
+              });
+    }
+    assertTrue(searchTestSuiteNames(logicalSuite.getName()).contains(logicalSuite.getName()));
   }
 
   // ===================================================================
@@ -1363,6 +1482,72 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     }
   }
 
+  private TestSuite createBasicTestSuiteForOwnedTable(TestNamespace ns, String tableName) {
+    Table table = createTableForBasicTestSuite(ns, tableName);
+    table.setOwners(List.of(testUser1Ref()));
+    Table ownedTable = SdkClients.adminClient().tables().update(table.getId().toString(), table);
+    return createBasicTestSuiteForTable(ownedTable);
+  }
+
+  /** The DB list has no name filter, so page through basic suites until this one shows up. */
+  private TestSuite findInBasicSuiteList(TestSuite testSuite) {
+    ListParams params =
+        new ListParams()
+            .setFields("owners")
+            .setLimit(100)
+            .addFilter("testSuiteType", "basic")
+            .addFilter("includeEmptyTestSuites", "true");
+    while (true) {
+      ListResponse<TestSuite> page = SdkClients.adminClient().testSuites().list(params);
+      for (TestSuite suite : page.getData()) {
+        if (suite.getId().equals(testSuite.getId())) {
+          return suite;
+        }
+      }
+      String after = page.getPaging() == null ? null : page.getPaging().getAfter();
+      if (after == null) {
+        throw new AssertionError("Basic suite missing from list: " + testSuite.getId());
+      }
+      params.setAfter(after);
+    }
+  }
+
+  private TestSuite searchBasicTestSuiteWithOwners(OpenMetadataClient client, TestSuite testSuite)
+      throws Exception {
+    String encodedFqn =
+        java.net.URLEncoder.encode(testSuite.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    TestSuiteResource.TestSuiteList result =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list"
+                    + "?fields=owners&limit=10&offset=0&includeEmptyTestSuites=true"
+                    + "&testSuiteType=basic&fullyQualifiedName="
+                    + encodedFqn,
+                null,
+                TestSuiteResource.TestSuiteList.class,
+                RequestOptions.builder().build());
+    return result.getData().stream()
+        .filter(suite -> suite.getId().equals(testSuite.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private void assertInheritedTableOwner(TestSuite listedSuite) {
+    List<EntityReference> owners = listedSuite.getOwners();
+    assertNotNull(owners, "basic suite should carry its table's owners");
+    assertAll(
+        () ->
+            assertTrue(
+                owners.stream().anyMatch(owner -> testUser1().getId().equals(owner.getId())),
+                "table owner missing from " + owners),
+        () ->
+            assertTrue(
+                owners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited())),
+                "owners should be marked inherited: " + owners));
+  }
+
   private TestSuite createBasicTestSuiteForTable(Table table) {
     CreateTestSuite request = new CreateTestSuite();
     request.setName(table.getFullyQualifiedName());
@@ -1462,6 +1647,24 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   private void refreshTestSuiteSearchIndex(Rest5Client searchClient) throws Exception {
     Request request = new Request("POST", "/" + getTestSuiteSearchIndexName() + "/_refresh");
     searchClient.performRequest(request);
+  }
+
+  private void deleteTestSuiteSearchDoc(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    Request request =
+        new Request("DELETE", "/" + getTestSuiteSearchIndexName() + "/_doc/" + testSuiteId);
+    request.addParameter("refresh", "true");
+    searchClient.performRequest(request);
+  }
+
+  private JsonNode testSuiteSearchSource(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    JsonNode hits =
+        JsonUtils.readTree(queryTestSuiteSearchIndex(searchClient, testSuiteId))
+            .path("hits")
+            .path("hits");
+    assertEquals(1, hits.size(), "expected the test suite doc to be indexed");
+    return hits.path(0).path("_source");
   }
 
   private String queryTestSuiteSearchIndex(Rest5Client searchClient, UUID testSuiteId)

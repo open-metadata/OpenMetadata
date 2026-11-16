@@ -1,6 +1,6 @@
 {
     "$id": "https://open-metadata.org/schema/entity/automations/testSparkEngineConnection.json",
-    "$schema": "http://json-schema.org/draft-07/schema#", 
+    "$schema": "https://json-schema.org/draft/2020-12/schema", 
     "title": "TestSparkEngineConnectionRequest",
     "javaType": "org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest",
     "description": "Test Spark Engine Connection to test user provided configuration is valid or not.",

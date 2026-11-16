@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/search/aggregationRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AggregationRequest",
   "description": "Request body for performing field aggregations with optional top_hits sub-aggregation.",
   "javaType": "org.openmetadata.schema.search.AggregationRequest",

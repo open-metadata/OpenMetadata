@@ -29,13 +29,14 @@ from metadata.data_quality.api.models import (
 from metadata.data_quality.runner.base_test_suite_source import BaseTestSuiteRunner
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
@@ -48,11 +49,50 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import entity_link
 from metadata.utils.entity_reference import require_entity_reference_id
+from metadata.utils.fqn import split_raw_name, unquote_name
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+
+def _find_column(columns: list[Column], name: str) -> Column | None:
+    """Exact-case name match first, then case-insensitive, mirroring the server's resolution."""
+    fallback = None
+    folded_name = name.casefold()
+    for column in columns or []:
+        column_name = column.name.root
+        if column_name == name:
+            return column
+        if fallback is None and column_name.casefold() == folded_name:
+            fallback = column
+    return fallback
+
+
+def resolve_column_path(table: Table, column_path: str) -> tuple[Column | None, int]:
+    """Resolve the column path of a test case entityLink against the table's columns.
+
+    Returns the column and how many child hops the resolution used (0 for a top-level column).
+    Mirrors the server's ColumnUtil.resolveColumnByPath: a quoted-aware segment walk over the
+    nested children, exact-case matches winning, with a whole-name fallback for legacy links
+    that carry a dotted column name unquoted.
+    """
+    if not column_path:
+        return None, 0
+    segments = [unquote_name(segment) for segment in split_raw_name(column_path)]
+    columns = table.columns or []
+    walked = _find_column(columns, segments[0])
+    for segment in segments[1:]:
+        next_column = _find_column(walked.children or [], segment) if walked else None
+        if next_column is None:
+            walked = None
+            break
+        walked = next_column
+    if walked is not None:
+        return walked, len(segments) - 1
+    return _find_column(columns, unquote_name(column_path)), 0
 
 
 class TestCaseRunner(Processor):
@@ -213,29 +253,28 @@ class TestCaseRunner(Processor):
         Args:
             test_cases_to_update (List[TestCaseDefinition]): list of test case definitions
         """
-        test_cases_to_update_names = {test_case_to_update.name for test_case_to_update in test_cases_to_update}
-        for indx, test_case in enumerate(deepcopy(test_cases)):
-            if test_case.name.root in test_cases_to_update_names:
-                test_case_definition = next(
-                    test_case_to_update
-                    for test_case_to_update in test_cases_to_update
-                    if test_case_to_update.name == test_case.name.root
-                )
-                updated_test_case = self.metadata.patch_test_case_definition(
-                    test_case=test_case,
-                    entity_link=entity_link.get_entity_link(
-                        Table,
-                        fqn=table_fqn,
-                        column_name=test_case_definition.columnName,
-                    ),
-                    test_case_parameter_values=test_case_definition.parameterValues,
-                    compute_passed_failed_row_count=test_case_definition.computePassedFailedRowCount,
-                )
-                if updated_test_case:
-                    test_cases.pop(indx)
-                    test_cases.append(updated_test_case)
+        definitions_by_name: dict[str, TestCaseDefinition] = {}
+        for definition in test_cases_to_update:
+            definitions_by_name.setdefault(definition.name, definition)
+        updated: list[TestCase] = []
+        for test_case in test_cases:
+            definition = definitions_by_name.get(test_case.name.root)
+            if definition is None:
+                updated.append(test_case)
+                continue
+            patched_test_case = self.metadata.patch_test_case_definition(
+                test_case=test_case,
+                entity_link=entity_link.get_entity_link(
+                    Table,
+                    fqn=table_fqn,
+                    column_name=definition.columnName,
+                ),
+                test_case_parameter_values=definition.parameterValues,
+                compute_passed_failed_row_count=definition.computePassedFailedRowCount,
+            )
+            updated.append(patched_test_case or test_case)
 
-        return test_cases
+        return updated
 
     def filter_for_om_test_cases(self, test_cases: list[TestCase]) -> list[TestCase]:
         """
@@ -261,11 +300,44 @@ class TestCaseRunner(Processor):
 
         return om_test_cases
 
+    def _record_if_aborted(self, test_case: TestCase, test_result: TestCaseResultResponse | None) -> bool:
+        """Count a test that could not be evaluated as a failure of this step.
+
+        A validation does not raise when it cannot run. It catches the error and
+        returns a result carrying ``TestCaseStatus.Aborted`` - a connection that
+        failed, a metric that could not be computed, an unsupported dialect. That
+        result is still worth sending to the server, so it reaches the sink; it is
+        only kept out of the scanned records, because ``Status.calculate_success``
+        divides those by themselves plus the failures. Counting an aborted case on
+        both sides of that ratio reports 10 cases with 5 aborted as 66.67% rather
+        than 50%, which is enough to end a failed run in ``partialSuccess``.
+
+        Without this, the step only ever sees successes: a run in which not one
+        test could execute reports ``Errors: 0`` and ``Success %: 100.0``, and the
+        pipeline ends in ``PipelineState.success``. A scheduled suite whose
+        credentials expire then reports success indefinitely.
+
+        Returns whether the result was aborted.
+        """
+        result = test_result.testCaseResult if test_result else None
+        if result is None or result.testCaseStatus is not TestCaseStatus.Aborted:
+            return False
+        error = result.result or f"Test case {test_case.name.root} was aborted"
+        logger.warning("Test case %s was aborted: %s", test_case.name.root, error)
+        self.status.failed(
+            StackTraceError(
+                name=test_case.name.root,
+                error=error,
+            )
+        )
+        return True
+
     def _run_test_case(self, test_case: TestCase, test_suite_runner: DataTestsRunner) -> TestCaseResultResponse | None:
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
-            self.status.scanned(test_case.fullyQualifiedName.root)
+            if not self._record_if_aborted(test_case, test_result):
+                self.status.scanned(model_str(test_case.fullyQualifiedName))
             return test_result  # noqa: TRY300
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
@@ -298,6 +370,9 @@ class TestCaseRunner(Processor):
         test case that checks for a column value to be between two values, but the column is of type
         VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
 
+        A test definition without any `supportedDataTypes` is generic: it declares no restriction, so
+        it runs against every column type rather than against none of them.
+
         Args:
             table: Table entity the test cases are run against
             test_cases: List of test cases
@@ -314,10 +389,41 @@ class TestCaseRunner(Processor):
             if test_definition.entityType != EntityType.COLUMN:
                 result.append(tc)
                 continue
-            column_name = entity_link.get_decoded_column(tc.entityLink.root)
-            column = next(c for c in table.columns if c.name.root == column_name)
+            column_path = entity_link.get_decoded_column(tc.entityLink.root)
+            column, nested_depth = resolve_column_path(table, column_path)
 
-            if column.dataType not in test_definition.supportedDataTypes:
+            if column is None:
+                table_fqn = model_str(table.fullyQualifiedName) if table.fullyQualifiedName else "unknown"
+                self.status.failed(
+                    StackTraceError(
+                        name="Incompatible Column for Test Case",
+                        error=f"Test case {tc.name.root} of type {test_definition.name.root}"
+                        f" references column {column_path}, which does not exist in table"
+                        f" {table_fqn}",
+                    )
+                )
+                continue
+
+            if nested_depth > 0:
+                # A nested path cannot be executed here: no validator resolves its column beyond
+                # the top-level SQLAlchemy ones. Fail it cleanly instead of crashing the filter.
+                self.status.failed(
+                    StackTraceError(
+                        name="Incompatible Column for Test Case",
+                        error=f"Test case {tc.name.root} of type {test_definition.name.root}"
+                        f" targets nested column {column_path}; running tests on nested"
+                        f" columns is not supported yet",
+                    )
+                )
+                continue
+
+            # An empty supportedDataTypes declares no restriction: every column type is compatible.
+            supported_data_types = test_definition.supportedDataTypes
+            is_compatible = not supported_data_types or column.dataType in supported_data_types
+
+            if is_compatible:
+                result.append(tc)
+            else:
                 self.status.failed(
                     StackTraceError(
                         name="Incompatible Column for Test Case",
@@ -325,8 +431,6 @@ class TestCaseRunner(Processor):
                         f" is not compatible with column {column.name.root} of type {column.dataType.value}",
                     )
                 )
-            else:
-                result.append(tc)
         return result
 
     def get_test_suite_runner(self, table: Table):

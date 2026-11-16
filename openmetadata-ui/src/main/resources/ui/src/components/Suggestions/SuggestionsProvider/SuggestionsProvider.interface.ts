@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 
@@ -38,9 +39,4 @@ export interface SuggestionsContextType {
     action: SuggestionAction
   ) => void;
   acceptRejectAllSuggestions: (status: SuggestionAction) => void;
-}
-
-export enum SuggestionAction {
-  Accept = 'accept',
-  Reject = 'reject',
 }

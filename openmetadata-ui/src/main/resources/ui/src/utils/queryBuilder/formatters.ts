@@ -17,8 +17,12 @@ import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import {
   elasticSearchFormat,
+  hasBlankRule,
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
+import { expandColumnTagsVar } from './jsonLogicColumnTags';
+import { toEngineJsonLogic } from './jsonLogicNegation';
+import { rewriteTierVarToTags } from './jsonLogicTierVar';
 
 // What a formatted tree produces, for both output types.
 interface FormattedQuery {
@@ -53,7 +57,15 @@ export const toJsonLogicQuery = (
   try {
     const jsonLogic = QbUtils.jsonLogicFormat(tree, config);
 
-    return { value: JSON.stringify(jsonLogic.logic ?? '') };
+    return {
+      value: JSON.stringify(
+        jsonLogic.logic
+          ? expandColumnTagsVar(
+              rewriteTierVarToTags(toEngineJsonLogic(jsonLogic.logic))
+            )
+          : ''
+      ),
+    };
   } catch {
     return { value: '' };
   }
@@ -106,6 +118,11 @@ export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config
 ): boolean => {
+  // A field-nulled rule is lost data, not a half-entered row, so it blocks the save outright.
+  if (hasBlankRule(tree)) {
+    return false;
+  }
+
   if (!(hasUnfinishedRule(tree, config) as unknown as boolean)) {
     return true;
   }

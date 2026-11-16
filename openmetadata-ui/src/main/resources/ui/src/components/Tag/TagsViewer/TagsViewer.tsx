@@ -23,11 +23,9 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
-import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LabelType, TagSource } from '../../../generated/type/tagLabel';
@@ -35,6 +33,7 @@ import EntityLink from '../../../utils/EntityLink';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
+import { TagChipTooltip } from '../TagChipTooltip/TagChipTooltip';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
 
@@ -100,26 +99,22 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
       const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
 
       return (
-        <Tooltip
-          arrow
-          delay={500}
+        <TagChipTooltip
           key={tag.tagFQN}
-          placement="top"
-          title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-          <Focusable>
-            <span className={classNames('tw:inline-flex')}>
-              <TagComponent
-                color={tag.style?.color}
-                data-testid={`tag-${tag.tagFQN}`}
-                href={redirectLink}
-                icon={tag.style?.iconURL}
-                label={tagName}
-                maxWidth={maxWidth}
-                size="sm"
-              />
-            </span>
-          </Focusable>
-        </Tooltip>
+          title={getTagTooltip(tag.tagFQN, tag.description)}>
+          <TagComponent
+            // `.tag-tinted` sets `outline: none`, so the chip has no focus ring
+            // of its own; this one is drawn outside its border.
+            className="tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring"
+            color={tag.style?.color}
+            data-testid={`tag-${tag.tagFQN}`}
+            href={redirectLink}
+            icon={tag.style?.iconURL}
+            label={tagName}
+            maxWidth={maxWidth}
+            size="sm"
+          />
+        </TagChipTooltip>
       );
     },
     [entityFqn, maxWidth]

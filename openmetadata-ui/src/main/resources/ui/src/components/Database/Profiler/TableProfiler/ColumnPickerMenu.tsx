@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { find } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { Column } from '../../../../generated/entity/data/container';
@@ -43,7 +43,7 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
         <Button
           color="secondary"
           data-testid="column-picker-menu-button"
-          iconTrailing={<ChevronDown className="tw:size-4" />}
+          iconTrailing={ChevronDown}
           size="sm">
           {getEntityName(selectedItem)}
         </Button>

@@ -22,10 +22,8 @@ import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -41,7 +39,6 @@ import {
   CREATE_THREAD,
   DATA_MODEL_DELETED,
   ERROR,
-  ERROR_PLACEHOLDER,
   FETCH_ENTITY_PERMISSION_ERROR,
   FOLLOW_DATA_MODEL,
   TOGGLE_DELETE,
@@ -84,10 +81,6 @@ jest.mock('../../hooks/useApplicationStore', () => ({
     currentUser: mockUserData,
   })),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
-);
 
 jest.mock(
   '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component',
@@ -322,7 +315,11 @@ describe('DataModelPage component', () => {
       renderPage();
     });
 
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(showErrorToast).toHaveBeenCalledWith(FETCH_ENTITY_PERMISSION_ERROR);
   });
 
@@ -344,6 +341,10 @@ describe('DataModelPage component', () => {
       'testFqn',
       expect.objectContaining({ enabled: true })
     );
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

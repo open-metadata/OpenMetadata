@@ -47,9 +47,7 @@ export class DataQualityPageObject extends RightPanelBase {
     );
 
     // All other locators are scoped to the container
-    this.incidentsTab = this.container
-      .locator('.ant-tabs-tab')
-      .filter({ hasText: /incident/i });
+    this.incidentsTab = this.container.getByRole('tab', { name: /incident/i });
     this.successStatCard = this.container.locator(
       '[data-testid="data-quality-stat-card-success"]'
     );
@@ -72,9 +70,7 @@ export class DataQualityPageObject extends RightPanelBase {
     this.searchBar = this.container.getByTestId('searchbar');
     this.incidentsTabContent = this.container.locator('.incidents-tab-content');
     this.noDataPlaceholder = this.container
-      .locator(
-        '[data-testid="no-data-placeholder"], .no-data-placeholder, .ant-empty'
-      )
+      .getByTestId('no-data-placeholder')
       .first();
   }
 

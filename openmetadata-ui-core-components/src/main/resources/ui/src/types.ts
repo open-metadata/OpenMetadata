@@ -89,7 +89,7 @@ export type OwnerKind = 'user' | 'team';
 export type AvatarSize = 16 | 18 | 20 | 24 | 32 | 40 | 48 | 56 | 64;
 
 /** Minimal owner reference used across avatar group and chip components. */
-export interface OwnerRef {
+export interface OwnerEntityReference {
   id: string;
   name?: string;
   displayName?: string;
@@ -97,6 +97,8 @@ export interface OwnerRef {
   href?: string;
   /** URL to the user's profile picture, if available. */
   profileUrl?: string;
+  /** True when the owner is inherited from a parent entity. */
+  inherited?: boolean;
   /** Custom avatar icon component — overrides the default placeholder icon. */
   icon?: React.FC<{ className?: string }>;
 }

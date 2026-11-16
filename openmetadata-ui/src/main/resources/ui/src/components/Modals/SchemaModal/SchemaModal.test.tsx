@@ -47,15 +47,8 @@ describe('Test Schema modal component', () => {
 
     expect(modalContainer).toBeInTheDocument();
 
-    const header = await screen.findByTestId('schema-modal-header');
-
-    expect(header).toBeInTheDocument();
-
-    const modalCloseButton = await screen.findByTestId(
-      'schema-modal-close-button'
-    );
-
-    expect(modalCloseButton).toBeInTheDocument();
+    expect(screen.getByTestId('dialog-title')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
 
     const modalBody = await screen.findByTestId('schema-modal-body');
 
@@ -63,15 +56,11 @@ describe('Test Schema modal component', () => {
   });
 
   it('Should call onClose method on click of close button', async () => {
-    const { findByTestId } = render(<SchemaModal visible {...mockProp} />, {
+    render(<SchemaModal visible {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
-    const modalCloseButton = await findByTestId('schema-modal-close-button');
-
-    expect(modalCloseButton).toBeInTheDocument();
-
-    fireEvent.click(modalCloseButton);
+    fireEvent.click(await screen.findByRole('button', { name: /close/i }));
 
     expect(onClose).toHaveBeenCalled();
   });

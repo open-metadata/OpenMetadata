@@ -24,6 +24,20 @@ mvn test -pl :openmetadata-integration-tests -Dtest="TableResourceIT"
 | `postgres-elasticsearch` | PostgreSQL 15 | Elasticsearch 8.11.4 |
 | `mysql-opensearch` | MySQL 8.3.0 | OpenSearch 2.19.0 |
 
+## RDF Tests
+
+Tests that need the RDF store skip unless RDF is enabled. The `rdf` lane enables it, starts the
+published `openmetadata/fuseki` image pinned in `bootstrap/FusekiTestImage.java` with the
+environment OpenMetadata deploys it with, and runs the classes listed in `integrationTests.rdfTests`
+in the pom. Pass `-DrdfContainerImage=<image>` to test another build of that image, such as
+`openmetadata-fuseki:local` built from the [open-metadata/jena](https://github.com/open-metadata/jena)
+fork. CI runs the lane on MySQL and on PostgreSQL:
+
+```bash
+mvn verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch -DintegrationTests.lane=rdf
+mvn verify -pl :openmetadata-integration-tests -Ppostgres-opensearch -DintegrationTests.lane=rdf
+```
+
 ## Writing a New Integration Test
 
 ### 1. Create the Test Class
@@ -187,9 +201,7 @@ All containers are started **once** per test run and shared across all tests.
 
 ## Running in CI
 
-GitHub workflows run these tests on every PR:
+These tests run in the merge queue (and on pushes to `main`), not on PRs:
 
 - `integration-tests-mysql-elasticsearch.yml` - MySQL + Elasticsearch
 - `integration-tests-postgres-opensearch.yml` - PostgreSQL + OpenSearch
-
-Tests require the "safe to test" label on PRs.

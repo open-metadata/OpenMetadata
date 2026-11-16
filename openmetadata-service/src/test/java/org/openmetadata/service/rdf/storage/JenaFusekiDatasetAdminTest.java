@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf.storage;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,18 +26,25 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
 /**
- * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, creation,
+ * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, readiness,
  * deletion and the Prometheus scrape — against a stub server, so the request shapes and the
  * status-code handling are pinned without a container.
  */
@@ -44,11 +52,22 @@ import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 class JenaFusekiDatasetAdminTest {
 
   private static final String DATASET_PATH = "/openmetadata";
+  private static final Pattern PROBE_SUBJECT = Pattern.compile("<urn:uuid:[^>]+>");
+  private static final Map<String, String> EXTENSION_HEADERS =
+      Map.of(
+          FusekiWriteCapabilities.DEADLINE, "50000",
+          FusekiWriteCapabilities.LIMIT, "67108864",
+          FusekiWriteCapabilities.UNION, "true",
+          FusekiWriteCapabilities.QUERY, "50000",
+          FusekiWriteCapabilities.UPDATE, "50000");
 
   private HttpServer server;
   private final List<String> requests = new CopyOnWriteArrayList<>();
+  private final List<String> updates = new CopyOnWriteArrayList<>();
   private final Map<String, Integer> statusByPath = new ConcurrentHashMap<>();
   private volatile BiFunction<String, String, String> bodyForPath = (method, path) -> "";
+  private volatile Map<String, String> optionsHeaders = EXTENSION_HEADERS;
+  private volatile boolean askAnswer = true;
 
   @BeforeEach
   void startStub() throws Exception {
@@ -58,25 +77,33 @@ class JenaFusekiDatasetAdminTest {
   }
 
   private void handle(HttpExchange exchange) throws java.io.IOException {
-    exchange.getRequestBody().readAllBytes();
+    String request = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
     String method = exchange.getRequestMethod();
     String path = exchange.getRequestURI().getPath();
     requests.add(method + " " + path);
+    if (hasHeader(exchange, "Content-Type", "application/sparql-update")) {
+      updates.add(request);
+    }
     int status =
         statusByPath.getOrDefault(method + " " + path, statusByPath.getOrDefault(path, 200));
     byte[] body = bodyForPath.apply(method, path).getBytes(StandardCharsets.UTF_8);
+    if (hasHeader(exchange, "Accept", "sparql-results")) {
+      body = ("{\"head\":{},\"boolean\":" + askAnswer + "}").getBytes(StandardCharsets.UTF_8);
+      exchange.getResponseHeaders().set("Content-Type", "application/sparql-results+json");
+    }
     if (method.equals("OPTIONS")) {
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.DEADLINE, "50000");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.LIMIT, "67108864");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UNION, "true");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.QUERY, "50000");
-      exchange.getResponseHeaders().set(FusekiWriteCapabilities.UPDATE, "50000");
+      optionsHeaders.forEach(exchange.getResponseHeaders()::set);
     }
     exchange.sendResponseHeaders(status, body.length == 0 ? -1 : body.length);
     if (body.length > 0) {
       exchange.getResponseBody().write(body);
     }
     exchange.close();
+  }
+
+  private static boolean hasHeader(HttpExchange exchange, String name, String fragment) {
+    String value = exchange.getRequestHeaders().getFirst(name);
+    return value != null && value.contains(fragment);
   }
 
   @AfterEach
@@ -156,6 +183,129 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
+  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is usable")
+  void datasetWithoutTheExtensionIsUsable() {
+    optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
+  @DisplayName("a path answered without a Fuseki request id names the dataset that was probed")
+  void pathWithoutADatasetIsReportedAsMissing() {
+    optionsHeaders = Map.of();
+    try (JenaFusekiStorage storage = storage()) {
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+      assertTrue(failure.getMessage().contains("'build_a' does not exist"), failure.getMessage());
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "readiness writes a probe into a named graph, sees it without GRAPH, then removes it")
+  void readinessProbesTheUnionDefaultGraphAndRemovesTheProbe() {
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(storage::ensureStorageReady);
+
+      assertProbeWrittenThenRemoved();
+    }
+  }
+
+  @Test
+  @DisplayName("a build dataset whose default graph hides named graphs fails and is left clean")
+  void buildDatasetWithoutUnionDefaultGraphFailsAndIsLeftClean() {
+    try (JenaFusekiStorage storage = storage()) {
+      askAnswer = false;
+      requests.clear();
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+
+      assertTrue(failure.getMessage().contains("tdb2:unionDefaultGraph"), failure.getMessage());
+      assertTrue(failure.getMessage().contains("'build_a'"), failure.getMessage());
+      assertTrue(requests.contains("POST /build_a"), requests.toString());
+      assertProbeWrittenThenRemoved();
+    }
+  }
+
+  @Test
+  @DisplayName("a dataset that rejects SPARQL updates fails readiness naming the status")
+  void datasetRejectingUpdatesFailsNamingTheStatus() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 400);
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+
+      assertTrue(
+          failure.getMessage().contains("did not accept a SPARQL update (HTTP 400)"),
+          failure.getMessage());
+      assertTrue(failure.getMessage().contains("'build_a'"), failure.getMessage());
+    }
+  }
+
+  @Test
+  @DisplayName("a dataset whose disk guard refuses writes is reachable, so readiness does not fail")
+  void aDatasetBelowItsFreeSpaceReserveIsStillReady() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 507);
+
+      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
+  @DisplayName("a reconcile batch the disk guard refuses reaches the caller as a low-disk refusal")
+  void aReconcileBatchTheGuardRefusesIsALowDiskRefusal() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST " + DATASET_PATH, 507);
+      final Model model = ModelFactory.createDefaultModel();
+      model.add(model.createResource("urn:test:table"), RDFS.label, "table");
+      final List<RdfStorageInterface.EntityWriteRequest> batch =
+          List.of(new RdfStorageInterface.EntityWriteRequest("table", UUID.randomUUID(), model));
+
+      assertThrows(
+          RdfStorageLowDiskException.class,
+          () -> storage.bulkStoreEntities(batch, RdfWriteMode.RECONCILE));
+    }
+  }
+
+  @Test
+  @DisplayName("a probe write with an unknown outcome is still removed, since it may land later")
+  void probeWriteWithAnUnknownOutcomeIsStillRemoved() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 503);
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+
+      assertTrue(
+          failure.getMessage().contains("did not accept a SPARQL update (HTTP 503)"),
+          failure.getMessage());
+      assertProbeWrittenThenRemoved();
+    }
+  }
+
+  private void assertProbeWrittenThenRemoved() {
+    assertEquals(2, updates.size(), updates.toString());
+    assertTrue(updates.getFirst().contains("INSERT DATA"), updates.getFirst());
+    assertTrue(updates.getLast().contains("DELETE DATA"), updates.getLast());
+    assertEquals(probeSubject(updates.getFirst()), probeSubject(updates.getLast()));
+  }
+
+  private static String probeSubject(String update) {
+    Matcher subject = PROBE_SUBJECT.matcher(update);
+    assertTrue(subject.find(), update);
+    return subject.group();
+  }
+
+  @Test
   @DisplayName("an existing dataset is not re-created")
   void createDatasetIfMissingSkipsWhenPresent() {
     JenaFusekiStorage storage = storage();
@@ -199,5 +349,40 @@ class JenaFusekiDatasetAdminTest {
     assertTrue(
         storage.fetchServerMaxHeapBytes().isEmpty(),
         "an unauthorized scrape must fall back to defaults rather than fail the run");
+  }
+
+  @Test
+  @DisplayName("the storage report is read where the openmetadata/fuseki image serves it")
+  void storageReportIsReadFromTheImage() {
+    JenaFusekiStorage storage = storage();
+    bodyForPath =
+        (method, path) ->
+            path.equals(JenaFusekiStorage.STORAGE_REPORT_PATH)
+                ? "{\"totalBytes\":1000,\"usableBytes\":80,\"reserveBytes\":100,"
+                    + "\"lowOnSpace\":true}"
+                : "";
+
+    StorageFacts facts = storage.storageFacts().orElseThrow();
+
+    assertEquals(1000, facts.totalBytes());
+    assertEquals(80, facts.usableBytes());
+    assertTrue(facts.lowOnSpace());
+    assertTrue(requests.contains("GET " + JenaFusekiStorage.STORAGE_REPORT_PATH));
+  }
+
+  @Test
+  @DisplayName("an image without the storage report, or one the account cannot read, has no facts")
+  void missingStorageReportMeansScheduleOnly() {
+    JenaFusekiStorage storage = storage();
+
+    statusByPath.put(JenaFusekiStorage.STORAGE_REPORT_PATH, 404);
+    assertTrue(storage.storageFacts().isEmpty(), "stock Fuseki, or the extension turned off");
+
+    statusByPath.put(JenaFusekiStorage.STORAGE_REPORT_PATH, 401);
+    assertTrue(storage.storageFacts().isEmpty(), "a non-admin account");
+
+    statusByPath.remove(JenaFusekiStorage.STORAGE_REPORT_PATH);
+    bodyForPath = (method, path) -> "<html>not a report</html>";
+    assertTrue(storage.storageFacts().isEmpty(), "something else answering on that path");
   }
 }

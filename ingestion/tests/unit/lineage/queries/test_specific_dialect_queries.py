@@ -67,6 +67,15 @@ SqlParse Limitations:
 6. BigQuery CLONE statement - Returns empty source tables
    - test_bigquery_clone_table_with_digit_starting_name: test_sqlparse=False
 
+7. View column list before a parenthesized body - Parsed as a function call, returns empty source tables
+   - test_snowflake_get_ddl_view_with_parenthesized_body: test_sqlparse=False
+
+8. View column list renames - Ignores the column list and keeps the select column names
+   - test_snowflake_get_ddl_view_with_column_rename_and_comments: test_sqlparse=False (column only)
+
+9. COPY GRANTS in CREATE VIEW - Raises SQLLineageException
+   - test_snowflake_view_definition_with_copy_grants_on_own_line: test_sqlparse=False
+
 Graph Comparison Skips (skip_graph_check=True):
 -----------------------------------------------
 Used when parsers produce valid lineage but with different internal graph structures:
@@ -96,7 +105,7 @@ Special Cases:
 
 Test Coverage:
 -------------
-- Total Tests: 52
+- Total Tests: 57
 - Dialects: Snowflake, BigQuery, MySQL, ClickHouse, PostgreSQL, T-SQL, Oracle, StarRocks
 - Parsers: SqlGlot, SqlFluff, SqlParse
 - All tests validate both table lineage AND column lineage
@@ -1907,4 +1916,199 @@ FILE_FORMAT = (TYPE = CSV)"""
                 (TestColumnQualifierTuple("id", "analytics.s1"), TestColumnQualifierTuple("id", "analytics.t")),
             ],
             dialect=Dialect.STARROCKS.value,
+        )
+
+    # -----------------------------------------------------------------------
+    # Snowflake view definitions
+    # Regression for https://github.com/open-metadata/OpenMetadata/issues/21410
+    # With includeDDL, a Snowflake view's definition is its GET_DDL output, which
+    # lists the view columns in upper case whatever the case of the body. Without
+    # it, the definition is INFORMATION_SCHEMA.VIEWS.VIEW_DEFINITION, the CREATE
+    # text as submitted, COPY GRANTS included. A column list that differs from the
+    # select list only in case needs collate-sqllineage 2.1.8.
+    # -----------------------------------------------------------------------
+
+    def test_snowflake_get_ddl_view_with_parenthesized_body(self):
+        """Test a view as GET_DDL returns it for a dbt model: upper case column list, parenthesized body.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/21410.
+        Before collate-sqllineage 2.1.8, SqlGlot dropped every column because the column list
+        differs from the select list only in case. SqlParse reads the view name and its column
+        list as a function call and returns no source tables, so it is excluded.
+        """
+        query = """create or replace view ORDERS_VIEW(
+\tID,
+\tNAME
+) as (
+    select id, name from analytics_db.analytics.orders
+  );"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics_db.analytics.orders"},
+            {"orders_view"},
+            dialect=Dialect.SNOWFLAKE.value,
+            # SqlParse parses the view name and column list as a function call
+            test_sqlparse=False,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("id", "orders_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("name", "orders_view"),
+                ),
+            ],
+            dialect=Dialect.SNOWFLAKE.value,
+            test_sqlparse=False,
+        )
+
+    def test_snowflake_get_ddl_view_with_lowercase_body(self):
+        """Test a view as GET_DDL returns it: upper case column list, lower case body.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/21410.
+        Before collate-sqllineage 2.1.8, SqlGlot dropped every column because the column list
+        differs from the select list only in case. All three parsers now agree.
+        """
+        query = """create or replace view ORDERS_VIEW(
+\tID,
+\tNAME
+) as select id, name from analytics_db.analytics.orders;"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics_db.analytics.orders"},
+            {"orders_view"},
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("id", "orders_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("name", "orders_view"),
+                ),
+            ],
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+    def test_snowflake_get_ddl_view_with_column_rename_and_comments(self):
+        """Test a GET_DDL view mixing a real column rename with a case-only one, plus COMMENTs.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/21410.
+        Before collate-sqllineage 2.1.8, SqlGlot kept the ORDER_ID rename and dropped NAME.
+        SqlParse ignores the view column list, so its column lineage keeps id instead of
+        order_id and it is excluded from the column assertion.
+        """
+        query = """create or replace view ORDERS_VIEW(
+\tORDER_ID COMMENT 'order key',
+\tNAME
+) COMMENT='orders for reporting'
+ as select id, name from analytics_db.analytics.orders;"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics_db.analytics.orders"},
+            {"orders_view"},
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("order_id", "orders_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("name", "orders_view"),
+                ),
+            ],
+            dialect=Dialect.SNOWFLAKE.value,
+            # SqlParse ignores the view column list, so id is not renamed to order_id
+            test_sqlparse=False,
+        )
+
+    def test_snowflake_view_definition_with_copy_grants_on_own_line(self):
+        """Test a view definition as INFORMATION_SCHEMA.VIEWS returns it, with COPY GRANTS on its own line.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/21410.
+        This is what a view stores without includeDDL, in the shape the issue reports.
+        LineageParser only strips COPY GRANTS when spaces surround it, so the parsers see
+        the clause as is. SqlParse raises SQLLineageException on COPY GRANTS in a CREATE VIEW,
+        so it is excluded.
+        """
+        query = """CREATE OR REPLACE VIEW
+ANALYTICS_DB.ANALYTICS.ORDERS_VIEW
+COPY GRANTS AS SELECT
+   "ID" AS ID,
+   "NAME" AS NAME
+FROM ANALYTICS_DB.ANALYTICS.ORDERS"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics_db.analytics.orders"},
+            {"analytics_db.analytics.orders_view"},
+            dialect=Dialect.SNOWFLAKE.value,
+            # SqlParse raises SQLLineageException on COPY GRANTS in a CREATE VIEW
+            test_sqlparse=False,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders_view"),
+                ),
+            ],
+            dialect=Dialect.SNOWFLAKE.value,
+            test_sqlparse=False,
+        )
+
+    def test_snowflake_insert_with_column_list_differing_in_case(self):
+        """Test an INSERT whose column list differs from the select list only in case.
+
+        Regression for https://github.com/open-metadata/OpenMetadata/issues/21410.
+        The same SqlGlot defect as the GET_DDL views, on the query log path: before
+        collate-sqllineage 2.1.8 every column was dropped. All three parsers now agree.
+        """
+        query = """insert into analytics_db.analytics.orders_copy (ID, NAME)
+select id, name from analytics_db.analytics.orders"""
+
+        assert_table_lineage_equal(
+            query,
+            {"analytics_db.analytics.orders"},
+            {"analytics_db.analytics.orders_copy"},
+            dialect=Dialect.SNOWFLAKE.value,
+        )
+
+        assert_column_lineage_equal(
+            query,
+            [
+                (
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("id", "analytics_db.analytics.orders_copy"),
+                ),
+                (
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders"),
+                    TestColumnQualifierTuple("name", "analytics_db.analytics.orders_copy"),
+                ),
+            ],
+            dialect=Dialect.SNOWFLAKE.value,
         )

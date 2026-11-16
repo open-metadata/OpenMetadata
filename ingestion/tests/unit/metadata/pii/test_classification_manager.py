@@ -136,7 +136,7 @@ class TestClassificationRunManager:
     ):
         """Test fetching tags from multiple classifications."""
 
-        def list_entities_side_effect(entity, fields, params):
+        def list_entities_side_effect(entity, fields, params, skip_on_failure=False):
             if params.get("parent") == "PII":
                 return [email_tag_pii]
             elif params.get("parent") == "General":  # noqa: RET505
@@ -205,3 +205,55 @@ class TestClassificationRunManager:
 
         # Should return empty list on error
         assert tags == []
+
+
+@pytest.mark.parametrize("bad_first", [True, False])
+def test_malformed_classification_preserves_enabled_selection(
+    pii_classification, general_classification, disabled_classification, bad_first
+):
+    invalid = pii_classification.model_dump(mode="json", exclude_none=True)
+    invalid.pop("description")
+    valid = pii_classification.model_dump(mode="json", exclude_none=True)
+    selected = [invalid, valid] if bad_first else [valid, invalid]
+    sdk = object.__new__(OpenMetadata)
+    sdk.client = Mock()
+    sdk._use_raw_data = False
+    sdk.client.get.side_effect = [
+        {"data": selected, "paging": {"total": 4, "after": "next"}},
+        {
+            "data": [
+                general_classification.model_dump(mode="json", exclude_none=True),
+                disabled_classification.model_dump(mode="json", exclude_none=True),
+            ],
+            "paging": {"total": 4},
+        },
+    ]
+
+    enabled = ClassificationManager(sdk).get_enabled_classifications(["PII", "Disabled"])
+
+    assert [classification.name.root for classification in enabled] == ["PII"]
+
+
+def test_invalid_middle_page_preserves_later_tags_and_other_classification(
+    pii_classification, general_classification, email_tag_pii, phone_tag_pii, credit_card_tag_general
+):
+    invalid = email_tag_pii.model_dump(mode="json", exclude_none=True)
+    invalid["name"] = "SPI"
+    invalid["fullyQualifiedName"] = "PII.SPI"
+    invalid["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+    sdk = object.__new__(OpenMetadata)
+    sdk.client = Mock()
+    sdk._use_raw_data = False
+    sdk.client.get.side_effect = [
+        {
+            "data": [email_tag_pii.model_dump(mode="json", exclude_none=True), invalid],
+            "paging": {"total": 4, "after": "middle"},
+        },
+        {"data": [invalid], "paging": {"total": 4, "after": "last"}},
+        {"data": [phone_tag_pii.model_dump(mode="json", exclude_none=True)], "paging": {"total": 4}},
+        {"data": [credit_card_tag_general.model_dump(mode="json", exclude_none=True)], "paging": {"total": 1}},
+    ]
+
+    tags = ClassificationManager(sdk).get_enabled_tags([pii_classification, general_classification])
+
+    assert [tag.fullyQualifiedName for tag in tags] == ["PII.Email", "PII.Phone", "General.CreditCard"]

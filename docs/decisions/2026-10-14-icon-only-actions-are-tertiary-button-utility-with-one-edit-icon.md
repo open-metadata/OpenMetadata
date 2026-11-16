@@ -1,0 +1,121 @@
+# Icon-only actions are a tertiary ButtonUtility, and editing has one icon
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`) · v7 2026-11-05 (tree-row hover actions are `xs`) · v8 2026-11-12 (bordered icon-only actions are a `secondary` `ButtonUtility`) · v9 2026-11-12 (what stays outside `ButtonUtility`)
+- **Deciders:** Rohit Jain
+- **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
+- **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
+
+## Context
+ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec made `Button` and `ButtonUtility`
+size and colour their own icons, but only for icons passed as a component. The app passed most
+icons as sized elements (`<Edit01 size={14} />`), built icon-only actions from bare icons with
+`onClick`, raw `<button>`s, core `Button`s and five pass-through wrappers, mixed bordered and
+borderless icon buttons, and drew "edit" with seven different glyphs.
+
+## Decision
+- An icon-only action is a `ButtonUtility`, never an icon, `div` or `span` with a click handler, a
+  raw `<button>` or a children-less `Button`. Its colour is `tertiary` (the default);
+  `tertiary-destructive` only where the action was already destructive. Its `size` comes from where
+  it sits: `xs` chip remove / input clear / row expander, `sm` inline section edit, `md` table-row and
+  card actions, `lg` collapse, accordion, canvas controls and page-header actions. `xl` is not
+  used: its padding is too heavy beside a title.
+- Icons in `Button` / `ButtonUtility` are passed as component references, so the button sizes them.
+- A disabled `ButtonUtility` is natively disabled (v5). With a tooltip, `Tooltip` wraps the
+  disabled button in one focusable span, so the tooltip that explains why still opens.
+- `ButtonUtility` forwards its ref so it can be a `PopoverTrigger` / `DialogTrigger` child directly.
+- Delete actions use core `Trash01` only.
+- Menu and popover item icons are 20px and `text-quaternary`.
+- Edit actions use core `Edit01` only. `Edit02`, `Edit03`, `Edit05`, `Pencil01`, `EditSkills` and the
+  app's `edit-new*.svg`, `action-icons/edit.svg` and `ic-edit-circle.svg` are deleted. `UserEdit`
+  stays: it is an icon-picker value, not an action.
+- An icon that must be blue uses `utility-brand-600`.
+
+## Consequences
+Call sites no longer choose icon sizes or colours, so one change to `ButtonUtility` restyles every
+icon action. The `EditIconButton` family, `WidgetActionButton`, `LineageNodeRemoveButton` and
+`Modals/CloseIcon` are gone; their call sites name `ButtonUtility` directly. A bordered or filled
+icon-only button needs a new record.
+
+## Amendment: sizes follow the icon's role (v2, 2026-10-15)
+This replaces the `size` clause of the Decision. An icon-only action's `size` follows what its icon
+does, so the default icon is 16px:
+- `lg` (32px box, 16px icon in a 20 frame): an action that stands on its own. Table-row, card and
+  list-row actions (including the Context Center Documents, Memories and Archive rows), toolbar and
+  canvas controls, page-header actions (vote, follow, copy, more), close, collapse and accordion
+  toggles.
+- `sm` (24px box, 14px icon in an 18 frame): an action tied to a label or section. Edit and add
+  beside a section title, header widgets that pair an icon with a label (Domain, Owner, Tier), and
+  inline ✓ / × beside an input.
+- `xs` (20px box, 12px icon in a 16 frame): arrow and navigation actions only. Row and tree
+  expanders, chip remove and input clear.
+
+`md` (28px box) draws the same 14px icon as `sm` with more padding, so no role uses it; pick `sm`
+or `lg`. Tables with icon actions gain 4px of row height. Icons rendered outside a button keep
+their own sizes; this record does not cover them.
+
+## Amendment: colour, scope and loading (v3, 2026-10-19)
+- Converting an action to `ButtonUtility` keeps a primary action primary (`color="primary"`): save
+  and confirm ✓/×, add-field and send buttons. A secondary icon-only action becomes tertiary.
+- This replaces the menu clause of the Decision: menu and popover item icons, and any text or link,
+  keep their own size and colour. Only icons inside a button follow this record, and only those use
+  `utility-brand-600` for blue.
+- `ButtonUtility` takes `isLoading`, which swaps the icon for `Button`'s spinner and disables the
+  button, so a save action that showed a spinner as a `Button` still does.
+
+## Amendment: compact cell and feed actions (v4, 2026-10-29)
+This replaces "arrow and navigation actions only" in the v2 `xs` clause.
+- `hover-cell-icon` table-cell actions are `xs`: display-name and description edit, the entity task
+  request and the field conversation. So are `TagsContainerV2`'s add/edit when shown under a
+  table cell, and the Settings custom-property row edit. These keep the 20px box the table rows
+  were designed around.
+- Activity-feed footer actions sit on a 24px row, so the task reply and the add-reaction button are
+  `sm`; the pill variant of add-reaction keeps its round 26px pill.
+- The activity footer's comment action is a boxed `link-gray` `Button`, not a `ButtonUtility`: it has
+  no hover background, matching the reaction pills beside it.
+
+## Amendment: native disabled (v5, 2026-11-02)
+This replaces the soft-disabled clause of the Decision. A disabled `ButtonUtility` passes
+`isDisabled` to react-aria, which blocks presses, parent `MenuTrigger`/`DialogTrigger` presses and
+form submits on its own. `Tooltip` already wraps a disabled trigger in a focusable span
+(`components/base/tooltip/tooltip.tsx`), so the tooltip stays reachable on hover and focus with
+one tab stop. A button that becomes disabled while focused loses focus; callers that move focus
+onward (the announcement pagers) do so themselves.
+
+## Amendment: heading-adjacent learning action (v6, 2026-11-02)
+- The PageHeader learning bulb, an icon-only action beside a 16px page heading, is `xs`, so its
+  12px glyph matches the heading's cap height. Its wrapper sets `line-height: 0` so the text strut
+  does not lift it off the title's centre. Other `LearningIcon` placements stay `sm`.
+
+## Amendment: tree-row hover actions (v7, 2026-11-05)
+- Hover actions inside a `Tree` row, such as the Context Center article hierarchy's delete, are
+  `xs`. The tree row is 32px (20px text plus `py-1.5`). An `lg` button (32px) raised every row to
+  44px, while the 20px `xs` box fits the row and its 12px glyph sits beside the row's 14px page
+  icon. The v2 `lg` clause still covers list rows outside a tree.
+
+## Amendment: bordered icon-only actions (v8, 2026-11-12)
+This replaces "A bordered or filled icon-only button needs a new record" in Consequences.
+- A bordered icon-only action is a `ButtonUtility` with `color="secondary"`, not a children-less
+  `Button`. It stands beside other bordered controls: toolbar and menu triggers (import/export,
+  graph view, library, release history, full screen) and the floating scroll buttons over a
+  scrolled table.
+- Its `size` keeps the box of the `Button` it sits beside. An icon-only `Button` `sm` draws 32px,
+  so it becomes `lg`; `md` draws 36px, so it becomes `xl`. `xl` is used only for this, beside a
+  36px labelled control such as a `FilterSelect` trigger.
+- A stat card's "open" arrow is `sm` (24px). `xs` is not used for it, because `xs` drops the border.
+
+## Amendment: what stays outside `ButtonUtility` (v9, 2026-11-12)
+These icon-only controls stay as they are. They are listed so a search for children-less
+`Button`s does not convert them.
+- **Activity-feed comment and reply** (`ActivityEventFooter`, `FeedCardReplyButton`): boxed
+  `link-gray` `Button`s. They have no hover background, like the reaction pills beside them
+  (v4). A `ButtonUtility` would add a hover fill the pills do not have.
+- **The chevron half of a split button** (`TaskActionSplitButton`): it is joined to the labelled
+  action beside it. It must share that `Button`'s colour, size, border and radius so the two halves
+  read as one control. A `ButtonUtility` has different sizes and no joined-edge radius.
+- **Colour swatches** (`HeaderTheme`): these are selectable values with `aria-pressed`, not
+  actions. Their content is the colour itself, not an icon.
+- **Drag and resize handles** (for example Collate's QueryRunner `ResizableDivider`): they respond
+  to a pointer drag, not a press. They are not buttons.
+
+Any other icon-only control follows the rules above.

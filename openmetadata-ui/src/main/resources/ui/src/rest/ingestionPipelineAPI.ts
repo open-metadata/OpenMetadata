@@ -19,6 +19,7 @@ import {
   CreateIngestionPipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { RunIngestionPipelineForEntity } from '../generated/api/services/ingestionPipelines/runIngestionPipelineForEntity';
 import { AgentType } from '../generated/entity/services/ingestionPipelines/agentType';
 import {
   IngestionPipeline,
@@ -30,7 +31,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { IngestionPipelineLogByIdInterface } from '../interface/IngestionPipelineLogs.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
   const response = await APIClient.post<
@@ -96,6 +97,18 @@ export const triggerIngestionPipelineById = async (id: string) => {
   return response.data;
 };
 
+/** Runs the pipeline of a type that owns an entity, scoped to that entity alone. */
+export const runIngestionPipelineForEntity = async (
+  data: RunIngestionPipelineForEntity
+) => {
+  const response = await APIClient.post<
+    RunIngestionPipelineForEntity,
+    AxiosResponse<PipelineServiceClientResponse>
+  >('/services/ingestionPipelines/run', data);
+
+  return response.data;
+};
+
 export const deployIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {
@@ -146,10 +159,13 @@ export const getPipelineServiceHostIp = async () => {
 // is a no-op for a UUID and safely escapes an fqn's separators.
 export const getIngestionPipelineLogById = (
   idOrFqn: string,
-  after?: string
+  after?: string,
+  runId?: string
 ) => {
   return APIClient.get<IngestionPipelineLogByIdInterface>(
-    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/last`,
+    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/${
+      runId ? encodeURIComponent(runId) : 'last'
+    }`,
     {
       params: {
         after,

@@ -61,37 +61,37 @@ const test = base.extend<{
   },
   viewResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewResultsUser.login(page);
+    await viewResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   editResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editResultsUser.login(page);
+    await editResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableEditResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableEditResultsUser.login(page);
+    await tableEditResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   deleteResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await deleteResultsUser.login(page);
+    await deleteResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   partialDeleteTcPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await partialDeleteTcUser.login(page);
+    await partialDeleteTcUser.signIn(page);
     await use(page);
     await page.close();
   },
   partialDeleteTablePage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await partialDeleteTableUser.login(page);
+    await partialDeleteTableUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -115,7 +115,9 @@ test.describe(
 
     const visitTestCaseDetailsPage = async (page: Page) => {
       const detailsPromise = waitForTestCaseDetailsResponse(page);
-      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
+      await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await detailsPromise;
       await verifyTestCaseLastRunBanner(page, 'failed');
     };
@@ -221,7 +223,9 @@ test.describe(
 
         const resultChart = viewResultsPage.getByTestId('chart-container');
         if (await resultChart.first().isVisible()) {
-          await expect(resultChart.first()).toBeVisible();
+          await expect(resultChart.filter({ visible: true })).not.toHaveCount(
+            0
+          );
         }
       });
 
@@ -364,8 +368,8 @@ test.describe(
       });
     });
 
-    test.describe('Negative - Delete Results (ALL logic)', () => {
-      test('User with only TEST_CASE.DELETE (no TABLE.DELETE) cannot DELETE results', async ({
+    test.describe('Positive - Delete Results (ANY logic)', () => {
+      test('User with only TEST_CASE.DELETE (no TABLE.DELETE) can DELETE results', async ({
         partialDeleteTcPage,
         adminPage,
       }) => {
@@ -398,9 +402,9 @@ test.describe(
             testCaseFqn
           )}/${ts}`
         );
-        expect(res.status()).toBe(403);
+        expect(res.status()).toBe(200);
 
-        if (postRes.ok()) {
+        if (!res.ok() && postRes.ok()) {
           await adminContext.delete(
             `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
               testCaseFqn
@@ -409,7 +413,7 @@ test.describe(
         }
       });
 
-      test('User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results', async ({
+      test('User with only TABLE.DELETE (no TEST_CASE.DELETE) can DELETE results', async ({
         partialDeleteTablePage,
         adminPage,
       }) => {
@@ -441,9 +445,9 @@ test.describe(
             testCaseFqn
           )}/${ts}`
         );
-        expect(res.status()).toBe(403);
+        expect(res.status()).toBe(200);
 
-        if (postRes.ok()) {
+        if (!res.ok() && postRes.ok()) {
           await adminContext.delete(
             `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
               testCaseFqn

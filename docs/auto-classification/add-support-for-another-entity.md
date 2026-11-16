@@ -49,7 +49,7 @@ Before adding support for a new entity type (e.g., Topic, Dashboard, SearchIndex
 ```json
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/storageServiceAutoClassificationPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "StorageServiceAutoClassificationPipeline",
   "description": "StorageService AutoClassification Pipeline Configuration.",
   "type": "object",

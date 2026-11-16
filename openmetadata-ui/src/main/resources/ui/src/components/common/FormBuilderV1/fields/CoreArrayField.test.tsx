@@ -15,7 +15,7 @@ import { FieldProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreArrayField from './CoreArrayField';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Copy01: () => <span>copy-icon</span>,
   XClose: () => <span>x-icon</span>,
 }));
@@ -36,6 +36,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button aria-label={tooltip} onClick={() => onPress?.()}>
         {Icon && <Icon />}
         {children}
+      </button>
+    )
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      'aria-label': ariaLabel,
+      icon: Icon,
+      tooltip,
+      onClick,
+    }: {
+      'aria-label'?: string;
+      icon?: React.ElementType;
+      tooltip?: string;
+      onClick?: (e: React.MouseEvent) => void;
+    }) => (
+      <button aria-label={ariaLabel ?? tooltip} onClick={onClick}>
+        {Icon && <Icon />}
       </button>
     )
   ),
@@ -136,6 +153,48 @@ describe('CoreArrayField', () => {
 
     expect(screen.getByText('Tags')).toBeInTheDocument();
     expect(screen.getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('uses the ui:placeholder from the uiSchema while empty', () => {
+    render(
+      <CoreArrayField
+        {...baseFieldProps}
+        uiSchema={{ 'ui:placeholder': 'Enter a domain' }}
+      />
+    );
+
+    expect(screen.getByRole('textbox')).toHaveAttribute(
+      'placeholder',
+      'Enter a domain'
+    );
+  });
+
+  it('edits a space-separated string as tags and saves it back as a string', () => {
+    const onChange = jest.fn();
+
+    render(
+      <CoreArrayField
+        {...baseFieldProps}
+        formData="openid email"
+        schema={{ type: 'string' }}
+        onChange={onChange}
+      />
+    );
+
+    expect(screen.getByText('openid')).toBeInTheDocument();
+    expect(screen.getByText('email')).toBeInTheDocument();
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'profile' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledWith('openid email profile');
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'label.remove-entity' })[0]
+    );
+
+    expect(onChange).toHaveBeenLastCalledWith('email');
   });
 
   it('adds a tag on Enter key', () => {

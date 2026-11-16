@@ -11,11 +11,12 @@
 """Tag and Classification domain utilities."""
 
 from metadata.domain.tags.canonicalizer import Canonical, TagCanonicalizer
-from metadata.domain.tags.registry import ScopeAlreadyClearedError, TagRegistry
+from metadata.domain.tags.models import TagDefinition
+from metadata.domain.tags.registry import TagRegistry
 
 __all__ = [
     "Canonical",
-    "ScopeAlreadyClearedError",
     "TagCanonicalizer",
+    "TagDefinition",
     "TagRegistry",
 ]

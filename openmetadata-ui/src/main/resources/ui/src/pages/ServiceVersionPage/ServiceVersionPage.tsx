@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -32,15 +33,14 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Directory } from '../../generated/entity/data/directory';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
@@ -55,6 +55,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import { DetailsTabItem } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
@@ -63,7 +64,7 @@ import {
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getServiceDetailsPath,
   getServiceVersionPath,
@@ -155,17 +156,22 @@ function ServiceVersionPage() {
   const isLoading =
     isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData.changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData.changeDescription, owners, tier, domains]
+  );
 
   const fetchVersionsList = useCallback(async () => {
     try {
@@ -186,10 +192,9 @@ function ServiceVersionPage() {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const databaseUsagePermission = getPrioritizedViewPermission(
-        permissions.database,
-        PermissionOperation.ViewUsage
-      );
+      const databaseUsagePermission = getDerivedPermissionFlags(
+        permissions.database
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
         databaseUsagePermission
@@ -219,10 +224,9 @@ function ServiceVersionPage() {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
-      const dashboardUsagePermission = getPrioritizedViewPermission(
-        permissions.dashboard,
-        PermissionOperation.ViewUsage
-      );
+      const dashboardUsagePermission = getDerivedPermissionFlags(
+        permissions.dashboard
+      ).canViewUsage;
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
         dashboardUsagePermission
@@ -331,7 +335,8 @@ function ServiceVersionPage() {
   );
 
   const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal) => {
+    async (cursor?: PagingWithoutTotal) => {
+      const paging = { ...cursor, limit: pageSize };
       try {
         setIsOtherDataLoading(true);
         switch (serviceCategory) {
@@ -391,6 +396,7 @@ function ServiceVersionPage() {
     },
     [
       serviceCategory,
+      pageSize,
       fetchDatabases,
       fetchTopics,
       fetchDashboards,
@@ -460,10 +466,10 @@ function ServiceVersionPage() {
         );
       }
     },
-    [paging, getOtherDetails, handlePageChange]
+    [paging, pageSize, getOtherDetails, handlePageChange]
   );
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabs =
       serviceCategory === ServiceCategory.METADATA_SERVICES
         ? []
@@ -479,6 +485,7 @@ function ServiceVersionPage() {
                   data={data}
                   entityType={entityType}
                   isServiceLoading={isOtherDataLoading}
+                  pageSize={pageSize}
                   paging={paging}
                   pagingHandler={pagingHandler}
                   serviceDetails={currentVersionData}
@@ -497,6 +504,7 @@ function ServiceVersionPage() {
     currentVersionData,
     serviceCategory,
     paging,
+    pageSize,
     data,
     isOtherDataLoading,
     getOtherDetails,
@@ -518,7 +526,7 @@ function ServiceVersionPage() {
     if (!viewVersionPermission) {
       return (
         <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-          <EmptyPlaceholder
+          <PermissionPlaceholder
             description={
               <Transi18next
                 i18nKey="message.no-access-placeholder"
@@ -532,7 +540,7 @@ function ServiceVersionPage() {
                 }}
               />
             }
-            icon={<Lock className="tw:text-secondary" />}
+            icon={<Lock01 />}
             title={t('label.access-denied')}
           />
         </div>
@@ -545,14 +553,15 @@ function ServiceVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={entityType}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -560,11 +569,24 @@ function ServiceVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
-              <Col className="entity-version-page-tabs" span={24}>
-                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
-              </Col>
-            </Row>
+              </div>
+              <div className="entity-version-page-tabs">
+                <Tabs className="tw:gap-3" data-testid="tabs">
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabs.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
+            </Box>
           </div>
         )}
 

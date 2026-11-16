@@ -108,10 +108,6 @@ jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
   return jest.fn().mockReturnValue(<div>EntityVersionTimeLine</div>);
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-
 describe('DataProductsPage component', () => {
   it('should render successfully', async () => {
     const { container } = renderWithQueryClient(

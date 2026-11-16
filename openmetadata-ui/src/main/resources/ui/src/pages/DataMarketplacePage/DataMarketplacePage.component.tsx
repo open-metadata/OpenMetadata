@@ -37,6 +37,7 @@ import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispat
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
+import { getLanguageDirection } from '../../utils/i18next/i18nextUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
@@ -142,7 +143,7 @@ const DataMarketplacePage = ({
   // Depend on the resolved direction, not the i18n instance: the instance
   // reference survives a language change, so memoising on it would keep a stale
   // dir if the language ever changes without remounting this route.
-  const direction = i18n.dir();
+  const direction = getLanguageDirection(i18n);
 
   const widgets = useMemo(
     () =>
@@ -161,6 +162,8 @@ const DataMarketplacePage = ({
   const gridWrapperClassName = `marketplace-grid-wrapper${
     renderPageHeader ? ' tw:!max-w-none' : ''
   }`;
+  // The AI shell header band sits 8px in; its content follows the 16px gutter.
+  const contentPaddingClassName = renderPageHeader ? 'tw:px-4' : 'p-x-box';
 
   return (
     <div className="tw:h-full tw:overflow-y-auto">
@@ -185,11 +188,11 @@ const DataMarketplacePage = ({
           </div>
         )}
         <div className={gridWrapperClassName} dir="ltr">
-          <div className="p-x-box">
+          <div className={contentPaddingClassName}>
             <AnnouncementsWidgetV2 widgetKey="announcements" />
           </div>
           <div
-            className="grid-container p-x-box tw:flex tw:flex-col"
+            className={`grid-container tw:flex tw:flex-col ${contentPaddingClassName}`}
             style={renderPageHeader ? AI_MODE_GRID_STYLE : CLASSIC_GRID_STYLE}>
             {widgets}
           </div>

@@ -32,10 +32,6 @@ jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('./QueryBuilderUtils', () => ({
-  getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
-}));
-
 jest.mock('./RouterUtils', () => ({
   getExplorePath: jest.fn().mockReturnValue('/explore'),
 }));
@@ -45,12 +41,6 @@ jest.mock('@react-awesome-query-builder/ui', () => ({
     checkTree: jest.fn().mockReturnValue({}),
     loadTree: jest.fn().mockReturnValue({}),
   },
-}));
-
-jest.mock('@ant-design/icons', () => ({
-  InfoCircleOutlined: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="info-icon">Info Icon</div>),
 }));
 
 describe('CuratedAssetsUtils', () => {
