@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,22 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
 
-.custom-node-label {
-  border-radius: 50%;
-  height: 10px;
-  width: 10px;
-}
-
-.leaf-node .task-node .Successful {
-  background-color: @green-3;
-}
-
-.leaf-node .task-node .Failed {
-  background-color: @red-3;
-}
-
-.leaf-node .task-node .Pending {
-  background-color: @yellow-2;
-}
+export const TASK_STATUS_DOT_CLASS: Record<string, string> = {
+  Successful: 'tw:bg-visualization-green-3',
+  Failed: 'tw:bg-visualization-red-3',
+  Pending: 'tw:bg-visualization-yellow-2',
+};
