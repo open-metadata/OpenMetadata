@@ -7308,6 +7308,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
           new Column().withName("updated_at").withDataType(ColumnDataType.TIMESTAMP));
 
   private static String odcsWithQualityRules(String contractName, String tableName) {
+    return odcsWithQualityRules(contractName, tableName, 0);
+  }
+
+  private static String odcsWithQualityRules(
+      final String contractName, final String tableName, final int regexTolerance) {
     return """
         apiVersion: v3.1.0
         kind: DataContract
@@ -7350,7 +7355,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                     metric: invalidValues
                     arguments:
                       pattern: "^[^@]+@[^@]+$"
-                    mustBeLessOrEqualTo: 5
+                    mustBeLessOrEqualTo: %d
                     unit: percent
               - name: updated_at
                 logicalType: timestamp
@@ -7367,7 +7372,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             engine: greatExpectations
             implementation: "type: expect_column_values_to_not_be_null"
         """
-        .formatted(UUID.randomUUID(), contractName, tableName);
+        .formatted(UUID.randomUUID(), contractName, tableName, regexTolerance);
   }
 
   private static TestCase testCaseNamed(DataContract contract, String name) {
@@ -7430,13 +7435,48 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals("true", parameter(knownStatus, "matchEnum"));
 
     TestCase emailFormat = testCaseNamed(contract, "odcs_email_format");
-    assertEquals("5", parameter(emailFormat, "threshold"));
-    assertEquals("PERCENTAGE", parameter(emailFormat, "thresholdUnit"));
+    assertEquals("^[^@]+@[^@]+$", parameter(emailFormat, "regex"));
+    assertNull(parameter(emailFormat, "threshold"));
+    assertNull(parameter(emailFormat, "thresholdUnit"));
 
     TestCase blankEmails = testCaseNamed(contract, "odcs_no_blank_emails");
     assertTrue(
         parameter(blankEmails, "sqlExpression").contains(table.getName()),
         "The ${object} placeholder must be replaced with the table");
+  }
+
+  @Test
+  void testODCSRegexToleranceSurvivesExportWithoutAnExecutableTest(final TestNamespace ns) {
+    final Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    final DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_regex_tolerance"), table.getName(), 5),
+                table.getId(),
+                "table");
+    assertPreservedRegexTolerance(imported);
+
+    final String exported =
+        SdkClients.adminClient().dataContracts().exportToODCSYaml(imported.getId());
+    final DataContract reimported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(exported, table.getId(), "table", "replace");
+    assertPreservedRegexTolerance(reimported);
+  }
+
+  private static void assertPreservedRegexTolerance(final DataContract contract) {
+    assertEquals(5, contract.getQualityExpectations().size());
+    assertFalse(qualityExpectationNames(contract).contains("odcs_email_format"));
+    final ODCSQualityRule emailRule =
+        contract.getOdcsQualityRules().stream()
+            .filter(rule -> "Email format".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("^[^@]+@[^@]+$", emailRule.getArguments().getPattern());
+    assertEquals(5.0, emailRule.getMustBeLessOrEqualTo());
+    assertEquals("percent", emailRule.getUnit());
   }
 
   @Test

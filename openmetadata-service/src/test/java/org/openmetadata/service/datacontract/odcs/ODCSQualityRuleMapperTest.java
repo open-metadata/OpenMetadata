@@ -148,6 +148,38 @@ class ODCSQualityRuleMapperTest {
     assertEquals("^[0-9]+$", parameter(test, "regex"));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"rows", "percent"})
+  void regexRulesWithNonzeroToleranceAreNotExecutable(final String unit) {
+    final ODCSQualityRule rule =
+        library("Id format", ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES, "id")
+            .withArguments(new ODCSQualityRuleArguments().withPattern("^[0-9]+$"))
+            .withMustBeLessOrEqualTo(5.0)
+            .withUnit(unit);
+
+    final UnsupportedOutcome unsupported =
+        assertInstanceOf(
+            UnsupportedOutcome.class, ODCSQualityRuleMapper.map(List.of(rule), TARGET).getFirst());
+
+    assertEquals(rule, unsupported.rule());
+    assertTrue(unsupported.reason().contains("zero failures"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"rows", "percent"})
+  void regexRulesWithZeroToleranceOnlyPassTheRegexParameter(final String unit) {
+    final CreateTestCase test =
+        mapToTestCase(
+            library("Id format", ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES, "id")
+                .withArguments(new ODCSQualityRuleArguments().withPattern("^[0-9]+$"))
+                .withMustBeLessOrEqualTo(0.0)
+                .withUnit(unit));
+
+    assertEquals(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[0-9]+$")),
+        test.getParameterValues());
+  }
+
   @Test
   void legacyRegexRuleReadsThePatternKey() {
     ODCSQualityRule rule = legacy("Id format", "regex", "id");
