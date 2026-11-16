@@ -52,6 +52,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
@@ -1115,6 +1117,53 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     // The glossary's term count labels that list, so it must agree with it.
     String counted = getAs(user, "/v1/glossaries/" + glossary.getId() + "?fields=termCount");
     assertEquals(1, JsonUtils.readTree(counted).get("termCount").asInt());
+  }
+
+  @Test
+  void test_pickNarrowsClassificationTagsAndTheirCount(TestNamespace ns) {
+    // Tags follow the pick like other mostly global lists, and a classification's tag count labels
+    // that list, so it must agree with it on both the single and the batch path.
+    Domain picked = createAggregateDomain(ns.prefix("navTags"));
+    Domain other = createAggregateDomain(ns.prefix("navTagsOther"));
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.shortPrefix("navCls"));
+    createClassification.setDescription("classification with no domain");
+    var classification = SdkClients.adminClient().classifications().create(createClassification);
+    String noDomainTag = createTagIn(classification.getFullyQualifiedName(), "noDomain", null);
+    String pickedTag = createTagIn(classification.getFullyQualifiedName(), "inPick", picked);
+    String otherTag = createTagIn(classification.getFullyQualifiedName(), "inOther", other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String tags =
+        getAs(user, "/v1/tags?limit=100&parent=" + classification.getFullyQualifiedName());
+    assertTrue(tags.contains(noDomainTag), "a tag with no domain stays listed");
+    assertTrue(tags.contains(pickedTag), "a tag in the picked domain is listed");
+    assertFalse(tags.contains(otherTag), "a tag in another domain is not listed");
+
+    String single =
+        getAs(user, "/v1/classifications/" + classification.getId() + "?fields=termCount");
+    assertEquals(2, JsonUtils.readTree(single).get("termCount").asInt());
+    String listed = getAs(user, "/v1/classifications?limit=1000&fields=termCount");
+    int batchCount = -1;
+    for (var node : JsonUtils.readTree(listed).get("data")) {
+      if (classification.getId().toString().equals(node.get("id").asText())) {
+        batchCount = node.get("termCount").asInt();
+      }
+    }
+    assertEquals(2, batchCount, "the Tags page count must match the list under the pick");
+  }
+
+  private static String createTagIn(String classificationFqn, String name, Domain domain) {
+    CreateTag createTag = new CreateTag();
+    createTag.setName(name);
+    createTag.setClassification(classificationFqn);
+    createTag.setDescription("tag " + name);
+    if (domain != null) {
+      createTag.setDomains(List.of(domain.getFullyQualifiedName()));
+    }
+    return SdkClients.adminClient().tags().create(createTag).getId().toString();
   }
 
   @Test
