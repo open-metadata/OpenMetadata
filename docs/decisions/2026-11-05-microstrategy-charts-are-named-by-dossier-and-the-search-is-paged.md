@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration) · v4 2026-11-13 (2.0 backport renames charts in 2.0.9) · v5 2026-11-13 (documents told apart by viewMedia; cube SQL parsed once) · v6 2026-11-14 (column-level lineage)
 - **Deciders:** OpenMetadata ingestion maintainers
-- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`, `test_documents_are_skipped_without_reading_their_definition`, `test_cube_sql_is_parsed_once_for_every_prefix_and_dossier`, `test_projections_are_matched_on_the_columns_they_read_not_their_aliases`, `test_a_schema_attribute_form_maps_to_the_column_the_cube_reads`, `test_every_form_of_an_attribute_maps_to_one_attribute_column`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
+- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`, `test_documents_are_skipped_without_reading_their_definition`, `test_cube_sql_is_parsed_once_for_every_prefix_and_dossier`, `test_projections_are_matched_on_the_columns_they_read_not_their_aliases`, `test_a_schema_attribute_form_maps_to_the_column_the_cube_reads`, `test_every_form_of_an_attribute_maps_to_one_attribute_column`, `test_a_cte_is_never_read_as_the_table_it_is_named_after`, `test_same_named_tables_are_told_apart_by_their_qualifiers`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing
 
 ## Context
@@ -137,7 +137,9 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
   are dropped (letters of every script are kept). No column edge when that is not one column, when
   two objects of the cube match alike, or when the object was renamed.
 - **Columns resolve within their own SELECT**: a nested query's aliases never resolve an outer
-  column, and a pass that opens with comments is still read.
+  column, and a pass that opens with comments is still read. A CTE or derived table is never read as
+  the table it is named after, and a column qualified as `schema.table.column` resolves on every
+  qualifier it gives, so same-named tables in one query stay apart.
 - **Schema cube metric:** no column edge. A metric built in Workstation refers to an embedded
   aggregation the API does not serve, so the fact column it aggregates is unknown, and mapping
   `WJXBFSn` aliases to metrics by position would be a guess.

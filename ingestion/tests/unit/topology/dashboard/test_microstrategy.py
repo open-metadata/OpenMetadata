@@ -1089,6 +1089,32 @@ class TestColumnLineage:
         assert not {column for table, column in reads if table == "p.s.orders"} - {"id"}
 
     @pytest.mark.parametrize(
+        ("sql", "expected"),
+        [
+            ("with my_table as (select 1 as id) select c.id from my_table c cross join sales.my_table t", set()),
+            (
+                "with my_table as (select 1 as id) select t.id from my_table c cross join sales.my_table t",
+                {("sales.my_table", "id")},
+            ),
+            ("with my_table as (select id from my_table) select id from my_table", {("my_table", "id")}),
+            ("with recursive my_table as (select id from my_table) select id from my_table", set()),
+        ],
+    )
+    def test_a_cte_is_never_read_as_the_table_it_is_named_after(self, sql, expected):
+        assert read_columns(sql, Dialect.ANSI) == expected
+
+    @pytest.mark.parametrize(
+        ("sql", "expected"),
+        [
+            ("select s1.my_table.id from s1.my_table cross join s2.my_table", {("s1.my_table", "id")}),
+            ("select s2.my_table.id from s1.my_table cross join s2.my_table", {("s2.my_table", "id")}),
+            ("select my_table.id from s1.my_table cross join s2.my_table", set()),
+        ],
+    )
+    def test_same_named_tables_are_told_apart_by_their_qualifiers(self, sql, expected):
+        assert read_columns(sql, Dialect.ANSI) == expected
+
+    @pytest.mark.parametrize(
         ("dialect", "literal"),
         [(Dialect.BIGQUERY, r"'O\'Reilly'"), (Dialect.MYSQL, r"'O\'Reilly'"), (Dialect.POSTGRES, r"'C:\'")],
     )

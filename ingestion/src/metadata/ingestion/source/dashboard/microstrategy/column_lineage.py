@@ -173,28 +173,72 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
             logger.warning("Could not read the columns of a cube SQL pass: %s", exc)
             continue
         for statement in statements:
+            scopes: Scopes = {}
             for select in statement.find_all(exp.Select) if statement else ():
-                columns.update(_select_columns(select))
+                columns.update(_select_columns(select, scopes))
     return frozenset(columns)
 
 
-def _own_sources(select: exp.Select) -> dict[str, str | None]:
+def _cte_names(node: exp.Expression) -> set[str]:
     """
-    The sources a SELECT itself reads, by alias: a table's name, or None for a derived table,
-    whose columns are not warehouse columns.
+    The CTE names a query or table reference can mean: those of its own WITH and of every enclosing
+    query's, except, outside a recursive WITH, the CTE whose own body the reference sits in.
     """
+    names: set[str] = set()
+    inside_cte, parent = None, node
+    while parent is not None:
+        if isinstance(parent, exp.CTE):
+            inside_cte = parent
+        with_ = parent.args.get("with_")
+        if isinstance(with_, exp.With):
+            for cte in with_.expressions:
+                if cte is not inside_cte or with_.args.get("recursive"):
+                    names.add(cte.alias.lower())
+        parent = parent.parent
+    return names
+
+
+def _source_keys(table: exp.Table) -> list[str]:
+    """
+    The names a column can qualify a table by: its alias, else its name with each qualifier the
+    SQL gives it (``my_table``, ``s1.my_table``, ``db.s1.my_table``).
+    """
+    if table.alias:
+        return [table.alias.lower()]
+    parts = [part for part in (table.catalog, table.db, table.name) if part]
+    return [".".join(parts[index:]).lower() for index in range(len(parts))]
+
+
+# The sources of each SELECT of a statement, read once: keyed by the SELECT's id.
+Scopes = dict[int, dict[str, "str | None"]]
+
+
+def _own_sources(select: exp.Select, scopes: Scopes) -> dict[str, str | None]:
+    """
+    The sources a SELECT itself reads, by the names a column can qualify them by: a table's name,
+    or None for a derived table or a CTE, whose columns are not warehouse columns. A name that two
+    different tables answer to is None too, since it cannot tell them apart.
+    """
+    if id(select) in scopes:
+        return scopes[id(select)]
     sources: dict[str, str | None] = {}
+    # No CTE sits between a SELECT and its own sources, so they all see the CTEs the SELECT sees.
+    ctes = _cte_names(select)
     for source in select.find_all(exp.Table, exp.Subquery):
         if source.find_ancestor(exp.Select) is not select:
             continue
         if isinstance(source, exp.Table):
-            sources[(source.alias_or_name or source.name).lower()] = table_name_of(source)
+            is_cte = not source.db and not source.catalog and source.name.lower() in ctes
+            name = None if is_cte else table_name_of(source)
+            for key in _source_keys(source):
+                sources[key] = name if key not in sources or sources[key] == name else None
         elif source.alias:
             sources[source.alias.lower()] = None
+    scopes[id(select)] = sources
     return sources
 
 
-def _resolve(select: exp.Select, alias: str) -> str | None:
+def _resolve(select: exp.Select, alias: str, scopes: Scopes) -> str | None:
     """
     The table an alias names in a SELECT: its own source, else the nearest enclosing query's, so a
     correlated reference reaches the outer table. The walk stops at the first query that defines
@@ -202,15 +246,15 @@ def _resolve(select: exp.Select, alias: str) -> str | None:
     """
     scope: exp.Select | None = select
     while scope is not None:
-        sources = _own_sources(scope)
+        sources = _own_sources(scope, scopes)
         if alias in sources:
             return sources[alias]
         scope = scope.find_ancestor(exp.Select)
     return None
 
 
-def _select_columns(select: exp.Select) -> set[SourceColumn]:
-    sources = set(_own_sources(select).values())
+def _select_columns(select: exp.Select, scopes: Scopes) -> set[SourceColumn]:
+    sources = set(_own_sources(select, scopes).values())
     only_table = next(iter(sources)) if len(sources) == 1 else None
     columns = set()
     for projection in select.expressions:
@@ -218,7 +262,8 @@ def _select_columns(select: exp.Select) -> set[SourceColumn]:
             # A column of a nested query is read with that query, against its own aliases first.
             if column.find_ancestor(exp.Select) is not select:
                 continue
-            table = _resolve(select, column.table.lower()) if column.table else only_table
+            qualifier = ".".join(part for part in (column.catalog, column.db, column.table) if part)
+            table = _resolve(select, qualifier.lower(), scopes) if qualifier else only_table
             if table:
                 columns.add((table, column.name.lower()))
     return columns
