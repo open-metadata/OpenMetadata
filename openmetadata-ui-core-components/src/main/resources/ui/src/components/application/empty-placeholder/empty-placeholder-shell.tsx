@@ -117,7 +117,13 @@ export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
   return (
     <Box
       align="center"
-      className={cx('tw:absolute tw:inset-0 tw:h-full tw:w-full', className)}
+      className={cx(
+        'tw:absolute tw:inset-0 tw:h-full tw:w-full',
+        // `!` beats the app's unlayered `.prose-typography a` rule (fonts.less),
+        // which pins Typography links to 14px inside 12px placeholder text.
+        'tw:[&_a]:[font-size:inherit]! tw:[&_a]:[line-height:inherit]!',
+        className
+      )}
       data-testid="empty-placeholder"
       direction="col"
       justify="center"
