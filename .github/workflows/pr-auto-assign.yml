@@ -35,6 +35,11 @@ jobs:
     name: Assign PR owner
     if: ${{ github.event.pull_request.assignees[0] == null }}
     runs-on: ubuntu-latest
+    # The GH_MEMBER_READ_* App credentials are secrets of the `test` environment. The job only
+    # reads metadata and never runs PR code; deployment: false keeps PRs free of deployments.
+    environment:
+      name: test
+      deployment: false
     steps:
       # Listing team members needs members:read, which the default GITHUB_TOKEN doesn't have.
       # Without it a team owner contributes no candidates and the PR stays unassigned.
