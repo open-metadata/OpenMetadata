@@ -13,20 +13,31 @@
 
 package org.openmetadata.service.governance.approval;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CHANGE_REQUEST_ID_KEY;
+import static org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CHANGE_REQUEST_REVISION_KEY;
+import static org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.PROPOSED_CHANGES_KEY;
+
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.security.AuthorizationException;
@@ -38,10 +49,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 /**
  * Read authorization for change requests. The caller must be able to view the entity; admins and
  * the entity's owners and reviewers then see every request on it, and anyone else sees the requests
- * they made and the requests whose review task they may resolve.
+ * they made and the requests whose review task they may resolve. The review task of a request
+ * follows the same rule for the fields it carries from the request.
  */
+@Slf4j
 public final class ChangeRequestVisibility {
   private static final String TASK_FIELDS = "assignees,reviewers,about,createdBy";
+  private static final List<String> REQUEST_PAYLOAD_KEYS =
+      List.of(CHANGE_REQUEST_ID_KEY, CHANGE_REQUEST_REVISION_KEY, PROPOSED_CHANGES_KEY);
 
   private ChangeRequestVisibility() {}
 
@@ -74,13 +89,102 @@ public final class ChangeRequestVisibility {
       Authorizer authorizer, SecurityContext securityContext, ChangeRequest request) {
     ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, request);
     String caller = securityContext.getUserPrincipal().getName();
-    if (!caller.equals(request.getRequestedBy())
-        && !seesAll(caller, entity)
-        && !reviewableTasks(authorizer, securityContext, List.of(request))
-            .contains(request.getTaskId())) {
+    if (!isVisible(authorizer, securityContext, request, () -> seesAll(caller, entity))) {
       throw new ForbiddenException(
           "You cannot view change requests made by other users on this asset");
     }
+  }
+
+  /**
+   * The task as the caller may read it; see {@link #redactTasks}. The caller's view of the entity
+   * the task is about is authorized by the task read itself.
+   */
+  public static Task redactTask(Authorizer authorizer, SecurityContext securityContext, Task task) {
+    redactTasks(authorizer, securityContext, List.of(task));
+    return task;
+  }
+
+  /**
+   * Removes, from each task that reviews a change request the caller may not view, the request's
+   * fields from the payload and the payload from the change history. The task itself stays.
+   */
+  public static void redactTasks(
+      Authorizer authorizer, SecurityContext securityContext, List<Task> tasks) {
+    String caller = securityContext.getUserPrincipal().getName();
+    if (!SubjectContext.getSubjectContext(caller).isAdmin()) {
+      Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
+      listOrEmpty(tasks).stream()
+          .filter(ChangeRequestTasks::reviewsChangeRequest)
+          .filter(task -> !mayViewRequestOf(authorizer, securityContext, task, seesAllByEntity))
+          .forEach(ChangeRequestVisibility::redact);
+    }
+  }
+
+  private static boolean mayViewRequestOf(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      Task task,
+      Map<UUID, Boolean> seesAllByEntity) {
+    String caller = securityContext.getUserPrincipal().getName();
+    ChangeRequest request = requestOf(task);
+    return request != null
+        && isVisible(
+            authorizer,
+            securityContext,
+            request,
+            () ->
+                seesAllByEntity.computeIfAbsent(
+                    request.getEntityId(), id -> seesAll(caller, entityContext(request))));
+  }
+
+  private static boolean isVisible(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      ChangeRequest request,
+      BooleanSupplier callerSeesAll) {
+    String caller = securityContext.getUserPrincipal().getName();
+    return caller.equals(request.getRequestedBy())
+        || callerSeesAll.getAsBoolean()
+        || reviewableTasks(authorizer, securityContext, List.of(request))
+            .contains(request.getTaskId());
+  }
+
+  private static ChangeRequest requestOf(Task task) {
+    Object requestId = JsonUtils.getMap(task.getPayload()).get(CHANGE_REQUEST_ID_KEY);
+    ChangeRequest request = null;
+    try {
+      request =
+          ChangeRequestService.dao()
+              .changeRequestDAO()
+              .findById(UUID.fromString(String.valueOf(requestId)));
+    } catch (IllegalArgumentException malformed) {
+      LOG.warn("[ChangeRequest] Task {} names no valid change request", task.getId());
+    }
+    return request;
+  }
+
+  private static void redact(Task task) {
+    // The task payload is free-form JSON shared by every task type, so it is edited as a map.
+    Map<String, Object> payload = JsonUtils.getMap(task.getPayload());
+    REQUEST_PAYLOAD_KEYS.forEach(payload::remove);
+    task.setPayload(payload);
+    if (task.getChangeDescription() != null) {
+      task.setChangeDescription(withoutPayloadChanges(task.getChangeDescription()));
+    }
+  }
+
+  private static ChangeDescription withoutPayloadChanges(ChangeDescription change) {
+    ChangeDescription copy = JsonUtils.deepCopy(change, ChangeDescription.class);
+    copy.setFieldsAdded(withoutPayload(copy.getFieldsAdded()));
+    copy.setFieldsUpdated(withoutPayload(copy.getFieldsUpdated()));
+    copy.setFieldsDeleted(withoutPayload(copy.getFieldsDeleted()));
+    return copy;
+  }
+
+  private static List<FieldChange> withoutPayload(List<FieldChange> changes) {
+    return listOrEmpty(changes).stream()
+        .filter(change -> !TaskRepository.FIELD_PAYLOAD.equals(change.getName()))
+        .toList();
   }
 
   private static List<ChangeRequest> listForEntity(
@@ -114,10 +218,13 @@ public final class ChangeRequestVisibility {
     return ChangeRequestService.dao().changeRequestDAO().listByRequester(requestedBy, limit);
   }
 
+  private static ResourceContext<?> entityContext(ChangeRequest request) {
+    return new ResourceContext<>(request.getEntityType(), request.getEntityId(), null);
+  }
+
   private static ResourceContext<?> authorizeEntityView(
       Authorizer authorizer, SecurityContext securityContext, ChangeRequest request) {
-    ResourceContext<?> entity =
-        new ResourceContext<>(request.getEntityType(), request.getEntityId(), null);
+    ResourceContext<?> entity = entityContext(request);
     authorizer.authorize(
         securityContext,
         new OperationContext(request.getEntityType(), MetadataOperation.VIEW_BASIC),

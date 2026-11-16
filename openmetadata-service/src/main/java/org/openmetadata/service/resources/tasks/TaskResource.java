@@ -56,8 +56,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tasks.BulkTaskOperation;
@@ -92,6 +94,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -360,9 +363,26 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskSearch(filter, q);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return readablePage(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+  }
+
+  /**
+   * The page as the caller may read it: without the tasks about an entity the caller may not view,
+   * and with each remaining task's change-request fields shown only to whoever may view the request.
+   */
+  private ResultList<Task> readablePage(SecurityContext securityContext, ResultList<Task> page) {
+    ResultList<Task> viewable = aboutVisibility.retainViewable(securityContext, page);
+    ChangeRequestVisibility.redactTasks(authorizer, securityContext, viewable.getData());
+    return viewable;
+  }
+
+  /** Stored versions of a task carry its payload, so they get the same change-request redaction. */
+  @Override
+  protected Optional<UnaryOperator<Task>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(
+        task -> ChangeRequestVisibility.redactTask(authorizer, securityContext, task));
   }
 
   private void applyTaskSearch(ListFilter filter, String q) {
@@ -613,7 +633,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    return aboutVisibility.retainViewable(
+    return readablePage(
         securityContext,
         repository.listDataAccessRequests(uriInfo, fields, filter, limitParam, offset, sortOrder));
   }
@@ -687,7 +707,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return readablePage(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -762,7 +782,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return readablePage(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -848,7 +868,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return readablePage(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -923,7 +943,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return readablePage(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -958,7 +978,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     Task task = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
-    return task;
+    return ChangeRequestVisibility.redactTask(authorizer, securityContext, task);
   }
 
   @GET
@@ -991,7 +1011,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     Task task = getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
     authorizeViewOnAboutEntity(securityContext, aboutOf(task.getId()));
-    return task;
+    return ChangeRequestVisibility.redactTask(authorizer, securityContext, task);
   }
 
   @GET

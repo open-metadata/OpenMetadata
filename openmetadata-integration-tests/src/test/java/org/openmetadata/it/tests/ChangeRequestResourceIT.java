@@ -236,6 +236,67 @@ class ChangeRequestResourceIT {
     assertEquals(0, visibleCount(SdkClients.user2Client(), glossary.getId()));
   }
 
+  @Test
+  void theReviewTaskCarriesTheRequestFieldsOnlyForThoseWhoMayViewTheRequest(TestNamespace ns) {
+    Glossary glossary = gated(ns);
+    String fqn = glossary.getFullyQualifiedName();
+    String staged = ns.prefix("staged-description");
+    patchAs(
+        SdkClients.user2Client(),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]".formatted(staged));
+    UUID requestId = onlyPendingRequest(glossary.getId()).getId();
+    Task task = awaitOpenApprovalTask(fqn);
+
+    for (OpenMetadataClient client :
+        List.of(SdkClients.adminClient(), SdkClients.user2Client(), SdkClients.user1Client())) {
+      assertTrue(taskJsonAs(client, task.getId()).contains(staged));
+      assertTrue(openEntityTasksJsonAs(client, fqn).contains(staged));
+    }
+    String single = taskJsonAs(SdkClients.user3Client(), task.getId());
+    String listed = openEntityTasksJsonAs(SdkClients.user3Client(), fqn);
+    assertTrue(listed.contains(task.getId().toString()));
+    for (String body : List.of(single, listed)) {
+      assertFalse(body.contains(staged));
+      assertFalse(body.contains(requestId.toString()));
+    }
+  }
+
+  @Test
+  void anAssigneeOfTheReviewTaskReadsItsRequestFieldsButOthersDoNot(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns, "dn");
+    String fqn = glossary.getFullyQualifiedName();
+    deployWorkflowAssigning(
+        ns,
+        Entity.GLOSSARY,
+        "\"description\"",
+        "",
+        filterScopedTo(fqn),
+        SharedEntities.get().USER3.getEntityReference());
+    String staged = ns.prefix("staged-description");
+    patchDescription(glossary.getId(), staged);
+    onlyPendingRequest(glossary.getId());
+    Task task = awaitOpenApprovalTask(fqn);
+
+    assertTrue(taskJsonAs(SdkClients.user3Client(), task.getId()).contains(staged));
+    assertTrue(openEntityTasksJsonAs(SdkClients.user3Client(), fqn).contains(staged));
+    assertFalse(taskJsonAs(SdkClients.user2Client(), task.getId()).contains(staged));
+    assertFalse(openEntityTasksJsonAs(SdkClients.user2Client(), fqn).contains(staged));
+  }
+
+  private static String taskJsonAs(OpenMetadataClient client, UUID taskId) {
+    return JsonUtils.pojoToJson(client.tasks().get(taskId.toString()));
+  }
+
+  private static String openEntityTasksJsonAs(OpenMetadataClient client, String entityFqn) {
+    return JsonUtils.pojoToJson(
+        client
+            .tasks()
+            .listWithFilters(
+                Map.of("aboutEntity", entityFqn, "statusGroup", "open", "limit", "100"))
+            .getData());
+  }
+
   private static ChangeRequest getAs(OpenMetadataClient client, UUID id) {
     return client
         .getHttpClient()
