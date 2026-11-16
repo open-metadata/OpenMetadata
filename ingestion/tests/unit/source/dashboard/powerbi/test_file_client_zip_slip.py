@@ -13,9 +13,12 @@ Tests that extracting a .pbit archive cannot write outside the extract directory
 """
 
 import io
+import json
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from metadata.ingestion.source.dashboard.powerbi.file_client import (
     _extract_pbit,
@@ -83,31 +86,25 @@ def _write_damaged_pbit(path: Path) -> None:
     path.write_bytes(bytes(data))
 
 
+GOOD_PBIT_MEMBERS = {
+    "Connections": json.dumps({"RemoteArtifacts": [{"DatasetId": "dataset-1", "ReportId": "report-1"}]}),
+    "DataModelSchema": json.dumps({"model": {"tables": [{"name": "sales"}]}}),
+}
+
+
+def _write_corrupt_pbit(path: Path) -> None:
+    path.write_bytes(b"not a zip archive")
+
+
 class TestGetDatamodelSchemaFilesFromPbit:
-    def test_damaged_compressed_data_does_not_skip_the_others(self, tmp_path):
-        _write_damaged_pbit(tmp_path / "damaged.pbit")
-        _write_pbit(tmp_path / "good.pbit", {"Connections": "{}", "DataModelSchema": "{}"})
+    @pytest.mark.parametrize("write_bad_pbit", [_write_corrupt_pbit, _write_damaged_pbit], ids=["corrupt", "damaged"])
+    def test_bad_pbit_does_not_drop_the_schemas_of_the_others(self, tmp_path, write_bad_pbit):
+        write_bad_pbit(tmp_path / "bad.pbit")
+        _write_pbit(tmp_path / "good.pbit", GOOD_PBIT_MEMBERS)
 
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.file_client._get_datamodel_schema_list",
-            return_value=[],
-        ) as schema_list:
-            result = get_datamodel_schema_files_from_pbit(str(tmp_path))
+        result = get_datamodel_schema_files_from_pbit(str(tmp_path))
 
-        assert result == [], "an archive that fails mid-extraction must not turn the whole run into None"
-        schema_list.assert_called_once_with(str(tmp_path))
-        assert (tmp_path / "extracted" / "good" / "Connections").exists()
-
-    def test_corrupt_pbit_does_not_skip_the_others(self, tmp_path):
-        (tmp_path / "broken.pbit").write_bytes(b"not a zip archive")
-        _write_pbit(tmp_path / "good.pbit", {"Connections": "{}", "DataModelSchema": "{}"})
-
-        with patch(
-            "metadata.ingestion.source.dashboard.powerbi.file_client._get_datamodel_schema_list",
-            return_value=[],
-        ) as schema_list:
-            result = get_datamodel_schema_files_from_pbit(str(tmp_path))
-
-        assert result == [], "a corrupt .pbit must not turn the whole run into None"
-        schema_list.assert_called_once_with(str(tmp_path))
-        assert (tmp_path / "extracted" / "good" / "Connections").exists()
+        assert result is not None, "one unreadable archive must not turn the whole run into None"
+        assert len(result) == 1
+        assert [table.name for table in result[0].tables] == ["sales"]
+        assert result[0].connectionFile.RemoteArtifacts[0].DatasetId == "dataset-1"
