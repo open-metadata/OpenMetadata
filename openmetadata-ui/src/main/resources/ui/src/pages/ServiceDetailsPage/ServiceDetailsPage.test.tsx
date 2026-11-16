@@ -62,6 +62,10 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../test/unit/enUsTranslation';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
@@ -852,6 +856,48 @@ describe('ServiceDetailsPage', () => {
       expect(mockNavigate).not.toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
         replace: true,
       });
+    });
+  });
+
+  describe('Permission message', () => {
+    it('names the requested service, not the one viewed before', async () => {
+      const error = new Error('Forbidden') as AxiosError;
+      error.response = { status: ClientErrors.FORBIDDEN } as AxiosResponse;
+      const page = () => (
+        <MemoryRouter>
+          <ServiceDetailsPage />
+        </MemoryRouter>
+      );
+      useEnUsTranslations();
+      try {
+        const view = render(page());
+        await act(async () => undefined);
+
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'other-service',
+        }));
+        (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+          Promise.reject(error)
+        );
+        await act(async () => {
+          view.rerender(page());
+        });
+
+        const placeholder = await screen.findByTestId(
+          'permission-error-placeholder'
+        );
+
+        expect(placeholder).toHaveTextContent('other-service');
+        expect(placeholder).not.toHaveTextContent('Test Service');
+      } finally {
+        useKeyEchoTranslations();
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'test-service',
+        }));
+        (getServiceByFQN as jest.Mock)
+          .mockReset()
+          .mockImplementation(() => Promise.resolve(mockServiceDetails));
+      }
     });
   });
 
