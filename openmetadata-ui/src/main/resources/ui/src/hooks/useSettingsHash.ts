@@ -172,9 +172,10 @@ export const useSettingsHash = () => {
   // so the page's own entry is current again instead of a duplicate of it; 0
   // (deep link, refresh, Back/Forward) closes by replacing as before. Each hook
   // instance counts the pushes it sees, so the count belongs to whoever closes:
-  // `useSettingsHashSync` in PersonalSpaceModal, mounted for the whole AI
-  // shell. An instance mounted while the modal is open undercounts and closes
-  // by replacing, which leaves a duplicate entry but never pops past the page.
+  // `useSettingsHashSync` in AppShell, mounted for the whole AI shell (not the
+  // lazy PersonalSpaceModal, which can mount after the first push). An instance
+  // mounted while the modal is open undercounts and closes by replacing, which
+  // leaves a duplicate entry but never pops past the page.
   const pushedEntriesRef = useRef(0);
 
   // Keep navigate reachable from the stable callbacks below without listing it
@@ -451,7 +452,8 @@ export const useHashPagingParams = (
 
 /**
  * Effect that opens the personal-space modal when a settings hash is present
- * on mount (deep link support). Call from PersonalSpaceModal.
+ * on mount (deep link support). Call from AppShell, which mounts before any
+ * settings push; the lazy modal may not.
  */
 export const useSettingsHashSync = (
   openModal: (panel: 'profile') => void,

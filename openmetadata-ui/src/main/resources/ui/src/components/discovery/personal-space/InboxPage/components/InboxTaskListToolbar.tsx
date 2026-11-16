@@ -55,6 +55,8 @@ export interface InboxTaskListToolbarProps {
   onSortOrderChange: (value: SORT_ORDER) => void;
   /** The loaded tasks, whose types are the only ones worth offering. */
   tasks: Task[];
+  /** Pages are still unread, so counting `tasks` would undercount. */
+  isPartial?: boolean;
   /** One row for a full-width list; the Inbox's narrow column stacks two. */
   inline?: boolean;
 }
@@ -80,6 +82,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   sortOrder,
   onSortOrderChange,
   tasks,
+  isPartial,
   inline,
 }) => {
   const { t } = useTranslation();
@@ -178,6 +181,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       <FilterSelect
         bordered
         data-testid="inbox-tasks-type-filter"
+        hideCounts={isPartial}
         label={t('label.type')}
         options={typeOptions}
         selectedValues={typeFilter}

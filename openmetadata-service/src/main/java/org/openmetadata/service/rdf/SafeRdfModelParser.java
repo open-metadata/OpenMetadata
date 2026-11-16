@@ -128,7 +128,7 @@ public final class SafeRdfModelParser {
                 @Override
                 public void triple(final Triple triple) {
                   if (++count > limits.maxTriples() || System.nanoTime() >= deadline) {
-                    throw new BadRequestException("Native RDF exceeds its triple or time budget");
+                    throw new BadRequestException("The file exceeds its statement or time budget");
                   }
                   requireAbsolute(triple.getSubject());
                   requireAbsolute(triple.getPredicate());
@@ -149,7 +149,7 @@ public final class SafeRdfModelParser {
       }
       final String message = String.valueOf(exception.getMessage());
       throw new BadRequestException(
-          "Failed to parse native RDF: " + message.substring(0, Math.min(200, message.length())));
+          "The file is not valid RDF: " + message.substring(0, Math.min(200, message.length())));
     }
   }
 

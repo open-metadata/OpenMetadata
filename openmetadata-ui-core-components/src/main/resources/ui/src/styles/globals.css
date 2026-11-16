@@ -1006,6 +1006,7 @@
   --outline-color-secondary_alt: var(--outline-color-secondary_alt, theme(--color-border-secondary_alt));
   --outline-color-subtle: var(--outline-color-subtle, theme(--color-border-subtle));
   --outline-color-tertiary: var(--outline-color-tertiary, theme(--color-border-tertiary));
+  --outline-color-hover: var(--outline-color-hover, theme(--color-border-hover));
   --outline-color-error: var(--outline-color-error, theme(--color-border-error));
   --outline-color-error_subtle: var(--outline-color-error_subtle, theme(--color-border-error_subtle));
   --outline-color-disabled: var(--outline-color-disabled, theme(--color-border-disabled));

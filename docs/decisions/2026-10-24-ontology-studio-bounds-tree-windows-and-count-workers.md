@@ -1,9 +1,9 @@
 # Ontology Studio bounds tree windows and count workers
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial) · v2 2026-11-06 (the model loader follows the 50,000-member release cap) · v3 2026-11-13 (a large window mounts only the rows on screen)
+- **Revisions:** v1 2026-10-24 (initial) · v2 2026-11-06 (the model loader follows the 50,000-member release cap) · v3 2026-11-13 (a large window mounts only the rows on screen) · v4 2026-11-15 (UI guards moved to Collate) · v5 2026-11-16 (the tree guards moved too)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyStudio.utils.test.ts`, `OntologyTreeView.test.tsx` (incl. "mounts only the rows on screen once a window is large"), `useOntologyUnpublishedCount.test.tsx`, `useOntologyStudioModel.test.tsx`
+- **Guard:** `OntologyStudio.utils.test.ts` *(openmetadata-collate)*, `OntologyTreeView.test.tsx` *(openmetadata-collate)* (incl. "mounts only the rows on screen once a window is large"), `useOntologyUnpublishedCount.test.tsx` *(openmetadata-collate)*, `useOntologyStudioModel.test.tsx` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default
 
 ## Context
@@ -57,3 +57,5 @@ opened (production build, measured with Playwright). A window of more than 200 r
 card. Opening Tree now takes 0.14 s and a row click 0.15 s. Smaller windows render as before.
 Revealing a selection scrolls its row into view so it mounts and takes focus. Shrinking the window
 instead was rejected: a 2,000-definition ontology would then need many Previous/Next pages.
+
+v4 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.
