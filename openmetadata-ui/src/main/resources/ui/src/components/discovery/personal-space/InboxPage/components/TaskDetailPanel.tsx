@@ -154,8 +154,8 @@ const matchAssetToken = (
 
 // The title reads as plain text in the heading's font and colour; only the
 // hover underline says it links to the asset. `!` beats the legacy
-// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
-// and blue.
+// `.prose-typography a` rule (fonts.less), which gives Typography's links a
+// medium weight and blue colour; `[font:inherit]` restores the heading weight.
 const TITLE_LINK_CLASS =
   'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
 
