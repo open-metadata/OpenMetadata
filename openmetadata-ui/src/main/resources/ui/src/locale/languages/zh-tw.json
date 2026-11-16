@@ -4191,7 +4191,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "達到最大登入失敗次數後，存取將被封鎖數毫秒。",
+    "access-block-time-message": "達到最大登入失敗次數後，存取將被封鎖數秒。",
     "access-control-description": "透過角色和政策，使團隊存取權限與您的組織層級結構保持一致。",
     "access-to-collaborate": "允許開放存取，讓任何人都能加入團隊、檢視資料並進行協作。",
     "access-token-description": "Token you have generated that can be used to access the Collate API.",

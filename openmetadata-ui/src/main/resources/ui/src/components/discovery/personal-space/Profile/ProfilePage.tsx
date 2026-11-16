@@ -233,9 +233,13 @@ const ProfilePage: React.FC = () => {
   const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
   // Tie the breadcrumb to the nav item, not the (possibly user-name-overridden)
   // title — so your own profile reads "Account > Profile".
-  const headerBreadcrumbs = headerOverride?.breadcrumbs ?? [
-    { id: 'root', label: headerBreadcrumbRoot },
-    { id: 'current', label: t(activeItem.label) },
+  // The sidebar group owns the root crumb: panels (including contributed ones)
+  // still supply a first crumb, so replace it and make it non-navigable.
+  const headerBreadcrumbs = [
+    { id: 'root', label: headerBreadcrumbRoot, isDisabled: true },
+    ...(headerOverride?.breadcrumbs?.slice(1) ?? [
+      { id: 'current', label: t(activeItem.label) },
+    ]),
   ];
   const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
 
