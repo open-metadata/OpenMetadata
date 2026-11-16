@@ -85,6 +85,7 @@ final class SchemaClassConverter {
     if (value == null || property == null) {
       return value;
     }
+    value = asJavaValue(value);
     boolean unidentified = owner == SourceConfig.class && unidentifiedPipeline(value, property);
     if (unidentified && ((Map<?, ?>) value).isEmpty()) {
       return value;
@@ -104,6 +105,7 @@ final class SchemaClassConverter {
   }
 
   private Object readNode(Object value, Ref schema, Context context) {
+    value = asJavaValue(value);
     if (context.mode() == Mode.READ
         && value != null
         && !(value instanceof Map<?, ?>)
@@ -260,7 +262,7 @@ final class SchemaClassConverter {
     }
     if (context.requireFields()) {
       for (String required : facts.required()) {
-        if (value.get(required) == null
+        if (asJavaValue(value.get(required)) == null
             && (value.containsKey(required) || !facts.defaulted().contains(required))) {
           throw invalid(context.child(required, null), "is required");
         }
@@ -342,7 +344,8 @@ final class SchemaClassConverter {
         Object child = get(value, getter);
         if (child == null
             || child instanceof Enum<?>
-            || !(child instanceof Map<?, ?>)
+            || !(child instanceof JsonNode)
+                && !(child instanceof Map<?, ?>)
                 && !(child instanceof Collection<?>)
                 && schemas.schemaFor(child.getClass()) == null) {
           continue;
@@ -424,6 +427,10 @@ final class SchemaClassConverter {
     return value instanceof Map<?, ?>
         ? (Map<String, Object>) value
         : JsonUtils.convertValue(value, Map.class);
+  }
+
+  private static Object asJavaValue(Object value) {
+    return value instanceof JsonNode ? JsonUtils.convertValue(value, Object.class) : value;
   }
 
   private static Object bind(Object value, Class<?> type) {

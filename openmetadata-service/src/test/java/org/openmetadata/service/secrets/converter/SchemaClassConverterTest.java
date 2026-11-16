@@ -22,6 +22,7 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class SchemaClassConverterTest {
@@ -68,20 +69,25 @@ class SchemaClassConverterTest {
     assertInstanceOf(MysqlConnection.class, wrapper.getConfig());
   }
 
-  @Test
-  void optionalSslTypoIsRejected() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void optionalSslTypoIsRejected(boolean jsonTree) {
+    Map<String, Object> raw = Map.of("sslkey", "never-echo");
     SchemaConversionException failure =
         assertThrows(
             SchemaConversionException.class,
             () ->
                 ClassConverterFactory.convertProperty(
-                    NatsConnection.class, "tlsConfig", Map.of("sslkey", "never-echo")));
+                    NatsConnection.class,
+                    "tlsConfig",
+                    jsonTree ? JsonUtils.valueToTree(raw) : raw));
     assertTrue(failure.getMessage().contains("sslkey"));
     assertFalse(failure.getMessage().contains("never-echo"));
   }
 
-  @Test
-  void rootReadFailureKeepsUnknownFieldsAndEveryAuthBranch() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void rootReadFailureKeepsUnknownFieldsAndEveryAuthBranch(boolean jsonTree) {
     Map<String, Object> raw =
         Map.of(
             "type",
@@ -93,7 +99,8 @@ class SchemaClassConverterTest {
     SchemaBackedMap read =
         assertInstanceOf(
             SchemaBackedMap.class,
-            ClassConverterFactory.getConverter(NatsConnection.class).convertForRead(raw));
+            ClassConverterFactory.getConverter(NatsConnection.class)
+                .convertForRead(jsonTree ? JsonUtils.valueToTree(raw) : raw));
     assertEquals(raw, read);
     List<List<String>> paths = new ArrayList<>();
     read.visitSecrets(
@@ -108,13 +115,13 @@ class SchemaClassConverterTest {
     assertFalse(JsonUtils.pojoToJson(read).contains("ownerPathLengths"));
   }
 
-  @Test
-  void typedApplicationKeepsItsTypeAndProtectsAnInvalidNestedMap() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void typedApplicationKeepsItsTypeAndProtectsAnInvalidNestedMap(boolean jsonTree) {
+    Map<String, Object> raw =
+        Map.of("waiiInstance", "https://waii.example", "token", "secret", "obsolete", true);
     ApplicationPipeline input =
-        new ApplicationPipeline()
-            .withAppPrivateConfig(
-                Map.of(
-                    "waiiInstance", "https://waii.example", "token", "secret", "obsolete", true));
+        new ApplicationPipeline().withAppPrivateConfig(jsonTree ? JsonUtils.valueToTree(raw) : raw);
     ApplicationPipeline read =
         assertInstanceOf(
             ApplicationPipeline.class,
@@ -127,6 +134,82 @@ class SchemaClassConverterTest {
     assertThrows(
         SchemaConversionException.class,
         () -> ClassConverterFactory.getConverter(ApplicationPipeline.class).convert(input));
+  }
+
+  @Test
+  void requiredSecretCannotBeAJsonNullInsideAMap() {
+    SchemaConversionException failure =
+        assertThrows(
+            SchemaConversionException.class,
+            () ->
+                ClassConverterFactory.convertProperty(
+                    NatsConnection.class,
+                    "authType",
+                    Map.of("username", "u", "password", JsonUtils.readTree("null"))));
+    assertTrue(failure.getMessage().contains("authType.password"));
+    assertTrue(failure.getMessage().contains("is required"));
+  }
+
+  @Test
+  void jsonTreesAreTypedAtRootAndUnionPropertyBoundaries() {
+    NatsConnection connection =
+        assertInstanceOf(
+            NatsConnection.class,
+            ClassConverterFactory.getConverter(NatsConnection.class)
+                .convert(
+                    JsonUtils.readTree(
+                        """
+                        {"natsServers":"nats://localhost:4222","authType":{"token":"secret"}}
+                        """)));
+    assertEquals(
+        "secret", assertInstanceOf(NatsTokenAuth.class, connection.getAuthType()).getToken());
+    assertEquals(
+        "secret",
+        assertInstanceOf(
+                NatsTokenAuth.class,
+                ClassConverterFactory.convertProperty(
+                    NatsConnection.class, "authType", JsonUtils.readTree("{\"token\":\"secret\"}")))
+            .getToken());
+    assertEquals(
+        Map.of(),
+        ClassConverterFactory.convertProperty(
+            SourceConfig.class, "config", JsonUtils.readTree("{}")));
+  }
+
+  @Test
+  void nestedJsonTreeScalarsAndArraysUseTheirJavaValueTypes() {
+    NatsConnection connection =
+        assertInstanceOf(
+            NatsConnection.class,
+            ClassConverterFactory.getConverter(NatsConnection.class)
+                .convert(
+                    Map.of(
+                        "natsServers", JsonUtils.readTree("\"nats://localhost:4222\""),
+                        "authType", Map.of("token", JsonUtils.readTree("\"secret\"")),
+                        "topicFilterPattern",
+                            Map.of("includes", JsonUtils.readTree("[\"orders.*\"]")))));
+    assertEquals("nats://localhost:4222", connection.getNatsServers());
+    assertEquals(
+        "secret", assertInstanceOf(NatsTokenAuth.class, connection.getAuthType()).getToken());
+    assertEquals(List.of("orders.*"), connection.getTopicFilterPattern().getIncludes());
+  }
+
+  @Test
+  void malformedMapsContainingJsonTreesStillMaskEveryAuthBranch() {
+    Map<String, Object> raw =
+        Map.of(
+            "oldField",
+            "preserve",
+            "authType",
+            JsonUtils.readTree("{\"password\":\"secret\",\"token\":\"other-secret\"}"));
+    SchemaBackedMap read =
+        assertInstanceOf(
+            SchemaBackedMap.class,
+            ClassConverterFactory.getConverter(NatsConnection.class).convertForRead(raw));
+    read.visitSecrets(slot -> slot.setValue("masked"));
+    assertEquals(Map.of("password", "masked", "token", "masked"), read.get("authType"));
+    assertEquals("preserve", read.get("oldField"));
+    assertEquals("secret", JsonUtils.valueToTree(raw).at("/authType/password").asText());
   }
 
   @Test
@@ -164,8 +247,9 @@ class SchemaClassConverterTest {
     assertEquals(2, slots.size());
   }
 
-  @Test
-  void absentDefaultedDiscriminatorIsAllowedButExplicitNullIsNot() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void absentDefaultedDiscriminatorIsAllowedButExplicitNullIsNot(boolean jsonTree) {
     Map<String, Object> source = new HashMap<>();
     source.put(
         "dbtSecurityConfig", Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", "secret"));
@@ -177,7 +261,7 @@ class SchemaClassConverterTest {
     DbtS3Config config = assertInstanceOf(DbtS3Config.class, pipeline.getDbtConfigSource());
     assertEquals("s3", config.getDbtConfigType().toString());
     assertEquals("secret", config.getDbtSecurityConfig().getAwsSecretAccessKey());
-    source.put("dbtConfigType", null);
+    source.put("dbtConfigType", jsonTree ? JsonUtils.readTree("null") : null);
     assertThrows(
         SchemaConversionException.class,
         () ->

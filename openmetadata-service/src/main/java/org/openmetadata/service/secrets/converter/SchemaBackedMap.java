@@ -17,6 +17,7 @@ import static org.openmetadata.service.secrets.converter.SchemaKeywords.ADDITION
 import static org.openmetadata.service.secrets.converter.SchemaKeywords.ADDITIONAL_PROPERTIES_ACCESSOR;
 import static org.openmetadata.service.secrets.converter.SchemaKeywords.ITEMS;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -312,7 +313,8 @@ public final class SchemaBackedMap extends LinkedHashMap<String, Object> {
           .map(SchemaBackedMap::copy)
           .collect(Collectors.toCollection(ArrayList::new));
     }
-    if (value != null && value.getClass().getPackageName().startsWith("org.openmetadata")) {
+    if (value instanceof JsonNode
+        || value != null && value.getClass().getPackageName().startsWith("org.openmetadata")) {
       return JsonUtils.convertValue(value, Object.class);
     }
     return value;
