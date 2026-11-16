@@ -170,40 +170,43 @@ export const InspectorForm = ({
   const { t } = useTranslation();
 
   return (
+    // The rules form's brand edge and halo (ConceptFormCard), so an open form reads as the active input.
     <Card
-      // The rules form's brand edge and halo, so an open form reads as the active input.
-      className="tw:flex tw:flex-col tw:gap-3 tw:border-brand tw:outline-4 tw:outline-utility-brand-100 tw:px-3.5 tw:pt-3 tw:pb-3.5"
-      data-testid={testId}>
-      <Box align="center" gap={2}>
-        <Typography
-          className="tw:flex-1 tw:text-secondary"
-          size="text-xs"
-          weight="semibold">
-          {title}
-        </Typography>
-        <ButtonUtility
-          color="tertiary"
-          icon={XClose}
-          size="sm"
-          tooltip={t('label.cancel')}
-          onClick={onCancel}
-        />
-      </Box>
-      {children}
-      <Box gap={2} justify="end">
-        <Button color="secondary" size="sm" type="button" onPress={onCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid={submitTestId}
-          isDisabled={isSubmitDisabled}
-          size="sm"
-          type="button"
-          onPress={onSubmit}>
-          {submitLabel}
-        </Button>
-      </Box>
+      className="tw:border-brand tw:outline-4 tw:outline-utility-brand-100"
+      data-testid={testId}
+      size="sm">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
+        <Box align="center" gap={2}>
+          <Typography
+            className="tw:flex-1 tw:text-secondary"
+            size="text-xs"
+            weight="semibold">
+            {title}
+          </Typography>
+          <ButtonUtility
+            color="tertiary"
+            icon={XClose}
+            size="sm"
+            tooltip={t('label.cancel')}
+            onClick={onCancel}
+          />
+        </Box>
+        {children}
+        <Box gap={2} justify="end">
+          <Button color="secondary" size="sm" type="button" onPress={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid={submitTestId}
+            isDisabled={isSubmitDisabled}
+            size="sm"
+            type="button"
+            onPress={onSubmit}>
+            {submitLabel}
+          </Button>
+        </Box>
+      </Card.Content>
     </Card>
   );
 };
