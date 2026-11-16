@@ -1,0 +1,80 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Tests that extracting a .pbit archive cannot write outside the extract directory.
+"""
+
+import zipfile
+from pathlib import Path
+from unittest.mock import patch
+
+from metadata.ingestion.source.dashboard.powerbi.file_client import (
+    _extract_pbit,
+    get_datamodel_schema_files_from_pbit,
+)
+
+TRAVERSAL_MEMBERS = [
+    "../../escape_parent.txt",
+    "a/../../escape_nested.txt",
+    "/escape_absolute.txt",
+]
+
+
+def _write_pbit(path: Path, members: dict[str, str]) -> None:
+    with zipfile.ZipFile(path, "w") as zf:
+        for name, content in members.items():
+            zf.writestr(name, content)
+
+
+class TestExtractPbit:
+    def test_skips_members_escaping_extract_dir(self, tmp_path):
+        pbit = tmp_path / "evil.pbit"
+        _write_pbit(pbit, dict.fromkeys(TRAVERSAL_MEMBERS, "x"))
+        dest = tmp_path / "work" / "extracted" / "evil"
+
+        with (
+            patch("metadata.ingestion.source.dashboard.powerbi.file_client.logger") as logger,
+            zipfile.ZipFile(pbit) as zip_ref,
+        ):
+            _extract_pbit(zip_ref, str(dest))
+
+        assert not dest.exists() or not any(dest.rglob("*")), "no traversal member may be written, even relocated"
+        assert not (tmp_path / "escape_parent.txt").exists()
+        assert not (tmp_path / "work" / "escape_nested.txt").exists()
+        assert logger.warning.call_count == len(TRAVERSAL_MEMBERS)
+
+    def test_extracts_legitimate_members_next_to_skipped_ones(self, tmp_path):
+        pbit = tmp_path / "report.pbit"
+        _write_pbit(pbit, {"DataModelSchema": "schema", "Report/Layout": "layout", "../../bad.txt": "x"})
+        dest = tmp_path / "extracted" / "report"
+
+        with zipfile.ZipFile(pbit) as zip_ref:
+            _extract_pbit(zip_ref, str(dest))
+
+        assert (dest / "DataModelSchema").read_text() == "schema"
+        assert (dest / "Report" / "Layout").read_text() == "layout"
+        assert not (tmp_path.parent / "bad.txt").exists()
+
+
+class TestGetDatamodelSchemaFilesFromPbit:
+    def test_corrupt_pbit_does_not_skip_the_others(self, tmp_path):
+        (tmp_path / "broken.pbit").write_bytes(b"not a zip archive")
+        _write_pbit(tmp_path / "good.pbit", {"Connections": "{}", "DataModelSchema": "{}"})
+
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.file_client._get_datamodel_schema_list",
+            return_value=[],
+        ) as schema_list:
+            result = get_datamodel_schema_files_from_pbit(str(tmp_path))
+
+        assert result == [], "a corrupt .pbit must not turn the whole run into None"
+        schema_list.assert_called_once_with(str(tmp_path))
+        assert (tmp_path / "extracted" / "good" / "Connections").exists()
